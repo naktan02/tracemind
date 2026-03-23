@@ -229,8 +229,17 @@ NormPack {
 가장 먼저 해야 할 일은 모델을 더 붙이는 것이 아니라,  
 로컬 서버와 중앙 서버가 어떤 데이터를 주고받는지 **계약(contract)** 을 고정하는 것이다.
 
-이 프로젝트의 핵심은 일반적인 FedAvg 기반 연합학습이 아니라,
+이 프로젝트의 기본 경로는 일반적인 FedAvg 기반 연합학습이 아니라,
 로컬에서 의미 점수와 시간 요약을 만들고 중앙에서는 집단 기준만 학습하는 구조다.
+
+다만 최종 목표는 여기서 멈추지 않는다.
+로컬 feedback 또는 self-report 신호를 확보할 수 있다면,
+이후에는 로컬 최종 판단 계층에 대해 multi-agent privacy-preserving FL을 얹을 수 있어야 한다.
+
+중요한 구분은 아래와 같다.
+
+- `WindowSummary`, `NormPack`은 cohort parameter learning 산출물이다.
+- decision-model parameter는 FL 산출물이다.
 
 즉, 구현 순서는 아래가 맞다.
 
@@ -239,6 +248,7 @@ NormPack {
 3. 로컬 서버가 `x_t`를 안정적으로 생성하도록 구현
 4. 중앙 서버가 `x_t`를 집계해 `NormPack`을 생성하도록 구현
 5. 마지막에 로컬 판단 엔진이 `Self-baseline + Peer norm`을 결합
+6. feedback 또는 self-report 신호가 확보되면 decision-model FL을 확장 계층으로 추가
 
 이 순서로 가야 구조가 단단해지고, 이후 AI 기능을 추가해도 중심 설계가 흔들리지 않는다.
 
@@ -266,6 +276,7 @@ NormPack {
    - 임베딩/번역은 표현 학습 계층이다.
    - 실제 판단은 정책 계층(`DecisionPolicy`)에서 한다.
    - 나중에 LLM이나 추천 AI를 붙여도 판단 로직이 오염되지 않도록 한다.
+   - `NormPack` 같은 cohort 통계 파라미터와 FL 모델 파라미터를 같은 것으로 취급하지 않는다.
 
 5. **스키마 버전 관리**
    - `WindowSummary v1`, `NormPack v1`처럼 명시적 버전을 둔다.
@@ -312,6 +323,7 @@ NormPack {
 - 집단 기준(`NormPack`) 생성
 - 버전 관리 및 배포
 - 품질 모니터링
+- 필요 시 decision-model FL coordinator 역할 추가
 
 중앙 서버는 절대로 원문 해석이나 개인 판정 로직을 가지지 않는다.
 
@@ -623,6 +635,7 @@ MVP 전에 아래 세 가지는 먼저 문서로 확정하는 것이 좋다.
 3. 부모/학교 통보 플로우
 4. 복잡한 신뢰도 가중치 시스템
 5. LLM 기반 설명 생성
+6. feedback 신호 없이 수행하는 decision-model FL
 
 MVP는 "의미 점수 -> 윈도우 통계 -> 중앙 기준 -> 로컬 판단"의 완전한 한 바퀴를 도는 것이 목표다.
 
@@ -718,6 +731,11 @@ MVP는 "의미 점수 -> 윈도우 통계 -> 중앙 기준 -> 로컬 판단"의 
 
 - 단발 이벤트에는 반응하지 않고, 지속적 변화에만 판단이 발생함
 
+중요:
+
+- 이 단계의 판단 엔진은 우선 `DecisionPolicy` 기반의 rule-driven 구조로 둔다.
+- `NormPack` 변화로 결과가 달라지는 것은 입력 기준 변화이지 FL 학습이 아니다.
+
 ## Phase 5. 품질/윤리/운영 안정화
 
 목표:
@@ -740,6 +758,7 @@ MVP는 "의미 점수 -> 윈도우 통계 -> 중앙 기준 -> 로컬 판단"의 
 2. weak supervision 기반 카테고리 보정
 3. 적응형 cohort 분할
 4. 로컬 개인화 추천
+5. feedback 신호 확보 이후의 decision-model FL
 
 중요:
 
@@ -816,7 +835,8 @@ MVP는 "의미 점수 -> 윈도우 통계 -> 중앙 기준 -> 로컬 판단"의 
 6. `NormPack` 다운로드/캐시 구현
 7. `DecisionService`로 최종 로컬 판단 연결
 8. synthetic federation simulation 작성
-9. 마지막에 크롬 확장 프로그램, robust aggregation 고도화, 신뢰도 가중치, AI 추천 기능 추가
+9. feedback/self-report 수집 전략이 정해지면 `DecisionTask`, `TrainingUpdateEnvelope`, `DecisionFeedbackSignal` 초안 작성
+10. 마지막에 크롬 확장 프로그램, robust aggregation 고도화, 신뢰도 가중치, AI 추천 기능 추가
 
 핵심은 "중앙 서버를 먼저 크게 만드는 것"이 아니라
 "로컬 서버가 어떤 요약을 안정적으로 만들 것인지 먼저 고정하는 것"이다.

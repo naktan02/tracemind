@@ -5,10 +5,15 @@
 이 프로젝트의 최종 목표는 두 축을 모두 포함한다.
 
 1. 로컬에서 원문을 처리하고 중앙에는 최소 통계만 보내는 privacy-preserving analytics 구조
-2. 이후 확장으로 파라미터 기반 연합학습과 privacy 기술(`DP`, secure aggregation, 필요 시 동형암호)까지 포함하는 구조
+2. 이후 확장으로 multi-agent privacy-preserving FL과 privacy 기술(`DP`, secure aggregation, 필요 시 동형암호)까지 수용 가능한 구조
+
+다만 여기서 중요한 구분이 있다.
+
+- `WindowSummary`, `NormPack` 같은 cohort 기준은 analytics 산출물이다.
+- 모델 파라미터 업데이트는 FL 산출물이다.
 
 즉, 최종적으로는 "로컬 분석 시스템"만 만드는 것이 아니라,
-"로컬 분석 시스템을 기반으로 연합학습 가능한 에이전트/서버 구조"를 만드는 것이다.
+"로컬 분석 시스템을 기반으로 cohort parameter learning과 필요 시 decision-model FL까지 수용 가능한 에이전트/서버 구조"를 만드는 것이다.
 
 다만 구현 순서는 최종 목표와 다르게 가져가는 것이 맞다.
 
@@ -20,8 +25,9 @@
 1. 로컬 데이터 처리 파이프라인 확정
 2. 중앙 서버와의 최소 계약 확정
 3. analytics 기반 MVP 완성
-4. 그 위에 FL runtime 계층 추가
-5. 마지막에 privacy hardening(`DP`, secure aggregation, HE`) 추가
+4. 그 위에 FL-ready runtime 계층 추가
+5. 로컬 feedback/self-report 신호가 확보될 때만 decision-model FL 추가
+6. 마지막에 privacy hardening(`DP`, secure aggregation, HE`) 추가
 
 이 방식은 "최종 목표를 낮추는 것"이 아니라 "복잡도를 통제하는 방식"이다.
 
@@ -37,7 +43,7 @@
 
 1. `WindowSummary`
 2. `NormPack`
-3. `TrainingUpdateEnvelope`
+3. `AssessmentResult`
 
 의미는 다음과 같다.
 
@@ -45,8 +51,23 @@
   - 로컬이 중앙으로 보내는 analytics용 요약 통계
 - `NormPack`
   - 중앙이 로컬에게 내려주는 cohort 기준
+- `AssessmentResult`
+  - 로컬이 최종 판단 후 내부적으로 사용하는 결과 객체
+
+그리고 FL 확장을 고려한다면 아래 계약 초안도 함께 잡아두는 것이 좋다.
+
+1. `TrainingTask`
+2. `TrainingUpdateEnvelope`
+3. `DecisionFeedbackSignal`
+
+의미는 다음과 같다.
+
+- `TrainingTask`
+  - 나중에 decision-model FL 단계에서 중앙이 로컬에 내려주는 학습 작업 정의
 - `TrainingUpdateEnvelope`
-  - 나중에 파라미터 연합학습 단계에서 로컬이 중앙으로 보내는 모델 업데이트 단위
+  - 로컬이 중앙으로 보내는 모델 업데이트 단위
+- `DecisionFeedbackSignal`
+  - self-report, support action, delayed outcome 같은 로컬 학습 신호
 
 이 계약을 먼저 정의하면, 나중에 FastAPI 라우터, DB 스키마, 시뮬레이터, 테스트를 안정적으로 쌓을 수 있다.
 
@@ -119,9 +140,10 @@
 3. `AssessmentResult`
 4. `TrainingTask`
 5. `TrainingUpdateEnvelope`
-6. `AgentCapabilities`
+6. `DecisionFeedbackSignal`
+7. `AgentCapabilities`
 
-여기서 `TrainingTask`, `TrainingUpdateEnvelope`, `AgentCapabilities`까지 초안만 잡아두면
+여기서 `TrainingTask`, `TrainingUpdateEnvelope`, `DecisionFeedbackSignal`, `AgentCapabilities`까지 초안만 잡아두면
 나중에 FL로 확장할 때 구조를 다시 뜯지 않아도 된다.
 
 ---
@@ -195,13 +217,18 @@
 
 - 단발성 이벤트에는 과민반응하지 않고, 지속 변화에서만 판단이 뜬다.
 
+중요:
+
+이 단계의 판단은 우선 `rule-based decision` 또는 명시적 `DecisionPolicy`로 구현하는 것이 맞다.
+`NormPack`이 바뀌면 결과는 달라질 수 있지만, 그것은 입력 컨텍스트 변화이지 FL 학습이 아니다.
+
 ---
 
 ## Phase 4. FL-ready Runtime 설계
 
 목표:
 
-- 현재 로컬 에이전트와 중앙 서버를 나중에 파라미터 연합학습으로 확장 가능하게 만든다.
+- 현재 로컬 에이전트와 중앙 서버를 나중에 decision-model FL로 확장 가능하게 만든다.
 
 추가할 것:
 
@@ -224,29 +251,41 @@
 
 즉 이 API들은 틀린 게 아니라, MVP보다 한 단계 뒤에 오는 것이다.
 
+다만 이 단계는 "FL이 이미 성립했다"는 뜻이 아니다.
+self-report나 feedback 신호 없이 round orchestration만 추가하면 여전히 학습 루프는 닫히지 않는다.
+
 ---
 
-## Phase 5. Parameter Federated Learning MVP
+## Phase 5. Decision-Model FL MVP
 
 목표:
 
-- 실제 모델 파라미터 업데이트를 교환하는 FL 루프 구현
+- 로컬 최종 판단 모델의 파라미터 업데이트를 교환하는 FL 루프 구현
 
 권장 범위:
 
-1. 얕은 분류기나 작은 projection head부터 시작
-2. 임베딩 백본 전체 미세조정보다 상단 head만 학습하는 방식 우선
+1. `WindowSummary`, baseline, `NormPack` 기반 feature를 입력으로 쓰는 작은 decision head부터 시작
+2. 임베딩 백본이나 프로토타입 자체보다 최종 판단 계층을 우선 학습
 3. 라운드 기반 집계
 4. basic FedAvg 또는 weighted averaging
+5. local self-report, support action, delayed outcome 중 최소 하나를 학습 신호로 사용
 
 왜 이렇게 하냐면:
 
-- 처음부터 큰 임베딩 모델 전체를 FL에 올리면 통신량, 안정성, 재현성, 클라이언트 자원 문제가 한 번에 터진다.
-- 상단 head 또는 얕은 분류기부터 시작해야 실험 회전 속도가 유지된다.
+- 현재 TraceMind의 핵심은 cohort parameter learning과 로컬 판단 분리다.
+- 학습 신호가 없는 상태에서 최종 판단을 FL로 돌리면 규칙을 다시 근사하는 수준에 머물 가능성이 크다.
+- 작은 decision head부터 시작해야 통신량, 검증 난이도, 해석 가능성을 통제할 수 있다.
 
 완료 조건:
 
-- 중앙이 `TrainingTask`를 배포하고, 로컬이 업데이트를 올리며, 중앙이 새 모델 버전을 발행한다.
+- 중앙이 `TrainingTask`를 배포하고, 로컬이 `DecisionFeedbackSignal`을 바탕으로 업데이트를 올리며, 중앙이 새 모델 버전을 발행한다.
+- `NormPack`과 FL 모델 파라미터가 역할상 분리되어 동작한다.
+
+하지 말아야 할 것:
+
+1. `NormPack`을 그대로 "글로벌 모델 파라미터"라고 취급하는 것
+2. cohort rarity와 semantic classifier 학습을 한 단계에 섞는 것
+3. feedback 신호 없이 decision-model FL을 먼저 도입하는 것
 
 ---
 
@@ -487,11 +526,11 @@ docker-compose.yml
 4. 모델/데이터셋 리소스 경로와 메타데이터 정리
 5. `agent/src/services/windowing_service.py` 구현
 6. 중앙 `sync/norms` API 구현
-7. `TrainingTask`와 `TrainingUpdateEnvelope` 초안 작성
+7. `TrainingTask`, `TrainingUpdateEnvelope`, `DecisionFeedbackSignal` 초안 작성
 8. 크롬 확장 프로그램 어댑터 연결
 
 즉, 지금은 analytics MVP를 닫되,
-FL 확장 포인트는 미리 설계에 심어두는 방식으로 가는 것이 맞다.
+FL 확장 포인트는 미리 설계에 심어두되, 실제 decision-model FL은 feedback 신호 확보 이후에 여는 방식으로 가는 것이 맞다.
 
 중요한 순서 원칙은 아래와 같다.
 
@@ -499,3 +538,4 @@ FL 확장 포인트는 미리 설계에 심어두는 방식으로 가는 것이 
 2. 모델과 데이터셋은 병렬로 준비하되, 계약이 없는데 파이프라인에 먼저 박아 넣지 않는다.
 3. 초기 입력 채널은 테스트 fixture나 로컬 API로 충분하다.
 4. 크롬 확장 프로그램은 입력 어댑터이므로, 핵심 분석 로직이 안정된 뒤 붙여도 늦지 않다.
+5. `NormPack`과 decision-model parameter는 역할이 다르므로 한 계약으로 합치지 않는다.
