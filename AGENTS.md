@@ -8,6 +8,7 @@ Create a virtual environment (`python -m venv .venv && source .venv/bin/activate
 
 ## Coding Style & Naming Conventions
 Target Python 3.11, four-space indentation, and Black-compatible line wrapping (88 chars). Prefer dataclasses or Pydantic models for request/response bodies. Use descriptive snake_case for modules, functions, and variables, PascalCase for classes, and SCREAMING_SNAKE_CASE for constants. Annotate public functions with explicit type hints.
+Write comments and explanatory prose in Korean unless a path, code identifier, third-party model name, or protocol term needs to stay in its original language.
 
 ## Testing Guidelines
 Pytest is the authoritative framework. Name files `test_<module>.py` and functions `test_<behavior>`. Keep fast, deterministic cases in `tests/unit`, while contract and integration checks belong in `tests/integration` and may use the `slow` marker. Aim for ≥90% statement coverage on core services; fail the pipeline if coverage drops below the threshold by using `pytest --cov=src --cov-fail-under=90`. Use factories/fixtures to build domain objects instead of manual dictionaries to reduce brittleness.

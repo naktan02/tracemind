@@ -1,0 +1,13 @@
+defaults:
+  - pipeline: default
+  - embedding: mxbai_large
+  - translation: nllb_200_distilled_600m
+  - _self_
+
+app:
+  name: tracemind-agent
+  stage: bootstrap
+
+hydra:
+  run:
+    dir: outputs/${now:%Y-%m-%d}/${now:%H-%M-%S}
