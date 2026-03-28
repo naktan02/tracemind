@@ -104,33 +104,39 @@ def counts_by_label(rows: list[dict[str, Any]]) -> dict[str, int]:
     return dict(sorted(Counter(row["mapped_label_4"] for row in rows).items()))
 
 
-def main() -> None:
-    args = parse_args()
-    rows = load_jsonl(args.input_jsonl)
-    source_manifest = load_json(args.input_jsonl.with_suffix(".manifest.json"))
+def build_split_artifacts(
+    *,
+    input_jsonl: Path,
+    split_name: str,
+    validation_ratio: float,
+    seed: int,
+    output_dir: Path,
+) -> tuple[Path, Path, Path]:
+    rows = load_jsonl(input_jsonl)
+    source_manifest = load_json(input_jsonl.with_suffix(".manifest.json"))
     train_rows, validation_rows = split_rows(
         rows,
-        validation_ratio=args.validation_ratio,
-        seed=args.seed,
+        validation_ratio=validation_ratio,
+        seed=seed,
     )
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    train_path = args.output_dir / f"{args.split_name}.train.jsonl"
-    validation_path = args.output_dir / f"{args.split_name}.validation.jsonl"
-    manifest_path = args.output_dir / f"{args.split_name}.manifest.json"
+    output_dir.mkdir(parents=True, exist_ok=True)
+    train_path = output_dir / f"{split_name}.train.jsonl"
+    validation_path = output_dir / f"{split_name}.validation.jsonl"
+    manifest_path = output_dir / f"{split_name}.manifest.json"
 
     dump_jsonl(train_path, train_rows)
     dump_jsonl(validation_path, validation_rows)
 
     manifest = {
-        "split_name": args.split_name,
-        "source_jsonl": str(args.input_jsonl),
+        "split_name": split_name,
+        "source_jsonl": str(input_jsonl),
         "source_dataset_id": None if source_manifest is None else source_manifest.get("dataset_id"),
         "source_mapping_version": None
         if source_manifest is None
         else source_manifest.get("mapping_version"),
-        "validation_ratio": args.validation_ratio,
-        "seed": args.seed,
+        "validation_ratio": validation_ratio,
+        "seed": seed,
         "rows_total": len(rows),
         "train_rows": len(train_rows),
         "validation_rows": len(validation_rows),
@@ -142,6 +148,19 @@ def main() -> None:
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
+    )
+
+    return train_path, validation_path, manifest_path
+
+
+def main() -> None:
+    args = parse_args()
+    train_path, validation_path, manifest_path = build_split_artifacts(
+        input_jsonl=args.input_jsonl,
+        split_name=args.split_name,
+        validation_ratio=args.validation_ratio,
+        seed=args.seed,
+        output_dir=args.output_dir,
     )
 
     print(f"train_jsonl={train_path}")

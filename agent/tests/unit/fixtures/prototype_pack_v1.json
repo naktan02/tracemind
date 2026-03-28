@@ -7,7 +7,7 @@
   "translation_model_revision": null,
   "translation_direction": null,
   "mapping_version": "cssrs_to_4cat.v1",
-  "build_method": "mean_centroid",
+  "build_method": "mean_centroid_l2_normalized",
   "distance_metric": "cosine",
   "built_at": "2026-03-28T00:00:00Z",
   "categories": {
@@ -24,7 +24,7 @@
       "sample_count": 8
     },
     "normal": {
-      "centroid": [1.0, 1.0, 0.0],
+      "centroid": [0.7071067811865475, 0.7071067811865475, 0.0],
       "sample_count": 20
     }
   }

@@ -14,13 +14,18 @@ from typing import Any
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
+MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
+if str(MAIN_SERVER_ROOT) not in sys.path:
+    sys.path.insert(0, str(MAIN_SERVER_ROOT))
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.prototype_pack import PrototypePack
 from scripts.prototype_pack_builder import PrototypePackBuilder
+from src.services.prototype_pack_service import PrototypePackService
 
 
 def parse_args() -> argparse.Namespace:
@@ -188,22 +193,39 @@ def build_pack_dict(pack: PrototypePack) -> dict[str, Any]:
     }
 
 
-def main() -> None:
-    args = parse_args()
-    rows = load_jsonl(args.input_jsonl)
+def seed_prototype_pack(
+    *,
+    input_jsonl: Path,
+    output_dir: Path,
+    prototype_version: str,
+    backend: str,
+    embedding_model_id: str,
+    embedding_model_revision: str,
+    translation_model_id: str | None,
+    translation_model_revision: str | None,
+    translation_direction: str | None,
+    batch_size: int,
+    cache_dir: Path,
+    device: str,
+    task_prefix: str,
+    local_files_only: bool,
+    expected_categories: list[str],
+    hash_dim: int,
+) -> tuple[Path, Path, Path]:
+    rows = load_jsonl(input_jsonl)
     rows_by_label = group_rows_by_label(rows)
-    mapping_version, source_dataset_id = resolve_metadata_from_manifests(args.input_jsonl)
+    mapping_version, source_dataset_id = resolve_metadata_from_manifests(input_jsonl)
     adapter = EmbeddingAdapterFactory.create(
         EmbeddingAdapterSpec(
-            backend=args.backend,
-            model_id=args.embedding_model_id,
-            revision=args.embedding_model_revision,
-            device=args.device,
-            batch_size=args.batch_size,
-            cache_dir=str(args.cache_dir),
-            task_prefix=args.task_prefix,
-            hash_dim=args.hash_dim,
-            local_files_only=args.local_files_only,
+            backend=backend,
+            model_id=embedding_model_id,
+            revision=embedding_model_revision,
+            device=device,
+            batch_size=batch_size,
+            cache_dir=str(cache_dir),
+            task_prefix=task_prefix,
+            hash_dim=hash_dim,
+            local_files_only=local_files_only,
         )
     )
 
@@ -218,49 +240,75 @@ def main() -> None:
         print(f"embedded_category={category} rows={len(texts)}", flush=True)
 
     built_at = datetime.now(timezone.utc)
-    prototype_version = args.prototype_version or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
     builder = PrototypePackBuilder()
     pack = builder.build(
         embeddings_by_category,
         prototype_version=prototype_version,
-        embedding_model_id=args.embedding_model_id,
-        embedding_model_revision=args.embedding_model_revision,
-        translation_model_id=args.translation_model_id,
-        translation_model_revision=args.translation_model_revision,
-        translation_direction=args.translation_direction,
+        embedding_model_id=embedding_model_id,
+        embedding_model_revision=embedding_model_revision,
+        translation_model_id=translation_model_id,
+        translation_model_revision=translation_model_revision,
+        translation_direction=translation_direction,
         mapping_version=mapping_version,
         built_at=built_at,
-        required_categories=args.expected_categories or None,
+        required_categories=expected_categories or None,
     )
 
-    output_dir = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
     pack_path = output_dir / f"{prototype_version}.json"
     manifest_path = output_dir / f"{prototype_version}.manifest.json"
+    pack_payload = PrototypePackPayload.model_validate(build_pack_dict(pack))
     pack_path.write_text(
-        json.dumps(build_pack_dict(pack), indent=2, ensure_ascii=True) + "\n",
+        json.dumps(pack_payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    main_server_pack_path = PrototypePackService().publish_pack(pack_payload)
     manifest = {
         "prototype_version": prototype_version,
-        "input_jsonl": str(args.input_jsonl),
+        "input_jsonl": str(input_jsonl),
         "source_dataset_id": source_dataset_id,
-        "backend": args.backend,
-        "embedding_model_id": args.embedding_model_id,
-        "embedding_model_revision": args.embedding_model_revision,
+        "backend": backend,
+        "embedding_model_id": embedding_model_id,
+        "embedding_model_revision": embedding_model_revision,
         "mapping_version": mapping_version,
         "built_at": built_at.isoformat(),
         "category_counts": dict(sorted(label_counts.items())),
-        "expected_categories": args.expected_categories,
+        "expected_categories": expected_categories,
         "output_pack": str(pack_path),
+        "main_server_pack": str(main_server_pack_path),
     }
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    return pack_path, manifest_path, main_server_pack_path
 
+
+def main() -> None:
+    args = parse_args()
+    built_at = datetime.now(timezone.utc)
+    prototype_version = args.prototype_version or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
+    pack_path, manifest_path, main_server_pack_path = seed_prototype_pack(
+        input_jsonl=args.input_jsonl,
+        output_dir=args.output_dir,
+        prototype_version=prototype_version,
+        backend=args.backend,
+        embedding_model_id=args.embedding_model_id,
+        embedding_model_revision=args.embedding_model_revision,
+        translation_model_id=args.translation_model_id,
+        translation_model_revision=args.translation_model_revision,
+        translation_direction=args.translation_direction,
+        batch_size=args.batch_size,
+        cache_dir=args.cache_dir,
+        device=args.device,
+        task_prefix=args.task_prefix,
+        local_files_only=args.local_files_only,
+        expected_categories=args.expected_categories,
+        hash_dim=args.hash_dim,
+    )
     print(f"prototype_pack={pack_path}")
     print(f"manifest={manifest_path}")
+    print(f"main_server_pack={main_server_pack_path}")
 
 
 if __name__ == "__main__":

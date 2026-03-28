@@ -6,6 +6,7 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
@@ -18,7 +19,7 @@ class PrototypePackBuilder:
     """카테고리별 임베딩 묶음을 centroid 기반 prototype pack으로 변환한다."""
 
     schema_version: str = "prototype_pack.v1"
-    build_method: str = "mean_centroid"
+    build_method: str = "mean_centroid_l2_normalized"
     distance_metric: str = "cosine"
 
     def build(
@@ -98,4 +99,10 @@ class PrototypePackBuilder:
                 totals[index] += value
 
         count = len(embeddings)
-        return [value / count for value in totals]
+        centroid = [value / count for value in totals]
+        norm = math.sqrt(sum(value * value for value in centroid))
+        if norm == 0.0:
+            raise ValueError(
+                f"Category '{category}' mean centroid has zero norm and cannot be normalized."
+            )
+        return [value / norm for value in centroid]
