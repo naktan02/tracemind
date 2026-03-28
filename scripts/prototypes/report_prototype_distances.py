@@ -8,7 +8,7 @@ import sys
 from pathlib import Path
 
 # 스크립트 직접 실행 시 프로젝트 루트를 import path에 추가한다.
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 

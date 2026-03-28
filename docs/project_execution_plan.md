@@ -189,6 +189,30 @@
 7. active `PrototypePack`을 사용한 `ScoredEvent` 생성 경로를 안정화한 뒤 `WindowSummary` 생성으로 넘어간다.
 8. 그 다음에 단순 `self-baseline`을 붙여 Local Analytics MVP를 닫고, 이후 `NormPack` 단계로 이동한다.
 
+### 현재 보류 결정
+
+현재 시점에서는 `ourafla` 기준 `4-class classifier head + softmax`를 runtime 기본 경로로 승격하지 않는다.
+
+이 결정의 이유는 아래와 같다.
+
+1. 현재 analytics 레일의 목적은 이벤트를 `anxiety`, `depression`, `suicidal`, `normal` 의미 축으로 연속 점수화하는 것이다.
+2. 이 단계에서는 `PrototypePack` 기반 distance scoring만으로 `ScoredEvent`와 `WindowSummary`를 만드는 데 충분하다.
+3. TraceMind의 나중 FL 대상은 event-level 4분류기가 아니라, `WindowSummary`, `self-baseline`, `NormPack`, `persistence`를 입력으로 받는 최종 `decision model`이 더 자연스럽다.
+4. 따라서 현재의 `4-class classifier`는 오프라인 benchmark와 비교 실험용 artifact로만 유지한다.
+
+### 바로 다음 구현 순서
+
+다음 구현은 classifier 승격이 아니라, 아래 analytics 폐회로를 실제 코드 경로로 닫는 것이다.
+
+1. `QueryEvent -> ScoredEvent` orchestration service를 만든다.
+2. ingest request contract를 정의하고, agent ingest API가 `QueryEvent`를 생성하도록 연결한다.
+3. 필요 시 translation을 수행하고, embedding adapter와 active `PrototypePack`을 사용해 category score를 계산한다.
+4. `ScoredEvent`를 micro-batch로 모으는 buffer 계층을 추가한다.
+5. flush 조건에 따라 `WindowSummaryBuilder`를 호출해 deterministic `WindowSummary`를 생성한다.
+6. 생성된 `WindowSummary`를 로컬에서 확인 가능한 저장 또는 emit 경로로 연결한다.
+7. fixture 기반 end-to-end test를 추가해 `ingest -> scored event -> window summary`가 안정적으로 재현되는지 검증한다.
+8. 이 경로가 안정화된 뒤에만 `self-baseline` 구현으로 넘어간다.
+
 ### Prototype update 원칙
 
 최종 운영 기준에서 `PrototypePack` 업데이트는 아래처럼 해석한다.
@@ -293,6 +317,12 @@ self-report나 feedback 신호 없이 round orchestration만 추가하면 여전
 3. 라운드 기반 집계
 4. basic FedAvg 또는 weighted averaging
 5. local self-report, support action, delayed outcome 중 최소 하나를 학습 신호로 사용
+
+중요한 구분:
+
+1. 여기서 말하는 `decision head`는 event-level `4-class classifier head`와 같은 것이 아니다.
+2. `4-class classifier head`는 텍스트를 즉시 `anxiety/depression/normal/suicidal`로 분류하는 benchmark용 대안이다.
+3. 반면 FL 대상으로 고려하는 `decision head`는 `WindowSummary`, baseline 변화량, `NormPack`, persistence feature를 입력으로 받아 최종 지원 필요 여부를 판단하는 상위 계층이다.
 
 왜 이렇게 하냐면:
 

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.run_dataset_pipeline import load_registry
+from scripts.datasets.run_dataset_pipeline import load_registry
 
 
 def test_load_registry_reads_ourafla_and_cssrs_configs() -> None:

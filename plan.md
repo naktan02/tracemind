@@ -452,9 +452,23 @@ shared/
     unit/
 
 scripts/
-  seed_prototypes.py
-  run_local_demo.py
-  run_federated_simulation.py
+  datasets/
+    build_labeled_query_set.py
+    download_dataset.py
+    run_dataset_pipeline.py
+    split_labeled_query_set.py
+  prototypes/
+    activate_prototype_pack.py
+    evaluate_prototype_pack.py
+    prototype_pack_builder.py
+    pull_prototype_pack.py
+    report_prototype_distances.py
+    seed_prototypes.py
+    update_prototype_build_state.py
+  experiments/
+    run_local_demo.py
+    run_federated_simulation.py
+    train_softmax_classifier.py
 
 tests/
   federation/

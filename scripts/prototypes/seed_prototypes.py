@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 # 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 직접 실행 지원)
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
@@ -27,7 +27,7 @@ from shared.src.contracts.prototype_build_state_contracts import (
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.prototype_pack import PrototypePack
-from scripts.prototype_pack_builder import PrototypePackBuilder
+from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder
 from src.services.prototype_build_state_service import PrototypeBuildStateService
 from src.services.prototype_pack_service import PrototypePackService
 

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from scripts.prototype_pack_builder import PrototypePackBuilder
+from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )

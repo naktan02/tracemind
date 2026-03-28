@@ -199,23 +199,33 @@ Local Features
 4. embedding adapter 연결
 5. prototype scoring
 6. window aggregation
+7. `QueryEvent -> ScoredEvent -> WindowSummary` orchestration service
+8. ingest API와 summary flush 경로 연결
 
 산출물:
 
 1. 로컬 fixture 입력
 2. deterministic `WindowSummary`
 3. service-level unit test
+4. ingest route에서 시작되는 end-to-end fixture test
 
 검증:
 
 1. 같은 입력 fixture에 대해 같은 `WindowSummary`가 재현된다.
 2. scoring과 windowing이 분리된 테스트로 검증된다.
 3. 원문이 중앙 payload 타입으로 새지 않는다.
+4. active `PrototypePack` 교체 후에도 동일한 ingest 경로에서 score source만 바뀌고 상위 흐름은 유지된다.
 
 사용자 확인 필요:
 
 1. 초기 embedding 모델 선택
 2. prototype dataset 버전 선택
+
+현재 보류:
+
+1. event-level `4-class classifier head + softmax`는 비교 실험용으로만 유지한다.
+2. runtime 기본 경로는 여전히 `PrototypePack` 기반 scoring이다.
+3. 나중 FL 대상은 event-level classifier가 아니라, 상위 `decision model`이다.
 
 ### Phase 3. 로컬 self-baseline MVP
 

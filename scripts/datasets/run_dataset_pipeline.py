@@ -13,17 +13,20 @@ from typing import Any
 from omegaconf import OmegaConf
 
 # 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 직접 실행 지원)
-PROJECT_ROOT = Path(__file__).resolve().parents[1]
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from scripts.build_labeled_query_set import build_labeled_query_set, load_mapping_config
-from scripts.download_dataset import (
+from scripts.datasets.build_labeled_query_set import (
+    build_labeled_query_set,
+    load_mapping_config,
+)
+from scripts.datasets.download_dataset import (
     build_default_output_path,
     download_huggingface_dataset_to_csv,
 )
-from scripts.seed_prototypes import seed_prototype_pack
-from scripts.split_labeled_query_set import build_split_artifacts
+from scripts.datasets.split_labeled_query_set import build_split_artifacts
+from scripts.prototypes.seed_prototypes import seed_prototype_pack
 
 PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
 
