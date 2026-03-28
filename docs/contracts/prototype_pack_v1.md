@@ -122,7 +122,7 @@ v1은 아래 필드를 기본으로 한다.
 
 9. `build_method`
    - 카테고리 대표 벡터 생성 방식
-   - 예: `mean_centroid`
+   - 예: `mean_centroid_l2_normalized`
 
 10. `distance_metric`
     - scoring 시 사용할 거리 또는 유사도 기준
@@ -201,7 +201,7 @@ v1에서는 아래를 포함하지 않는다.
   "translation_model_revision": "main",
   "translation_direction": "kor_Hang->eng_Latn",
   "mapping_version": "cssrs_to_4cat.v1",
-  "build_method": "mean_centroid",
+  "build_method": "mean_centroid_l2_normalized",
   "distance_metric": "cosine",
   "built_at": "2026-03-26T13:00:00Z",
   "categories": {

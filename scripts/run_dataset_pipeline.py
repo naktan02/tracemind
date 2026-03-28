@@ -469,9 +469,17 @@ def run_dataset(
         )
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
         prototype_version = f"{dataset.prototype.prototype_version_prefix}_{timestamp}"
-        pack_path, manifest_path, main_server_pack_path = seed_prototype_pack(
+        (
+            pack_path,
+            build_state_path,
+            manifest_path,
+            main_server_pack_path,
+            main_server_build_state_path,
+        ) = seed_prototype_pack(
             input_jsonl=prototype_input_jsonl,
             output_dir=defaults.prototype_pack_dir,
+            build_state_output_dir=defaults.prototype_pack_dir.parent
+            / "prototype_build_states",
             prototype_version=prototype_version,
             backend=dataset.prototype.backend,
             embedding_model_id=dataset.prototype.embedding_model_id,
@@ -488,8 +496,10 @@ def run_dataset(
             hash_dim=dataset.prototype.hash_dim,
         )
         prototype_output = {
+            "prototype_build_state": str(build_state_path),
             "prototype_pack": str(pack_path),
             "manifest": str(manifest_path),
+            "main_server_build_state": str(main_server_build_state_path),
             "main_server_pack": str(main_server_pack_path),
             "input_jsonl": str(prototype_input_jsonl),
         }

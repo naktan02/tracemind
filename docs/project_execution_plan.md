@@ -175,6 +175,30 @@
 
 - 샘플 입력에서 `WindowSummary`가 안정적으로 생성된다.
 
+### Phase 1 현재 기준 세부 실행 순서
+
+현재까지 `PrototypePack` 생성, 파일 기반 배포 경로, `validation`/원본 `test` 평가 레일까지 확보했다.
+이후 Local Analytics MVP를 닫기 위한 실제 개발 순서는 아래로 고정한다.
+
+1. `validation`은 반복 비교와 튜닝용 개발 셋으로 쓰고, 원본 `test`는 마지막 holdout으로 유지한다.
+2. `PrototypePack`은 runtime artifact로 취급하고, source of truth는 누적된 canonical labeled data와 build state로 둔다.
+3. 새 라벨 데이터가 들어오면 기존 활성 pack의 숫자를 직접 수정하지 않고, 새 `prototype_version`을 생성한다.
+4. 평균 centroid 방식에서는 카테고리별 `embedding_sum`, `sample_count`를 build state로 저장해 exact incremental update를 지원한다.
+5. 단, 임베딩 모델 버전 변경, 전처리/번역 경로 변경, 라벨 remap 변경, 과거 샘플 삭제/재라벨이 발생하면 canonical labeled data 전체에서 full rebuild를 수행한다.
+6. 중앙 서버에서 active prototype version을 관리하고, agent는 pull/sync 후 로컬 active cache로 반영한다.
+7. active `PrototypePack`을 사용한 `ScoredEvent` 생성 경로를 안정화한 뒤 `WindowSummary` 생성으로 넘어간다.
+8. 그 다음에 단순 `self-baseline`을 붙여 Local Analytics MVP를 닫고, 이후 `NormPack` 단계로 이동한다.
+
+### Prototype update 원칙
+
+최종 운영 기준에서 `PrototypePack` 업데이트는 아래처럼 해석한다.
+
+1. 기본 원칙은 "전체 accepted 데이터의 의미를 반영한 새 버전 생성"이다.
+2. 이를 매번 원시 데이터 전체 재임베딩으로 구현할 필요는 없다.
+3. 평균 centroid 기준에서는 각 카테고리의 unnormalized `embedding_sum`과 `sample_count`를 유지하면, 신규 데이터의 임베딩만 추가해도 전체 재계산과 수학적으로 동일한 결과를 만들 수 있다.
+4. 즉 운영상 권장 방식은 "신규 데이터 임베딩만 계산 -> build state(sum/count) 누적 -> 새 centroid 계산 -> L2 정규화 -> 새 pack 발행"이다.
+5. 반대로 runtime용으로 저장된 최종 centroid 값만 가지고 단순 가산하는 방식은 정확한 incremental update가 아니다.
+
 ---
 
 ## Phase 2. Central Normative Server MVP

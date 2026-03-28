@@ -20,6 +20,8 @@
 
 4. 계약 문서
    - [`docs/contracts/window_summary_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/window_summary_v1.md)
+   - [`docs/contracts/prototype_pack_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_pack_v1.md)
+   - [`docs/contracts/prototype_build_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_build_state_v1.md)
    - 이후 `norm_pack_v1.md`, `assessment_result_v1.md`가 추가되면 같은 레벨에서 참조
 
 ---
@@ -44,6 +46,8 @@
 ### 4. 계약 문서
 
 - [`docs/contracts/window_summary_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/window_summary_v1.md)
+- [`docs/contracts/prototype_pack_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_pack_v1.md)
+- [`docs/contracts/prototype_build_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_build_state_v1.md)
 - 로컬/중앙 간 데이터 경계
 
 ### 5. 대화 기록

@@ -22,9 +22,13 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
+from shared.src.contracts.prototype_build_state_contracts import (
+    PrototypeBuildStatePayload,
+)
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.prototype_pack import PrototypePack
 from scripts.prototype_pack_builder import PrototypePackBuilder
+from src.services.prototype_build_state_service import PrototypeBuildStateService
 from src.services.prototype_pack_service import PrototypePackService
 
 
@@ -43,6 +47,12 @@ def parse_args() -> argparse.Namespace:
         type=Path,
         default=Path("data/processed/prototype_packs"),
         help="Directory where prototype pack outputs are written.",
+    )
+    parser.add_argument(
+        "--build-state-output-dir",
+        type=Path,
+        default=Path("data/processed/prototype_build_states"),
+        help="Directory where prototype build-state outputs are written.",
     )
     parser.add_argument(
         "--prototype-version",
@@ -193,10 +203,37 @@ def build_pack_dict(pack: PrototypePack) -> dict[str, Any]:
     }
 
 
+def build_state_dict(build_state: PrototypeBuildStatePayload) -> dict[str, Any]:
+    return {
+        "schema_version": build_state.schema_version,
+        "prototype_version": build_state.prototype_version,
+        "embedding_backend": build_state.embedding_backend,
+        "embedding_model_id": build_state.embedding_model_id,
+        "embedding_model_revision": build_state.embedding_model_revision,
+        "normalize_embeddings": build_state.normalize_embeddings,
+        "task_prefix": build_state.task_prefix,
+        "translation_model_id": build_state.translation_model_id,
+        "translation_model_revision": build_state.translation_model_revision,
+        "translation_direction": build_state.translation_direction,
+        "mapping_version": build_state.mapping_version,
+        "build_method": build_state.build_method,
+        "distance_metric": build_state.distance_metric,
+        "built_at": build_state.built_at.isoformat(),
+        "categories": {
+            category: {
+                "embedding_sum": category_state.embedding_sum,
+                "sample_count": category_state.sample_count,
+            }
+            for category, category_state in build_state.categories.items()
+        },
+    }
+
+
 def seed_prototype_pack(
     *,
     input_jsonl: Path,
     output_dir: Path,
+    build_state_output_dir: Path,
     prototype_version: str,
     backend: str,
     embedding_model_id: str,
@@ -211,7 +248,7 @@ def seed_prototype_pack(
     local_files_only: bool,
     expected_categories: list[str],
     hash_dim: int,
-) -> tuple[Path, Path, Path]:
+) -> tuple[Path, Path, Path, Path, Path]:
     rows = load_jsonl(input_jsonl)
     rows_by_label = group_rows_by_label(rows)
     mapping_version, source_dataset_id = resolve_metadata_from_manifests(input_jsonl)
@@ -241,11 +278,14 @@ def seed_prototype_pack(
 
     built_at = datetime.now(timezone.utc)
     builder = PrototypePackBuilder()
-    pack = builder.build(
+    build_state = builder.build_state(
         embeddings_by_category,
         prototype_version=prototype_version,
+        embedding_backend=backend,
         embedding_model_id=embedding_model_id,
         embedding_model_revision=embedding_model_revision,
+        normalize_embeddings=True,
+        task_prefix=task_prefix,
         translation_model_id=translation_model_id,
         translation_model_revision=translation_model_revision,
         translation_direction=translation_direction,
@@ -253,14 +293,32 @@ def seed_prototype_pack(
         built_at=built_at,
         required_categories=expected_categories or None,
     )
+    pack = builder.build_pack_from_state(build_state)
 
     output_dir.mkdir(parents=True, exist_ok=True)
+    build_state_output_dir.mkdir(parents=True, exist_ok=True)
     pack_path = output_dir / f"{prototype_version}.json"
+    build_state_path = build_state_output_dir / f"{prototype_version}.json"
     manifest_path = output_dir / f"{prototype_version}.manifest.json"
+    build_state_payload = PrototypeBuildStatePayload.model_validate(
+        build_state_dict(build_state)
+    )
+    build_state_path.write_text(
+        json.dumps(
+            build_state_payload.model_dump(mode="json"),
+            indent=2,
+            ensure_ascii=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     pack_payload = PrototypePackPayload.model_validate(build_pack_dict(pack))
     pack_path.write_text(
         json.dumps(pack_payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
+    )
+    main_server_build_state_path = PrototypeBuildStateService().publish_state(
+        build_state_payload
     )
     main_server_pack_path = PrototypePackService().publish_pack(pack_payload)
     manifest = {
@@ -274,23 +332,38 @@ def seed_prototype_pack(
         "built_at": built_at.isoformat(),
         "category_counts": dict(sorted(label_counts.items())),
         "expected_categories": expected_categories,
+        "output_build_state": str(build_state_path),
         "output_pack": str(pack_path),
+        "main_server_build_state": str(main_server_build_state_path),
         "main_server_pack": str(main_server_pack_path),
     }
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
-    return pack_path, manifest_path, main_server_pack_path
+    return (
+        pack_path,
+        build_state_path,
+        manifest_path,
+        main_server_pack_path,
+        main_server_build_state_path,
+    )
 
 
 def main() -> None:
     args = parse_args()
     built_at = datetime.now(timezone.utc)
     prototype_version = args.prototype_version or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
-    pack_path, manifest_path, main_server_pack_path = seed_prototype_pack(
+    (
+        pack_path,
+        build_state_path,
+        manifest_path,
+        main_server_pack_path,
+        main_server_build_state_path,
+    ) = seed_prototype_pack(
         input_jsonl=args.input_jsonl,
         output_dir=args.output_dir,
+        build_state_output_dir=args.build_state_output_dir,
         prototype_version=prototype_version,
         backend=args.backend,
         embedding_model_id=args.embedding_model_id,
@@ -306,8 +379,10 @@ def main() -> None:
         expected_categories=args.expected_categories,
         hash_dim=args.hash_dim,
     )
+    print(f"prototype_build_state={build_state_path}")
     print(f"prototype_pack={pack_path}")
     print(f"manifest={manifest_path}")
+    print(f"main_server_build_state={main_server_build_state_path}")
     print(f"main_server_pack={main_server_pack_path}")
 
 
