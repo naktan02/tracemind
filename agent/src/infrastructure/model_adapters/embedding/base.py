@@ -1,11 +1,14 @@
-"""임베딩 어댑터 프로토콜."""
+"""공통 임베딩 어댑터 프로토콜 래퍼."""
 
-from collections.abc import Sequence
-from typing import Protocol
+from __future__ import annotations
 
+import sys
+from pathlib import Path
 
-class EmbeddingAdapter(Protocol):
-    """교체 가능한 임베딩 모델 어댑터 인터페이스."""
+PROJECT_ROOT = Path(__file__).resolve().parents[5]
+if str(PROJECT_ROOT) not in sys.path:
+    sys.path.insert(0, str(PROJECT_ROOT))
 
-    def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
-        """텍스트 배치를 공통 벡터 공간으로 임베딩한다."""
+from tracemind_embedding.base import EmbeddingAdapter
+
+__all__ = ["EmbeddingAdapter"]

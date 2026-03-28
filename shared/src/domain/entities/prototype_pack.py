@@ -21,6 +21,12 @@ class PrototypePack:
     schema_version: str
     prototype_version: str
     embedding_model_id: str
+    embedding_model_revision: str
     translation_model_id: str | None
+    translation_model_revision: str | None
+    translation_direction: str | None
+    mapping_version: str
+    build_method: str
+    distance_metric: str
     built_at: datetime
     categories: dict[str, CategoryPrototype] = field(default_factory=dict)

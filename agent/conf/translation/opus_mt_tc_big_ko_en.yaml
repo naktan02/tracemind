@@ -3,7 +3,7 @@ model_id: Helsinki-NLP/opus-mt-tc-big-ko-en
 revision: main
 source_lang: ko
 target_lang: en
-device: cpu
+device: auto
 batch_size: 8
 max_new_tokens: 256
 cache_dir: null
