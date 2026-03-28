@@ -2,16 +2,10 @@
 
 from __future__ import annotations
 
-import sys
 from collections.abc import Sequence
 from dataclasses import dataclass
-from pathlib import Path
 
-PROJECT_ROOT = Path(__file__).resolve().parents[5]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-
-from tracemind_runtime import resolve_runtime_device
+from agent.src.infrastructure.runtime import resolve_runtime_device
 
 
 @dataclass(slots=True)

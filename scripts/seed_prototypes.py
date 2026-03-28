@@ -10,17 +10,17 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+# 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 직접 실행 지원)
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-PROJECT_SHARED_ROOT = Path(__file__).resolve().parents[1] / "shared"
-if str(PROJECT_SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_SHARED_ROOT))
-
-from src.domain.entities.prototype_pack import PrototypePack
-from src.domain.services.prototype_pack_builder import PrototypePackBuilder
-from tracemind_embedding import EmbeddingAdapterFactory, EmbeddingAdapterSpec
+from agent.src.infrastructure.model_adapters.embedding.factory import (
+    EmbeddingAdapterFactory,
+    EmbeddingAdapterSpec,
+)
+from shared.src.domain.entities.prototype_pack import PrototypePack
+from scripts.prototype_pack_builder import PrototypePackBuilder
 
 
 def parse_args() -> argparse.Namespace:

@@ -1,4 +1,8 @@
-"""카테고리별 임베딩에서 PrototypePack을 만드는 도메인 서비스."""
+"""카테고리별 임베딩에서 PrototypePack을 만드는 빌드 유틸리티.
+
+빌드 스크립트(seed_prototypes.py)가 사용한다.
+에이전트 런타임과는 무관하다.
+"""
 
 from __future__ import annotations
 
@@ -6,7 +10,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from src.domain.entities.prototype_pack import CategoryPrototype, PrototypePack
+from shared.src.domain.entities.prototype_pack import CategoryPrototype, PrototypePack
 
 
 @dataclass(slots=True)

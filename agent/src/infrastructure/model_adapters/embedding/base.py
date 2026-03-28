@@ -1,14 +1,17 @@
-"""공통 임베딩 어댑터 프로토콜 래퍼."""
+"""교체 가능한 임베딩 어댑터 프로토콜."""
 
 from __future__ import annotations
 
-import sys
-from pathlib import Path
+from collections.abc import Sequence
+from typing import Protocol
 
-PROJECT_ROOT = Path(__file__).resolve().parents[5]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
-from tracemind_embedding.base import EmbeddingAdapter
+class EmbeddingAdapter(Protocol):
+    """임베딩 모델 어댑터 인터페이스.
 
-__all__ = ["EmbeddingAdapter"]
+    모든 임베딩 백엔드(mxbai, hash_debug 등)는 이 프로토콜을 구현한다.
+    """
+
+    def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
+        """텍스트 배치를 임베딩 벡터 리스트로 변환한다."""
+        ...

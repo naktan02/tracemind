@@ -2,17 +2,11 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timezone
-from pathlib import Path
 
 import pytest
 
-PROJECT_SHARED_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_SHARED_ROOT))
-
-from src.domain.services.prototype_pack_builder import PrototypePackBuilder
+from scripts.prototype_pack_builder import PrototypePackBuilder
 
 
 def test_build_creates_mean_centroids_for_each_category() -> None:

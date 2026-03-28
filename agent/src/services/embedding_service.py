@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from src.infrastructure.model_adapters.embedding.base import EmbeddingAdapter
+from agent.src.infrastructure.model_adapters.embedding.base import EmbeddingAdapter
 
 
 @dataclass(slots=True)

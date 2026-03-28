@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass
 
-from src.infrastructure.model_adapters.translation.base import TranslationAdapter
+from agent.src.infrastructure.model_adapters.translation.base import TranslationAdapter
 
 
 @dataclass(slots=True)

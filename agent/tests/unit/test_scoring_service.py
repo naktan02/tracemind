@@ -4,16 +4,11 @@ from __future__ import annotations
 
 import json
 import math
-import sys
 from pathlib import Path
 
 import pytest
 
-PROJECT_AGENT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_AGENT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_AGENT_ROOT))
-
-from src.services.scoring_service import ScoringService
+from agent.src.services.scoring_service import ScoringService
 
 
 def _load_prototypes() -> dict[str, list[float]]:

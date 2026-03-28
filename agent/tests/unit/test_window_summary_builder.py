@@ -2,18 +2,12 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timedelta
-from pathlib import Path
 
 import pytest
 
-PROJECT_SHARED_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_SHARED_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_SHARED_ROOT))
-
-from src.domain.entities.scored_event import ScoredEvent
-from src.domain.services.window_summary_builder import WindowSummaryBuilder
+from agent.src.services.windowing_service import WindowSummaryBuilder
+from shared.src.domain.entities.scored_event import ScoredEvent
 
 
 def test_build_aggregates_scored_events_into_window_summary() -> None:
