@@ -33,6 +33,7 @@ v1 원칙:
 
 5. `model_id`
 6. `base_model_revision`
+   - pseudo-label selection과 local training에 사용한 active pair의 model revision
 
 7. `training_scope`
 

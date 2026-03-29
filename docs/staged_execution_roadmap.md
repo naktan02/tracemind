@@ -113,7 +113,7 @@ Local Features / Signals
 -> Local Training
 -> TrainingUpdateEnvelope
 -> Central Aggregation
--> New ModelManifest / PrototypePack
+-> New active ModelManifest / PrototypePack pair
 ```
 
 설명:
@@ -121,6 +121,7 @@ Local Features / Signals
 1. 로컬 추론 레일 위에 얹히는 확장 계층이다.
 2. 초기에는 작은 param subset부터 시작한다.
 3. full encoder FL은 후반 확장 항목이다.
+4. `v1`에서는 추론과 pseudo-label 생성이 같은 active pair를 공유한다.
 
 ---
 
@@ -270,6 +271,7 @@ Local Features / Signals
 1. 같은 seed와 task에서 같은 update shape가 재현된다.
 2. update가 base model revision과 정확히 연결된다.
 3. drift 방지를 위한 최소 filter가 존재한다.
+4. local update가 active `model_revision + prototype_version` pair 기준으로 생성된다.
 
 사용자 확인 필요:
 
@@ -309,6 +311,7 @@ Local Features / Signals
 1. 중앙이 update를 round 단위로 구분한다.
 2. 새 `ModelManifest`가 발행되면 agent가 pull 가능한 상태가 된다.
 3. 중앙이 개인 판정 결과를 저장하지 않는다.
+4. 새 `model_revision`이 발행되면 대응하는 `PrototypePack`도 같은 round boundary에서 같이 교체된다.
 
 사용자 확인 필요:
 
@@ -337,6 +340,7 @@ Local Features / Signals
 5. aggregation
 6. republish
 7. repull and reuse
+8. `train` 내부 bootstrap/client split 기반 multi-agent simulation
 
 산출물:
 
@@ -349,6 +353,7 @@ Local Features / Signals
 1. `model publish -> local train -> update upload -> aggregate -> republish` 전체 사이클이 동작한다.
 2. payload에 원문이 포함되지 않는다.
 3. 실패 위치를 `local inference`, `local training`, `aggregation`, `publication`으로 분리해 설명할 수 있다.
+4. 원본 `test` 없이 `train/validation`만으로 simulation smoke path를 재현할 수 있다.
 
 사용자 확인 필요:
 

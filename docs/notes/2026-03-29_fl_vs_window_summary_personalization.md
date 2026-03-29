@@ -836,3 +836,258 @@ TensorFlow Federated와의 관계는 아래처럼 정리했다.
 
 따라서 "개념적 FL 루프"는 비슷하지만,
 "코드 구조와 책임 분리"는 TFF보다 TraceMind가 훨씬 도메인 지향적이라고 정리했다.
+
+## User
+
+그렇게 진행하자
+
+## Assistant
+
+다음 단계 구현을 진행하기로 했다.
+
+핵심 전제는 아래처럼 정리했다.
+
+1. `v1`은 `round active pair only`
+2. 즉 각 round마다 `embedding revision + prototype version`이 함께 움직인다
+3. 추론, pseudo-label 생성, local training은 모두 같은 active pair를 본다
+4. `training candidate model`과 `inference model`을 따로 두는 구조는 현재 단계에서는 쓰지 않는다
+
+## User
+
+전역에서 내려주는 공통 임베딩 모델은 계속 업데이트 되는데 기준점이 프로토탑이 안바뀌면 결과값이 틀리게 되는거 아냐?
+
+## Assistant
+
+그 우려가 맞다고 답했다.
+
+정리:
+
+1. active runtime에서는 `embedding model`과 `PrototypePack`이 항상 한 쌍이어야 한다
+2. 따라서 `embedding_rev_B`인데 `prototype_pack_A`를 쓰는 mismatch는 허용하면 안 된다
+3. v1에서는 round마다 새 global revision이 생기면 대응하는 `PrototypePack`도 같이 만들어 active pair로 배포하는 쪽이 맞다
+
+## User
+
+중앙에서 모으다가 일정시점에 모델 파라미터를 다시 내려주면서 프로토타입도 동시에 내려주는거지? 새로?
+
+## Assistant
+
+그렇다고 답했다.
+
+흐름을 아래처럼 정리했다.
+
+1. 각 agent가 같은 active pair에서 시작
+2. pseudo-label 기반 local update 생성
+3. 중앙 aggregation
+4. 새 global revision 결정
+5. 그 revision으로 새 `PrototypePack` 생성
+6. 새 `ModelManifest + PrototypePack` pair 재배포
+
+## User
+
+원래 fl에서는 라운드마다 내려주나? 아니면 쌓였을때?
+
+## Assistant
+
+둘 다 가능한데, 현재 TraceMind v1에서는 아래처럼 분리하지 않기로 정리했다.
+
+1. 고전적 FL은 round마다 다음 global model을 배포한다
+2. 하지만 우리 구조는 prototype mismatch를 피해야 하므로
+3. 지금 단계에서는 round마다 synchronized active pair를 같이 배포하는 쪽으로 가기로 했다
+
+## User
+
+agent들이 v2를 받았는데 실제 추론은 v1으로 하고 있으면 v2 학습 진행이 안되잖아
+
+## Assistant
+
+그 지적이 맞다고 답했고, 그래서 분리형 candidate model 구조를 현 단계에서 쓰지 않기로 했다.
+
+최종 정리:
+
+1. `v1`: `round active pair only`
+2. 같은 pair로 추론, pseudo-label 생성, local training을 모두 수행
+3. 이후 round aggregation 뒤 새 pair를 다시 배포
+
+## User
+
+잠만 진행하기 전에 global embedding + 다른 local interpretation 이걸로 한다고 했는데 이것도 fl은 맞아?
+
+## Assistant
+
+아래처럼 정리했다.
+
+1. local update를 중앙이 모아 global embedding을 다시 배포하면 FL 맞다
+2. 다만 같은 query에 대해 agent별 raw embedding이 당장 달라지는 것은 아니다
+3. v1에서는 같은 global embedding 위에서 local interpretation이 달라진다
+4. v2에서 private adapter를 붙이면 embedding 자체도 약하게 달라질 수 있다
+
+## User
+
+그리고 개인이 입력하는 쿼리는 라벨링이 안되어 있으니까 신뢰도가 높은 것에는 프로토타입으로 카테고리를 붙이고 학습 진행하는것도 맞지?
+
+## Assistant
+
+맞다고 답했다.
+
+v1 규칙:
+
+1. `global embedding -> prototype score`
+2. `score threshold + margin`으로 high-confidence pseudo-label 선택
+3. accepted sample만 local training에 사용
+4. low-confidence sample은 버린다
+
+## User
+
+오케이 1번부터 진행하고 v2에서 추가하자
+그리고 BaselineService와 DecisionService 도 이제 다시 하는건가? 이건 어떻게 할건데?
+
+## Assistant
+
+`BaselineService`, `TimeSeriesAccumulator`, `DecisionPolicy`, `DecisionService`를 분리해 구현하는 방향을 설명했다.
+
+## User
+
+판단부분까지 지금 바로 하는게 좋은거야?
+지금은 임베딩 fl 구조부터 만들어야 하는거 아니야?
+
+## Assistant
+
+완성형 조치 엔진까지는 아니지만, local interpretation 골격은 먼저 있어야 pseudo-label과 FL update의 기준이 생긴다고 설명했다.
+
+## User
+
+진행해
+
+## Assistant
+
+그 결과, local interpretation 경로를 먼저 구현했다.
+
+추가된 것:
+
+1. `BaselineService`
+2. `TimeSeriesAccumulator`
+3. `RuleBasedDecisionPolicy`
+4. `DecisionService`
+5. 관련 unit test
+
+검증:
+
+- `PYTHONPATH=. .venv/bin/pytest agent/tests/unit shared/tests/unit -q`
+- 결과: `17 passed`
+
+## User
+
+그리고 지금은 들어온 쿼리에 대해 fl로 임베딩 하는거고 시계열로 누적해서 최종 판단은 어떻게 할지 고민이긴한데 그런 내용도 들어있지? 마음 이상 탐지 조치가 목표인것은 변함이 없어
+
+## Assistant
+
+그 방향이 문서에 반영되어 있다고 답했다.
+
+## User
+
+1. 그리고 fl로 인해 전역 공통 임베딩 공간이 업데이트 되는거지? 그러면서 전역파라미터+로컬 파라미터 같은 부분이 있는거고?
+2. 남아있는 legacy 제거하고  BaselineService와 DecisionService를 실구현하는게 다음 순서인가?
+
+## Assistant
+
+1번은 `global shared parameter + local private state`로 설명했고,
+2번은 legacy를 더 확장하지 않고 `BaselineService -> TimeSeriesAccumulator -> DecisionService -> FL update path` 순으로 가는 게 맞다고 정리했다.
+
+## User
+
+1. 결국 임베딩 모델은 각 에이전트마다 다르게 학습하는거지? non-iid? 같이
+2. 다음 진행해야 하는데 나의 의견이 필요한 부분에는 나에게 먼저 묻고 진행해 혼자서 진행하지 말고, 그리고 단일 클래스로 해서 빠른 해결을 하는것이 아니라 갈아끼울 수 있는 미래지향적인 설계를 난 지행해
+
+## Assistant
+
+1. `non-IID` 전제로 보되, v1에서는 같은 global model에서 시작하고 local private state로 해석이 달라진다고 설명했다.
+2. 사용자 판단이 필요한 항목은 먼저 묻고, 구현은 조합 가능한 구조로 가겠다고 답했다.
+
+## User
+
+WindowSummary/NormPack 완번히 버리는쪽으로 해서 전황안으로 진행하자
+
+## Assistant
+
+문서와 공용 타입을 새 방향으로 옮기고,
+`WindowSummary/NormPack`은 active path에서 제외했다.
+
+## User
+
+그렇게 진행하자
+
+## Assistant
+
+이번 턴 구현 결과:
+
+### 새 공용 도메인/contract
+
+1. `shared/src/domain/entities/pseudo_label_candidate.py`
+2. `shared/src/domain/entities/vector_adapter_state.py`
+3. `shared/src/domain/entities/vector_adapter_delta.py`
+4. `shared/src/contracts/adapter_contracts.py`
+
+### agent 로컬 학습 경로
+
+1. `agent/src/infrastructure/repositories/training_artifact_repository.py`
+2. `agent/src/services/pseudo_label_service.py`
+3. `agent/src/services/local_training_service.py`
+
+구조:
+
+1. `PseudoLabelSelectionService`
+2. `LocalTrainingService`
+3. `SyntheticVectorAdapterTrainingBackend`
+4. `TrainingArtifactRepository`
+
+### main-server FL coordinator 경로
+
+1. `main-server/src/infrastructure/repositories/vector_adapter_state_repository.py`
+2. `main-server/src/services/aggregation_service.py`
+3. `main-server/src/services/round_manager_service.py`
+
+구조:
+
+1. `AggregationService`
+2. `RoundManagerService`
+3. `RoundPublication`
+
+### simulation runner
+
+1. `scripts/experiments/run_federated_simulation.py`
+
+핵심:
+
+1. `train` 데이터를 `bootstrap subset + client shard`로 분리
+2. bootstrap subset으로 active `PrototypePack` 생성
+3. client shard에서 pseudo-label 기반 local update 생성
+4. 중앙에서 vector adapter delta 집계
+5. 새 `model_revision + prototype_version` pair 발행
+6. `validation`으로 round 결과 확인
+
+### 테스트
+
+추가:
+
+1. `agent/tests/unit/test_local_training_service.py`
+2. `main-server/tests/unit/test_round_manager_service.py`
+3. `shared/tests/unit/test_adapter_contracts.py`
+4. `tests/unit/test_run_federated_simulation.py`
+
+검증:
+
+1. `PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q`
+2. 결과: `34 passed`
+
+실데이터 smoke run:
+
+1. `scripts/experiments/run_federated_simulation.py`
+2. 입력: `data/processed/splits/ourafla_train_split.v1.train.jsonl`, `data/processed/splits/ourafla_train_split.v1.validation.jsonl`
+3. 설정: `hash_debug`, `rounds=1`, 느슨한 threshold로 round 폐회로 확인
+4. 결과:
+   - `initial_model_revision=sim_rev_0000`
+   - `initial_prototype_version=proto_sim_0000`
+   - `final_model_revision=sim_rev_0001`
+   - `final_prototype_version=proto_sim_0001`
+   - `round_count=1`

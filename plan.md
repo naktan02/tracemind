@@ -57,6 +57,7 @@ TraceMind는 아동·청소년의 온라인 위험 감지 문제를 다룬다.
 - 다만 이는 `NormPack` 대체물이 아니라, 공통 의미 공간에서의 bootstrap semantic artifact다.
 - 개인화는 `baseline`, `threshold`, `personal prototype`, 필요 시 `adapter/head`에서 일어난다.
 - `v1`은 `same global embedding + different local interpretation`으로 시작한다.
+- `v1`에서는 분리된 training candidate model을 두지 않고, round마다 `model_revision + prototype_version` active pair를 함께 사용한다.
 - `v2`에서 필요 시 private adapter를 붙여 embedding 자체도 약하게 개인화한다.
 
 ---
@@ -84,7 +85,7 @@ Raw Query/Event
 -> Local Training Step
 -> TrainingUpdateEnvelope
 -> Central Aggregation
--> New ModelManifest / PrototypePack
+-> New synchronized ModelManifest / PrototypePack pair
 ```
 
 ---

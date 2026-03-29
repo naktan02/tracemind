@@ -1,0 +1,19 @@
+{
+  "schema_version": "model_manifest.v1",
+  "model_id": "tracemind-embed-sim",
+  "model_revision": "sim_rev_0000",
+  "published_at": "2026-03-29T06:21:09.157994Z",
+  "artifact_kind": "vector_adapter_state",
+  "artifact_ref": "tmp/federated_simulation_smoke/main_server/vector_adapter_states/versions/sim_rev_0000.json",
+  "prototype_version": "proto_sim_0000",
+  "training_scope": "adapter_only",
+  "training_enabled": true,
+  "compatible_task_types": [
+    "pseudo_label_self_training"
+  ],
+  "base_model_id": "tracemind-embed-sim",
+  "base_model_revision": "sim",
+  "translation_model_id": null,
+  "translation_model_revision": null,
+  "notes": "round_active_pair_only bootstrap manifest"
+}

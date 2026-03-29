@@ -1,5 +1,9 @@
 """공용 contract 모듈."""
 
+from .adapter_contracts import (
+    VectorAdapterDeltaPayload,
+    VectorAdapterStatePayload,
+)
 from .model_contracts import ModelManifestPayload
 from .personalization_contracts import PersonalizationStatePayload
 from .prototype_contracts import PrototypePackPayload
@@ -16,4 +20,6 @@ __all__ = [
     "PrototypePackPayload",
     "TrainingTaskPayload",
     "TrainingUpdateEnvelopePayload",
+    "VectorAdapterDeltaPayload",
+    "VectorAdapterStatePayload",
 ]

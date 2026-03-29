@@ -21,6 +21,7 @@ v1 원칙:
 2. 로컬은 task를 수락할지 결정할 수 있다.
 3. task는 model artifact 자체를 담지 않고, `ModelManifest`를 참조한다.
 4. 초기에는 작은 param subset 학습을 우선한다.
+5. `task.model_revision`은 현재 active pair의 `model_revision`과 일치해야 한다.
 
 ---
 

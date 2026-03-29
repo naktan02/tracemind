@@ -24,6 +24,7 @@ v1 원칙:
 2. 로컬 `agent`는 이를 pull해서 현재 활성 모델 구성을 동기화한다.
 3. artifact 자체와 manifest를 분리한다.
 4. 추론 호환성과 학습 가능 범위를 함께 명시한다.
+5. v1에서는 `model_revision + prototype_version` 조합이 하나의 active pair를 이룬다.
 
 ---
 
@@ -112,3 +113,4 @@ v1에서는 아래를 포함하지 않는다.
 1. manifest만 보고 로컬이 필요한 모델/프로토타입 조합을 결정할 수 있어야 한다.
 2. 어떤 revision에서 나온 update인지 추적 가능해야 한다.
 3. `training_scope`가 비어 있지 않아야 한다.
+4. 같은 round의 추론과 pseudo-label 생성이 동일한 active pair를 참조할 수 있어야 한다.
