@@ -2,430 +2,382 @@
 
 ## 1. 방향 정리
 
-이 프로젝트의 최종 목표는 두 축을 모두 포함한다.
+2026-03-29 기준 TraceMind의 활성 목표는 아래와 같다.
 
-1. 로컬에서 원문을 처리하고 중앙에는 최소 통계만 보내는 privacy-preserving analytics 구조
-2. 이후 확장으로 multi-agent privacy-preserving FL과 privacy 기술(`DP`, secure aggregation, 필요 시 동형암호)까지 수용 가능한 구조
+1. 로컬에서 원문을 처리한다.
+2. 공통 의미 표현 공간은 전역 모델로 공유한다.
+3. 위험 해석은 로컬 개인화 상태에 기반해 수행한다.
+4. 단일 점수 대신 시계열 누적과 persistence를 통해 최종 로컬 판단을 만든다.
+5. 중앙은 `NormPack`을 만드는 서버가 아니라, 모델/라운드/배포를 조정하는 서버가 된다.
+6. 필요 시 FL로 공통 표현 모델 또는 그 일부를 점진적으로 개선한다.
 
-다만 여기서 중요한 구분이 있다.
+중요한 구조적 결정:
 
-- `WindowSummary`, `NormPack` 같은 cohort 기준은 analytics 산출물이다.
-- 모델 파라미터 업데이트는 FL 산출물이다.
+- `WindowSummary`는 더 이상 활성 analytics 산출물이 아니다.
+- `NormPack`도 더 이상 활성 중앙 산출물이 아니다.
+- `PrototypePack`은 유지한다.
+- 전역 공유 산출물의 중심은 `ModelManifest`, `TrainingTask`, `TrainingUpdateEnvelope`, `PrototypePack`이다.
+- `v1` 개인화는 `same global embedding + different local interpretation`을 사용한다.
+- `v2` 확장에서만 private adapter 기반 표현 개인화를 연다.
 
-즉, 최종적으로는 "로컬 분석 시스템"만 만드는 것이 아니라,
-"로컬 분석 시스템을 기반으로 cohort parameter learning과 필요 시 decision-model FL까지 수용 가능한 에이전트/서버 구조"를 만드는 것이다.
+즉 이 프로젝트는 이제
+`cohort parameter learning + local decision`
+중심 구조가 아니라,
+`personalized local inference + federated model improvement`
+중심 구조로 해석한다.
 
-다만 구현 순서는 최종 목표와 다르게 가져가는 것이 맞다.
+중요:
 
-처음부터 `FL rounds`, `model updates`, `secure aggregation`, `HE`를 동시에 잡으면
-시스템이 너무 빨리 복잡해지고, 무엇을 주고받아야 하는지 계약도 불안정해진다.
-
-그래서 초기에는 다음 순서를 따른다.
-
-1. 로컬 데이터 처리 파이프라인 확정
-2. 중앙 서버와의 최소 계약 확정
-3. analytics 기반 MVP 완성
-4. 그 위에 FL-ready runtime 계층 추가
-5. 로컬 feedback/self-report 신호가 확보될 때만 decision-model FL 추가
-6. 마지막에 privacy hardening(`DP`, secure aggregation, HE`) 추가
-
-이 방식은 "최종 목표를 낮추는 것"이 아니라 "복잡도를 통제하는 방식"이다.
+이 전환은 "마음 이상 탐지와 조치" 목표를 버리는 것이 아니다.
+달라진 것은 중앙에서 규범을 계산하던 경로를 없애고,
+로컬에서 `baseline + 시계열 누적 + persistence + personalization`으로
+최종 조치 판단을 만드는 구조를 택했다는 점이다.
 
 ---
 
-## 2. 왜 로컬과 계약부터 시작하는가
+## 2. 왜 이 방향이 맞는가
 
-### 2-1. 계약 정의란 무엇인가
+### 2-1. 같은 표현의 의미는 개인별로 다르다
 
-계약 정의(contract definition)는 로컬과 중앙이 주고받는 데이터 구조를 먼저 고정하는 것이다.
+심리·정서·distress 신호는 고양이/개 분류처럼 절대적인 해석만으로 처리하기 어렵다.
+같은 문장이라도:
 
-이 프로젝트에서 최소한 먼저 고정해야 하는 계약은 아래 세 가지다.
+1. 평소 표현 강도가 높은 사용자에게는 경미한 상태일 수 있고
+2. 평소 거의 그런 표현을 쓰지 않는 사용자에게는 중요한 변화일 수 있다
+
+따라서 공통 임베딩 공간은 유지하되,
+최종 해석은 로컬 `baseline`, `threshold`, `personal prototype`, `persistence`가 담당하는 편이 더 자연스럽다.
+
+여기서 `persistence`는 단순 부가 feature가 아니라,
+시간에 따라 누적된 상태를 바탕으로
+false positive를 줄이고 실제 지원 필요 상황을 더 안정적으로 잡기 위한 핵심 축이다.
+
+### 2-2. 요약 통계 경로보다 모델 중심 경로가 더 직접적이다
+
+기존 normative 경로는 아래 문제를 가진다.
+
+1. `peer norm`을 만들기 위한 별도 중앙 집계 단계가 필요하다.
+2. `WindowSummary -> NormPack -> local decision` 경로가 길다.
+3. 연구 메시지가 개인화 해석보다는 집단 기준 학습에 더 가깝다.
+
+이번 전환에서는 아래를 택한다.
+
+1. 공통 표현 모델과 bootstrap semantic artifact를 중앙이 배포한다.
+2. 로컬은 개인화 상태를 이용해 해석한다.
+3. 중앙은 학습 라운드와 모델 publication을 담당한다.
+
+### 2-3. 현재 저장소 자산을 버리지 않아도 된다
+
+유지 가능한 자산:
+
+1. 데이터셋 다운로드/정제/매핑 파이프라인
+2. 임베딩/번역 어댑터
+3. `PrototypePack` 빌드 및 배포 경로
+4. `agent / main-server / shared` 폴더 구조
+
+즉 지금 전환은 "모든 것을 다시 시작"하는 것이 아니라,
+문제 정의와 활성 계약을 재배치하는 작업에 가깝다.
+
+---
+
+## 3. 활성 계약 재정의
+
+### 3-1. 먼저 고정할 계약
+
+현재 활성 contract source of truth는 아래로 재정의한다.
+
+1. `PrototypePack`
+2. `PrototypeBuildState`
+3. `ModelManifest`
+4. `TrainingTask`
+5. `TrainingUpdateEnvelope`
+6. `DecisionFeedbackSignal`
+7. `PersonalizationState`
+8. `AssessmentResult`
+
+### 3-2. 각 객체의 의미
+
+- `PrototypePack`
+  - 공통 의미 공간에서 bootstrap scoring에 쓰는 semantic artifact
+
+- `ModelManifest`
+  - 현재 활성 전역 모델, adapter/head, artifact revision, 호환성 정보를 나타내는 배포 메타데이터
+
+- `TrainingTask`
+  - 중앙이 로컬에 내려주는 학습 작업 정의
+  - 어떤 파라미터 subset을 어떤 objective로 학습할지 담는다
+
+- `TrainingUpdateEnvelope`
+  - 로컬이 중앙에 보내는 업데이트 단위
+  - round/task/base revision/metrics/payload 메타데이터를 포함한다
+
+- `DecisionFeedbackSignal`
+  - self-report, support action, delayed outcome, pseudo-label 등 로컬 학습 신호
+
+- `PersonalizationState`
+  - 로컬에만 유지하는 개인화 상태
+  - `baseline`, `threshold`, `personal prototype`, calibration metadata, warm-up 상태를 포함한다
+
+- `AssessmentResult`
+  - 로컬 최종 판단과 explanation을 담는 결과 객체
+  - 지원 필요 여부와 조치 레벨 판단에 쓰인다
+
+### 3-3. 비활성/보관 계약
+
+아래는 보관 상태로 전환한다.
 
 1. `WindowSummary`
 2. `NormPack`
-3. `AssessmentResult`
+3. summary upload 중심 sync envelope
 
-의미는 다음과 같다.
-
-- `WindowSummary`
-  - 로컬이 중앙으로 보내는 analytics용 요약 통계
-- `NormPack`
-  - 중앙이 로컬에게 내려주는 cohort 기준
-- `AssessmentResult`
-  - 로컬이 최종 판단 후 내부적으로 사용하는 결과 객체
-
-그리고 FL 확장을 고려한다면 아래 계약 초안도 함께 잡아두는 것이 좋다.
-
-1. `TrainingTask`
-2. `TrainingUpdateEnvelope`
-3. `DecisionFeedbackSignal`
-
-의미는 다음과 같다.
-
-- `TrainingTask`
-  - 나중에 decision-model FL 단계에서 중앙이 로컬에 내려주는 학습 작업 정의
-- `TrainingUpdateEnvelope`
-  - 로컬이 중앙으로 보내는 모델 업데이트 단위
-- `DecisionFeedbackSignal`
-  - self-report, support action, delayed outcome 같은 로컬 학습 신호
-
-이 계약을 먼저 정의하면, 나중에 FastAPI 라우터, DB 스키마, 시뮬레이터, 테스트를 안정적으로 쌓을 수 있다.
-
-### 2-2. 왜 요약 생성이 먼저인가
-
-현재 프로젝트의 핵심 연구 가치는 "원문을 서버로 보내지 않으면서 집단 기준을 학습하고, 최종 판단은 로컬에서 한다"는 점이다.
-
-즉 중앙 서버보다 먼저 중요한 것은:
-
-1. 로컬에서 어떤 정보를 계산할 것인지
-2. 그 중 무엇만 중앙에 보낼 것인지
-3. 절대로 보내지 말아야 하는 것은 무엇인지
-
-이 세 가지다.
-
-이 경계가 먼저 서야 나중에 FL과 DP/HE를 붙여도 privacy 원칙이 무너지지 않는다.
+문서와 코드에서 즉시 완전 삭제할 필요는 없지만,
+앞으로의 구현 우선순위에서는 제외한다.
 
 ---
 
-## 3. 최종 아키텍처 목표
+## 4. 최종 아키텍처 목표
 
-### 3-1. 로컬 에이전트
+### 4-1. 로컬 에이전트
 
 로컬 에이전트는 최종적으로 아래 역할을 가진다.
 
 1. 이벤트 수집
 2. 전처리/번역
 3. 임베딩
-4. 프로토타입 기반 카테고리 점수 계산
-5. 시간 윈도우 요약 생성
-6. 개인 기준선 계산
-7. 중앙 기준(`NormPack`) 반영
-8. 최종 로컬 판단
-9. 연합학습 참여
-10. privacy 계층 적용(`DP`, secure aggregation client, optional HE client)
+4. `PrototypePack` 기반 bootstrap scoring
+5. 로컬 개인화 해석
+6. 시계열 누적과 persistence 계산
+7. `AssessmentResult` 생성
+8. `DecisionFeedbackSignal` 관리
+9. 로컬 학습 후보 생성
+10. 로컬 학습 수행
+11. `TrainingUpdateEnvelope` 업로드
+12. privacy 계층 적용
 
-즉 로컬 에이전트는 단순 수집기가 아니라,
-`analytics worker + decision engine + FL client runtime`의 역할을 모두 가진다.
+즉 로컬 에이전트는
+`ingest worker + personalized inference engine + local training runtime`
+역할을 모두 가진다.
 
-### 3-2. 중앙 서버
+### 4-2. 중앙 서버
 
 중앙 서버는 최종적으로 아래 역할을 가진다.
 
-1. cohort 기반 집계
-2. `NormPack` 생성 및 배포
-3. FL round orchestration
-4. 모델 버전 관리
-5. 업데이트 집계
-6. secure aggregation coordinator
-7. 정책 배포
-8. 감사/운영 모니터링
+1. agent registry
+2. model registry
+3. prototype publication
+4. training task publication
+5. FL round orchestration
+6. update aggregation
+7. model publication
+8. privacy orchestration
+9. 운영/감사 로그
 
-즉 초기에는 analytics server에 가깝지만,
-최종적으로는 `analytics coordinator + FL coordinator + policy registry`가 된다.
+즉 중앙 서버는
+`model coordinator + FL coordinator + publication server`
+가 된다.
+
+중앙 서버는 아래를 하지 않는다.
+
+1. 원문 텍스트 분석
+2. 개인 상태 판정
+3. cohort norm 계산
 
 ---
 
-## 4. 단계별 전략
+## 5. 단계별 전략
 
-## Phase 0. 공유 계약과 도메인 객체 고정
+## Phase 0. 전환 계약 고정
 
 목표:
 
-- analytics와 FL 모두에 공통으로 쓰일 핵심 도메인 정의
+- 활성 계약과 보관 계약을 명확히 분리한다.
 
 먼저 만들 것:
 
-1. `WindowSummary`
-2. `NormPack`
-3. `AssessmentResult`
-4. `TrainingTask`
-5. `TrainingUpdateEnvelope`
-6. `DecisionFeedbackSignal`
-7. `AgentCapabilities`
+1. `ModelManifest`
+2. `TrainingTask`
+3. `TrainingUpdateEnvelope`
+4. `DecisionFeedbackSignal`
+5. `PersonalizationState`
+6. `AssessmentResult v1` 문서 보강
+7. `WindowSummary` 보관 표시
 
-여기서 `TrainingTask`, `TrainingUpdateEnvelope`, `DecisionFeedbackSignal`, `AgentCapabilities`까지 초안만 잡아두면
-나중에 FL로 확장할 때 구조를 다시 뜯지 않아도 된다.
+완료 조건:
 
----
+- 새 문서 기준으로 로컬/중앙이 무엇을 주고받는지 혼동이 없어야 한다.
 
-## Phase 1. Local Analytics MVP
+## Phase 1. Local Personalized Inference MVP
 
 목표:
 
-- 로컬에서 원문을 처리하고 `WindowSummary`를 만드는 것
+- 로컬에서 입력 이벤트를 받아 개인화된 `AssessmentResult`를 생성한다.
 
 포함:
 
-1. 이벤트 ingest
-2. 번역/정규화
-3. 임베딩
-4. 프로토타입 유사도 점수 계산
-5. 7일 윈도우 통계 생성
-6. 개인 기준선 계산의 단순 버전
-7. 입력 채널은 우선 API/fixture 기반으로 시작하고, 브라우저 확장 프로그램은 후속 입력 어댑터로 붙인다
+1. ingest
+2. preprocess
+3. optional translation
+4. embedding adapter
+5. `PrototypePack` scoring
+6. `BaselineProfile`
+7. `PersonalizationState`
+8. time-series state / persistence feature
+9. `DecisionService`
 
 제외:
 
-1. FL training
-2. secure aggregation
-3. HE
-4. 고급 정책 배포
+1. 중앙 cohort 집계
+2. `NormPack`
+3. 실제 FL round
 
 완료 조건:
 
-- 샘플 입력에서 `WindowSummary`가 안정적으로 생성된다.
+- 같은 입력 fixture에 대해 deterministic score는 유지되면서,
+  개인 `baseline/threshold` 차이로 다른 `AssessmentResult`를 생성할 수 있어야 한다.
+- 시계열 누적에 따라 단발성 표현과 지속 변화가 구분되어야 한다.
 
 ### Phase 1 현재 기준 세부 실행 순서
 
-현재까지 `PrototypePack` 생성, 파일 기반 배포 경로, `validation`/원본 `test` 평가 레일까지 확보했다.
-이후 Local Analytics MVP를 닫기 위한 실제 개발 순서는 아래로 고정한다.
-
-1. `validation`은 반복 비교와 튜닝용 개발 셋으로 쓰고, 원본 `test`는 마지막 holdout으로 유지한다.
-2. `PrototypePack`은 runtime artifact로 취급하고, source of truth는 누적된 canonical labeled data와 build state로 둔다.
-3. 새 라벨 데이터가 들어오면 기존 활성 pack의 숫자를 직접 수정하지 않고, 새 `prototype_version`을 생성한다.
-4. 평균 centroid 방식에서는 카테고리별 `embedding_sum`, `sample_count`를 build state로 저장해 exact incremental update를 지원한다.
-5. 단, 임베딩 모델 버전 변경, 전처리/번역 경로 변경, 라벨 remap 변경, 과거 샘플 삭제/재라벨이 발생하면 canonical labeled data 전체에서 full rebuild를 수행한다.
-6. 중앙 서버에서 active prototype version을 관리하고, agent는 pull/sync 후 로컬 active cache로 반영한다.
-7. active `PrototypePack`을 사용한 `ScoredEvent` 생성 경로를 안정화한 뒤 `WindowSummary` 생성으로 넘어간다.
-8. 그 다음에 단순 `self-baseline`을 붙여 Local Analytics MVP를 닫고, 이후 `NormPack` 단계로 이동한다.
+1. `QueryEvent -> ScoredEvent` orchestration을 안정화한다.
+2. `PrototypePack` 기준 bootstrap scoring을 유지한다.
+3. `BaselineService`를 실제 동작 수준으로 올린다.
+4. `PersonalizationState`를 직렬화 가능한 로컬 객체로 정의한다.
+5. time-series 누적 상태와 persistence feature를 정의한다.
+6. `DecisionService`가 `score + personalization state + persistence`를 받아 `AssessmentResult`를 만들게 한다.
+7. fixture 기반으로 사용자별 해석 차이와 시간 누적 효과를 검증한다.
 
 ### 현재 보류 결정
 
-현재 시점에서는 `ourafla` 기준 `4-class classifier head + softmax`를 runtime 기본 경로로 승격하지 않는다.
+현재 시점에서는 full encoder FL을 바로 runtime 기본 경로로 승격하지 않는다.
 
 이 결정의 이유는 아래와 같다.
 
-1. 현재 analytics 레일의 목적은 이벤트를 `anxiety`, `depression`, `suicidal`, `normal` 의미 축으로 연속 점수화하는 것이다.
-2. 이 단계에서는 `PrototypePack` 기반 distance scoring만으로 `ScoredEvent`와 `WindowSummary`를 만드는 데 충분하다.
-3. TraceMind의 나중 FL 대상은 event-level 4분류기가 아니라, `WindowSummary`, `self-baseline`, `NormPack`, `persistence`를 입력으로 받는 최종 `decision model`이 더 자연스럽다.
-4. 따라서 현재의 `4-class classifier`는 오프라인 benchmark와 비교 실험용 artifact로만 유지한다.
+1. 먼저 추론 폐회로를 닫아야 학습 회귀를 검증할 수 있다.
+2. pseudo-label만으로 encoder 전체를 계속 업데이트하면 drift 위험이 크다.
+3. 초기 FL 범위는 adapter/head 또는 제한된 param subset이 더 통제 가능하다.
+4. `v1`에서는 같은 global embedding을 유지한 채 `baseline + threshold + persistence`로 해석을 개인화하는 편이 더 안정적이다.
 
-### 바로 다음 구현 순서
-
-다음 구현은 classifier 승격이 아니라, 아래 analytics 폐회로를 실제 코드 경로로 닫는 것이다.
-
-1. `QueryEvent -> ScoredEvent` orchestration service를 만든다.
-2. ingest request contract를 정의하고, agent ingest API가 `QueryEvent`를 생성하도록 연결한다.
-3. 필요 시 translation을 수행하고, embedding adapter와 active `PrototypePack`을 사용해 category score를 계산한다.
-4. `ScoredEvent`를 micro-batch로 모으는 buffer 계층을 추가한다.
-5. flush 조건에 따라 `WindowSummaryBuilder`를 호출해 deterministic `WindowSummary`를 생성한다.
-6. 생성된 `WindowSummary`를 로컬에서 확인 가능한 저장 또는 emit 경로로 연결한다.
-7. fixture 기반 end-to-end test를 추가해 `ingest -> scored event -> window summary`가 안정적으로 재현되는지 검증한다.
-8. 이 경로가 안정화된 뒤에만 `self-baseline` 구현으로 넘어간다.
-
-### Prototype update 원칙
-
-최종 운영 기준에서 `PrototypePack` 업데이트는 아래처럼 해석한다.
-
-1. 기본 원칙은 "전체 accepted 데이터의 의미를 반영한 새 버전 생성"이다.
-2. 이를 매번 원시 데이터 전체 재임베딩으로 구현할 필요는 없다.
-3. 평균 centroid 기준에서는 각 카테고리의 unnormalized `embedding_sum`과 `sample_count`를 유지하면, 신규 데이터의 임베딩만 추가해도 전체 재계산과 수학적으로 동일한 결과를 만들 수 있다.
-4. 즉 운영상 권장 방식은 "신규 데이터 임베딩만 계산 -> build state(sum/count) 누적 -> 새 centroid 계산 -> L2 정규화 -> 새 pack 발행"이다.
-5. 반대로 runtime용으로 저장된 최종 centroid 값만 가지고 단순 가산하는 방식은 정확한 incremental update가 아니다.
-
----
-
-## Phase 2. Central Normative Server MVP
+## Phase 2. Local Update Generation MVP
 
 목표:
 
-- 중앙 서버가 `WindowSummary`를 받아 cohort 기준을 계산한다.
+- 로컬에서 학습 후보를 만들고, 이를 `TrainingUpdateEnvelope`로 패키징한다.
 
 포함:
 
-1. summary 업로드 API
-2. cohort별 집계
-3. robust aggregation
-4. `NormPack` 배포
-5. 최소 정책 배포
-
-이 단계의 중앙 서버는 아직 FL coordinator가 아니다.
-우선은 `analytics + norms server`다.
+1. pseudo-label candidate builder
+2. confidence / margin filter
+3. feedback signal store
+4. local checkpoint store
+5. local training service
+6. update serializer
 
 완료 조건:
 
-- 로컬 여러 개를 시뮬레이션해 `NormPack`이 생성되고 로컬 판단에 반영된다.
+- 로컬이 `TrainingTask`를 받아 update를 재현 가능하게 생성할 수 있어야 한다.
 
----
-
-## Phase 3. Local Decision MVP
+## Phase 3. Central FL Coordinator MVP
 
 목표:
 
-- `Self-baseline + Peer norm + Persistence`를 결합해 로컬 최종 판단 완성
+- 중앙이 agent와 라운드를 관리하고 모델을 다시 배포한다.
 
 포함:
-
-1. warm-up period
-2. slope/persistence
-3. single-spike filtering
-4. support resource selection
-
-완료 조건:
-
-- 단발성 이벤트에는 과민반응하지 않고, 지속 변화에서만 판단이 뜬다.
-
-중요:
-
-이 단계의 판단은 우선 `rule-based decision` 또는 명시적 `DecisionPolicy`로 구현하는 것이 맞다.
-`NormPack`이 바뀌면 결과는 달라질 수 있지만, 그것은 입력 컨텍스트 변화이지 FL 학습이 아니다.
-
----
-
-## Phase 4. FL-ready Runtime 설계
-
-목표:
-
-- 현재 로컬 에이전트와 중앙 서버를 나중에 decision-model FL로 확장 가능하게 만든다.
-
-추가할 것:
 
 1. `AgentRegistry`
-2. `RoundManager`
-3. `ModelRegistry`
-4. `TrainingTask`
-5. `TrainingUpdateEnvelope`
-6. `ClientCheckpointStore`
-
-중요:
-
-이 단계에서 처음으로 네가 초안으로 적은 아래 API들이 의미를 갖기 시작한다.
-
-- `POST /agents/register`
-- `POST /agents/heartbeat`
-- `GET /fl/rounds/current`
-- `POST /fl/rounds/{round_id}/join`
-- `POST /fl/rounds/{round_id}/updates`
-
-즉 이 API들은 틀린 게 아니라, MVP보다 한 단계 뒤에 오는 것이다.
-
-다만 이 단계는 "FL이 이미 성립했다"는 뜻이 아니다.
-self-report나 feedback 신호 없이 round orchestration만 추가하면 여전히 학습 루프는 닫히지 않는다.
-
----
-
-## Phase 5. Decision-Model FL MVP
-
-목표:
-
-- 로컬 최종 판단 모델의 파라미터 업데이트를 교환하는 FL 루프 구현
-
-권장 범위:
-
-1. `WindowSummary`, baseline, `NormPack` 기반 feature를 입력으로 쓰는 작은 decision head부터 시작
-2. 임베딩 백본이나 프로토타입 자체보다 최종 판단 계층을 우선 학습
-3. 라운드 기반 집계
-4. basic FedAvg 또는 weighted averaging
-5. local self-report, support action, delayed outcome 중 최소 하나를 학습 신호로 사용
-
-중요한 구분:
-
-1. 여기서 말하는 `decision head`는 event-level `4-class classifier head`와 같은 것이 아니다.
-2. `4-class classifier head`는 텍스트를 즉시 `anxiety/depression/normal/suicidal`로 분류하는 benchmark용 대안이다.
-3. 반면 FL 대상으로 고려하는 `decision head`는 `WindowSummary`, baseline 변화량, `NormPack`, persistence feature를 입력으로 받아 최종 지원 필요 여부를 판단하는 상위 계층이다.
-
-왜 이렇게 하냐면:
-
-- 현재 TraceMind의 핵심은 cohort parameter learning과 로컬 판단 분리다.
-- 학습 신호가 없는 상태에서 최종 판단을 FL로 돌리면 규칙을 다시 근사하는 수준에 머물 가능성이 크다.
-- 작은 decision head부터 시작해야 통신량, 검증 난이도, 해석 가능성을 통제할 수 있다.
+2. `ModelRegistry`
+3. `RoundManager`
+4. `TrainingTask` publication
+5. update aggregation
+6. new `ModelManifest` publication
 
 완료 조건:
 
-- 중앙이 `TrainingTask`를 배포하고, 로컬이 `DecisionFeedbackSignal`을 바탕으로 업데이트를 올리며, 중앙이 새 모델 버전을 발행한다.
-- `NormPack`과 FL 모델 파라미터가 역할상 분리되어 동작한다.
+- 여러 로컬 update를 받아 새 모델 버전을 발행할 수 있어야 한다.
 
-하지 말아야 할 것:
+## Phase 4. Federation End-to-End MVP
 
-1. `NormPack`을 그대로 "글로벌 모델 파라미터"라고 취급하는 것
-2. cohort rarity와 semantic classifier 학습을 한 단계에 섞는 것
-3. feedback 신호 없이 decision-model FL을 먼저 도입하는 것
+목표:
 
----
+- `agent -> main-server -> agent` FL 루프를 한 번 닫는다.
+
+포함:
+
+1. model fetch
+2. task join
+3. local train
+4. update upload
+5. aggregate
+6. republish
+7. pull new manifest
+
+완료 조건:
+
+- synthetic multi-agent 환경에서 한 라운드가 성공적으로 재현된다.
+
+## Phase 5. Selective Encoder FL
+
+목표:
+
+- adapter/head를 넘어 encoder 일부까지 FL 범위를 확장할지 검증한다.
+
+권장 순서:
+
+1. head only
+2. adapter or low-rank update
+3. selected encoder block
+4. full encoder는 마지막 선택지
+
+이 단계 전까지는 같은 query에 대한 raw embedding은 global revision 기준으로 동일하고,
+agent별 차이는 주로 로컬 interpretation state에서 발생한다.
+
+완료 조건:
+
+- 성능, drift, 통신량, 회귀 안정성에서 확장 가치가 확인된다.
 
 ## Phase 6. Privacy Hardening
 
 목표:
 
-- FL 단계에 privacy 보강 계층을 추가
+- update 경로에 privacy 보호 계층을 추가한다.
 
 권장 순서:
 
 1. transport security
-2. secure aggregation
-3. client-level DP
-4. 필요 시 homomorphic encryption 또는 MPC 계층 검토
-
-이 순서를 권장하는 이유:
-
-- `DP`와 `HE`는 매우 비싸다.
-- MVP 이전에 도입하면 디버깅이 거의 불가능해진다.
-- 실제 구현에서는 `secure aggregation + 제한적 DP`가 먼저 실용적이다.
-
-### 동형암호에 대한 현실적 판단
-
-동형암호는 "할 수 있으면 좋다"가 아니라 "명확한 이유가 있을 때 선택"하는 기술이다.
-
-초기에는 아래 우선순위를 추천한다.
-
-1. secure aggregation
-2. client-side clipping + noise
-3. 필요한 경우에만 부분적 HE 검토
-
-즉, "동형암호를 목표에서 빼라"는 뜻은 아니지만,
-초기 구조는 HE 없이도 완전히 동작해야 한다.
+2. clipping
+3. secure aggregation
+4. client-level DP
+5. 필요 시 추가 암호화 계층
 
 ---
 
-## 5. 추천 폴더 구조
+## 6. 추천 폴더 구조
+
+현재 폴더 구조는 큰 틀을 유지한다.
+다만 책임 해석을 아래처럼 바꾼다.
 
 ```text
 main-server/
-  Dockerfile
   src/
     api/
-      main.py
       routers/
         health.py
         sync.py
-        norms.py
-        policies.py
+        prototypes.py
         agents.py
         fl_rounds.py
         models.py
     services/
-      ingestion_service.py
-      aggregation_service.py
-      robust_aggregation_service.py
-      norm_pack_service.py
-      agent_registry_service.py
+      prototype_pack_service.py
+      model_registry_service.py
       round_manager_service.py
       update_aggregation_service.py
-      model_publication_service.py
+      publication_service.py
       privacy_orchestration_service.py
-    infrastructure/
-      persistence/
-        postgres/
-      repositories/
-      transport/
-      privacy/
-  tests/
-    unit/
-    integration/
 
 agent/
-  Dockerfile
-  chrome-extension/
-    manifest.json
-    src/
-      content/
-      background/
-      popup/
-      options/
-      bridge/
   src/
     api/
-      main.py
       routers/
         ingest.py
         assessment.py
@@ -435,25 +387,13 @@ agent/
       preprocess_service.py
       embedding_service.py
       scoring_service.py
-      windowing_service.py
       baseline_service.py
       decision_service.py
-      sync_service.py
+      prototype_runtime_service.py
+      prototype_sync_service.py
       local_training_service.py
+      checkpoint_service.py
       privacy_guard_service.py
-    infrastructure/
-      persistence/
-        sqlite/
-      repositories/
-      transport/
-      model_adapters/
-        embedding/
-        translation/
-        classification/
-      privacy/
-  tests/
-    unit/
-    integration/
 
 shared/
   src/
@@ -461,135 +401,88 @@ shared/
       entities/
         query_event.py
         scored_event.py
-        window_summary.py
+        prototype_pack.py
         baseline_profile.py
-        norm_pack.py
         assessment_result.py
         training_task.py
         training_update.py
-        agent_profile.py
-      value_objects/
-        category.py
-        cohort_key.py
-        schema_version.py
-        round_id.py
-        model_version.py
-      policies/
-        decision_policy.py
-        cohort_policy.py
-        training_policy.py
+        model_manifest.py
+        personalization_state.py
+        decision_feedback_signal.py
     contracts/
-      sync_contracts.py
-      norm_contracts.py
-      assessment_contracts.py
+      prototype_contracts.py
       training_contracts.py
-    ports/
-      embedding_port.py
-      translation_port.py
-      summary_repository_port.py
-      norm_repository_port.py
-      sync_client_port.py
-      training_client_port.py
-      model_registry_port.py
-  tests/
-    unit/
-
-scripts/
-tests/
-  federation/
-    e2e/
-
-docker-compose.yml
+      model_contracts.py
 ```
 
-이 구조의 포인트는:
+해석상 내려갈 우선순위:
 
-1. `한 레포` 안에서 개발 속도를 유지하면서도 `앱 경계`를 처음부터 분리한다.
-2. `main-server`와 `agent`는 나중에 별도 레포로 옮기기 쉬운 실행 단위가 된다.
-3. `shared`는 루트에 두는 공통 도메인/계약 계층이며, 컨테이너 서비스가 아니라 코드 공유 패키지다.
-4. `main-server/Dockerfile`과 `agent/Dockerfile`은 각 실행 단위의 컨테이너 정의를 서비스 폴더 안에 둬서 역할 경계를 유지한다.
-5. 루트 `docker-compose.yml`은 여러 실행 단위를 함께 띄우는 조합 정의만 담당한다.
-6. 지금 단계에서는 `infra/`를 별도로 두지 않는다. 배포 자산이 늘어나기 전까지는 구조를 평평하게 두는 편이 MVP 속도와 이해도에 유리하다.
-7. analytics MVP와 FL 확장을 같은 구조 안에서 수용하되, 서로 다른 책임이 한 트리에 뒤섞이지 않게 한다.
-8. `agent/chrome-extension`은 브라우저 입력 수집 전용 어댑터로 두고, 분석 로직은 `agent/src/services`에만 둔다.
+1. `windowing_service.py`
+2. `norm_pack_service.py`
+3. summary upload 중심 `sync_contracts.py`
 
----
+해석상 올라갈 우선순위:
 
-## 6. 네가 초안으로 만든 중앙 서버 API의 위치
-
-네가 적은 아래 API들은 대부분 나중 단계에서 맞다.
-
-- `POST /api/v1/agents/register`
-- `POST /api/v1/agents/heartbeat`
-- `GET /api/v1/fl/rounds/current`
-- `POST /api/v1/fl/rounds/{roundId}/join`
-- `GET /api/v1/fl/rounds/{roundId}/config`
-- `GET /api/v1/fl/models/{modelVersion}/manifest`
-- `POST /api/v1/fl/rounds/{roundId}/updates`
-- `GET /api/v1/fl/rounds/{roundId}/status`
-
-이건 "버릴 설계"가 아니라 `Phase 4+`에 어울리는 설계다.
-
-반대로 지금 먼저 필요한 API는 아래다.
-
-- `POST /api/v1/sync/window-summaries`
-- `GET /api/v1/norms/{cohort_key}`
-- `GET /api/v1/policies/current`
-- `GET /api/v1/health`
-
-즉 네 초안은 시점이 조금 앞서 있을 뿐, 방향이 틀린 것은 아니다.
+1. `training.py`
+2. `round_manager_service.py`
+3. `prototype_sync_service.py`
+4. `local_training_service.py`
+5. `model registry` 계층
 
 ---
 
-## 7. 문서 저장 전략
+## 7. 현재 저장소에 대한 전환 해석
 
-이 프로젝트는 문서를 세 층으로 나누는 것이 좋다.
+### 그대로 재사용할 것
 
-### 7-1. 연구/비전 문서
+1. `data/`
+2. `scripts/datasets/`
+3. `scripts/prototypes/`
+4. `agent/src/infrastructure/model_adapters/embedding/`
+5. `agent/src/infrastructure/model_adapters/translation/`
+6. `agent/src/services/scoring_service.py`
+7. `agent/src/services/prototype_runtime_service.py`
+8. `agent/src/services/prototype_sync_service.py`
 
-- 파일 예: `plan.md`
-- 용도: 문제 정의, 연구 기여, 발표용 메시지
+### 우선순위를 낮출 것
 
-### 7-2. 구현 계획 문서
+1. `agent/src/services/windowing_service.py`
+2. `main-server/src/services/norm_pack_service.py`
+3. `shared/src/domain/entities/window_summary.py`
+4. `shared/src/domain/entities/norm_pack.py`
 
-- 파일 예: `docs/project_execution_plan.md`
-- 용도: MVP 범위, 단계별 구현 순서, 아키텍처 결정
+### 새로 채워야 할 것
 
-### 7-3. 작업 메모/대화 요약
-
-- 디렉터리: `docs/notes/`
-- 파일 예:
-  - `docs/notes/2026-03-22-architecture-notes.md`
-  - `docs/notes/2026-03-22-api-decisions.md`
-
-이렇게 분리하는 이유:
-
-1. `plan.md`는 계속 깔끔하게 유지할 수 있다.
-2. 구현용 의사결정은 별도 추적이 가능하다.
-3. 대화 메모를 코드 구조와 섞지 않을 수 있다.
+1. `ModelManifest` 도메인/contract
+2. `TrainingTask` contract 세부 필드
+3. `TrainingUpdateEnvelope` contract 세부 필드
+4. `DecisionFeedbackSignal`
+5. `PersonalizationState`
+6. `local checkpoint store`
+7. `update aggregation logic`
 
 ---
 
 ## 8. 지금 바로 다음 액션
 
-추천 순서는 아래다.
+우선순위는 아래로 고정한다.
 
-1. `WindowSummary v1` 문서 작성
-2. `NormPack v1` 문서 작성
-3. `shared/src/domain/entities/window_summary.py` 작성
-4. 모델/데이터셋 리소스 경로와 메타데이터 정리
-5. `agent/src/services/windowing_service.py` 구현
-6. 중앙 `sync/norms` API 구현
-7. `TrainingTask`, `TrainingUpdateEnvelope`, `DecisionFeedbackSignal` 초안 작성
-8. 크롬 확장 프로그램 어댑터 연결
+1. 새 active contract 문서 작성
+2. 보관 문서와 활성 문서 구분 표시
+3. `plan.md`, `docs/staged_execution_roadmap.md` 정렬
+4. `shared` 도메인 객체 우선순위 재정렬
+5. `agent` 쪽 personalized inference fixture 설계
+6. 그 다음에만 `training task`와 `update envelope` 코드 초안 작성
 
-즉, 지금은 analytics MVP를 닫되,
-FL 확장 포인트는 미리 설계에 심어두되, 실제 decision-model FL은 feedback 신호 확보 이후에 여는 방식으로 가는 것이 맞다.
+하지 말아야 할 것:
 
-중요한 순서 원칙은 아래와 같다.
+1. `WindowSummary` 경로를 더 구현하는 것
+2. `NormPack` 생성을 더 보강하는 것
+3. full encoder FL부터 바로 구현하는 것
+4. privacy 보강 없이 update 업로드를 실제 운영 가정으로 다루는 것
 
-1. 계약을 먼저 고정한다.
-2. 모델과 데이터셋은 병렬로 준비하되, 계약이 없는데 파이프라인에 먼저 박아 넣지 않는다.
-3. 초기 입력 채널은 테스트 fixture나 로컬 API로 충분하다.
-4. 크롬 확장 프로그램은 입력 어댑터이므로, 핵심 분석 로직이 안정된 뒤 붙여도 늦지 않다.
-5. `NormPack`과 decision-model parameter는 역할이 다르므로 한 계약으로 합치지 않는다.
+결론적으로, 앞으로의 구현은
+`summary/norm analytics completion`
+이 아니라
+`local personalized inference closure -> local update generation -> central FL coordination`
+순서로 진행하는 것이 맞다.

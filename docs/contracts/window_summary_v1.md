@@ -1,5 +1,11 @@
 # WindowSummary v1
 
+> 보관 문서
+>
+> 2026-03-29 전환 결정 이후 이 문서는 활성 contract source of truth가 아니다.
+> 현재 TraceMind의 활성 경로는 `personalized local adaptation + FL runtime`이며,
+> `WindowSummary/NormPack` 경로는 보관 상태로 유지한다.
+
 ## 1. 목적
 
 `WindowSummary`는 로컬 `agent`가 원문 이벤트를 직접 중앙으로 보내지 않고,
