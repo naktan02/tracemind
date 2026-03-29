@@ -366,7 +366,6 @@ main-server/
     api/
       routers/
         health.py
-        sync.py
         prototypes.py
         agents.py
         fl_rounds.py
@@ -421,9 +420,8 @@ shared/
 
 해석상 내려갈 우선순위:
 
-1. `windowing_service.py`
-2. `norm_pack_service.py`
-3. summary upload 중심 `sync_contracts.py`
+1. legacy summary/norm 경로 제거 완료
+2. 이후 새 구현은 personalized FL 경로에만 추가
 
 해석상 올라갈 우선순위:
 
@@ -448,12 +446,15 @@ shared/
 7. `agent/src/services/prototype_runtime_service.py`
 8. `agent/src/services/prototype_sync_service.py`
 
-### 우선순위를 낮출 것
+### 이미 제거한 것
 
 1. `agent/src/services/windowing_service.py`
 2. `main-server/src/services/norm_pack_service.py`
 3. `shared/src/domain/entities/window_summary.py`
 4. `shared/src/domain/entities/norm_pack.py`
+5. `shared/src/contracts/sync_contracts.py`
+6. `main-server/src/api/routers/norms.py`
+7. `main-server/src/api/routers/sync.py`
 
 ### 새로 채워야 할 것
 

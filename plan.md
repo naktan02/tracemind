@@ -170,6 +170,8 @@ Raw Query/Event
 4. summary upload 중심 sync 계약
 5. `peer norm` 기반 연구 메시지
 
+위 항목은 보관 문서를 제외하고 활성 코드 경로에서도 제거한다.
+
 ---
 
 ## 9. 새 연구 메시지

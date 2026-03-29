@@ -95,4 +95,4 @@
 3. self-report / delayed outcome / support action 중 어떤 feedback을 수집할지
 4. 서버로 보내는 update 메타데이터 범위
 5. clipping, secure aggregation, DP 도입 시점
-6. `WindowSummary/NormPack`을 완전히 코드에서 제거할 시점
+6. private adapter 기반 표현 개인화를 언제 열지
