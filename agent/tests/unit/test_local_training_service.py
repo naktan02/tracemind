@@ -8,13 +8,13 @@ from pathlib import Path
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.local_training_service import (
+from agent.src.services.training.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingService,
 )
-from shared.src.domain.entities.model_manifest import ModelManifest
-from shared.src.domain.entities.scored_event import ScoredEvent
-from shared.src.domain.entities.training_task import TrainingTask
+from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.training_task import TrainingTask
 
 
 def _build_manifest() -> ModelManifest:

@@ -33,10 +33,10 @@ from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     load_prototype_build_state_payload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload  # noqa: E402
-from src.services.prototype_build_state_service import (  # noqa: E402
+from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
-from src.services.prototype_pack_service import PrototypePackService  # noqa: E402
+from src.services.prototypes.prototype_pack_service import PrototypePackService  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:

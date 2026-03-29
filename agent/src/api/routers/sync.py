@@ -5,8 +5,8 @@ from __future__ import annotations
 from fastapi import APIRouter, HTTPException, status
 from pydantic import BaseModel, ConfigDict
 
-from agent.src.services.prototype_runtime_service import PrototypeRuntimeService
-from agent.src.services.prototype_sync_service import PrototypeSyncService
+from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
+from agent.src.services.prototype.sync_service import PrototypeSyncService
 from shared.src.contracts.prototype_contracts import (
     PrototypePackActivationPointer,
     PrototypePackPayload,

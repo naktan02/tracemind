@@ -11,7 +11,7 @@ MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
 if str(MAIN_SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(MAIN_SERVER_ROOT))
 
-from src.services.prototype_pack_service import PrototypePackService
+from src.services.prototypes.prototype_pack_service import PrototypePackService
 
 
 def parse_args() -> argparse.Namespace:

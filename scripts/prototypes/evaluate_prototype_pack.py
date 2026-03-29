@@ -17,7 +17,7 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
-from agent.src.services.scoring_service import ScoringService  # noqa: E402
+from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_centroids,
     load_prototype_pack_payload,

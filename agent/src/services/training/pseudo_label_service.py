@@ -4,10 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
-from shared.src.domain.entities.decision_feedback_signal import DecisionFeedbackSignal
-from shared.src.domain.entities.pseudo_label_candidate import PseudoLabelCandidate
-from shared.src.domain.entities.scored_event import ScoredEvent
-from shared.src.domain.entities.training_task import TrainingTask
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.decision_feedback_signal import (
+    DecisionFeedbackSignal,
+)
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelCandidate,
+)
+from shared.src.domain.entities.training.training_task import TrainingTask
 
 
 @dataclass(slots=True)

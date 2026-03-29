@@ -6,8 +6,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Sequence
 
-from shared.src.domain.entities.vector_adapter_delta import VectorAdapterDelta
-from shared.src.domain.entities.vector_adapter_state import VectorAdapterState
+from shared.src.domain.entities.training.vector_adapter_delta import (
+    VectorAdapterDelta,
+)
+from shared.src.domain.entities.training.vector_adapter_state import (
+    VectorAdapterState,
+)
 
 
 @dataclass(slots=True)

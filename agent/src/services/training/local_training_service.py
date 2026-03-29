@@ -11,17 +11,21 @@ from uuid import uuid4
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.pseudo_label_service import (
+from agent.src.services.training.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
 from shared.src.contracts.adapter_contracts import VectorAdapterDeltaPayload
-from shared.src.domain.entities.model_manifest import ModelManifest
-from shared.src.domain.entities.pseudo_label_candidate import PseudoLabelCandidate
-from shared.src.domain.entities.scored_event import ScoredEvent
-from shared.src.domain.entities.training_task import TrainingTask
-from shared.src.domain.entities.training_update import TrainingUpdateEnvelope
-from shared.src.domain.entities.vector_adapter_delta import VectorAdapterDelta
+from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelCandidate,
+)
+from shared.src.domain.entities.training.training_task import TrainingTask
+from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.domain.entities.training.vector_adapter_delta import (
+    VectorAdapterDelta,
+)
 
 
 class TrainingBackend(Protocol):

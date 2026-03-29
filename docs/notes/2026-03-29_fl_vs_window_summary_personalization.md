@@ -1151,7 +1151,157 @@ PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tes
 
 - `30 passed`
 
+## 2026-03-29 추가 기록: shared inference entity 병합
+
+### 사용자
+
+shared에서 inference밑에 각 파일들에서 한파일에 한클래스만 있는게 문제 없나?
+
+진행해
+
+### 어시스턴트
+
+서비스 클래스는 그대로 두고, `shared/src/domain/entities/inference`의 작은 dataclass만 병합하는 편이 더 읽기 좋다고 설명했다.
+
+선택한 방향:
+
+1. `state.py`
+   - `BaselineProfile`
+   - `PersonalizationState`
+   - `TimeSeriesState`
+2. `events.py`
+   - `QueryEvent`
+   - `ScoredEvent`
+3. `result.py`
+   - `AssessmentResult`
+
+### 적용한 변경
+
+기존 파일:
+
+1. `assessment_result.py`
+2. `baseline_profile.py`
+3. `personalization_state.py`
+4. `query_event.py`
+5. `scored_event.py`
+6. `time_series_state.py`
+
+위 파일들을 제거하고 아래 세 파일로 재구성했다.
+
+1. `shared/src/domain/entities/inference/result.py`
+2. `shared/src/domain/entities/inference/state.py`
+3. `shared/src/domain/entities/inference/events.py`
+
+같이 정리한 부분:
+
+1. `shared/src/domain/entities/inference/__init__.py`
+2. `shared/src/domain/policies/decision_policy.py`
+3. `agent` inference/training service import
+4. 관련 unit test import
+5. `scripts/experiments/run_federated_simulation.py`
+
+### 검증
+
+```bash
+PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `30 passed`
+
 추가 확인:
 
 - 코드 경로 기준 `window_summary`, `norm_pack`, `sync_contracts`, `norms_router`, `IngestionService` 참조는 제거되었고,
 - 남은 언급은 보관 문서와 실행 계획 설명뿐이다.
+
+## 2026-03-29 추가 기록: active path 폴더 구조 리팩터링
+
+### 사용자
+
+근데 이거 너무 클래스 하나당 파일 하나로 되어 있어서 찾기가 더 어려운거 아냐?
+또는 세부 폴더를 추가해야 하는거 아냐? 병합하는게 낫지 않나
+
+리펙토링 진행해
+
+### 어시스턴트
+
+단순 병합보다 흐름별 하위 폴더로 재배치하는 편이 안전하다고 설명했다.
+
+선택한 방향:
+
+1. 서비스는 합치지 않고 기능별 패키지로 묶는다.
+2. active path 기준으로 `inference / training / prototype / rounds / prototypes`를 만든다.
+3. shared entity도 `inference / training / artifacts`로 나눈다.
+4. 동작은 바꾸지 않고 import와 테스트만 맞춘다.
+
+### 적용한 구조 변경
+
+`agent/src/services/`
+
+1. `inference/`
+   - `baseline_service.py`
+   - `time_series_service.py`
+   - `decision_service.py`
+   - `scoring_service.py`
+2. `training/`
+   - `pseudo_label_service.py`
+   - `local_training_service.py`
+3. `prototype/`
+   - `runtime_service.py`
+   - `sync_service.py`
+
+`main-server/src/services/`
+
+1. `rounds/`
+   - `aggregation_service.py`
+   - `round_manager_service.py`
+2. `prototypes/`
+   - `prototype_pack_service.py`
+   - `prototype_build_state_service.py`
+
+`shared/src/domain/entities/`
+
+1. `inference/`
+   - `assessment_result.py`
+   - `baseline_profile.py`
+   - `personalization_state.py`
+   - `query_event.py`
+   - `scored_event.py`
+   - `time_series_state.py`
+2. `training/`
+   - `decision_feedback_signal.py`
+   - `pseudo_label_candidate.py`
+   - `training_task.py`
+   - `training_update.py`
+   - `vector_adapter_delta.py`
+   - `vector_adapter_state.py`
+3. `artifacts/`
+   - `model_manifest.py`
+   - `prototype_pack.py`
+   - `labeled_query.py`
+
+추가로 각 새 폴더에 `__init__.py`를 두고 export를 정리했다.
+
+### 갱신한 참조
+
+다음 종류의 import를 모두 새 경로로 바꿨다.
+
+1. agent API/router
+2. main-server router/service
+3. unit tests
+4. prototype 관련 scripts
+5. federated simulation script
+6. `shared/src/domain/policies/decision_policy.py`
+
+### 검증
+
+다음 명령으로 회귀를 확인했다.
+
+```bash
+PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `30 passed`

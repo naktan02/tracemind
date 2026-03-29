@@ -9,8 +9,8 @@ from unittest.mock import patch
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from agent.src.services.prototype_runtime_service import PrototypeRuntimeService
-from agent.src.services.prototype_sync_service import PrototypeSyncService
+from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
+from agent.src.services.prototype.sync_service import PrototypeSyncService
 from shared.src.contracts.prototype_contracts import (
     CurrentPrototypePackResponse,
     PrototypePackActivationPointer,
@@ -64,7 +64,7 @@ def test_sync_service_pulls_current_pack_and_activates_it(tmp_path: Path) -> Non
     )
 
     with patch(
-        "agent.src.services.prototype_sync_service.urlopen",
+        "agent.src.services.prototype.sync_service.urlopen",
         return_value=_FakeResponse(response_payload.model_dump(mode="json")),
     ):
         pointer = sync_service.pull_current(server_base_url="http://127.0.0.1:8000/")

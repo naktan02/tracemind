@@ -26,10 +26,12 @@ from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.prototype_pack import PrototypePack
+from shared.src.domain.entities.artifacts.prototype_pack import PrototypePack
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder
-from src.services.prototype_build_state_service import PrototypeBuildStateService
-from src.services.prototype_pack_service import PrototypePackService
+from src.services.prototypes.prototype_build_state_service import (
+    PrototypeBuildStateService,
+)
+from src.services.prototypes.prototype_pack_service import PrototypePackService
 
 
 def parse_args() -> argparse.Namespace:

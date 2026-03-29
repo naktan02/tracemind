@@ -1,9 +1,20 @@
-"""로컬 점수 계산 결과 event 표현."""
+"""로컬 inference 이벤트 entity 모음."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
+
+
+@dataclass(slots=True)
+class QueryEvent:
+    """점수 계산 전 로컬에서 관측된 단일 query."""
+
+    query_id: str
+    text: str
+    occurred_at: datetime
+    locale: str
+    source_type: str
 
 
 @dataclass(slots=True)

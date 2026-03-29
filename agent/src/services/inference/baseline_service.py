@@ -8,8 +8,8 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 
-from shared.src.domain.entities.baseline_profile import BaselineProfile
-from shared.src.domain.entities.scored_event import ScoredEvent
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.state import BaselineProfile
 
 
 @dataclass(slots=True)

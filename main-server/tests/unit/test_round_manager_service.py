@@ -13,15 +13,15 @@ if str(MAIN_SERVER_ROOT) not in sys.path:
 from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
     VectorAdapterStateRepository,
 )
-from src.services.round_manager_service import RoundManagerService  # noqa: E402
+from src.services.rounds.round_manager_service import RoundManagerService  # noqa: E402
 
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     VectorAdapterDeltaPayload,
     VectorAdapterStatePayload,
     dump_vector_adapter_delta_payload,
 )
-from shared.src.domain.entities.model_manifest import ModelManifest  # noqa: E402
-from shared.src.domain.entities.training_update import (  # noqa: E402
+from shared.src.domain.entities.artifacts.model_manifest import ModelManifest  # noqa: E402
+from shared.src.domain.entities.training.training_update import (  # noqa: E402
     TrainingUpdateEnvelope,  # noqa: E402
 )
 

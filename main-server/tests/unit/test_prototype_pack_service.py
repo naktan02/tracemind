@@ -13,7 +13,7 @@ from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from src.services.prototype_pack_service import PrototypePackService
+from src.services.prototypes.prototype_pack_service import PrototypePackService
 
 
 def _load_fixture_payload() -> PrototypePackPayload:

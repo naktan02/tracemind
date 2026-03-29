@@ -8,7 +8,7 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.services.scoring_service import ScoringService
+from agent.src.services.inference.scoring_service import ScoringService
 
 
 def _load_prototypes() -> dict[str, list[float]]:

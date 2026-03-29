@@ -22,7 +22,7 @@ if str(MAIN_SERVER_ROOT) not in sys.path:
 from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
     VectorAdapterStateRepository,
 )
-from src.services.round_manager_service import RoundManagerService  # noqa: E402
+from src.services.rounds.round_manager_service import RoundManagerService  # noqa: E402
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
@@ -31,11 +31,11 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
 from agent.src.infrastructure.repositories.training_artifact_repository import (  # noqa: E402
     TrainingArtifactRepository,
 )
-from agent.src.services.local_training_service import (  # noqa: E402
+from agent.src.services.training.local_training_service import (  # noqa: E402
     EmbeddedTrainingExample,
     LocalTrainingService,
 )
-from agent.src.services.scoring_service import ScoringService  # noqa: E402
+from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     VectorAdapterStatePayload,
@@ -49,9 +49,9 @@ from shared.src.contracts.prototype_contracts import (  # noqa: E402
     dump_prototype_pack_payload,
     extract_category_centroids,
 )
-from shared.src.domain.entities.model_manifest import ModelManifest  # noqa: E402
-from shared.src.domain.entities.scored_event import ScoredEvent  # noqa: E402
-from shared.src.domain.entities.vector_adapter_state import (  # noqa: E402
+from shared.src.domain.entities.artifacts.model_manifest import ModelManifest  # noqa: E402
+from shared.src.domain.entities.inference.events import ScoredEvent  # noqa: E402
+from shared.src.domain.entities.training.vector_adapter_state import (  # noqa: E402
     VectorAdapterState,  # noqa: E402
 )
 

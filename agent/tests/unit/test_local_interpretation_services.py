@@ -4,12 +4,20 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta
 
-from agent.src.services.baseline_service import BaselineConfig, BaselineService
-from agent.src.services.decision_service import DecisionService
-from agent.src.services.time_series_service import TimeSeriesAccumulator, TimeSeriesConfig
-from shared.src.domain.entities.baseline_profile import BaselineProfile
-from shared.src.domain.entities.personalization_state import PersonalizationState
-from shared.src.domain.entities.scored_event import ScoredEvent
+from agent.src.services.inference.baseline_service import (
+    BaselineConfig,
+    BaselineService,
+)
+from agent.src.services.inference.decision_service import DecisionService
+from agent.src.services.inference.time_series_service import (
+    TimeSeriesAccumulator,
+    TimeSeriesConfig,
+)
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.state import (
+    BaselineProfile,
+    PersonalizationState,
+)
 from shared.src.domain.policies.decision_policy import RuleBasedDecisionPolicy
 
 

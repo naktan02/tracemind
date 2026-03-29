@@ -21,7 +21,7 @@ multirun/
 
 models/
 checkpoints/
-artifacts/
+
 cache/
 hf_cache/
 .cache/huggingface/

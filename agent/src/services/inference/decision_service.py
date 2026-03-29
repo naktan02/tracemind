@@ -5,12 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from uuid import uuid4
 
-from agent.src.services.time_series_service import TimeSeriesAccumulator
-from shared.src.domain.entities.assessment_result import AssessmentResult
-from shared.src.domain.entities.baseline_profile import BaselineProfile
-from shared.src.domain.entities.personalization_state import PersonalizationState
-from shared.src.domain.entities.scored_event import ScoredEvent
-from shared.src.domain.entities.time_series_state import TimeSeriesState
+from agent.src.services.inference.time_series_service import TimeSeriesAccumulator
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.result import AssessmentResult
+from shared.src.domain.entities.inference.state import (
+    BaselineProfile,
+    PersonalizationState,
+    TimeSeriesState,
+)
 from shared.src.domain.policies.decision_policy import RuleBasedDecisionPolicy
 
 

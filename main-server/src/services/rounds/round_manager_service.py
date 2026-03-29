@@ -11,15 +11,19 @@ from shared.src.contracts.adapter_contracts import (
     VectorAdapterStatePayload,
     load_vector_adapter_delta_payload,
 )
-from shared.src.domain.entities.model_manifest import ModelManifest
-from shared.src.domain.entities.training_task import TrainingTask
-from shared.src.domain.entities.training_update import TrainingUpdateEnvelope
-from shared.src.domain.entities.vector_adapter_delta import VectorAdapterDelta
-from shared.src.domain.entities.vector_adapter_state import VectorAdapterState
+from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.domain.entities.training.training_task import TrainingTask
+from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.domain.entities.training.vector_adapter_delta import (
+    VectorAdapterDelta,
+)
+from shared.src.domain.entities.training.vector_adapter_state import (
+    VectorAdapterState,
+)
 from src.infrastructure.repositories.vector_adapter_state_repository import (
     VectorAdapterStateRepository,
 )
-from src.services.aggregation_service import AggregationService
+from src.services.rounds.aggregation_service import AggregationService
 
 
 @dataclass(slots=True)

@@ -15,7 +15,10 @@ from shared.src.contracts.prototype_build_state_contracts import (
     CategoryPrototypeBuildStatePayload,
     PrototypeBuildStatePayload,
 )
-from shared.src.domain.entities.prototype_pack import CategoryPrototype, PrototypePack
+from shared.src.domain.entities.artifacts.prototype_pack import (
+    CategoryPrototype,
+    PrototypePack,
+)
 
 
 @dataclass(slots=True)

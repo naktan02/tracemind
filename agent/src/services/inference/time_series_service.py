@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from shared.src.domain.entities.baseline_profile import BaselineProfile
-from shared.src.domain.entities.personalization_state import PersonalizationState
-from shared.src.domain.entities.scored_event import ScoredEvent
-from shared.src.domain.entities.time_series_state import TimeSeriesState
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.inference.state import (
+    BaselineProfile,
+    PersonalizationState,
+    TimeSeriesState,
+)
 
 
 @dataclass(slots=True)

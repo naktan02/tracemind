@@ -16,7 +16,9 @@ from shared.src.contracts.prototype_build_state_contracts import (
 from src.infrastructure.repositories.prototype_build_state_repository import (
     PrototypeBuildStateRepository,
 )
-from src.services.prototype_build_state_service import PrototypeBuildStateService
+from src.services.prototypes.prototype_build_state_service import (
+    PrototypeBuildStateService,
+)
 
 
 def test_publish_and_get_state(tmp_path: Path) -> None:

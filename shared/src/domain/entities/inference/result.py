@@ -1,4 +1,4 @@
-"""로컬 판단 결과."""
+"""로컬 판단 결과 entity."""
 
 from __future__ import annotations
 
