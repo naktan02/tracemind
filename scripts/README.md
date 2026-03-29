@@ -91,7 +91,28 @@ uv run python <script>.py --cfg job
 registry 기준으로 `download -> map -> split -> prototype`를 한 번에 실행한다.
 
 ```bash
-uv run python scripts/datasets/run_dataset_pipeline.py --dataset ourafla
+uv run python scripts/datasets/run_dataset_pipeline.py
+```
+
+다른 dataset alias나 stage 제한을 쓰려면:
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py \
+  dataset=ourafla \
+  only_stages=[download,map,split]
+```
+
+offline cache만 쓰고 싶다면 prototype stage runtime만 이렇게 바뀐다.
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py \
+  runtime=gpu_local
+```
+
+registry에 등록된 dataset alias만 보고 싶다면:
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true
 ```
 
 ### 단계별 수동 실행

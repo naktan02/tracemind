@@ -13,3 +13,42 @@ prototype_expected_categories:
   - depression
   - normal
   - suicidal
+stages:
+  - download
+  - map
+  - split
+  - prototype
+sources:
+  train:
+    kind: huggingface
+    dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
+    split: train
+    data_file: mental_heath_unbanlanced.csv
+    output_filename: ourafla_train.csv
+    mapping_config: data/mappings/ourafla_to_4cat.v1.toml
+    reference_urls:
+      - https://huggingface.co/datasets/ourafla/Mental-Health_Text-Classification_Dataset
+  test:
+    kind: huggingface
+    dataset_id: ourafla/Mental-Health_Text-Classification_Dataset
+    split: test
+    data_file: mental_health_combined_test.csv
+    output_filename: ourafla_test.csv
+    mapping_config: data/mappings/ourafla_test_to_4cat.v1.toml
+    reference_urls:
+      - https://huggingface.co/datasets/ourafla/Mental-Health_Text-Classification_Dataset
+split:
+  source: train
+  split_name: ${dataset.split_name}
+  validation_ratio: 0.1
+  seed: 42
+prototype:
+  source: split_train
+  backend: transformers_mxbai
+  embedding_model_id: mixedbread-ai/mxbai-embed-large-v1
+  embedding_model_revision: main
+  batch_size: 16
+  task_prefix: ""
+  expected_categories: ${dataset.prototype_expected_categories}
+  prototype_version_prefix: ourafla_mxbai
+  hash_dim: 256

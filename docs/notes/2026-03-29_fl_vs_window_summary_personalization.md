@@ -1343,6 +1343,199 @@ MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server
 
 - `40 passed`
 
+## 추가 작업: `run_dataset_pipeline.py` Hydra 전환
+
+사용자 요청에 따라 남아 있던 미적용 후보 중 `scripts/datasets/run_dataset_pipeline.py`만 Hydra로 전환했다.
+
+### 추가한 config
+
+1. `scripts/conf/datasets/__init__.py`
+2. `scripts/conf/datasets/run_dataset_pipeline.yaml`
+
+이 root config는 다음 기본값을 가진다.
+
+1. `runtime=gpu_online`
+2. `datasets=[ourafla]`
+3. `only_stages=[]`
+4. `list_datasets=false`
+
+또한 `prototype_runtime.device`, `prototype_runtime.local_files_only`를 `runtime` group에서 받아 prototype stage 실행 환경에 연결했다.
+
+### 코드 변경
+
+`scripts/datasets/run_dataset_pipeline.py`
+
+1. `argparse` 기반 `parse_args()` 제거
+2. `@hydra.main(config_path="../conf", config_name="datasets/run_dataset_pipeline")` 추가
+3. `cfg.registry`, `cfg.datasets`, `cfg.only_stages`, `cfg.list_datasets`를 직접 읽도록 변경
+4. `run_dataset()`에 `prototype_runtime_device`, `prototype_runtime_local_files_only` 인자를 추가해 prototype stage가 Hydra runtime 기본값을 따르도록 변경
+
+즉 registry가 backend/model/revision을 계속 소유하되, prototype stage의 실행 환경(device/local_files_only)만 Hydra runtime에서 제어할 수 있게 바꿨다.
+
+### README 갱신
+
+`scripts/README.md`의 dataset 준비 섹션을 새 문법으로 수정했다.
+
+예:
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py
+uv run python scripts/datasets/run_dataset_pipeline.py datasets=[ourafla] only_stages=[download,map,split]
+uv run python scripts/datasets/run_dataset_pipeline.py runtime=gpu_local
+uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true
+```
+
+### 추가 검증
+
+Hydra config 조합:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/datasets/run_dataset_pipeline.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/datasets/run_dataset_pipeline.py --cfg job runtime=gpu_local only_stages=[download,map]
+```
+
+Lint:
+
+```bash
+PYTHONPATH=. .venv/bin/ruff check scripts/datasets/run_dataset_pipeline.py tests/unit/test_scripts_hydra_configs.py
+```
+
+회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `41 passed`
+
+## 추가 작업: `run_dataset_pipeline.py`에서 registry 제거
+
+사용자가 “Hydra로 갈 거면 dataset registry까지 실행 source of truth로 둘 필요가 없지 않냐. 그렇게 하면 코드 수를 크게 줄일 수 있지 않냐”는 문제를 제기했고, 그 판단이 맞다고 보고 실제로 registry 파싱 계층을 제거했다.
+
+### 구조 판단
+
+이전 상태는:
+
+1. `run_dataset_pipeline.py`가 Hydra root config를 통해 실행되지만
+2. 내부에서 다시 `data/datasets/registry.yaml`을 읽어
+3. registry를 dataclass로 파싱한 뒤
+4. dataset/stage/prototype 설정을 다시 해석하는 구조였다.
+
+즉 실행 source of truth가 Hydra와 registry 두 개였다.
+
+이 구조는 과도기적으로는 괜찮지만, 장기적으로는 불필요하게 무겁다고 판단했다.
+
+### 실제 변경
+
+#### 1. dataset group 확장
+
+`scripts/conf/dataset/ourafla.yaml`에 기존의 간단한 경로 정보 외에 아래를 직접 넣었다.
+
+1. `stages`
+2. `sources`
+3. `split`
+4. `prototype`
+
+즉 registry에 있던 ourafla용 파이프라인 메타데이터를 dataset Hydra group로 흡수했다.
+
+추가로 `scripts/conf/dataset/cssrs.yaml`도 만들었다.
+
+#### 2. dataset pipeline root config 단순화
+
+`scripts/conf/datasets/run_dataset_pipeline.yaml`을 다음 기준으로 바꿨다.
+
+1. `defaults: - /dataset: ourafla`
+2. `defaults: - /runtime: gpu_online`
+3. 공통 경로는 `paths.*` 아래로 이동
+4. `registry`, `datasets`, `prototype_runtime` 제거
+
+즉 이제 이 스크립트는 단일 `dataset` group만 실행 대상으로 본다.
+
+#### 3. `run_dataset_pipeline.py` 재작성
+
+`scripts/datasets/run_dataset_pipeline.py`에서 다음을 제거했다.
+
+1. `PipelineDefaults`
+2. `SourceConfig`
+3. `SplitConfig`
+4. `PrototypeConfig`
+5. `DatasetConfig`
+6. `DatasetRegistry`
+7. `parse_args()`
+8. `load_registry()`
+
+새 구조는:
+
+1. `cfg.dataset`
+2. `cfg.runtime`
+3. `cfg.paths`
+
+만 읽어서 바로 실행한다.
+
+`supported_dataset_aliases()`는 이제 `scripts/conf/dataset/*.yaml`를 직접 훑는다.
+
+`list_datasets=true`도 registry를 읽지 않고 dataset group 파일 목록을 사용한다.
+
+#### 4. prototype stage runtime 단순화
+
+prototype stage의 `device`, `local_files_only`는 이제 dataset config 안에 두지 않고 `cfg.runtime`에서 바로 가져온다.
+
+즉:
+
+1. backend/model/revision/batch_size/task_prefix/hash_dim = dataset config
+2. device/local_files_only = runtime config
+
+로 책임이 분리됐다.
+
+### 테스트 갱신
+
+기존 `tests/unit/test_run_dataset_pipeline.py`의 registry 파싱 테스트는 제거했다.
+
+새 검증:
+
+1. `supported_dataset_aliases()`에 `ourafla`, `cssrs`가 포함되는지
+2. Hydra compose 결과에서 `dataset=ourafla`가 stage/split/prototype metadata를 갖는지
+
+또한 `tests/unit/test_scripts_hydra_configs.py`의 dataset pipeline 검사도 새 root shape에 맞게 수정했다.
+
+### 실행 예시
+
+이제 dataset pipeline은 아래처럼 쓴다.
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py
+uv run python scripts/datasets/run_dataset_pipeline.py dataset=ourafla only_stages=[download,map,split]
+uv run python scripts/datasets/run_dataset_pipeline.py runtime=gpu_local
+uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true
+```
+
+### 검증
+
+Hydra config 확인:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/datasets/run_dataset_pipeline.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/datasets/run_dataset_pipeline.py --cfg job runtime=gpu_local only_stages=[download,map]
+```
+
+Lint:
+
+```bash
+PYTHONPATH=. .venv/bin/ruff check scripts/datasets/run_dataset_pipeline.py tests/unit/test_run_dataset_pipeline.py tests/unit/test_scripts_hydra_configs.py
+```
+
+회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `42 passed`
+
 추가로 Hydra config 조합 확인:
 
 ```bash
@@ -1351,6 +1544,54 @@ MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_threshold_s
 ```
 
 모두 정상적으로 top-level `dataset / embedding / runtime`와 짧은 override 문법을 사용해 해석되는 것을 확인했다.
+
+## 추가 작업: `scripts/experiments/configs` 잔재 제거와 Hydra 적용 범위 점검
+
+사용자가 `scripts/experiments/configs`가 아직 남아 있는 점을 지적했고, 실제로 이전 compatibility 경로의 잔재라고 판단했다.
+
+삭제:
+
+1. `scripts/experiments/configs/prototype_strategy/default.yaml`
+2. `scripts/experiments/configs/prototype_threshold_sweep/default.yaml`
+3. 빈 디렉터리 `scripts/experiments/configs/`와 하위 디렉터리
+
+이후 확인 결과:
+
+1. `scripts/experiments/configs`는 제거됨
+2. 현재 활성 source of truth는 `scripts/conf/`만 남음
+
+또한 “scripts 폴더 내 모든 파일이 Hydra로 바뀐 것이냐”는 질문에 대해 범위를 재확인했다.
+
+Hydra 적용 완료:
+
+1. `scripts/prototypes/seed_prototypes.py`
+2. `scripts/prototypes/evaluate_prototype_pack.py`
+3. `scripts/experiments/train_softmax_classifier.py`
+4. `scripts/experiments/run_federated_simulation.py`
+5. `scripts/experiments/prototype_strategy_experiment.py`
+6. `scripts/experiments/prototype_threshold_sweep.py`
+
+아직 Hydra 미적용:
+
+1. `scripts/datasets/download_dataset.py`
+2. `scripts/datasets/build_labeled_query_set.py`
+3. `scripts/datasets/split_labeled_query_set.py`
+4. `scripts/datasets/run_dataset_pipeline.py`
+5. `scripts/prototypes/activate_prototype_pack.py`
+6. `scripts/prototypes/pull_prototype_pack.py`
+7. `scripts/prototypes/update_prototype_build_state.py`
+8. `scripts/prototypes/report_prototype_distances.py`
+9. `scripts/experiments/run_local_demo.py`
+
+회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `40 passed`
 
 ---
 
