@@ -1151,6 +1151,424 @@ PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tes
 
 - `30 passed`
 
+## Prototype 전략 비교 실험 추가
+
+`single / k-means / DBSCAN` prototype 전략을
+`train -> validation 선택 -> test 최종 평가` 구조로 비교하는
+실험 runner를 추가했다.
+
+### 결정 사항
+
+1. `validation`은 agent 학습용이 아니라 전략/하이퍼파라미터 선택용으로 둔다.
+2. `test`는 최종 보고용 holdout으로 유지한다.
+3. `k-means`는 elbow가 아니라 `silhouette` 기반으로 `k=2..5` 범위에서 고른다.
+4. `DBSCAN`은 `eps/min_samples` grid search와 coverage 조건으로 선택한다.
+5. 시각화는 `PCA`와 `UMAP` 둘 다 저장하되, 최종 선택은 그림이 아니라 `validation` 성능으로 한다.
+
+### 구현한 파일
+
+1. `scripts/experiments/prototype_strategy_experiment.py`
+   - `PrototypeBuildStrategy`
+   - `SinglePrototypeStrategy`
+   - `KMeansPrototypeStrategy`
+   - `DbscanPrototypeStrategy`
+   - `ProjectionService`
+   - `StrategySelectionPolicy`
+   - `PrototypeExperimentRunner`
+2. `tests/unit/test_prototype_strategy_experiment.py`
+   - single, k-means, DBSCAN, selection policy 단위 테스트
+
+### 의존성 정리
+
+실험 코드는 우회 구현하지 않고 `uv` extra로 명시했다.
+
+`pyproject.toml`
+
+1. `experiments`
+   - `matplotlib`
+   - `numpy`
+   - `scikit-learn`
+   - `umap-learn`
+
+실행 기준:
+
+```bash
+uv sync --extra dev --extra experiments
+```
+
+### 검증
+
+단위 테스트:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest tests/unit/test_prototype_strategy_experiment.py -q
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+1. prototype strategy unit test `3 passed`
+2. 전체 회귀 `33 passed`
+
+### smoke run
+
+작은 stratified subset으로 두 번 확인했다.
+
+1. `hash_debug` backend
+   - 출력: `tmp/prototype_strategy_smoke/output/20260329T151656Z`
+   - 선택 전략: `kmeans`
+2. 실제 `mxbai` backend + GPU
+   - 출력: `tmp/prototype_strategy_real_backend_smoke_gpu/20260329T152304Z`
+   - 모델 로드 장치: `cuda`
+   - 선택 전략: `dbscan`
+   - validation:
+     - `single accuracy=0.7000`
+     - `kmeans accuracy=0.7000`
+     - `dbscan accuracy=0.7000`
+   - test:
+     - `accuracy=0.5500`
+
+산출물 구조는 공통적으로 아래를 포함한다.
+
+1. `projections/train_pca.jsonl`
+2. `projections/train_pca.png`
+3. `projections/train_umap.jsonl`
+4. `projections/train_umap.png`
+5. `strategies/*.prototype_index.json`
+6. `validation/*.json`
+7. `summary.json`
+
+### 주의
+
+내가 중간에 `--device cpu`를 넣어 작은 smoke run을 시도했던 적이 있지만,
+저장소 코드 기본값이 CPU로 고정된 것은 아니다.
+
+실제 장치 선택은 `agent/src/infrastructure/runtime.py`의
+`resolve_runtime_device(device=\"auto\")`가 담당하며,
+CUDA가 보이면 `cuda`를 사용한다.
+
+### 전체 split 본실험
+
+실제 전체 split으로도 GPU 본실험을 수행했다.
+
+실행:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/python \
+  scripts/experiments/prototype_strategy_experiment.py \
+  --backend transformers_mxbai \
+  --model-id mixedbread-ai/mxbai-embed-large-v1 \
+  --revision main \
+  --local-files-only \
+  --cache-dir hf_cache \
+  --device cuda \
+  --batch-size 16
+```
+
+출력:
+
+1. `data/processed/evaluations/prototype_strategy_experiments/20260329T152634Z`
+
+validation 비교 결과:
+
+1. `single`
+   - accuracy: `0.7427937915742794`
+   - accepted_ratio: `0.0`
+   - prototype_count: `4`
+   - by_category:
+     - anxiety `1`
+     - depression `1`
+     - normal `1`
+     - suicidal `1`
+2. `kmeans`
+   - accuracy: `0.759322717194114`
+   - accepted_ratio: `0.0`
+   - prototype_count: `8`
+   - by_category:
+     - anxiety `2`
+     - depression `2`
+     - normal `2`
+     - suicidal `2`
+3. `dbscan`
+   - accuracy: `0.7397702076194316`
+   - accepted_ratio: `0.0006047167909695626`
+   - prototype_count: `19`
+   - by_category:
+     - anxiety `2`
+     - depression `11`
+     - normal `1`
+     - suicidal `5`
+
+선택 결과:
+
+1. `selected_strategy = kmeans`
+
+최종 test 평가:
+
+1. accuracy: `0.7096774193548387`
+2. accepted_ratio: `0.0`
+
+해석:
+
+1. 현재 validation 기준에서는 `single`보다 `kmeans`가 분명히 낫다.
+2. `DBSCAN`은 prototype 수를 많이 늘렸지만 validation 성능은 오히려 떨어졌다.
+3. 현재 pseudo-label threshold (`score >= 0.8`, `margin >= 0.15`)는 매우 보수적이라 accepted ratio가 거의 0이다.
+4. 따라서 다음 실험은 prototype 전략 선택과 pseudo-label threshold 탐색을 분리해서 보는 편이 맞다.
+
+## Prototype 전략 실험 구조 리팩터링
+
+사용자는 아래 세 가지 문제를 지적했다.
+
+1. `prototype_strategy_experiment.py`가 너무 길다.
+2. `parser.add_argument(...)`가 너무 많아 실수 유발 가능성이 크다.
+3. `uv run script.py`로 실행하는데 굳이 두꺼운 CLI가 필요한지 의문이다.
+
+이에 따라 구조를 아래처럼 바꿨다.
+
+### 결정
+
+1. CLI를 없애지 않는다.
+2. 대신 CLI는 `--config`, `--override key=value`만 받는 얇은 형태로 줄인다.
+3. 실제 source of truth는 YAML config와 typed dataclass config로 옮긴다.
+4. 기존 실행 습관을 깨지 않기 위해 `scripts/experiments/prototype_strategy_experiment.py`는 thin entrypoint로 유지한다.
+
+### 새 구조
+
+`scripts/experiments/prototype_strategy/`
+
+1. `config.py`
+2. `cli.py`
+3. `models.py`
+4. `io_utils.py`
+5. `strategies.py`
+6. `projection.py`
+7. `evaluation.py`
+8. `runner.py`
+9. `main.py`
+10. `__init__.py`
+
+추가 설정 파일:
+
+1. `scripts/experiments/configs/prototype_strategy/default.yaml`
+
+### 의미
+
+1. `uv run scripts/experiments/prototype_strategy_experiment.py`는 그대로 가능하다.
+2. 다만 실험 기본값은 더 이상 `parse_args()` 코드가 아니라 YAML config에 있다.
+3. 필요할 때만 `--override embedding.device=cuda` 같은 식으로 덮어쓴다.
+
+### 검증
+
+단위 테스트:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest tests/unit/test_prototype_strategy_experiment.py -q
+```
+
+결과:
+
+1. `3 passed`
+
+wrapper smoke run:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/python \
+  scripts/experiments/prototype_strategy_experiment.py \
+  --override embedding.backend=hash_debug \
+  --override embedding.model_id=hash_debug \
+  --override embedding.device=cpu \
+  --override embedding.local_files_only=true \
+  --override dataset.train_jsonl=tmp/prototype_strategy_smoke/train.jsonl \
+  --override dataset.validation_jsonl=tmp/prototype_strategy_smoke/validation.jsonl \
+  --override dataset.test_jsonl=tmp/prototype_strategy_smoke/test.jsonl \
+  --override output.output_dir=tmp/prototype_strategy_refactor_smoke
+```
+
+전체 회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest \
+  agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+1. `33 passed`
+
+## Threshold Sweep 실험 추가
+
+사용자는 `3-class merge ablation`보다 먼저
+`threshold sweep`을 진행하기로 결정했다.
+
+이유:
+
+1. 현재 prototype 전략은 `kmeans`로 정리됐지만,
+2. pseudo-label 기준이 너무 보수적이라 `accepted_ratio`가 거의 `0`이고,
+3. 이 상태에서는 FL용 pseudo-label 루프가 사실상 열리지 않기 때문이다.
+
+### 구현
+
+새 파일:
+
+1. `scripts/experiments/prototype_strategy/sweep_config.py`
+2. `scripts/experiments/prototype_strategy/sweep.py`
+3. `scripts/experiments/prototype_strategy/sweep_main.py`
+4. `scripts/experiments/prototype_threshold_sweep.py`
+5. `scripts/experiments/configs/prototype_threshold_sweep/default.yaml`
+6. `tests/unit/test_prototype_threshold_sweep.py`
+
+추가로 기존 평가 계층도 확장했다.
+
+1. `scripts/experiments/prototype_strategy/models.py`
+   - `ScoredPrediction`
+   - `EvaluationMetrics.accepted_count`
+   - `EvaluationMetrics.accepted_accuracy`
+   - `EvaluationMetrics.accepted_correct_ratio`
+2. `scripts/experiments/prototype_strategy/evaluation.py`
+   - `score_embeddings()`
+   - `evaluate_scored_predictions()`
+
+### sweep 방식
+
+선택된 strategy 하나를 고정하고,
+`confidence_threshold x margin_threshold` grid를 돈다.
+
+현재 기본은:
+
+1. strategy: `kmeans`
+2. confidence:
+   - `0.60`
+   - `0.65`
+   - `0.70`
+   - `0.75`
+   - `0.80`
+3. margin:
+   - `0.00`
+   - `0.01`
+   - `0.02`
+   - `0.03`
+   - `0.05`
+   - `0.10`
+   - `0.15`
+
+selection policy는 다음 순서로 정렬한다.
+
+1. `accepted_correct_ratio`
+2. `accepted_accuracy`
+3. `accepted_ratio`
+4. threshold 보수성
+
+즉 "전체 validation 중 올바르게 pseudo-label로 받아들일 수 있는 샘플 비율"을 우선 본다.
+
+### 검증
+
+단위 테스트:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest \
+  tests/unit/test_prototype_strategy_experiment.py \
+  tests/unit/test_prototype_threshold_sweep.py -q
+```
+
+결과:
+
+1. `5 passed`
+
+전체 회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest \
+  agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+1. `35 passed`
+
+### smoke run
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/python \
+  scripts/experiments/prototype_threshold_sweep.py \
+  --override embedding.backend=hash_debug \
+  --override embedding.model_id=hash_debug \
+  --override embedding.device=cpu \
+  --override embedding.local_files_only=true \
+  --override dataset.train_jsonl=tmp/prototype_strategy_smoke/train.jsonl \
+  --override dataset.validation_jsonl=tmp/prototype_strategy_smoke/validation.jsonl \
+  --override dataset.test_jsonl=tmp/prototype_strategy_smoke/test.jsonl \
+  --override output.output_dir=tmp/prototype_threshold_sweep_smoke \
+  --override threshold_grid.confidence_thresholds=[0.1,0.2,0.3,0.4] \
+  --override threshold_grid.margin_thresholds=[0.0,0.01,0.05]
+```
+
+결과:
+
+1. output:
+   - `tmp/prototype_threshold_sweep_smoke/20260329T155742Z`
+2. selected:
+   - `confidence >= 0.20`
+   - `margin >= 0.01`
+
+### 전체 split GPU 본실험
+
+실행:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/python \
+  scripts/experiments/prototype_threshold_sweep.py \
+  --override embedding.device=cuda \
+  --override embedding.local_files_only=true
+```
+
+출력:
+
+1. `data/processed/evaluations/prototype_threshold_sweeps/20260329T155803Z`
+
+선택 결과:
+
+1. strategy:
+   - `kmeans`
+2. selected thresholds:
+   - `confidence >= 0.60`
+   - `margin >= 0.00`
+
+validation selected metrics:
+
+1. accepted_count: `4598`
+2. accepted_ratio: `0.9268`
+3. accepted_accuracy: `0.7462`
+4. accepted_correct_ratio: `0.6916`
+
+test selected metrics:
+
+1. accepted_count: `966`
+2. accepted_ratio: `0.9738`
+3. accepted_accuracy: `0.7039`
+4. accepted_correct_ratio: `0.6855`
+
+top validation 후보 예시:
+
+1. `0.60 / 0.00`
+   - accepted_ratio `0.9268`
+   - accepted_accuracy `0.7462`
+2. `0.60 / 0.01`
+   - accepted_ratio `0.6888`
+   - accepted_accuracy `0.8273`
+3. `0.60 / 0.02`
+   - accepted_ratio `0.5023`
+   - accepted_accuracy `0.8808`
+4. `0.60 / 0.03`
+   - accepted_ratio `0.3755`
+   - accepted_accuracy `0.9216`
+
+해석:
+
+1. 현재 selection policy는 coverage보다 "올바르게 받아들일 수 있는 pseudo-label 총량"을 더 중시한다.
+2. 그래서 `0.60 / 0.00`이 선택됐다.
+3. 하지만 precision을 더 중시하면 `0.60 / 0.02` 또는 `0.60 / 0.03`도 유력한 운영 후보가 될 수 있다.
+4. 따라서 다음 단계는 threshold를 하나로 확정하기보다, 운영 목적에 따라 `coverage-first`와 `precision-first` 정책을 분리해 보는 것이다.
+
 ## 2026-03-29 추가 기록: shared inference entity 병합
 
 ### 사용자

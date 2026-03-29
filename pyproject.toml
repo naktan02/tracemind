@@ -21,6 +21,12 @@ dev = [
     "pytest-cov>=5.0.0",
     "ruff>=0.4.0",
 ]
+experiments = [
+    "matplotlib>=3.9.0",
+    "numpy>=2.0.0",
+    "scikit-learn>=1.8.0",
+    "umap-learn>=0.5.7",
+]
 
 [tool.uv]
 

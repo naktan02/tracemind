@@ -43,3 +43,4 @@ agent/state/
 .DS_Store
 .idea/
 .vscode/
+tmp/
