@@ -1,0 +1,61 @@
+# @package _global_
+
+defaults:
+  - /dataset: ourafla
+  - /embedding: mxbai
+  - /runtime: gpu_online
+  - _self_
+
+output:
+  base_dir: data/processed/evaluations/prototype_threshold_sweeps
+
+runner:
+  _target_: scripts.experiments.prototype_strategy.sweep.ThresholdSweepRunner
+  selection_policy:
+    _target_: scripts.experiments.prototype_strategy.sweep.ThresholdSweepSelectionPolicy
+    minimum_accepted_ratio: 0.5
+
+strategy:
+  name: kmeans
+  seed: 42
+  kmeans_candidate_ks:
+    - 2
+    - 3
+    - 4
+    - 5
+  kmeans_silhouette_sample_size: 2000
+  dbscan_eps_values:
+    - 0.05
+    - 0.1
+    - 0.15
+    - 0.2
+    - 0.25
+  dbscan_min_samples_values:
+    - 3
+    - 5
+    - 8
+  dbscan_search_sample_size: 3000
+  dbscan_min_cluster_coverage: 0.6
+
+threshold_grid:
+  confidence_thresholds:
+    - 0.6
+    - 0.65
+    - 0.7
+    - 0.75
+    - 0.8
+  margin_thresholds:
+    - 0.0
+    - 0.01
+    - 0.02
+    - 0.03
+    - 0.05
+    - 0.1
+    - 0.15
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

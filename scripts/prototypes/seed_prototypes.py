@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import hydra
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 # 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 직접 실행 지원)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -22,10 +25,6 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
-from scripts.common.embedding_profiles import (
-    add_embedding_profile_arguments,
-    resolve_embedding_settings_from_args,
-)
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )
@@ -36,62 +35,6 @@ from src.services.prototypes.prototype_build_state_service import (
     PrototypeBuildStateService,
 )
 from src.services.prototypes.prototype_pack_service import PrototypePackService
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Seed a PrototypePack from a labeled query set JSONL."
-    )
-    parser.add_argument(
-        "--input-jsonl",
-        required=True,
-        type=Path,
-        help="Path to the labeled query set train JSONL.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("data/processed/prototype_packs"),
-        help="Directory where prototype pack outputs are written.",
-    )
-    parser.add_argument(
-        "--build-state-output-dir",
-        type=Path,
-        default=Path("data/processed/prototype_build_states"),
-        help="Directory where prototype build-state outputs are written.",
-    )
-    parser.add_argument(
-        "--prototype-version",
-        default="",
-        help="Prototype pack version. Defaults to a UTC timestamp-based version.",
-    )
-    add_embedding_profile_arguments(
-        parser,
-        default_profile="mxbai",
-    )
-    parser.add_argument(
-        "--translation-model-id",
-        default=None,
-        help="Optional translation model identifier.",
-    )
-    parser.add_argument(
-        "--translation-model-revision",
-        default=None,
-        help="Optional translation model revision.",
-    )
-    parser.add_argument(
-        "--translation-direction",
-        default=None,
-        help="Optional translation direction metadata.",
-    )
-    parser.add_argument(
-        "--expected-category",
-        action="append",
-        dest="expected_categories",
-        default=[],
-        help="Expected mapped_label_4 category. Repeat for multiple categories.",
-    )
-    return parser.parse_args()
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -311,11 +254,15 @@ def seed_prototype_pack(
     )
 
 
-def main() -> None:
-    args = parse_args()
+@hydra.main(
+    version_base=None,
+    config_path="../conf",
+    config_name="prototypes/seed_prototypes",
+)
+def main(cfg: DictConfig) -> None:
     built_at = datetime.now(timezone.utc)
-    prototype_version = args.prototype_version or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
-    embedding_settings = resolve_embedding_settings_from_args(args)
+    prototype_version = cfg.prototype_version or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
+    embedding_spec = instantiate(cfg.embedding.spec)
     (
         pack_path,
         build_state_path,
@@ -323,23 +270,23 @@ def main() -> None:
         main_server_pack_path,
         main_server_build_state_path,
     ) = seed_prototype_pack(
-        input_jsonl=args.input_jsonl,
-        output_dir=args.output_dir,
-        build_state_output_dir=args.build_state_output_dir,
+        input_jsonl=Path(cfg.input_jsonl),
+        output_dir=Path(cfg.output_dir),
+        build_state_output_dir=Path(cfg.build_state_output_dir),
         prototype_version=prototype_version,
-        backend=embedding_settings.backend,
-        embedding_model_id=embedding_settings.model_id,
-        embedding_model_revision=embedding_settings.revision,
-        translation_model_id=args.translation_model_id,
-        translation_model_revision=args.translation_model_revision,
-        translation_direction=args.translation_direction,
-        batch_size=embedding_settings.batch_size,
-        cache_dir=embedding_settings.cache_dir,
-        device=embedding_settings.device,
-        task_prefix=embedding_settings.task_prefix,
-        local_files_only=embedding_settings.local_files_only,
-        expected_categories=args.expected_categories,
-        hash_dim=embedding_settings.hash_dim,
+        backend=embedding_spec.backend,
+        embedding_model_id=embedding_spec.model_id,
+        embedding_model_revision=embedding_spec.revision,
+        translation_model_id=cfg.translation_model_id,
+        translation_model_revision=cfg.translation_model_revision,
+        translation_direction=cfg.translation_direction,
+        batch_size=embedding_spec.batch_size,
+        cache_dir=Path(embedding_spec.cache_dir or "hf_cache"),
+        device=embedding_spec.device,
+        task_prefix=embedding_spec.task_prefix,
+        local_files_only=embedding_spec.local_files_only,
+        expected_categories=list(cfg.expected_categories),
+        hash_dim=embedding_spec.hash_dim,
     )
     print(f"prototype_build_state={build_state_path}")
     print(f"prototype_pack={pack_path}")

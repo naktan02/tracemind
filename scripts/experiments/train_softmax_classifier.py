@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import copy
 import json
 import sys
@@ -11,7 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+import hydra
 import torch
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 from torch import nn
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -22,99 +24,6 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
 )
 from agent.src.infrastructure.runtime import resolve_runtime_device  # noqa: E402
-from scripts.common.embedding_profiles import (  # noqa: E402
-    add_embedding_profile_arguments,
-    resolve_embedding_settings_from_args,
-)
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Train and evaluate a linear softmax classifier on fixed embeddings."
-    )
-    parser.add_argument(
-        "--train-jsonl",
-        required=True,
-        type=Path,
-        help="Path to the training JSONL.",
-    )
-    parser.add_argument(
-        "--eval-set",
-        action="append",
-        dest="eval_sets",
-        default=[],
-        help="Evaluation set in the form name=path/to/file.jsonl. Repeat for multiple sets.",
-    )
-    add_embedding_profile_arguments(
-        parser,
-        default_profile="mxbai",
-    )
-    parser.add_argument(
-        "--embed-chunk-size",
-        type=int,
-        default=1024,
-        help="Outer chunk size used while embedding rows.",
-    )
-    parser.add_argument(
-        "--train-batch-size",
-        type=int,
-        default=256,
-        help="Mini-batch size for classifier training.",
-    )
-    parser.add_argument(
-        "--epochs",
-        type=int,
-        default=12,
-        help="Training epochs for the classifier head.",
-    )
-    parser.add_argument(
-        "--learning-rate",
-        type=float,
-        default=1e-3,
-        help="Learning rate for AdamW.",
-    )
-    parser.add_argument(
-        "--weight-decay",
-        type=float,
-        default=1e-4,
-        help="Weight decay for AdamW.",
-    )
-    parser.add_argument(
-        "--selection-set",
-        default="validation",
-        help="Evaluation set name used for best-checkpoint selection.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("data/processed/evaluations/classifier_heads"),
-        help="Directory where evaluation reports are written.",
-    )
-    parser.add_argument(
-        "--model-output-dir",
-        type=Path,
-        default=Path("data/processed/classifier_heads"),
-        help="Directory where classifier head artifacts are written.",
-    )
-    parser.add_argument(
-        "--classifier-version",
-        default="",
-        help="Classifier artifact version. Defaults to a timestamp-based version.",
-    )
-    return parser.parse_args()
-
-
-def parse_eval_set(value: str) -> tuple[str, Path]:
-    if "=" not in value:
-        raise ValueError("eval-set must be in the form name=path/to/file.jsonl.")
-    name, raw_path = value.split("=", 1)
-    dataset_name = name.strip()
-    path = Path(raw_path.strip())
-    if not dataset_name:
-        raise ValueError("eval-set name must not be empty.")
-    if not raw_path.strip():
-        raise ValueError("eval-set path must not be empty.")
-    return dataset_name, path
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -451,55 +360,55 @@ def train_classifier_head(
     return model, history, best_selection_report
 
 
-def main() -> None:
-    args = parse_args()
-    if not args.eval_sets:
-        raise ValueError("At least one --eval-set must be provided.")
-
-    eval_sets = [parse_eval_set(value) for value in args.eval_sets]
-    eval_set_map = {name: path for name, path in eval_sets}
-    if args.selection_set not in eval_set_map:
+@hydra.main(
+    version_base=None,
+    config_path="../conf",
+    config_name="experiments/train_softmax_classifier",
+)
+def main(cfg: DictConfig) -> None:
+    eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
+    if cfg.selection_set not in eval_set_map:
         raise ValueError(
-            f"selection_set '{args.selection_set}' is not included in --eval-set."
+            f"selection_set '{cfg.selection_set}' is not included in eval_sets."
         )
 
-    train_rows = load_jsonl(args.train_jsonl)
+    train_rows = load_jsonl(Path(cfg.train_jsonl))
     categories, label_to_index = build_label_index(train_rows)
-    embedding_settings = resolve_embedding_settings_from_args(args)
-    training_device = resolve_runtime_device(embedding_settings.device)
+    embedding_spec = instantiate(cfg.embedding.spec)
+    training_device = resolve_runtime_device(embedding_spec.device)
     classifier_version = (
-        args.classifier_version
+        cfg.classifier_version
         or datetime.now(timezone.utc).strftime("clf_%Y_%m_%d_%H%M%S")
     )
 
     adapter = EmbeddingAdapterFactory.create(
-        embedding_settings.to_spec()
+        embedding_spec
     )
 
     print(f"embedding_train_rows={len(train_rows)}", flush=True)
     train_features = embed_rows(
         rows=train_rows,
         adapter=adapter,
-        chunk_size=args.embed_chunk_size,
+        chunk_size=int(cfg.embed_chunk_size),
     )
     train_targets = labels_to_tensor(train_rows, label_to_index)
 
     eval_features_by_name: dict[str, torch.Tensor] = {}
     eval_targets_by_name: dict[str, torch.Tensor] = {}
     eval_rows_by_name: dict[str, list[dict[str, Any]]] = {}
-    for dataset_name, path in eval_sets:
+    for dataset_name, path in eval_set_map.items():
         rows = load_jsonl(path)
         eval_rows_by_name[dataset_name] = rows
         print(f"embedding_eval_set={dataset_name} rows={len(rows)}", flush=True)
         eval_features_by_name[dataset_name] = embed_rows(
             rows=rows,
             adapter=adapter,
-            chunk_size=args.embed_chunk_size,
+            chunk_size=int(cfg.embed_chunk_size),
         )
         eval_targets_by_name[dataset_name] = labels_to_tensor(rows, label_to_index)
 
-    selection_features = eval_features_by_name[args.selection_set]
-    selection_targets = eval_targets_by_name[args.selection_set]
+    selection_features = eval_features_by_name[str(cfg.selection_set)]
+    selection_targets = eval_targets_by_name[str(cfg.selection_set)]
     model, history, best_selection_report = train_classifier_head(
         train_features=train_features,
         train_targets=train_targets,
@@ -507,20 +416,20 @@ def main() -> None:
         selection_targets=selection_targets,
         categories=categories,
         training_device=training_device,
-        epochs=args.epochs,
-        train_batch_size=args.train_batch_size,
-        learning_rate=args.learning_rate,
-        weight_decay=args.weight_decay,
+        epochs=int(cfg.epochs),
+        train_batch_size=int(cfg.train_batch_size),
+        learning_rate=float(cfg.learning_rate),
+        weight_decay=float(cfg.weight_decay),
     )
 
     results: dict[str, Any] = {}
-    for dataset_name, _ in eval_sets:
+    for dataset_name in eval_set_map:
         report = evaluate_classifier(
             model=model,
             features=eval_features_by_name[dataset_name],
             targets=eval_targets_by_name[dataset_name],
             categories=categories,
-            eval_batch_size=args.train_batch_size,
+            eval_batch_size=int(cfg.train_batch_size),
             device=training_device,
         )
         results[dataset_name] = report
@@ -537,39 +446,40 @@ def main() -> None:
         print(render_per_category_table(report["per_category"]))
         print()
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
-    args.model_output_dir.mkdir(parents=True, exist_ok=True)
-    report_dir = args.output_dir / classifier_version
+    output_dir = Path(str(cfg.output_dir))
+    model_output_dir = Path(str(cfg.model_output_dir))
+    output_dir.mkdir(parents=True, exist_ok=True)
+    model_output_dir.mkdir(parents=True, exist_ok=True)
+    report_dir = output_dir / classifier_version
     report_dir.mkdir(parents=True, exist_ok=True)
-    model_path = args.model_output_dir / f"{classifier_version}.pt"
-    manifest_path = args.model_output_dir / f"{classifier_version}.manifest.json"
+    model_path = model_output_dir / f"{classifier_version}.pt"
+    manifest_path = model_output_dir / f"{classifier_version}.manifest.json"
     report_path = report_dir / "report.json"
 
     torch.save(
         {
             "classifier_state_dict": model.state_dict(),
             "categories": categories,
-            "embedding_model_id": embedding_settings.model_id,
-            "embedding_model_revision": embedding_settings.revision,
-            "backend": embedding_settings.backend,
+            "embedding_model_id": embedding_spec.model_id,
+            "embedding_model_revision": embedding_spec.revision,
+            "backend": embedding_spec.backend,
         },
         model_path,
     )
     manifest = {
         "classifier_version": classifier_version,
-        "train_jsonl": str(args.train_jsonl),
-        "eval_sets": {name: str(path) for name, path in eval_sets},
-        "selection_set": args.selection_set,
-        "embedding_profile": embedding_settings.profile,
-        "embedding_backend": embedding_settings.backend,
-        "embedding_model_id": embedding_settings.model_id,
-        "embedding_model_revision": embedding_settings.revision,
-        "task_prefix": embedding_settings.task_prefix,
+        "train_jsonl": str(cfg.train_jsonl),
+        "eval_sets": {name: str(path) for name, path in eval_set_map.items()},
+        "selection_set": cfg.selection_set,
+        "embedding_backend": embedding_spec.backend,
+        "embedding_model_id": embedding_spec.model_id,
+        "embedding_model_revision": embedding_spec.revision,
+        "task_prefix": embedding_spec.task_prefix,
         "device": training_device,
-        "epochs": args.epochs,
-        "train_batch_size": args.train_batch_size,
-        "learning_rate": args.learning_rate,
-        "weight_decay": args.weight_decay,
+        "epochs": int(cfg.epochs),
+        "train_batch_size": int(cfg.train_batch_size),
+        "learning_rate": float(cfg.learning_rate),
+        "weight_decay": float(cfg.weight_decay),
         "categories": categories,
         "model_path": str(model_path),
         "best_selection_report": best_selection_report,

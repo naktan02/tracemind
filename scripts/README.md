@@ -1,61 +1,143 @@
 # Scripts Guide
 
-이 디렉터리는 데이터 준비, prototype 관리, 실험 실행용 스크립트를 모아 둔 곳이다.
+이 디렉터리는 데이터 준비, `PrototypePack` 관리, 분류 baseline, prototype 전략 비교, threshold sweep, federated simulation용 스크립트를 모아 둔 곳이다.
+
+현재 활성 실행 방식은 **Hydra config group + override** 기준이다.  
+즉 예전처럼 `--dataset`, `--runtime-profile`를 길게 넘기기보다 아래처럼 실행한다.
+
+```bash
+uv run python <script>.py dataset=ourafla runtime=gpu_online
+```
 
 ## 사전 준비
-
-실험 스크립트 실행 전 기본 의존성을 맞춘다.
 
 ```bash
 uv sync --extra dev --extra experiments
 ```
 
-모델을 이미 캐시에 받아 둔 상태에서 GPU로 실행하려면 보통 아래 옵션을 같이 쓴다.
-
-```bash
---device cuda --local-files-only
-```
-
 ## 공통 실행 규칙
 
-대부분의 임베딩 기반 스크립트는 이제 `--embedding-profile`을 공통으로 받는다.
+### 기본값
 
-- `mxbai`
-  - 실제 transformer 임베딩 실행용 기본 preset
-- `hash_debug`
-  - 빠른 smoke/debug용 preset
+대부분의 활성 스크립트는 아래 기본 group를 사용한다.
 
-기본 사용법:
+- `dataset=ourafla`
+- `embedding=mxbai`
+- `runtime=gpu_online`
+
+즉 별도 override 없이 실행하면:
+
+- ourafla split 경로 사용
+- `mixedbread-ai/mxbai-embed-large-v1` 사용
+- `device=cuda`
+- `local_files_only=false`
+
+로 동작한다.
+
+### `gpu_online`이란?
+
+- `runtime=gpu_online`
+  - `device=cuda`
+  - `local_files_only=false`
+  - GPU를 기본으로 쓰되, 캐시에 모델이 없으면 다운로드도 허용한다.
+
+- `runtime=gpu_local`
+  - `device=cuda`
+  - `local_files_only=true`
+  - GPU를 쓰되, 로컬 캐시에 이미 있는 파일만 사용한다.
+
+- `runtime=cpu_local`
+  - `device=cpu`
+  - `local_files_only=true`
+
+- `runtime=auto_online`
+  - `device=auto`
+  - `local_files_only=false`
+
+### 자주 쓰는 override 예시
+
+같은 backend 계열에서 모델만 바꾸고 싶다면:
 
 ```bash
---embedding-profile mxbai
+uv run python <script>.py \
+  dataset=ourafla \
+  embedding=mxbai \
+  embedding.model_id=intfloat/e5-large-v2 \
+  embedding.revision=main
 ```
 
-같은 backend 안에서 모델만 바꾸고 싶다면 low-level override만 추가한다.
+빠른 smoke/debug용 해시 임베딩으로 바꾸고 싶다면:
 
 ```bash
---embedding-profile mxbai \
---embedding-model-id intfloat/e5-large-v2 \
---embedding-model-revision main
+uv run python <script>.py \
+  dataset=ourafla \
+  embedding=hash_debug \
+  runtime=cpu_local \
+  embedding.hash_dim=64
 ```
 
-즉 보통은 `profile`만 고르고,
-정말 필요할 때만 `backend/model_id/revision`을 개별 override한다.
+최종 조합된 Hydra 설정만 보고 싶다면:
 
-YAML 기반 실험 스크립트는 같은 개념을 `embedding.profile=...` override로 쓴다.
+```bash
+uv run python <script>.py --cfg job
+```
 
 ---
 
-## 1. PrototypePack 생성
+## 1. Dataset 준비
+
+### 가장 짧은 경로
+
+registry 기준으로 `download -> map -> split -> prototype`를 한 번에 실행한다.
+
+```bash
+uv run python scripts/datasets/run_dataset_pipeline.py --dataset ourafla
+```
+
+### 단계별 수동 실행
+
+1. raw CSV 다운로드
+
+```bash
+uv run python scripts/datasets/download_dataset.py \
+  --dataset-id ourafla/Mental-Health_Text-Classification_Dataset \
+  --split train \
+  --data-file mental_heath_unbanlanced.csv
+```
+
+2. raw CSV -> labeled JSONL 변환
+
+```bash
+uv run python scripts/datasets/build_labeled_query_set.py \
+  --raw-csv data/raw/ourafla_train.csv \
+  --mapping-config data/mappings/ourafla_to_4cat.v1.toml
+```
+
+3. labeled JSONL -> stratified train/validation split
+
+```bash
+uv run python scripts/datasets/split_labeled_query_set.py \
+  --input-jsonl data/processed/labeled_query_sets/ourafla_mental_health_text_classification.v1.jsonl \
+  --split-name ourafla_train_split.v1 \
+  --validation-ratio 0.1
+```
+
+---
+
+## 2. PrototypePack 생성
 
 train split으로 single centroid 기반 `PrototypePack`을 만든다.
 
+기본 실행:
+
 ```bash
-uv run python scripts/prototypes/seed_prototypes.py \
-  --input-jsonl data/processed/splits/ourafla_train_split.v1.train.jsonl \
-  --embedding-profile mxbai \
-  --device cuda \
-  --local-files-only
+uv run python scripts/prototypes/seed_prototypes.py
+```
+
+명시적 GPU local 실행:
+
+```bash
+uv run python scripts/prototypes/seed_prototypes.py runtime=gpu_local
 ```
 
 출력 기본 경로:
@@ -65,18 +147,21 @@ uv run python scripts/prototypes/seed_prototypes.py \
 
 ---
 
-## 2. PrototypePack baseline 평가
+## 3. PrototypePack baseline 평가
 
 생성된 `PrototypePack`을 validation/test에 평가한다.
 
 ```bash
 uv run python scripts/prototypes/evaluate_prototype_pack.py \
-  --prototype-pack data/processed/prototype_packs/<prototype_version>.json \
-  --eval-set validation=data/processed/splits/ourafla_train_split.v1.validation.jsonl \
-  --eval-set test=data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl \
-  --embedding-profile mxbai \
-  --device cuda \
-  --local-files-only
+  prototype_pack=data/processed/prototype_packs/<prototype_version>.json
+```
+
+offline cache만 쓰고 싶다면:
+
+```bash
+uv run python scripts/prototypes/evaluate_prototype_pack.py \
+  prototype_pack=data/processed/prototype_packs/<prototype_version>.json \
+  runtime=gpu_local
 ```
 
 출력 기본 경로:
@@ -85,13 +170,9 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py \
 
 ---
 
-## 3. Prototype 전략 비교 실험
+## 4. Prototype 전략 비교 실험
 
 `single / kmeans / dbscan` 세 전략을 같은 train/validation/test에서 비교한다.
-
-기본 설정 파일:
-
-- `scripts/experiments/configs/prototype_strategy/default.yaml`
 
 기본 실행:
 
@@ -99,24 +180,22 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py \
 uv run python scripts/experiments/prototype_strategy_experiment.py
 ```
 
-GPU 실험:
+`hash_debug` smoke 예시:
 
 ```bash
 uv run python scripts/experiments/prototype_strategy_experiment.py \
-  --override embedding.device=cuda \
-  --override embedding.local_files_only=true
+  embedding=hash_debug \
+  runtime=cpu_local \
+  embedding.hash_dim=64
 ```
 
-주요 override 예시:
+산출물:
 
-```bash
-uv run python scripts/experiments/prototype_strategy_experiment.py \
-  --override dataset.train_jsonl=tmp/prototype_strategy_smoke/train.jsonl \
-  --override dataset.validation_jsonl=tmp/prototype_strategy_smoke/validation.jsonl \
-  --override dataset.test_jsonl=tmp/prototype_strategy_smoke/test.jsonl \
-  --override embedding.profile=hash_debug \
-  --override embedding.hash_dim=64
-```
+- `summary.json`
+- `validation/`
+- `test/`
+- `strategies/`
+- `projections/`
 
 출력 기본 경로:
 
@@ -124,13 +203,9 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 
 ---
 
-## 4. Prototype threshold sweep
+## 5. Prototype threshold sweep
 
 선택한 전략 위에서 pseudo-label 채택 threshold를 grid search한다.
-
-기본 설정 파일:
-
-- `scripts/experiments/configs/prototype_threshold_sweep/default.yaml`
 
 기본 실행:
 
@@ -138,34 +213,22 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 uv run python scripts/experiments/prototype_threshold_sweep.py
 ```
 
-`kmeans` + GPU:
+`single` 전략으로 바꾸려면:
 
 ```bash
 uv run python scripts/experiments/prototype_threshold_sweep.py \
-  --override embedding.device=cuda \
-  --override embedding.local_files_only=true
-```
-
-`single` + GPU:
-
-```bash
-uv run python scripts/experiments/prototype_threshold_sweep.py \
-  --override strategy.name=single \
-  --override embedding.device=cuda \
-  --override embedding.local_files_only=true
+  strategy.name=single
 ```
 
 smoke 예시:
 
 ```bash
 uv run python scripts/experiments/prototype_threshold_sweep.py \
-  --override embedding.profile=hash_debug \
-  --override embedding.hash_dim=64 \
-  --override embedding.device=cpu \
-  --override embedding.local_files_only=true \
-  --override dataset.train_jsonl=tmp/prototype_strategy_smoke/train.jsonl \
-  --override dataset.validation_jsonl=tmp/prototype_strategy_smoke/validation.jsonl \
-  --override dataset.test_jsonl=tmp/prototype_strategy_smoke/test.jsonl
+  embedding=hash_debug \
+  runtime=cpu_local \
+  strategy.name=single \
+  threshold_grid.confidence_thresholds=[0.6,0.7] \
+  threshold_grid.margin_thresholds=[0.0,0.02]
 ```
 
 출력 기본 경로:
@@ -174,19 +237,19 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
 
 ---
 
-## 5. Softmax classifier head baseline
+## 6. Softmax classifier head baseline
 
 고정 임베딩 위에 linear classifier head를 학습한다.
 
 ```bash
+uv run python scripts/experiments/train_softmax_classifier.py
+```
+
+선택 기준을 test로 바꾸려면:
+
+```bash
 uv run python scripts/experiments/train_softmax_classifier.py \
-  --train-jsonl data/processed/splits/ourafla_train_split.v1.train.jsonl \
-  --eval-set validation=data/processed/splits/ourafla_train_split.v1.validation.jsonl \
-  --eval-set test=data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl \
-  --embedding-profile mxbai \
-  --device cuda \
-  --local-files-only \
-  --selection-set validation
+  selection_set=test
 ```
 
 출력 기본 경로:
@@ -196,24 +259,33 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 ---
 
-## 6. Federated simulation smoke
+## 7. Federated simulation smoke
 
 bootstrap train subset으로 prototype을 만들고, 나머지 train을 client shard로 나눠
 `pseudo-label -> local update -> aggregation -> republish` 루프를 검증한다.
 
+기본 smoke 실행:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py
+```
+
+라운드와 client 수를 바꾸려면:
+
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
-  --train-jsonl data/processed/splits/ourafla_train_split.v1.train.jsonl \
-  --validation-jsonl data/processed/splits/ourafla_train_split.v1.validation.jsonl \
-  --output-dir tmp/federated_simulation_manual \
-  --client-count 4 \
-  --rounds 1 \
-  --embedding-profile hash_debug \
-  --published-model-id tracemind-embed-sim \
-  --confidence-threshold 0.6 \
-  --margin-threshold 0.02 \
-  --max-examples 32 \
-  --min-required-examples 4
+  federated_run_preset=smoke \
+  client_count=8 \
+  rounds=3
+```
+
+빠른 해시 smoke:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  embedding=hash_debug \
+  runtime=cpu_local \
+  federated_run_preset=smoke
 ```
 
 출력 예시:
@@ -223,9 +295,17 @@ uv run python scripts/experiments/run_federated_simulation.py \
 - `main_server/vector_adapter_states/`
 - `agents/<agent_id>/training_updates/`
 
+현재 수준:
+
+- 실제 `train/validation` JSONL을 사용한다.
+- 여러 client shard를 가상 agent처럼 돌린다.
+- 각 agent는 pseudo-label 선별과 local update 생성을 수행한다.
+- 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
+- 아직 실제 LoRA 분산 학습은 아니고, synthetic vector adapter delta 기반 simulation이다.
+
 ---
 
-## 7. Local demo
+## 8. Local demo
 
 현재 상태:
 

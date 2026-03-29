@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import random
 import sys
@@ -11,6 +10,10 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
+
+import hydra
+from hydra.utils import instantiate
+from omegaconf import DictConfig
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -41,10 +44,6 @@ from agent.src.services.training.local_training_service import (  # noqa: E402
     LocalTrainingService,
 )
 from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
-from scripts.common.embedding_profiles import (  # noqa: E402
-    add_embedding_profile_arguments,
-    resolve_embedding_settings_from_args,
-)
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     VectorAdapterStatePayload,
@@ -121,104 +120,6 @@ class SimulationResult:
     initial_validation: SimulationEvaluation
     final_validation: SimulationEvaluation
     rounds: tuple[SimulationRoundSummary, ...]
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Run a synthetic federated simulation with "
-            "train bootstrap/client splits."
-        ),
-    )
-    parser.add_argument(
-        "--train-jsonl",
-        type=Path,
-        default=Path("data/processed/splits/ourafla_train_split.v1.train.jsonl"),
-        help="Train JSONL used for bootstrap prototypes and client shards.",
-    )
-    parser.add_argument(
-        "--validation-jsonl",
-        type=Path,
-        default=Path("data/processed/splits/ourafla_train_split.v1.validation.jsonl"),
-        help="Validation JSONL used for score/pseudo-label evaluation.",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("tmp/federated_simulation"),
-        help="Directory where simulation artifacts are written.",
-    )
-    parser.add_argument(
-        "--client-count",
-        type=int,
-        default=4,
-        help="Number of client shards to simulate.",
-    )
-    parser.add_argument(
-        "--rounds",
-        type=int,
-        default=1,
-        help="Number of federated rounds to run.",
-    )
-    parser.add_argument(
-        "--bootstrap-ratio",
-        type=float,
-        default=0.2,
-        help="Fraction of each label bucket reserved for prototype bootstrap.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Random seed used for deterministic shuffling.",
-    )
-    add_embedding_profile_arguments(
-        parser,
-        default_profile="hash_debug",
-    )
-    parser.add_argument(
-        "--published-model-id",
-        "--model-id",
-        dest="published_model_id",
-        default="tracemind-embed-sim",
-        help="Simulation artifact에 기록할 전역 model_id.",
-    )
-    parser.add_argument(
-        "--training-scope",
-        default="adapter_only",
-        help="Training scope recorded in manifest/task.",
-    )
-    parser.add_argument(
-        "--confidence-threshold",
-        type=float,
-        default=0.6,
-        help="Pseudo-label score threshold used in the simulation task.",
-    )
-    parser.add_argument(
-        "--margin-threshold",
-        type=float,
-        default=0.02,
-        help="Pseudo-label top1-top2 margin threshold.",
-    )
-    parser.add_argument(
-        "--max-examples",
-        type=int,
-        default=64,
-        help="Maximum accepted examples per client per round.",
-    )
-    parser.add_argument(
-        "--min-required-examples",
-        type=int,
-        default=4,
-        help="Minimum accepted examples needed to emit an update.",
-    )
-    parser.add_argument(
-        "--gradient-clip-norm",
-        type=float,
-        default=0.5,
-        help="Clip norm applied to synthetic adapter deltas.",
-    )
-    return parser.parse_args()
 
 
 def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
@@ -689,25 +590,29 @@ def parse_created_at(value: str) -> datetime:
     return parsed
 
 
-def main() -> None:
-    args = parse_args()
-    embedding_settings = resolve_embedding_settings_from_args(args)
+@hydra.main(
+    version_base=None,
+    config_path="../conf",
+    config_name="experiments/run_federated_simulation",
+)
+def main(cfg: DictConfig) -> None:
+    embedding_spec = instantiate(cfg.embedding.spec)
     result = run_simulation(
-        train_rows=load_jsonl_rows(args.train_jsonl),
-        validation_rows=load_jsonl_rows(args.validation_jsonl),
-        output_dir=args.output_dir,
-        client_count=args.client_count,
-        rounds=args.rounds,
-        bootstrap_ratio=args.bootstrap_ratio,
-        seed=args.seed,
-        embedding_spec=embedding_settings.to_spec(),
-        model_id=args.published_model_id,
-        training_scope=args.training_scope,
-        confidence_threshold=args.confidence_threshold,
-        margin_threshold=args.margin_threshold,
-        max_examples=args.max_examples,
-        min_required_examples=args.min_required_examples,
-        gradient_clip_norm=args.gradient_clip_norm,
+        train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
+        validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
+        output_dir=Path(str(cfg.federated_run_preset.output_dir)),
+        client_count=int(cfg.federated_run_preset.client_count),
+        rounds=int(cfg.federated_run_preset.rounds),
+        bootstrap_ratio=float(cfg.federated_run_preset.bootstrap_ratio),
+        seed=int(cfg.seed),
+        embedding_spec=embedding_spec,
+        model_id=str(cfg.published_model_id),
+        training_scope=str(cfg.training_scope),
+        confidence_threshold=float(cfg.confidence_threshold),
+        margin_threshold=float(cfg.margin_threshold),
+        max_examples=int(cfg.federated_run_preset.max_examples),
+        min_required_examples=int(cfg.federated_run_preset.min_required_examples),
+        gradient_clip_norm=float(cfg.gradient_clip_norm),
     )
 
     print(f"initial_model_revision={result.initial_model_revision}")

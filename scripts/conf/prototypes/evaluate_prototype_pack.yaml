@@ -1,0 +1,21 @@
+# @package _global_
+
+defaults:
+  - /dataset: ourafla
+  - /embedding: mxbai
+  - /runtime: gpu_online
+  - _self_
+
+prototype_pack: ""
+eval_sets:
+  validation: ${dataset.validation_jsonl}
+  test: ${dataset.test_labeled_jsonl}
+output_dir: data/processed/evaluations/prototype_packs
+respect_pack_embedding_identity: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

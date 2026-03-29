@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
-import argparse
 import json
 import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
+
+import hydra
+from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
@@ -17,60 +20,10 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
 )
 from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
-from scripts.common.embedding_profiles import (  # noqa: E402
-    add_embedding_profile_arguments,
-    infer_embedding_profile,
-    resolve_embedding_settings,
-)
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_centroids,
     load_prototype_pack_payload,
 )
-
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description="Evaluate a prototype pack on one or more labeled query set JSONL files."
-    )
-    parser.add_argument(
-        "--prototype-pack",
-        required=True,
-        type=Path,
-        help="Path to the prototype pack JSON file.",
-    )
-    parser.add_argument(
-        "--eval-set",
-        action="append",
-        dest="eval_sets",
-        default=[],
-        help="Evaluation set in the form name=path/to/file.jsonl. Repeat for multiple sets.",
-    )
-    add_embedding_profile_arguments(
-        parser,
-        default_profile="mxbai",
-    )
-    parser.add_argument(
-        "--output-dir",
-        type=Path,
-        default=Path("data/processed/evaluations/prototype_packs"),
-        help="Directory where evaluation reports are written.",
-    )
-    return parser.parse_args()
-
-
-def parse_eval_set(value: str) -> tuple[str, Path]:
-    if "=" not in value:
-        raise ValueError(
-            "eval-set must be in the form name=path/to/file.jsonl."
-        )
-    name, raw_path = value.split("=", 1)
-    dataset_name = name.strip()
-    path = Path(raw_path.strip())
-    if not dataset_name:
-        raise ValueError("eval-set name must not be empty.")
-    if not raw_path.strip():
-        raise ValueError("eval-set path must not be empty.")
-    return dataset_name, path
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -277,38 +230,49 @@ def render_per_category_table(per_category: dict[str, dict[str, float | int]]) -
     return "\n".join(lines)
 
 
-def main() -> None:
-    args = parse_args()
-    if not args.eval_sets:
-        raise ValueError("At least one --eval-set must be provided.")
+@hydra.main(
+    version_base=None,
+    config_path="../conf",
+    config_name="prototypes/evaluate_prototype_pack",
+)
+def main(cfg: DictConfig) -> None:
+    if not cfg.prototype_pack:
+        raise ValueError("prototype_pack must be set.")
 
-    payload = load_prototype_pack_payload(args.prototype_pack)
+    payload = load_prototype_pack_payload(Path(cfg.prototype_pack))
     prototypes = extract_category_centroids(payload)
-    embedding_settings = resolve_embedding_settings(
-        profile=infer_embedding_profile(
-            backend=args.backend,
-            model_id=payload.embedding_model_id,
-            fallback=args.embedding_profile,
-        ),
-        backend=args.backend,
-        model_id=payload.embedding_model_id,
-        revision=payload.embedding_model_revision,
-        batch_size=args.batch_size,
-        cache_dir=args.cache_dir,
-        device=args.device,
-        task_prefix=args.task_prefix,
-        local_files_only=args.local_files_only,
-        hash_dim=args.hash_dim,
+    spec_cfg = OmegaConf.create(
+        {
+            "_target_": "agent.src.infrastructure.model_adapters.embedding.factory.EmbeddingAdapterSpec",
+            "backend": cfg.embedding.backend,
+            "model_id": (
+                payload.embedding_model_id
+                if cfg.respect_pack_embedding_identity
+                else cfg.embedding.model_id
+            ),
+            "revision": (
+                payload.embedding_model_revision
+                if cfg.respect_pack_embedding_identity
+                else cfg.embedding.revision
+            ),
+            "device": cfg.runtime.device,
+            "batch_size": cfg.embedding.batch_size,
+            "cache_dir": cfg.embedding.cache_dir,
+            "task_prefix": cfg.embedding.task_prefix,
+            "hash_dim": cfg.embedding.hash_dim,
+            "local_files_only": cfg.runtime.local_files_only,
+        }
     )
+    embedding_spec = instantiate(spec_cfg)
     adapter = EmbeddingAdapterFactory.create(
-        embedding_settings.to_spec()
+        embedding_spec
     )
 
-    output_dir = args.output_dir / payload.prototype_version
+    output_dir = Path(cfg.output_dir) / payload.prototype_version
     output_dir.mkdir(parents=True, exist_ok=True)
 
-    for raw_eval_set in args.eval_sets:
-        dataset_name, input_jsonl = parse_eval_set(raw_eval_set)
+    for dataset_name, raw_input_path in cfg.eval_sets.items():
+        input_jsonl = Path(str(raw_input_path))
         rows = load_jsonl(input_jsonl)
         texts = [row["text"] for row in rows]
         embeddings = adapter.embed_texts(texts)
@@ -319,7 +283,7 @@ def main() -> None:
         )
         report = {
             "prototype_version": payload.prototype_version,
-            "prototype_pack": str(args.prototype_pack),
+            "prototype_pack": str(cfg.prototype_pack),
             "dataset_name": dataset_name,
             "input_jsonl": str(input_jsonl),
             "embedding_model_id": payload.embedding_model_id,

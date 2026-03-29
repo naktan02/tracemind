@@ -1,0 +1,15 @@
+name: ourafla
+description: ourafla mental health 4-class dataset
+raw_train_csv: data/raw/ourafla_train.csv
+raw_test_csv: data/raw/ourafla_test.csv
+train_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification.v1.jsonl
+test_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl
+split_name: ourafla_train_split.v1
+train_jsonl: data/processed/splits/ourafla_train_split.v1.train.jsonl
+validation_jsonl: data/processed/splits/ourafla_train_split.v1.validation.jsonl
+prototype_input_jsonl: ${dataset.train_jsonl}
+prototype_expected_categories:
+  - anxiety
+  - depression
+  - normal
+  - suicidal

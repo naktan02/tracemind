@@ -1151,6 +1151,207 @@ PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tes
 
 - `30 passed`
 
+## 추가 작업: Hydra/instantiate 전환과 GPU 기본 runtime 정리
+
+사용자 요청:
+
+1. `gpu_online`이 무엇인지 명확히 설명해 달라.
+2. `Hydra`, `instantiate` 기반으로 실행 계층을 바꿔 달라.
+3. GPU를 기본 실행 경로로 해 달라.
+4. 기존 preset Python 파일은 점진적으로 축소하거나 제거해 달라.
+
+### 설계 판단
+
+기존 `scripts/common/embedding_profiles.py`, `scripts/common/dataset_presets.py` 방식은 당장 CLI UX를 줄이는 데는 유용했지만, preset 종류가 늘어날수록 Python 매핑 파일이 비대해질 위험이 있었다. 그래서 장기적으로는 Hydra config group이 더 맞다고 판단했다.
+
+또한 사용자 override 문법을 짧게 유지하려면 `common/dataset`, `common/runtime` 같은 중간 prefix보다 top-level config group인 `dataset`, `embedding`, `runtime`이 더 적합하다고 봤다.
+
+### 실제 변경
+
+다음 config package와 group를 추가했다.
+
+1. `scripts/conf/__init__.py`
+2. `scripts/conf/dataset/__init__.py`
+3. `scripts/conf/embedding/__init__.py`
+4. `scripts/conf/runtime/__init__.py`
+5. `scripts/conf/experiments/__init__.py`
+6. `scripts/conf/experiments/federated_run_preset/__init__.py`
+7. `scripts/conf/prototypes/__init__.py`
+
+새 top-level config group:
+
+1. `scripts/conf/dataset/ourafla.yaml`
+2. `scripts/conf/embedding/mxbai.yaml`
+3. `scripts/conf/embedding/hash_debug.yaml`
+4. `scripts/conf/runtime/gpu_online.yaml`
+5. `scripts/conf/runtime/gpu_local.yaml`
+6. `scripts/conf/runtime/auto_online.yaml`
+7. `scripts/conf/runtime/cpu_local.yaml`
+
+그리고 활성 root config는 모두 `# @package _global_`로 바꿨다.
+
+1. `scripts/conf/prototypes/seed_prototypes.yaml`
+2. `scripts/conf/prototypes/evaluate_prototype_pack.yaml`
+3. `scripts/conf/experiments/train_softmax_classifier.yaml`
+4. `scripts/conf/experiments/run_federated_simulation.yaml`
+5. `scripts/conf/experiments/prototype_strategy.yaml`
+6. `scripts/conf/experiments/prototype_threshold_sweep.yaml`
+
+기본값은 전부 GPU 기준으로 맞췄다.
+
+1. `dataset=ourafla`
+2. `embedding=mxbai`
+3. `runtime=gpu_online`
+
+여기서 `gpu_online`은:
+
+1. `device=cuda`
+2. `local_files_only=false`
+
+즉 GPU를 기본으로 쓰되, 캐시에 없으면 다운로드도 허용하는 runtime이다.
+
+### 스크립트 엔트리포인트 정리
+
+활성 엔트리포인트는 Hydra + instantiate 기준으로 유지했다.
+
+1. `scripts/prototypes/seed_prototypes.py`
+2. `scripts/prototypes/evaluate_prototype_pack.py`
+3. `scripts/experiments/train_softmax_classifier.py`
+4. `scripts/experiments/run_federated_simulation.py`
+5. `scripts/experiments/prototype_strategy/main.py`
+6. `scripts/experiments/prototype_strategy/sweep_main.py`
+
+`train_softmax_classifier.py`에서는 더 이상 `parse_eval_preset`를 쓰지 않도록 import를 제거했다.
+
+### preset Python 파일 처리
+
+활성 실행 경로는 이제 Hydra config group로 넘어갔고, 다음 파일들은 호환 계층으로만 남겼다.
+
+1. `scripts/common/embedding_profiles.py`
+2. `scripts/common/dataset_presets.py`
+3. `scripts/experiments/prototype_strategy/cli.py`
+4. `scripts/experiments/prototype_strategy/config.py`
+5. `scripts/experiments/prototype_strategy/sweep_config.py`
+
+각 파일 docstring에 “구형 compatibility helper/module” 성격임을 명시했다.
+
+### README 갱신
+
+`scripts/README.md`를 Hydra 문법 기준으로 전면 수정했다.
+
+핵심 실행 예시는 이제 다음과 같다.
+
+```bash
+uv run python scripts/prototypes/seed_prototypes.py
+uv run python scripts/prototypes/evaluate_prototype_pack.py prototype_pack=...
+uv run python scripts/experiments/prototype_strategy_experiment.py
+uv run python scripts/experiments/prototype_threshold_sweep.py strategy.name=single
+uv run python scripts/experiments/train_softmax_classifier.py selection_set=test
+uv run python scripts/experiments/run_federated_simulation.py federated_run_preset=smoke
+```
+
+또한 README에 `gpu_online`, `gpu_local`, `cpu_local`, `auto_online` 의미를 정리했다.
+
+### 검증
+
+Hydra config 조합이 실제로 동작하는지 다음 명령으로 확인했다.
+
+```bash
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/prototypes/seed_prototypes.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/prototypes/seed_prototypes.py --cfg job runtime=gpu_local
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/run_federated_simulation.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/run_federated_simulation.py --cfg job dataset=ourafla runtime=gpu_local
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_strategy_experiment.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_strategy_experiment.py --cfg job runtime=gpu_local embedding=hash_debug
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_threshold_sweep.py --cfg job strategy.name=single
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/train_softmax_classifier.py --cfg job selection_set=test
+```
+
+그리고 전체 회귀:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `45 passed`
+
+## 추가 작업: Hydra 구조 재점검 후 구형 계층 제거
+
+사용자가 다음 우려를 제기했다.
+
+1. `scripts/conf`가 `agent/main-server` 설정과 중복되는 것 아니냐.
+2. Hydra 구조 기준과 GPU 기본 원칙을 `.agents`나 skill이 아니라 repo 차원에서 더 명확히 남겨야 하지 않느냐.
+3. `scripts/conf/common/*`와 top-level `dataset/embedding/runtime`가 동시에 있는 것은 명백한 중복 아니냐.
+4. `hash_debug`가 정확히 무엇이냐.
+5. 현재 Hydra 구조가 정말 좋은 구조인지, 이전 작업 맥락을 잊고 다시 점검해 달라.
+
+재점검 결과:
+
+1. `scripts/conf` 자체는 실험/데이터 준비/시뮬레이션 실행 설정 계층이라 `agent/conf`와 완전 중복은 아니라고 봤다.
+2. 하지만 `scripts/conf/common/*`와 top-level `dataset/embedding/runtime`가 공존하는 상태는 좋지 않았고, migration 잔재라고 판단했다.
+3. `scripts/common/embedding_profiles.py`, `scripts/common/dataset_presets.py`, `scripts/experiments/prototype_strategy/cli.py`, `config.py`, `sweep_config.py`도 더 이상 활성 경로가 아니므로 정리 대상이라고 봤다.
+4. `hash_debug`는 실제 임베딩 모델이 아니라 `agent/src/infrastructure/model_adapters/embedding/hash_debug.py`에 있는 deterministic fake embedding backend로, smoke test와 구조 검증용임을 다시 확인했다.
+
+### 실제 정리
+
+삭제:
+
+1. `scripts/conf/common/dataset/ourafla.yaml`
+2. `scripts/conf/common/embedding/hash_debug.yaml`
+3. `scripts/conf/common/embedding/mxbai.yaml`
+4. `scripts/conf/common/runtime/auto_online.yaml`
+5. `scripts/conf/common/runtime/cpu_local.yaml`
+6. `scripts/conf/common/runtime/gpu_local.yaml`
+7. `scripts/conf/common/runtime/gpu_online.yaml`
+8. `scripts/common/embedding_profiles.py`
+9. `scripts/common/dataset_presets.py`
+10. `scripts/experiments/prototype_strategy/cli.py`
+11. `scripts/experiments/prototype_strategy/config.py`
+12. `scripts/experiments/prototype_strategy/sweep_config.py`
+13. `tests/unit/test_embedding_profiles.py`
+14. `tests/unit/test_dataset_presets.py`
+15. `tests/unit/test_prototype_strategy_cli.py`
+
+추가:
+
+1. `tests/unit/test_scripts_hydra_configs.py`
+   - `prototypes/seed_prototypes` 기본값이 `gpu_online`인지
+   - `prototype_strategy`가 `runtime=gpu_local`, `embedding=hash_debug` override를 짧게 받는지
+   - `prototype_threshold_sweep`가 `strategy.name=single` override를 받는지
+   - `run_federated_simulation`가 `smoke` preset을 기본으로 쓰는지
+
+### repo 규칙 반영
+
+`AGENTS.md`의 `Project Structure & Module Organization`에 다음 원칙을 추가했다.
+
+1. 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of truth로 유지한다.
+2. `dataset`, `embedding`, `runtime` group를 기본 축으로 사용한다.
+3. 스크립트의 기본 runtime은 `gpu_online`으로 본다.
+4. 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
+
+### 검증
+
+다음 명령으로 회귀를 확인했다.
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `40 passed`
+
+추가로 Hydra config 조합 확인:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_strategy_experiment.py --cfg job
+MPLCONFIGDIR=/tmp/mpl .venv/bin/python scripts/experiments/prototype_threshold_sweep.py --cfg job strategy.name=single
+```
+
+모두 정상적으로 top-level `dataset / embedding / runtime`와 짧은 override 문법을 사용해 해석되는 것을 확인했다.
+
 ---
 
 ## 2026-03-30 실행 UX 개선
@@ -1272,6 +1473,262 @@ MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server
 결과:
 
 - `41 passed`
+
+---
+
+## 2026-03-30 dataset/runtime preset 기반 CLI UX 추가 정리
+
+사용자는 `backend/model_id` 반복을 줄이는 수준을 넘어서,
+dataset 경로 반복, eval-set 반복, GPU/local-files 옵션 반복까지 포함한
+CLI 전면 UX 리팩터링을 요청했다.
+
+또한 아래 두 질문을 같이 확인했다.
+
+1. dataset download와 JSONL 변환 경로가 README에 빠져 있는 것 아니냐
+2. federated simulation이 실제로 각 agent가 개별 학습을 하고 중앙으로 변화값을 보내는 구조가 맞느냐
+
+이에 따라 이번 단계에서 아래를 추가했다.
+
+### 1. dataset preset 공통 모듈 추가
+
+새 파일:
+
+- `scripts/common/dataset_presets.py`
+
+이 모듈은 `data/datasets/registry.yaml`을 읽어
+스크립트 실행에 필요한 표준 경로를 계산한다.
+
+포함 내용:
+
+1. `DatasetPreset`
+2. `EvalSetSpec`
+3. `resolve_dataset_preset()`
+4. `parse_eval_preset()`
+5. `add_dataset_preset_arguments()`
+
+`ourafla` 기준으로 아래를 자동 해석한다.
+
+1. train split JSONL
+2. validation split JSONL
+3. test labeled JSONL
+4. prototype input JSONL
+5. prototype 기본 category 목록
+
+즉 이제 여러 스크립트에서
+`--dataset ourafla`
+만으로 반복 경로를 채울 수 있다.
+
+### 2. runtime profile 추가
+
+기존 `embedding profile`만으로는
+`--device cuda --local-files-only`
+반복이 계속 남아 있었다.
+
+그래서 `scripts/common/embedding_profiles.py`에
+`runtime profile` 개념을 추가했다.
+
+지원 preset:
+
+1. `auto_online`
+2. `gpu_local`
+3. `gpu_online`
+4. `cpu_local`
+
+동시에 아래도 추가했다.
+
+1. `resolve_runtime_profile()`
+2. `--runtime-profile`
+3. `--allow-downloads`
+
+즉 이제 대부분의 스크립트는
+
+```bash
+--runtime-profile gpu_local
+```
+
+만으로 `device=cuda`, `local_files_only=true`를 같이 줄 수 있다.
+
+### 3. 주요 스크립트 CLI 단순화
+
+#### `seed_prototypes.py`
+
+이전:
+
+```bash
+uv run python scripts/prototypes/seed_prototypes.py \
+  --input-jsonl ... \
+  --embedding-profile mxbai \
+  --device cuda \
+  --local-files-only
+```
+
+이후:
+
+```bash
+uv run python scripts/prototypes/seed_prototypes.py \
+  --dataset ourafla \
+  --runtime-profile gpu_local
+```
+
+#### `evaluate_prototype_pack.py`
+
+이전:
+
+1. evaluation JSONL들을 직접 `--eval-set name=path`로 여러 번 넘겨야 했다.
+
+이후:
+
+```bash
+uv run python scripts/prototypes/evaluate_prototype_pack.py \
+  --prototype-pack data/processed/prototype_packs/<prototype_version>.json \
+  --dataset ourafla \
+  --eval-preset standard \
+  --runtime-profile gpu_local
+```
+
+또한 `PrototypePack` 메타데이터의 model id를 보고
+가능하면 profile을 추론하도록 보정했다.
+
+#### `train_softmax_classifier.py`
+
+이전:
+
+1. train 경로 직접 입력
+2. validation/test를 `--eval-set`으로 반복 입력
+3. GPU/local-files 옵션 직접 입력
+
+이후:
+
+```bash
+uv run python scripts/experiments/train_softmax_classifier.py \
+  --dataset ourafla \
+  --runtime-profile gpu_local
+```
+
+#### `run_federated_simulation.py`
+
+이전:
+
+1. train/validation 경로 직접 입력
+2. smoke 실행용 숫자들을 계속 수동 입력
+
+이후:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  --dataset ourafla \
+  --run-preset smoke
+```
+
+여기에는 `run preset`도 추가했다.
+
+지원 preset:
+
+1. `smoke`
+2. `standard`
+
+그리고 기존 `--model-id`는 의미가 섞여 있어서
+`--published-model-id`로 의미를 분리했고,
+기존 이름은 alias로 유지했다.
+
+### 4. YAML 기반 실험 shortcut 추가
+
+`prototype_strategy_experiment.py`와
+`prototype_threshold_sweep.py`는 기존에
+`--override key=value`만 받는 얇은 CLI였다.
+
+이제 `scripts/experiments/prototype_strategy/cli.py`에
+shortcut를 추가했다.
+
+지원 shortcut:
+
+1. `--dataset`
+2. `--embedding-profile`
+3. `--embedding-model-id`
+4. `--embedding-model-revision`
+5. `--runtime-profile`
+6. `--device`
+7. `--local-files-only`
+8. `--allow-downloads`
+
+이 값들은 내부적으로 dotlist override로 변환된다.
+
+예:
+
+```bash
+uv run python scripts/experiments/prototype_strategy_experiment.py \
+  --dataset ourafla \
+  --runtime-profile gpu_local
+```
+
+```bash
+uv run python scripts/experiments/prototype_threshold_sweep.py \
+  --dataset ourafla \
+  --runtime-profile gpu_local
+```
+
+### 5. README 보강
+
+`scripts/README.md`를 다시 정리했다.
+
+추가한 내용:
+
+1. dataset pipeline quickstart
+2. `download -> build_labeled_query_set -> split` 수동 실행
+3. embedding profile / runtime profile 설명
+4. dataset preset 사용법
+5. 짧아진 prototype / experiment 실행 예시
+
+즉 이제 README가
+`download -> jsonl -> split -> prototype -> experiments`
+흐름을 모두 포함한다.
+
+### 6. federated simulation 구현 수준 확인
+
+사용자 질문에 대해 코드 기준으로 확인한 결론:
+
+현재 simulation은 아래 구조가 맞다.
+
+1. 실제 train JSONL을 읽는다.
+2. bootstrap subset으로 `PrototypePack`을 만든다.
+3. 남은 train을 non-IID 성향의 client shard로 분할한다.
+4. 각 shard가 local pseudo-label selection을 수행한다.
+5. 각 shard가 local update delta를 만든다.
+6. 중앙이 update들을 aggregate한다.
+7. 새 `model_revision + prototype_version` pair를 발행한다.
+
+관련 핵심 파일:
+
+1. `agent/src/services/training/local_training_service.py`
+2. `main-server/src/services/rounds/round_manager_service.py`
+3. `scripts/experiments/run_federated_simulation.py`
+
+중요한 한계:
+
+1. 아직 실제 LoRA backend는 아니다.
+2. 아직 실제 다중 프로세스/다중 노드 agent runtime은 아니다.
+3. 현재는 synthetic vector adapter delta를 이용한 simulation이다.
+
+즉 "실제 데이터셋 기반 multi-client simulation"은 맞지만,
+"실제 분산 LoRA FL runtime"까지는 아직 아니다.
+
+### 7. 추가 테스트
+
+새 테스트:
+
+1. `tests/unit/test_dataset_presets.py`
+2. `tests/unit/test_prototype_strategy_cli.py`
+3. `tests/unit/test_embedding_profiles.py` 보강
+
+검증:
+
+```bash
+MPLCONFIGDIR=/tmp/mpl PYTHONPATH=. .venv/bin/pytest agent/tests/unit main-server/tests/unit shared/tests/unit tests/unit -q
+```
+
+결과:
+
+- `45 passed`
 
 ## 2026-03-30 추가 진행
 

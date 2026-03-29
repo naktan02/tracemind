@@ -2,6 +2,7 @@
 
 ## Project Structure & Module Organization
 Keep runtime code inside `src/`, grouped by responsibility: `src/api` for FastAPI routers, `src/core` for shared domain models, and `src/services` for background or external integrations. Unit and integration tests mirror the package layout inside `tests/`. Reusable task runners or data seeding scripts live in `scripts/`, while deployment manifests (Dockerfiles, Terraform, GitHub Actions) belong in `infra/`.
+실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로 사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다. 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
 
 ## Build, Test, and Development Commands
 Create a virtual environment (`python -m venv .venv && source .venv/bin/activate`) and install dependencies with `pip install -r requirements.txt`. `uvicorn src.api.main:app --reload` starts the local API server with auto-reload. Run `pytest` for the default test suite. Use `ruff check src tests` before pushing to catch lint violations, and `black src tests` if formatting drifts. Container workflows should rely on `docker compose up api` to ensure parity with production services.
