@@ -1,0 +1,9 @@
+_target_: src.infrastructure.model_adapters.translation.nllb.NllbTranslationAdapter
+model_id: facebook/nllb-200-distilled-600M
+revision: main
+source_lang: kor_Hang
+target_lang: eng_Latn
+device: auto
+batch_size: 8
+max_new_tokens: 256
+cache_dir: null

@@ -1,0 +1,22 @@
+preprocess:
+  strip_whitespace: true
+  collapse_internal_spaces: true
+
+translation:
+  enabled: true
+
+embedding:
+  enabled: true
+
+scoring:
+  similarity: cosine
+  categories:
+    - anxiety
+    - depression
+    - suicidal
+    - normal
+
+window:
+  days: 7
+  flush_event_count: 32
+  flush_interval_seconds: 300

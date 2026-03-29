@@ -1,0 +1,8 @@
+_target_: src.infrastructure.model_adapters.embedding.mxbai.MxbaiEmbeddingAdapter
+model_id: mixedbread-ai/mxbai-embed-large-v1
+revision: main
+device: auto
+normalize_embeddings: true
+batch_size: 16
+cache_dir: null
+task_prefix: ""

@@ -1,0 +1,22 @@
+schema_version = "labeled_query_set.v1"
+dataset_id = "ourafla_mental_health_text_classification_test.v1"
+mapping_version = "ourafla_test_to_4cat.v1"
+raw_label_scheme = "ourafla_4class.v1"
+annotation_source = "huggingface:ourafla/Mental-Health_Text-Classification_Dataset"
+
+text_column = "text"
+label_column = "status"
+id_column = "Unique_ID"
+default_locale = "eng_Latn"
+approved_by = "manual_import"
+
+created_at_source = "default"
+default_created_at = "2026-03-28T00:00:00+00:00"
+
+exclude_if_mapped_label = "__exclude__"
+
+[label_map]
+Anxiety = "anxiety"
+Depression = "depression"
+Normal = "normal"
+Suicidal = "suicidal"
