@@ -201,6 +201,21 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py \
 uv run python scripts/experiments/prototype_strategy_experiment.py
 ```
 
+`single` centroid만 보고 싶다면:
+
+```bash
+uv run python scripts/experiments/prototype_strategy_experiment.py \
+  strategy.name=single
+```
+
+`kmeans`만 `k=2`로 보고 싶다면:
+
+```bash
+uv run python scripts/experiments/prototype_strategy_experiment.py \
+  strategy.name=kmeans \
+  strategy.kmeans_candidate_ks=[2]
+```
+
 `hash_debug` smoke 예시:
 
 ```bash
@@ -217,6 +232,17 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 - `test/`
 - `strategies/`
 - `projections/`
+- `projections/train_{pca|umap}.{strategy}_prototypes.jsonl`
+- `projections/train_{pca|umap}.{strategy|label}_visual_centers.jsonl`
+
+설명:
+
+- projection 그림은 `train` split 기준이다.
+- 전략 선택은 `validation` 기준이다.
+- 최종 요약 accuracy는 `test` 기준이다.
+- `*_prototypes.jsonl`은 runtime scoring에 쓰는 prototype을 2D로 투영한 점이다.
+- `*_visual_centers.jsonl`은 실제 2D 그림 위 점들의 산술평균 중심이다.
+- `kmeans`일 때 visual center는 원공간 k-means cluster 할당을 유지한 뒤, 각 cluster의 2D 점 평균으로 계산한다.
 
 출력 기본 경로:
 

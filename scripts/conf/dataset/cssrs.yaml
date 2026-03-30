@@ -7,6 +7,7 @@ test_labeled_jsonl: null
 split_name: null
 train_jsonl: null
 validation_jsonl: null
+test_jsonl: null
 prototype_input_jsonl: null
 prototype_expected_categories:
   - suicidal

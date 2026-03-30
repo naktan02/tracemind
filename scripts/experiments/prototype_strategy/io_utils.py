@@ -8,27 +8,35 @@ from pathlib import Path
 from typing import Any
 
 
-def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
+def load_jsonl_rows(path: str | Path) -> list[dict[str, Any]]:
     """JSONL 파일을 row 목록으로 읽는다."""
+    resolved_path = Path(str(path))
     rows: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
+    for line in resolved_path.read_text(encoding="utf-8").splitlines():
         if line.strip():
             rows.append(json.loads(line))
     return rows
 
 
-def dump_json(path: Path, payload: dict[str, Any]) -> None:
+def dump_json(path: str | Path, payload: dict[str, Any]) -> None:
     """JSON 파일을 기록한다."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
+    resolved_path = Path(str(path))
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    resolved_path.write_text(
         json.dumps(payload, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
 
 
-def dump_jsonl(path: Path, rows: Sequence[dict[str, Any]]) -> None:
+def dump_jsonl(path: str | Path, rows: Sequence[dict[str, Any]]) -> None:
     """JSONL 파일을 기록한다."""
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
+    resolved_path = Path(str(path))
+    resolved_path.parent.mkdir(parents=True, exist_ok=True)
+    with resolved_path.open("w", encoding="utf-8") as file:
         for row in rows:
             file.write(json.dumps(row, ensure_ascii=True) + "\n")
+
+
+def resolve_output_dir(base_dir: str | Path, run_id: str) -> Path:
+    """Hydra config의 문자열/Path base_dir를 실행용 Path로 정규화한다."""
+    return Path(str(base_dir)) / run_id

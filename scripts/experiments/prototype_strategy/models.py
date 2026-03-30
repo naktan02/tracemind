@@ -105,6 +105,9 @@ class ProjectionArtifact:
     reducer_name: str
     points_path: Path
     figure_path: Path
+    prototype_strategy_name: str | None = None
+    prototype_points_path: Path | None = None
+    visual_center_points_path: Path | None = None
 
 
 @dataclass(slots=True)
@@ -128,6 +131,17 @@ class ExperimentSummary:
                     "reducer_name": artifact.reducer_name,
                     "points_path": str(artifact.points_path),
                     "figure_path": str(artifact.figure_path),
+                    "prototype_strategy_name": artifact.prototype_strategy_name,
+                    "prototype_points_path": (
+                        str(artifact.prototype_points_path)
+                        if artifact.prototype_points_path is not None
+                        else None
+                    ),
+                    "visual_center_points_path": (
+                        str(artifact.visual_center_points_path)
+                        if artifact.visual_center_points_path is not None
+                        else None
+                    ),
                 }
                 for artifact in self.projection_artifacts
             ],

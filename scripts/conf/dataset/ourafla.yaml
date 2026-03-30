@@ -7,6 +7,7 @@ test_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text
 split_name: ourafla_train_split.v1
 train_jsonl: data/processed/splits/ourafla_train_split.v1.train.jsonl
 validation_jsonl: data/processed/splits/ourafla_train_split.v1.validation.jsonl
+test_jsonl: ${dataset.test_labeled_jsonl}
 prototype_input_jsonl: ${dataset.train_jsonl}
 prototype_expected_categories:
   - anxiety

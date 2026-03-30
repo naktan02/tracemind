@@ -6,6 +6,10 @@ import math
 
 import numpy as np
 
+from scripts.experiments.prototype_strategy.io_utils import (
+    load_jsonl_rows,
+    resolve_output_dir,
+)
 from scripts.experiments.prototype_strategy_experiment import (
     DbscanPrototypeStrategy,
     EvaluationMetrics,
@@ -15,6 +19,7 @@ from scripts.experiments.prototype_strategy_experiment import (
     SinglePrototypeStrategy,
     StrategyEvaluationReport,
     StrategySelectionPolicy,
+    build_strategies,
 )
 
 
@@ -142,3 +147,68 @@ def test_selection_policy_prefers_accuracy_then_acceptance_then_simplicity() -> 
     )
 
     assert selected.strategy_name == "dbscan"
+
+
+def test_build_strategies_returns_single_requested_strategy() -> None:
+    strategies = build_strategies(
+        strategy_name="kmeans",
+        seed=42,
+        kmeans_candidate_ks=(2,),
+        kmeans_silhouette_sample_size=100,
+        dbscan_eps_values=(0.1,),
+        dbscan_min_samples_values=(3,),
+        dbscan_search_sample_size=100,
+        dbscan_min_cluster_coverage=0.6,
+    )
+
+    assert len(strategies) == 1
+    assert isinstance(strategies[0], KMeansPrototypeStrategy)
+    assert strategies[0].candidate_ks == (2,)
+
+
+def test_build_strategies_returns_all_defaults_for_all_mode() -> None:
+    strategies = build_strategies(
+        strategy_name="all",
+        seed=42,
+        kmeans_candidate_ks=(2, 3),
+        kmeans_silhouette_sample_size=100,
+        dbscan_eps_values=(0.1,),
+        dbscan_min_samples_values=(3,),
+        dbscan_search_sample_size=100,
+        dbscan_min_cluster_coverage=0.6,
+    )
+
+    assert [type(strategy) for strategy in strategies] == [
+        SinglePrototypeStrategy,
+        KMeansPrototypeStrategy,
+        DbscanPrototypeStrategy,
+    ]
+
+
+def test_resolve_output_dir_accepts_string_base_dir() -> None:
+    output_dir = resolve_output_dir(
+        "data/processed/evaluations/prototype_strategy_experiments",
+        "20260330T000000Z",
+    )
+
+    assert str(output_dir).endswith(
+        "data/processed/evaluations/prototype_strategy_experiments/20260330T000000Z"
+    )
+
+
+def test_load_jsonl_rows_accepts_string_path(tmp_path) -> None:
+    path = tmp_path / "rows.jsonl"
+    path.write_text(
+        '{"query_id":"q1","mapped_label_4":"anxiety","text":"panic"}\n',
+        encoding="utf-8",
+    )
+
+    rows = load_jsonl_rows(str(path))
+
+    assert rows == [
+        {
+            "query_id": "q1",
+            "mapped_label_4": "anxiety",
+            "text": "panic",
+        }
+    ]

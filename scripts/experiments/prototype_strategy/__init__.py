@@ -11,6 +11,8 @@ from scripts.experiments.prototype_strategy.models import (
 from scripts.experiments.prototype_strategy.runner import (
     PrototypeExperimentRunner,
     StrategySelectionPolicy,
+    build_strategies,
+    build_strategy,
     render_validation_summary,
 )
 from scripts.experiments.prototype_strategy.strategies import (
@@ -33,5 +35,7 @@ __all__ = [
     "SinglePrototypeStrategy",
     "StrategyEvaluationReport",
     "StrategySelectionPolicy",
+    "build_strategies",
+    "build_strategy",
     "render_validation_summary",
 ]

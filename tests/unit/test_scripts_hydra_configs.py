@@ -20,7 +20,12 @@ def test_prototype_strategy_supports_short_group_override() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/prototype_strategy",
-            overrides=["runtime=gpu_local", "embedding=hash_debug"],
+            overrides=[
+                "runtime=gpu_local",
+                "embedding=hash_debug",
+                "strategy.name=kmeans",
+                "strategy.kmeans_candidate_ks=[2]",
+            ],
         )
 
     assert cfg.runtime.name == "gpu_local"
@@ -28,6 +33,8 @@ def test_prototype_strategy_supports_short_group_override() -> None:
     assert cfg.runtime.local_files_only is True
     assert cfg.embedding.backend == "hash_debug"
     assert cfg.embedding.model_id == "hash_debug"
+    assert cfg.strategy.name == "kmeans"
+    assert list(cfg.strategy.kmeans_candidate_ks) == [2]
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -55,6 +62,7 @@ def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
         cfg = compose(config_name="datasets/run_dataset_pipeline")
 
     assert cfg.dataset.name == "ourafla"
+    assert cfg.dataset.test_jsonl == cfg.dataset.test_labeled_jsonl
     assert cfg.runtime.name == "gpu_online"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is False

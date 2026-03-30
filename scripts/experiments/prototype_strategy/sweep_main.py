@@ -5,17 +5,21 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 import hydra
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from scripts.experiments.prototype_strategy.io_utils import load_jsonl_rows
+from agent.src.infrastructure.model_adapters.embedding.factory import (
+    EmbeddingAdapterFactory,
+)
+from scripts.experiments.prototype_strategy.io_utils import (
+    load_jsonl_rows,
+    resolve_output_dir,
+)
 from scripts.experiments.prototype_strategy.sweep import (
     ThresholdSweepRequest,
     render_sweep_summary,
 )
+
 
 @hydra.main(
     version_base=None,
@@ -24,7 +28,7 @@ from scripts.experiments.prototype_strategy.sweep import (
 )
 def main(config: DictConfig) -> None:
     run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    output_dir = config.output.base_dir / run_id
+    output_dir = resolve_output_dir(config.output.base_dir, run_id)
 
     adapter = EmbeddingAdapterFactory.create(
         instantiate(config.embedding.spec)

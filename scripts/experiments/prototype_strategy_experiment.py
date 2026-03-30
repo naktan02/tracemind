@@ -25,6 +25,8 @@ from scripts.experiments.prototype_strategy import (  # noqa: E402
     SinglePrototypeStrategy,
     StrategyEvaluationReport,
     StrategySelectionPolicy,
+    build_strategies,
+    build_strategy,
     render_validation_summary,
 )
 from scripts.experiments.prototype_strategy.main import main  # noqa: E402
@@ -42,6 +44,8 @@ __all__ = [
     "SinglePrototypeStrategy",
     "StrategyEvaluationReport",
     "StrategySelectionPolicy",
+    "build_strategies",
+    "build_strategy",
     "main",
     "render_validation_summary",
 ]
