@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from .training_task_config import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
+
 
 @dataclass(slots=True)
 class TrainingTask:
@@ -21,8 +26,12 @@ class TrainingTask:
     batch_size: int
     learning_rate: float
     max_steps: int
-    objective_config: dict[str, str | int | float | bool] = field(default_factory=dict)
-    selection_policy: dict[str, str | int | float | bool] = field(default_factory=dict)
+    objective_config: TrainingObjectiveConfig = field(
+        default_factory=TrainingObjectiveConfig
+    )
+    selection_policy: TrainingSelectionPolicy = field(
+        default_factory=TrainingSelectionPolicy
+    )
     deadline_at: datetime | None = None
     gradient_clip_norm: float | None = None
     min_required_examples: int | None = None

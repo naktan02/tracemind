@@ -9,7 +9,7 @@ from datetime import datetime
 
 @dataclass(slots=True)
 class VectorAdapterDelta:
-    """client가 생성한 차원별 scale delta."""
+    """현재 concrete 구현인 diagonal scale adapter update."""
 
     schema_version: str
     model_id: str
@@ -21,6 +21,7 @@ class VectorAdapterDelta:
     created_at: datetime | None = None
     mean_margin: float | None = None
     label_counts: dict[str, int] = field(default_factory=dict)
+    adapter_kind: str = "diagonal_scale"
 
     @property
     def embedding_dim(self) -> int:

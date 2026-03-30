@@ -59,21 +59,17 @@ class PseudoLabelSelectionService:
         scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent],
         training_task: TrainingTask,
     ) -> PseudoLabelSelectionResult:
-        confidence_threshold = self._get_float(
-            training_task.objective_config,
-            key="confidence_threshold",
-            default=self.config.confidence_threshold,
+        confidence_threshold = (
+            training_task.objective_config.confidence_threshold
+            if training_task.objective_config.confidence_threshold is not None
+            else self.config.confidence_threshold
         )
-        margin_threshold = self._get_float(
-            training_task.objective_config,
-            key="margin_threshold",
-            default=self.config.margin_threshold,
+        margin_threshold = (
+            training_task.objective_config.margin_threshold
+            if training_task.objective_config.margin_threshold is not None
+            else self.config.margin_threshold
         )
-        max_examples = self._get_int(
-            training_task.selection_policy,
-            key="max_examples",
-            default=None,
-        )
+        max_examples = training_task.selection_policy.max_examples
 
         initial_candidates = [
             self._build_candidate(
@@ -189,29 +185,3 @@ class PseudoLabelSelectionService:
                 "runner_up_score": candidate.runner_up_score or 0.0,
             },
         )
-
-    @staticmethod
-    def _get_float(
-        source: dict[str, str | int | float | bool],
-        *,
-        key: str,
-        default: float,
-    ) -> float:
-        value = source.get(key, default)
-        if isinstance(value, bool):
-            raise ValueError(f"Expected float-like value for '{key}', got bool.")
-        return float(value)
-
-    @staticmethod
-    def _get_int(
-        source: dict[str, str | int | float | bool],
-        *,
-        key: str,
-        default: int | None,
-    ) -> int | None:
-        value = source.get(key, default)
-        if value is None:
-            return None
-        if isinstance(value, bool):
-            raise ValueError(f"Expected int-like value for '{key}', got bool.")
-        return int(value)

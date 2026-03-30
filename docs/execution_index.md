@@ -2,97 +2,47 @@
 
 ## 목적
 
-이 문서는 TraceMind 문서의 진입점이다.
-2026-03-29 전환 결정 이후, 이 프로젝트의 활성 경로는
-`WindowSummary/NormPack` 기반 normative analytics가 아니라
-`personalized local adaptation + FL runtime` 기준으로 해석한다.
-
----
+이 문서는 TraceMind 작업의 짧은 진입점이다.
+현재 활성 경로는 `normative analytics`가 아니라
+`personalized local inference + federated shared model improvement`다.
 
 ## 읽는 순서
 
 1. [`plan.md`](/home/jmgjmg102/tracemind_server/plan.md)
-   - 연구 비전, 문제 정의, 전환 결정, 새 핵심 메시지
-
+   - 왜 이 구조를 택했는지
 2. [`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-   - 구현 순서, 활성 아키텍처 결정, 유지/폐기 범위
-
-3. [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
-   - 단계별 상세 작업, 검증 기준, 사용자 확인 게이트
-
-4. 활성 계약 문서
-   - [`docs/contracts/prototype_pack_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_pack_v1.md)
-   - [`docs/contracts/prototype_build_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_build_state_v1.md)
-   - [`docs/contracts/model_manifest_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/model_manifest_v1.md)
-   - [`docs/contracts/training_task_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
-   - [`docs/contracts/training_update_envelope_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/training_update_envelope_v1.md)
-   - [`docs/contracts/decision_feedback_signal_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/decision_feedback_signal_v1.md)
-   - [`docs/contracts/personalization_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/personalization_state_v1.md)
-
-5. 보관 문서
-   - [`docs/contracts/window_summary_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/window_summary_v1.md)
-   - 위 문서는 현재 활성 계획의 contract source of truth가 아니라, 이전 normative 경로의 보관 문서다.
-
----
+   - 지금 무엇을 구현하고 무엇을 미루는지
+3. [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+   - 현재 payload 계약 해석
+4. 필요한 경우만 [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
+   - phase 이름과 검증 포인트 빠른 확인
 
 ## 문서 역할
 
-### 1. 비전 문서
-
 - [`plan.md`](/home/jmgjmg102/tracemind_server/plan.md)
-- 연구 목적, 구조 전환 이유, 장기 메시지
-
-### 2. 실행 계획 문서
-
+  - 연구 비전, 핵심 가설, global/local 분리 원칙
 - [`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-- 실제 구현 순서와 아키텍처 결정
-
-### 3. 실행 로드맵 문서
-
+  - 활성 아키텍처, 현재 phase, 다음 액션, 검증 기준
 - [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
-- 단계별 작업과 검증, 사용자 확인 지점
-
-### 4. 활성 계약 문서
-
-- [`docs/contracts/prototype_pack_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_pack_v1.md)
-- [`docs/contracts/prototype_build_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_build_state_v1.md)
-- [`docs/contracts/model_manifest_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/model_manifest_v1.md)
-- [`docs/contracts/training_task_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
-- [`docs/contracts/training_update_envelope_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/training_update_envelope_v1.md)
-- [`docs/contracts/decision_feedback_signal_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/decision_feedback_signal_v1.md)
-- [`docs/contracts/personalization_state_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/personalization_state_v1.md)
-
-### 5. 보관 계약 문서
-
-- [`docs/contracts/window_summary_v1.md`](/home/jmgjmg102/tracemind_server/docs/contracts/window_summary_v1.md)
-- 이전 normative analytics 경로 참고용
-
-### 6. 대화 기록
-
-- [`docs/notes/README.md`](/home/jmgjmg102/tracemind_server/docs/notes/README.md)
-- 세션 기록과 전환 결정 이력
-
----
+  - 중복 설명 없이 phase map만 제공
+- [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+  - 코드 가까운 contract 해설
+- [`docs/contracts/`](/home/jmgjmg102/tracemind_server/docs/contracts)
+  - 배경 설명과 설계 메모
 
 ## 작업 시작 체크리스트
 
-작업 전 최소 확인 순서:
-
-1. `plan.md`에서 현재 연구 방향 확인
-2. `docs/project_execution_plan.md`에서 현재 phase와 폐기 범위 확인
-3. `docs/staged_execution_roadmap.md`에서 지금 작업의 산출물과 검증 기준 확인
-4. 관련 활성 contract 문서 확인
-5. FL 범위, feedback 신호, privacy 보호 수준 중 사용자 판단이 필요한 항목인지 확인
-
----
+1. 이번 요청이 `global/shared`인지 `local/private`인지 먼저 구분한다.
+2. 현재 활성 경로가 `NormPack`이 아니라 `shared adapter + personalization`인지 다시 확인한다.
+3. 바뀔 축이 무엇인지 적는다.
+   - 예: adapter family, training backend, aggregation backend, privacy layer
+4. 관련 contract를 코드 가까운 문서에서 먼저 본다.
+5. 사용자 판단이 필요한 항목인지 확인한다.
 
 ## 사용자 확인이 필요한 변경
 
-아래 변경은 임의로 확정하지 않고 사용자 확인 후 진행한다.
-
-1. full encoder FL 활성화 여부
-2. pseudo-label을 정식 학습 신호로 채택할지 여부
-3. self-report / delayed outcome / support action 중 어떤 feedback을 수집할지
-4. 서버로 보내는 update 메타데이터 범위
-5. clipping, secure aggregation, DP 도입 시점
-6. private adapter 기반 표현 개인화를 언제 열지
+1. full encoder FL 활성화
+2. pseudo-label을 정식 학습 신호로 승격
+3. 서버로 보내는 update 메타데이터 확대
+4. private adapter/head를 언제 열지
+5. secure aggregation, DP, HE 도입 시점

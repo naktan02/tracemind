@@ -10,7 +10,7 @@ from datetime import datetime
 
 @dataclass(slots=True)
 class VectorAdapterState:
-    """차원별 scale로 임베딩 공간을 미세 조정하는 경량 상태."""
+    """현재 concrete 구현인 diagonal scale adapter 상태."""
 
     schema_version: str
     model_id: str
@@ -18,6 +18,7 @@ class VectorAdapterState:
     training_scope: str
     dimension_scales: list[float]
     updated_at: datetime
+    adapter_kind: str = "diagonal_scale"
 
     @classmethod
     def identity(
@@ -41,6 +42,7 @@ class VectorAdapterState:
             training_scope=training_scope,
             dimension_scales=[1.0] * embedding_dim,
             updated_at=updated_at,
+            adapter_kind="diagonal_scale",
         )
 
     @property

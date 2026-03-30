@@ -11,15 +11,25 @@ from uuid import uuid4
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.training.privacy_guard_service import (
+    DiagonalScaleClipOnlyPrivacyGuard,
+    SharedAdapterPrivacyGuard,
+)
 from agent.src.services.training.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
-from shared.src.contracts.adapter_contracts import VectorAdapterDeltaPayload
+from shared.src.contracts.adapter_contracts import (
+    SharedAdapterUpdatePayload,
+    VectorAdapterDeltaPayload,
+)
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
+)
+from shared.src.domain.entities.training.shared_adapter_update import (
+    SharedAdapterUpdate,
 )
 from shared.src.domain.entities.training.training_task import TrainingTask
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
@@ -28,20 +38,27 @@ from shared.src.domain.entities.training.vector_adapter_delta import (
 )
 
 
-class TrainingBackend(Protocol):
-    """채택된 로컬 예시를 update payload로 바꾸는 backend 인터페이스."""
+class SharedAdapterTrainingBackend(Protocol):
+    """채택된 로컬 예시를 shared adapter update로 바꾸는 backend 인터페이스."""
 
     payload_format: str
+    adapter_kind: str
 
-    def build_delta(
+    def build_update(
         self,
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
         accepted_examples: tuple["EmbeddedTrainingExample", ...],
         created_at: datetime,
-    ) -> VectorAdapterDelta:
-        """accepted local examples를 기반으로 delta를 계산한다."""
+    ) -> SharedAdapterUpdate:
+        """accepted local examples를 기반으로 shared adapter update를 계산한다."""
+
+    def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
+        """저장 가능한 payload 형식으로 변환한다."""
+
+
+TrainingBackend = SharedAdapterTrainingBackend
 
 
 @dataclass(slots=True)
@@ -50,19 +67,21 @@ class EmbeddedTrainingExample:
 
     scored_event: ScoredEvent
     embedding: list[float]
+    base_embedding: list[float] | None = None
     candidate: PseudoLabelCandidate | None = None
 
 
 @dataclass(slots=True)
-class SyntheticVectorAdapterTrainingBackend:
-    """결정적 통계 기반으로 경량 adapter delta를 만든다."""
+class DiagonalScaleHeuristicTrainingBackend:
+    """결정적 통계 기반으로 diagonal scale adapter update를 만든다."""
 
-    payload_format: str = "vector_adapter_delta"
+    payload_format: str = "diagonal_scale_update"
+    adapter_kind: str = "diagonal_scale"
     delta_scale_multiplier: float = 10.0
     max_abs_delta: float = 0.05
     minimum_effective_scale: float = 1e-4
 
-    def build_delta(
+    def build_update(
         self,
         *,
         training_task: TrainingTask,
@@ -123,7 +142,31 @@ class SyntheticVectorAdapterTrainingBackend:
             mean_margin=total_margin / len(accepted_examples),
             label_counts=dict(sorted(label_counts.items())),
             created_at=created_at,
+            adapter_kind=self.adapter_kind,
         )
+
+    def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
+        if not isinstance(update, VectorAdapterDelta):
+            raise TypeError(
+                "DiagonalScaleHeuristicTrainingBackend expects VectorAdapterDelta "
+                f"for payload conversion, got {type(update)!r}."
+            )
+        return VectorAdapterDeltaPayload(
+            schema_version=update.schema_version,
+            adapter_kind=update.adapter_kind,
+            model_id=update.model_id,
+            base_model_revision=update.base_model_revision,
+            training_scope=update.training_scope,
+            dimension_deltas=update.dimension_deltas,
+            example_count=update.example_count,
+            mean_confidence=update.mean_confidence,
+            created_at=update.created_at,
+            mean_margin=update.mean_margin,
+            label_counts=update.label_counts,
+        )
+
+
+SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend
 
 
 @dataclass(slots=True)
@@ -132,14 +175,16 @@ class LocalTrainingResult:
 
     selection_result: PseudoLabelSelectionResult
     update_envelope: TrainingUpdateEnvelope | None = None
-    update_payload: VectorAdapterDelta | None = None
+    update_payload: SharedAdapterUpdate | None = None
 
 
 @dataclass(slots=True)
 class LocalTrainingRequest:
     """로컬 학습 실행 입력 묶음."""
 
-    training_examples: tuple[EmbeddedTrainingExample, ...] | list[EmbeddedTrainingExample]
+    training_examples: (
+        tuple[EmbeddedTrainingExample, ...] | list[EmbeddedTrainingExample]
+    )
     training_task: TrainingTask
     model_manifest: ModelManifest
     created_at: datetime | None = None
@@ -155,12 +200,18 @@ class LocalTrainingService:
     repository: TrainingArtifactRepository = field(
         default_factory=TrainingArtifactRepository
     )
-    backend: TrainingBackend = field(
-        default_factory=SyntheticVectorAdapterTrainingBackend
+    backend: SharedAdapterTrainingBackend = field(
+        default_factory=DiagonalScaleHeuristicTrainingBackend
+    )
+    privacy_guard: SharedAdapterPrivacyGuard = field(
+        default_factory=DiagonalScaleClipOnlyPrivacyGuard
     )
 
     def run(self, request: LocalTrainingRequest) -> LocalTrainingResult:
-        if request.training_task.model_revision != request.model_manifest.model_revision:
+        if (
+            request.training_task.model_revision
+            != request.model_manifest.model_revision
+        ):
             raise ValueError("TrainingTask model_revision must match ModelManifest.")
 
         effective_created_at = request.created_at or datetime.now(timezone.utc)
@@ -183,21 +234,21 @@ class LocalTrainingService:
         if len(accepted_examples) < minimum_examples:
             return LocalTrainingResult(selection_result=selection_result)
 
-        update_payload = self.backend.build_delta(
+        update_payload = self.backend.build_update(
             training_task=request.training_task,
             model_manifest=request.model_manifest,
             accepted_examples=accepted_examples,
             created_at=effective_created_at,
         )
-        clipped_payload, clipped = self._maybe_clip_delta(
-            delta=update_payload,
-            clip_norm=request.training_task.gradient_clip_norm,
+        protected_update = self.privacy_guard.protect(
+            update=update_payload,
+            training_task=request.training_task,
         )
 
         update_id = f"update_{request.training_task.round_id}_{uuid4().hex[:12]}"
-        payload_path = self.repository.save_vector_adapter_delta(
+        payload_path = self.repository.save_shared_adapter_update(
             update_id,
-            self._to_delta_payload(clipped_payload),
+            self.backend.to_payload(protected_update.update),
         )
         update_envelope = TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
@@ -212,19 +263,19 @@ class LocalTrainingService:
             example_count=len(accepted_examples),
             client_metrics={
                 "accepted_ratio": selection_result.accepted_ratio,
-                "mean_confidence": clipped_payload.mean_confidence,
-                "mean_margin": clipped_payload.mean_margin or 0.0,
-                "delta_l2_norm": clipped_payload.l2_norm(),
+                "mean_confidence": protected_update.update.mean_confidence,
+                "mean_margin": protected_update.update.mean_margin or 0.0,
+                "delta_l2_norm": protected_update.update.l2_norm(),
                 "selected_examples": float(len(accepted_examples)),
             },
             created_at=effective_created_at,
-            clipped=clipped,
-            dp_applied=False,
+            clipped=protected_update.clipped,
+            dp_applied=protected_update.dp_applied,
         )
         return LocalTrainingResult(
             selection_result=selection_result,
             update_envelope=update_envelope,
-            update_payload=clipped_payload,
+            update_payload=protected_update.update,
         )
 
     def run_task(
@@ -244,38 +295,3 @@ class LocalTrainingService:
                 created_at=created_at,
             )
         )
-
-    @staticmethod
-    def _to_delta_payload(delta: VectorAdapterDelta) -> VectorAdapterDeltaPayload:
-        return VectorAdapterDeltaPayload(
-            schema_version=delta.schema_version,
-            model_id=delta.model_id,
-            base_model_revision=delta.base_model_revision,
-            training_scope=delta.training_scope,
-            dimension_deltas=delta.dimension_deltas,
-            example_count=delta.example_count,
-            mean_confidence=delta.mean_confidence,
-            created_at=delta.created_at,
-            mean_margin=delta.mean_margin,
-            label_counts=delta.label_counts,
-        )
-
-    @staticmethod
-    def _maybe_clip_delta(
-        *,
-        delta: VectorAdapterDelta,
-        clip_norm: float | None,
-    ) -> tuple[VectorAdapterDelta, bool]:
-        if clip_norm is None:
-            return delta, False
-
-        current_norm = delta.l2_norm()
-        if current_norm == 0.0 or current_norm <= clip_norm:
-            return delta, False
-
-        scale = clip_norm / current_norm
-        clipped = replace(
-            delta,
-            dimension_deltas=[value * scale for value in delta.dimension_deltas],
-        )
-        return clipped, True

@@ -16,6 +16,10 @@ from agent.src.services.training.local_training_service import (
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.training_task import TrainingTask
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
 
 
 def _build_manifest() -> ModelManifest:
@@ -24,7 +28,7 @@ def _build_manifest() -> ModelManifest:
         model_id="tracemind-embed",
         model_revision="rev_000",
         published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-        artifact_kind="vector_adapter_state",
+        artifact_kind="shared_adapter_state",
         artifact_ref="/tmp/rev_000.json",
         prototype_version="proto_000",
         training_scope="adapter_only",
@@ -33,7 +37,11 @@ def _build_manifest() -> ModelManifest:
     )
 
 
-def _build_task(*, min_required_examples: int = 1) -> TrainingTask:
+def _build_task(
+    *,
+    min_required_examples: int = 1,
+    gradient_clip_norm: float | None = 0.05,
+) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
         task_id="task_001",
@@ -46,14 +54,14 @@ def _build_task(*, min_required_examples: int = 1) -> TrainingTask:
         batch_size=8,
         learning_rate=1e-2,
         max_steps=10,
-        objective_config={
-            "loss": "synthetic_vector_adapter",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-        },
-        selection_policy={"max_examples": 1},
+        objective_config=TrainingObjectiveConfig(
+            loss="diagonal_scale_heuristic",
+            confidence_threshold=0.6,
+            margin_threshold=0.02,
+        ),
+        selection_policy=TrainingSelectionPolicy(max_examples=1),
         min_required_examples=min_required_examples,
-        gradient_clip_norm=0.05,
+        gradient_clip_norm=gradient_clip_norm,
     )
 
 
@@ -79,7 +87,7 @@ def _make_example(
 def test_local_training_service_creates_update_from_top_candidates(
     tmp_path: Path,
 ) -> None:
-    repository = TrainingArtifactRepository(state_root=tmp_path / "training_updates")
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
     service = LocalTrainingService(repository=repository)
 
     result = service.run(
@@ -112,14 +120,20 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert result.update_payload is not None
     assert result.update_envelope.example_count == 1
     assert result.update_payload.label_counts == {"anxiety": 1}
-    assert result.update_envelope.payload_format == "vector_adapter_delta"
+    assert result.update_payload.adapter_kind == "diagonal_scale"
+    assert result.update_envelope.payload_format == "diagonal_scale_update"
     assert Path(result.update_envelope.payload_ref).exists()
+    assert (
+        Path(result.update_envelope.payload_ref).parent.name
+        == "shared_adapter_updates"
+    )
+    assert result.update_envelope.clipped is False
 
 
 def test_local_training_service_skips_update_when_examples_are_insufficient(
     tmp_path: Path,
 ) -> None:
-    repository = TrainingArtifactRepository(state_root=tmp_path / "training_updates")
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
     service = LocalTrainingService(repository=repository)
 
     result = service.run(
@@ -139,3 +153,29 @@ def test_local_training_service_skips_update_when_examples_are_insufficient(
     assert result.selection_result.accepted_count == 1
     assert result.update_envelope is None
     assert result.update_payload is None
+
+
+def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scales_delta(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(gradient_clip_norm=0.01),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_envelope is not None
+    assert result.update_envelope.clipped is True
+    assert result.update_payload is not None
+    assert result.update_payload.l2_norm() == 0.01

@@ -11,7 +11,7 @@ if str(MAIN_SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(MAIN_SERVER_ROOT))
 
 from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
-    VectorAdapterStateRepository,
+    SharedAdapterStateRepository,
 )
 from src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
@@ -19,21 +19,24 @@ from src.services.rounds.round_manager_service import (  # noqa: E402
 )
 
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
-    VectorAdapterDeltaPayload,
-    VectorAdapterStatePayload,
-    dump_vector_adapter_delta_payload,
+    DiagonalScaleAdapterStatePayload,
+    DiagonalScaleAdapterUpdatePayload,
+    dump_shared_adapter_update_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest  # noqa: E402
+from shared.src.domain.entities.artifacts.model_manifest import (  # noqa: E402
+    ModelManifest,
+)
 from shared.src.domain.entities.training.training_update import (  # noqa: E402
-    TrainingUpdateEnvelope,  # noqa: E402
+    TrainingUpdateEnvelope,
 )
 
 
 def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -> None:
-    repository = VectorAdapterStateRepository(state_root=tmp_path / "vector_states")
-    base_state_path = repository.save_state(
-        VectorAdapterStatePayload(
+    repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    base_state_path = repository.save_shared_adapter_state(
+        DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
+            adapter_kind="diagonal_scale",
             model_id="tracemind-embed",
             model_revision="rev_000",
             training_scope="adapter_only",
@@ -43,10 +46,11 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     )
     update_one_path = tmp_path / "updates" / "u1.json"
     update_two_path = tmp_path / "updates" / "u2.json"
-    dump_vector_adapter_delta_payload(
+    dump_shared_adapter_update_payload(
         update_one_path,
-        VectorAdapterDeltaPayload(
+        DiagonalScaleAdapterUpdatePayload(
             schema_version="vector_adapter_delta.v1",
+            adapter_kind="diagonal_scale",
             model_id="tracemind-embed",
             base_model_revision="rev_000",
             training_scope="adapter_only",
@@ -56,10 +60,11 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
             mean_margin=0.2,
         ),
     )
-    dump_vector_adapter_delta_payload(
+    dump_shared_adapter_update_payload(
         update_two_path,
-        VectorAdapterDeltaPayload(
+        DiagonalScaleAdapterUpdatePayload(
             schema_version="vector_adapter_delta.v1",
+            adapter_kind="diagonal_scale",
             model_id="tracemind-embed",
             base_model_revision="rev_000",
             training_scope="adapter_only",
@@ -78,7 +83,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                 model_id="tracemind-embed",
                 model_revision="rev_000",
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-                artifact_kind="vector_adapter_state",
+                artifact_kind="shared_adapter_state",
                 artifact_ref=str(base_state_path),
                 prototype_version="proto_000",
                 training_scope="adapter_only",
@@ -95,7 +100,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     payload_ref=str(update_one_path),
-                    payload_format="vector_adapter_delta",
+                    payload_format="diagonal_scale_update",
                     example_count=2,
                     client_metrics={"mean_loss": 0.1},
                 ),
@@ -108,7 +113,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
                     payload_ref=str(update_two_path),
-                    payload_format="vector_adapter_delta",
+                    payload_format="diagonal_scale_update",
                     example_count=1,
                     client_metrics={"mean_loss": 0.2},
                 ),
@@ -120,6 +125,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
 
     assert publication.next_manifest.model_revision == "rev_001"
     assert publication.next_manifest.prototype_version == "proto_001"
+    assert publication.next_manifest.artifact_kind == "shared_adapter_state"
     assert Path(publication.next_manifest.artifact_ref).exists()
     assert publication.next_state.dimension_scales[0] == 1.08
     assert publication.next_state.dimension_scales[1] == 0.9733333333333334

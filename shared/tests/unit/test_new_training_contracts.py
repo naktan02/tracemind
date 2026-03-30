@@ -8,6 +8,8 @@ from shared.src.contracts.personalization_contracts import (
 )
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignalPayload,
+    TrainingObjectiveConfigPayload,
+    TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
@@ -44,8 +46,8 @@ def test_training_payloads_capture_round_and_revision() -> None:
         batch_size=8,
         learning_rate=1e-4,
         max_steps=10,
-        objective_config={"loss": "contrastive"},
-        selection_policy={"max_examples": 32},
+        objective_config=TrainingObjectiveConfigPayload(loss="contrastive"),
+        selection_policy=TrainingSelectionPolicyPayload(max_examples=32),
     )
     update = TrainingUpdateEnvelopePayload(
         schema_version="training_update_envelope.v1",
@@ -63,6 +65,7 @@ def test_training_payloads_capture_round_and_revision() -> None:
 
     assert task.round_id == update.round_id
     assert update.base_model_revision == "rev_001"
+    assert task.selection_policy.max_examples == 32
 
 
 def test_feedback_and_personalization_payloads_are_local_friendly() -> None:

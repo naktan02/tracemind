@@ -1,11 +1,18 @@
-"""연합학습용 경량 adapter delta 집계 서비스."""
+"""Shared adapter 집계 서비스.
+
+현재 concrete 구현은 diagonal scale adapter 하나만 제공한다.
+"""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from typing import Sequence
+from typing import Protocol, Sequence
 
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
+from shared.src.domain.entities.training.shared_adapter_update import (
+    SharedAdapterUpdate,
+)
 from shared.src.domain.entities.training.vector_adapter_delta import (
     VectorAdapterDelta,
 )
@@ -26,25 +33,53 @@ class AggregationConfig:
 class AggregationResult:
     """집계 결과로 만들어진 새 전역 상태와 메트릭."""
 
-    next_state: VectorAdapterState
+    next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
 
 
-@dataclass(slots=True)
-class AggregationService:
-    """로컬 vector adapter delta를 전역 상태로 집계한다."""
+class SharedAdapterAggregationBackend(Protocol):
+    """Shared adapter 종류별 서버 집계 backend 인터페이스."""
 
+    adapter_kind: str
+
+    def aggregate(
+        self,
+        *,
+        base_state: SharedAdapterState,
+        update_payloads: Sequence[SharedAdapterUpdate],
+        next_model_revision: str,
+        aggregated_at: datetime,
+    ) -> AggregationResult:
+        """같은 adapter family의 update들을 새 전역 상태로 합친다."""
+
+
+@dataclass(slots=True)
+class DiagonalScaleAggregationService:
+    """Diagonal scale adapter update를 전역 상태로 집계한다."""
+
+    adapter_kind: str = "diagonal_scale"
     config: AggregationConfig = field(default_factory=AggregationConfig)
 
     def aggregate(
         self,
         *,
-        base_state: VectorAdapterState,
-        update_payloads: Sequence[VectorAdapterDelta],
+        base_state: SharedAdapterState,
+        update_payloads: Sequence[SharedAdapterUpdate],
         next_model_revision: str,
         aggregated_at: datetime,
     ) -> AggregationResult:
+        if not isinstance(base_state, VectorAdapterState):
+            raise TypeError(
+                "DiagonalScaleAggregationService expects VectorAdapterState as the "
+                f"base state, got {type(base_state)!r}."
+            )
+        if base_state.adapter_kind != self.adapter_kind:
+            raise ValueError(
+                "Base state adapter_kind does not match the diagonal scale "
+                f"aggregator: {base_state.adapter_kind}"
+            )
+
         valid_updates = [
             payload for payload in update_payloads if payload.example_count > 0
         ]
@@ -59,6 +94,16 @@ class AggregationService:
         weighted_delta_norm = 0.0
 
         for payload in valid_updates:
+            if not isinstance(payload, VectorAdapterDelta):
+                raise TypeError(
+                    "DiagonalScaleAggregationService expects VectorAdapterDelta "
+                    f"updates, got {type(payload)!r}."
+                )
+            if payload.adapter_kind != self.adapter_kind:
+                raise ValueError(
+                    "Update adapter_kind does not match the diagonal scale "
+                    f"aggregator: {payload.adapter_kind}"
+                )
             if payload.model_id != base_state.model_id:
                 raise ValueError("All update payloads must match the base model_id.")
             if payload.base_model_revision != base_state.model_revision:
@@ -97,6 +142,7 @@ class AggregationService:
             training_scope=base_state.training_scope,
             dimension_scales=next_scales,
             updated_at=aggregated_at,
+            adapter_kind=base_state.adapter_kind,
         )
         return AggregationResult(
             next_state=next_state,
@@ -109,3 +155,6 @@ class AggregationService:
             },
             update_count=len(valid_updates),
         )
+
+
+AggregationService = DiagonalScaleAggregationService

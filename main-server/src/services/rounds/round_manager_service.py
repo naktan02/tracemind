@@ -5,25 +5,26 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Mapping
 from uuid import uuid4
 
-from shared.src.contracts.adapter_contracts import (
-    VectorAdapterStatePayload,
-    load_vector_adapter_delta_payload,
-)
+from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.training_task import TrainingTask
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingConfigScalar,
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
-from shared.src.domain.entities.training.vector_adapter_delta import (
-    VectorAdapterDelta,
-)
-from shared.src.domain.entities.training.vector_adapter_state import (
-    VectorAdapterState,
-)
 from src.infrastructure.repositories.vector_adapter_state_repository import (
-    VectorAdapterStateRepository,
+    SharedAdapterStateRepository,
 )
-from src.services.rounds.aggregation_service import AggregationService
+from src.services.rounds.adapter_family_service import (
+    DiagonalScaleRoundFamily,
+    SharedAdapterRoundFamily,
+)
 
 
 @dataclass(slots=True)
@@ -31,7 +32,7 @@ class RoundPublication:
     """한 라운드 집계 후 발행되는 새 active pair 메타데이터."""
 
     next_manifest: ModelManifest
-    next_state: VectorAdapterState
+    next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
 
@@ -48,8 +49,12 @@ class TrainingTaskRequest:
     batch_size: int = 16
     learning_rate: float = 1e-4
     max_steps: int = 50
-    objective_config: dict[str, str | int | float | bool] | None = None
-    selection_policy: dict[str, str | int | float | bool] | None = None
+    objective_config: (
+        TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
+    ) = None
+    selection_policy: (
+        TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None
+    ) = None
     min_required_examples: int | None = None
     gradient_clip_norm: float | None = None
     deadline_at: datetime | None = None
@@ -71,9 +76,11 @@ class RoundPublicationRequest:
 class RoundManagerService:
     """라운드용 task를 만들고 새 model/prototype pair를 발행한다."""
 
-    aggregation_service: AggregationService = field(default_factory=AggregationService)
-    artifact_repository: VectorAdapterStateRepository = field(
-        default_factory=VectorAdapterStateRepository
+    adapter_family: SharedAdapterRoundFamily = field(
+        default_factory=DiagonalScaleRoundFamily
+    )
+    artifact_repository: SharedAdapterStateRepository = field(
+        default_factory=SharedAdapterStateRepository
     )
 
     def create_training_task(self, request: TrainingTaskRequest) -> TrainingTask:
@@ -89,13 +96,8 @@ class RoundManagerService:
             batch_size=request.batch_size,
             learning_rate=request.learning_rate,
             max_steps=request.max_steps,
-            objective_config=request.objective_config
-            or {
-                "loss": "synthetic_vector_adapter",
-                "confidence_threshold": 0.6,
-                "margin_threshold": 0.02,
-            },
-            selection_policy=request.selection_policy or {"max_examples": 128},
+            objective_config=self._resolve_objective_config(request.objective_config),
+            selection_policy=self._resolve_selection_policy(request.selection_policy),
             deadline_at=request.deadline_at,
             gradient_clip_norm=request.gradient_clip_norm,
             min_required_examples=request.min_required_examples,
@@ -118,21 +120,21 @@ class RoundManagerService:
         update_payloads = [
             self._load_update_payload(update) for update in request.updates
         ]
-        aggregation = self.aggregation_service.aggregate(
+        aggregation = self.adapter_family.aggregation_backend.aggregate(
             base_state=base_state,
             update_payloads=update_payloads,
             next_model_revision=next_revision,
             aggregated_at=effective_published_at,
         )
-        artifact_path = self.artifact_repository.save_state(
-            self._to_state_payload(aggregation.next_state)
+        artifact_path = self.artifact_repository.save_shared_adapter_state(
+            self.adapter_family.state_to_payload(aggregation.next_state)
         )
         next_manifest = ModelManifest(
             schema_version=request.base_manifest.schema_version,
             model_id=request.base_manifest.model_id,
             model_revision=aggregation.next_state.model_revision,
             published_at=effective_published_at,
-            artifact_kind=request.base_manifest.artifact_kind,
+            artifact_kind="shared_adapter_state",
             artifact_ref=str(artifact_path),
             prototype_version=request.next_prototype_version,
             training_scope=request.base_manifest.training_scope,
@@ -154,42 +156,48 @@ class RoundManagerService:
             update_count=aggregation.update_count,
         )
 
-    def _load_base_state(self, base_manifest: ModelManifest) -> VectorAdapterState:
-        payload = self.artifact_repository.load_state_from_ref(
+    def _load_base_state(self, base_manifest: ModelManifest) -> SharedAdapterState:
+        payload = self.artifact_repository.load_shared_adapter_state_from_ref(
             base_manifest.artifact_ref
         )
-        return VectorAdapterState(
-            schema_version=payload.schema_version,
-            model_id=payload.model_id,
-            model_revision=payload.model_revision,
-            training_scope=payload.training_scope,
-            dimension_scales=list(payload.dimension_scales),
-            updated_at=payload.updated_at,
+        state = self.adapter_family.state_from_payload(payload)
+        if state.adapter_kind != self.adapter_family.aggregation_backend.adapter_kind:
+            raise ValueError(
+                "Base state adapter_kind does not match the configured "
+                f"aggregation backend: {state.adapter_kind}"
+            )
+        return state
+
+    def _load_update_payload(self, update: TrainingUpdateEnvelope):
+        payload = load_shared_adapter_update_payload(Path(update.payload_ref))
+        if update.payload_format not in self.adapter_family.accepted_update_formats:
+            raise ValueError(
+                "Unsupported payload_format for adapter_kind "
+                f"{payload.adapter_kind}: {update.payload_format}"
+            )
+        return self.adapter_family.update_from_payload(payload)
+
+    @staticmethod
+    def _resolve_objective_config(
+        source: TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None,
+    ) -> TrainingObjectiveConfig:
+        if isinstance(source, TrainingObjectiveConfig):
+            return source
+        return TrainingObjectiveConfig.from_mapping(
+            source
+            or {
+                "loss": "diagonal_scale_heuristic",
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.02,
+            }
         )
 
     @staticmethod
-    def _load_update_payload(update: TrainingUpdateEnvelope) -> VectorAdapterDelta:
-        payload = load_vector_adapter_delta_payload(Path(update.payload_ref))
-        return VectorAdapterDelta(
-            schema_version=payload.schema_version,
-            model_id=payload.model_id,
-            base_model_revision=payload.base_model_revision,
-            training_scope=payload.training_scope,
-            dimension_deltas=list(payload.dimension_deltas),
-            example_count=payload.example_count,
-            mean_confidence=payload.mean_confidence,
-            created_at=payload.created_at,
-            mean_margin=payload.mean_margin,
-            label_counts=dict(payload.label_counts),
-        )
-
-    @staticmethod
-    def _to_state_payload(state: VectorAdapterState) -> VectorAdapterStatePayload:
-        return VectorAdapterStatePayload(
-            schema_version=state.schema_version,
-            model_id=state.model_id,
-            model_revision=state.model_revision,
-            training_scope=state.training_scope,
-            dimension_scales=state.dimension_scales,
-            updated_at=state.updated_at,
+    def _resolve_selection_policy(
+        source: TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None,
+    ) -> TrainingSelectionPolicy:
+        if isinstance(source, TrainingSelectionPolicy):
+            return source
+        return TrainingSelectionPolicy.from_mapping(
+            source or {"max_examples": 128}
         )

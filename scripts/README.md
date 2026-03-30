@@ -339,8 +339,8 @@ uv run python scripts/experiments/run_federated_simulation.py \
 
 - `main_server/model_manifests/`
 - `main_server/prototype_packs/`
-- `main_server/vector_adapter_states/`
-- `agents/<agent_id>/training_updates/`
+- `main_server/shared_adapter_states/`
+- `agents/<agent_id>/shared_adapter_updates/`
 
 현재 수준:
 
@@ -348,7 +348,7 @@ uv run python scripts/experiments/run_federated_simulation.py \
 - 여러 client shard를 가상 agent처럼 돌린다.
 - 각 agent는 pseudo-label 선별과 local update 생성을 수행한다.
 - 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
-- 아직 실제 LoRA 분산 학습은 아니고, synthetic vector adapter delta 기반 simulation이다.
+- 아직 실제 LoRA 분산 학습은 아니고, diagonal scale shared adapter 기반 simulation이다.
 
 ---
 

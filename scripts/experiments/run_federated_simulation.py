@@ -23,7 +23,7 @@ if str(MAIN_SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(MAIN_SERVER_ROOT))
 
 from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
-    VectorAdapterStateRepository,
+    SharedAdapterStateRepository,
 )
 from src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
@@ -38,15 +38,15 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
 from agent.src.infrastructure.repositories.training_artifact_repository import (  # noqa: E402
     TrainingArtifactRepository,
 )
+from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
 from agent.src.services.training.local_training_service import (  # noqa: E402
     EmbeddedTrainingExample,
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
-    VectorAdapterStatePayload,
+    DiagonalScaleAdapterStatePayload,
 )
 from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifestPayload,
@@ -57,10 +57,12 @@ from shared.src.contracts.prototype_contracts import (  # noqa: E402
     dump_prototype_pack_payload,
     extract_category_centroids,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest  # noqa: E402
+from shared.src.domain.entities.artifacts.model_manifest import (  # noqa: E402
+    ModelManifest,
+)
 from shared.src.domain.entities.inference.events import ScoredEvent  # noqa: E402
 from shared.src.domain.entities.training.vector_adapter_state import (  # noqa: E402
-    VectorAdapterState,  # noqa: E402
+    VectorAdapterState,
 )
 
 
@@ -220,8 +222,8 @@ def run_simulation(
     embedding_dim = len(
         adapter.embed_texts([str(dataset_split.bootstrap_rows[0]["text"])])[0]
     )
-    state_repository = VectorAdapterStateRepository(
-        state_root=output_dir / "main_server" / "vector_adapter_states"
+    state_repository = SharedAdapterStateRepository(
+        state_root=output_dir / "main_server" / "shared_adapter_states"
     )
     round_manager = RoundManagerService(artifact_repository=state_repository)
 
@@ -235,9 +237,10 @@ def run_simulation(
         embedding_dim=embedding_dim,
         updated_at=now,
     )
-    initial_state_path = state_repository.save_state(
-        VectorAdapterStatePayload(
+    initial_state_path = state_repository.save_shared_adapter_state(
+        DiagonalScaleAdapterStatePayload(
             schema_version=initial_state.schema_version,
+            adapter_kind=initial_state.adapter_kind,
             model_id=initial_state.model_id,
             model_revision=initial_state.model_revision,
             training_scope=initial_state.training_scope,
@@ -260,7 +263,7 @@ def run_simulation(
         model_id=model_id,
         model_revision=initial_model_revision,
         published_at=now,
-        artifact_kind="vector_adapter_state",
+        artifact_kind="shared_adapter_state",
         artifact_ref=str(initial_state_path),
         prototype_version=initial_prototype_version,
         training_scope=training_scope,
@@ -291,7 +294,7 @@ def run_simulation(
                 active_manifest=active_manifest,
                 round_id=round_id,
                 objective_config={
-                    "loss": "synthetic_vector_adapter",
+                    "loss": "diagonal_scale_heuristic",
                     "confidence_threshold": confidence_threshold,
                     "margin_threshold": margin_threshold,
                 },
@@ -313,12 +316,7 @@ def run_simulation(
             )
             local_training_service = LocalTrainingService(
                 repository=TrainingArtifactRepository(
-                    state_root=(
-                        output_dir
-                        / "agents"
-                        / shard.client_id
-                        / "training_updates"
-                    )
+                    state_root=output_dir / "agents" / shard.client_id
                 )
             )
             local_result = local_training_service.run(
@@ -428,6 +426,7 @@ def build_training_examples(
             EmbeddedTrainingExample(
                 scored_event=scored_event,
                 embedding=adapted_embedding,
+                base_embedding=list(base_embedding),
             )
         )
     return tuple(examples)
