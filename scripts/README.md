@@ -366,12 +366,15 @@ uv run python scripts/experiments/run_federated_simulation.py \
 - `main_server/prototype_packs/`
 - `main_server/shared_adapter_states/`
 - `agents/<agent_id>/shared_adapter_updates/`
+- `agents/<agent_id>/selection_dumps/`
 
 현재 수준:
 
 - 실제 `train/validation` JSONL을 사용한다.
 - 여러 client shard를 가상 agent처럼 돌린다.
 - 각 agent는 pseudo-label 선별과 local update 생성을 수행한다.
+- `selection_dumps/`에는 row별 `confidence`, `margin`,
+  `threshold_accepted`, `selected_by_cap`, `selection_stage`가 저장된다.
 - 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
 - prototype 재빌드는 `prototype_builder` 설정을 그대로 따른다.
 - 아직 실제 LoRA 분산 학습은 아니고, diagonal scale shared adapter 기반 simulation이다.

@@ -179,3 +179,115 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/experiments/run_federated_simul
 1. production builder metadata를 manifest 외 payload 레벨까지 올릴지 결정
 2. FL runtime에서 `max cosine` 대신 `log-sum-exp` 같은 multi scoring 정책이 필요한지 판단
 3. build-state를 multi-prototype까지 일반화할지, 아니면 single exact / multi rebuild-only로 유지할지 결정
+
+---
+
+## Additional Follow-up: Selection Diagnostics
+
+### User
+
+보이게 만들면서 scoring/prototype 분리력이 왜 필요한거야?
+
+1. 보이게 만들아
+2. scoring/prototype 분리력이 왜 필요한거야?
+
+### Assistant
+
+현재 `normal`이 threshold에서 죽는지, cap에서 잘리는지 구분하려면 selector가 두 단계를 metadata로 남겨야 한다고 설명했다.
+
+- `threshold_accepted`
+- `selected_by_cap`
+- `selection_stage`
+- 필요하면 `pre_cap_rank`
+
+이 값을 round/client별 JSONL과 summary로 떨구면 원인 분리가 된다고 정리했다.
+
+### Assistant Work Log
+
+수정 사항:
+
+- `agent/src/services/training/pseudo_label_service.py`
+  - selector metadata에
+    - `threshold_accepted`
+    - `selected_by_cap`
+    - `final_accepted`
+    - `selection_stage`
+    - `max_examples`
+    - `pre_cap_rank`
+    추가
+- `scripts/experiments/run_federated_simulation.py`
+  - `save_selection_diagnostics(...)` 추가
+  - 각 client/round마다
+    - `selection_dumps/<round>.candidates.jsonl`
+    - `selection_dumps/<round>.summary.json`
+    저장
+- `agent/tests/unit/test_local_training_service.py`
+  - `accepted / dropped_by_cap / threshold_rejected`가 구분되는지 검증
+- `tests/unit/test_run_federated_simulation.py`
+  - simulation이 dump 파일을 실제로 생성하는지 검증
+- `scripts/README.md`
+  - `selection_dumps/` 산출물 설명 추가
+
+### Verification
+
+Lint:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run ruff check \
+  agent/src/services/training/pseudo_label_service.py \
+  agent/tests/unit/test_local_training_service.py \
+  scripts/experiments/run_federated_simulation.py \
+  tests/unit/test_run_federated_simulation.py \
+  scripts/README.md
+```
+
+결과: 통과
+
+Pytest:
+
+```bash
+PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run pytest \
+  agent/tests/unit/test_local_training_service.py \
+  tests/unit/test_run_federated_simulation.py \
+  tests/unit/test_prototype_build_strategies.py \
+  tests/unit/test_scripts_hydra_configs.py
+```
+
+결과: `15 passed`
+
+실제 smoke 실행:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/experiments/run_federated_simulation.py \
+  embedding=hash_debug \
+  runtime=cpu_local \
+  federated_run_preset=smoke
+```
+
+생성된 파일:
+
+- `tmp/federated_simulation_smoke/agents/agent_01/selection_dumps/round_0001.candidates.jsonl`
+- `tmp/federated_simulation_smoke/agents/agent_01/selection_dumps/round_0001.summary.json`
+- `tmp/federated_simulation_smoke/agents/agent_02/selection_dumps/round_0001.candidates.jsonl`
+- `tmp/federated_simulation_smoke/agents/agent_02/selection_dumps/round_0001.summary.json`
+- `tmp/federated_simulation_smoke/agents/agent_03/selection_dumps/round_0001.candidates.jsonl`
+- `tmp/federated_simulation_smoke/agents/agent_03/selection_dumps/round_0001.summary.json`
+- `tmp/federated_simulation_smoke/agents/agent_04/selection_dumps/round_0001.candidates.jsonl`
+- `tmp/federated_simulation_smoke/agents/agent_04/selection_dumps/round_0001.summary.json`
+
+예시:
+
+- `agent_03` summary:
+  - `accepted: 32`
+  - `dropped_by_cap: 1670`
+  - `threshold_rejected: 10840`
+  - true `normal` 중 `accepted: 28`, `dropped_by_cap: 1328`, `threshold_rejected: 8575`
+- candidate JSONL에는 row별로
+  - `confidence`
+  - `margin`
+  - `threshold_accepted`
+  - `selected_by_cap`
+  - `selection_stage`
+  - `pre_cap_rank`
+  - `category_scores`
+  가 들어간다.

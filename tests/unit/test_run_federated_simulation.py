@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
@@ -114,6 +115,24 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert result.rounds[0].update_count > 0
     assert result.rounds[0].model_revision == "sim_rev_0001"
     assert result.rounds[0].prototype_version == "proto_sim_0001"
+    dump_paths = sorted(
+        (tmp_path / "simulation" / "agents").glob(
+            "*/selection_dumps/round_0001.summary.json"
+        )
+    )
+    assert dump_paths
+    summary = json.loads(dump_paths[0].read_text(encoding="utf-8"))
+    assert "stage_counts" in summary
+    candidate_paths = sorted(
+        (tmp_path / "simulation" / "agents").glob(
+            "*/selection_dumps/round_0001.candidates.jsonl"
+        )
+    )
+    assert candidate_paths
+    first_line = candidate_paths[0].read_text(encoding="utf-8").splitlines()[0]
+    first_candidate = json.loads(first_line)
+    assert "selection_stage" in first_candidate
+    assert "threshold_accepted" in first_candidate
 
 
 class _StaticEmbeddingAdapter:

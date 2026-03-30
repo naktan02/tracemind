@@ -108,13 +108,23 @@ def test_local_training_service_creates_update_from_top_candidates(
                     scores={"anxiety": 0.62, "depression": 0.58, "normal": 0.1},
                     embedding=[0.7, 0.7],
                 ),
+                _make_example(
+                    query_id="q4",
+                    scores={"normal": 0.59, "anxiety": 0.58, "depression": 0.1},
+                    embedding=[0.2, 0.2],
+                ),
             ),
             training_task=_build_task(),
             model_manifest=_build_manifest(),
         )
     )
 
-    assert result.selection_result.total_count == 3
+    candidates = {
+        candidate.source_event_ref: candidate
+        for candidate in result.selection_result.candidates
+    }
+
+    assert result.selection_result.total_count == 4
     assert result.selection_result.accepted_count == 1
     assert result.update_envelope is not None
     assert result.update_payload is not None
@@ -128,6 +138,12 @@ def test_local_training_service_creates_update_from_top_candidates(
         == "shared_adapter_updates"
     )
     assert result.update_envelope.clipped is False
+    assert candidates["q1"].metadata["selection_stage"] == "accepted"
+    assert candidates["q2"].metadata["selection_stage"] == "dropped_by_cap"
+    assert candidates["q3"].metadata["selection_stage"] == "dropped_by_cap"
+    assert candidates["q4"].metadata["selection_stage"] == "threshold_rejected"
+    assert candidates["q2"].metadata["threshold_accepted"] is True
+    assert candidates["q4"].metadata["threshold_accepted"] is False
 
 
 def test_local_training_service_skips_update_when_examples_are_insufficient(

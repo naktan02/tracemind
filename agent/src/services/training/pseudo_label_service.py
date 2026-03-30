@@ -98,13 +98,39 @@ class PseudoLabelSelectionService:
             }
         else:
             selected_ids = {candidate.candidate_id for candidate in prelim_accepted}
+        pre_cap_ranks = {
+            candidate.candidate_id: index + 1
+            for index, candidate in enumerate(prelim_accepted)
+        }
 
         finalized_candidates: list[PseudoLabelCandidate] = []
         accepted_candidates: list[PseudoLabelCandidate] = []
         feedback_signals: list[DecisionFeedbackSignal] = []
         for candidate in initial_candidates:
+            threshold_accepted = candidate.accepted
             is_selected = candidate.candidate_id in selected_ids
-            finalized = candidate if is_selected else replace(candidate, accepted=False)
+            final_accepted = threshold_accepted and is_selected
+            if final_accepted:
+                selection_stage = "accepted"
+            elif threshold_accepted:
+                selection_stage = "dropped_by_cap"
+            else:
+                selection_stage = "threshold_rejected"
+
+            metadata = dict(candidate.metadata)
+            metadata["threshold_accepted"] = threshold_accepted
+            metadata["selected_by_cap"] = is_selected
+            metadata["final_accepted"] = final_accepted
+            metadata["selection_stage"] = selection_stage
+            metadata["max_examples"] = max_examples if max_examples is not None else -1
+            if threshold_accepted:
+                metadata["pre_cap_rank"] = pre_cap_ranks[candidate.candidate_id]
+
+            finalized = replace(
+                candidate,
+                accepted=final_accepted,
+                metadata=metadata,
+            )
             finalized_candidates.append(finalized)
             if finalized.accepted:
                 accepted_candidates.append(finalized)
