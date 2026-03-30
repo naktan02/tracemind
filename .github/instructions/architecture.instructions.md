@@ -4,20 +4,25 @@ applyTo: "shared/src/contracts/**/*.py,shared/src/domain/entities/**/*.py,agent/
 
 Use contract-first design.
 
-When refactoring, identify the real variation axes first. Common examples in this repository are adapter family, training backend, aggregation backend, privacy guard, scoring strategy, and projection/experiment configuration.
+When refactoring, identify the real variation axes first. Ask what changes often, what must remain stable, what changes together, and what must remain independent.
 
 Do not hide field meaning in distant design docs only. If a contract field is important for runtime behavior, add a short explanation in the contract file or in a source-adjacent contract guide.
 
 Choose patterns based on what changes together:
 
-- Use `Strategy` for interchangeable algorithms under one stable contract.
-- Use a family object or abstract factory when one selection changes payload conversion, accepted formats, and backend composition together.
-- Use a registry only as thin wiring at the composition root.
+- Use `Strategy` when algorithms vary under one stable contract.
+- Use `Factory` or family objects when one selection changes multiple behaviors together.
+- Use `State` when lifecycle stage matters.
+- Use `Policy` or `Specification` when rules are the core variation.
+- Use `Pipeline` when processing flow is the core abstraction.
+- Use `Port/Adapter` when external dependency replacement is the core concern.
+- Use `Decorator` for cross-cutting behavior.
+- Use `Registry` only as thin wiring at the composition root.
 
 Preserve the distinction between:
 
-- global/shared representation and server-aggregated state
-- local/private interpretation and personalization
-- privacy protection layers and training logic
+- shared/common concerns
+- context-specific concerns
+- domain logic and cross-cutting infrastructure
 
-If a design pushes user-specific drift or privacy-sensitive interpretation into a global shared component, call that out explicitly and propose a split.
+If a design pushes context-specific interpretation or sensitive state into a common component, call that out explicitly and propose a split.

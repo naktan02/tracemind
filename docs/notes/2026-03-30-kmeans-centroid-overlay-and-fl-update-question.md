@@ -988,3 +988,35 @@ pure registry보다는 `family strategy + abstract factory` 쪽이 더 낫다고
 6. quick hack보다 미래 확장 가능한 구조 선호
 
 로 정리한 형태가 될 것이라고 기록했다.
+
+## User
+
+지금 설명으로 공통 규칙 변경하는게 좋지 않아?
+
+## Assistant
+
+사용자 말이 맞다고 판단했다. 이전 공통 규칙은 여전히 이 프로젝트 냄새가 조금 남아 있었고, 특정 패턴 이름이 상대적으로 과하게 강조돼 있었다.
+
+그래서 재사용 가능한 공통 규칙과 저장소 공통 instruction을 더 일반화했다.
+
+수정한 방향:
+
+1. 특정 패턴 고집 제거
+   - `strategy/factory/family object 우선` 같은 표현을
+     `문제의 변화 구조에 맞는 패턴 선택`으로 수정
+2. TraceMind 전용 용어 제거
+   - `adapter family`, `training backend`, `aggregation` 등 직접적인 프로젝트 용어를 공통 규칙에서 제거
+3. global/local 표현 일반화
+   - `global/shared vs local/private`를
+     `shared/common vs context-specific`까지 포괄하도록 확장
+
+수정 파일:
+
+1. `.codex/skills/architecture-first-modular-engineering/SKILL.md`
+2. `.github/copilot-instructions.md`
+3. `.github/instructions/architecture.instructions.md`
+4. `AGENTS.md`의 `Architecture Direction`
+
+핵심 메시지는
+"특정 패턴을 신봉하지 말고, 무엇이 자주 바뀌고 무엇이 함께 바뀌는지를 먼저 보고 패턴을 고른다"
+로 정리했다.
