@@ -21,7 +21,7 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
 )
 from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
-    extract_category_centroids,
+    extract_category_prototypes,
     load_prototype_pack_payload,
 )
 
@@ -111,15 +111,24 @@ def summarize_per_category(
             "recall": round(recall, 6),
             "f1": round(f1, 6),
             "mean_true_label_score": round(
-                safe_divide(sum(true_score_buckets[category]), len(true_score_buckets[category])),
+                safe_divide(
+                    sum(true_score_buckets[category]),
+                    len(true_score_buckets[category]),
+                ),
                 6,
             ),
             "mean_top_1_score": round(
-                safe_divide(sum(top_1_score_buckets[category]), len(top_1_score_buckets[category])),
+                safe_divide(
+                    sum(top_1_score_buckets[category]),
+                    len(top_1_score_buckets[category]),
+                ),
                 6,
             ),
             "mean_margin_top1_top2": round(
-                safe_divide(sum(margin_buckets[category]), len(margin_buckets[category])),
+                safe_divide(
+                    sum(margin_buckets[category]),
+                    len(margin_buckets[category]),
+                ),
                 6,
             ),
         }
@@ -129,7 +138,7 @@ def summarize_per_category(
 def evaluate_rows(
     *,
     rows: list[dict[str, Any]],
-    prototypes: dict[str, list[float]],
+    prototypes: dict[str, tuple[list[float], ...]],
     embeddings: list[list[float]],
 ) -> dict[str, Any]:
     scoring_service = ScoringService()
@@ -176,9 +185,18 @@ def evaluate_rows(
         "rows_total": total,
         "accuracy_top_1": round(accuracy, 6),
         "correct_top_1": correct,
-        "mean_true_label_score": round(safe_divide(sum(true_scores), len(true_scores)), 6),
-        "mean_top_1_score": round(safe_divide(sum(top_1_scores), len(top_1_scores)), 6),
-        "mean_margin_top1_top2": round(safe_divide(sum(margins), len(margins)), 6),
+        "mean_true_label_score": round(
+            safe_divide(sum(true_scores), len(true_scores)),
+            6,
+        ),
+        "mean_top_1_score": round(
+            safe_divide(sum(top_1_scores), len(top_1_scores)),
+            6,
+        ),
+        "mean_margin_top1_top2": round(
+            safe_divide(sum(margins), len(margins)),
+            6,
+        ),
         "confusion_matrix": confusion_matrix,
         "per_category": per_category,
     }
@@ -240,10 +258,13 @@ def main(cfg: DictConfig) -> None:
         raise ValueError("prototype_pack must be set.")
 
     payload = load_prototype_pack_payload(Path(cfg.prototype_pack))
-    prototypes = extract_category_centroids(payload)
+    prototypes = extract_category_prototypes(payload)
     spec_cfg = OmegaConf.create(
         {
-            "_target_": "agent.src.infrastructure.model_adapters.embedding.factory.EmbeddingAdapterSpec",
+            "_target_": (
+                "agent.src.infrastructure.model_adapters.embedding.factory."
+                "EmbeddingAdapterSpec"
+            ),
             "backend": cfg.embedding.backend,
             "model_id": (
                 payload.embedding_model_id

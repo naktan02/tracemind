@@ -10,7 +10,12 @@ from .adapter_contracts import (
 )
 from .model_contracts import ModelManifestPayload
 from .personalization_contracts import PersonalizationStatePayload
-from .prototype_contracts import PrototypePackPayload
+from .prototype_contracts import (
+    CategoryPrototypePayload,
+    PrototypePackPayload,
+    extract_category_centroids,
+    extract_category_prototypes,
+)
 from .training_contracts import (
     DecisionFeedbackSignalPayload,
     TrainingObjectiveConfigPayload,
@@ -21,8 +26,11 @@ from .training_contracts import (
 
 __all__ = [
     "DecisionFeedbackSignalPayload",
+    "CategoryPrototypePayload",
     "DiagonalScaleAdapterStatePayload",
     "DiagonalScaleAdapterUpdatePayload",
+    "extract_category_centroids",
+    "extract_category_prototypes",
     "ModelManifestPayload",
     "PersonalizationStatePayload",
     "PrototypePackPayload",

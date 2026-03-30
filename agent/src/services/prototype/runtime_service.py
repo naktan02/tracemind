@@ -10,6 +10,7 @@ from agent.src.infrastructure.repositories.prototype_pack_repository import (
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     extract_category_centroids,
+    extract_category_prototypes,
 )
 
 
@@ -24,6 +25,9 @@ class PrototypeRuntimeService:
         if active_pointer is None:
             raise FileNotFoundError("No active prototype pack is cached on the agent.")
         return self.repository.load_pack(active_pointer.prototype_version)
+
+    def get_active_prototypes(self) -> dict[str, tuple[list[float], ...]]:
+        return extract_category_prototypes(self.get_active_pack())
 
     def get_active_centroids(self) -> dict[str, list[float]]:
         return extract_category_centroids(self.get_active_pack())

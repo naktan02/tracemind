@@ -4,6 +4,7 @@ defaults:
   - /dataset: ourafla
   - /embedding: mxbai
   - /runtime: gpu_online
+  - /prototype_builder: single
   - _self_
 
 input_jsonl: ${dataset.prototype_input_jsonl}

@@ -4,7 +4,8 @@ defaults:
   - /dataset: ourafla
   - /embedding: mxbai
   - /runtime: gpu_online
-  - federated_run_preset: smoke
+  - /federated_run_preset: smoke
+  - /prototype_builder: single
   - _self_
 
 train_jsonl: ${dataset.train_jsonl}

@@ -1,7 +1,7 @@
-"""카테고리별 임베딩에서 PrototypePack을 만드는 빌드 유틸리티.
+"""카테고리별 임베딩에서 single-centroid PrototypePack을 만드는 빌드 유틸리티.
 
-빌드 스크립트(seed_prototypes.py)가 사용한다.
-에이전트 런타임과는 무관하다.
+exact incremental build-state를 지원하는 현재 single 전용 builder다.
+multi-prototype 생성은 상위 build strategy 계층에서 다룬다.
 """
 
 from __future__ import annotations
@@ -23,7 +23,7 @@ from shared.src.domain.entities.artifacts.prototype_pack import (
 
 @dataclass(slots=True)
 class PrototypePackBuilder:
-    """카테고리별 임베딩 묶음을 centroid 기반 prototype pack으로 변환한다."""
+    """카테고리별 임베딩 묶음을 single centroid prototype pack으로 변환한다."""
 
     pack_schema_version: str = "prototype_pack.v1"
     build_state_schema_version: str = "prototype_build_state.v1"
@@ -94,15 +94,22 @@ class PrototypePackBuilder:
             else sorted(embeddings_by_category)
         )
         if not categories_to_build:
-            raise ValueError("At least one category is required to build a prototype pack.")
+            raise ValueError(
+                "At least one category is required to build a prototype pack."
+            )
 
         categories: dict[str, CategoryPrototypeBuildStatePayload] = {}
         for category in categories_to_build:
             bucket = embeddings_by_category.get(category)
             if not bucket:
-                raise ValueError(f"Category '{category}' has no embeddings to build from.")
+                raise ValueError(
+                    f"Category '{category}' has no embeddings to build from."
+                )
 
-            embedding_sum, sample_count = self._sum_embeddings(bucket, category=category)
+            embedding_sum, sample_count = self._sum_embeddings(
+                bucket,
+                category=category,
+            )
             categories[category] = CategoryPrototypeBuildStatePayload(
                 embedding_sum=embedding_sum,
                 sample_count=sample_count,
@@ -172,7 +179,8 @@ class PrototypePackBuilder:
             )
         if base_state.distance_metric != self.distance_metric:
             raise ValueError(
-                "Prototype build_state distance_metric does not match the current builder."
+                "Prototype build_state distance_metric does not match "
+                "the current builder."
             )
 
         categories_to_build = (
@@ -181,7 +189,9 @@ class PrototypePackBuilder:
             else sorted(base_state.categories)
         )
         if not categories_to_build:
-            raise ValueError("At least one category is required to merge a build state.")
+            raise ValueError(
+                "At least one category is required to merge a build state."
+            )
 
         unexpected_categories = sorted(
             category
@@ -208,7 +218,8 @@ class PrototypePackBuilder:
                 new_sum, new_count = self._sum_embeddings(new_bucket, category=category)
                 if len(new_sum) != len(total_sum):
                     raise ValueError(
-                        f"Category '{category}' contains embeddings with mismatched dimensions."
+                        f"Category '{category}' contains embeddings with "
+                        "mismatched dimensions."
                     )
                 total_sum = [
                     left + right
@@ -254,7 +265,8 @@ class PrototypePackBuilder:
             vector = tuple(float(value) for value in embedding)
             if len(vector) != len(first_vector):
                 raise ValueError(
-                    f"Category '{category}' contains embeddings with mismatched dimensions."
+                    f"Category '{category}' contains embeddings with "
+                    "mismatched dimensions."
                 )
             for index, value in enumerate(vector):
                 totals[index] += value
@@ -274,6 +286,7 @@ class PrototypePackBuilder:
         norm = math.sqrt(sum(value * value for value in centroid))
         if norm == 0.0:
             raise ValueError(
-                f"Category '{category}' mean centroid has zero norm and cannot be normalized."
+                f"Category '{category}' mean centroid has zero norm and "
+                "cannot be normalized."
             )
         return [value / norm for value in centroid]

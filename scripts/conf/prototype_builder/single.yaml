@@ -1,0 +1,2 @@
+_target_: scripts.prototypes.build_strategies.SinglePrototypeBuildStrategy
+name: single

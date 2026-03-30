@@ -20,7 +20,9 @@ from shared.src.contracts.prototype_contracts import (
 
 def _load_fixture_payload() -> PrototypePackPayload:
     fixture_path = Path(__file__).with_name("fixtures") / "prototype_pack_v1.json"
-    return PrototypePackPayload.model_validate_json(fixture_path.read_text(encoding="utf-8"))
+    return PrototypePackPayload.model_validate_json(
+        fixture_path.read_text(encoding="utf-8")
+    )
 
 
 class _FakeResponse:
@@ -49,6 +51,20 @@ def test_runtime_service_reads_active_pack(tmp_path: Path) -> None:
 
     assert sorted(centroids) == ["anxiety", "depression", "normal", "suicidal"]
     assert centroids["anxiety"] == [1.0, 0.0, 0.0]
+
+
+def test_runtime_service_reads_active_prototype_lists(tmp_path: Path) -> None:
+    repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
+    payload = _load_fixture_payload()
+    repository.save_pack(payload)
+    repository.set_active(payload.prototype_version)
+
+    runtime_service = PrototypeRuntimeService(repository=repository)
+
+    prototypes = runtime_service.get_active_prototypes()
+
+    assert sorted(prototypes) == ["anxiety", "depression", "normal", "suicidal"]
+    assert prototypes["anxiety"] == ([1.0, 0.0, 0.0],)
 
 
 def test_sync_service_pulls_current_pack_and_activates_it(tmp_path: Path) -> None:

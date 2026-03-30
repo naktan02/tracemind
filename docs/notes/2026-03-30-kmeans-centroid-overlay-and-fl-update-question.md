@@ -1020,3 +1020,193 @@ pure registry보다는 `family strategy + abstract factory` 쪽이 더 낫다고
 핵심 메시지는
 "특정 패턴을 신봉하지 말고, 무엇이 자주 바뀌고 무엇이 함께 바뀌는지를 먼저 보고 패턴을 고른다"
 로 정리했다.
+
+## User
+
+1. 궁금한건데 지금 싱글로 되어있는 fl 구조 변경 쉽나?
+2. 스크립트에서 fl 진짜 데이터로 테스트하는거 있잖아 그거 실행하려면 어떻게 해? 실험이니까 하나의 쿼리가 하나의 라운드로 해서 되는건가? 각 라운드마다 변화 볼 수 있나?
+
+## Assistant
+
+첫 번째 질문에 대해서는, 현재 single centroid FL/runtime을 multi-prototype으로 바꾸는 난이도를 "리라이트급은 아니지만 한 군데만 바꾸면 되는 수준도 아니다"라고 정리했다.
+
+핵심 근거:
+
+1. shared adapter FL core는 prototype 개수와 덜 결합돼 있다.
+2. 하지만 runtime/prototype contract는 현재 single centroid 전제가 강하다.
+3. single 전제가 들어간 대표 파일은:
+   - `shared/src/contracts/prototype_contracts.py`
+   - `agent/src/services/inference/scoring_service.py`
+   - `scripts/prototypes/prototype_pack_builder.py`
+   - `scripts/experiments/run_federated_simulation.py`
+
+그래서 바꿀 때는
+`category -> single centroid`
+를
+`category -> list[prototype]`
+로 올리고, single은 길이 1인 list의 특수 케이스로 다루는 게 최소 변경안이라고 설명했다.
+
+두 번째 질문에 대해서는 현재 federated simulation은 실제 `train/validation` split을 사용하며, 학습에 `validation`을 쓰지 않는다고 설명했다.
+
+실제 흐름:
+
+1. `train`을 한 번만 `bootstrap_rows + client_shards`로 나눈다.
+2. bootstrap rows로 초기 prototype을 만든다.
+3. 각 라운드마다 모든 client shard를 다시 순회한다.
+4. 각 shard의 row 전체가 candidate가 되고, threshold와 `max_examples`로 accepted subset을 만든다.
+5. `validation`은 라운드마다 평가용으로만 쓴다.
+
+즉 `1 query = 1 round`가 아니라,
+`1 query = 1 candidate example`, `1 round = 모든 client shard가 한 번씩 참여하는 주기`
+라고 정리했다.
+
+또한 라운드별 artifact는 파일로 남지만, 라운드별 metric은 현재 콘솔 요약만 있고 별도 JSON dump는 없다고 설명했다.
+
+## User
+
+1. 변경안 적어보고
+2. (tracemind-server) jmgjmg102@DESKTOP-VVOL8MH:~/tracemind_server$   uv run python scripts/experiments/run_federated_simulation.py \
+    federated_run_preset=standard \
+    federated_run_preset.rounds=3 \
+    federated_run_preset.client_count=4
+Could not override 'federated_run_preset.rounds'.
+To append to your config use +federated_run_preset.rounds=3
+Key 'rounds' is not in struct
+    full_key: federated_run_preset.rounds
+    object_type=dict
+
+Set the environment variable HYDRA_FULL_ERROR=1 for a complete stack trace.
+
+## Assistant
+
+직접 compose를 확인해 본 결과, 기본 config에서는 `federated_run_preset`이 dict처럼 보이지만 `federated_run_preset=standard`를 주면 현재 Hydra compose에서 그 노드가 dict가 아니라 문자열 `standard`로 바뀌는 버그성 동작이 있다는 점을 확인했다.
+
+검증:
+
+1. `uv run python scripts/experiments/run_federated_simulation.py --cfg job`
+   - 기본 smoke preset일 때는 `federated_run_preset.rounds`가 존재함
+2. `uv run python scripts/experiments/run_federated_simulation.py --cfg job federated_run_preset=standard`
+   - 이때는 `federated_run_preset: standard` 문자열로 compose됨
+
+그래서 현재는 nested override가 안 먹고, 심지어 `+federated_run_preset.rounds=3`도 깨진다고 설명했다.
+
+대신 동작 확인한 우회 명령은 아래라고 정리했다.
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  '+federated_run_preset={name:standard,output_dir:tmp/federated_simulation,client_count:4,rounds:3,bootstrap_ratio:0.2,max_examples:64,min_required_examples:4}'
+```
+
+빠른 검증용으로는 여기에
+`runtime=cpu_local embedding=hash_debug embedding.hash_dim=64`
+를 붙여 직접 실행했고, `round_count=3`까지 확인했다.
+
+즉 현재 사용자 명령이 안 된 이유는 사용법 실수가 아니라 config packaging 문제가 맞다고 남겼다.
+
+## User
+
+우회말고 왜 안되는거지? 아까 k=2 이런거 하는곳에서 잘 사용하도록 만들지 않았나? 그걸 공통으로 각 스크립트 파일에서 사용 안하나? 제대로  먹도록 리펙터링 진행하면서 다른 파일들도 확인해봐
+
+- single을 multi의 특수 케이스로 올리는 runtime/prototype contract 리팩터링도 진행해
+
+## Assistant
+
+사용자 요구를 두 작업으로 나눠 진행했다.
+
+1. `run_federated_simulation` Hydra preset override를 prototype strategy처럼 자연스럽게 먹게 만들기
+2. runtime/prototype contract를 single이 multi의 특수 케이스가 되도록 올리기
+
+### 1. Hydra preset override 원인과 수정
+
+먼저 원인을 확인했다.
+
+1. `scripts/conf/experiments/run_federated_simulation.yaml`의 defaults가
+   `federated_run_preset: smoke`로 실험 하위 상대 group를 참조하고 있었다.
+2. 이 상태에서는 기본 compose는 dict처럼 보이지만,
+   `federated_run_preset=standard` override를 주면 Hydra가 group selection이 아니라
+   값 치환처럼 처리해 `federated_run_preset: standard` 문자열로 compose됐다.
+3. 그래서 `federated_run_preset.rounds=3`가 실패했다.
+
+해결은 `dataset`, `embedding`, `runtime`처럼 top-level config group로 올리는 방식으로 잡았다.
+
+변경:
+
+1. `scripts/conf/federated_run_preset/`
+   - `__init__.py`
+   - `smoke.yaml`
+   - `standard.yaml`
+2. `scripts/conf/experiments/run_federated_simulation.yaml`
+   - defaults를 `- /federated_run_preset: smoke`로 수정
+3. 기존 `scripts/conf/experiments/federated_run_preset/*`는 제거
+4. `tests/unit/test_scripts_hydra_configs.py`
+   - `federated_run_preset=standard`
+   - `federated_run_preset.rounds=3`
+   - `federated_run_preset.client_count=8`
+   가 함께 먹는 테스트 추가
+5. `scripts/README.md`
+   - federated simulation 예시 명령 수정
+
+이후 아래가 정상 동작하는 것을 확인했다.
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  federated_run_preset=standard \
+  federated_run_preset.rounds=3 \
+  federated_run_preset.client_count=4
+```
+
+그리고 실제 해시 smoke 실행으로 `round_count=3`도 확인했다.
+
+### 2. single -> multi runtime/prototype contract 리팩터링
+
+이 작업은 domain builder 전체를 한 번에 갈아엎는 대신,
+runtime contract와 scoring을 먼저 multi-friendly 하게 올리고
+기존 single builder는 길이 1 list를 내보내는 방식으로 진행했다.
+
+핵심 변경:
+
+1. `shared/src/contracts/prototype_contracts.py`
+   - `PrototypePackPayload.categories`를 `category -> list[CategoryPrototypePayload]`로 변경
+   - legacy single-centroid JSON도 읽을 수 있게 validator로 자동 정규화
+   - `extract_category_prototypes(...)` 추가
+   - `extract_category_centroids(...)`는 single-only legacy helper로 변경
+2. `agent/src/services/inference/scoring_service.py`
+   - category마다 여러 prototype을 받을 수 있게 변경
+   - 현재 reduction은 category 내부 `max cosine`
+3. `agent/src/services/prototype/runtime_service.py`
+   - `get_active_prototypes()` 추가
+   - `get_active_centroids()`는 single-only legacy 경로 유지
+4. `scripts/experiments/run_federated_simulation.py`
+   - runtime scoring은 `extract_category_prototypes(...)` 사용
+   - simulation이 만드는 single prototype payload도 길이 1 list로 저장
+5. `scripts/prototypes/evaluate_prototype_pack.py`
+   - multi prototype scoring 경로 사용
+6. `scripts/prototypes/report_prototype_distances.py`
+   - single-only helper를 사용하도록 변경
+   - multi pack이면 명시적으로 실패하게 해 잘못된 단순화를 막음
+7. `shared/src/contracts/README.md`
+   - prototype contract가 single/multi를 어떻게 해석하는지 설명 추가
+
+테스트:
+
+1. `shared/tests/unit/test_prototype_contracts.py` 추가
+   - legacy single JSON 자동 정규화
+   - multi prototype extraction
+   - single-only helper의 명시적 실패
+2. `agent/tests/unit/test_scoring_service.py`
+   - multi prototype max cosine 테스트 추가
+3. `agent/tests/unit/test_prototype_runtime_and_sync.py`
+   - `get_active_prototypes()` 테스트 추가
+
+검증:
+
+1. `UV_CACHE_DIR=/tmp/uv-cache uv run ruff check ...` 통과
+2. `PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run pytest tests/unit/test_scripts_hydra_configs.py agent/tests/unit/test_scoring_service.py agent/tests/unit/test_prototype_runtime_and_sync.py shared/tests/unit/test_prototype_contracts.py tests/unit/test_run_federated_simulation.py` 통과
+3. 해시 smoke 실험:
+   - `federated_run_preset=standard`
+   - `federated_run_preset.rounds=3`
+   - `federated_run_preset.client_count=4`
+   - `runtime=cpu_local`
+   - `embedding=hash_debug`
+   - `embedding.hash_dim=64`
+   로 실행해 `round_count=3` 확인

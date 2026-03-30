@@ -31,6 +31,21 @@ def test_score_returns_cosine_similarity_for_each_category() -> None:
     assert scores["normal"] == pytest.approx(1.0 / math.sqrt(2.0))
 
 
+def test_score_uses_best_matching_prototype_for_multi_prototype_category() -> None:
+    service = ScoringService()
+
+    scores = service.score(
+        [1.0, 0.0],
+        {
+            "alert": ([0.0, 1.0], [1.0, 0.0]),
+            "safe": ([0.0, -1.0],),
+        },
+    )
+
+    assert scores["alert"] == pytest.approx(1.0)
+    assert scores["safe"] == pytest.approx(0.0)
+
+
 def test_score_rejects_unsupported_similarity_metric() -> None:
     service = ScoringService(similarity_name="sigmoid")
 

@@ -1,1 +1,0 @@
-"""Federated simulation preset groups."""

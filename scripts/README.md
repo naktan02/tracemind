@@ -147,12 +147,20 @@ uv run python scripts/datasets/split_labeled_query_set.py \
 
 ## 2. PrototypePack 생성
 
-train split으로 single centroid 기반 `PrototypePack`을 만든다.
+train split으로 production용 `PrototypePack`을 만든다.
 
 기본 실행:
 
 ```bash
 uv run python scripts/prototypes/seed_prototypes.py
+```
+
+`kmeans` multi-prototype로 바꾸려면:
+
+```bash
+uv run python scripts/prototypes/seed_prototypes.py \
+  prototype_builder=kmeans \
+  prototype_builder.candidate_ks=[2,3,4,5]
 ```
 
 명시적 GPU local 실행:
@@ -165,6 +173,12 @@ uv run python scripts/prototypes/seed_prototypes.py runtime=gpu_local
 
 - `data/processed/prototype_packs/`
 - `data/processed/prototype_build_states/`
+
+설명:
+
+- 기본 builder는 `single`이다.
+- `prototype_builder=kmeans`로 바꾸면 category마다 여러 prototype을 저장할 수 있다.
+- exact incremental용 `prototype_build_state`는 현재 single builder에서만 생성된다.
 
 ---
 
@@ -321,9 +335,20 @@ uv run python scripts/experiments/run_federated_simulation.py
 
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
-  federated_run_preset=smoke \
-  client_count=8 \
-  rounds=3
+  federated_run_preset=standard \
+  federated_run_preset.client_count=8 \
+  federated_run_preset.rounds=3
+```
+
+FL 재빌드도 `kmeans` multi-prototype로 보려면:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  federated_run_preset=standard \
+  federated_run_preset.client_count=8 \
+  federated_run_preset.rounds=3 \
+  prototype_builder=kmeans \
+  prototype_builder.candidate_ks=[2]
 ```
 
 빠른 해시 smoke:
@@ -348,6 +373,7 @@ uv run python scripts/experiments/run_federated_simulation.py \
 - 여러 client shard를 가상 agent처럼 돌린다.
 - 각 agent는 pseudo-label 선별과 local update 생성을 수행한다.
 - 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
+- prototype 재빌드는 `prototype_builder` 설정을 그대로 따른다.
 - 아직 실제 LoRA 분산 학습은 아니고, diagonal scale shared adapter 기반 simulation이다.
 
 ---

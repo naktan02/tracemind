@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import hydra
+from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -379,12 +380,17 @@ def run_dataset(
                 for value in prototype_cfg.get("expected_categories", [])
             ],
             hash_dim=int(prototype_cfg.get("hash_dim", 256)),
+            build_strategy=instantiate(cfg.prototype_builder),
         )
         prototype_output = {
-            "prototype_build_state": str(build_state_path),
+            "prototype_build_state": None
+            if build_state_path is None
+            else str(build_state_path),
             "prototype_pack": str(pack_path),
             "manifest": str(manifest_path),
-            "main_server_build_state": str(main_server_build_state_path),
+            "main_server_build_state": None
+            if main_server_build_state_path is None
+            else str(main_server_build_state_path),
             "main_server_pack": str(main_server_pack_path),
             "input_jsonl": str(prototype_input_jsonl),
         }

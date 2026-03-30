@@ -19,7 +19,11 @@ class CategoryPrototypeBuildStatePayload(BaseModel):
 
 
 class PrototypeBuildStatePayload(BaseModel):
-    """정확한 incremental update를 위한 prototype build state payload."""
+    """정확한 incremental update를 위한 prototype build state payload.
+
+    현재 v1 payload는 category별 embedding 합과 sample 수만 담는다.
+    따라서 exact incremental merge는 single mean-centroid builder에만 해당한다.
+    """
 
     model_config = ConfigDict(extra="forbid")
 
@@ -42,7 +46,9 @@ class PrototypeBuildStatePayload(BaseModel):
 
 def load_prototype_build_state_payload(path: Path) -> PrototypeBuildStatePayload:
     """JSON 파일에서 prototype build state payload를 읽는다."""
-    return PrototypeBuildStatePayload.model_validate_json(path.read_text(encoding="utf-8"))
+    return PrototypeBuildStatePayload.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
 
 
 def dump_prototype_build_state_payload(

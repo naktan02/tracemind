@@ -41,6 +41,29 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `DecisionFeedbackSignalPayload`
   - pseudo-label, 사용자 피드백, 후속 결과 등 로컬 학습용 signal 단위 계약
 
+### `prototype_contracts.py`
+
+Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.
+
+- `PrototypePackPayload`
+  - category마다 하나 이상의 prototype을 가진다
+  - single prototype도 길이 1 리스트로 정규화해서 해석한다
+- `CategoryPrototypePayload`
+  - `prototype_id`, `centroid`, `sample_count`를 담는다
+- `extract_category_prototypes(...)`
+  - runtime scoring용 `category -> prototype vectors` 변환 helper
+- `extract_category_centroids(...)`
+  - single-prototype pack에서만 쓰는 legacy helper
+
+### `prototype_build_state_contracts.py`
+
+Prototype exact incremental merge용 build-state 계약을 정의한다.
+
+- `PrototypeBuildStatePayload`
+  - 현재 v1은 category별 `embedding_sum`, `sample_count`만 담는다
+  - 따라서 exact incremental merge는 single mean-centroid builder 전용이다
+  - multi-prototype builder는 build-state 없이 pack만 생성할 수 있다
+
 ## 해석 규칙
 
 - `adapter_kind`

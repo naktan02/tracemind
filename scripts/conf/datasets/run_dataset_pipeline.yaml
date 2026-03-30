@@ -3,6 +3,7 @@
 defaults:
   - /dataset: ourafla
   - /runtime: gpu_online
+  - /prototype_builder: single
   - _self_
 
 paths:

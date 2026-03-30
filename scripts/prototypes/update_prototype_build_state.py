@@ -1,4 +1,4 @@
-"""신규 labeled query set으로 prototype build state를 exact incremental update한다."""
+"""신규 labeled query set으로 single-centroid build state를 갱신한다."""
 
 from __future__ import annotations
 
@@ -15,6 +15,13 @@ if str(PROJECT_ROOT) not in sys.path:
 MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
 if str(MAIN_SERVER_ROOT) not in sys.path:
     sys.path.insert(0, str(MAIN_SERVER_ROOT))
+
+from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
+    PrototypeBuildStateService,
+)
+from src.services.prototypes.prototype_pack_service import (  # noqa: E402
+    PrototypePackService,
+)
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
@@ -33,15 +40,14 @@ from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     load_prototype_build_state_payload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload  # noqa: E402
-from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
-    PrototypeBuildStateService,
-)
-from src.services.prototypes.prototype_pack_service import PrototypePackService  # noqa: E402
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Incrementally update a prototype build state with new labeled JSONL data."
+        description=(
+            "Incrementally update a single-centroid prototype build state with new "
+            "labeled JSONL data."
+        )
     )
     parser.add_argument(
         "--base-build-state",
@@ -136,7 +142,8 @@ def update_prototype_build_state(
     )
     if unexpected_categories:
         raise ValueError(
-            f"New labeled data contains categories not present in the base build state: {unexpected_categories}"
+            "New labeled data contains categories not present in the base "
+            f"build state: {unexpected_categories}"
         )
 
     adapter = EmbeddingAdapterFactory.create(
@@ -195,7 +202,12 @@ def update_prototype_build_state(
     )
     pack_payload = PrototypePackPayload.model_validate(build_pack_dict(pack))
     pack_path.write_text(
-        json.dumps(pack_payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
+        json.dumps(
+            pack_payload.model_dump(mode="json"),
+            indent=2,
+            ensure_ascii=True,
+        )
+        + "\n",
         encoding="utf-8",
     )
 

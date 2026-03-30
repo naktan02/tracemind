@@ -12,12 +12,18 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 if str(PROJECT_ROOT) not in sys.path:
     sys.path.insert(0, str(PROJECT_ROOT))
 
-from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
+from shared.src.contracts.prototype_contracts import (  # noqa: E402
+    extract_category_centroids,
+    load_prototype_pack_payload,
+)
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Report pairwise cosine similarity and L2 distance for a prototype pack."
+        description=(
+            "Report pairwise cosine similarity and L2 distance for a prototype "
+            "pack."
+        )
     )
     parser.add_argument(
         "--prototype-pack",
@@ -29,14 +35,22 @@ def parse_args() -> argparse.Namespace:
 
 
 def cosine_similarity(left: list[float], right: list[float]) -> float:
-    dot_product = sum(l * r for l, r in zip(left, right, strict=True))
+    dot_product = sum(
+        left_value * right_value
+        for left_value, right_value in zip(left, right, strict=True)
+    )
     left_norm = math.sqrt(sum(value * value for value in left))
     right_norm = math.sqrt(sum(value * value for value in right))
     return dot_product / (left_norm * right_norm)
 
 
 def l2_distance(left: list[float], right: list[float]) -> float:
-    return math.sqrt(sum((l - r) ** 2 for l, r in zip(left, right, strict=True)))
+    return math.sqrt(
+        sum(
+            (left_value - right_value) ** 2
+            for left_value, right_value in zip(left, right, strict=True)
+        )
+    )
 
 
 def render_table(
@@ -46,7 +60,11 @@ def render_table(
     values: dict[tuple[str, str], float],
 ) -> str:
     header = ["category"] + categories
-    lines = [title, "| " + " | ".join(header) + " |", "| " + " | ".join(["---"] * len(header)) + " |"]
+    lines = [
+        title,
+        "| " + " | ".join(header) + " |",
+        "| " + " | ".join(["---"] * len(header)) + " |",
+    ]
     for row_category in categories:
         row = [row_category]
         for column_category in categories:
@@ -58,11 +76,8 @@ def render_table(
 def main() -> None:
     args = parse_args()
     payload = load_prototype_pack_payload(args.prototype_pack)
-    categories = sorted(payload.categories)
-    centroids = {
-        category: payload.categories[category].centroid
-        for category in categories
-    }
+    centroids = extract_category_centroids(payload)
+    categories = sorted(centroids)
 
     cosine_values: dict[tuple[str, str], float] = {}
     l2_values: dict[tuple[str, str], float] = {}
@@ -70,12 +85,27 @@ def main() -> None:
         for column_category in categories:
             left = centroids[row_category]
             right = centroids[column_category]
-            cosine_values[(row_category, column_category)] = cosine_similarity(left, right)
+            cosine_values[(row_category, column_category)] = cosine_similarity(
+                left,
+                right,
+            )
             l2_values[(row_category, column_category)] = l2_distance(left, right)
 
-    print(render_table(title="cosine_similarity", categories=categories, values=cosine_values))
+    print(
+        render_table(
+            title="cosine_similarity",
+            categories=categories,
+            values=cosine_values,
+        )
+    )
     print()
-    print(render_table(title="l2_distance", categories=categories, values=l2_values))
+    print(
+        render_table(
+            title="l2_distance",
+            categories=categories,
+            values=l2_values,
+        )
+    )
 
 
 if __name__ == "__main__":

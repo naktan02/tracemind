@@ -44,7 +44,10 @@ from agent.src.services.training.local_training_service import (  # noqa: E402
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
+from scripts.prototypes.build_strategies import (  # noqa: E402
+    PrototypeBuildRequest,
+    PrototypeBuildStrategy,
+)
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
 )
@@ -55,7 +58,7 @@ from shared.src.contracts.model_contracts import (  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     PrototypePackPayload,
     dump_prototype_pack_payload,
-    extract_category_centroids,
+    extract_category_prototypes,
 )
 from shared.src.domain.entities.artifacts.model_manifest import (  # noqa: E402
     ModelManifest,
@@ -208,6 +211,7 @@ def run_simulation(
     max_examples: int,
     min_required_examples: int,
     gradient_clip_norm: float,
+    prototype_build_strategy: PrototypeBuildStrategy,
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
     dataset_split = split_rows_for_federation(
@@ -256,6 +260,7 @@ def run_simulation(
         embedding_model_id=model_id,
         embedding_model_revision=initial_model_revision,
         built_at=now,
+        build_strategy=prototype_build_strategy,
     )
     save_prototype_pack(output_dir, active_prototype)
     active_manifest = ModelManifest(
@@ -361,6 +366,7 @@ def run_simulation(
             embedding_model_id=model_id,
             embedding_model_revision=next_model_revision,
             built_at=active_manifest.published_at,
+            build_strategy=prototype_build_strategy,
         )
         save_prototype_pack(output_dir, active_prototype)
         validation = evaluate_rows(
@@ -409,7 +415,7 @@ def build_training_examples(
 
     texts = [str(row["text"]) for row in rows]
     base_embeddings = adapter.embed_texts(texts)
-    centroids = extract_category_centroids(prototype_pack)
+    prototypes = extract_category_prototypes(prototype_pack)
     scoring_service = ScoringService()
     examples: list[EmbeddedTrainingExample] = []
     for row, base_embedding in zip(rows, base_embeddings, strict=True):
@@ -420,7 +426,7 @@ def build_training_examples(
             translated_text=None,
             embedding_model_id=model_id,
             translation_model_id=prototype_pack.translation_model_id,
-            category_scores=scoring_service.score(adapted_embedding, centroids),
+            category_scores=scoring_service.score(adapted_embedding, prototypes),
         )
         examples.append(
             EmbeddedTrainingExample(
@@ -487,6 +493,7 @@ def build_prototype_pack_from_rows(
     embedding_model_id: str,
     embedding_model_revision: str,
     built_at: datetime,
+    build_strategy: PrototypeBuildStrategy,
 ) -> PrototypePackPayload:
     """bootstrap row에서 현재 model revision용 PrototypePack을 다시 만든다."""
     if not rows:
@@ -500,42 +507,22 @@ def build_prototype_pack_from_rows(
             adapter_state.apply(base_embedding)
         )
 
-    builder = PrototypePackBuilder()
-    pack = builder.build(
-        embeddings_by_category,
-        prototype_version=prototype_version,
-        embedding_backend="simulation",
-        embedding_model_id=embedding_model_id,
-        embedding_model_revision=embedding_model_revision,
-        translation_model_id=None,
-        translation_model_revision=None,
-        translation_direction=None,
-        mapping_version="ourafla_to_4cat.v1",
-        built_at=built_at,
-        required_categories=tuple(sorted(embeddings_by_category)),
+    build_result = build_strategy.build(
+        PrototypeBuildRequest(
+            embeddings_by_category=embeddings_by_category,
+            prototype_version=prototype_version,
+            embedding_backend="simulation",
+            embedding_model_id=embedding_model_id,
+            embedding_model_revision=embedding_model_revision,
+            translation_model_id=None,
+            translation_model_revision=None,
+            translation_direction=None,
+            mapping_version="ourafla_to_4cat.v1",
+            built_at=built_at,
+            required_categories=tuple(sorted(embeddings_by_category)),
+        )
     )
-    return PrototypePackPayload.model_validate(
-        {
-            "schema_version": pack.schema_version,
-            "prototype_version": pack.prototype_version,
-            "embedding_model_id": pack.embedding_model_id,
-            "embedding_model_revision": pack.embedding_model_revision,
-            "translation_model_id": pack.translation_model_id,
-            "translation_model_revision": pack.translation_model_revision,
-            "translation_direction": pack.translation_direction,
-            "mapping_version": pack.mapping_version,
-            "build_method": pack.build_method,
-            "distance_metric": pack.distance_metric,
-            "built_at": pack.built_at,
-            "categories": {
-                category: {
-                    "centroid": prototype.centroid,
-                    "sample_count": prototype.sample_count,
-                }
-                for category, prototype in pack.categories.items()
-            },
-        }
-    )
+    return build_result.pack_payload
 
 
 def save_prototype_pack(output_dir: Path, payload: PrototypePackPayload) -> Path:
@@ -596,6 +583,7 @@ def parse_created_at(value: str) -> datetime:
 )
 def main(cfg: DictConfig) -> None:
     embedding_spec = instantiate(cfg.embedding.spec)
+    prototype_build_strategy = instantiate(cfg.prototype_builder)
     result = run_simulation(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
@@ -612,6 +600,7 @@ def main(cfg: DictConfig) -> None:
         max_examples=int(cfg.federated_run_preset.max_examples),
         min_required_examples=int(cfg.federated_run_preset.min_required_examples),
         gradient_clip_norm=float(cfg.gradient_clip_norm),
+        prototype_build_strategy=prototype_build_strategy,
     )
 
     print(f"initial_model_revision={result.initial_model_revision}")
