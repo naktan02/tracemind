@@ -39,10 +39,10 @@ from scripts.prototypes.build_strategies import (  # noqa: E402
     describe_prototype_build_strategy,
 )
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
-    PrototypeBuildStatePayload,
+    dump_prototype_build_state_payload,
 )
-from shared.src.domain.entities.artifacts.prototype_pack import (  # noqa: E402
-    PrototypePack,
+from shared.src.contracts.prototype_contracts import (  # noqa: E402
+    dump_prototype_pack_payload,
 )
 
 
@@ -91,55 +91,6 @@ def group_rows_by_label(rows: list[dict[str, Any]]) -> dict[str, list[dict[str, 
     for row in rows:
         rows_by_label[row["mapped_label_4"]].append(row)
     return dict(sorted(rows_by_label.items()))
-
-
-def build_pack_dict(pack: PrototypePack) -> dict[str, Any]:
-    return {
-        "schema_version": pack.schema_version,
-        "prototype_version": pack.prototype_version,
-        "embedding_model_id": pack.embedding_model_id,
-        "embedding_model_revision": pack.embedding_model_revision,
-        "translation_model_id": pack.translation_model_id,
-        "translation_model_revision": pack.translation_model_revision,
-        "translation_direction": pack.translation_direction,
-        "mapping_version": pack.mapping_version,
-        "build_method": pack.build_method,
-        "distance_metric": pack.distance_metric,
-        "built_at": pack.built_at.isoformat(),
-        "categories": {
-            category: {
-                "centroid": prototype.centroid,
-                "sample_count": prototype.sample_count,
-            }
-            for category, prototype in pack.categories.items()
-        },
-    }
-
-
-def build_state_dict(build_state: PrototypeBuildStatePayload) -> dict[str, Any]:
-    return {
-        "schema_version": build_state.schema_version,
-        "prototype_version": build_state.prototype_version,
-        "embedding_backend": build_state.embedding_backend,
-        "embedding_model_id": build_state.embedding_model_id,
-        "embedding_model_revision": build_state.embedding_model_revision,
-        "normalize_embeddings": build_state.normalize_embeddings,
-        "task_prefix": build_state.task_prefix,
-        "translation_model_id": build_state.translation_model_id,
-        "translation_model_revision": build_state.translation_model_revision,
-        "translation_direction": build_state.translation_direction,
-        "mapping_version": build_state.mapping_version,
-        "build_method": build_state.build_method,
-        "distance_metric": build_state.distance_metric,
-        "built_at": build_state.built_at.isoformat(),
-        "categories": {
-            category: {
-                "embedding_sum": category_state.embedding_sum,
-                "sample_count": category_state.sample_count,
-            }
-            for category, category_state in build_state.categories.items()
-        },
-    }
 
 
 def seed_prototype_pack(
@@ -219,28 +170,9 @@ def seed_prototype_pack(
     build_state_payload = build_result.build_state_payload
     if build_state_payload is not None:
         build_state_path = build_state_output_dir / f"{prototype_version}.json"
-        build_state_payload = PrototypeBuildStatePayload.model_validate(
-            build_state_payload.model_dump(mode="python")
-        )
-        build_state_path.write_text(
-            json.dumps(
-                build_state_payload.model_dump(mode="json"),
-                indent=2,
-                ensure_ascii=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
+        dump_prototype_build_state_payload(build_state_path, build_state_payload)
     pack_payload = build_result.pack_payload
-    pack_path.write_text(
-        json.dumps(
-            pack_payload.model_dump(mode="json"),
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    dump_prototype_pack_payload(pack_path, pack_payload)
     main_server_build_state_path: Path | None = None
     if build_state_payload is not None:
         main_server_build_state_path = PrototypeBuildStateService().publish_state(

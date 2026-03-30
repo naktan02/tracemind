@@ -336,7 +336,7 @@ uv run python scripts/experiments/run_federated_simulation.py
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
   federated_run_preset=standard \
-  federated_run_preset.client_count=8 \
+  federated_run_preset.client_count=4 \
   federated_run_preset.rounds=3
 ```
 

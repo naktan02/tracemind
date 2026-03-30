@@ -291,3 +291,62 @@ UV_CACHE_DIR=/tmp/uv-cache uv run python scripts/experiments/run_federated_simul
   - `pre_cap_rank`
   - `category_scores`
   가 들어간다.
+
+## Follow-up: prototype payload serialization cleanup
+
+### Why
+
+- prototype script 계층에서 `PrototypePackPayload` 조립 경로가 둘로 갈라져 있었다.
+  - `build_strategies.py`는 canonical multi-prototype payload를 직접 조립
+  - `seed_prototypes.py`/`update_prototype_build_state.py`는 legacy helper를 통해 single-centroid dict를 먼저 만들고, 이후 contract 정규화에 의존
+- 최종 저장 shape는 contract 정규화 덕분에 맞았지만, 중간 serializer와 metadata 복사 책임이 분산된 상태였다.
+
+### Changes
+
+- `scripts/prototypes/payload_serialization.py`
+  - `PrototypePackPayloadSpec`
+  - `build_prototype_pack_payload(...)`
+  - `build_single_prototype_categories(...)`
+  - `build_single_prototype_pack_payload(...)`
+  추가
+- `scripts/prototypes/build_strategies.py`
+  - `SinglePrototypeBuildStrategy`와 `KMeansPrototypeBuildStrategy`가 공통 serializer를 사용하도록 변경
+- `scripts/prototypes/seed_prototypes.py`
+  - legacy `build_pack_dict()` 제거
+  - pack/build-state 파일 저장을 공통 dump helper로 일원화
+- `scripts/prototypes/update_prototype_build_state.py`
+  - single exact update 경로도 `build_single_prototype_pack_payload(...)` 사용
+- `tests/unit/test_prototype_payload_serialization.py`
+  - single payload가 canonical list shape로 만들어지는지 검증
+  - shared metadata spec가 공통 serializer에 반영되는지 검증
+
+### Verification
+
+Lint:
+
+```bash
+UV_CACHE_DIR=/tmp/uv-cache uv run ruff check \
+  scripts/prototypes/payload_serialization.py \
+  scripts/prototypes/build_strategies.py \
+  scripts/prototypes/seed_prototypes.py \
+  scripts/prototypes/update_prototype_build_state.py \
+  tests/unit/test_prototype_payload_serialization.py \
+  tests/unit/test_prototype_build_strategies.py \
+  tests/unit/test_scripts_hydra_configs.py \
+  tests/unit/test_run_federated_simulation.py
+```
+
+결과: 통과
+
+Pytest:
+
+```bash
+PYTHONPATH=. UV_CACHE_DIR=/tmp/uv-cache uv run pytest \
+  tests/unit/test_prototype_payload_serialization.py \
+  tests/unit/test_prototype_build_strategies.py \
+  tests/unit/test_scripts_hydra_configs.py \
+  tests/unit/test_run_federated_simulation.py \
+  agent/tests/unit/test_local_training_service.py
+```
+
+결과: `17 passed`

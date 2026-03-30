@@ -11,6 +11,11 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
+from scripts.prototypes.payload_serialization import (
+    PrototypePackPayloadSpec,
+    build_prototype_pack_payload,
+    build_single_prototype_pack_payload,
+)
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
@@ -137,31 +142,7 @@ class SinglePrototypeBuildStrategy:
         )
         pack = builder.build_pack_from_state(build_state)
         return PrototypeBuildArtifacts(
-            pack_payload=PrototypePackPayload.model_validate(
-                {
-                    "schema_version": pack.schema_version,
-                    "prototype_version": pack.prototype_version,
-                    "embedding_model_id": pack.embedding_model_id,
-                    "embedding_model_revision": pack.embedding_model_revision,
-                    "translation_model_id": pack.translation_model_id,
-                    "translation_model_revision": pack.translation_model_revision,
-                    "translation_direction": pack.translation_direction,
-                    "mapping_version": pack.mapping_version,
-                    "build_method": pack.build_method,
-                    "distance_metric": pack.distance_metric,
-                    "built_at": pack.built_at,
-                    "categories": {
-                        category: [
-                            {
-                                "prototype_id": f"{category}:single",
-                                "centroid": prototype.centroid,
-                                "sample_count": prototype.sample_count,
-                            }
-                        ]
-                        for category, prototype in pack.categories.items()
-                    },
-                }
-            ),
+            pack_payload=build_single_prototype_pack_payload(pack),
             build_state_payload=build_state,
         )
 
@@ -256,20 +237,20 @@ class KMeansPrototypeBuildStrategy:
             categories[category] = prototypes
 
         return PrototypeBuildArtifacts(
-            pack_payload=PrototypePackPayload.model_validate(
-                {
-                    "schema_version": "prototype_pack.v1",
-                    "prototype_version": request.prototype_version,
-                    "embedding_model_id": request.embedding_model_id,
-                    "embedding_model_revision": request.embedding_model_revision,
-                    "translation_model_id": request.translation_model_id,
-                    "translation_model_revision": request.translation_model_revision,
-                    "translation_direction": request.translation_direction,
-                    "mapping_version": request.mapping_version,
-                    "build_method": "kmeans_mean_centroid_l2_normalized",
-                    "distance_metric": "cosine",
-                    "built_at": request.built_at,
-                    "categories": categories,
-                }
+            pack_payload=build_prototype_pack_payload(
+                spec=PrototypePackPayloadSpec(
+                    schema_version="prototype_pack.v1",
+                    prototype_version=request.prototype_version,
+                    embedding_model_id=request.embedding_model_id,
+                    embedding_model_revision=request.embedding_model_revision,
+                    translation_model_id=request.translation_model_id,
+                    translation_model_revision=request.translation_model_revision,
+                    translation_direction=request.translation_direction,
+                    mapping_version=request.mapping_version,
+                    build_method="kmeans_mean_centroid_l2_normalized",
+                    distance_metric="cosine",
+                    built_at=request.built_at,
+                ),
+                categories=categories,
             )
         )

@@ -1,7 +1,7 @@
 interface:
   display_name: "Architecture-First Engineering"
-  short_description: "계약 우선, 변화 축 분리, source-adjacent 문서화"
-  default_prompt: "Use $architecture-first-modular-engineering to refactor this codebase with contract-first boundaries and clear global/local separation."
+  short_description: "계약 우선, canonical shape, 변화 축 분리"
+  default_prompt: "Use $architecture-first-modular-engineering to refactor this codebase with contract-first boundaries, canonical representations, explicit producer-consumer alignment, and pattern choices based on problem structure."
 
 policy:
   allow_implicit_invocation: true

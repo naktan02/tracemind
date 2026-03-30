@@ -27,19 +27,23 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
+from scripts.prototypes.payload_serialization import (  # noqa: E402
+    build_single_prototype_pack_payload,
+)
 from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from scripts.prototypes.seed_prototypes import (  # noqa: E402
-    build_pack_dict,
-    build_state_dict,
     group_rows_by_label,
     load_jsonl,
     resolve_metadata_from_manifests,
 )
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     PrototypeBuildStatePayload,
+    dump_prototype_build_state_payload,
     load_prototype_build_state_payload,
 )
-from shared.src.contracts.prototype_contracts import PrototypePackPayload  # noqa: E402
+from shared.src.contracts.prototype_contracts import (  # noqa: E402
+    dump_prototype_pack_payload,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -188,28 +192,10 @@ def update_prototype_build_state(
     pack_path = prototype_pack_output_dir / f"{prototype_version}.json"
     manifest_path = prototype_pack_output_dir / f"{prototype_version}.manifest.json"
 
-    build_state_payload = PrototypeBuildStatePayload.model_validate(
-        build_state_dict(merged_state)
-    )
-    build_state_path.write_text(
-        json.dumps(
-            build_state_payload.model_dump(mode="json"),
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
-    pack_payload = PrototypePackPayload.model_validate(build_pack_dict(pack))
-    pack_path.write_text(
-        json.dumps(
-            pack_payload.model_dump(mode="json"),
-            indent=2,
-            ensure_ascii=True,
-        )
-        + "\n",
-        encoding="utf-8",
-    )
+    build_state_payload = PrototypeBuildStatePayload.model_validate(merged_state)
+    dump_prototype_build_state_payload(build_state_path, build_state_payload)
+    pack_payload = build_single_prototype_pack_payload(pack)
+    dump_prototype_pack_payload(pack_path, pack_payload)
 
     main_server_build_state_path = PrototypeBuildStateService().publish_state(
         build_state_payload

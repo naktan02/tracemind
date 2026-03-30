@@ -224,3 +224,223 @@ normal을 학습신호로 왜 못 쓰는데?
 `normal을 못 쓴다`가 아니라
 `현재 prototype scoring + threshold + top64 cap 조합에서 normal이 거의 채택되지 않는다`가 맞다.
 ```
+
+## User
+
+```text
+다시 돌렸는데 이제 왜 노멀이 제대로 잡히지 않았었는지 다시 점검해봐
+```
+
+## Assistant
+
+```text
+최신 run은 2026-03-31 03:08~03:13 KST 구간 파일로 확인했다.
+이번에는 `selection_dumps`가 있어서 원인을 더 직접적으로 확인할 수 있었다.
+
+핵심 결론:
+
+1. `normal`의 주된 문제는 threshold rejection이 아니라 cap 탈락이다.
+- round_0001 전체 기준 true normal:
+  - accepted: 2
+  - dropped_by_cap: 8,669
+  - threshold_rejected: 4,571
+  - total: 13,242
+- round_0003도 거의 동일:
+  - accepted: 2
+  - dropped_by_cap: 8,720
+  - threshold_rejected: 4,520
+
+즉 true normal의 약 65% 이상은 threshold는 넘겼지만 top-64 안에 못 들어가서 잘렸다.
+
+2. predicted normal도 거의 전부 cap에서 잘린다.
+- round_0001 predicted normal:
+  - dropped_by_cap: 8,931
+  - threshold_rejected: 3,802
+  - accepted: 0
+- round_0003 predicted normal:
+  - dropped_by_cap: 8,985
+  - threshold_rejected: 3,750
+  - accepted: 0
+
+즉 normal로 예측된 샘플조차 최종 accepted로 한 건도 못 들어갔다.
+
+3. agent별로 보면 더 선명하다.
+- agent_03 true normal 9,931 중
+  - accepted 2
+  - dropped_by_cap 6,523
+  - threshold_rejected 3,406
+- agent_04 true normal 3,311 중
+  - accepted 0
+  - dropped_by_cap 2,146
+  - threshold_rejected 1,165
+
+4. rank를 보면 `normal`은 top64에 근처도 못 간 경우가 많다.
+- agent_03 round_0001 predicted normal dropped rank
+  - min 355, median 4,389
+- agent_04 round_0001 predicted normal dropped rank
+  - min 1,431, median 3,537
+
+즉 normal 후보가 threshold를 통과해도 confidence/margin 정렬에서 이미 훨씬 뒤에 있다.
+
+5. accepted된 true normal 2개도 normal로 맞게 잡힌 게 아니다.
+- agent_03 round_0001 / round_0003에서만 2개 있었고
+  - 하나는 predicted anxiety, pre_cap_rank 54
+  - 하나는 predicted depression, pre_cap_rank 23
+
+즉 현재 top64에 들어오는 건 'normal을 정상적으로 포착한 예시'가 아니라,
+normal인데 다른 클래스로 강하게 오예측된 예시다.
+
+결론:
+이제는 더 정확히 말할 수 있다.
+
+`normal이 안 잡힌 주원인은 threshold보다 cap이다.`
+현재 scoring에서는 normal 관련 후보가 threshold를 넘는 경우도 많지만,
+confidence/margin 순위가 낮아서 top64에 거의 못 들어간다.
+그나마 들어간 소수도 normal 정답 포착이 아니라 high-confidence 오예측이다.
+```
+
+## User
+
+```text
+왜 노멀은 상위에 못 가는데?
+```
+
+## Assistant
+
+```text
+최신 selection dump를 보면 이유가 더 분명하다.
+
+1. 정렬 규칙상 confidence가 먼저고 margin은 그다음이다.
+- `PseudoLabelSelectionService`는 threshold를 통과한 후보를
+  `(-confidence, -margin, query_id)` 순으로 정렬한 뒤 top 64만 남긴다.
+- 그래서 margin이 좋아도 confidence가 낮으면 상위에 못 간다.
+
+2. normal의 핵심 문제는 margin이 아니라 confidence다.
+- round_0001 전체 threshold-accepted 후보 기준:
+  - predicted normal
+    - count: 8,931
+    - max_conf: 0.800512
+    - median_conf: 0.670351
+    - median_margin: 0.084775
+    - best_rank: 355
+  - predicted suicidal
+    - count: 3,697
+    - max_conf: 0.898272
+    - median_conf: 0.799735
+    - median_margin: 0.030297
+    - best_rank: 1
+  - predicted depression
+    - count: 3,171
+    - max_conf: 0.881519
+    - median_conf: 0.781571
+    - median_margin: 0.027599
+    - best_rank: 3
+
+즉 normal은 margin 자체는 나쁘지 않다. 오히려 depression/suicidal보다 median margin이 더 크다.
+그런데 absolute top1 confidence가 훨씬 낮다. 정렬이 confidence 우선이라 여기서 밀린다.
+
+3. 실제 cutoff와 비교하면 더 명확하다.
+- agent_03 round_0001 rank64 cutoff:
+  - predicted suicidal
+  - confidence 0.841600
+  - margin 0.027931
+- 같은 agent에서 predicted normal 최고 confidence:
+  - 0.800512
+  - pre_cap_rank 355
+
+- agent_04 round_0001 rank64 cutoff:
+  - predicted suicidal
+  - confidence 0.867483
+  - margin 0.034095
+- 같은 agent에서 predicted normal 최고 confidence:
+  - 0.786043
+  - pre_cap_rank 1431
+
+즉 normal은 threshold는 넘겨도 top64 cutoff confidence 자체에 못 닿는다.
+
+4. 왜 confidence가 낮은지는 현재 구조상 이렇게 해석하는 게 맞다.
+- 이번 run 기본 prototype builder는 `single`이다.
+- 즉 normal 전체를 하나의 centroid로 대표한다.
+- normal 카테고리가 더 넓고 이질적이면 centroid가 평균화되어
+  많은 normal 샘플이 "꽤 normal 같음" 정도의 중간 score는 받지만,
+  depression/suicidal처럼 아주 높은 top1 cosine은 잘 못 만든다.
+
+이 마지막 문장은 score 분포를 바탕으로 한 해석이다.
+코드와 산출물이 직접 보여주는 사실은
+`normal은 margin보다 confidence에서 밀리고, top64 cutoff confidence에 못 도달한다`
+는 점이다.
+```
+
+## User
+
+```text
+지금 구조는 안 좋은거잖아 어떻게 개선 가능한데?
+그리고 confidence는 뭔데?
+쓰레시홀드 문제는 아니고 상위권 선정해서 라벨링 하는 과정에서 상위권 선정이 문제인거지?
+```
+
+## Assistant
+
+```text
+정리하면 아래와 같다.
+
+1. confidence의 의미
+- 현재 confidence는 확률이 아니다.
+- `ScoringService`가 계산한 category별 cosine similarity 중 top1 score가 그대로 confidence다.
+- 즉 "이 샘플이 정답일 확률 0.84"가 아니라
+  "현재 임베딩이 winning prototype과 cosine 0.84"에 가깝다.
+- label마다 score 분포가 다를 수 있는데, 지금은 그 raw score를 그대로 cross-label ranking에 쓴다.
+
+2. threshold vs cap
+- 최신 run 기준 true normal 13,242건 중
+  - accepted 2
+  - dropped_by_cap 8,669
+  - threshold_rejected 4,571
+- 따라서 primary bottleneck은 cap/top64 ranking이 맞다.
+- 다만 threshold도 무시할 수준은 아니고, secondary bottleneck이다.
+
+3. 왜 지금 구조가 안 좋냐
+- raw cosine score는 label별로 calibration이 안 돼 있다.
+- 그런데 selection은 label 구분 없이 global top64를 뽑는다.
+- normal은 threshold를 넘겨도 absolute confidence가 상대적으로 낮아서 잘린다.
+- single prototype 구조까지 겹쳐 normal 내부 분산이 centroid에 평균화되면
+  high-confidence normal이 더 적어진다.
+
+4. 개선 우선순위
+- 1순위: selection policy를 global top64에서 label-aware policy로 바꾼다.
+  - 예: predicted_label별 quota
+  - 예: top16 per predicted label + leftover global fill
+  - 예: label별 max/min cap
+
+- 2순위: raw confidence 대신 calibrated ranking score를 쓴다.
+  - 예: predicted_label 내부 percentile rank
+  - 예: label별 z-score normalization
+  - 예: validation 기반 label-specific confidence threshold
+
+- 3순위: normal representation을 더 세분화한다.
+  - 예: `prototype_builder=kmeans`
+  - 예: normal만 multi-prototype 허용
+  - 예: single centroid는 유지하되 selection에는 nearest prototype distance를 함께 사용
+
+- 4순위: selection stage를 2단으로 나눈다.
+  - stage A: threshold 통과
+  - stage B: balance-aware sampling
+  - 지금은 stage B가 raw confidence one-rule이라 bias가 너무 크다.
+
+5. 지금 코드베이스에서 가장 자연스러운 구현 방향
+- `TrainingSelectionPolicy`는 현재 `max_examples`와 `extras`만 있다.
+- 여기에
+  - `selection_mode`
+  - `max_examples_per_label`
+  - `min_examples_per_label`
+  - `global_fill_examples`
+  같은 필드를 `extras` 또는 정식 필드로 추가할 수 있다.
+- 그리고 `PseudoLabelSelectionService.select()`에서
+  threshold 통과 후보를 predicted_label별로 나눈 뒤 quota 기반으로 뽑으면 된다.
+
+6. 그래서 네 질문에 대한 짧은 답
+- yes, 지금 문제의 중심은 threshold보다 상위권 선정 로직이다.
+- 더 정확히는
+  `raw cosine confidence를 label 구분 없이 global ranking에 쓰는 구조`
+  가 문제다.
+```

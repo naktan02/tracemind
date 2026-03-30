@@ -5,7 +5,7 @@ Keep runtime code inside `src/`, grouped by responsibility: `src/api` for FastAP
 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로 사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다. 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
 
 ## Architecture Direction
-구조 변경은 contract-first와 change-axis separation을 우선한다. 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다. `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로 보고, 중요한 필드 의미는 코드 가까이에 둔다. 공통 계층과 문맥별 계층을 분리하고, 특정 패턴을 고집하지 말고 변화 구조에 맞는 패턴을 선택한다. raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지 않는다.
+구조 변경은 contract-first와 change-axis separation을 우선한다. 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다. `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로 보고, 중요한 필드 의미는 코드 가까이에 둔다. 경계에서는 canonical representation을 우선하고, producer와 consumer가 같은 shape와 같은 의미를 보도록 맞춘다. legacy format이나 임시 변환은 compatibility 계층으로 명시적으로 격리하고 제거 조건을 남긴다. 공통 계층과 문맥별 계층을 분리하고, 정책과 실행 메커니즘을 분리하며, 튜닝 전에 dump·trace·summary 같은 관측 가능성을 먼저 만든다. 특정 패턴을 고집하지 말고 변화 구조에 맞는 패턴을 선택한다. raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지 않는다.
 
 ## Build, Test, and Development Commands
 Create a virtual environment (`python -m venv .venv && source .venv/bin/activate`) and install dependencies with `pip install -r requirements.txt`. `uvicorn src.api.main:app --reload` starts the local API server with auto-reload. Run `pytest` for the default test suite. Use `ruff check src tests` before pushing to catch lint violations, and `black src tests` if formatting drifts. Container workflows should rely on `docker compose up api` to ensure parity with production services.
