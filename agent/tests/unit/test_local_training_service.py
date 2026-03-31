@@ -20,6 +20,7 @@ from shared.src.domain.entities.training.training_task_config import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+from shared.src.domain.services.clock import FixedClock
 
 
 def _build_manifest() -> ModelManifest:
@@ -42,6 +43,8 @@ def _build_task(
     min_required_examples: int = 1,
     gradient_clip_norm: float | None = 0.05,
     acceptance_policy_name: str | None = None,
+    privacy_guard_name: str | None = None,
+    loss: str = "diagonal_scale_heuristic",
 ) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
@@ -56,10 +59,11 @@ def _build_task(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfig(
-            loss="diagonal_scale_heuristic",
+            loss=loss,
             confidence_threshold=0.6,
             margin_threshold=0.02,
             acceptance_policy_name=acceptance_policy_name,
+            privacy_guard_name=privacy_guard_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=1),
         min_required_examples=min_required_examples,
@@ -223,3 +227,62 @@ def test_local_training_service_uses_acceptance_policy_from_task_config(
     assert candidate.accepted is True
     assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
     assert result.update_envelope is not None
+
+
+def test_local_training_service_can_switch_privacy_guard_from_task_config(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(
+                gradient_clip_norm=0.01,
+                privacy_guard_name="noop",
+            ),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_envelope is not None
+    assert result.update_envelope.clipped is False
+    assert result.update_payload is not None
+    assert result.update_payload.l2_norm() == 0.05
+
+
+def test_local_training_service_uses_injected_clock_when_created_at_missing(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    fixed_time = datetime(2026, 3, 30, 12, 0, tzinfo=timezone.utc)
+    service = LocalTrainingService(
+        repository=repository,
+        clock=FixedClock(fixed_time),
+    )
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_envelope is not None
+    assert result.update_envelope.created_at == fixed_time
+    assert result.update_payload is not None
+    assert result.update_payload.created_at == fixed_time

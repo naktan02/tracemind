@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Mapping
 from uuid import uuid4
@@ -18,6 +18,7 @@ from shared.src.domain.entities.training.training_task_config import (
     TrainingSelectionPolicy,
 )
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.domain.services.clock import Clock, SystemUtcClock
 from src.infrastructure.repositories.vector_adapter_state_repository import (
     SharedAdapterStateRepository,
 )
@@ -82,6 +83,7 @@ class RoundManagerService:
     artifact_repository: SharedAdapterStateRepository = field(
         default_factory=SharedAdapterStateRepository
     )
+    clock: Clock = field(default_factory=SystemUtcClock)
 
     def create_training_task(self, request: TrainingTaskRequest) -> TrainingTask:
         return TrainingTask(
@@ -111,7 +113,7 @@ class RoundManagerService:
                 "At least one update is required to publish the next pair."
             )
 
-        effective_published_at = request.published_at or datetime.now(timezone.utc)
+        effective_published_at = request.published_at or self.clock.now()
         base_state = self._load_base_state(request.base_manifest)
         next_revision = (
             request.next_model_revision

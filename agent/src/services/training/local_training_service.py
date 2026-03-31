@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
-from datetime import datetime, timezone
+from datetime import datetime
 from uuid import uuid4
 
 from agent.src.infrastructure.repositories.training_artifact_repository import (
@@ -23,9 +23,6 @@ from agent.src.services.training.training_backends import (
     SharedAdapterTrainingBackend,
     build_shared_adapter_training_backend,
 )
-from shared.src.contracts.adapter_contracts import (
-    SharedAdapterUpdatePayload,
-)
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
@@ -36,6 +33,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 from shared.src.domain.entities.training.training_task import TrainingTask
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.domain.services.clock import Clock, SystemUtcClock
 
 
 @dataclass(slots=True)
@@ -85,6 +83,7 @@ class LocalTrainingService:
     privacy_guard: SharedAdapterPrivacyGuard = field(
         default_factory=DiagonalScaleClipOnlyPrivacyGuard
     )
+    clock: Clock = field(default_factory=SystemUtcClock)
 
     def run(self, request: LocalTrainingRequest) -> LocalTrainingResult:
         if (
@@ -93,7 +92,7 @@ class LocalTrainingService:
         ):
             raise ValueError("TrainingTask model_revision must match ModelManifest.")
 
-        effective_created_at = request.created_at or datetime.now(timezone.utc)
+        effective_created_at = request.created_at or self.clock.now()
         backend = self._resolve_backend(training_task=request.training_task)
         privacy_guard = self._resolve_privacy_guard(training_task=request.training_task)
         scored_events = [example.scored_event for example in request.training_examples]

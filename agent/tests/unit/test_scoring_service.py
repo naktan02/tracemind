@@ -10,6 +10,9 @@ import pytest
 
 from agent.src.services.inference.scoring_policies import TopKMeanCosineScorePolicy
 from agent.src.services.inference.scoring_service import ScoringService
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingObjectiveConfig,
+)
 
 
 def _load_prototypes() -> dict[str, list[float]]:
@@ -77,6 +80,24 @@ def test_score_rejects_zero_norm_prototype() -> None:
 
 def test_score_can_switch_to_top_k_mean_policy() -> None:
     service = ScoringService(policy=TopKMeanCosineScorePolicy(top_k=2))
+
+    scores = service.score(
+        [1.0, 0.0],
+        {
+            "alert": ([1.0, 0.0], [0.0, 1.0], [-1.0, 0.0]),
+        },
+    )
+
+    assert scores["alert"] == pytest.approx(0.5)
+
+
+def test_score_service_can_be_built_from_objective_config() -> None:
+    service = ScoringService.from_objective_config(
+        TrainingObjectiveConfig(
+            score_policy_name="topk_mean_cosine",
+            score_top_k=2,
+        )
+    )
 
     scores = service.score(
         [1.0, 0.0],

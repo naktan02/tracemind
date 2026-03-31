@@ -100,11 +100,13 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         score_policy_name="topk_mean_cosine",
         score_top_k=3,
         acceptance_policy_name="top1_margin_threshold",
+        privacy_guard_name="diagonal_scale_clip_only",
     )
 
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
     assert payload.acceptance_policy_name == "top1_margin_threshold"
+    assert payload.privacy_guard_name == "diagonal_scale_clip_only"
 
 
 def test_training_objective_config_round_trips_policy_fields() -> None:
@@ -116,6 +118,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
             "acceptance_policy_name": "top1_confidence_only",
+            "privacy_guard_name": "noop",
             "temperature": 0.8,
         }
     )
@@ -123,6 +126,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
     assert config.acceptance_policy_name == "top1_confidence_only"
+    assert config.privacy_guard_name == "noop"
     assert config.extras == {"temperature": 0.8}
     assert config.to_mapping() == {
         "loss": "contrastive",
@@ -131,5 +135,6 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "score_policy_name": "topk_mean_cosine",
         "score_top_k": 2,
         "acceptance_policy_name": "top1_confidence_only",
+        "privacy_guard_name": "noop",
         "temperature": 0.8,
     }

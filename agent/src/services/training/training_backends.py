@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Protocol
+from typing import TYPE_CHECKING, Protocol
 
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
@@ -20,6 +20,18 @@ from shared.src.domain.entities.training.vector_adapter_delta import (
     VectorAdapterDelta,
 )
 
+if TYPE_CHECKING:
+    from shared.src.domain.entities.training.pseudo_label_candidate import (
+        PseudoLabelCandidate,
+    )
+
+
+class AcceptedTrainingExample(Protocol):
+    """로컬 학습 backend가 필요로 하는 최소 accepted example shape."""
+
+    embedding: list[float]
+    candidate: "PseudoLabelCandidate | None"
+
 
 class SharedAdapterTrainingBackend(Protocol):
     """채택된 로컬 예시를 shared adapter update로 바꾸는 backend 인터페이스."""
@@ -33,7 +45,7 @@ class SharedAdapterTrainingBackend(Protocol):
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        accepted_examples: tuple["EmbeddedTrainingExample", ...],
+        accepted_examples: tuple[AcceptedTrainingExample, ...],
         created_at: datetime,
     ) -> SharedAdapterUpdate:
         """accepted local examples를 기반으로 shared adapter update를 계산한다."""
@@ -61,7 +73,7 @@ class DiagonalScaleHeuristicTrainingBackend:
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        accepted_examples: tuple["EmbeddedTrainingExample", ...],
+        accepted_examples: tuple[AcceptedTrainingExample, ...],
         created_at: datetime,
     ) -> VectorAdapterDelta:
         if not accepted_examples:
@@ -81,7 +93,9 @@ class DiagonalScaleHeuristicTrainingBackend:
                 )
 
             if example.candidate is None:
-                raise ValueError("Accepted example must carry a pseudo-label candidate.")
+                raise ValueError(
+                    "Accepted example must carry a pseudo-label candidate."
+                )
 
             weight = max(example.candidate.confidence, 1e-6)
             total_weight += weight

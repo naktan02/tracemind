@@ -8,6 +8,10 @@ from dataclasses import dataclass, field
 from agent.src.services.inference.scoring_policies import (
     MaxCosineScorePolicy,
     PrototypeScorePolicy,
+    build_prototype_score_policy,
+)
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingObjectiveConfig,
 )
 
 
@@ -17,6 +21,22 @@ class ScoringService:
 
     similarity_name: str = "cosine"
     policy: PrototypeScorePolicy = field(default_factory=MaxCosineScorePolicy)
+
+    @classmethod
+    def from_objective_config(
+        cls,
+        objective_config: TrainingObjectiveConfig,
+        *,
+        similarity_name: str = "cosine",
+    ) -> "ScoringService":
+        """학습 objective config로부터 scoring service를 조립한다."""
+
+        policy_name = objective_config.score_policy_name or "max_cosine"
+        policy = build_prototype_score_policy(
+            policy_name,
+            top_k=objective_config.score_top_k,
+        )
+        return cls(similarity_name=similarity_name, policy=policy)
 
     def score(
         self,
