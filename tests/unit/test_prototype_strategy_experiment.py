@@ -7,11 +7,7 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from scripts.experiments.prototype_strategy.io_utils import (
-    load_jsonl_rows,
-    resolve_output_dir,
-)
-from scripts.experiments.prototype_strategy_experiment import (
+from scripts.experiments.prototype_strategy import (
     DbscanPrototypeStrategy,
     EvaluationMetrics,
     KMeansPrototypeStrategy,
@@ -21,6 +17,10 @@ from scripts.experiments.prototype_strategy_experiment import (
     StrategyEvaluationReport,
     StrategySelectionPolicy,
     build_strategies,
+)
+from scripts.experiments.prototype_strategy.io_utils import (
+    load_jsonl_rows,
+    resolve_output_dir,
 )
 
 

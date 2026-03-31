@@ -8,6 +8,12 @@ from datetime import datetime, timezone
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterSpec,
 )
+from scripts.experiments.federated_simulation import (
+    FederatedPrototypeRebuildConfig,
+    FederatedShardPolicyConfig,
+    FederatedTrainingTaskConfig,
+    FederatedValidationConfig,
+)
 from scripts.experiments.run_federated_simulation import (
     build_prototype_pack_from_rows,
     run_simulation,
@@ -55,14 +61,32 @@ def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() ->
 
     bootstrap_ids = {row["query_id"] for row in split.bootstrap_rows}
     client_ids = {
-        row["query_id"]
-        for shard in split.client_shards
-        for row in shard.rows
+        row["query_id"] for shard in split.client_shards for row in shard.rows
     }
 
     assert bootstrap_ids
     assert client_ids
     assert bootstrap_ids.isdisjoint(client_ids)
+
+
+def test_split_rows_for_federation_supports_configurable_dominant_ratio() -> None:
+    rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("a3", "panic panic", "anxiety"),
+        _row("a4", "panic panic", "anxiety"),
+    ]
+
+    split = split_rows_for_federation(
+        rows,
+        bootstrap_ratio=0.25,
+        client_count=2,
+        seed=42,
+        shard_policy=FederatedShardPolicyConfig(dominant_ratio=0.5),
+    )
+
+    shard_sizes = [len(shard.rows) for shard in split.client_shards]
+    assert shard_sizes == [2, 1]
 
 
 def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:
@@ -135,6 +159,72 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert "threshold_accepted" in first_candidate
 
 
+def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("a3", "panic panic", "anxiety"),
+        _row("d1", "sad sad", "depression"),
+        _row("d2", "sad sad", "depression"),
+        _row("d3", "sad sad", "depression"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+        _row("n3", "calm calm", "normal"),
+        _row("s1", "die die", "suicidal"),
+        _row("s2", "die die", "suicidal"),
+        _row("s3", "die die", "suicidal"),
+    ]
+    validation_rows = [
+        _row("va", "panic panic", "anxiety"),
+        _row("vd", "sad sad", "depression"),
+        _row("vn", "calm calm", "normal"),
+        _row("vs", "die die", "suicidal"),
+    ]
+
+    result = run_simulation(
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        output_dir=tmp_path / "simulation",
+        client_count=4,
+        rounds=1,
+        bootstrap_ratio=1 / 3,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="tracemind-embed-sim",
+        training_scope="adapter_only",
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=FederatedShardPolicyConfig(dominant_ratio=0.5),
+        training_task_config=FederatedTrainingTaskConfig(
+            min_required_examples=1,
+            gradient_clip_norm=1.0,
+            objective_config={
+                "loss": "diagonal_scale_heuristic",
+                "confidence_threshold": 0.0,
+                "margin_threshold": 0.0,
+                "score_policy_name": "topk_mean_cosine",
+                "score_top_k": 1,
+                "acceptance_policy_name": "top1_margin_threshold",
+                "privacy_guard_name": "diagonal_scale_clip_only",
+            },
+            selection_policy={"max_examples": 4},
+        ),
+        validation_config=FederatedValidationConfig(
+            score_policy_name="topk_mean_cosine",
+            score_top_k=1,
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+    )
+
+    assert result.rounds
+    assert result.rounds[0].update_count > 0
+
+
 class _StaticEmbeddingAdapter:
     def __init__(self, vectors: dict[str, list[float]]) -> None:
         self._vectors = vectors
@@ -187,3 +277,47 @@ def test_build_prototype_pack_from_rows_uses_configured_builder_strategy() -> No
 
     assert len(payload.categories["anxiety"]) == 2
     assert len(payload.categories["normal"]) == 1
+
+
+def test_build_prototype_pack_from_rows_applies_rebuild_metadata_override() -> None:
+    rows = [
+        _row("a1", "cluster_a_1", "anxiety"),
+        _row("a2", "cluster_a_2", "anxiety"),
+    ]
+    adapter = _StaticEmbeddingAdapter(
+        {
+            "cluster_a_1": [1.0, 0.0],
+            "cluster_a_2": [1.0, 0.1],
+        }
+    )
+    adapter_state = VectorAdapterState.identity(
+        model_id="tracemind-embed-sim",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
+    )
+
+    payload = build_prototype_pack_from_rows(
+        rows=rows,
+        adapter=adapter,
+        adapter_state=adapter_state,
+        prototype_version="proto_sim_0000",
+        embedding_model_id="tracemind-embed-sim",
+        embedding_model_revision="sim_rev_0000",
+        built_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
+        build_strategy=SinglePrototypeBuildStrategy(),
+        rebuild_config=FederatedPrototypeRebuildConfig(
+            embedding_backend="custom_simulation",
+            mapping_version="custom_mapping.v1",
+            translation_model_id="toy-translator",
+            translation_model_revision="r1",
+            translation_direction="en->ko",
+        ),
+    )
+
+    assert payload.build_method == "mean_centroid_l2_normalized"
+    assert payload.mapping_version == "custom_mapping.v1"
+    assert payload.translation_model_id == "toy-translator"
+    assert payload.translation_model_revision == "r1"
+    assert payload.translation_direction == "en->ko"

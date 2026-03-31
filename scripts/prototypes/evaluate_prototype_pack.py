@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -16,6 +15,13 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
 )
 from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
+from scripts.classification_report import (  # noqa: E402
+    build_confusion_matrix,
+    render_confusion_table,
+    render_per_category_table,
+    safe_divide,
+    summarize_per_category,
+)
 from scripts.run_artifacts import build_run_dir  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
@@ -39,96 +45,6 @@ def predict_label(scores: dict[str, float]) -> tuple[str, float, float]:
     predicted_label, top_1_score = ranked[0]
     top_2_score = ranked[1][1] if len(ranked) > 1 else ranked[0][1]
     return predicted_label, top_1_score, top_1_score - top_2_score
-
-
-def build_confusion_matrix(
-    *,
-    categories: list[str],
-    actual_labels: list[str],
-    predicted_labels: list[str],
-) -> dict[str, dict[str, int]]:
-    matrix = {
-        actual: {predicted: 0 for predicted in categories} for actual in categories
-    }
-    for actual, predicted in zip(actual_labels, predicted_labels, strict=True):
-        matrix[actual][predicted] += 1
-    return matrix
-
-
-def safe_divide(numerator: float, denominator: float) -> float:
-    if denominator == 0:
-        return 0.0
-    return numerator / denominator
-
-
-def summarize_per_category(
-    *,
-    categories: list[str],
-    actual_labels: list[str],
-    predicted_labels: list[str],
-    true_scores: list[float],
-    top_1_scores: list[float],
-    margins: list[float],
-) -> dict[str, dict[str, float | int]]:
-    support_counter = Counter(actual_labels)
-    predicted_counter = Counter(predicted_labels)
-    correct_counter = Counter(
-        actual
-        for actual, predicted in zip(actual_labels, predicted_labels, strict=True)
-        if actual == predicted
-    )
-    true_score_buckets: dict[str, list[float]] = defaultdict(list)
-    top_1_score_buckets: dict[str, list[float]] = defaultdict(list)
-    margin_buckets: dict[str, list[float]] = defaultdict(list)
-    for actual, true_score, top_1_score, margin in zip(
-        actual_labels,
-        true_scores,
-        top_1_scores,
-        margins,
-        strict=True,
-    ):
-        true_score_buckets[actual].append(true_score)
-        top_1_score_buckets[actual].append(top_1_score)
-        margin_buckets[actual].append(margin)
-
-    per_category: dict[str, dict[str, float | int]] = {}
-    for category in categories:
-        support = support_counter[category]
-        correct = correct_counter[category]
-        predicted = predicted_counter[category]
-        precision = safe_divide(correct, predicted)
-        recall = safe_divide(correct, support)
-        f1 = safe_divide(2 * precision * recall, precision + recall)
-        per_category[category] = {
-            "support": support,
-            "predicted": predicted,
-            "correct": correct,
-            "precision": round(precision, 6),
-            "recall": round(recall, 6),
-            "f1": round(f1, 6),
-            "mean_true_label_score": round(
-                safe_divide(
-                    sum(true_score_buckets[category]),
-                    len(true_score_buckets[category]),
-                ),
-                6,
-            ),
-            "mean_top_1_score": round(
-                safe_divide(
-                    sum(top_1_score_buckets[category]),
-                    len(top_1_score_buckets[category]),
-                ),
-                6,
-            ),
-            "mean_margin_top1_top2": round(
-                safe_divide(
-                    sum(margin_buckets[category]),
-                    len(margin_buckets[category]),
-                ),
-                6,
-            ),
-        }
-    return per_category
 
 
 def evaluate_rows(
@@ -172,9 +88,11 @@ def evaluate_rows(
         categories=categories,
         actual_labels=actual_labels,
         predicted_labels=predicted_labels,
-        true_scores=true_scores,
-        top_1_scores=top_1_scores,
+        primary_values=true_scores,
+        top_1_values=top_1_scores,
         margins=margins,
+        primary_metric_key="mean_true_label_score",
+        top_1_metric_key="mean_top_1_score",
     )
 
     return {
@@ -196,52 +114,6 @@ def evaluate_rows(
         "confusion_matrix": confusion_matrix,
         "per_category": per_category,
     }
-
-
-def render_confusion_table(confusion_matrix: dict[str, dict[str, int]]) -> str:
-    categories = list(confusion_matrix)
-    header = ["actual \\ predicted"] + categories
-    lines = [
-        "| " + " | ".join(header) + " |",
-        "| " + " | ".join(["---"] * len(header)) + " |",
-    ]
-    for actual in categories:
-        row = [actual]
-        for predicted in categories:
-            row.append(str(confusion_matrix[actual][predicted]))
-        lines.append("| " + " | ".join(row) + " |")
-    return "\n".join(lines)
-
-
-def render_per_category_table(per_category: dict[str, dict[str, float | int]]) -> str:
-    header = [
-        "category",
-        "support",
-        "precision",
-        "recall",
-        "f1",
-        "mean_true_score",
-        "mean_top1_score",
-        "mean_margin",
-    ]
-    lines = [
-        "| " + " | ".join(header) + " |",
-        "| " + " | ".join(["---"] * len(header)) + " |",
-    ]
-    for category in sorted(per_category):
-        metrics = per_category[category]
-        row = [
-            category,
-            str(metrics["support"]),
-            f"{float(metrics['precision']):.4f}",
-            f"{float(metrics['recall']):.4f}",
-            f"{float(metrics['f1']):.4f}",
-            f"{float(metrics['mean_true_label_score']):.4f}",
-            f"{float(metrics['mean_top_1_score']):.4f}",
-            f"{float(metrics['mean_margin_top1_top2']):.4f}",
-        ]
-        lines.append("| " + " | ".join(row) + " |")
-    return "\n".join(lines)
 
 
 @hydra.main(
@@ -330,7 +202,15 @@ def main(cfg: DictConfig) -> None:
         )
         print(render_confusion_table(evaluation["confusion_matrix"]))
         print()
-        print(render_per_category_table(evaluation["per_category"]))
+        print(
+            render_per_category_table(
+                evaluation["per_category"],
+                primary_metric_key="mean_true_label_score",
+                top_1_metric_key="mean_top_1_score",
+                primary_header="mean_true_score",
+                top_1_header="mean_top1_score",
+            )
+        )
         print()
         print(f"report_json={output_path}")
         print()

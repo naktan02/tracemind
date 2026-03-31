@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from hydra import compose, initialize_config_module
 import pytest
+from hydra import compose, initialize_config_module
 
 
 @pytest.mark.parametrize(
@@ -117,6 +117,30 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation"
     assert cfg.prototype_builder.name == "kmeans"
     assert list(cfg.prototype_builder.candidate_ks) == [2]
+
+
+def test_federated_simulation_supports_detail_strategy_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/run_federated_simulation",
+            overrides=[
+                "shard_policy.dominant_ratio=0.6",
+                "training_task.objective.score_policy_name=topk_mean_cosine",
+                "training_task.objective.score_top_k=2",
+                "validation.score_policy_name=topk_mean_cosine",
+                "validation.score_top_k=2",
+                "prototype_rebuild.mapping_version=custom_mapping.v1",
+                "diagnostics.dump_dir_name=custom_dumps",
+            ],
+        )
+
+    assert cfg.shard_policy.dominant_ratio == 0.6
+    assert cfg.training_task.objective.score_policy_name == "topk_mean_cosine"
+    assert cfg.training_task.objective.score_top_k == 2
+    assert cfg.validation.score_policy_name == "topk_mean_cosine"
+    assert cfg.validation.score_top_k == 2
+    assert cfg.prototype_rebuild.mapping_version == "custom_mapping.v1"
+    assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:

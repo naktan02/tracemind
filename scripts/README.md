@@ -366,6 +366,25 @@ uv run python scripts/experiments/run_federated_simulation.py \
   federated_run_preset=smoke
 ```
 
+client shard 분배 비율이나 scoring policy 같은 세부 전략을 바꾸려면:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  shard_policy.dominant_ratio=0.6 \
+  training_task.objective.score_policy_name=topk_mean_cosine \
+  training_task.objective.score_top_k=2 \
+  validation.score_policy_name=topk_mean_cosine \
+  validation.score_top_k=2
+```
+
+prototype 재빌드 메타데이터나 dump 경로도 leaf override로 바꿀 수 있다:
+
+```bash
+uv run python scripts/experiments/run_federated_simulation.py \
+  prototype_rebuild.mapping_version=custom_mapping.v1 \
+  diagnostics.dump_dir_name=custom_selection_dumps
+```
+
 출력 예시:
 
 - `federated_run_preset=smoke`: `runs/federated_simulation_smoke/<run_id>/...`

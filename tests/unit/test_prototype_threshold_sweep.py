@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from scripts.experiments.prototype_strategy.evaluation import evaluate_scored_predictions
+from scripts.experiments.prototype_strategy.evaluation import (
+    evaluate_scored_predictions,
+)
 from scripts.experiments.prototype_strategy.models import ScoredPrediction
 from scripts.experiments.prototype_strategy.sweep import (
     ThresholdSweepPoint,

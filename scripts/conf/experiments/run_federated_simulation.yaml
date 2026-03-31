@@ -19,6 +19,46 @@ confidence_threshold: 0.6
 margin_threshold: 0.02
 gradient_clip_norm: 0.5
 
+shard_policy:
+  name: label_dominant
+  dominant_ratio: 0.75
+  client_id_prefix: agent
+
+training_task:
+  local_epochs: 1
+  batch_size: 16
+  learning_rate: 0.0001
+  max_steps: 50
+  min_required_examples: ${federated_run_preset.min_required_examples}
+  gradient_clip_norm: ${gradient_clip_norm}
+  objective:
+    loss: diagonal_scale_heuristic
+    confidence_threshold: ${confidence_threshold}
+    margin_threshold: ${margin_threshold}
+    score_policy_name: max_cosine
+    score_top_k: null
+    acceptance_policy_name: top1_margin_threshold
+    privacy_guard_name: diagonal_scale_clip_only
+  selection_policy:
+    max_examples: ${federated_run_preset.max_examples}
+
+validation:
+  similarity_name: cosine
+  score_policy_name: ${training_task.objective.score_policy_name}
+  score_top_k: ${training_task.objective.score_top_k}
+  confidence_threshold: ${confidence_threshold}
+  margin_threshold: ${margin_threshold}
+
+prototype_rebuild:
+  embedding_backend: simulation
+  mapping_version: ourafla_to_4cat.v1
+  translation_model_id: null
+  translation_model_revision: null
+  translation_direction: null
+
+diagnostics:
+  dump_dir_name: selection_dumps
+
 hydra:
   run:
     dir: .

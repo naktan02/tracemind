@@ -190,204 +190,234 @@ def _selected_stages(dataset_cfg: DictConfig, only_stages: set[str]) -> list[str
     ]
 
 
-def run_dataset(
+def _run_download_stage(
     *,
-    cfg: DictConfig,
-) -> Path:
-    """dataset group 하나에 대해 pipeline을 실행한다."""
-    dataset_cfg = cfg.dataset
-    only_stages = {str(stage) for stage in cfg.only_stages}
-    selected_stages = _selected_stages(dataset_cfg, only_stages)
-
-    raw_dir = _resolve_project_path(str(cfg.paths.raw_dir)) or PROJECT_ROOT
-    labeled_query_set_dir = (
-        _resolve_project_path(str(cfg.paths.labeled_query_set_dir)) or PROJECT_ROOT
-    )
-    split_dir = _resolve_project_path(str(cfg.paths.split_dir)) or PROJECT_ROOT
-    prototype_pack_dir = (
-        _resolve_project_path(str(cfg.paths.prototype_pack_dir)) or PROJECT_ROOT
-    )
-    prototype_build_state_dir = (
-        _resolve_project_path(str(cfg.paths.prototype_build_state_dir)) or PROJECT_ROOT
-    )
-    pipeline_run_dir = (
-        _resolve_project_path(str(cfg.paths.pipeline_run_dir)) or PROJECT_ROOT
-    )
-    cache_dir = _resolve_project_path(str(cfg.paths.cache_dir)) or PROJECT_ROOT
-
+    dataset_cfg: DictConfig,
+    raw_dir: Path,
+    cache_dir: Path,
+) -> dict[str, str]:
+    """download stage를 실행하고 source별 raw CSV 경로를 반환한다."""
     raw_outputs: dict[str, str] = {}
-    mapped_outputs: dict[str, dict[str, Path]] = {}
-    split_output: dict[str, Path] | None = None
-    prototype_output: dict[str, str] | None = None
-
-    if "download" in selected_stages:
-        for source_name, source_cfg in dataset_cfg.sources.items():
-            source_kind = _require_string(source_cfg.get("kind"), field_name="kind")
-            if source_kind != "huggingface":
-                raise ValueError(
-                    f"Dataset '{dataset_cfg.name}' source '{source_name}' has "
-                    f"unsupported kind '{source_kind}'."
-                )
-
-            output_path = resolve_dataset_output_path(
-                source_cfg=source_cfg,
-                raw_dir=raw_dir,
-            )
-            download_huggingface_dataset_to_csv(
-                dataset_id=_require_string(
-                    source_cfg.get("dataset_id"),
-                    field_name=f"sources.{source_name}.dataset_id",
-                ),
-                split=_require_string(
-                    source_cfg.get("split"),
-                    field_name=f"sources.{source_name}.split",
-                ),
-                output_dir=raw_dir,
-                cache_dir=cache_dir,
-                data_file=source_cfg.get("data_file"),
-                output_path=output_path,
-                revision=source_cfg.get("revision"),
-            )
-            raw_outputs[source_name] = str(output_path)
-
-    if "map" in selected_stages:
-        for source_name, source_cfg in dataset_cfg.sources.items():
-            mapping_config = source_cfg.get("mapping_config")
-            if mapping_config is None:
-                continue
-
-            raw_csv_path = Path(
-                raw_outputs.get(
-                    source_name,
-                    resolve_dataset_output_path(
-                        source_cfg=source_cfg,
-                        raw_dir=raw_dir,
-                    ),
-                )
-            )
-            jsonl_path, manifest_path = build_labeled_query_set(
-                raw_csv_path=raw_csv_path,
-                mapping_config_path=_resolve_project_path(str(mapping_config)),
-                output_dir=labeled_query_set_dir,
-            )
-            mapped_outputs[source_name] = {
-                "jsonl": jsonl_path,
-                "manifest": manifest_path,
-            }
-
-    if "split" in selected_stages:
-        split_cfg = dataset_cfg.get("split")
-        if split_cfg is None:
+    for source_name, source_cfg in dataset_cfg.sources.items():
+        source_kind = _require_string(source_cfg.get("kind"), field_name="kind")
+        if source_kind != "huggingface":
             raise ValueError(
-                f"Dataset '{dataset_cfg.name}' does not define split config."
+                f"Dataset '{dataset_cfg.name}' source '{source_name}' has "
+                f"unsupported kind '{source_kind}'."
             )
 
-        split_source = _require_string(
-            split_cfg.get("source"),
-            field_name="split.source",
+        output_path = resolve_dataset_output_path(
+            source_cfg=source_cfg,
+            raw_dir=raw_dir,
         )
-        mapped_output = mapped_outputs.get(split_source)
-        if mapped_output is None:
-            source_cfg = dataset_cfg.sources.get(split_source)
-            if source_cfg is None:
-                raise ValueError(
-                    f"Dataset '{dataset_cfg.name}' split source '{split_source}' "
-                    "is unknown."
-                )
-            mapped_output = resolve_mapped_output_paths(
-                source_cfg=source_cfg,
-                labeled_query_set_dir=labeled_query_set_dir,
-            )
-
-        train_path, validation_path, manifest_path = build_split_artifacts(
-            input_jsonl=mapped_output["jsonl"],
-            split_name=_require_string(
-                split_cfg.get("split_name"),
-                field_name="split.split_name",
+        download_huggingface_dataset_to_csv(
+            dataset_id=_require_string(
+                source_cfg.get("dataset_id"),
+                field_name=f"sources.{source_name}.dataset_id",
             ),
-            validation_ratio=float(split_cfg.get("validation_ratio", 0.1)),
-            seed=int(split_cfg.get("seed", 42)),
-            output_dir=split_dir,
+            split=_require_string(
+                source_cfg.get("split"),
+                field_name=f"sources.{source_name}.split",
+            ),
+            output_dir=raw_dir,
+            cache_dir=cache_dir,
+            data_file=source_cfg.get("data_file"),
+            output_path=output_path,
+            revision=source_cfg.get("revision"),
         )
-        split_output = {
-            "train_jsonl": train_path,
-            "validation_jsonl": validation_path,
+        raw_outputs[source_name] = str(output_path)
+    return raw_outputs
+
+
+def _run_map_stage(
+    *,
+    dataset_cfg: DictConfig,
+    raw_outputs: dict[str, str],
+    raw_dir: Path,
+    labeled_query_set_dir: Path,
+) -> dict[str, dict[str, Path]]:
+    """map stage를 실행하고 source별 labeled JSONL 산출물을 반환한다."""
+    mapped_outputs: dict[str, dict[str, Path]] = {}
+    for source_name, source_cfg in dataset_cfg.sources.items():
+        mapping_config = source_cfg.get("mapping_config")
+        if mapping_config is None:
+            continue
+
+        raw_csv_path = Path(
+            raw_outputs.get(
+                source_name,
+                resolve_dataset_output_path(
+                    source_cfg=source_cfg,
+                    raw_dir=raw_dir,
+                ),
+            )
+        )
+        jsonl_path, manifest_path = build_labeled_query_set(
+            raw_csv_path=raw_csv_path,
+            mapping_config_path=_resolve_project_path(str(mapping_config)),
+            output_dir=labeled_query_set_dir,
+        )
+        mapped_outputs[source_name] = {
+            "jsonl": jsonl_path,
             "manifest": manifest_path,
         }
-    elif dataset_cfg.get("split") is not None:
-        split_output = resolve_split_output_paths(
-            split_cfg=dataset_cfg.split,
-            split_dir=split_dir,
-        )
+    return mapped_outputs
 
-    if "prototype" in selected_stages:
-        prototype_cfg = dataset_cfg.get("prototype")
-        if prototype_cfg is None:
+
+def _run_split_stage(
+    *,
+    dataset_cfg: DictConfig,
+    mapped_outputs: dict[str, dict[str, Path]],
+    labeled_query_set_dir: Path,
+    split_dir: Path,
+) -> dict[str, Path]:
+    """split stage를 실행하고 train/validation 경로를 반환한다."""
+    split_cfg = dataset_cfg.get("split")
+    if split_cfg is None:
+        raise ValueError(f"Dataset '{dataset_cfg.name}' does not define split config.")
+
+    split_source = _require_string(
+        split_cfg.get("source"),
+        field_name="split.source",
+    )
+    mapped_output = mapped_outputs.get(split_source)
+    if mapped_output is None:
+        source_cfg = dataset_cfg.sources.get(split_source)
+        if source_cfg is None:
             raise ValueError(
-                f"Dataset '{dataset_cfg.name}' does not define prototype config."
+                f"Dataset '{dataset_cfg.name}' split source '{split_source}' "
+                "is unknown."
             )
-
-        prototype_input_jsonl = resolve_prototype_input_jsonl(
-            dataset_cfg=dataset_cfg,
-            mapped_outputs=mapped_outputs,
-            split_output=split_output,
-            split_dir=split_dir,
+        mapped_output = resolve_mapped_output_paths(
+            source_cfg=source_cfg,
+            labeled_query_set_dir=labeled_query_set_dir,
         )
-        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        prototype_version = f"{prototype_cfg.prototype_version_prefix}_{timestamp}"
-        (
-            pack_path,
-            build_state_path,
-            manifest_path,
-            main_server_pack_path,
-            main_server_build_state_path,
-        ) = seed_prototype_pack(
-            input_jsonl=prototype_input_jsonl,
-            output_dir=prototype_pack_dir,
-            build_state_output_dir=prototype_build_state_dir,
-            prototype_version=prototype_version,
-            backend=_require_string(
-                prototype_cfg.get("backend"),
-                field_name="prototype.backend",
-            ),
-            embedding_model_id=_require_string(
-                prototype_cfg.get("embedding_model_id"),
-                field_name="prototype.embedding_model_id",
-            ),
-            embedding_model_revision=str(
-                prototype_cfg.get("embedding_model_revision", "main")
-            ),
-            translation_model_id=prototype_cfg.get("translation_model_id"),
-            translation_model_revision=prototype_cfg.get("translation_model_revision"),
-            translation_direction=prototype_cfg.get("translation_direction"),
-            batch_size=int(prototype_cfg.get("batch_size", 16)),
-            cache_dir=cache_dir,
-            device=str(cfg.runtime.device),
-            task_prefix=str(prototype_cfg.get("task_prefix", "")),
-            local_files_only=bool(cfg.runtime.local_files_only),
-            expected_categories=[
-                str(value) for value in prototype_cfg.get("expected_categories", [])
-            ],
-            hash_dim=int(prototype_cfg.get("hash_dim", 256)),
-            build_strategy=instantiate(cfg.prototype_builder),
-        )
-        prototype_output = {
-            "prototype_build_state": None
-            if build_state_path is None
-            else str(build_state_path),
-            "prototype_pack": str(pack_path),
-            "manifest": str(manifest_path),
-            "main_server_build_state": None
-            if main_server_build_state_path is None
-            else str(main_server_build_state_path),
-            "main_server_pack": str(main_server_pack_path),
-            "input_jsonl": str(prototype_input_jsonl),
-        }
 
+    train_path, validation_path, manifest_path = build_split_artifacts(
+        input_jsonl=mapped_output["jsonl"],
+        split_name=_require_string(
+            split_cfg.get("split_name"),
+            field_name="split.split_name",
+        ),
+        validation_ratio=float(split_cfg.get("validation_ratio", 0.1)),
+        seed=int(split_cfg.get("seed", 42)),
+        output_dir=split_dir,
+    )
+    return {
+        "train_jsonl": train_path,
+        "validation_jsonl": validation_path,
+        "manifest": manifest_path,
+    }
+
+
+def _resolve_declared_split_output(
+    *,
+    dataset_cfg: DictConfig,
+    split_dir: Path,
+) -> dict[str, Path] | None:
+    """split stage를 건너뛴 경우 선언된 산출물 경로를 계산한다."""
+    split_cfg = dataset_cfg.get("split")
+    if split_cfg is None:
+        return None
+    return resolve_split_output_paths(
+        split_cfg=split_cfg,
+        split_dir=split_dir,
+    )
+
+
+def _run_prototype_stage(
+    *,
+    cfg: DictConfig,
+    dataset_cfg: DictConfig,
+    mapped_outputs: dict[str, dict[str, Path]],
+    split_output: dict[str, Path] | None,
+    split_dir: Path,
+    prototype_pack_dir: Path,
+    prototype_build_state_dir: Path,
+    cache_dir: Path,
+) -> dict[str, str | None]:
+    """prototype stage를 실행하고 pack/build-state 산출물을 반환한다."""
+    prototype_cfg = dataset_cfg.get("prototype")
+    if prototype_cfg is None:
+        raise ValueError(
+            f"Dataset '{dataset_cfg.name}' does not define prototype config."
+        )
+
+    prototype_input_jsonl = resolve_prototype_input_jsonl(
+        dataset_cfg=dataset_cfg,
+        mapped_outputs=mapped_outputs,
+        split_output=split_output,
+        split_dir=split_dir,
+    )
+    timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    prototype_version = f"{prototype_cfg.prototype_version_prefix}_{timestamp}"
+    (
+        pack_path,
+        build_state_path,
+        manifest_path,
+        main_server_pack_path,
+        main_server_build_state_path,
+    ) = seed_prototype_pack(
+        input_jsonl=prototype_input_jsonl,
+        output_dir=prototype_pack_dir,
+        build_state_output_dir=prototype_build_state_dir,
+        prototype_version=prototype_version,
+        backend=_require_string(
+            prototype_cfg.get("backend"),
+            field_name="prototype.backend",
+        ),
+        embedding_model_id=_require_string(
+            prototype_cfg.get("embedding_model_id"),
+            field_name="prototype.embedding_model_id",
+        ),
+        embedding_model_revision=str(
+            prototype_cfg.get("embedding_model_revision", "main")
+        ),
+        translation_model_id=prototype_cfg.get("translation_model_id"),
+        translation_model_revision=prototype_cfg.get("translation_model_revision"),
+        translation_direction=prototype_cfg.get("translation_direction"),
+        batch_size=int(prototype_cfg.get("batch_size", 16)),
+        cache_dir=cache_dir,
+        device=str(cfg.runtime.device),
+        task_prefix=str(prototype_cfg.get("task_prefix", "")),
+        local_files_only=bool(cfg.runtime.local_files_only),
+        expected_categories=[
+            str(value) for value in prototype_cfg.get("expected_categories", [])
+        ],
+        hash_dim=int(prototype_cfg.get("hash_dim", 256)),
+        build_strategy=instantiate(cfg.prototype_builder),
+    )
+    return {
+        "prototype_build_state": None
+        if build_state_path is None
+        else str(build_state_path),
+        "prototype_pack": str(pack_path),
+        "manifest": str(manifest_path),
+        "main_server_build_state": None
+        if main_server_build_state_path is None
+        else str(main_server_build_state_path),
+        "main_server_pack": str(main_server_pack_path),
+        "input_jsonl": str(prototype_input_jsonl),
+    }
+
+
+def _write_pipeline_run_manifest(
+    *,
+    cfg: DictConfig,
+    dataset_cfg: DictConfig,
+    selected_stages: list[str],
+    raw_outputs: dict[str, str],
+    mapped_outputs: dict[str, dict[str, Path]],
+    split_output: dict[str, Path] | None,
+    prototype_output: dict[str, str | None] | None,
+    pipeline_run_dir: Path,
+) -> Path:
+    """pipeline 실행 요약 manifest를 기록한다."""
     pipeline_run_dir.mkdir(parents=True, exist_ok=True)
-    run_timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+    executed_at = datetime.now(timezone.utc)
     run_manifest_path = (
-        pipeline_run_dir / f"{dataset_cfg.name}__{run_timestamp}.manifest.json"
+        pipeline_run_dir
+        / f"{dataset_cfg.name}__{executed_at.strftime('%Y%m%dT%H%M%SZ')}.manifest.json"
     )
     run_manifest = {
         "schema_version": "dataset_pipeline_run.v2",
@@ -395,7 +425,7 @@ def run_dataset(
         "description": str(dataset_cfg.get("description", "")),
         "dataset_config_group": f"dataset={dataset_cfg.name}",
         "dataset_config_path": str(DATASET_CONFIG_DIR / f"{dataset_cfg.name}.yaml"),
-        "executed_at": datetime.now(timezone.utc).isoformat(),
+        "executed_at": executed_at.isoformat(),
         "executed_stages": selected_stages,
         "runtime": {
             "name": str(cfg.runtime.name),
@@ -433,6 +463,88 @@ def run_dataset(
         encoding="utf-8",
     )
     return run_manifest_path
+
+
+def run_dataset(
+    *,
+    cfg: DictConfig,
+) -> Path:
+    """dataset group 하나에 대해 pipeline을 실행한다."""
+    dataset_cfg = cfg.dataset
+    only_stages = {str(stage) for stage in cfg.only_stages}
+    selected_stages = _selected_stages(dataset_cfg, only_stages)
+
+    raw_dir = _resolve_project_path(str(cfg.paths.raw_dir)) or PROJECT_ROOT
+    labeled_query_set_dir = (
+        _resolve_project_path(str(cfg.paths.labeled_query_set_dir)) or PROJECT_ROOT
+    )
+    split_dir = _resolve_project_path(str(cfg.paths.split_dir)) or PROJECT_ROOT
+    prototype_pack_dir = (
+        _resolve_project_path(str(cfg.paths.prototype_pack_dir)) or PROJECT_ROOT
+    )
+    prototype_build_state_dir = (
+        _resolve_project_path(str(cfg.paths.prototype_build_state_dir)) or PROJECT_ROOT
+    )
+    pipeline_run_dir = (
+        _resolve_project_path(str(cfg.paths.pipeline_run_dir)) or PROJECT_ROOT
+    )
+    cache_dir = _resolve_project_path(str(cfg.paths.cache_dir)) or PROJECT_ROOT
+
+    raw_outputs: dict[str, str] = {}
+    mapped_outputs: dict[str, dict[str, Path]] = {}
+    split_output: dict[str, Path] | None = None
+    prototype_output: dict[str, str | None] | None = None
+
+    if "download" in selected_stages:
+        raw_outputs = _run_download_stage(
+            dataset_cfg=dataset_cfg,
+            raw_dir=raw_dir,
+            cache_dir=cache_dir,
+        )
+
+    if "map" in selected_stages:
+        mapped_outputs = _run_map_stage(
+            dataset_cfg=dataset_cfg,
+            raw_outputs=raw_outputs,
+            raw_dir=raw_dir,
+            labeled_query_set_dir=labeled_query_set_dir,
+        )
+
+    if "split" in selected_stages:
+        split_output = _run_split_stage(
+            dataset_cfg=dataset_cfg,
+            mapped_outputs=mapped_outputs,
+            labeled_query_set_dir=labeled_query_set_dir,
+            split_dir=split_dir,
+        )
+    else:
+        split_output = _resolve_declared_split_output(
+            dataset_cfg=dataset_cfg,
+            split_dir=split_dir,
+        )
+
+    if "prototype" in selected_stages:
+        prototype_output = _run_prototype_stage(
+            cfg=cfg,
+            dataset_cfg=dataset_cfg,
+            mapped_outputs=mapped_outputs,
+            split_output=split_output,
+            split_dir=split_dir,
+            prototype_pack_dir=prototype_pack_dir,
+            prototype_build_state_dir=prototype_build_state_dir,
+            cache_dir=cache_dir,
+        )
+
+    return _write_pipeline_run_manifest(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        selected_stages=selected_stages,
+        raw_outputs=raw_outputs,
+        mapped_outputs=mapped_outputs,
+        split_output=split_output,
+        prototype_output=prototype_output,
+        pipeline_run_dir=pipeline_run_dir,
+    )
 
 
 @hydra.main(
