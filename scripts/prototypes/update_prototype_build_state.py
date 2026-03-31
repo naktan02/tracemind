@@ -4,17 +4,9 @@ from __future__ import annotations
 
 import argparse
 import json
-import sys
 from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
-if str(MAIN_SERVER_ROOT) not in sys.path:
-    sys.path.insert(0, str(MAIN_SERVER_ROOT))
 
 from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
@@ -140,9 +132,7 @@ def update_prototype_build_state(
     rows_by_label = group_rows_by_label(rows)
     base_categories = sorted(base_state.categories)
     unexpected_categories = sorted(
-        category
-        for category in rows_by_label
-        if category not in base_state.categories
+        category for category in rows_by_label if category not in base_state.categories
     )
     if unexpected_categories:
         raise ValueError(
@@ -233,9 +223,8 @@ def update_prototype_build_state(
 def main() -> None:
     args = parse_args()
     built_at = datetime.now(timezone.utc)
-    prototype_version = (
-        args.prototype_version
-        or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
+    prototype_version = args.prototype_version or built_at.strftime(
+        "proto_%Y_%m_%d_%H%M%S"
     )
     (
         build_state_path,

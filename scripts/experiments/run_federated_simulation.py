@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import json
 import random
-import sys
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -14,14 +13,6 @@ from typing import Any
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
-if str(MAIN_SERVER_ROOT) not in sys.path:
-    sys.path.insert(0, str(MAIN_SERVER_ROOT))
-
 from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
     SharedAdapterStateRepository,
 )
@@ -512,13 +503,10 @@ def save_selection_diagnostics(
 
     rows_by_query_id = {str(row["query_id"]): row for row in rows}
     examples_by_query_id = {
-        example.scored_event.query_id: example
-        for example in training_examples
+        example.scored_event.query_id: example for example in training_examples
     }
     stage_counts: dict[str, int] = defaultdict(int)
-    by_true_label: dict[str, dict[str, int]] = defaultdict(
-        lambda: defaultdict(int)
-    )
+    by_true_label: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
     by_predicted_label: dict[str, dict[str, int]] = defaultdict(
         lambda: defaultdict(int)
     )

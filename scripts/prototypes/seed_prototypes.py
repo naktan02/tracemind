@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -12,15 +11,6 @@ from typing import Any
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-
-# 프로젝트 루트를 PYTHONPATH에 추가 (스크립트 직접 실행 지원)
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
-MAIN_SERVER_ROOT = PROJECT_ROOT / "main-server"
-if str(MAIN_SERVER_ROOT) not in sys.path:
-    sys.path.insert(0, str(MAIN_SERVER_ROOT))
-
 from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
@@ -69,8 +59,7 @@ def resolve_metadata_from_manifests(input_jsonl: Path) -> tuple[str, str | None]
     for suffix in (".train.jsonl", ".validation.jsonl"):
         if input_jsonl.name.endswith(suffix):
             split_manifest_candidates.append(
-                input_jsonl.parent
-                / input_jsonl.name.replace(suffix, ".manifest.json")
+                input_jsonl.parent / input_jsonl.name.replace(suffix, ".manifest.json")
             )
     for manifest_path in split_manifest_candidates:
         split_manifest = load_json(manifest_path)
@@ -222,9 +211,8 @@ def seed_prototype_pack(
 )
 def main(cfg: DictConfig) -> None:
     built_at = datetime.now(timezone.utc)
-    prototype_version = (
-        cfg.prototype_version
-        or built_at.strftime("proto_%Y_%m_%d_%H%M%S")
+    prototype_version = cfg.prototype_version or built_at.strftime(
+        "proto_%Y_%m_%d_%H%M%S"
     )
     embedding_spec = instantiate(cfg.embedding.spec)
     build_strategy = instantiate(cfg.prototype_builder)

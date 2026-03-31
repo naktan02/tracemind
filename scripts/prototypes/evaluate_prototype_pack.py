@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from collections import Counter, defaultdict
 from pathlib import Path
 from typing import Any
@@ -11,10 +10,6 @@ from typing import Any
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
@@ -51,8 +46,7 @@ def build_confusion_matrix(
     predicted_labels: list[str],
 ) -> dict[str, dict[str, int]]:
     matrix = {
-        actual: {predicted: 0 for predicted in categories}
-        for actual in categories
+        actual: {predicted: 0 for predicted in categories} for actual in categories
     }
     for actual, predicted in zip(actual_labels, predicted_labels, strict=True):
         matrix[actual][predicted] += 1
@@ -285,9 +279,7 @@ def main(cfg: DictConfig) -> None:
         }
     )
     embedding_spec = instantiate(spec_cfg)
-    adapter = EmbeddingAdapterFactory.create(
-        embedding_spec
-    )
+    adapter = EmbeddingAdapterFactory.create(embedding_spec)
 
     output_dir = Path(cfg.output_dir) / payload.prototype_version
     output_dir.mkdir(parents=True, exist_ok=True)

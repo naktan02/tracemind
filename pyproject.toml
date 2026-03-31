@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=69", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "tracemind-server"
 version = "0.1.0"
@@ -29,6 +33,7 @@ experiments = [
 ]
 
 [tool.uv]
+package = true
 
 [[tool.uv.index]]
 name = "pytorch-cu124"
@@ -45,8 +50,24 @@ target-version = "py311"
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
 
+[tool.setuptools.packages.find]
+where = [".", "main-server"]
+include = [
+    "agent",
+    "agent.src",
+    "agent.src.*",
+    "shared",
+    "shared.src",
+    "shared.src.*",
+    "scripts",
+    "scripts.*",
+    "src",
+    "src.*",
+]
+namespaces = true
+
 [tool.pytest.ini_options]
-testpaths = ["tests", "agent/tests", "shared/tests"]
+testpaths = ["tests", "agent/tests", "main-server/tests", "shared/tests"]
 markers = [
     "slow: 실행 시간이 긴 테스트",
     "gpu: GPU가 필요한 테스트",

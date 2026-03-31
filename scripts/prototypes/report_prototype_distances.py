@@ -4,13 +4,7 @@ from __future__ import annotations
 
 import argparse
 import math
-import sys
 from pathlib import Path
-
-# 스크립트 직접 실행 시 프로젝트 루트를 import path에 추가한다.
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_centroids,
@@ -21,8 +15,7 @@ from shared.src.contracts.prototype_contracts import (  # noqa: E402
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description=(
-            "Report pairwise cosine similarity and L2 distance for a prototype "
-            "pack."
+            "Report pairwise cosine similarity and L2 distance for a prototype pack."
         )
     )
     parser.add_argument(

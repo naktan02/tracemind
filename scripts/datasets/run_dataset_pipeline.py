@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -13,8 +12,6 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from scripts.datasets.build_labeled_query_set import (  # noqa: E402
     build_labeled_query_set,
@@ -43,8 +40,7 @@ def load_dataset_group(alias: str) -> DictConfig:
     dataset_path = DATASET_CONFIG_DIR / f"{alias}.yaml"
     if not dataset_path.exists():
         raise ValueError(
-            f"Unknown dataset alias: '{alias}'. "
-            f"supported={supported_dataset_aliases()}"
+            f"Unknown dataset alias: '{alias}'. supported={supported_dataset_aliases()}"
         )
     return OmegaConf.load(dataset_path)
 
@@ -85,9 +81,7 @@ def resolve_mapped_output_paths(
     labeled_query_set_dir: Path,
 ) -> dict[str, Path]:
     """mapping config로부터 labeled JSONL/manifest 경로를 계산한다."""
-    mapping_config_path = _resolve_project_path(
-        source_cfg.get("mapping_config")
-    )
+    mapping_config_path = _resolve_project_path(source_cfg.get("mapping_config"))
     if mapping_config_path is None:
         raise ValueError("mapping_config is required for map stage.")
     mapping_config = load_mapping_config(mapping_config_path)
@@ -340,9 +334,7 @@ def run_dataset(
             split_dir=split_dir,
         )
         timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-        prototype_version = (
-            f"{prototype_cfg.prototype_version_prefix}_{timestamp}"
-        )
+        prototype_version = f"{prototype_cfg.prototype_version_prefix}_{timestamp}"
         (
             pack_path,
             build_state_path,
@@ -366,9 +358,7 @@ def run_dataset(
                 prototype_cfg.get("embedding_model_revision", "main")
             ),
             translation_model_id=prototype_cfg.get("translation_model_id"),
-            translation_model_revision=prototype_cfg.get(
-                "translation_model_revision"
-            ),
+            translation_model_revision=prototype_cfg.get("translation_model_revision"),
             translation_direction=prototype_cfg.get("translation_direction"),
             batch_size=int(prototype_cfg.get("batch_size", 16)),
             cache_dir=cache_dir,
@@ -376,8 +366,7 @@ def run_dataset(
             task_prefix=str(prototype_cfg.get("task_prefix", "")),
             local_files_only=bool(cfg.runtime.local_files_only),
             expected_categories=[
-                str(value)
-                for value in prototype_cfg.get("expected_categories", [])
+                str(value) for value in prototype_cfg.get("expected_categories", [])
             ],
             hash_dim=int(prototype_cfg.get("hash_dim", 256)),
             build_strategy=instantiate(cfg.prototype_builder),

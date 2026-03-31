@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import copy
 import json
-import sys
 from collections import Counter, defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
@@ -15,10 +14,6 @@ import torch
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch import nn
-
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-if str(PROJECT_ROOT) not in sys.path:
-    sys.path.insert(0, str(PROJECT_ROOT))
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
@@ -34,10 +29,12 @@ def load_jsonl(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def batched_rows(rows: list[dict[str, Any]], chunk_size: int) -> list[list[dict[str, Any]]]:
+def batched_rows(
+    rows: list[dict[str, Any]],
+    chunk_size: int,
+) -> list[list[dict[str, Any]]]:
     return [
-        rows[index : index + chunk_size]
-        for index in range(0, len(rows), chunk_size)
+        rows[index : index + chunk_size] for index in range(0, len(rows), chunk_size)
     ]
 
 
@@ -81,8 +78,7 @@ def build_confusion_matrix(
     predicted_labels: list[str],
 ) -> dict[str, dict[str, int]]:
     matrix = {
-        actual: {predicted: 0 for predicted in categories}
-        for actual in categories
+        actual: {predicted: 0 for predicted in categories} for actual in categories
     }
     for actual, predicted in zip(actual_labels, predicted_labels, strict=True):
         matrix[actual][predicted] += 1
@@ -135,15 +131,24 @@ def summarize_per_category(
             "recall": round(recall, 6),
             "f1": round(f1, 6),
             "mean_true_label_probability": round(
-                safe_divide(sum(true_prob_buckets[category]), len(true_prob_buckets[category])),
+                safe_divide(
+                    sum(true_prob_buckets[category]),
+                    len(true_prob_buckets[category]),
+                ),
                 6,
             ),
             "mean_top_1_probability": round(
-                safe_divide(sum(top_1_prob_buckets[category]), len(top_1_prob_buckets[category])),
+                safe_divide(
+                    sum(top_1_prob_buckets[category]),
+                    len(top_1_prob_buckets[category]),
+                ),
                 6,
             ),
             "mean_margin_top1_top2": round(
-                safe_divide(sum(margin_buckets[category]), len(margin_buckets[category])),
+                safe_divide(
+                    sum(margin_buckets[category]),
+                    len(margin_buckets[category]),
+                ),
                 6,
             ),
         }
@@ -231,8 +236,12 @@ def evaluate_classifier(
             ).squeeze(1)
 
             total_loss += float(loss.item()) * len(batch_targets)
-            actual_labels.extend(categories[index] for index in batch_targets.cpu().tolist())
-            predicted_labels.extend(categories[index] for index in predicted.cpu().tolist())
+            actual_labels.extend(
+                categories[index] for index in batch_targets.cpu().tolist()
+            )
+            predicted_labels.extend(
+                categories[index] for index in predicted.cpu().tolist()
+            )
             true_probs.extend(true_probability.cpu().tolist())
             top_1_probs.extend(top_values[:, 0].cpu().tolist())
             margins.extend((top_values[:, 0] - top_values[:, 1]).cpu().tolist())
@@ -376,14 +385,11 @@ def main(cfg: DictConfig) -> None:
     categories, label_to_index = build_label_index(train_rows)
     embedding_spec = instantiate(cfg.embedding.spec)
     training_device = resolve_runtime_device(embedding_spec.device)
-    classifier_version = (
-        cfg.classifier_version
-        or datetime.now(timezone.utc).strftime("clf_%Y_%m_%d_%H%M%S")
+    classifier_version = cfg.classifier_version or datetime.now(timezone.utc).strftime(
+        "clf_%Y_%m_%d_%H%M%S"
     )
 
-    adapter = EmbeddingAdapterFactory.create(
-        embedding_spec
-    )
+    adapter = EmbeddingAdapterFactory.create(embedding_spec)
 
     print(f"embedding_train_rows={len(train_rows)}", flush=True)
     train_features = embed_rows(

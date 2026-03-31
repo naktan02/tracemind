@@ -2,22 +2,18 @@
 
 from __future__ import annotations
 
-import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
-MAIN_SERVER_ROOT = Path(__file__).resolve().parents[2]
-if str(MAIN_SERVER_ROOT) not in sys.path:
-    sys.path.insert(0, str(MAIN_SERVER_ROOT))
-
-from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
-)
 from src.infrastructure.repositories.prototype_build_state_repository import (
     PrototypeBuildStateRepository,
 )
 from src.services.prototypes.prototype_build_state_service import (
     PrototypeBuildStateService,
+)
+
+from shared.src.contracts.prototype_build_state_contracts import (
+    PrototypeBuildStatePayload,
 )
 
 
