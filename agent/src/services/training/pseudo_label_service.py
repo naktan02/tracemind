@@ -4,6 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
+from agent.src.services.training.acceptance_policies import (
+    PseudoLabelAcceptancePolicy,
+    Top1MarginThresholdAcceptancePolicy,
+    build_pseudo_label_acceptance_policy,
+)
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.decision_feedback_signal import (
     DecisionFeedbackSignal,
@@ -20,6 +25,7 @@ class PseudoLabelSelectionConfig:
 
     confidence_threshold: float = 0.6
     margin_threshold: float = 0.02
+    acceptance_policy_name: str = "top1_margin_threshold"
 
 
 @dataclass(slots=True)
@@ -52,6 +58,9 @@ class PseudoLabelSelectionService:
     config: PseudoLabelSelectionConfig = field(
         default_factory=PseudoLabelSelectionConfig
     )
+    default_policy: PseudoLabelAcceptancePolicy = field(
+        default_factory=Top1MarginThresholdAcceptancePolicy
+    )
 
     def select(
         self,
@@ -69,6 +78,7 @@ class PseudoLabelSelectionService:
             if training_task.objective_config.margin_threshold is not None
             else self.config.margin_threshold
         )
+        acceptance_policy = self._resolve_policy(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
 
         initial_candidates = [
@@ -77,6 +87,7 @@ class PseudoLabelSelectionService:
                 training_task=training_task,
                 confidence_threshold=confidence_threshold,
                 margin_threshold=margin_threshold,
+                acceptance_policy=acceptance_policy,
             )
             for event in scored_events
         ]
@@ -154,41 +165,46 @@ class PseudoLabelSelectionService:
         training_task: TrainingTask,
         confidence_threshold: float,
         margin_threshold: float,
+        acceptance_policy: PseudoLabelAcceptancePolicy,
     ) -> PseudoLabelCandidate:
-        ranked_scores = sorted(
-            scored_event.category_scores.items(),
-            key=lambda item: item[1],
-            reverse=True,
+        decision = acceptance_policy.evaluate(
+            category_scores=scored_event.category_scores,
+            confidence_threshold=confidence_threshold,
+            margin_threshold=margin_threshold,
         )
-        if not ranked_scores:
-            raise ValueError("ScoredEvent must contain at least one category score.")
-
-        top_label, top_score = ranked_scores[0]
-        if len(ranked_scores) > 1:
-            runner_up_label, runner_up_score = ranked_scores[1]
-        else:
-            runner_up_label, runner_up_score = None, 0.0
-        margin = top_score - runner_up_score
-        accepted = top_score >= confidence_threshold and margin >= margin_threshold
 
         return PseudoLabelCandidate(
             schema_version="pseudo_label_candidate.v1",
             candidate_id=f"{training_task.round_id}:{scored_event.query_id}",
             source_event_ref=scored_event.query_id,
             occurred_at=scored_event.occurred_at,
-            label=top_label,
-            confidence=top_score,
-            margin=margin,
-            accepted=accepted,
-            runner_up_label=runner_up_label,
-            runner_up_score=runner_up_score,
+            label=decision.label,
+            confidence=decision.confidence,
+            margin=decision.margin,
+            accepted=decision.accepted,
+            runner_up_label=decision.runner_up_label,
+            runner_up_score=decision.runner_up_score,
             task_id=training_task.task_id,
             round_id=training_task.round_id,
             metadata={
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
+                "acceptance_policy_name": acceptance_policy.policy_name,
             },
         )
+
+    def _resolve_policy(
+        self,
+        *,
+        training_task: TrainingTask,
+    ) -> PseudoLabelAcceptancePolicy:
+        policy_name = (
+            training_task.objective_config.acceptance_policy_name
+            or self.config.acceptance_policy_name
+        )
+        if policy_name == self.default_policy.policy_name:
+            return self.default_policy
+        return build_pseudo_label_acceptance_policy(policy_name)
 
     @staticmethod
     def _to_feedback_signal(

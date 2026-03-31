@@ -11,6 +11,7 @@ from src.infrastructure.repositories.vector_adapter_state_repository import (  #
 from src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
+    TrainingTaskRequest,
 )
 
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
@@ -125,3 +126,30 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     assert publication.next_state.dimension_scales[0] == 1.08
     assert publication.next_state.dimension_scales[1] == 0.9733333333333334
     assert publication.aggregated_metrics["example_count"] == 3.0
+
+
+def test_round_manager_sets_default_policy_names_on_training_task() -> None:
+    service = RoundManagerService()
+
+    task = service.create_training_task(
+        TrainingTaskRequest(
+            active_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-embed",
+                model_revision="rev_000",
+                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref="/tmp/rev_000.json",
+                prototype_version="proto_000",
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            round_id="round_0001",
+        )
+    )
+
+    assert task.objective_config.score_policy_name == "max_cosine"
+    assert task.objective_config.acceptance_policy_name == "top1_margin_threshold"
+    assert task.objective_config.confidence_threshold == 0.6
+    assert task.objective_config.margin_threshold == 0.02

@@ -189,6 +189,9 @@ class RoundManagerService:
                 "loss": "diagonal_scale_heuristic",
                 "confidence_threshold": 0.6,
                 "margin_threshold": 0.02,
+                "score_policy_name": "max_cosine",
+                "acceptance_policy_name": "top1_margin_threshold",
+                "privacy_guard_name": "diagonal_scale_clip_only",
             }
         )
 

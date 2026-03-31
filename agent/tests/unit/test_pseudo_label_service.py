@@ -1,0 +1,91 @@
+"""PseudoLabelSelectionService unit tests."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+
+import pytest
+
+from agent.src.services.training.pseudo_label_service import (
+    PseudoLabelSelectionService,
+)
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.training_task import TrainingTask
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
+
+
+def _build_task(
+    *,
+    acceptance_policy_name: str | None = None,
+) -> TrainingTask:
+    return TrainingTask(
+        schema_version="training_task.v1",
+        task_id="task_001",
+        round_id="round_0001",
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        task_type="pseudo_label_self_training",
+        training_scope="adapter_only",
+        local_epochs=1,
+        batch_size=8,
+        learning_rate=1e-2,
+        max_steps=10,
+        objective_config=TrainingObjectiveConfig(
+            loss="diagonal_scale_heuristic",
+            confidence_threshold=0.6,
+            margin_threshold=0.02,
+            acceptance_policy_name=acceptance_policy_name,
+        ),
+        selection_policy=TrainingSelectionPolicy(max_examples=8),
+    )
+
+
+def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
+    service = PseudoLabelSelectionService()
+
+    result = service.select(
+        scored_events=(
+            ScoredEvent(
+                query_id="q1",
+                occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                translated_text=None,
+                embedding_model_id="tracemind-embed",
+                translation_model_id=None,
+                category_scores={"anxiety": 0.62, "depression": 0.61, "normal": 0.1},
+            ),
+        ),
+        training_task=_build_task(),
+    )
+
+    candidate = result.candidates[0]
+    assert candidate.accepted is False
+    assert candidate.margin == pytest.approx(0.01)
+    assert candidate.metadata["acceptance_policy_name"] == "top1_margin_threshold"
+
+
+def test_selection_service_can_switch_policy_from_training_task() -> None:
+    service = PseudoLabelSelectionService()
+
+    result = service.select(
+        scored_events=(
+            ScoredEvent(
+                query_id="q1",
+                occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                translated_text=None,
+                embedding_model_id="tracemind-embed",
+                translation_model_id=None,
+                category_scores={"anxiety": 0.62, "depression": 0.61, "normal": 0.1},
+            ),
+        ),
+        training_task=_build_task(
+            acceptance_policy_name="top1_confidence_only"
+        ),
+    )
+
+    candidate = result.candidates[0]
+    assert candidate.accepted is True
+    assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
+    assert result.accepted_count == 1

@@ -13,6 +13,9 @@ from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
+from shared.src.domain.entities.training.training_task_config import (
+    TrainingObjectiveConfig,
+)
 
 
 def test_model_manifest_payload_accepts_active_fields() -> None:
@@ -87,3 +90,46 @@ def test_feedback_and_personalization_payloads_are_local_friendly() -> None:
 
     assert signal.signal_type == "pseudo_label"
     assert state.threshold_by_category["depression"] == 0.6
+
+
+def test_training_objective_config_payload_accepts_policy_fields() -> None:
+    payload = TrainingObjectiveConfigPayload(
+        loss="contrastive",
+        confidence_threshold=0.7,
+        margin_threshold=0.05,
+        score_policy_name="topk_mean_cosine",
+        score_top_k=3,
+        acceptance_policy_name="top1_margin_threshold",
+    )
+
+    assert payload.score_policy_name == "topk_mean_cosine"
+    assert payload.score_top_k == 3
+    assert payload.acceptance_policy_name == "top1_margin_threshold"
+
+
+def test_training_objective_config_round_trips_policy_fields() -> None:
+    config = TrainingObjectiveConfig.from_mapping(
+        {
+            "loss": "contrastive",
+            "confidence_threshold": 0.65,
+            "margin_threshold": 0.03,
+            "score_policy_name": "topk_mean_cosine",
+            "score_top_k": 2,
+            "acceptance_policy_name": "top1_confidence_only",
+            "temperature": 0.8,
+        }
+    )
+
+    assert config.score_policy_name == "topk_mean_cosine"
+    assert config.score_top_k == 2
+    assert config.acceptance_policy_name == "top1_confidence_only"
+    assert config.extras == {"temperature": 0.8}
+    assert config.to_mapping() == {
+        "loss": "contrastive",
+        "confidence_threshold": 0.65,
+        "margin_threshold": 0.03,
+        "score_policy_name": "topk_mean_cosine",
+        "score_top_k": 2,
+        "acceptance_policy_name": "top1_confidence_only",
+        "temperature": 0.8,
+    }

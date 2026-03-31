@@ -26,6 +26,8 @@ class PrivacyProtectedUpdate:
 class SharedAdapterPrivacyGuard(Protocol):
     """Shared adapter update에 clipping/DP를 적용하는 인터페이스."""
 
+    guard_name: str
+
     def protect(
         self,
         *,
@@ -36,8 +38,26 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 
 @dataclass(slots=True)
+class NoOpSharedAdapterPrivacyGuard:
+    """privacy/safety 처리를 적용하지 않는 no-op guard."""
+
+    guard_name: str = "noop"
+
+    def protect(
+        self,
+        *,
+        update: SharedAdapterUpdate,
+        training_task: TrainingTask,
+    ) -> PrivacyProtectedUpdate:
+        del training_task
+        return PrivacyProtectedUpdate(update=update)
+
+
+@dataclass(slots=True)
 class DiagonalScaleClipOnlyPrivacyGuard:
     """현재 diagonal scale update에 clip만 적용하는 기본 privacy guard."""
+
+    guard_name: str = "diagonal_scale_clip_only"
 
     def protect(
         self,
@@ -65,3 +85,16 @@ class DiagonalScaleClipOnlyPrivacyGuard:
             dimension_deltas=[value * scale for value in update.dimension_deltas],
         )
         return PrivacyProtectedUpdate(update=clipped, clipped=True)
+
+
+def build_shared_adapter_privacy_guard(
+    guard_name: str,
+) -> SharedAdapterPrivacyGuard:
+    """guard 이름으로 privacy guard를 생성한다."""
+
+    normalized_name = guard_name.strip().lower()
+    if normalized_name == "diagonal_scale_clip_only":
+        return DiagonalScaleClipOnlyPrivacyGuard()
+    if normalized_name == "noop":
+        return NoOpSharedAdapterPrivacyGuard()
+    raise ValueError(f"Unsupported privacy guard: {guard_name}.")

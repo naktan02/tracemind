@@ -15,6 +15,10 @@ class TrainingObjectiveConfig:
     loss: str = "diagonal_scale_heuristic"
     confidence_threshold: float | None = None
     margin_threshold: float | None = None
+    score_policy_name: str | None = None
+    score_top_k: int | None = None
+    acceptance_policy_name: str | None = None
+    privacy_guard_name: str | None = None
     extras: dict[str, TrainingConfigScalar] = field(default_factory=dict)
 
     @classmethod
@@ -28,10 +32,25 @@ class TrainingObjectiveConfig:
             loss=str(source.get("loss", "diagonal_scale_heuristic")),
             confidence_threshold=_optional_float(source.get("confidence_threshold")),
             margin_threshold=_optional_float(source.get("margin_threshold")),
+            score_policy_name=_optional_str(source.get("score_policy_name")),
+            score_top_k=_optional_positive_int(source.get("score_top_k")),
+            acceptance_policy_name=_optional_str(
+                source.get("acceptance_policy_name")
+            ),
+            privacy_guard_name=_optional_str(source.get("privacy_guard_name")),
             extras={
                 key: value
                 for key, value in source.items()
-                if key not in {"loss", "confidence_threshold", "margin_threshold"}
+                if key
+                not in {
+                    "loss",
+                    "confidence_threshold",
+                    "margin_threshold",
+                    "score_policy_name",
+                    "score_top_k",
+                    "acceptance_policy_name",
+                    "privacy_guard_name",
+                }
             },
         )
 
@@ -41,6 +60,14 @@ class TrainingObjectiveConfig:
             result["confidence_threshold"] = self.confidence_threshold
         if self.margin_threshold is not None:
             result["margin_threshold"] = self.margin_threshold
+        if self.score_policy_name is not None:
+            result["score_policy_name"] = self.score_policy_name
+        if self.score_top_k is not None:
+            result["score_top_k"] = self.score_top_k
+        if self.acceptance_policy_name is not None:
+            result["acceptance_policy_name"] = self.acceptance_policy_name
+        if self.privacy_guard_name is not None:
+            result["privacy_guard_name"] = self.privacy_guard_name
         result.update(self.extras)
         return result
 
@@ -102,3 +129,18 @@ def _optional_bool(value: TrainingConfigScalar | None) -> bool | None:
     if not isinstance(value, bool):
         raise ValueError("Expected bool config value.")
     return value
+
+
+def _optional_str(value: TrainingConfigScalar | None) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _optional_positive_int(value: TrainingConfigScalar | None) -> int | None:
+    parsed = _optional_int(value)
+    if parsed is None:
+        return None
+    if parsed < 1:
+        raise ValueError("Expected positive int config value.")
+    return parsed

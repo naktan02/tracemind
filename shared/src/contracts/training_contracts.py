@@ -29,6 +29,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
     - `loss`: 어떤 local training objective를 쓸지 식별자
     - `confidence_threshold`: pseudo-label 채택 최소 confidence
     - `margin_threshold`: top1-top2 차이 최소값
+    - `score_policy_name`: 다중 prototype score 집계 정책 식별자
+    - `score_top_k`: top-k 계열 score 정책이 사용할 k 값
+    - `acceptance_policy_name`: pseudo-label acceptance 정책 식별자
+    - `privacy_guard_name`: 로컬 update 보호 계층 식별자
     - `extras`: family별 추가 하이퍼파라미터 확장 슬롯
     """
 
@@ -47,6 +51,23 @@ class TrainingObjectiveConfigPayload(BaseModel):
     margin_threshold: float | None = Field(
         default=None,
         description="Top1과 top2 score 차이의 최소값.",
+    )
+    score_policy_name: str | None = Field(
+        default=None,
+        description="카테고리 내 다중 prototype score 집계 정책 식별자.",
+    )
+    score_top_k: int | None = Field(
+        default=None,
+        ge=1,
+        description="Top-k score 집계 정책이 사용할 k 값.",
+    )
+    acceptance_policy_name: str | None = Field(
+        default=None,
+        description="Pseudo-label acceptance 정책 식별자.",
+    )
+    privacy_guard_name: str | None = Field(
+        default=None,
+        description="로컬 update 보호 계층 식별자.",
     )
     extras: dict[str, TrainingConfigScalar] = Field(
         default_factory=dict,

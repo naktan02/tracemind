@@ -41,6 +41,7 @@ def _build_task(
     *,
     min_required_examples: int = 1,
     gradient_clip_norm: float | None = 0.05,
+    acceptance_policy_name: str | None = None,
 ) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
@@ -58,6 +59,7 @@ def _build_task(
             loss="diagonal_scale_heuristic",
             confidence_threshold=0.6,
             margin_threshold=0.02,
+            acceptance_policy_name=acceptance_policy_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=1),
         min_required_examples=min_required_examples,
@@ -195,3 +197,29 @@ def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scale
     assert result.update_envelope.clipped is True
     assert result.update_payload is not None
     assert result.update_payload.l2_norm() == 0.01
+
+
+def test_local_training_service_uses_acceptance_policy_from_task_config(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.62, "depression": 0.61, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(acceptance_policy_name="top1_confidence_only"),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    candidate = result.selection_result.candidates[0]
+    assert candidate.accepted is True
+    assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
+    assert result.update_envelope is not None
