@@ -19,6 +19,7 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
 )
 from agent.src.infrastructure.runtime import resolve_runtime_device  # noqa: E402
+from scripts.run_artifacts import build_run_dir  # noqa: E402
 
 
 def load_jsonl(path: Path) -> list[dict[str, Any]]:
@@ -385,7 +386,8 @@ def main(cfg: DictConfig) -> None:
     categories, label_to_index = build_label_index(train_rows)
     embedding_spec = instantiate(cfg.embedding.spec)
     training_device = resolve_runtime_device(embedding_spec.device)
-    classifier_version = cfg.classifier_version or datetime.now(timezone.utc).strftime(
+    created_at = datetime.now(timezone.utc)
+    classifier_version = cfg.classifier_version or created_at.strftime(
         "clf_%Y_%m_%d_%H%M%S"
     )
 
@@ -452,12 +454,17 @@ def main(cfg: DictConfig) -> None:
         print(render_per_category_table(report["per_category"]))
         print()
 
-    output_dir = Path(str(cfg.output_dir))
+    output_dir = build_run_dir(
+        cfg.output_dir,
+        run_id=classifier_version,
+        created_at=created_at,
+    )
     model_output_dir = Path(str(cfg.model_output_dir))
     output_dir.mkdir(parents=True, exist_ok=True)
     model_output_dir.mkdir(parents=True, exist_ok=True)
-    report_dir = output_dir / classifier_version
+    report_dir = output_dir / "reports"
     report_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
     model_path = model_output_dir / f"{classifier_version}.pt"
     manifest_path = model_output_dir / f"{classifier_version}.manifest.json"
     report_path = report_dir / "report.json"
@@ -505,6 +512,7 @@ def main(cfg: DictConfig) -> None:
         json.dumps(report, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    print(f"output_dir={output_dir}")
     print(f"model_path={model_path}")
     print(f"manifest={manifest_path}")
     print(f"report_json={report_path}")

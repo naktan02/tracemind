@@ -1,5 +1,5 @@
 name: standard
-output_dir: tmp/federated_simulation
+output_dir: runs/federated_simulation
 client_count: 4
 rounds: 1
 bootstrap_ratio: 0.2

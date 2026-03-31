@@ -28,8 +28,14 @@ from scripts.experiments.prototype_strategy.runner import (
     config_name="experiments/prototype_strategy",
 )
 def main(config: DictConfig) -> None:
-    run_id = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-    output_dir = resolve_output_dir(config.output.base_dir, run_id)
+    created_at = datetime.now(timezone.utc)
+    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
+    output_dir = resolve_output_dir(
+        config.output.base_dir,
+        run_id,
+        created_at=created_at,
+    )
+    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     adapter = EmbeddingAdapterFactory.create(
         instantiate(config.embedding.spec)

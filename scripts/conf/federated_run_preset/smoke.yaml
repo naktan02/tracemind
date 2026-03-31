@@ -1,5 +1,5 @@
 name: smoke
-output_dir: tmp/federated_simulation_smoke
+output_dir: runs/federated_simulation_smoke
 client_count: 4
 rounds: 1
 bootstrap_ratio: 0.2

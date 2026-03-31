@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 output:
-  base_dir: data/processed/evaluations/prototype_strategy_experiments
+  base_dir: runs/prototype_strategy
 
 projection_reducers:
   - pca

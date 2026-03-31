@@ -68,6 +68,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="experiments/run_federated_simulation")
 
     assert cfg.federated_run_preset.name == "smoke"
+    assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 1
 
@@ -88,6 +89,7 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
     assert cfg.federated_run_preset.name == "standard"
     assert cfg.federated_run_preset.rounds == 3
     assert cfg.federated_run_preset.client_count == 8
+    assert cfg.federated_run_preset.output_dir == "runs/federated_simulation"
     assert cfg.prototype_builder.name == "kmeans"
     assert list(cfg.prototype_builder.candidate_ks) == [2]
 

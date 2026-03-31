@@ -38,6 +38,7 @@ from agent.src.services.training.local_training_service import (  # noqa: E402
 from agent.src.services.training.pseudo_label_service import (  # noqa: E402
     PseudoLabelSelectionResult,
 )
+from scripts.run_artifacts import build_run_dir  # noqa: E402
 from scripts.prototypes.build_strategies import (  # noqa: E402
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
@@ -675,12 +676,20 @@ def parse_created_at(value: str) -> datetime:
     config_name="experiments/run_federated_simulation",
 )
 def main(cfg: DictConfig) -> None:
+    created_at = datetime.now(timezone.utc)
+    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
+    output_dir = build_run_dir(
+        cfg.federated_run_preset.output_dir,
+        run_id=run_id,
+        created_at=created_at,
+    )
+    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
     embedding_spec = instantiate(cfg.embedding.spec)
     prototype_build_strategy = instantiate(cfg.prototype_builder)
     result = run_simulation(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
-        output_dir=Path(str(cfg.federated_run_preset.output_dir)),
+        output_dir=output_dir,
         client_count=int(cfg.federated_run_preset.client_count),
         rounds=int(cfg.federated_run_preset.rounds),
         bootstrap_ratio=float(cfg.federated_run_preset.bootstrap_ratio),
@@ -696,6 +705,7 @@ def main(cfg: DictConfig) -> None:
         prototype_build_strategy=prototype_build_strategy,
     )
 
+    print(f"output_dir={output_dir}")
     print(f"initial_model_revision={result.initial_model_revision}")
     print(f"initial_prototype_version={result.initial_prototype_version}")
     print(

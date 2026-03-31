@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections import Counter, defaultdict
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -15,6 +16,7 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
 )
 from agent.src.services.inference.scoring_service import ScoringService  # noqa: E402
+from scripts.run_artifacts import build_run_dir  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
     load_prototype_pack_payload,
@@ -281,8 +283,16 @@ def main(cfg: DictConfig) -> None:
     embedding_spec = instantiate(spec_cfg)
     adapter = EmbeddingAdapterFactory.create(embedding_spec)
 
-    output_dir = Path(cfg.output_dir) / payload.prototype_version
-    output_dir.mkdir(parents=True, exist_ok=True)
+    created_at = datetime.now(timezone.utc)
+    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
+    output_dir = build_run_dir(
+        cfg.output_dir,
+        run_id=run_id,
+        created_at=created_at,
+    )
+    reports_dir = output_dir / "reports"
+    reports_dir.mkdir(parents=True, exist_ok=True)
+    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     for dataset_name, raw_input_path in cfg.eval_sets.items():
         input_jsonl = Path(str(raw_input_path))
@@ -305,7 +315,7 @@ def main(cfg: DictConfig) -> None:
             "distance_metric": payload.distance_metric,
             "results": evaluation,
         }
-        output_path = output_dir / f"{dataset_name}.json"
+        output_path = reports_dir / f"{dataset_name}.json"
         output_path.write_text(
             json.dumps(report, indent=2, ensure_ascii=True) + "\n",
             encoding="utf-8",
@@ -324,6 +334,8 @@ def main(cfg: DictConfig) -> None:
         print()
         print(f"report_json={output_path}")
         print()
+
+    print(f"output_dir={output_dir}")
 
 
 if __name__ == "__main__":

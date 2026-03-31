@@ -38,8 +38,9 @@ data/raw/
 data/interim/
 data/processed/
 embeddings/
-main-server/state/
+main_server/state/
 agent/state/
+runs/
 
 .DS_Store
 .idea/

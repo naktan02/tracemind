@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from datetime import datetime, timezone
 
 import numpy as np
 
@@ -187,13 +188,12 @@ def test_build_strategies_returns_all_defaults_for_all_mode() -> None:
 
 def test_resolve_output_dir_accepts_string_base_dir() -> None:
     output_dir = resolve_output_dir(
-        "data/processed/evaluations/prototype_strategy_experiments",
+        "runs/prototype_strategy",
         "20260330T000000Z",
+        created_at=datetime(2026, 3, 30, tzinfo=timezone.utc),
     )
 
-    assert str(output_dir).endswith(
-        "data/processed/evaluations/prototype_strategy_experiments/20260330T000000Z"
-    )
+    assert str(output_dir).endswith("runs/prototype_strategy/20260330T000000Z")
 
 
 def test_load_jsonl_rows_accepts_string_path(tmp_path) -> None:

@@ -4,15 +4,18 @@
 
 이 문서는 현재 저장소에서 실제로 실행했거나 산출물이 남아 있는 실험 결과를 한곳에 정리한 문서다.
 코드 구조나 계약 문서가 아니라, baseline 비교와 의사결정에 필요한 숫자와 해석을 모은다.
+경로 표기는 현재 canonical layout 기준으로 적고, 정리 과정에서 제거된 historical report는
+남아 있는 artifact 또는 현재 기준 output root로 표기한다.
 
 ---
 
 ## 1. PrototypePack single-centroid baseline
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_packs/proto_2026_03_28_163056/validation.json`
-- `data/processed/evaluations/prototype_packs/proto_2026_03_28_163056/test.json`
+- `data/processed/prototype_packs/proto_2026_03_28_163056.json`
+- `data/processed/prototype_packs/proto_2026_03_28_163056.manifest.json`
+- 평가 리포트 canonical root: `runs/prototype_pack_eval/<run_id>/reports/{validation,test}.json`
 
 설정 요약:
 
@@ -36,9 +39,11 @@
 
 ## 2. Fixed Embedding + Softmax Classifier Head Baseline
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/classifier_heads/clf_2026_03_28_172617/report.json`
+- `data/processed/classifier_heads/clf_2026_03_28_172617.pt`
+- `data/processed/classifier_heads/clf_2026_03_28_172617.manifest.json`
+- 평가 리포트 canonical root: `runs/train_classifier/<classifier_version>/reports/report.json`
 
 설정 요약:
 
@@ -63,11 +68,11 @@
 
 ## 3. Prototype Strategy Comparison
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_strategy_experiments/20260329T152634Z/summary.json`
-- `data/processed/evaluations/prototype_strategy_experiments/20260329T152634Z/projections/train_pca.png`
-- `data/processed/evaluations/prototype_strategy_experiments/20260329T152634Z/projections/train_umap.png`
+- `runs/prototype_strategy/20260329T152634Z/summary.json`
+- `runs/prototype_strategy/20260329T152634Z/projections/train_pca.png`
+- `runs/prototype_strategy/20260329T152634Z/projections/train_umap.png`
 
 비교 전략:
 
@@ -121,9 +126,9 @@ threshold sweep은 pseudo-label 채택 기준을 바꿔 가며
 
 #### kmeans
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_threshold_sweeps/20260329T155803Z/summary.json`
+- `runs/prototype_threshold_sweep/20260329T155803Z/summary.json`
 
 선택 threshold:
 
@@ -151,9 +156,9 @@ threshold sweep은 pseudo-label 채택 기준을 바꿔 가며
 
 #### single
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_threshold_sweeps/20260329T162700Z/summary.json`
+- `runs/prototype_threshold_sweep/20260329T162700Z/summary.json`
 
 선택 threshold:
 
@@ -191,9 +196,9 @@ coverage보다 precision을 우선하는 절충형 보수 정책이다.
 
 #### kmeans
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_threshold_sweeps/20260329T163955Z/summary.json`
+- `runs/prototype_threshold_sweep/20260329T163955Z/summary.json`
 
 선택 threshold:
 
@@ -220,9 +225,9 @@ coverage보다 precision을 우선하는 절충형 보수 정책이다.
 
 #### single
 
-산출물:
+관련 경로:
 
-- `data/processed/evaluations/prototype_threshold_sweeps/20260329T164225Z/summary.json`
+- `runs/prototype_threshold_sweep/20260329T164225Z/summary.json`
 
 선택 threshold:
 
@@ -261,11 +266,14 @@ coverage보다 precision을 우선하는 절충형 보수 정책이다.
 
 ### 5-1. Prototype strategy smoke
 
-산출물:
+관련 경로:
 
-- `tmp/prototype_strategy_smoke/output/20260329T151656Z/summary.json`
-- `tmp/prototype_strategy_real_backend_smoke_gpu/20260329T152304Z/summary.json`
-- `tmp/prototype_strategy_refactor_smoke/20260329T154655Z/summary.json`
+- `runs/prototype_strategy_smoke/output/<run_id>/summary.json`
+- `runs/prototype_strategy/<run_id>/summary.json`
+
+메모:
+
+- 이전 `tmp/prototype_strategy_*` smoke 산출물은 정리 과정에서 제거됐다.
 
 역할:
 
@@ -278,9 +286,9 @@ coverage보다 precision을 우선하는 절충형 보수 정책이다.
 
 ### 5-2. Threshold sweep smoke
 
-산출물:
+관련 경로:
 
-- `tmp/prototype_threshold_sweep_smoke/20260329T155742Z/summary.json`
+- `runs/prototype_threshold_sweep/<run_id>/summary.json`
 
 역할:
 
@@ -290,11 +298,11 @@ coverage보다 precision을 우선하는 절충형 보수 정책이다.
 
 산출물 예시:
 
-- `tmp/federated_simulation_smoke/main_server/model_manifests/sim_rev_0000.json`
-- `tmp/federated_simulation_smoke/main_server/model_manifests/sim_rev_0001.json`
-- `tmp/federated_simulation_smoke/main_server/prototype_packs/proto_sim_0000.json`
-- `tmp/federated_simulation_smoke/main_server/prototype_packs/proto_sim_0001.json`
-- `tmp/federated_simulation_smoke/agents/agent_01/training_updates/vector_adapter_deltas/update_round_0001_c359396599dd.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0000.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0001.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0000.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0001.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/agents/agent_01/shared_adapter_updates/update_round_0001_08779ed1233e.json`
 
 역할:
 

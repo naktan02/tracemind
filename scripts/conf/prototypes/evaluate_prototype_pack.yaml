@@ -10,7 +10,7 @@ prototype_pack: ""
 eval_sets:
   validation: ${dataset.validation_jsonl}
   test: ${dataset.test_labeled_jsonl}
-output_dir: data/processed/evaluations/prototype_packs
+output_dir: runs/prototype_pack_eval
 respect_pack_embedding_identity: true
 
 hydra:

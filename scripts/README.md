@@ -32,6 +32,12 @@ uv sync --extra dev --extra experiments
 - `device=cuda`
 - `local_files_only=false`
 
+### 실행 산출물 위치
+
+- 재사용 가능한 데이터 산출물은 `data/processed/` 아래에 둔다.
+- 서버/에이전트 runtime 저장소는 `main_server/state/`, `agent/state/` 아래에 둔다.
+- 실험 실행 1회의 결과는 `runs/<job>/<run_id>/` 아래에 둔다.
+
 로 동작한다.
 
 ### `gpu_online`이란?
@@ -201,7 +207,7 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py \
 
 출력 기본 경로:
 
-- `data/processed/evaluations/prototype_packs/`
+- `runs/prototype_pack_eval/<run_id>/reports/`
 
 ---
 
@@ -243,11 +249,11 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 
 - `summary.json`
 - `validation/`
-- `test/`
 - `strategies/`
 - `projections/`
 - `projections/train_{pca|umap}.{strategy}_prototypes.jsonl`
 - `projections/train_{pca|umap}.{strategy|label}_visual_centers.jsonl`
+- `logs/`
 
 설명:
 
@@ -260,7 +266,7 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 
 출력 기본 경로:
 
-- `data/processed/evaluations/prototype_strategy_experiments/`
+- `runs/prototype_strategy/<run_id>/`
 
 ---
 
@@ -294,7 +300,7 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
 
 출력 기본 경로:
 
-- `data/processed/evaluations/prototype_threshold_sweeps/`
+- `runs/prototype_threshold_sweep/<run_id>/`
 
 ---
 
@@ -315,7 +321,7 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 출력 기본 경로:
 
-- 평가 리포트: `data/processed/evaluations/classifier_heads/`
+- 평가 리포트: `runs/train_classifier/<classifier_version>/reports/`
 - 모델 아티팩트: `data/processed/classifier_heads/`
 
 ---
@@ -362,11 +368,8 @@ uv run python scripts/experiments/run_federated_simulation.py \
 
 출력 예시:
 
-- `main_server/model_manifests/`
-- `main_server/prototype_packs/`
-- `main_server/shared_adapter_states/`
-- `agents/<agent_id>/shared_adapter_updates/`
-- `agents/<agent_id>/selection_dumps/`
+- `federated_run_preset=smoke`: `runs/federated_simulation_smoke/<run_id>/...`
+- `federated_run_preset=standard`: `runs/federated_simulation/<run_id>/...`
 
 현재 수준:
 

@@ -7,7 +7,7 @@ defaults:
   - _self_
 
 output:
-  base_dir: data/processed/evaluations/prototype_threshold_sweeps
+  base_dir: runs/prototype_threshold_sweep
 
 runner:
   _target_: scripts.experiments.prototype_strategy.sweep.ThresholdSweepRunner
