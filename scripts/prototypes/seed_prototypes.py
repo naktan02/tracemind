@@ -11,10 +11,10 @@ from typing import Any
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
+from main_server.src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
-from src.services.prototypes.prototype_pack_service import (  # noqa: E402
+from main_server.src.services.prototypes.prototype_pack_service import (  # noqa: E402
     PrototypePackService,
 )
 

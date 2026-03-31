@@ -1,0 +1,44 @@
+{
+  "schema_version": "prototype_build_state.v1",
+  "prototype_version": "proto_smoke_base",
+  "embedding_backend": "hash_debug",
+  "embedding_model_id": "hash_debug",
+  "embedding_model_revision": "v1",
+  "normalize_embeddings": true,
+  "task_prefix": "",
+  "translation_model_id": null,
+  "translation_model_revision": null,
+  "translation_direction": null,
+  "mapping_version": "ourafla_to_4cat.v1",
+  "build_method": "mean_centroid_l2_normalized",
+  "distance_metric": "cosine",
+  "built_at": "2026-03-28T17:12:29.541275Z",
+  "categories": {
+    "anxiety": {
+      "embedding_sum": [
+        0.49773959051733324,
+        5.691779671041539e-39,
+        8.341953221706782e-25,
+        -0.49773959051733324,
+        0.49773959051733324,
+        -0.09497999856048595,
+        -0.49773959051733324,
+        3.61399108096243e-24
+      ],
+      "sample_count": 1
+    },
+    "normal": {
+      "embedding_sum": [
+        3.845679709335604e-08,
+        -1.5310764007526245e-44,
+        0.7071067811865461,
+        1.0387325366723529e-14,
+        7.660048011614321e-14,
+        -1.6045025882838872e-40,
+        4.905540186811777e-08,
+        -0.7071067811865461
+      ],
+      "sample_count": 1
+    }
+  }
+}

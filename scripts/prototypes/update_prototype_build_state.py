@@ -8,10 +8,10 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.services.prototypes.prototype_build_state_service import (  # noqa: E402
+from main_server.src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
-from src.services.prototypes.prototype_pack_service import (  # noqa: E402
+from main_server.src.services.prototypes.prototype_pack_service import (  # noqa: E402
     PrototypePackService,
 )
 

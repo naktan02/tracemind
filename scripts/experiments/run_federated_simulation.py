@@ -13,10 +13,10 @@ from typing import Any
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
+from main_server.src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
     SharedAdapterStateRepository,
 )
-from src.services.rounds.round_manager_service import (  # noqa: E402
+from main_server.src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
     TrainingTaskRequest,

@@ -51,23 +51,24 @@ target-version = "py311"
 select = ["E", "F", "I", "W"]
 
 [tool.setuptools.packages.find]
-where = [".", "main-server"]
+where = ["."]
 include = [
     "agent",
     "agent.src",
     "agent.src.*",
+    "main_server",
+    "main_server.src",
+    "main_server.src.*",
     "shared",
     "shared.src",
     "shared.src.*",
     "scripts",
     "scripts.*",
-    "src",
-    "src.*",
 ]
 namespaces = true
 
 [tool.pytest.ini_options]
-testpaths = ["tests", "agent/tests", "main-server/tests", "shared/tests"]
+testpaths = ["tests", "agent/tests", "main_server/tests", "shared/tests"]
 markers = [
     "slow: 실행 시간이 긴 테스트",
     "gpu: GPU가 필요한 테스트",

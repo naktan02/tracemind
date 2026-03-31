@@ -10,7 +10,9 @@ from shared.src.contracts.prototype_contracts import (
     PrototypePackActivationRequest,
     PrototypePackPayload,
 )
-from src.services.prototypes.prototype_pack_service import PrototypePackService
+from main_server.src.services.prototypes.prototype_pack_service import (
+    PrototypePackService,
+)
 
 router = APIRouter(prefix="/api/v1/prototypes", tags=["prototypes"])
 service = PrototypePackService()

@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from src.infrastructure.repositories.prototype_pack_repository import (
+from main_server.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from src.services.prototypes.prototype_pack_service import PrototypePackService
+from main_server.src.services.prototypes.prototype_pack_service import (
+    PrototypePackService,
+)
 
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 

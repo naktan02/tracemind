@@ -1,0 +1,41 @@
+{
+  "schema_version": "prototype_pack.v1",
+  "prototype_version": "proto_smoke_merged",
+  "embedding_model_id": "hash_debug",
+  "embedding_model_revision": "v1",
+  "translation_model_id": null,
+  "translation_model_revision": null,
+  "translation_direction": null,
+  "mapping_version": "ourafla_to_4cat.v1",
+  "build_method": "mean_centroid_l2_normalized",
+  "distance_metric": "cosine",
+  "built_at": "2026-03-28T17:12:29.596330Z",
+  "categories": {
+    "anxiety": {
+      "centroid": [
+        0.34471015959601703,
+        8.070441028505608e-05,
+        -0.30971831810958256,
+        -0.34471015959601703,
+        0.034991841486434486,
+        -0.3754968317861521,
+        -0.6544284777055996,
+        0.30971831810958256
+      ],
+      "sample_count": 2
+    },
+    "normal": {
+      "centroid": [
+        2.719306201473696e-08,
+        0.4082482905736047,
+        0.5000000001344044,
+        7.344948202065644e-15,
+        0.4082482905736588,
+        -0.4082482905736047,
+        3.468740732410194e-08,
+        -0.4999999995967384
+      ],
+      "sample_count": 2
+    }
+  }
+}

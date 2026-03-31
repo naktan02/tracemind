@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.infrastructure.repositories.prototype_build_state_repository import (
+from main_server.src.infrastructure.repositories.prototype_build_state_repository import (
     PrototypeBuildStateRepository,
 )
-from src.services.prototypes.prototype_build_state_service import (
+from main_server.src.services.prototypes.prototype_build_state_service import (
     PrototypeBuildStateService,
 )
 

@@ -5,10 +5,10 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
+from main_server.src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
     SharedAdapterStateRepository,
 )
-from src.services.rounds.round_manager_service import (  # noqa: E402
+from main_server.src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
     TrainingTaskRequest,

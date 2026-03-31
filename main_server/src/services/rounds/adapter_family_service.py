@@ -21,7 +21,7 @@ from shared.src.domain.entities.training.vector_adapter_delta import (
 from shared.src.domain.entities.training.vector_adapter_state import (
     VectorAdapterState,
 )
-from src.services.rounds.aggregation_service import (
+from main_server.src.services.rounds.aggregation_service import (
     DiagonalScaleAggregationService,
     SharedAdapterAggregationBackend,
 )

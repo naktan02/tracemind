@@ -11,7 +11,7 @@ from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     load_prototype_pack_payload,
 )
-from src.infrastructure.repositories.prototype_pack_repository import (
+from main_server.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
 

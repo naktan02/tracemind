@@ -19,10 +19,10 @@ from shared.src.domain.entities.training.training_task_config import (
 )
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
-from src.infrastructure.repositories.vector_adapter_state_repository import (
+from main_server.src.infrastructure.repositories.vector_adapter_state_repository import (
     SharedAdapterStateRepository,
 )
-from src.services.rounds.adapter_family_service import (
+from main_server.src.services.rounds.adapter_family_service import (
     DiagonalScaleRoundFamily,
     SharedAdapterRoundFamily,
 )

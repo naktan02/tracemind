@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 
-from src.services.prototypes.prototype_pack_service import PrototypePackService
+from main_server.src.services.prototypes.prototype_pack_service import (
+    PrototypePackService,
+)
 
 
 def parse_args() -> argparse.Namespace:
