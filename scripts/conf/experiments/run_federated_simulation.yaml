@@ -6,6 +6,8 @@ defaults:
   - /runtime: gpu_online
   - /federated_run_preset: smoke
   - /prototype_builder: single
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
   - _self_
 
 train_jsonl: ${dataset.train_jsonl}

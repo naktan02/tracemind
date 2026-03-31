@@ -3,6 +3,31 @@
 from __future__ import annotations
 
 from hydra import compose, initialize_config_module
+import pytest
+
+
+@pytest.mark.parametrize(
+    "config_name",
+    [
+        "datasets/run_dataset_pipeline",
+        "prototypes/seed_prototypes",
+        "prototypes/evaluate_prototype_pack",
+        "experiments/prototype_strategy",
+        "experiments/prototype_threshold_sweep",
+        "experiments/run_federated_simulation",
+        "experiments/train_softmax_classifier",
+    ],
+)
+def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(config_name=config_name, return_hydra_config=True)
+
+    assert cfg.hydra.job_logging.root.level == "ERROR"
+    assert cfg.hydra.job_logging.disable_existing_loggers is True
+    assert "handlers" not in cfg.hydra.job_logging.root
+    assert cfg.hydra.hydra_logging.root.level == "ERROR"
+    assert cfg.hydra.hydra_logging.disable_existing_loggers is True
+    assert "handlers" not in cfg.hydra.hydra_logging.root
 
 
 def test_seed_prototypes_default_runtime_is_gpu_online() -> None:

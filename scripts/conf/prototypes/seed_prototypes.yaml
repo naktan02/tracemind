@@ -5,6 +5,8 @@ defaults:
   - /embedding: mxbai
   - /runtime: gpu_online
   - /prototype_builder: single
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
   - _self_
 
 input_jsonl: ${dataset.prototype_input_jsonl}

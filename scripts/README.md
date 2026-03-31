@@ -94,7 +94,7 @@ uv run python <script>.py --cfg job
 
 ### 가장 짧은 경로
 
-registry 기준으로 `download -> map -> split -> prototype`를 한 번에 실행한다.
+dataset Hydra group 기준으로 `download -> map -> split -> prototype`를 한 번에 실행한다.
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py
@@ -115,7 +115,7 @@ uv run python scripts/datasets/run_dataset_pipeline.py \
   runtime=gpu_local
 ```
 
-registry에 등록된 dataset alias만 보고 싶다면:
+`scripts/conf/dataset/*.yaml`에 등록된 dataset alias만 보고 싶다면:
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true

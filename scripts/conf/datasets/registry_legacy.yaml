@@ -1,3 +1,7 @@
+# Legacy reference only.
+# Active dataset pipeline source of truth is `scripts/conf/dataset/*.yaml`.
+# This file is kept only as a historical snapshot of the pre-Hydra registry.
+
 schema_version: dataset_registry.v1
 
 defaults:

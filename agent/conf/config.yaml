@@ -2,6 +2,8 @@ defaults:
   - pipeline: default
   - embedding: mxbai_large
   - translation: nllb_200_distilled_600m
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
   - _self_
 
 app:
