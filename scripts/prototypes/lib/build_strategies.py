@@ -11,12 +11,12 @@ import numpy as np
 from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
-from scripts.prototypes.payload_serialization import (
+from scripts.prototypes.lib.payload_serialization import (
     PrototypePackPayloadSpec,
     build_prototype_pack_payload,
     build_single_prototype_pack_payload,
 )
-from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder
+from scripts.prototypes.lib.prototype_pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )

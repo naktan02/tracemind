@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from scripts.prototypes.payload_serialization import (
+from scripts.prototypes.lib.payload_serialization import (
     PrototypePackPayloadSpec,
     build_prototype_pack_payload,
     build_single_prototype_pack_payload,

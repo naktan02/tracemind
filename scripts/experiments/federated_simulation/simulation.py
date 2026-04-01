@@ -48,7 +48,7 @@ from scripts.experiments.federated_simulation.models import (
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
 )
-from scripts.prototypes.build_strategies import (
+from scripts.prototypes.lib.build_strategies import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
 )

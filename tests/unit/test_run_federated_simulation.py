@@ -19,7 +19,7 @@ from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
 )
-from scripts.prototypes.build_strategies import (
+from scripts.prototypes.lib.build_strategies import (
     KMeansPrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
 )

@@ -1,4 +1,4 @@
-_target_: scripts.prototypes.build_strategies.KMeansPrototypeBuildStrategy
+_target_: scripts.prototypes.lib.build_strategies.KMeansPrototypeBuildStrategy
 name: kmeans
 candidate_ks: [2, 3, 4, 5]
 silhouette_sample_size: 2000

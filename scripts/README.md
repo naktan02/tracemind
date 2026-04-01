@@ -2,6 +2,18 @@
 
 이 디렉터리는 데이터 준비, `PrototypePack` 관리, 분류 baseline, prototype 전략 비교, threshold sweep, federated simulation용 스크립트를 모아 둔 곳이다.
 
+## 구조 인덱스
+
+- `scripts/datasets/*.py`: 직접 실행하는 dataset CLI entrypoint
+- `scripts/datasets/lib/`: dataset CLI가 공유하는 재사용 함수
+- `scripts/prototypes/*.py`: 직접 실행하는 prototype CLI entrypoint
+- `scripts/prototypes/lib/`: prototype CLI와 simulation이 공유하는 재사용 함수
+- `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
+- `scripts/experiments/*/`: experiment 전용 내부 오케스트레이션 모듈
+- `scripts/conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
+- `scripts/conf/datasets`, `experiments`, `prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
+- `scripts/classification_report.py`, `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 공통 helper
+
 현재 활성 실행 방식은 **Hydra config group + override** 기준이다.  
 즉 예전처럼 `--dataset`, `--runtime-profile`를 길게 넘기기보다 아래처럼 실행한다.
 

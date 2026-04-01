@@ -13,18 +13,18 @@ from omegaconf import DictConfig, OmegaConf
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
-from scripts.datasets.build_labeled_query_set import (  # noqa: E402
-    build_labeled_query_set,
-    load_mapping_config,
-)
-from scripts.datasets.download_dataset import (  # noqa: E402
+from scripts.datasets.lib.download import (  # noqa: E402
     build_default_output_path,
     download_huggingface_dataset_to_csv,
 )
-from scripts.datasets.split_labeled_query_set import (  # noqa: E402
+from scripts.datasets.lib.label_mapping import (  # noqa: E402
+    build_labeled_query_set,
+    load_mapping_config,
+)
+from scripts.datasets.lib.split import (  # noqa: E402
     build_split_artifacts,
 )
-from scripts.prototypes.seed_prototypes import seed_prototype_pack  # noqa: E402
+from scripts.prototypes.lib.seeding import seed_prototype_pack  # noqa: E402
 
 PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
 DATASET_CONFIG_DIR = PROJECT_ROOT / "scripts/conf/dataset"

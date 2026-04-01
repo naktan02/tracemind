@@ -19,15 +19,15 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa:
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
-from scripts.prototypes.payload_serialization import (  # noqa: E402
-    build_single_prototype_pack_payload,
-)
-from scripts.prototypes.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
-from scripts.prototypes.seed_prototypes import (  # noqa: E402
+from scripts.prototypes.lib.io import (  # noqa: E402
     group_rows_by_label,
     load_jsonl,
     resolve_metadata_from_manifests,
 )
+from scripts.prototypes.lib.payload_serialization import (  # noqa: E402
+    build_single_prototype_pack_payload,
+)
+from scripts.prototypes.lib.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     PrototypeBuildStatePayload,
     dump_prototype_build_state_payload,

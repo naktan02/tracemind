@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.datasets.download_dataset import build_default_output_path
+from scripts.datasets.lib.download import build_default_output_path
 
 
 def test_build_default_output_path_includes_split_name() -> None:
