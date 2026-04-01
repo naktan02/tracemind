@@ -11,8 +11,6 @@ from scripts.experiments.prototype_strategy.models import (
 from scripts.experiments.prototype_strategy.runner import (
     PrototypeExperimentRunner,
     StrategySelectionPolicy,
-    build_strategies,
-    build_strategy,
     render_validation_summary,
 )
 from scripts.experiments.prototype_strategy.strategies import (
@@ -20,6 +18,8 @@ from scripts.experiments.prototype_strategy.strategies import (
     KMeansPrototypeStrategy,
     MultiPrototypeScorer,
     SinglePrototypeStrategy,
+    build_strategies,
+    build_strategy,
 )
 
 __all__ = [

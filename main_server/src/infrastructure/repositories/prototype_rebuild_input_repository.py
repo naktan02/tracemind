@@ -12,7 +12,7 @@ from pydantic import BaseModel, ConfigDict
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterSpec,
 )
-from main_server.src.services.prototypes.prototype_rebuild_service import (
+from main_server.src.services.prototypes.models import (
     PrototypeRebuildInputRecord,
     ReferencePrototypeSourceRow,
 )

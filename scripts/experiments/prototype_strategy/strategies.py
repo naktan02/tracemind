@@ -4,15 +4,29 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 
 import numpy as np
-from sklearn.cluster import DBSCAN, KMeans
+from sklearn.cluster import DBSCAN
 from sklearn.metrics import silhouette_score
 
 from scripts.experiments.prototype_strategy.models import (
+    PrototypeBuildStrategy,
     PrototypeIndex,
     PrototypeVector,
 )
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.services.prototypes.build_strategies import (
+    KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
+)
+from shared.src.services.prototypes.build_strategies import (
+    PrototypeBuildRequest,
+)
+from shared.src.services.prototypes.build_strategies import (
+    SinglePrototypeBuildStrategy as RuntimeSinglePrototypeBuildStrategy,
+)
+
+_EXPERIMENT_BUILT_AT = datetime(1970, 1, 1, tzinfo=timezone.utc)
 
 
 def normalize_vector(values: Sequence[float]) -> list[float]:
@@ -41,6 +55,55 @@ def sample_indices(
         return indices
     rng = np.random.default_rng(seed)
     return np.sort(rng.choice(indices, size=limit, replace=False))
+
+
+def _build_runtime_request(
+    embeddings_by_label: Mapping[str, np.ndarray],
+) -> PrototypeBuildRequest:
+    return PrototypeBuildRequest(
+        embeddings_by_category={
+            label: np.asarray(embeddings, dtype=np.float64).tolist()
+            for label, embeddings in sorted(embeddings_by_label.items())
+        },
+        prototype_version="experiment_runtime_preview",
+        embedding_backend="experiment",
+        embedding_model_id="experiment",
+        embedding_model_revision="preview",
+        mapping_version="experiment_runtime_preview",
+        built_at=_EXPERIMENT_BUILT_AT,
+    )
+
+
+def _prototype_index_from_pack(
+    *,
+    strategy_name: str,
+    pack_payload: PrototypePackPayload,
+    metadata: Mapping[str, object] | None = None,
+) -> PrototypeIndex:
+    categories = {
+        category: [
+            PrototypeVector(
+                prototype_id=prototype.prototype_id or f"{category}:{index}",
+                centroid=list(prototype.centroid),
+                member_count=int(prototype.sample_count),
+            )
+            for index, prototype in enumerate(prototypes)
+        ]
+        for category, prototypes in sorted(pack_payload.categories.items())
+    }
+    payload_metadata: dict[str, object] = {
+        "build_method": pack_payload.build_method,
+        "distance_metric": pack_payload.distance_metric,
+        "mapping_version": pack_payload.mapping_version,
+        "source": "shared_runtime",
+    }
+    if metadata is not None:
+        payload_metadata.update(dict(metadata))
+    return PrototypeIndex(
+        strategy_name=strategy_name,
+        categories=categories,
+        metadata=payload_metadata,
+    )
 
 
 class MultiPrototypeScorer:
@@ -77,19 +140,12 @@ class SinglePrototypeStrategy:
         self,
         embeddings_by_label: Mapping[str, np.ndarray],
     ) -> PrototypeIndex:
-        categories: dict[str, list[PrototypeVector]] = {}
-        for label, embeddings in sorted(embeddings_by_label.items()):
-            categories[label] = [
-                PrototypeVector(
-                    prototype_id=f"{label}:single",
-                    centroid=mean_centroid(embeddings),
-                    member_count=int(embeddings.shape[0]),
-                )
-            ]
-        return PrototypeIndex(
+        build_artifacts = RuntimeSinglePrototypeBuildStrategy(name=self.name).build(
+            _build_runtime_request(embeddings_by_label)
+        )
+        return _prototype_index_from_pack(
             strategy_name=self.name,
-            categories=categories,
-            metadata={"build_method": "single_mean_centroid"},
+            pack_payload=build_artifacts.pack_payload,
         )
 
 
@@ -106,99 +162,32 @@ class KMeansPrototypeStrategy:
         self,
         embeddings_by_label: Mapping[str, np.ndarray],
     ) -> PrototypeIndex:
-        categories: dict[str, list[PrototypeVector]] = {}
-        metadata: dict[str, dict[str, float | int | bool | list[int]]] = {}
-
-        for label, embeddings in sorted(embeddings_by_label.items()):
-            count = int(embeddings.shape[0])
-            if count < 2:
-                categories[label] = [
-                    PrototypeVector(
-                        prototype_id=f"{label}:single",
-                        centroid=mean_centroid(embeddings),
-                        member_count=count,
-                    )
-                ]
-                metadata[label] = {
-                    "selected_k": 1,
-                    "silhouette": 0.0,
-                    "fallback": True,
-                }
-                continue
-
-            sample_index = sample_indices(
-                count,
-                limit=self.silhouette_sample_size,
-                seed=self.random_state,
-            )
-            sample_embeddings = embeddings[sample_index]
-
-            best_k = 1
-            best_silhouette = -1.0
-            for candidate_k in self.candidate_ks:
-                if candidate_k >= count:
-                    continue
-                labels = KMeans(
-                    n_clusters=candidate_k,
-                    random_state=self.random_state,
-                    n_init="auto",
-                ).fit_predict(sample_embeddings)
-                unique_labels = np.unique(labels)
-                if unique_labels.shape[0] < 2:
-                    continue
-                silhouette = float(silhouette_score(sample_embeddings, labels))
-                if silhouette > best_silhouette:
-                    best_silhouette = silhouette
-                    best_k = candidate_k
-
-            if best_k == 1:
-                categories[label] = [
-                    PrototypeVector(
-                        prototype_id=f"{label}:single",
-                        centroid=mean_centroid(embeddings),
-                        member_count=count,
-                    )
-                ]
-                metadata[label] = {
-                    "selected_k": 1,
-                    "silhouette": 0.0,
-                    "fallback": True,
-                }
-                continue
-
-            fitted = KMeans(
-                n_clusters=best_k,
-                random_state=self.random_state,
-                n_init="auto",
-            ).fit(embeddings)
-
-            prototypes: list[PrototypeVector] = []
-            member_counts: list[int] = []
-            for cluster_id in range(best_k):
-                cluster_members = embeddings[fitted.labels_ == cluster_id]
-                member_count = int(cluster_members.shape[0])
-                member_counts.append(member_count)
-                prototypes.append(
-                    PrototypeVector(
-                        prototype_id=f"{label}:kmeans:{cluster_id}",
-                        centroid=mean_centroid(cluster_members),
-                        member_count=member_count,
-                    )
-                )
-            categories[label] = prototypes
-            metadata[label] = {
-                "selected_k": best_k,
-                "silhouette": best_silhouette,
-                "fallback": False,
-                "member_counts": member_counts,
+        build_artifacts = RuntimeKMeansPrototypeBuildStrategy(
+            candidate_ks=self.candidate_ks,
+            silhouette_sample_size=self.silhouette_sample_size,
+            random_state=self.random_state,
+            name=self.name,
+        ).build(_build_runtime_request(embeddings_by_label))
+        labels_metadata = {
+            category: {
+                "selected_k": len(prototypes),
+                "fallback": len(prototypes) == 1,
+                "member_counts": [
+                    int(prototype.sample_count) for prototype in prototypes
+                ],
             }
-
-        return PrototypeIndex(
+            for category, prototypes in sorted(
+                build_artifacts.pack_payload.categories.items()
+            )
+        }
+        return _prototype_index_from_pack(
             strategy_name=self.name,
-            categories=categories,
+            pack_payload=build_artifacts.pack_payload,
             metadata={
                 "candidate_ks": list(self.candidate_ks),
-                "labels": metadata,
+                "silhouette_sample_size": self.silhouette_sample_size,
+                "random_state": self.random_state,
+                "labels": labels_metadata,
             },
         )
 
@@ -357,3 +346,76 @@ class DbscanPrototypeStrategy:
                 "labels": metadata,
             },
         )
+
+
+def build_strategy(
+    *,
+    strategy_name: str,
+    seed: int,
+    kmeans_candidate_ks: tuple[int, ...],
+    kmeans_silhouette_sample_size: int,
+    dbscan_eps_values: tuple[float, ...],
+    dbscan_min_samples_values: tuple[int, ...],
+    dbscan_search_sample_size: int,
+    dbscan_min_cluster_coverage: float,
+) -> PrototypeBuildStrategy:
+    normalized_name = strategy_name.lower()
+    if normalized_name == "single":
+        return SinglePrototypeStrategy()
+    if normalized_name == "kmeans":
+        return KMeansPrototypeStrategy(
+            candidate_ks=kmeans_candidate_ks,
+            silhouette_sample_size=kmeans_silhouette_sample_size,
+            random_state=seed,
+        )
+    if normalized_name == "dbscan":
+        return DbscanPrototypeStrategy(
+            eps_values=dbscan_eps_values,
+            min_samples_values=dbscan_min_samples_values,
+            search_sample_size=dbscan_search_sample_size,
+            min_cluster_coverage=dbscan_min_cluster_coverage,
+            random_state=seed,
+        )
+    raise ValueError(f"Unsupported strategy: {strategy_name}")
+
+
+def build_strategies(
+    *,
+    strategy_name: str,
+    seed: int,
+    kmeans_candidate_ks: tuple[int, ...],
+    kmeans_silhouette_sample_size: int,
+    dbscan_eps_values: tuple[float, ...],
+    dbscan_min_samples_values: tuple[int, ...],
+    dbscan_search_sample_size: int,
+    dbscan_min_cluster_coverage: float,
+) -> tuple[PrototypeBuildStrategy, ...]:
+    normalized_name = strategy_name.lower()
+    if normalized_name == "all":
+        return (
+            SinglePrototypeStrategy(),
+            KMeansPrototypeStrategy(
+                candidate_ks=kmeans_candidate_ks,
+                silhouette_sample_size=kmeans_silhouette_sample_size,
+                random_state=seed,
+            ),
+            DbscanPrototypeStrategy(
+                eps_values=dbscan_eps_values,
+                min_samples_values=dbscan_min_samples_values,
+                search_sample_size=dbscan_search_sample_size,
+                min_cluster_coverage=dbscan_min_cluster_coverage,
+                random_state=seed,
+            ),
+        )
+    return (
+        build_strategy(
+            strategy_name=normalized_name,
+            seed=seed,
+            kmeans_candidate_ks=kmeans_candidate_ks,
+            kmeans_silhouette_sample_size=kmeans_silhouette_sample_size,
+            dbscan_eps_values=dbscan_eps_values,
+            dbscan_min_samples_values=dbscan_min_samples_values,
+            dbscan_search_sample_size=dbscan_search_sample_size,
+            dbscan_min_cluster_coverage=dbscan_min_cluster_coverage,
+        ),
+    )

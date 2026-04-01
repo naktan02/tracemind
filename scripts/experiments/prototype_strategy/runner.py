@@ -21,10 +21,7 @@ from scripts.experiments.prototype_strategy.models import (
 )
 from scripts.experiments.prototype_strategy.projection import ProjectionService
 from scripts.experiments.prototype_strategy.strategies import (
-    DbscanPrototypeStrategy,
-    KMeansPrototypeStrategy,
     MultiPrototypeScorer,
-    SinglePrototypeStrategy,
 )
 
 
@@ -173,76 +170,3 @@ def render_validation_summary(summary: ExperimentSummary) -> str:
         f"accepted_ratio={summary.test_metrics.accepted_ratio:.4f}"
     )
     return "\n".join(lines)
-
-
-def build_strategy(
-    *,
-    strategy_name: str,
-    seed: int,
-    kmeans_candidate_ks: tuple[int, ...],
-    kmeans_silhouette_sample_size: int,
-    dbscan_eps_values: tuple[float, ...],
-    dbscan_min_samples_values: tuple[int, ...],
-    dbscan_search_sample_size: int,
-    dbscan_min_cluster_coverage: float,
-) -> PrototypeBuildStrategy:
-    normalized_name = strategy_name.lower()
-    if normalized_name == "single":
-        return SinglePrototypeStrategy()
-    if normalized_name == "kmeans":
-        return KMeansPrototypeStrategy(
-            candidate_ks=kmeans_candidate_ks,
-            silhouette_sample_size=kmeans_silhouette_sample_size,
-            random_state=seed,
-        )
-    if normalized_name == "dbscan":
-        return DbscanPrototypeStrategy(
-            eps_values=dbscan_eps_values,
-            min_samples_values=dbscan_min_samples_values,
-            search_sample_size=dbscan_search_sample_size,
-            min_cluster_coverage=dbscan_min_cluster_coverage,
-            random_state=seed,
-        )
-    raise ValueError(f"Unsupported strategy: {strategy_name}")
-
-
-def build_strategies(
-    *,
-    strategy_name: str,
-    seed: int,
-    kmeans_candidate_ks: tuple[int, ...],
-    kmeans_silhouette_sample_size: int,
-    dbscan_eps_values: tuple[float, ...],
-    dbscan_min_samples_values: tuple[int, ...],
-    dbscan_search_sample_size: int,
-    dbscan_min_cluster_coverage: float,
-) -> tuple[PrototypeBuildStrategy, ...]:
-    normalized_name = strategy_name.lower()
-    if normalized_name == "all":
-        return (
-            SinglePrototypeStrategy(),
-            KMeansPrototypeStrategy(
-                candidate_ks=kmeans_candidate_ks,
-                silhouette_sample_size=kmeans_silhouette_sample_size,
-                random_state=seed,
-            ),
-            DbscanPrototypeStrategy(
-                eps_values=dbscan_eps_values,
-                min_samples_values=dbscan_min_samples_values,
-                search_sample_size=dbscan_search_sample_size,
-                min_cluster_coverage=dbscan_min_cluster_coverage,
-                random_state=seed,
-            ),
-        )
-    return (
-        build_strategy(
-            strategy_name=normalized_name,
-            seed=seed,
-            kmeans_candidate_ks=kmeans_candidate_ks,
-            kmeans_silhouette_sample_size=kmeans_silhouette_sample_size,
-            dbscan_eps_values=dbscan_eps_values,
-            dbscan_min_samples_values=dbscan_min_samples_values,
-            dbscan_search_sample_size=dbscan_search_sample_size,
-            dbscan_min_cluster_coverage=dbscan_min_cluster_coverage,
-        ),
-    )

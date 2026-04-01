@@ -19,10 +19,8 @@ from scripts.experiments.prototype_strategy.models import (
     PrototypeIndex,
 )
 from scripts.experiments.prototype_strategy.strategies import (
-    DbscanPrototypeStrategy,
-    KMeansPrototypeStrategy,
     MultiPrototypeScorer,
-    SinglePrototypeStrategy,
+    build_strategy,
 )
 
 
@@ -215,38 +213,6 @@ class ThresholdSweepRequest:
     output_dir: Path
     run_id: str
 
-
-def build_strategy(
-    *,
-    strategy_name: str,
-    seed: int,
-    kmeans_candidate_ks: tuple[int, ...],
-    kmeans_silhouette_sample_size: int,
-    dbscan_eps_values: tuple[float, ...],
-    dbscan_min_samples_values: tuple[int, ...],
-    dbscan_search_sample_size: int,
-    dbscan_min_cluster_coverage: float,
-) -> Any:
-    normalized_name = strategy_name.lower()
-    if normalized_name == "single":
-        return SinglePrototypeStrategy()
-    if normalized_name == "kmeans":
-        return KMeansPrototypeStrategy(
-            candidate_ks=kmeans_candidate_ks,
-            silhouette_sample_size=kmeans_silhouette_sample_size,
-            random_state=seed,
-        )
-    if normalized_name == "dbscan":
-        return DbscanPrototypeStrategy(
-            eps_values=dbscan_eps_values,
-            min_samples_values=dbscan_min_samples_values,
-            search_sample_size=dbscan_search_sample_size,
-            min_cluster_coverage=dbscan_min_cluster_coverage,
-            random_state=seed,
-        )
-    raise ValueError(f"Unsupported strategy: {strategy_name}")
-
-
 def render_sweep_summary(summary: ThresholdSweepSummary) -> str:
     lines = [
         f"strategy={summary.strategy_name}",
@@ -257,9 +223,12 @@ def render_sweep_summary(summary: ThresholdSweepSummary) -> str:
         ),
         (
             "validation_selected: "
-            f"accepted_count={summary.selected_point.validation_metrics.accepted_count}, "
-            f"accepted_ratio={summary.selected_point.validation_metrics.accepted_ratio:.4f}, "
-            f"accepted_accuracy={summary.selected_point.validation_metrics.accepted_accuracy:.4f}, "
+            "accepted_count="
+            f"{summary.selected_point.validation_metrics.accepted_count}, "
+            "accepted_ratio="
+            f"{summary.selected_point.validation_metrics.accepted_ratio:.4f}, "
+            "accepted_accuracy="
+            f"{summary.selected_point.validation_metrics.accepted_accuracy:.4f}, "
             f"accepted_correct_ratio="
             f"{summary.selected_point.validation_metrics.accepted_correct_ratio:.4f}"
         ),

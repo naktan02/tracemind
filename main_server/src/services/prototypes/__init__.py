@@ -1,18 +1,23 @@
 """Main-server prototype publication services."""
 
-from .prototype_build_state_service import PrototypeBuildStateService
-from .prototype_pack_service import PrototypePackService
-from .prototype_rebuild_service import (
-    InMemoryPrototypePublicationStrategy,
-    PrototypePublicationStrategy,
+from .models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildRequest,
     PrototypeRebuildResult,
-    PrototypeRebuildService,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
-    ReferenceRebuildPrototypePublicationStrategy,
     StoredReferencePrototypeRebuildRequest,
+)
+from .prototype_build_state_service import PrototypeBuildStateService
+from .prototype_pack_service import PrototypePackService
+from .prototype_rebuild_service import PrototypeRebuildService
+from .publication_strategies import (
+    InMemoryPrototypePublicationStrategy,
+    PrototypePublicationStrategy,
+    ReferenceRebuildPrototypePublicationStrategy,
+)
+from .stored_input_rebuild_service import (
+    PrototypeRebuildInputRepositoryProtocol,
     StoredReferencePrototypeRebuildService,
 )
 
@@ -22,6 +27,7 @@ __all__ = [
     "PrototypeBuildStateService",
     "PrototypePackService",
     "PrototypeRebuildInputRecord",
+    "PrototypeRebuildInputRepositoryProtocol",
     "PrototypeRebuildRequest",
     "PrototypeRebuildResult",
     "PrototypeRebuildService",

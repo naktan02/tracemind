@@ -4,246 +4,45 @@ from __future__ import annotations
 
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
-from datetime import datetime
-from pathlib import Path
-from typing import Any, Protocol
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
+from main_server.src.services.prototypes.models import (
+    PrototypeRebuildInputRecord,
+    PrototypeRebuildRequest,
+    PrototypeRebuildResult,
+    ReferencePrototypeRebuildRequest,
+    ReferencePrototypeSourceRow,
+    StoredReferencePrototypeRebuildRequest,
 )
-from main_server.src.services.prototypes.prototype_build_state_service import (
-    PrototypeBuildStateService,
+from main_server.src.services.prototypes.publication_strategies import (
+    InMemoryPrototypePublicationStrategy,
+    PrototypePublicationStrategy,
+    ReferenceRebuildPrototypePublicationStrategy,
 )
-from main_server.src.services.prototypes.prototype_pack_service import (
-    PrototypePackService,
+from main_server.src.services.prototypes.stored_input_rebuild_service import (
+    PrototypeRebuildInputRepositoryProtocol,
+    StoredReferencePrototypeRebuildService,
 )
-from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
-    dump_prototype_build_state_payload,
-)
-from shared.src.contracts.prototype_contracts import (
-    PrototypePackPayload,
-    dump_prototype_pack_payload,
-)
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 from shared.src.services.prototypes.build_strategies import (
-    PrototypeBuildArtifacts,
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
 )
 
-
-@dataclass(slots=True)
-class PrototypeRebuildRequest:
-    """runtime rebuild에 필요한 canonical build 입력."""
-
-    build_request: PrototypeBuildRequest
-
-
-@dataclass(slots=True, frozen=True)
-class PrototypeRebuildInputRecord:
-    """server-owned canonical prototype rebuild 입력."""
-
-    input_id: str
-    embedding_spec: EmbeddingAdapterSpec
-    rows: tuple["ReferencePrototypeSourceRow", ...]
-    mapping_version: str
-    normalize_embeddings: bool = True
-    translation_model_id: str | None = None
-    translation_model_revision: str | None = None
-    translation_direction: str | None = None
-    required_categories: tuple[str, ...] | None = None
-
-
-@dataclass(slots=True)
-class StoredReferencePrototypeRebuildRequest:
-    """저장된 canonical input 기반 rebuild 요청."""
-
-    adapter_state: VectorAdapterState
-    prototype_version: str
-    embedding_model_id: str
-    embedding_model_revision: str
-    input_id: str | None = None
-    built_at: datetime | None = None
-
-
-@dataclass(slots=True)
-class PrototypeRebuildResult:
-    """rebuild와 publication 이후의 결과 요약."""
-
-    pack_payload: PrototypePackPayload
-    build_state_payload: PrototypeBuildStatePayload | None
-    source_input_id: str | None = None
-    published_pack_path: Path | None = None
-    published_build_state_path: Path | None = None
-    reference_pack_path: Path | None = None
-    reference_build_state_path: Path | None = None
-
-
-class PrototypePublicationStrategy(Protocol):
-    """rebuild 결과물을 어디에 어떻게 발행할지 결정하는 전략 인터페이스."""
-
-    def publish(
-        self,
-        build_artifacts: PrototypeBuildArtifacts,
-    ) -> PrototypeRebuildResult:
-        """빌드 결과물을 발행하고 경로를 반환한다."""
-
-
-@dataclass(slots=True)
-class InMemoryPrototypePublicationStrategy:
-    """빌드 결과를 메모리에서만 반환하는 publication 전략."""
-
-    def publish(
-        self,
-        build_artifacts: PrototypeBuildArtifacts,
-    ) -> PrototypeRebuildResult:
-        return PrototypeRebuildResult(
-            pack_payload=build_artifacts.pack_payload,
-            build_state_payload=build_artifacts.build_state_payload,
-        )
-
-
-@dataclass(slots=True)
-class ReferencePrototypeSourceRow:
-    """reference rebuild용 canonical row 표현."""
-
-    text: str
-    category: str
-
-
-@dataclass(slots=True)
-class ReferencePrototypeRebuildRequest:
-    """reference row 기반 prototype rebuild 요청."""
-
-    rows: tuple[ReferencePrototypeSourceRow, ...] | list[ReferencePrototypeSourceRow]
-    adapter: Any
-    adapter_state: VectorAdapterState
-    prototype_version: str
-    embedding_model_id: str
-    embedding_model_revision: str
-    embedding_backend: str
-    mapping_version: str
-    built_at: datetime | None = None
-    normalize_embeddings: bool = True
-    task_prefix: str = ""
-    translation_model_id: str | None = None
-    translation_model_revision: str | None = None
-    translation_direction: str | None = None
-    required_categories: tuple[str, ...] | list[str] | None = None
-
-
-class PrototypeRebuildInputRepositoryProtocol(Protocol):
-    """canonical prototype rebuild input 저장소 protocol."""
-
-    def load_input(self, input_id: str) -> PrototypeRebuildInputRecord:
-        """지정된 canonical rebuild input을 읽는다."""
-
-    def load_active_input(self) -> PrototypeRebuildInputRecord:
-        """현재 활성 canonical rebuild input을 읽는다."""
-
-
-@dataclass(slots=True)
-class ReferenceRebuildPrototypePublicationStrategy:
-    """reference rebuild 산출물을 local copy와 main_server state에 함께 발행한다."""
-
-    reference_pack_output_dir: Path | None = None
-    reference_build_state_output_dir: Path | None = None
-    prototype_pack_service: PrototypePackService = field(
-        default_factory=PrototypePackService
-    )
-    prototype_build_state_service: PrototypeBuildStateService = field(
-        default_factory=PrototypeBuildStateService
-    )
-
-    def publish(
-        self,
-        build_artifacts: PrototypeBuildArtifacts,
-    ) -> PrototypeRebuildResult:
-        pack_payload = build_artifacts.pack_payload
-        build_state_payload = build_artifacts.build_state_payload
-        prototype_version = pack_payload.prototype_version
-
-        reference_pack_path: Path | None = None
-        if self.reference_pack_output_dir is not None:
-            reference_pack_path = (
-                self.reference_pack_output_dir / f"{prototype_version}.json"
-            )
-            dump_prototype_pack_payload(reference_pack_path, pack_payload)
-
-        reference_build_state_path: Path | None = None
-        if (
-            self.reference_build_state_output_dir is not None
-            and build_state_payload is not None
-        ):
-            reference_build_state_path = (
-                self.reference_build_state_output_dir / f"{prototype_version}.json"
-            )
-            dump_prototype_build_state_payload(
-                reference_build_state_path,
-                build_state_payload,
-            )
-
-        published_build_state_path: Path | None = None
-        if build_state_payload is not None:
-            published_build_state_path = (
-                self.prototype_build_state_service.publish_state(build_state_payload)
-            )
-
-        published_pack_path = self.prototype_pack_service.publish_pack(pack_payload)
-        return PrototypeRebuildResult(
-            pack_payload=pack_payload,
-            build_state_payload=build_state_payload,
-            published_pack_path=published_pack_path,
-            published_build_state_path=published_build_state_path,
-            reference_pack_path=reference_pack_path,
-            reference_build_state_path=reference_build_state_path,
-        )
-
-
-@dataclass(slots=True)
-class StoredReferencePrototypeRebuildService:
-    """저장된 canonical input을 읽어 runtime rebuild를 실행한다."""
-
-    input_repository: PrototypeRebuildInputRepositoryProtocol
-    prototype_rebuild_service: "PrototypeRebuildService" = field(
-        default_factory=lambda: PrototypeRebuildService()
-    )
-    adapter_factory: type[EmbeddingAdapterFactory] = EmbeddingAdapterFactory
-
-    def rebuild(
-        self,
-        request: StoredReferencePrototypeRebuildRequest,
-    ) -> PrototypeRebuildResult:
-        input_record = (
-            self.input_repository.load_active_input()
-            if request.input_id is None
-            else self.input_repository.load_input(request.input_id)
-        )
-        adapter = self.adapter_factory.create(input_record.embedding_spec)
-        rebuild_result = self.prototype_rebuild_service.rebuild_from_reference_rows(
-            ReferencePrototypeRebuildRequest(
-                rows=input_record.rows,
-                adapter=adapter,
-                adapter_state=request.adapter_state,
-                prototype_version=request.prototype_version,
-                embedding_model_id=request.embedding_model_id,
-                embedding_model_revision=request.embedding_model_revision,
-                embedding_backend=input_record.embedding_spec.backend,
-                mapping_version=input_record.mapping_version,
-                built_at=request.built_at,
-                normalize_embeddings=input_record.normalize_embeddings,
-                task_prefix=input_record.embedding_spec.task_prefix,
-                translation_model_id=input_record.translation_model_id,
-                translation_model_revision=input_record.translation_model_revision,
-                translation_direction=input_record.translation_direction,
-                required_categories=input_record.required_categories,
-            )
-        )
-        return replace(rebuild_result, source_input_id=input_record.input_id)
+__all__ = [
+    "InMemoryPrototypePublicationStrategy",
+    "PrototypePublicationStrategy",
+    "PrototypeRebuildInputRecord",
+    "PrototypeRebuildInputRepositoryProtocol",
+    "PrototypeRebuildRequest",
+    "PrototypeRebuildResult",
+    "PrototypeRebuildService",
+    "ReferencePrototypeRebuildRequest",
+    "ReferencePrototypeSourceRow",
+    "ReferenceRebuildPrototypePublicationStrategy",
+    "StoredReferencePrototypeRebuildRequest",
+    "StoredReferencePrototypeRebuildService",
+]
 
 
 @dataclass(slots=True)

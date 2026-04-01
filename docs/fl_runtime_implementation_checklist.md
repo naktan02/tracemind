@@ -19,22 +19,26 @@
   - pseudo-label selection
   - local update 생성
   - training backend / privacy guard 교체 지점
+- `agent/src/services/federation/training_example_service.py`
+  - runtime training example preparation
 - `main_server/src/services/rounds/`
-  - round task 생성
+  - round lifecycle
+  - update acceptance policy
   - adapter-family 기준 aggregation
   - next manifest/state publication
 - `scripts/experiments/federated_simulation/`
   - synthetic shard split
-  - runtime core 조합 실험
+  - runtime core 직접 조합 실험
   - evaluation / artifact dump
+- `main_server/src/services/prototypes/`
+  - runtime rebuild/publication
+  - canonical rebuild input repository 연계
 
 현재 비어 있거나 아직 약한 것:
 
 - 실제 HTTP 기반 FL round/task/update runtime
-- active round lifecycle 저장/전이
-- 실제 운영 경로의 prototype rebuild
-- agent 쪽 real training example preparation
 - server/agent 간 end-to-end HTTP federation integration test
+- `agent` current round polling/upload runtime
 
 ## 최종 구조 원칙
 
@@ -60,6 +64,7 @@
 - simulation harness
 - evaluation / report dump
 - exploratory benchmark
+- runtime 코어를 감싸는 thin experiment wrapper
 
 ### 절대 섞지 않을 것
 
@@ -67,6 +72,7 @@
 - aggregation logic와 HTTP lifecycle
 - production runtime과 synthetic simulation helper
 - server-owned canonical rebuild input과 agent private raw event
+- 운영 후보 알고리즘 구현과 experiment-only 조합 로직
 
 ## 구현 순서
 
@@ -80,7 +86,7 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 결정해야 할 항목
 
-- [ ] prototype rebuild source를 확정한다.
+- [x] prototype rebuild source를 확정한다.
   - 옵션 A: server-owned canonical bootstrap corpus
   - 옵션 B: server-owned canonical base-embedding cache
   - 권장: v1은 canonical bootstrap corpus부터 시작
@@ -88,7 +94,7 @@ server runtime을 끝까지 닫을 수 없다.
   - polling 기반 agent self-check
   - 또는 server push 없이 수동/주기적 participation
   - 권장: polling 기반 단순 모델
-- [ ] update upload idempotency 정책을 확정한다.
+- [x] update upload idempotency 정책을 확정한다.
   - 같은 `update_id` 재전송 허용 여부
   - 같은 `task_id`에 agent당 1회만 허용할지 여부
 - [ ] round close 조건을 확정한다.
@@ -99,15 +105,15 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 문서/코드 반영 위치
 
-- [ ] [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
+- [x] [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
 - [ ] [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
 - [ ] 새 runtime service contract 문서가 필요하면 `docs/contracts/` 아래에 추가
 
 ### 완료 기준
 
-- [ ] 서버가 prototype rebuild에 사용할 canonical input이 무엇인지 한 문장으로 설명 가능하다.
+- [x] 서버가 prototype rebuild에 사용할 canonical input이 무엇인지 한 문장으로 설명 가능하다.
 - [ ] round 하나가 어떤 조건에서 열리고 닫히는지 ambiguity가 없다.
-- [ ] 같은 update 재전송 시 서버 행동이 결정돼 있다.
+- [x] 같은 update 재전송 시 서버 행동이 결정돼 있다.
 
 ## Phase 1. Main Server FL Runtime 닫기
 
@@ -126,12 +132,12 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 기존 코드와 연결할 것
 
-- [ ] [round_manager_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_manager_service.py)
+- [x] [round_manager_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_manager_service.py)
   - domain primitive로 유지
   - lifecycle orchestration의 하위 구성 요소로 사용
-- [ ] [adapter_family_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/adapter_family_service.py)
+- [x] [adapter_family_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/adapter_family_service.py)
   - family-based aggregation 확장 지점으로 유지
-- [ ] [aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
+- [x] [aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
   - aggregation backend 교체 지점으로 유지
 
 ### API로 닫을 것
@@ -171,7 +177,7 @@ server runtime을 끝까지 닫을 수 없다.
   - 역할: current round/task fetch, update upload
 - [ ] `agent/src/services/federation/runtime_service.py`
   - 역할: active pair/task 기준 local training orchestration
-- [ ] `agent/src/services/federation/training_example_service.py`
+- [x] `agent/src/services/federation/training_example_service.py`
   - 역할: local event/scored event를 `EmbeddedTrainingExample`으로 변환
 
 ### 기존 코드와 연결할 것
@@ -198,6 +204,7 @@ server runtime을 끝까지 닫을 수 없다.
   - training example preparation helper
   - local runtime orchestration helper
   를 `agent/src/services/federation/`으로 이동 또는 공통화
+  - 현재 training example preparation은 완료, local runtime orchestration은 남아 있음
 
 ### 검증할 것
 
@@ -209,7 +216,7 @@ server runtime을 끝까지 닫을 수 없다.
 ### 완료 기준
 
 - [ ] agent가 current task를 읽고 local update를 만들어 업로드할 수 있다.
-- [ ] local training example preparation이 더 이상 script 전용 helper가 아니다.
+- [x] local training example preparation이 더 이상 script 전용 helper가 아니다.
 - [ ] `TrainingTask`만 보면 local training 실행 가능 여부가 결정된다.
 
 ## Phase 3. Prototype Rebuild Runtime 경로 닫기
@@ -234,10 +241,12 @@ server runtime을 끝까지 닫을 수 없다.
 
 - [ ] [prototype_build_state_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/prototypes/prototype_build_state_service.py)
   - 운영 경로에서 build state를 유지할지 여부 결정
-- [ ] [scripts/prototypes/seeding.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/seeding.py)
+- [x] [scripts/prototypes/seeding.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/seeding.py)
   - production logic을 그대로 재사용할지, server service 전용 core로 분리할지 결정
 - [x] [round_lifecycle_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_lifecycle_service.py)
   - next pair publication 직후 rebuild 호출 흐름과 연결
+- [x] `scripts/experiments/prototype_strategy`의 single/kmeans
+  - shared canonical builder를 재사용
 
 ### 결정해야 할 세부사항
 
@@ -247,9 +256,9 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 완료 기준
 
-- [ ] simulation helper 없이도 server runtime이 next prototype을 발행할 수 있다.
+- [x] simulation helper 없이도 server runtime이 next prototype을 발행할 수 있다.
 - [ ] rebuild 입력이 private raw event에 의존하지 않는다.
-- [ ] next manifest와 next prototype version이 항상 일관되게 맞물린다.
+- [x] next manifest와 next prototype version이 항상 일관되게 맞물린다.
 
 ## Phase 4. End-to-End HTTP Federation Integration Test 추가
 

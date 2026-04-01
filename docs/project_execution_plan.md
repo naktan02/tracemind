@@ -70,7 +70,15 @@ Raw Event / Local Signal
 3. 현재 로컬 update는 heuristic 기반이고, 다음 단계는 gradient 기반 shared adapter FL이다.
 4. prototype은 직접 FL 파라미터라기보다 shared state로부터 재생성되는 artifact에 가깝다.
 
-## 4. 현재 구현 상태
+## 4. 구현 배치 규칙
+
+1. 공용 계산 규칙과 canonical 알고리즘은 `shared`에 둔다.
+2. agent-owned local training/inference runtime은 `agent`에 둔다.
+3. server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.
+4. `scripts`는 위 코어를 조합하는 실험층으로만 유지한다.
+5. 운영 후보 로직을 `scripts`에 먼저 만들고 나중에 복사하는 흐름은 허용하지 않는다.
+
+## 5. 현재 구현 상태
 
 완료 또는 정리된 방향:
 
@@ -78,16 +86,19 @@ Raw Event / Local Signal
 2. training backend와 privacy guard를 분리했다.
 3. 서버 aggregation을 family object 기준으로 조합하게 정리했다.
 4. 계약 필드 의미를 `shared/src/contracts` 가까이에 두기 시작했다.
-5. 실험 경로에서 prototype strategy와 projection 시각화를 개선했다.
+5. `main_server`는 round lifecycle, update acceptance policy, prototype rebuild runtime을 소유한다.
+6. `agent`는 runtime training example builder를 소유한다.
+7. `scripts/experiments/federated_simulation`은 `RoundLifecycleService`와 prototype rebuild runtime을 직접 조합한다.
+8. `scripts/experiments/prototype_strategy`의 single/kmeans는 shared canonical builder를 재사용한다.
 
 아직 남은 핵심:
 
-1. `diagonal_scale` heuristic update를 gradient backend로 교체
-2. runtime의 multi-prototype 지원 확대
-3. local personalization 계층 강화
+1. `agent`의 real round client/runtime 닫기
+2. `diagonal_scale` heuristic update를 gradient backend로 교체
+3. runtime의 multi-prototype 지원 확대 여부 결정
 4. privacy hardening의 실제 프로토콜 추가
 
-## 5. Phase 요약
+## 6. Phase 요약
 
 ### Phase 0. 계약 정리
 
@@ -117,17 +128,16 @@ Raw Event / Local Signal
 
 - clipping, secure aggregation, DP, 필요 시 HE를 붙인다.
 
-## 6. 다음 우선순위
+## 7. 다음 우선순위
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. `DiagonalScaleGradientTrainingBackend` 추가
-2. local objective에 drift correction 항 추가
-   - 예: FedProx류 proximal term
-3. local/private personalization 계층 강화
+1. `agent` round client/runtime 추가
+2. `DiagonalScaleGradientTrainingBackend` 추가
+3. local objective에 drift correction 항 추가
 4. multi-prototype runtime과 FL 연결 여부 결정
 
-## 7. 검증 기준
+## 8. 검증 기준
 
 ### 로컬 추론
 
@@ -147,7 +157,7 @@ Raw Event / Local Signal
 1. 원문이 서버로 올라가지 않는다.
 2. clipping/secure aggregation/DP는 training logic과 분리된 계층으로 붙는다.
 
-## 8. 사용자 확인이 필요한 결정
+## 9. 사용자 확인이 필요한 결정
 
 1. pseudo-label을 정식 학습 신호로 얼마나 신뢰할지
 2. FL 범위를 adapter/head에서 어디까지 열지

@@ -41,7 +41,8 @@
 3. 바뀔 축이 무엇인지 적는다.
    - 예: adapter family, training backend, aggregation backend, privacy layer
 4. 관련 contract를 코드 가까운 문서에서 먼저 본다.
-5. 사용자 판단이 필요한 항목인지 확인한다.
+5. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 중 소유 경계에 먼저 둔다.
+6. 사용자 판단이 필요한 항목인지 확인한다.
 
 ## 사용자 확인이 필요한 변경
 
