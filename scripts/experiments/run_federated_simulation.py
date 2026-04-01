@@ -15,7 +15,6 @@ from scripts.experiments.federated_simulation import (
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
-    build_prototype_pack_from_rows,
     load_jsonl_rows,
     run_simulation,
     split_rows_for_federation,
@@ -23,7 +22,6 @@ from scripts.experiments.federated_simulation import (
 from scripts.run_artifacts import build_run_dir
 
 __all__ = [
-    "build_prototype_pack_from_rows",
     "load_jsonl_rows",
     "main",
     "run_simulation",

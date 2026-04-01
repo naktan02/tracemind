@@ -5,6 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from main_server.src.services.rounds.aggregation_service import (
+    DiagonalScaleAggregationService,
+    SharedAdapterAggregationBackend,
+)
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -20,10 +24,6 @@ from shared.src.domain.entities.training.vector_adapter_delta import (
 )
 from shared.src.domain.entities.training.vector_adapter_state import (
     VectorAdapterState,
-)
-from main_server.src.services.rounds.aggregation_service import (
-    DiagonalScaleAggregationService,
-    SharedAdapterAggregationBackend,
 )
 
 

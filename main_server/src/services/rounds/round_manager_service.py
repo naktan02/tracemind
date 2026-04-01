@@ -8,6 +8,13 @@ from pathlib import Path
 from typing import Mapping
 from uuid import uuid4
 
+from main_server.src.infrastructure.repositories import (
+    vector_adapter_state_repository as vector_adapter_state_repository_module,
+)
+from main_server.src.services.rounds.adapter_family_service import (
+    DiagonalScaleRoundFamily,
+    SharedAdapterRoundFamily,
+)
 from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -19,13 +26,6 @@ from shared.src.domain.entities.training.training_task_config import (
 )
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
-from main_server.src.infrastructure.repositories.vector_adapter_state_repository import (
-    SharedAdapterStateRepository,
-)
-from main_server.src.services.rounds.adapter_family_service import (
-    DiagonalScaleRoundFamily,
-    SharedAdapterRoundFamily,
-)
 
 
 @dataclass(slots=True)
@@ -80,8 +80,12 @@ class RoundManagerService:
     adapter_family: SharedAdapterRoundFamily = field(
         default_factory=DiagonalScaleRoundFamily
     )
-    artifact_repository: SharedAdapterStateRepository = field(
-        default_factory=SharedAdapterStateRepository
+    artifact_repository: (
+        vector_adapter_state_repository_module.SharedAdapterStateRepository
+    ) = field(
+        default_factory=(
+            vector_adapter_state_repository_module.SharedAdapterStateRepository
+        )
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 

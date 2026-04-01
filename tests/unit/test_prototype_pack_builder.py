@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
-from scripts.prototypes.lib.prototype_pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )
+from shared.src.services.prototypes.prototype_pack_builder import PrototypePackBuilder
 
 
 def test_build_creates_mean_centroids_for_each_category() -> None:
@@ -37,9 +37,7 @@ def test_build_creates_mean_centroids_for_each_category() -> None:
         [1.0 / 5.0**0.5, 2.0 / 5.0**0.5]
     )
     assert pack.categories["anxiety"].sample_count == 2
-    assert pack.categories["normal"].centroid == pytest.approx(
-        [2.0**-0.5, 2.0**-0.5]
-    )
+    assert pack.categories["normal"].centroid == pytest.approx([2.0**-0.5, 2.0**-0.5])
     assert pack.categories["normal"].sample_count == 2
 
 
@@ -167,9 +165,13 @@ def test_merge_build_state_accumulates_new_embeddings_exactly() -> None:
     pack = builder.build_pack_from_state(merged_state)
 
     assert merged_state.prototype_version == "proto_next_v1"
-    assert merged_state.categories["anxiety"].embedding_sum == pytest.approx([9.0, 15.0])
+    assert merged_state.categories["anxiety"].embedding_sum == pytest.approx(
+        [9.0, 15.0]
+    )
     assert merged_state.categories["anxiety"].sample_count == 3
-    assert merged_state.categories["normal"].embedding_sum == pytest.approx([20.0, 16.0])
+    assert merged_state.categories["normal"].embedding_sum == pytest.approx(
+        [20.0, 16.0]
+    )
     assert merged_state.categories["normal"].sample_count == 4
     assert pack.categories["anxiety"].centroid == pytest.approx(
         [3.0 / 34.0**0.5, 5.0 / 34.0**0.5]

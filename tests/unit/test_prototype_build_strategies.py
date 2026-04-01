@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from scripts.prototypes.lib.build_strategies import (
+from shared.src.services.prototypes.build_strategies import (
     KMeansPrototypeBuildStrategy,
     PrototypeBuildRequest,
     SinglePrototypeBuildStrategy,

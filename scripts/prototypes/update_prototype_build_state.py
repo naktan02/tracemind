@@ -8,26 +8,21 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
+    EmbeddingAdapterFactory,
+    EmbeddingAdapterSpec,
+)
 from main_server.src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
 from main_server.src.services.prototypes.prototype_pack_service import (  # noqa: E402
     PrototypePackService,
 )
-
-from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
-    EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
-)
-from scripts.prototypes.lib.io import (  # noqa: E402
+from scripts.prototypes.io import (  # noqa: E402
     group_rows_by_label,
     load_jsonl,
     resolve_metadata_from_manifests,
 )
-from scripts.prototypes.lib.payload_serialization import (  # noqa: E402
-    build_single_prototype_pack_payload,
-)
-from scripts.prototypes.lib.prototype_pack_builder import PrototypePackBuilder  # noqa: E402
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     PrototypeBuildStatePayload,
     dump_prototype_build_state_payload,
@@ -35,6 +30,12 @@ from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
 )
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     dump_prototype_pack_payload,
+)
+from shared.src.services.prototypes.payload_serialization import (  # noqa: E402
+    build_single_prototype_pack_payload,
+)
+from shared.src.services.prototypes.prototype_pack_builder import (  # noqa: E402
+    PrototypePackBuilder,
 )
 
 

@@ -17,8 +17,8 @@ from scripts.classification_report import (  # noqa: E402
     render_confusion_table,
     render_per_category_table,
 )
-from scripts.prototypes.lib.evaluation import evaluate_rows  # noqa: E402
-from scripts.prototypes.lib.io import load_jsonl  # noqa: E402
+from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
+from scripts.prototypes.io import load_jsonl  # noqa: E402
 from scripts.run_artifacts import build_run_dir  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,

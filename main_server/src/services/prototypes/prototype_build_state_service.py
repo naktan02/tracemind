@@ -9,7 +9,8 @@ from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
     load_prototype_build_state_payload,
 )
-from main_server.src.infrastructure.repositories.prototype_build_state_repository import (
+
+from ...infrastructure.repositories.prototype_build_state_repository import (
     PrototypeBuildStateRepository,
 )
 

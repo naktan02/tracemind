@@ -34,7 +34,10 @@ class SharedAdapterStateRepository:
         dump_shared_adapter_state_payload(path, payload)
         return path
 
-    def load_shared_adapter_state(self, model_revision: str) -> SharedAdapterStatePayload:
+    def load_shared_adapter_state(
+        self,
+        model_revision: str,
+    ) -> SharedAdapterStatePayload:
         path = self.path_for_revision(model_revision)
         if not path.exists():
             raise FileNotFoundError(f"Shared adapter state not found: {model_revision}")

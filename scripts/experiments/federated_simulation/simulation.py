@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import json
-from collections import defaultdict
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -15,6 +14,11 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.federation.training_example_service import (
+    TrainingExampleBuildRequest,
+    TrainingExampleService,
+    TrainingExampleSource,
+)
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import (
     EmbeddedTrainingExample,
@@ -22,12 +26,31 @@ from agent.src.services.training.local_training_service import (
     LocalTrainingService,
 )
 from main_server.src.infrastructure.repositories import (
+    prototype_build_state_repository,
+    prototype_pack_repository,
+    prototype_rebuild_input_repository,
     vector_adapter_state_repository,
+)
+from main_server.src.infrastructure.repositories.round_repository import RoundRepository
+from main_server.src.services.prototypes import (
+    PrototypeBuildStateService,
+    PrototypePackService,
+    PrototypeRebuildInputRecord,
+    PrototypeRebuildService,
+    ReferencePrototypeSourceRow,
+    ReferenceRebuildPrototypePublicationStrategy,
+    StoredReferencePrototypeRebuildRequest,
+    StoredReferencePrototypeRebuildService,
+)
+from main_server.src.services.rounds.models import (
+    RoundFinalizeRequest,
+    RoundOpenRequest,
+)
+from main_server.src.services.rounds.round_lifecycle_service import (
+    RoundLifecycleService,
 )
 from main_server.src.services.rounds.round_manager_service import (
     RoundManagerService,
-    RoundPublicationRequest,
-    TrainingTaskRequest,
 )
 from scripts.experiments.federated_simulation.artifacts import (
     save_model_manifest,
@@ -48,21 +71,17 @@ from scripts.experiments.federated_simulation.models import (
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
 )
-from scripts.prototypes.lib.build_strategies import (
-    PrototypeBuildRequest,
-    PrototypeBuildStrategy,
-)
 from shared.src.contracts.adapter_contracts import DiagonalScaleAdapterStatePayload
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
-    extract_category_prototypes,
+    load_prototype_pack_payload,
 )
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.training_task_config import (
     TrainingObjectiveConfig,
 )
 from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
+from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
 
 def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
@@ -74,49 +93,123 @@ def load_jsonl_rows(path: Path) -> list[dict[str, Any]]:
     return rows
 
 
-def build_prototype_pack_from_rows(
+class _SimulationEmbeddingAdapterFactory:
+    adapter: Any = None
+
+    @classmethod
+    def create(cls, spec: EmbeddingAdapterSpec) -> Any:
+        del spec
+        if cls.adapter is None:
+            raise ValueError("Simulation embedding adapter is not configured.")
+        return cls.adapter
+
+
+def _store_prototype_rebuild_input(
     *,
     rows: list[dict[str, Any]],
-    adapter: Any,
+    embedding_spec: EmbeddingAdapterSpec,
+    repository: (
+        prototype_rebuild_input_repository.PrototypeRebuildInputRepository
+    ),
+    rebuild_config: FederatedPrototypeRebuildConfig,
+) -> str:
+    """bootstrap row를 canonical prototype rebuild input으로 저장한다."""
+    input_id = "bootstrap_v1"
+    repository.save_input(
+        PrototypeRebuildInputRecord(
+            input_id=input_id,
+            embedding_spec=embedding_spec,
+            rows=tuple(
+                ReferencePrototypeSourceRow(
+                    text=str(row["text"]),
+                    category=str(row["mapped_label_4"]),
+                )
+                for row in rows
+            ),
+            mapping_version=rebuild_config.mapping_version,
+            translation_model_id=rebuild_config.translation_model_id,
+            translation_model_revision=rebuild_config.translation_model_revision,
+            translation_direction=rebuild_config.translation_direction,
+        )
+    )
+    repository.set_active(input_id)
+    return input_id
+
+
+def _build_prototype_rebuild_runtime_service(
+    *,
+    output_dir: Path,
+    build_strategy: PrototypeBuildStrategy,
+    input_repository: (
+        prototype_rebuild_input_repository.PrototypeRebuildInputRepository
+    ),
+) -> StoredReferencePrototypeRebuildService:
+    pack_repository = prototype_pack_repository.PrototypePackRepository(
+        state_root=output_dir / "main_server" / "runtime_prototype_packs"
+    )
+    build_state_repository = (
+        prototype_build_state_repository.PrototypeBuildStateRepository(
+            state_root=output_dir / "main_server" / "runtime_prototype_build_states"
+        )
+    )
+    return StoredReferencePrototypeRebuildService(
+        input_repository=input_repository,
+        prototype_rebuild_service=PrototypeRebuildService(
+            build_strategy=build_strategy,
+            publication_strategy=ReferenceRebuildPrototypePublicationStrategy(
+                reference_pack_output_dir=(
+                    output_dir / "main_server" / "prototype_packs"
+                ),
+                reference_build_state_output_dir=(
+                    output_dir / "main_server" / "prototype_build_states"
+                ),
+                prototype_pack_service=PrototypePackService(repository=pack_repository),
+                prototype_build_state_service=PrototypeBuildStateService(
+                    repository=build_state_repository
+                ),
+            ),
+        ),
+        adapter_factory=_SimulationEmbeddingAdapterFactory,
+    )
+
+
+def _rebuild_reference_prototype_pack(
+    *,
+    stored_rebuild_service: StoredReferencePrototypeRebuildService,
     adapter_state: VectorAdapterState,
     prototype_version: str,
     embedding_model_id: str,
     embedding_model_revision: str,
     built_at: datetime,
-    build_strategy: PrototypeBuildStrategy,
-    rebuild_config: FederatedPrototypeRebuildConfig | None = None,
 ) -> PrototypePackPayload:
-    """bootstrap row에서 현재 model revision용 PrototypePack을 다시 만든다."""
-    effective_rebuild_config = rebuild_config or FederatedPrototypeRebuildConfig()
-    if not rows:
-        raise ValueError("rows must not be empty when building a PrototypePack.")
-
-    texts = [str(row["text"]) for row in rows]
-    base_embeddings = adapter.embed_texts(texts)
-    embeddings_by_category: dict[str, list[list[float]]] = defaultdict(list)
-    for row, base_embedding in zip(rows, base_embeddings, strict=True):
-        embeddings_by_category[str(row["mapped_label_4"])].append(
-            adapter_state.apply(base_embedding)
-        )
-
-    build_result = build_strategy.build(
-        PrototypeBuildRequest(
-            embeddings_by_category=embeddings_by_category,
+    """reference row 기반 rebuild를 stored runtime service로 실행한다."""
+    result = stored_rebuild_service.rebuild(
+        StoredReferencePrototypeRebuildRequest(
+            adapter_state=adapter_state,
             prototype_version=prototype_version,
-            embedding_backend=effective_rebuild_config.embedding_backend,
             embedding_model_id=embedding_model_id,
             embedding_model_revision=embedding_model_revision,
-            translation_model_id=effective_rebuild_config.translation_model_id,
-            translation_model_revision=(
-                effective_rebuild_config.translation_model_revision
-            ),
-            translation_direction=effective_rebuild_config.translation_direction,
-            mapping_version=effective_rebuild_config.mapping_version,
             built_at=built_at,
-            required_categories=tuple(sorted(embeddings_by_category)),
         )
     )
-    return build_result.pack_payload
+    if result.published_pack_path is None:
+        raise ValueError("Stored rebuild runtime must publish a prototype pack.")
+    return load_prototype_pack_payload(result.published_pack_path)
+
+
+def _load_active_state(
+    *,
+    manifest: ModelManifest,
+    state_repository: vector_adapter_state_repository.SharedAdapterStateRepository,
+    round_manager: RoundManagerService,
+) -> VectorAdapterState:
+    payload = state_repository.load_state_from_ref(manifest.artifact_ref)
+    state = round_manager.adapter_family.state_from_payload(payload)
+    if not isinstance(state, VectorAdapterState):
+        raise TypeError(
+            f"Expected VectorAdapterState from simulation runtime, got {type(state)!r}."
+        )
+    return state
 
 
 def build_training_examples(
@@ -128,32 +221,26 @@ def build_training_examples(
     model_id: str,
     scoring_service: ScoringService,
 ) -> tuple[EmbeddedTrainingExample, ...]:
-    """row를 scored event + embedding 예시로 변환한다."""
-    if not rows:
-        return ()
-
-    texts = [str(row["text"]) for row in rows]
-    base_embeddings = adapter.embed_texts(texts)
-    prototypes = extract_category_prototypes(prototype_pack)
-    examples: list[EmbeddedTrainingExample] = []
-    for row, base_embedding in zip(rows, base_embeddings, strict=True):
-        adapted_embedding = adapter_state.apply(base_embedding)
-        scored_event = ScoredEvent(
+    """simulation row를 agent runtime training example builder로 변환한다."""
+    service = TrainingExampleService()
+    source_rows = tuple(
+        TrainingExampleSource(
             query_id=str(row["query_id"]),
+            text=str(row["text"]),
             occurred_at=parse_created_at(str(row["created_at"])),
-            translated_text=None,
-            embedding_model_id=model_id,
-            translation_model_id=prototype_pack.translation_model_id,
-            category_scores=scoring_service.score(adapted_embedding, prototypes),
         )
-        examples.append(
-            EmbeddedTrainingExample(
-                scored_event=scored_event,
-                embedding=adapted_embedding,
-                base_embedding=list(base_embedding),
-            )
+        for row in rows
+    )
+    return service.build_examples(
+        TrainingExampleBuildRequest(
+            source_rows=source_rows,
+            adapter=adapter,
+            adapter_state=adapter_state,
+            prototype_pack=prototype_pack,
+            model_id=model_id,
+            scoring_service=scoring_service,
         )
-    return tuple(examples)
+    )
 
 
 def evaluate_rows(
@@ -284,6 +371,7 @@ def run_simulation(
         state_root=output_dir / "main_server" / "shared_adapter_states"
     )
     round_manager = RoundManagerService(artifact_repository=state_repository)
+    round_repository = RoundRepository(state_root=output_dir / "main_server" / "rounds")
 
     validation_scoring_service = _build_validation_scoring_service(
         effective_validation_config
@@ -310,16 +398,35 @@ def run_simulation(
             updated_at=initial_state.updated_at,
         )
     )
-    active_prototype = build_prototype_pack_from_rows(
+    _SimulationEmbeddingAdapterFactory.adapter = adapter
+    input_repository = (
+        prototype_rebuild_input_repository.PrototypeRebuildInputRepository(
+            state_root=output_dir / "main_server" / "prototype_rebuild_inputs"
+        )
+    )
+    _store_prototype_rebuild_input(
         rows=dataset_split.bootstrap_rows,
-        adapter=adapter,
+        embedding_spec=embedding_spec,
+        repository=input_repository,
+        rebuild_config=effective_rebuild_config,
+    )
+    stored_rebuild_service = _build_prototype_rebuild_runtime_service(
+        output_dir=output_dir,
+        build_strategy=prototype_build_strategy,
+        input_repository=input_repository,
+    )
+    lifecycle_service = RoundLifecycleService(
+        round_repository=round_repository,
+        round_manager_service=round_manager,
+        prototype_rebuild_runtime_service=stored_rebuild_service,
+    )
+    active_prototype = _rebuild_reference_prototype_pack(
+        stored_rebuild_service=stored_rebuild_service,
         adapter_state=initial_state,
         prototype_version=initial_prototype_version,
         embedding_model_id=model_id,
         embedding_model_revision=initial_model_revision,
         built_at=now,
-        build_strategy=prototype_build_strategy,
-        rebuild_config=effective_rebuild_config,
     )
     save_prototype_pack(output_dir, active_prototype)
     active_manifest = ModelManifest(
@@ -354,13 +461,14 @@ def run_simulation(
     active_state = initial_state
     for round_index in range(1, rounds + 1):
         round_id = f"round_{round_index:04d}"
-        training_task = round_manager.create_training_task(
-            _build_training_task_request(
+        round_record = lifecycle_service.open_round(
+            _build_round_open_request(
                 active_manifest=active_manifest,
                 round_id=round_id,
                 training_task_config=effective_training_task_config,
             )
         )
+        training_task = round_record.training_task
         training_scoring_service = ScoringService.from_objective_config(
             training_task.objective_config,
             similarity_name=effective_validation_config.similarity_name,
@@ -399,6 +507,10 @@ def run_simulation(
                 diagnostics_config=effective_diagnostics_config,
             )
             if local_result.update_envelope is not None:
+                lifecycle_service.accept_update(
+                    round_id,
+                    local_result.update_envelope,
+                )
                 updates.append(local_result.update_envelope)
             client_summaries.append(
                 ClientRoundSummary(
@@ -414,27 +526,28 @@ def run_simulation(
 
         next_model_revision = f"sim_rev_{round_index:04d}"
         next_prototype_version = f"proto_sim_{round_index:04d}"
-        publication = round_manager.publish_next_pair(
-            RoundPublicationRequest(
-                base_manifest=active_manifest,
-                updates=updates,
+        finalized_round = lifecycle_service.finalize_round(
+            round_id,
+            RoundFinalizeRequest(
                 next_model_revision=next_model_revision,
                 next_prototype_version=next_prototype_version,
-            )
+            ),
         )
-        active_state = publication.next_state
-        active_manifest = publication.next_manifest
+        if finalized_round.publication is None:
+            raise ValueError("Finalized simulation round must contain publication.")
+        active_manifest = finalized_round.publication.next_manifest
+        active_state = _load_active_state(
+            manifest=active_manifest,
+            state_repository=state_repository,
+            round_manager=round_manager,
+        )
         save_model_manifest(output_dir, active_manifest)
-        active_prototype = build_prototype_pack_from_rows(
-            rows=dataset_split.bootstrap_rows,
-            adapter=adapter,
-            adapter_state=active_state,
-            prototype_version=next_prototype_version,
-            embedding_model_id=model_id,
-            embedding_model_revision=next_model_revision,
-            built_at=active_manifest.published_at,
-            build_strategy=prototype_build_strategy,
-            rebuild_config=effective_rebuild_config,
+        if finalized_round.publication.prototype_pack_ref is None:
+            raise ValueError(
+                "Simulation finalize must publish a prototype pack reference."
+            )
+        active_prototype = load_prototype_pack_payload(
+            Path(finalized_round.publication.prototype_pack_ref)
         )
         save_prototype_pack(output_dir, active_prototype)
         validation = evaluate_rows(
@@ -478,13 +591,13 @@ def parse_created_at(value: str) -> datetime:
     return parsed
 
 
-def _build_training_task_request(
+def _build_round_open_request(
     *,
     active_manifest: ModelManifest,
     round_id: str,
     training_task_config: FederatedTrainingTaskConfig,
-) -> TrainingTaskRequest:
-    return TrainingTaskRequest(
+) -> RoundOpenRequest:
+    return RoundOpenRequest(
         active_manifest=active_manifest,
         round_id=round_id,
         local_epochs=int(training_task_config.local_epochs),

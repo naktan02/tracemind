@@ -11,7 +11,6 @@ from shared.src.contracts.prototype_build_state_contracts import (
     load_prototype_build_state_payload,
 )
 
-
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[3]
 
 
@@ -35,7 +34,9 @@ class PrototypeBuildStateRepository:
     def load_state(self, prototype_version: str) -> PrototypeBuildStatePayload:
         path = self.path_for_version(prototype_version)
         if not path.exists():
-            raise FileNotFoundError(f"Prototype build state not found: {prototype_version}")
+            raise FileNotFoundError(
+                f"Prototype build state not found: {prototype_version}"
+            )
         return load_prototype_build_state_payload(path)
 
     def has_state(self, prototype_version: str) -> bool:

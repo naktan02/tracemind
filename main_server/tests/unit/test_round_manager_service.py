@@ -5,15 +5,14 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from main_server.src.infrastructure.repositories.vector_adapter_state_repository import (  # noqa: E402
-    SharedAdapterStateRepository,
+from main_server.src.infrastructure.repositories import (  # noqa: E402
+    vector_adapter_state_repository as vector_adapter_state_repository_module,
 )
 from main_server.src.services.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
     TrainingTaskRequest,
 )
-
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -29,7 +28,9 @@ from shared.src.domain.services.clock import FixedClock
 
 
 def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -> None:
-    repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    repository = vector_adapter_state_repository_module.SharedAdapterStateRepository(
+        state_root=tmp_path / "shared_states"
+    )
     base_state_path = repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
@@ -160,7 +161,9 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
 def test_round_manager_uses_injected_clock_for_publication_time(
     tmp_path: Path,
 ) -> None:
-    repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    repository = vector_adapter_state_repository_module.SharedAdapterStateRepository(
+        state_root=tmp_path / "shared_states"
+    )
     base_state_path = repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",

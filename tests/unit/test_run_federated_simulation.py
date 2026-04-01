@@ -3,27 +3,22 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime, timezone
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterSpec,
 )
 from scripts.experiments.federated_simulation import (
-    FederatedPrototypeRebuildConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
 )
 from scripts.experiments.run_federated_simulation import (
-    build_prototype_pack_from_rows,
     run_simulation,
     split_rows_for_federation,
 )
-from scripts.prototypes.lib.build_strategies import (
-    KMeansPrototypeBuildStrategy,
+from shared.src.services.prototypes.build_strategies import (
     SinglePrototypeBuildStrategy,
 )
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 
 
 def _row(query_id: str, text: str, label: str) -> dict[str, str]:
@@ -223,101 +218,3 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
-
-
-class _StaticEmbeddingAdapter:
-    def __init__(self, vectors: dict[str, list[float]]) -> None:
-        self._vectors = vectors
-
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        return [list(self._vectors[text]) for text in texts]
-
-
-def test_build_prototype_pack_from_rows_uses_configured_builder_strategy() -> None:
-    rows = [
-        _row("a1", "cluster_a_1", "anxiety"),
-        _row("a2", "cluster_a_2", "anxiety"),
-        _row("a3", "cluster_b_1", "anxiety"),
-        _row("a4", "cluster_b_2", "anxiety"),
-        _row("n1", "normal_1", "normal"),
-        _row("n2", "normal_2", "normal"),
-    ]
-    adapter = _StaticEmbeddingAdapter(
-        {
-            "cluster_a_1": [1.0, 0.0],
-            "cluster_a_2": [1.0, 0.1],
-            "cluster_b_1": [-1.0, 0.0],
-            "cluster_b_2": [-1.0, -0.1],
-            "normal_1": [0.0, 1.0],
-            "normal_2": [0.0, 1.1],
-        }
-    )
-    adapter_state = VectorAdapterState.identity(
-        model_id="tracemind-embed-sim",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
-    )
-
-    payload = build_prototype_pack_from_rows(
-        rows=rows,
-        adapter=adapter,
-        adapter_state=adapter_state,
-        prototype_version="proto_sim_0000",
-        embedding_model_id="tracemind-embed-sim",
-        embedding_model_revision="sim_rev_0000",
-        built_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
-        build_strategy=KMeansPrototypeBuildStrategy(
-            candidate_ks=(2,),
-            silhouette_sample_size=10,
-            random_state=0,
-        ),
-    )
-
-    assert len(payload.categories["anxiety"]) == 2
-    assert len(payload.categories["normal"]) == 1
-
-
-def test_build_prototype_pack_from_rows_applies_rebuild_metadata_override() -> None:
-    rows = [
-        _row("a1", "cluster_a_1", "anxiety"),
-        _row("a2", "cluster_a_2", "anxiety"),
-    ]
-    adapter = _StaticEmbeddingAdapter(
-        {
-            "cluster_a_1": [1.0, 0.0],
-            "cluster_a_2": [1.0, 0.1],
-        }
-    )
-    adapter_state = VectorAdapterState.identity(
-        model_id="tracemind-embed-sim",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
-    )
-
-    payload = build_prototype_pack_from_rows(
-        rows=rows,
-        adapter=adapter,
-        adapter_state=adapter_state,
-        prototype_version="proto_sim_0000",
-        embedding_model_id="tracemind-embed-sim",
-        embedding_model_revision="sim_rev_0000",
-        built_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
-        build_strategy=SinglePrototypeBuildStrategy(),
-        rebuild_config=FederatedPrototypeRebuildConfig(
-            embedding_backend="custom_simulation",
-            mapping_version="custom_mapping.v1",
-            translation_model_id="toy-translator",
-            translation_model_revision="r1",
-            translation_direction="en->ko",
-        ),
-    )
-
-    assert payload.build_method == "mean_centroid_l2_normalized"
-    assert payload.mapping_version == "custom_mapping.v1"
-    assert payload.translation_model_id == "toy-translator"
-    assert payload.translation_model_revision == "r1"
-    assert payload.translation_direction == "en->ko"

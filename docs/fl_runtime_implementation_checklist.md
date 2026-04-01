@@ -117,11 +117,11 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [ ] `main_server/src/services/rounds/round_lifecycle_service.py`
+- [x] `main_server/src/services/rounds/round_lifecycle_service.py`
   - 역할: round open / task publish / update accept / finalize / publish orchestration
-- [ ] `main_server/src/infrastructure/repositories/round_repository.py`
+- [x] `main_server/src/infrastructure/repositories/round_repository.py`
   - 역할: active round 상태 저장
-- [ ] `main_server/src/services/rounds/models.py` 또는 동등 경로
+- [x] `main_server/src/services/rounds/models.py` 또는 동등 경로
   - 역할: round status, participant summary, finalize input/output
 
 ### 기존 코드와 연결할 것
@@ -136,22 +136,22 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### API로 닫을 것
 
-- [ ] [main_server/src/api/routers/fl_rounds.py](/home/jmgjmg102/tracemind_server/main_server/src/api/routers/fl_rounds.py)
+- [x] [main_server/src/api/fl_rounds.py](/home/jmgjmg102/tracemind_server/main_server/src/api/fl_rounds.py)
   - `GET /api/v1/fl/rounds/current`
   - `POST /api/v1/fl/rounds`
   - `GET /api/v1/fl/rounds/{round_id}`
   - `POST /api/v1/fl/rounds/{round_id}/updates`
   - `POST /api/v1/fl/rounds/{round_id}/finalize`
-- [ ] [main_server/src/api/main.py](/home/jmgjmg102/tracemind_server/main_server/src/api/main.py)
+- [x] [main_server/src/api/main.py](/home/jmgjmg102/tracemind_server/main_server/src/api/main.py)
   - FL router include
 
 ### 검증할 것
 
-- [ ] active round가 없을 때의 응답
-- [ ] 이미 닫힌 round에 update 업로드 시 거부
-- [ ] base revision mismatch 거부
-- [ ] duplicate update 거부 또는 idempotent accept
-- [ ] finalize 전/후 state transition 확인
+- [x] active round가 없을 때의 응답
+- [x] 이미 닫힌 round에 update 업로드 시 거부
+- [x] base revision mismatch 거부
+- [x] duplicate update 거부 또는 idempotent accept
+- [x] finalize 전/후 state transition 확인
 
 ### 완료 기준
 
@@ -225,18 +225,18 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [ ] `main_server/src/services/prototypes/prototype_rebuild_service.py`
+- [x] `main_server/src/services/prototypes/prototype_rebuild_service.py`
   - 역할: canonical rebuild input으로 next prototype 생성
-- [ ] 필요 시 `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py`
+- [x] `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py`
   - 역할: canonical bootstrap corpus 또는 base-embedding cache 관리
 
 ### 기존 코드와 연결할 것
 
 - [ ] [prototype_build_state_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/prototypes/prototype_build_state_service.py)
   - 운영 경로에서 build state를 유지할지 여부 결정
-- [ ] [scripts/prototypes/lib/seeding.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/lib/seeding.py)
+- [ ] [scripts/prototypes/seeding.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/seeding.py)
   - production logic을 그대로 재사용할지, server service 전용 core로 분리할지 결정
-- [ ] [round_manager_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_manager_service.py)
+- [x] [round_lifecycle_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_lifecycle_service.py)
   - next pair publication 직후 rebuild 호출 흐름과 연결
 
 ### 결정해야 할 세부사항

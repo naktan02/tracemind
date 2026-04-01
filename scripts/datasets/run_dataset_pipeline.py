@@ -24,7 +24,7 @@ from scripts.datasets.lib.label_mapping import (  # noqa: E402
 from scripts.datasets.lib.split import (  # noqa: E402
     build_split_artifacts,
 )
-from scripts.prototypes.lib.seeding import seed_prototype_pack  # noqa: E402
+from scripts.prototypes.seeding import seed_prototype_pack  # noqa: E402
 
 PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
 DATASET_CONFIG_DIR = PROJECT_ROOT / "scripts/conf/dataset"

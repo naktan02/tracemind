@@ -9,6 +9,7 @@ Keep runtime code inside `src/`, grouped by responsibility: `src/api` for FastAP
 
 ## Build, Test, and Development Commands
 Create a virtual environment (`python -m venv .venv && source .venv/bin/activate`) and install dependencies with `pip install -r requirements.txt`. `uvicorn main_server.src.api.main:app --reload` starts the local API server with auto-reload. Run `pytest` for the default test suite. Use `ruff check main_server/src agent/src shared/src tests` before pushing to catch lint violations, and `black main_server/src agent/src shared/src tests` if formatting drifts. Container workflows should rely on `docker compose up api` to ensure parity with production services.
+테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 `ps aux`를 실행해 남아 있는 `pytest`, `uv run python`, 기타 작업 프로세스를 확인한다. 이전에 띄운 stale 프로세스가 남아 있으면 목록을 확인한 뒤 필요한 것만 정리하고 계속 진행한다.
 
 ## Coding Style & Naming Conventions
 Target Python 3.11, four-space indentation, and Black-compatible line wrapping (88 chars). Prefer dataclasses or Pydantic models for request/response bodies. Use descriptive snake_case for modules, functions, and variables, PascalCase for classes, and SCREAMING_SNAKE_CASE for constants. Annotate public functions with explicit type hints.

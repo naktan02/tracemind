@@ -281,12 +281,16 @@ class PrototypePackBuilder:
         category: str,
     ) -> list[float]:
         if sample_count <= 0:
-            raise ValueError(f"Category '{category}' sample_count must be positive.")
-        centroid = [float(value) / sample_count for value in embedding_sum]
+            raise ValueError(
+                f"Category '{category}' sample_count must be positive, "
+                f"got {sample_count}."
+            )
+
+        centroid = [value / sample_count for value in embedding_sum]
         norm = math.sqrt(sum(value * value for value in centroid))
         if norm == 0.0:
             raise ValueError(
-                f"Category '{category}' mean centroid has zero norm and "
+                f"Category '{category}' produces a zero norm centroid and "
                 "cannot be normalized."
             )
         return [value / norm for value in centroid]

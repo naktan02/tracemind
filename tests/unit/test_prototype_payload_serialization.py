@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from scripts.prototypes.lib.payload_serialization import (
-    PrototypePackPayloadSpec,
-    build_prototype_pack_payload,
-    build_single_prototype_pack_payload,
-)
 from shared.src.domain.entities.artifacts.prototype_pack import (
     CategoryPrototype,
     PrototypePack,
+)
+from shared.src.services.prototypes.payload_serialization import (
+    PrototypePackPayloadSpec,
+    build_prototype_pack_payload,
+    build_single_prototype_pack_payload,
 )
 
 

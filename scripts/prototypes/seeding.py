@@ -4,34 +4,28 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from datetime import datetime, timezone
 from pathlib import Path
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
     EmbeddingAdapterSpec,
 )
-from main_server.src.services.prototypes.prototype_build_state_service import (
-    PrototypeBuildStateService,
+from main_server.src.services.prototypes.prototype_rebuild_service import (
+    PrototypeRebuildRequest,
+    PrototypeRebuildService,
+    ReferenceRebuildPrototypePublicationStrategy,
 )
-from main_server.src.services.prototypes.prototype_pack_service import (
-    PrototypePackService,
+from scripts.prototypes.io import (
+    group_rows_by_label,
+    load_jsonl,
+    resolve_metadata_from_manifests,
 )
-from scripts.prototypes.lib.build_strategies import (
+from shared.src.services.prototypes.build_strategies import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
     describe_prototype_build_strategy,
 )
-from scripts.prototypes.lib.io import (
-    group_rows_by_label,
-    load_jsonl,
-    resolve_metadata_from_manifests,
-)
-from shared.src.contracts.prototype_build_state_contracts import (
-    dump_prototype_build_state_payload,
-)
-from shared.src.contracts.prototype_contracts import dump_prototype_pack_payload
 
 
 def seed_prototype_pack(
@@ -84,42 +78,39 @@ def seed_prototype_pack(
         label_counts[category] = len(label_rows)
         print(f"embedded_category={category} rows={len(texts)}", flush=True)
 
-    built_at = datetime.now(timezone.utc)
-    build_result = build_strategy.build(
-        PrototypeBuildRequest(
-            embeddings_by_category=embeddings_by_category,
-            prototype_version=prototype_version,
-            embedding_backend=backend,
-            embedding_model_id=embedding_model_id,
-            embedding_model_revision=embedding_model_revision,
-            normalize_embeddings=True,
-            task_prefix=task_prefix,
-            translation_model_id=translation_model_id,
-            translation_model_revision=translation_model_revision,
-            translation_direction=translation_direction,
-            mapping_version=mapping_version,
-            built_at=built_at,
-            required_categories=expected_categories or None,
+    rebuild_service = PrototypeRebuildService(
+        build_strategy=build_strategy,
+        publication_strategy=ReferenceRebuildPrototypePublicationStrategy(
+            reference_pack_output_dir=output_dir,
+            reference_build_state_output_dir=build_state_output_dir,
+        ),
+    )
+    rebuild_result = rebuild_service.rebuild(
+        PrototypeRebuildRequest(
+            build_request=PrototypeBuildRequest(
+                embeddings_by_category=embeddings_by_category,
+                prototype_version=prototype_version,
+                embedding_backend=backend,
+                embedding_model_id=embedding_model_id,
+                embedding_model_revision=embedding_model_revision,
+                normalize_embeddings=True,
+                task_prefix=task_prefix,
+                translation_model_id=translation_model_id,
+                translation_model_revision=translation_model_revision,
+                translation_direction=translation_direction,
+                mapping_version=mapping_version,
+                built_at=None,
+                required_categories=expected_categories or None,
+            )
         )
     )
-
-    output_dir.mkdir(parents=True, exist_ok=True)
-    build_state_output_dir.mkdir(parents=True, exist_ok=True)
-    pack_path = output_dir / f"{prototype_version}.json"
-    build_state_path: Path | None = None
-    manifest_path = output_dir / f"{prototype_version}.manifest.json"
-    build_state_payload = build_result.build_state_payload
-    if build_state_payload is not None:
-        build_state_path = build_state_output_dir / f"{prototype_version}.json"
-        dump_prototype_build_state_payload(build_state_path, build_state_payload)
-    pack_payload = build_result.pack_payload
-    dump_prototype_pack_payload(pack_path, pack_payload)
-    main_server_build_state_path: Path | None = None
-    if build_state_payload is not None:
-        main_server_build_state_path = PrototypeBuildStateService().publish_state(
-            build_state_payload
+    pack_path = rebuild_result.reference_pack_path
+    if pack_path is None:
+        raise ValueError(
+            "Reference rebuild publication must produce a local pack path."
         )
-    main_server_pack_path = PrototypePackService().publish_pack(pack_payload)
+
+    manifest_path = output_dir / f"{prototype_version}.manifest.json"
     manifest = {
         "prototype_version": prototype_version,
         "input_jsonl": str(input_jsonl),
@@ -128,20 +119,22 @@ def seed_prototype_pack(
         "embedding_model_id": embedding_model_id,
         "embedding_model_revision": embedding_model_revision,
         "mapping_version": mapping_version,
-        "built_at": built_at.isoformat(),
+        "built_at": rebuild_result.pack_payload.built_at.isoformat(),
         "category_counts": dict(sorted(label_counts.items())),
         "expected_categories": expected_categories,
         "prototype_builder": describe_prototype_build_strategy(build_strategy),
         "output_build_state": (
-            None if build_state_path is None else str(build_state_path)
+            None
+            if rebuild_result.reference_build_state_path is None
+            else str(rebuild_result.reference_build_state_path)
         ),
         "output_pack": str(pack_path),
         "main_server_build_state": (
             None
-            if main_server_build_state_path is None
-            else str(main_server_build_state_path)
+            if rebuild_result.published_build_state_path is None
+            else str(rebuild_result.published_build_state_path)
         ),
-        "main_server_pack": str(main_server_pack_path),
+        "main_server_pack": str(rebuild_result.published_pack_path),
     }
     manifest_path.write_text(
         json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
@@ -149,8 +142,8 @@ def seed_prototype_pack(
     )
     return (
         pack_path,
-        build_state_path,
+        rebuild_result.reference_build_state_path,
         manifest_path,
-        main_server_pack_path,
-        main_server_build_state_path,
+        rebuild_result.published_pack_path,
+        rebuild_result.published_build_state_path,
     )

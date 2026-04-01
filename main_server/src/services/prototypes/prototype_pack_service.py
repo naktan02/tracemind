@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from main_server.src.infrastructure.repositories.prototype_pack_repository import (
+    PrototypePackRepository,
+)
 from shared.src.contracts.prototype_contracts import (
     CurrentPrototypePackResponse,
     PrototypePackActivationPointer,
     PrototypePackPayload,
     load_prototype_pack_payload,
-)
-from main_server.src.infrastructure.repositories.prototype_pack_repository import (
-    PrototypePackRepository,
 )
 
 

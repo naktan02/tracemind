@@ -8,7 +8,8 @@ from pathlib import Path
 import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
-from scripts.prototypes.lib.seeding import seed_prototype_pack  # noqa: E402
+
+from scripts.prototypes.seeding import seed_prototype_pack  # noqa: E402
 
 
 @hydra.main(

@@ -47,10 +47,23 @@ def test_runtime_service_reads_active_pack(tmp_path: Path) -> None:
 
     runtime_service = PrototypeRuntimeService(repository=repository)
 
-    centroids = runtime_service.get_active_centroids()
+    centroids = runtime_service.get_active_single_centroids()
 
     assert sorted(centroids) == ["anxiety", "depression", "normal", "suicidal"]
     assert centroids["anxiety"] == [1.0, 0.0, 0.0]
+
+
+def test_runtime_service_keeps_single_centroid_alias(tmp_path: Path) -> None:
+    repository = PrototypePackRepository(state_root=tmp_path / "prototype_packs")
+    payload = _load_fixture_payload()
+    repository.save_pack(payload)
+    repository.set_active(payload.prototype_version)
+
+    runtime_service = PrototypeRuntimeService(repository=repository)
+
+    assert runtime_service.get_active_centroids() == (
+        runtime_service.get_active_single_centroids()
+    )
 
 
 def test_runtime_service_reads_active_prototype_lists(tmp_path: Path) -> None:

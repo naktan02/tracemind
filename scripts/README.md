@@ -7,12 +7,19 @@
 - `scripts/datasets/*.py`: 직접 실행하는 dataset CLI entrypoint
 - `scripts/datasets/lib/`: dataset CLI가 공유하는 재사용 함수
 - `scripts/prototypes/*.py`: 직접 실행하는 prototype CLI entrypoint
-- `scripts/prototypes/lib/`: prototype CLI와 simulation이 공유하는 재사용 함수
+- `scripts/prototypes/io.py`, `evaluation.py`, `seeding.py`: prototype CLI가 직접 쓰는 활성 helper
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
-- `scripts/experiments/*/`: experiment 전용 내부 오케스트레이션 모듈
+- `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/sharding
+- `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
 - `scripts/conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
 - `scripts/conf/datasets`, `experiments`, `prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
 - `scripts/classification_report.py`, `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 공통 helper
+
+원칙:
+
+- production/runtime에서 재사용해야 하는 코어는 `shared`, `agent`, `main_server`로 올린다.
+- `scripts`는 그 코어를 조합해서 실행하는 entrypoint와 experiment 전용 helper만 둔다.
+- `scripts/prototypes/lib` 같은 compatibility indirection은 유지하지 않는다.
 
 현재 활성 실행 방식은 **Hydra config group + override** 기준이다.  
 즉 예전처럼 `--dataset`, `--runtime-profile`를 길게 넘기기보다 아래처럼 실행한다.

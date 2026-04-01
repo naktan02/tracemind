@@ -29,5 +29,9 @@ class PrototypeRuntimeService:
     def get_active_prototypes(self) -> dict[str, tuple[list[float], ...]]:
         return extract_category_prototypes(self.get_active_pack())
 
-    def get_active_centroids(self) -> dict[str, list[float]]:
+    def get_active_single_centroids(self) -> dict[str, list[float]]:
         return extract_category_centroids(self.get_active_pack())
+
+    def get_active_centroids(self) -> dict[str, list[float]]:
+        """하위 호환용 single-centroid alias."""
+        return self.get_active_single_centroids()
