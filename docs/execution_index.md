@@ -14,7 +14,9 @@
    - 지금 무엇을 구현하고 무엇을 미루는지
 3. [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
    - 현재 payload 계약 해석
-4. 필요한 경우만 [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
+4. [`docs/fl_runtime_implementation_checklist.md`](/home/jmgjmg102/tracemind_server/docs/fl_runtime_implementation_checklist.md)
+   - 실제 구현 순서와 완료 기준
+5. 필요한 경우만 [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
    - phase 이름과 검증 포인트 빠른 확인
 
 ## 문서 역할
@@ -23,6 +25,8 @@
   - 연구 비전, 핵심 가설, global/local 분리 원칙
 - [`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
   - 활성 아키텍처, 현재 phase, 다음 액션, 검증 기준
+- [`docs/fl_runtime_implementation_checklist.md`](/home/jmgjmg102/tracemind_server/docs/fl_runtime_implementation_checklist.md)
+  - 실제 구현 작업 순서, 파일 후보, 완료 기준
 - [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
   - 중복 설명 없이 phase map만 제공
 - [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
