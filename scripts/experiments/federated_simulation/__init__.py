@@ -1,5 +1,6 @@
 """Federated simulation helper exports."""
 
+from .io_utils import load_jsonl_rows
 from .models import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
@@ -8,7 +9,7 @@ from .models import (
     FederatedValidationConfig,
 )
 from .sharding import split_rows_for_federation
-from .simulation import load_jsonl_rows, run_simulation
+from .simulation import run_simulation
 
 __all__ = [
     "FederatedDiagnosticsConfig",
