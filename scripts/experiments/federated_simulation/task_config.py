@@ -33,7 +33,7 @@ def build_round_open_request(
     )
 
 
-def build_legacy_task_config(
+def build_training_task_config_from_legacy_overrides(
     *,
     confidence_threshold: float | None,
     margin_threshold: float | None,

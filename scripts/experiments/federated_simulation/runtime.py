@@ -10,7 +10,7 @@ from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository,
     prototype_pack_repository,
     prototype_rebuild_input_repository,
-    vector_adapter_state_repository,
+    shared_adapter_state_repository,
 )
 from main_server.src.services.prototypes import (
     PrototypeBuildStateService,
@@ -145,7 +145,7 @@ def rebuild_reference_prototype_pack(
 def load_active_state(
     *,
     manifest: ModelManifest,
-    state_repository: vector_adapter_state_repository.SharedAdapterStateRepository,
+    state_repository: shared_adapter_state_repository.SharedAdapterStateRepository,
     round_manager: RoundManagerService,
 ) -> VectorAdapterState:
     """현재 active manifest가 가리키는 shared adapter state를 domain으로 읽는다."""

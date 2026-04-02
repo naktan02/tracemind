@@ -20,7 +20,7 @@ from scripts.experiments.prototype_strategy.models import (
     PrototypeIndex,
     PrototypeVector,
 )
-from scripts.experiments.prototype_strategy.strategies import sample_indices
+from scripts.experiments.prototype_strategy.sampling import sample_index_array
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -42,7 +42,7 @@ class ProjectionService:
         output_dir: Path,
         prototype_index: PrototypeIndex | None = None,
     ) -> tuple[ProjectionArtifact, ...]:
-        sample_index = sample_indices(
+        sample_index = sample_index_array(
             embeddings.shape[0],
             limit=self.sample_size,
             seed=self.seed,

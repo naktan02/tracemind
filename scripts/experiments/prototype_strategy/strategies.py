@@ -15,6 +15,7 @@ from scripts.experiments.prototype_strategy.models import (
     PrototypeIndex,
     PrototypeVector,
 )
+from scripts.experiments.prototype_strategy.sampling import sample_index_array
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.services.prototypes.build_strategies import (
     KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
@@ -41,20 +42,6 @@ def normalize_vector(values: Sequence[float]) -> list[float]:
 def mean_centroid(embeddings: np.ndarray) -> list[float]:
     """임베딩 평균 centroid를 정규화해 반환한다."""
     return normalize_vector(embeddings.mean(axis=0))
-
-
-def sample_indices(
-    count: int,
-    *,
-    limit: int | None,
-    seed: int,
-) -> np.ndarray:
-    """count 중 limit개 인덱스를 재현 가능하게 샘플링한다."""
-    indices = np.arange(count)
-    if limit is None or count <= limit:
-        return indices
-    rng = np.random.default_rng(seed)
-    return np.sort(rng.choice(indices, size=limit, replace=False))
 
 
 def _build_runtime_request(
@@ -104,30 +91,6 @@ def _prototype_index_from_pack(
         categories=categories,
         metadata=payload_metadata,
     )
-
-
-class MultiPrototypeScorer:
-    """category별 여러 prototype 중 최대 cosine score를 선택한다."""
-
-    def score(
-        self,
-        embedding: Sequence[float],
-        prototype_index: PrototypeIndex,
-    ) -> dict[str, float]:
-        vector = np.asarray(embedding, dtype=np.float64)
-        vector_norm = np.linalg.norm(vector)
-        if vector_norm == 0.0:
-            raise ValueError("Embedding norm must not be zero.")
-        normalized = vector / vector_norm
-
-        scores: dict[str, float] = {}
-        for category, prototypes in prototype_index.categories.items():
-            best_score = max(
-                float(np.dot(normalized, np.asarray(prototype.centroid)))
-                for prototype in prototypes
-            )
-            scores[category] = best_score
-        return scores
 
 
 @dataclass(slots=True)
@@ -226,7 +189,7 @@ class DbscanPrototypeStrategy:
                 }
                 continue
 
-            sample_index = sample_indices(
+            sample_index = sample_index_array(
                 count,
                 limit=self.search_sample_size,
                 seed=self.random_state,
@@ -348,7 +311,7 @@ class DbscanPrototypeStrategy:
         )
 
 
-def build_strategy(
+def build_requested_strategy(
     *,
     strategy_name: str,
     seed: int,
@@ -379,7 +342,7 @@ def build_strategy(
     raise ValueError(f"Unsupported strategy: {strategy_name}")
 
 
-def build_strategies(
+def build_requested_strategies(
     *,
     strategy_name: str,
     seed: int,
@@ -408,7 +371,7 @@ def build_strategies(
             ),
         )
     return (
-        build_strategy(
+        build_requested_strategy(
             strategy_name=normalized_name,
             seed=seed,
             kmeans_candidate_ks=kmeans_candidate_ks,
@@ -419,3 +382,8 @@ def build_strategies(
             dbscan_min_cluster_coverage=dbscan_min_cluster_coverage,
         ),
     )
+
+
+# 이전 실험 스크립트/노트북 호환용 alias
+build_strategy = build_requested_strategy
+build_strategies = build_requested_strategies

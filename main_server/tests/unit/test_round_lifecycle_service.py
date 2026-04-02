@@ -17,7 +17,7 @@ from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository as prototype_rebuild_input_repository_module,
 )
 from main_server.src.infrastructure.repositories import (
-    vector_adapter_state_repository as vector_adapter_state_repository_module,
+    shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.prototypes import (
@@ -50,8 +50,8 @@ from shared.src.contracts.adapter_contracts import (
 )
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.domain.services.clock import FixedClock
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import SinglePrototypeBuildStrategy
 
 
@@ -79,7 +79,7 @@ def _build_service(
 ) -> tuple[RoundLifecycleService, ModelManifest, RoundRepository]:
     round_repository = RoundRepository(state_root=tmp_path / "rounds")
     state_repository = (
-        vector_adapter_state_repository_module.SharedAdapterStateRepository(
+        shared_adapter_state_repository_module.SharedAdapterStateRepository(
             state_root=tmp_path / "shared_states"
         )
     )
@@ -328,7 +328,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
     round_repository = RoundRepository(state_root=tmp_path / "rounds")
     state_repository = (
-        vector_adapter_state_repository_module.SharedAdapterStateRepository(
+        shared_adapter_state_repository_module.SharedAdapterStateRepository(
             state_root=tmp_path / "shared_states"
         )
     )

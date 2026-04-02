@@ -17,8 +17,10 @@ from scripts.experiments.prototype_strategy.io_utils import (
 )
 from scripts.experiments.prototype_strategy.runner import (
     PrototypeExperimentRequest,
-    build_strategies,
     render_validation_summary,
+)
+from scripts.experiments.prototype_strategy.strategies import (
+    build_requested_strategies,
 )
 
 
@@ -41,7 +43,7 @@ def main(config: DictConfig) -> None:
     runner = instantiate(config.runner)
     summary = runner.run(
         PrototypeExperimentRequest(
-            strategies=build_strategies(
+            strategies=build_requested_strategies(
                 strategy_name=str(config.strategy.name),
                 seed=int(config.strategy.seed),
                 kmeans_candidate_ks=tuple(config.strategy.kmeans_candidate_ks),

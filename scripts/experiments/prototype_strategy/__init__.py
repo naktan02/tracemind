@@ -13,11 +13,15 @@ from scripts.experiments.prototype_strategy.runner import (
     StrategySelectionPolicy,
     render_validation_summary,
 )
+from scripts.experiments.prototype_strategy.scoring import (
+    MaxCosinePrototypeIndexScorer,
+)
 from scripts.experiments.prototype_strategy.strategies import (
     DbscanPrototypeStrategy,
     KMeansPrototypeStrategy,
-    MultiPrototypeScorer,
     SinglePrototypeStrategy,
+    build_requested_strategies,
+    build_requested_strategy,
     build_strategies,
     build_strategy,
 )
@@ -27,7 +31,7 @@ __all__ = [
     "EvaluationMetrics",
     "ExperimentSummary",
     "KMeansPrototypeStrategy",
-    "MultiPrototypeScorer",
+    "MaxCosinePrototypeIndexScorer",
     "ProjectionArtifact",
     "PrototypeExperimentRunner",
     "PrototypeIndex",
@@ -35,6 +39,8 @@ __all__ = [
     "SinglePrototypeStrategy",
     "StrategyEvaluationReport",
     "StrategySelectionPolicy",
+    "build_requested_strategies",
+    "build_requested_strategy",
     "build_strategies",
     "build_strategy",
     "render_validation_summary",

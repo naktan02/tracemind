@@ -11,7 +11,7 @@ from fastapi import HTTPException
 import main_server.src.api.fl_rounds as fl_rounds_api
 from main_server.src.api.main import app
 from main_server.src.infrastructure.repositories import (
-    vector_adapter_state_repository as vector_adapter_state_repository_module,
+    shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.rounds.mappers import (
@@ -43,7 +43,7 @@ def _build_service(
 ) -> tuple[RoundLifecycleService, ModelManifest]:
     round_repository = RoundRepository(state_root=tmp_path / "rounds")
     state_repository = (
-        vector_adapter_state_repository_module.SharedAdapterStateRepository(
+        shared_adapter_state_repository_module.SharedAdapterStateRepository(
             state_root=tmp_path / "shared_states"
         )
     )

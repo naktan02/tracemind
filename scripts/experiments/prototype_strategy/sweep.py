@@ -18,9 +18,11 @@ from scripts.experiments.prototype_strategy.models import (
     EvaluationMetrics,
     PrototypeIndex,
 )
+from scripts.experiments.prototype_strategy.scoring import (
+    MaxCosinePrototypeIndexScorer,
+)
 from scripts.experiments.prototype_strategy.strategies import (
-    MultiPrototypeScorer,
-    build_strategy,
+    build_requested_strategy,
 )
 
 
@@ -107,7 +109,7 @@ class ThresholdSweepRunner:
             rows=request.train_rows,
             embeddings=train_embeddings,
         )
-        strategy = build_strategy(
+        strategy = build_requested_strategy(
             strategy_name=request.strategy_name,
             seed=request.seed,
             kmeans_candidate_ks=request.kmeans_candidate_ks,
@@ -123,7 +125,7 @@ class ThresholdSweepRunner:
             prototype_index.to_dict(),
         )
 
-        scorer = MultiPrototypeScorer()
+        scorer = MaxCosinePrototypeIndexScorer()
         validation_predictions = score_embeddings(
             rows=request.validation_rows,
             embeddings=validation_embeddings,
@@ -212,6 +214,7 @@ class ThresholdSweepRequest:
     margin_thresholds: tuple[float, ...]
     output_dir: Path
     run_id: str
+
 
 def render_sweep_summary(summary: ThresholdSweepSummary) -> str:
     lines = [

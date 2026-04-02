@@ -16,7 +16,7 @@ from scripts.experiments.prototype_strategy import (
     SinglePrototypeStrategy,
     StrategyEvaluationReport,
     StrategySelectionPolicy,
-    build_strategies,
+    build_requested_strategies,
 )
 from scripts.experiments.prototype_strategy.io_utils import (
     load_jsonl_rows,
@@ -150,8 +150,8 @@ def test_selection_policy_prefers_accuracy_then_acceptance_then_simplicity() -> 
     assert selected.strategy_name == "dbscan"
 
 
-def test_build_strategies_returns_single_requested_strategy() -> None:
-    strategies = build_strategies(
+def test_build_requested_strategies_returns_single_requested_strategy() -> None:
+    strategies = build_requested_strategies(
         strategy_name="kmeans",
         seed=42,
         kmeans_candidate_ks=(2,),
@@ -168,7 +168,7 @@ def test_build_strategies_returns_single_requested_strategy() -> None:
 
 
 def test_build_strategies_returns_all_defaults_for_all_mode() -> None:
-    strategies = build_strategies(
+    strategies = build_requested_strategies(
         strategy_name="all",
         seed=42,
         kmeans_candidate_ks=(2, 3),

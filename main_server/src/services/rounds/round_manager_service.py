@@ -9,7 +9,7 @@ from typing import Mapping
 from uuid import uuid4
 
 from main_server.src.infrastructure.repositories import (
-    vector_adapter_state_repository as vector_adapter_state_repository_module,
+    shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.services.rounds.adapter_family_service import (
     DiagonalScaleRoundFamily,
@@ -81,10 +81,10 @@ class RoundManagerService:
         default_factory=DiagonalScaleRoundFamily
     )
     artifact_repository: (
-        vector_adapter_state_repository_module.SharedAdapterStateRepository
+        shared_adapter_state_repository_module.SharedAdapterStateRepository
     ) = field(
         default_factory=(
-            vector_adapter_state_repository_module.SharedAdapterStateRepository
+            shared_adapter_state_repository_module.SharedAdapterStateRepository
         )
     )
     clock: Clock = field(default_factory=SystemUtcClock)

@@ -20,8 +20,8 @@ from scripts.experiments.prototype_strategy.models import (
     StrategyEvaluationReport,
 )
 from scripts.experiments.prototype_strategy.projection import ProjectionService
-from scripts.experiments.prototype_strategy.strategies import (
-    MultiPrototypeScorer,
+from scripts.experiments.prototype_strategy.scoring import (
+    MaxCosinePrototypeIndexScorer,
 )
 
 
@@ -67,7 +67,7 @@ class PrototypeExperimentRunner:
             rows=request.train_rows,
             embeddings=train_embeddings,
         )
-        scorer = MultiPrototypeScorer()
+        scorer = MaxCosinePrototypeIndexScorer()
         reports: list[StrategyEvaluationReport] = []
         for strategy in request.strategies:
             prototype_index = strategy.build(embeddings_by_label)

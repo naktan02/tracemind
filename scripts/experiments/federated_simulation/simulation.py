@@ -19,7 +19,7 @@ from agent.src.services.training.local_training_service import (
 )
 from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository,
-    vector_adapter_state_repository,
+    shared_adapter_state_repository,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.rounds.models import (
@@ -62,8 +62,8 @@ from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
 )
 from scripts.experiments.federated_simulation.task_config import (
-    build_legacy_task_config,
     build_round_open_request,
+    build_training_task_config_from_legacy_overrides,
     resolve_optional_positive_int,
     resolve_threshold,
 )
@@ -101,12 +101,15 @@ def run_simulation(
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
     effective_shard_policy = shard_policy or FederatedShardPolicyConfig()
-    effective_training_task_config = training_task_config or build_legacy_task_config(
-        confidence_threshold=confidence_threshold,
-        margin_threshold=margin_threshold,
-        max_examples=max_examples,
-        min_required_examples=min_required_examples,
-        gradient_clip_norm=gradient_clip_norm,
+    effective_training_task_config = (
+        training_task_config
+        or build_training_task_config_from_legacy_overrides(
+            confidence_threshold=confidence_threshold,
+            margin_threshold=margin_threshold,
+            max_examples=max_examples,
+            min_required_examples=min_required_examples,
+            gradient_clip_norm=gradient_clip_norm,
+        )
     )
     effective_validation_config = validation_config or FederatedValidationConfig(
         confidence_threshold=resolve_threshold(
@@ -151,7 +154,7 @@ def run_simulation(
     embedding_dim = len(
         adapter.embed_texts([str(dataset_split.bootstrap_rows[0]["text"])])[0]
     )
-    state_repository = vector_adapter_state_repository.SharedAdapterStateRepository(
+    state_repository = shared_adapter_state_repository.SharedAdapterStateRepository(
         state_root=output_dir / "main_server" / "shared_adapter_states"
     )
     round_manager = RoundManagerService(artifact_repository=state_repository)
