@@ -4,16 +4,18 @@ from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, status
 
-from main_server.src.services.rounds.models import (
-    RoundFinalizeRequestPayload,
-    RoundOpenRequestPayload,
-    RoundRecordPayload,
-    RoundUpdateAcceptancePayload,
+from main_server.src.services.rounds.mappers import (
     round_finalize_request_from_payload,
     round_open_request_from_payload,
     round_record_to_payload,
     round_update_acceptance_to_payload,
     training_update_from_payload,
+)
+from main_server.src.services.rounds.payloads import (
+    RoundFinalizeRequestPayload,
+    RoundOpenRequestPayload,
+    RoundRecordPayload,
+    RoundUpdateAcceptancePayload,
 )
 from main_server.src.services.rounds.round_lifecycle_service import (
     RoundConflictError,

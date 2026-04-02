@@ -24,6 +24,7 @@ from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
     load_prototype_pack_payload,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec  # noqa: E402
 
 
 @hydra.main(
@@ -39,10 +40,7 @@ def main(cfg: DictConfig) -> None:
     prototypes = extract_category_prototypes(payload)
     spec_cfg = OmegaConf.create(
         {
-            "_target_": (
-                "agent.src.infrastructure.model_adapters.embedding.factory."
-                "EmbeddingAdapterSpec"
-            ),
+            "_target_": "shared.src.domain.value_objects.EmbeddingAdapterSpec",
             "backend": cfg.embedding.backend,
             "model_id": (
                 payload.embedding_model_id
@@ -62,7 +60,12 @@ def main(cfg: DictConfig) -> None:
             "local_files_only": cfg.runtime.local_files_only,
         }
     )
-    embedding_spec = instantiate(spec_cfg)
+    embedding_spec = instantiate(spec_cfg, _convert_="object")
+    if not isinstance(embedding_spec, EmbeddingAdapterSpec):
+        raise TypeError(
+            "embedding.spec must instantiate to EmbeddingAdapterSpec, "
+            f"got {type(embedding_spec)!r}."
+        )
     adapter = EmbeddingAdapterFactory.create(embedding_spec)
 
     created_at = datetime.now(timezone.utc)

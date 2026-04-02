@@ -10,7 +10,6 @@ from pathlib import Path
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
 )
 from main_server.src.services.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
@@ -31,6 +30,7 @@ from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     dump_prototype_pack_payload,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec  # noqa: E402
 from shared.src.services.prototypes.payload_serialization import (  # noqa: E402
     build_single_prototype_pack_payload,
 )

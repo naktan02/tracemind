@@ -6,15 +6,17 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from main_server.src.services.rounds.models import (
+from main_server.src.services.rounds.mappers import (
+    round_record_from_payload,
+    round_record_to_payload,
+)
+from main_server.src.services.rounds.models import RoundRecord
+from main_server.src.services.rounds.payloads import (
     ActiveRoundPointerPayload,
-    RoundRecord,
     dump_active_round_pointer_payload,
     dump_round_record_payload,
     load_active_round_pointer_payload,
     load_round_record_payload,
-    round_record_from_payload,
-    round_record_to_payload,
 )
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[3]

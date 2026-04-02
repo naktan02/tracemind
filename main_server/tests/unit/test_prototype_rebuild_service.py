@@ -5,9 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterSpec,
-)
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
@@ -31,6 +28,7 @@ from main_server.src.services.prototypes import (
     StoredReferencePrototypeRebuildService,
 )
 from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.domain.services.clock import FixedClock
 from shared.src.services.prototypes.build_strategies import (
     KMeansPrototypeBuildStrategy,

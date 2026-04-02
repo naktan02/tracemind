@@ -3,17 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from collections.abc import Sequence
 from typing import Protocol
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
 from main_server.src.services.prototypes.models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildRequest,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
 class PrototypeRebuildInputRepositoryProtocol(Protocol):
@@ -36,6 +35,20 @@ class ReferenceRowPrototypeRebuildServiceProtocol(Protocol):
         """reference row로부터 rebuild를 실행한다."""
 
 
+class TextEmbeddingAdapterProtocol(Protocol):
+    """reference row rebuild에 필요한 최소 임베딩 adapter protocol."""
+
+    def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
+        """텍스트 목록을 임베딩한다."""
+
+
+class EmbeddingAdapterFactoryProtocol(Protocol):
+    """EmbeddingAdapterSpec으로 runtime adapter를 생성하는 protocol."""
+
+    def create(self, spec: EmbeddingAdapterSpec) -> TextEmbeddingAdapterProtocol:
+        """spec으로부터 임베딩 adapter를 생성한다."""
+
+
 def _default_prototype_rebuild_service() -> ReferenceRowPrototypeRebuildServiceProtocol:
     from main_server.src.services.prototypes.prototype_rebuild_service import (
         PrototypeRebuildService,
@@ -49,10 +62,10 @@ class StoredReferencePrototypeRebuildService:
     """저장된 canonical input을 읽어 runtime rebuild를 실행한다."""
 
     input_repository: PrototypeRebuildInputRepositoryProtocol
+    adapter_factory: EmbeddingAdapterFactoryProtocol
     prototype_rebuild_service: ReferenceRowPrototypeRebuildServiceProtocol = field(
         default_factory=_default_prototype_rebuild_service
     )
-    adapter_factory: type[EmbeddingAdapterFactory] = EmbeddingAdapterFactory
 
     def rebuild(
         self,

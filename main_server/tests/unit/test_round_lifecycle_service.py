@@ -7,9 +7,6 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterSpec,
-)
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
@@ -53,6 +50,7 @@ from shared.src.contracts.adapter_contracts import (
 )
 from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.domain.services.clock import FixedClock
 from shared.src.services.prototypes.build_strategies import SinglePrototypeBuildStrategy
 

@@ -9,13 +9,11 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterSpec,
-)
 from main_server.src.services.prototypes.models import (
     PrototypeRebuildInputRecord,
     ReferencePrototypeSourceRow,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[3]
 

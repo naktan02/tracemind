@@ -8,7 +8,6 @@ from pathlib import Path
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
 )
 from main_server.src.services.prototypes.prototype_rebuild_service import (
     PrototypeRebuildRequest,
@@ -26,6 +25,7 @@ from shared.src.services.prototypes.build_strategies import (
     SinglePrototypeBuildStrategy,
     describe_prototype_build_strategy,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
 def seed_prototype_pack(

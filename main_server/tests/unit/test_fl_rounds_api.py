@@ -14,11 +14,13 @@ from main_server.src.infrastructure.repositories import (
     vector_adapter_state_repository as vector_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.rounds.models import (
-    RoundFinalizeRequestPayload,
-    RoundOpenRequestPayload,
+from main_server.src.services.rounds.mappers import (
     model_manifest_to_payload,
     training_update_to_payload,
+)
+from main_server.src.services.rounds.payloads import (
+    RoundFinalizeRequestPayload,
+    RoundOpenRequestPayload,
 )
 from main_server.src.services.rounds.round_lifecycle_service import (
     RoundLifecycleService,

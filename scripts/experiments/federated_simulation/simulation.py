@@ -9,7 +9,6 @@ from typing import Any
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
 )
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
@@ -81,6 +80,7 @@ from shared.src.domain.entities.training.training_task_config import (
     TrainingObjectiveConfig,
 )
 from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
 

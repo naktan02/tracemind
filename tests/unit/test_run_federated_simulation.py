@@ -4,9 +4,6 @@ from __future__ import annotations
 
 import json
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterSpec,
-)
 from scripts.experiments.federated_simulation import (
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
@@ -16,6 +13,7 @@ from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
     SinglePrototypeBuildStrategy,
 )
