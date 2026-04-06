@@ -25,4 +25,5 @@ class TrainingUpdateEnvelope:
     clipped: bool | None = None
     dp_applied: bool | None = None
     checksum: str | None = None
+    agent_id: str | None = None
     notes: str | None = None

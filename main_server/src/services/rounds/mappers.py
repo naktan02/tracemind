@@ -169,6 +169,7 @@ def training_update_to_payload(
         clipped=envelope.clipped,
         dp_applied=envelope.dp_applied,
         checksum=envelope.checksum,
+        agent_id=envelope.agent_id,
         notes=envelope.notes,
     )
 
@@ -193,6 +194,7 @@ def training_update_from_payload(
         clipped=payload.clipped,
         dp_applied=payload.dp_applied,
         checksum=payload.checksum,
+        agent_id=payload.agent_id,
         notes=payload.notes,
     )
 

@@ -3,46 +3,45 @@
 ## 목적
 
 이 문서는 TraceMind 작업의 짧은 진입점이다.
-현재 활성 경로는 `normative analytics`가 아니라
-`personalized local inference + federated shared model improvement`다.
+현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
 
 ## 읽는 순서
 
-1. [`plan.md`](/home/jmgjmg102/tracemind_server/plan.md)
+1. `plan.md` (repo root)
    - 왜 이 구조를 택했는지
-2. [`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-   - 지금 무엇을 구현하고 무엇을 미루는지
-3. [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+2. `docs/project_execution_plan.md`
+   - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
+3. `shared/src/contracts/README.md`
    - 현재 payload 계약 해석
-4. [`docs/fl_runtime_implementation_checklist.md`](/home/jmgjmg102/tracemind_server/docs/fl_runtime_implementation_checklist.md)
+4. `docs/fl_runtime_implementation_checklist.md`
    - 실제 구현 순서와 완료 기준
-5. 필요한 경우만 [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
-   - phase 이름과 검증 포인트 빠른 확인
+5. `docs/contracts/algorithm_extension_guide.md`
+   - 알고리즘/전략 교체 시 어느 파일을 보고 어떤 Protocol을 구현할지
+6. 필요한 경우만 `docs/staged_execution_roadmap.md`
+   - Phase 이름과 검증 포인트 빠른 확인
 
 ## 문서 역할
 
-- [`plan.md`](/home/jmgjmg102/tracemind_server/plan.md)
-  - 연구 비전, 핵심 가설, global/local 분리 원칙
-- [`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-  - 활성 아키텍처, 현재 phase, 다음 액션, 검증 기준
-- [`docs/fl_runtime_implementation_checklist.md`](/home/jmgjmg102/tracemind_server/docs/fl_runtime_implementation_checklist.md)
-  - 실제 구현 작업 순서, 파일 후보, 완료 기준
-- [`docs/staged_execution_roadmap.md`](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
-  - 중복 설명 없이 phase map만 제공
-- [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
-  - 코드 가까운 contract 해설
-- [`docs/contracts/`](/home/jmgjmg102/tracemind_server/docs/contracts)
-  - 배경 설명과 설계 메모
+| 파일 | 역할 |
+|---|---|
+| `plan.md` | 연구 비전, 핵심 가설, global/local 분리 원칙 |
+| `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |
+| `docs/fl_runtime_implementation_checklist.md` | 실제 구현 작업 순서, 파일 후보, 완료 기준 |
+| `docs/staged_execution_roadmap.md` | 중복 설명 없이 Phase map만 제공 |
+| `shared/src/contracts/README.md` | 코드 가까운 contract 해설 |
+| `docs/contracts/` | 계약 설계 배경, 알고리즘 확장 가이드 |
+| `docs/contracts/algorithm_extension_guide.md` | 교체 가능한 모든 전략 지점과 교체 절차 |
+| `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |
+| `docs/contracts/training_update_envelope_v1.md` | envelope 필드 설계 이유 |
 
 ## 작업 시작 체크리스트
 
 1. 이번 요청이 `global/shared`인지 `local/private`인지 먼저 구분한다.
-2. 현재 활성 경로가 `NormPack`이 아니라 `shared adapter + personalization`인지 다시 확인한다.
-3. 바뀔 축이 무엇인지 적는다.
-   - 예: adapter family, training backend, aggregation backend, privacy layer
-4. 관련 contract를 코드 가까운 문서에서 먼저 본다.
-5. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 중 소유 경계에 먼저 둔다.
-6. 사용자 판단이 필요한 항목인지 확인한다.
+2. 바뀔 축이 무엇인지 적는다.
+   - 예: adapter family, training backend, aggregation backend, privacy layer, scoring policy
+3. `docs/contracts/algorithm_extension_guide.md`에서 해당 전략 지점을 찾는다.
+4. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
+5. 사용자 판단이 필요한 항목인지 확인한다.
 
 ## 사용자 확인이 필요한 변경
 

@@ -55,7 +55,12 @@ v1 원칙:
 1. `clipped`
 2. `dp_applied`
 3. `checksum`
-4. `notes`
+4. `agent_id`
+   - 기기가 직접 생성한 pseudonymous UUID
+   - 실제 사용자 신원 아님
+   - q-합의 알고리즘에서 per-agent 신뢰도 추적과 중복 제출 차단에 사용
+   - None이면 완전 익명 모드
+5. `notes`
 
 ---
 
@@ -80,16 +85,19 @@ v1 원칙:
   "base_model_revision": "tm_embed_2026_03_29_001",
   "training_scope": "adapter_only",
   "payload_ref": "updates/round_0001/update_2026_03_29_001",
-  "payload_format": "adapter_weights",
+  "payload_format": "diagonal_scale_update",
   "example_count": 64,
   "client_metrics": {
-    "mean_loss": 0.42,
     "accepted_ratio": 0.31,
-    "mean_confidence": 0.87
+    "mean_confidence": 0.87,
+    "mean_margin": 0.12,
+    "delta_l2_norm": 0.04,
+    "selected_examples": 64.0
   },
   "created_at": "2026-03-29T14:20:00Z",
   "clipped": false,
-  "dp_applied": false
+  "dp_applied": false,
+  "agent_id": "3f4a2b1c-9e8d-4f7e-a6b5-2c1d0e9f8a7b"
 }
 ```
 
@@ -100,3 +108,11 @@ v1 원칙:
 1. update의 base revision을 추적할 수 있어야 한다.
 2. aggregation에 필요한 최소 메타데이터가 있어야 한다.
 3. 개인 상태나 원문이 포함되지 않아야 한다.
+4. `agent_id`는 서버가 발급하지 않는다. 기기가 직접 생성한 UUID여야 한다.
+
+---
+
+## 7. 관련 가이드
+
+- [aggregation_algorithm_transition_guide.md](aggregation_algorithm_transition_guide.md)
+  — q-합의 등 aggregation 알고리즘 추가 시 교체 지점과 체크리스트

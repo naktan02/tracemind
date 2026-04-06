@@ -8,6 +8,7 @@ from .adapter_contracts import (
     VectorAdapterDeltaPayload,
     VectorAdapterStatePayload,
 )
+from .fl_round_contracts import ActiveRoundPayload
 from .model_contracts import ModelManifestPayload
 from .personalization_contracts import PersonalizationStatePayload
 from .prototype_contracts import (
@@ -25,6 +26,7 @@ from .training_contracts import (
 )
 
 __all__ = [
+    "ActiveRoundPayload",
     "DecisionFeedbackSignalPayload",
     "CategoryPrototypePayload",
     "DiagonalScaleAdapterStatePayload",

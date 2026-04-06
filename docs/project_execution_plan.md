@@ -20,10 +20,10 @@
 
 현재 source of truth는 문서보다 코드 계약이 우선이다.
 
-1. [`shared/src/contracts/README.md`](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
-2. [`shared/src/contracts/adapter_contracts.py`](/home/jmgjmg102/tracemind_server/shared/src/contracts/adapter_contracts.py)
-3. [`shared/src/contracts/training_contracts.py`](/home/jmgjmg102/tracemind_server/shared/src/contracts/training_contracts.py)
-4. [`shared/src/domain/entities/training/`](/home/jmgjmg102/tracemind_server/shared/src/domain/entities/training)
+1. `shared/src/contracts/README.md`
+2. `shared/src/contracts/adapter_contracts.py`
+3. `shared/src/contracts/training_contracts.py`
+4. `shared/src/domain/entities/training/`
 
 현재 활성 객체는 아래다.
 
@@ -93,7 +93,7 @@ Raw Event / Local Signal
 
 아직 남은 핵심:
 
-1. `agent`의 real round client/runtime 닫기
+1. ~~`agent`의 real round client/runtime 닫기~~ ✅ (Phase 2 완료)
 2. `diagonal_scale` heuristic update를 gradient backend로 교체
 3. runtime의 multi-prototype 지원 확대 여부 결정
 4. privacy hardening의 실제 프로토콜 추가
@@ -132,10 +132,12 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. `agent` round client/runtime 추가
-2. `DiagonalScaleGradientTrainingBackend` 추가
-3. local objective에 drift correction 항 추가
-4. multi-prototype runtime과 FL 연결 여부 결정
+1. ~~`agent` round client/runtime 추가~~ ✅ 완료
+2. Phase 3: inference pipeline 연결 (scored events → training_examples 주입)
+3. Phase 4: end-to-end HTTP integration test (server + agent 실제 round 완주)
+4. `DiagonalScaleGradientTrainingBackend` 추가 (Phase 5 선행)
+5. local objective에 drift correction 항 추가
+6. multi-prototype runtime과 FL 연결 여부 결정
 
 ## 8. 검증 기준
 

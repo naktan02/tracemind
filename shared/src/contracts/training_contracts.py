@@ -23,6 +23,27 @@ from pydantic import BaseModel, ConfigDict, Field
 TrainingConfigScalar = str | int | float | bool
 
 
+class ClientMetricKeys:
+    """TrainingUpdateEnvelopePayload.client_metrics의 표준 키 상수.
+
+    client_metrics는 dict[str, float]로 열려 있지만,
+    서버 aggregation과 q-합의 알고리즘이 사용하는 표준 키를 여기 선언한다.
+    사실상 타입 제약이므로, 이 클래스를 갑율역할 필요 없다. key 저장소로만 사용할 것
+    """
+
+    # --- 하학 질 요약 ---
+    # pseudo-label selection 스테이지에서 종합 컨피던스 평균
+    MEAN_CONFIDENCE = "mean_confidence"
+    # top1 접수와 top2 접수 차이의 평균
+    MEAN_MARGIN = "mean_margin"
+    # 주어진 scored events 중 선탉된 비율
+    ACCEPTED_RATIO = "accepted_ratio"
+    # privacy guard 적용 후 delta 벡터의 L2 norm
+    DELTA_L2_NORM = "delta_l2_norm"
+    # update에 반영된 실제 예시 수 (float로 저장)
+    SELECTED_EXAMPLES = "selected_examples"
+
+
 class TrainingObjectiveConfigPayload(BaseModel):
     """학습 objective 관련 payload.
 
@@ -181,7 +202,13 @@ class TrainingUpdateEnvelopePayload(BaseModel):
         description="실제 update에 반영된 로컬 예시 수.",
     )
     client_metrics: dict[str, float] = Field(
-        description="로컬 측 confidence, margin, loss 등의 요약 metric."
+        description=(
+            "로컬 측 학습 품질 요약 metric. "
+            "표준 키는 이 모듈의 ClientMetricKeys 참고. "
+            "기본 키: mean_confidence, mean_margin, accepted_ratio, "
+            "delta_l2_norm, selected_examples. "
+            "추가 키는 하위 호환성을 유지하며 자유롭게 확장 가능하다."
+        )
     )
     created_at: datetime | None = Field(
         default=None,
@@ -198,6 +225,16 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     checksum: str | None = Field(
         default=None,
         description="Payload 무결성 검사용 체크섬.",
+    )
+    agent_id: str | None = Field(
+        default=None,
+        description=(
+            "Agent의 pseudonymous 식별자. "
+            "실제 사용자 신원이 아닌 기기가 직접 생성한 UUID. "
+            "q-합의 알고리즘에서 per-agent 신뢰도 추적과 "
+            "한 round 내 중복 제출 차단에 사용한다. "
+            "None이면 완전 익명 모드."
+        ),
     )
     notes: str | None = Field(
         default=None,

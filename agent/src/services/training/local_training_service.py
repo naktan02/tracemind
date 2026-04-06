@@ -34,6 +34,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 from shared.src.domain.entities.training.training_task import TrainingTask
 from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
 @dataclass(slots=True)
@@ -65,6 +66,7 @@ class LocalTrainingRequest:
     training_task: TrainingTask
     model_manifest: ModelManifest
     created_at: datetime | None = None
+    agent_id: str | None = None  # pseudonymous UUID, None이면 익명
 
 
 @dataclass(slots=True)
@@ -142,15 +144,16 @@ class LocalTrainingService:
             payload_format=backend.payload_format,
             example_count=len(accepted_examples),
             client_metrics={
-                "accepted_ratio": selection_result.accepted_ratio,
-                "mean_confidence": protected_update.update.mean_confidence,
-                "mean_margin": protected_update.update.mean_margin or 0.0,
-                "delta_l2_norm": protected_update.update.l2_norm(),
-                "selected_examples": float(len(accepted_examples)),
+                ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
+                ClientMetricKeys.MEAN_CONFIDENCE: protected_update.update.mean_confidence,
+                ClientMetricKeys.MEAN_MARGIN: protected_update.update.mean_margin or 0.0,
+                ClientMetricKeys.DELTA_L2_NORM: protected_update.update.l2_norm(),
+                ClientMetricKeys.SELECTED_EXAMPLES: float(len(accepted_examples)),
             },
             created_at=effective_created_at,
             clipped=protected_update.clipped,
             dp_applied=protected_update.dp_applied,
+            agent_id=request.agent_id,
         )
         return LocalTrainingResult(
             selection_result=selection_result,
@@ -186,6 +189,7 @@ class LocalTrainingService:
         training_task: TrainingTask,
         model_manifest: ModelManifest,
         created_at: datetime | None = None,
+        agent_id: str | None = None,
     ) -> LocalTrainingResult:
         return self.run(
             LocalTrainingRequest(
@@ -193,5 +197,6 @@ class LocalTrainingService:
                 training_task=training_task,
                 model_manifest=model_manifest,
                 created_at=created_at,
+                agent_id=agent_id,
             )
         )
