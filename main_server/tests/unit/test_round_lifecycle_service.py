@@ -48,8 +48,8 @@ from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterUpdatePayload,
     dump_shared_adapter_update_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import FixedClock
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import SinglePrototypeBuildStrategy

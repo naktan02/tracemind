@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from datetime import datetime, timezone
 from pathlib import Path
 
 from shared.src.contracts.adapter_contracts import (
@@ -13,26 +12,12 @@ from shared.src.contracts.adapter_contracts import (
 )
 
 
-def test_shared_adapter_payloads_capture_revision_and_scales() -> None:
-    state = DiagonalScaleAdapterStatePayload(
-        schema_version="vector_adapter_state.v1",
-        model_id="tracemind-embed",
-        model_revision="rev_001",
-        training_scope="adapter_only",
-        dimension_scales=[1.0, 0.95],
-        updated_at=datetime.now(tz=timezone.utc),
-    )
-    delta = DiagonalScaleAdapterUpdatePayload(
-        schema_version="vector_adapter_delta.v1",
-        model_id="tracemind-embed",
-        base_model_revision="rev_001",
-        training_scope="adapter_only",
-        dimension_deltas=[0.01, -0.02],
-        example_count=8,
-        mean_confidence=0.84,
-        mean_margin=0.12,
-        label_counts={"anxiety": 5, "depression": 3},
-    )
+def test_shared_adapter_payloads_capture_revision_and_scales(
+    make_adapter_state_payload,
+    make_adapter_update_payload,
+) -> None:
+    state = make_adapter_state_payload()
+    delta = make_adapter_update_payload()
 
     assert state.dimension_scales[1] == 0.95
     assert state.adapter_kind == "diagonal_scale"
@@ -43,27 +28,22 @@ def test_shared_adapter_payloads_capture_revision_and_scales() -> None:
 
 def test_generic_shared_adapter_loader_dispatches_diagonal_scale_payloads(
     tmp_path: Path,
+    make_adapter_state_payload,
+    make_adapter_update_payload,
 ) -> None:
     state_path = tmp_path / "state.json"
     update_path = tmp_path / "update.json"
     dump_shared_adapter_state_payload(
         state_path,
-        DiagonalScaleAdapterStatePayload(
-            schema_version="vector_adapter_state.v1",
-            model_id="tracemind-embed",
+        make_adapter_state_payload(
             model_revision="rev_002",
-            training_scope="adapter_only",
             dimension_scales=[1.0, 1.1],
-            updated_at=datetime.now(tz=timezone.utc),
         ),
     )
     dump_shared_adapter_update_payload(
         update_path,
-        DiagonalScaleAdapterUpdatePayload(
-            schema_version="vector_adapter_delta.v1",
-            model_id="tracemind-embed",
+        make_adapter_update_payload(
             base_model_revision="rev_002",
-            training_scope="adapter_only",
             dimension_deltas=[0.01, 0.02],
             example_count=3,
             mean_confidence=0.8,

@@ -8,12 +8,11 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, Field
 
 from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
-    make_query_event,
 )
 from shared.src.domain.entities.inference.events import QueryEvent
 
@@ -61,11 +60,6 @@ class IngestBatchResponse(BaseModel):
 
 
 # ------------------------------------------------------------------ #
-# 의존성 주입 자리표시자                                                 #
-# ------------------------------------------------------------------ #
-
-from fastapi import Request
-
 # ------------------------------------------------------------------ #
 # 의존성 주입                                                            #
 # ------------------------------------------------------------------ #

@@ -18,30 +18,32 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from unittest.mock import MagicMock
 
 import httpx
 import pytest
 
 from agent.src.services.federation.round_client import RoundClient
 from agent.src.services.federation.runtime_service import (
-    FederationRuntimeService,
     FederationRunStatus,
+    FederationRuntimeService,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.rounds.round_lifecycle_service import RoundLifecycleService
+from main_server.src.services.rounds.round_lifecycle_service import (
+    RoundLifecycleService,
+)
 from shared.src.contracts.adapter_contracts import (
     dump_vector_adapter_delta_payload,
     dump_vector_adapter_state_payload,
     make_diagonal_delta_payload,
     make_identity_state_payload,
 )
-from shared.src.contracts.model_contracts import make_embedding_manifest
+from shared.src.contracts.model_contracts import (
+    ModelManifest,
+    make_embedding_manifest,
+)
 from shared.src.contracts.training_contracts import make_training_update_envelope
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-
 
 # ------------------------------------------------------------------ #
 # 픽스처                                                               #
@@ -97,7 +99,9 @@ def delta_path(artifact_root: Path) -> Path:
 @pytest.fixture()
 def round_service(state_root: Path) -> RoundLifecycleService:
     """격리된 state_root를 사용하는 RoundLifecycleService."""
-    return RoundLifecycleService(round_repository=RoundRepository(state_root=state_root))
+    return RoundLifecycleService(
+        round_repository=RoundRepository(state_root=state_root)
+    )
 
 
 @pytest.fixture()
@@ -184,7 +188,10 @@ def test_round_open_returns_open_status(
     base_state_path: Path,
 ) -> None:
     """round open API가 open 상태 record를 반환한다."""
-    r = server_client.post("/api/v1/fl/rounds", json=_open_round_payload(base_state_path))
+    r = server_client.post(
+        "/api/v1/fl/rounds",
+        json=_open_round_payload(base_state_path),
+    )
     assert r.status_code == 201
     body = r.json()
     assert body["status"] == "open"
@@ -206,7 +213,10 @@ def test_agent_fetches_task_from_open_round(
     base_state_path: Path,
 ) -> None:
     """RoundClient가 open round의 training task를 가져온다."""
-    r = server_client.post("/api/v1/fl/rounds", json=_open_round_payload(base_state_path))
+    r = server_client.post(
+        "/api/v1/fl/rounds",
+        json=_open_round_payload(base_state_path),
+    )
     assert r.status_code == 201
     expected_task_id = r.json()["training_task"]["task_id"]
 
@@ -254,7 +264,10 @@ def test_full_round_lifecycle(
 ) -> None:
     """round 생성 → update 업로드 → finalize 전체 흐름이 정상 작동한다."""
     # 1. round 생성
-    r = server_client.post("/api/v1/fl/rounds", json=_open_round_payload(base_state_path))
+    r = server_client.post(
+        "/api/v1/fl/rounds",
+        json=_open_round_payload(base_state_path),
+    )
     assert r.status_code == 201
     record = r.json()
     round_id = record["round_id"]

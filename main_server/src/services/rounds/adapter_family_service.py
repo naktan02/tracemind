@@ -14,16 +14,11 @@ from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterUpdatePayload,
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
+    VectorAdapterState,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
-)
-from shared.src.domain.entities.training.vector_adapter_delta import (
-    VectorAdapterDelta,
-)
-from shared.src.domain.entities.training.vector_adapter_state import (
-    VectorAdapterState,
 )
 
 
@@ -81,15 +76,7 @@ class DiagonalScaleRoundFamily:
                 "State payload adapter_kind does not match family: "
                 f"{payload.adapter_kind}"
             )
-        return VectorAdapterState(
-            schema_version=payload.schema_version,
-            model_id=payload.model_id,
-            model_revision=payload.model_revision,
-            training_scope=payload.training_scope,
-            dimension_scales=list(payload.dimension_scales),
-            updated_at=payload.updated_at,
-            adapter_kind=payload.adapter_kind,
-        )
+        return payload
 
     def update_from_payload(
         self,
@@ -106,19 +93,7 @@ class DiagonalScaleRoundFamily:
                 "Update payload adapter_kind does not match family: "
                 f"{payload.adapter_kind}"
             )
-        return VectorAdapterDelta(
-            schema_version=payload.schema_version,
-            model_id=payload.model_id,
-            base_model_revision=payload.base_model_revision,
-            training_scope=payload.training_scope,
-            dimension_deltas=list(payload.dimension_deltas),
-            example_count=payload.example_count,
-            mean_confidence=payload.mean_confidence,
-            created_at=payload.created_at,
-            mean_margin=payload.mean_margin,
-            label_counts=dict(payload.label_counts),
-            adapter_kind=payload.adapter_kind,
-        )
+        return payload
 
     def state_to_payload(
         self,
@@ -134,12 +109,4 @@ class DiagonalScaleRoundFamily:
                 "State adapter_kind does not match family: "
                 f"{state.adapter_kind}"
             )
-        return DiagonalScaleAdapterStatePayload(
-            schema_version=state.schema_version,
-            adapter_kind=state.adapter_kind,
-            model_id=state.model_id,
-            model_revision=state.model_revision,
-            training_scope=state.training_scope,
-            dimension_scales=state.dimension_scales,
-            updated_at=state.updated_at,
-        )
+        return state

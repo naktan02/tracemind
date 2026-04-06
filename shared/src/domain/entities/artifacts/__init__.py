@@ -1,7 +1,8 @@
 """Artifact-oriented domain entities."""
 
+from shared.src.contracts.model_contracts import ModelManifest
+
 from .labeled_query import LabeledQuery, LabeledQuerySet
-from .model_manifest import ModelManifest
 from .prototype_pack import CategoryPrototype, PrototypePack
 
 __all__ = [

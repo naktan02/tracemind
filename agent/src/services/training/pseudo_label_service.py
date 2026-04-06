@@ -9,14 +9,14 @@ from agent.src.services.training.acceptance_policies import (
     Top1MarginThresholdAcceptancePolicy,
     build_pseudo_label_acceptance_policy,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.decision_feedback_signal import (
+from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,
+    TrainingTask,
 )
+from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
-from shared.src.domain.entities.training.training_task import TrainingTask
 
 
 @dataclass(slots=True)

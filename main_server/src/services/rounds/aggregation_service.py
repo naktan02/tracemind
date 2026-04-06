@@ -9,15 +9,13 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, Sequence
 
+from shared.src.contracts.adapter_contracts import (
+    VectorAdapterDelta,
+    VectorAdapterState,
+)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
-)
-from shared.src.domain.entities.training.vector_adapter_delta import (
-    VectorAdapterDelta,
-)
-from shared.src.domain.entities.training.vector_adapter_state import (
-    VectorAdapterState,
 )
 
 

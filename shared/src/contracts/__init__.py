@@ -1,18 +1,31 @@
 """공용 contract 모듈."""
 
 from .adapter_contracts import (
+    AdapterKind,
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
+    VectorAdapterDelta,
     VectorAdapterDeltaPayload,
+    VectorAdapterState,
     VectorAdapterStatePayload,
     make_diagonal_delta_payload,
     make_identity_state_payload,
 )
-from .fl_round_contracts import ActiveRoundPayload
-from .model_contracts import ModelManifestPayload, make_embedding_manifest
-from .personalization_contracts import PersonalizationStatePayload
+from .common_types import TrainingScope, TrainingTaskType
+from .fl_round_contracts import ActiveRoundPayload, RoundStatusValue
+from .model_contracts import (
+    ArtifactKind,
+    ModelManifest,
+    ModelManifestPayload,
+    make_embedding_manifest,
+)
+from .personalization_contracts import (
+    PersonalizationState,
+    PersonalizationStatePayload,
+    PersonalizationWarmupStatus,
+)
 from .prototype_contracts import (
     CategoryPrototypePayload,
     PrototypePackPayload,
@@ -20,17 +33,28 @@ from .prototype_contracts import (
     extract_category_prototypes,
 )
 from .training_contracts import (
+    DecisionFeedbackSignal,
     DecisionFeedbackSignalPayload,
+    FeedbackSignalType,
+    TrainingObjectiveConfig,
     TrainingObjectiveConfigPayload,
+    TrainingSelectionPolicy,
     TrainingSelectionPolicyPayload,
+    TrainingTask,
     TrainingTaskPayload,
+    TrainingUpdateEnvelope,
     TrainingUpdateEnvelopePayload,
+    UpdatePayloadFormat,
     make_training_update_envelope,
 )
 
 __all__ = [
     "ActiveRoundPayload",
+    "AdapterKind",
+    "ArtifactKind",
+    "DecisionFeedbackSignal",
     "DecisionFeedbackSignalPayload",
+    "FeedbackSignalType",
     "CategoryPrototypePayload",
     "DiagonalScaleAdapterStatePayload",
     "DiagonalScaleAdapterUpdatePayload",
@@ -40,15 +64,28 @@ __all__ = [
     "make_embedding_manifest",
     "make_identity_state_payload",
     "make_training_update_envelope",
+    "ModelManifest",
     "ModelManifestPayload",
+    "PersonalizationState",
+    "PersonalizationWarmupStatus",
     "PersonalizationStatePayload",
     "PrototypePackPayload",
+    "RoundStatusValue",
     "SharedAdapterStatePayload",
     "SharedAdapterUpdatePayload",
+    "TrainingScope",
+    "TrainingObjectiveConfig",
     "TrainingObjectiveConfigPayload",
+    "TrainingSelectionPolicy",
     "TrainingSelectionPolicyPayload",
+    "TrainingTask",
     "TrainingTaskPayload",
+    "TrainingTaskType",
+    "TrainingUpdateEnvelope",
     "TrainingUpdateEnvelopePayload",
+    "UpdatePayloadFormat",
+    "VectorAdapterDelta",
     "VectorAdapterDeltaPayload",
+    "VectorAdapterState",
     "VectorAdapterStatePayload",
 ]

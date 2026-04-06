@@ -10,9 +10,7 @@ import pytest
 
 from agent.src.services.inference.scoring_policies import TopKMeanCosineScorePolicy
 from agent.src.services.inference.scoring_service import ScoringService
-from shared.src.domain.entities.training.training_task_config import (
-    TrainingObjectiveConfig,
-)
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
 def _load_prototypes() -> dict[str, list[float]]:

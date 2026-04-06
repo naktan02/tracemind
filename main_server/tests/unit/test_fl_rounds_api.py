@@ -31,8 +31,8 @@ from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterUpdatePayload,
     dump_shared_adapter_update_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import FixedClock
 
 
@@ -120,20 +120,18 @@ def _build_update(
 
 def test_fl_rounds_api_runs_open_update_finalize_flow(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
     service, active_manifest = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    monkeypatch.setattr(fl_rounds_api, "service", service)
-
     open_response = fl_rounds_api.open_round(
         RoundOpenRequestPayload(
             active_manifest=model_manifest_to_payload(active_manifest),
             round_id="round_0001",
-        )
+        ),
+        service=service,
     )
 
     assert open_response.status == "open"
@@ -147,11 +145,12 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     update_response = fl_rounds_api.accept_update(
         "round_0001",
         training_update_to_payload(update),
+        service=service,
     )
 
     assert update_response.update_count == 1
 
-    current_response = fl_rounds_api.get_current_round()
+    current_response = fl_rounds_api.get_current_round(service=service)
     assert current_response.round_id == "round_0001"
 
     finalize_response = fl_rounds_api.finalize_round(
@@ -160,6 +159,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
             next_prototype_version="proto_001",
             next_model_revision="rev_001",
         ),
+        service=service,
     )
 
     assert finalize_response.status == "finalized"
@@ -167,25 +167,24 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     assert finalize_response.publication.next_manifest.model_revision == "rev_001"
 
     with pytest.raises(HTTPException) as error_info:
-        fl_rounds_api.get_current_round()
+        fl_rounds_api.get_current_round(service=service)
     assert error_info.value.status_code == 404
 
 
 def test_fl_rounds_api_rejects_duplicate_update_id(
     tmp_path: Path,
-    monkeypatch,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
     service, active_manifest = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    monkeypatch.setattr(fl_rounds_api, "service", service)
     open_response = fl_rounds_api.open_round(
         RoundOpenRequestPayload(
             active_manifest=model_manifest_to_payload(active_manifest),
             round_id="round_0001",
-        )
+        ),
+        service=service,
     )
     task_id = open_response.training_task.task_id
     update = _build_update(
@@ -195,11 +194,15 @@ def test_fl_rounds_api_rejects_duplicate_update_id(
     )
     payload = training_update_to_payload(update)
 
-    first_response = fl_rounds_api.accept_update("round_0001", payload)
+    first_response = fl_rounds_api.accept_update(
+        "round_0001",
+        payload,
+        service=service,
+    )
     assert first_response.update_count == 1
 
     with pytest.raises(HTTPException) as error_info:
-        fl_rounds_api.accept_update("round_0001", payload)
+        fl_rounds_api.accept_update("round_0001", payload, service=service)
     assert error_info.value.status_code == 409
 
 

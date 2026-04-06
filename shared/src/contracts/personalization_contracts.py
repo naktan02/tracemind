@@ -4,9 +4,22 @@ from __future__ import annotations
 
 import json
 from datetime import datetime
+from enum import StrEnum
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+PERSONALIZATION_STATE_V1 = "personalization_state.v1"
+PersonalizationStateSchemaVersion: TypeAlias = Literal["personalization_state.v1"]
+
+
+class PersonalizationWarmupStatus(StrEnum):
+    """개인화 상태 warm-up 단계."""
+
+    COLD_START = "cold_start"
+    WARMING_UP = "warming_up"
+    READY = "ready"
 
 
 class PersonalizationStatePayload(BaseModel):
@@ -14,11 +27,11 @@ class PersonalizationStatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str
+    schema_version: PersonalizationStateSchemaVersion = PERSONALIZATION_STATE_V1
     state_version: str
     baseline_by_category: dict[str, float] = Field(default_factory=dict)
     threshold_by_category: dict[str, float] = Field(default_factory=dict)
-    warmup_status: str
+    warmup_status: PersonalizationWarmupStatus
     updated_at: datetime | None = None
     personal_prototype_refs: dict[str, str] = Field(default_factory=dict)
     persistence_features: dict[str, float] = Field(default_factory=dict)
@@ -42,3 +55,17 @@ def dump_personalization_state_payload(
         json.dumps(payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+
+
+PersonalizationState = PersonalizationStatePayload
+
+
+__all__ = [
+    "PERSONALIZATION_STATE_V1",
+    "PersonalizationState",
+    "PersonalizationStatePayload",
+    "PersonalizationStateSchemaVersion",
+    "PersonalizationWarmupStatus",
+    "dump_personalization_state_payload",
+    "load_personalization_state_payload",
+]

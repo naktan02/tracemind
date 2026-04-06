@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
 
 from main_server.src.services.rounds.models import RoundRecord
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 
 
 class RoundConflictError(ValueError):
@@ -58,7 +58,7 @@ def _normalize_update(
 ) -> TrainingUpdateEnvelope:
     if update.created_at is not None:
         return update
-    return replace(update, created_at=accepted_at)
+    return update.model_copy(update={"created_at": accepted_at})
 
 
 def _validate_update_context(

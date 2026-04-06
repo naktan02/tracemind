@@ -10,8 +10,8 @@ from agent.src.services.federation import (
     TrainingExampleSource,
 )
 from agent.src.services.inference.scoring_service import ScoringService
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 
 
 class _StaticEmbeddingAdapter:

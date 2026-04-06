@@ -14,14 +14,13 @@ from scripts.experiments.federated_simulation.models import (
     FederatedDiagnosticsConfig,
 )
 from shared.src.contracts.model_contracts import (
-    ModelManifestPayload,
+    ModelManifest,
     dump_model_manifest_payload,
 )
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     dump_prototype_pack_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 
 
 def save_selection_diagnostics(
@@ -137,24 +136,5 @@ def save_model_manifest(output_dir: Path, manifest: ModelManifest) -> Path:
         / "model_manifests"
         / f"{manifest.model_revision}.json"
     )
-    dump_model_manifest_payload(
-        path,
-        ModelManifestPayload(
-            schema_version=manifest.schema_version,
-            model_id=manifest.model_id,
-            model_revision=manifest.model_revision,
-            published_at=manifest.published_at,
-            artifact_kind=manifest.artifact_kind,
-            artifact_ref=manifest.artifact_ref,
-            prototype_version=manifest.prototype_version,
-            training_scope=manifest.training_scope,
-            training_enabled=manifest.training_enabled,
-            compatible_task_types=list(manifest.compatible_task_types),
-            base_model_id=manifest.base_model_id,
-            base_model_revision=manifest.base_model_revision,
-            translation_model_id=manifest.translation_model_id,
-            translation_model_revision=manifest.translation_model_revision,
-            notes=manifest.notes,
-        ),
-    )
+    dump_model_manifest_payload(path, manifest)
     return path

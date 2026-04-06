@@ -8,12 +8,12 @@ from typing import Any
 
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     extract_category_prototypes,
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 
 
 @dataclass(slots=True)

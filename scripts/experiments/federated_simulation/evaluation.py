@@ -11,11 +11,9 @@ from agent.src.services.federation.training_example_service import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.training.training_task_config import (
-    TrainingObjectiveConfig,
-)
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .io_utils import parse_created_at
 from .models import FederatedValidationConfig, SimulationEvaluation

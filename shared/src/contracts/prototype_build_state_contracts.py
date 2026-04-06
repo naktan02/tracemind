@@ -5,8 +5,12 @@ from __future__ import annotations
 import json
 from datetime import datetime
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+PROTOTYPE_BUILD_STATE_V1 = "prototype_build_state.v1"
+PrototypeBuildStateSchemaVersion: TypeAlias = Literal["prototype_build_state.v1"]
 
 
 class CategoryPrototypeBuildStatePayload(BaseModel):
@@ -27,7 +31,7 @@ class PrototypeBuildStatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str
+    schema_version: PrototypeBuildStateSchemaVersion = PROTOTYPE_BUILD_STATE_V1
     prototype_version: str
     embedding_backend: str
     embedding_model_id: str

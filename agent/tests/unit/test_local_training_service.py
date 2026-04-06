@@ -13,13 +13,13 @@ from agent.src.services.training.local_training_service import (
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.training_task_config import (
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
+    TrainingTask,
 )
+from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.services.clock import FixedClock
 
 

@@ -23,7 +23,12 @@ from agent.src.services.training.training_backends import (
     SharedAdapterTrainingBackend,
     build_shared_adapter_training_backend,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import (
+    ClientMetricKeys,
+    TrainingTask,
+    TrainingUpdateEnvelope,
+)
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
@@ -31,10 +36,7 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
-from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
 @dataclass(slots=True)
@@ -145,8 +147,12 @@ class LocalTrainingService:
             example_count=len(accepted_examples),
             client_metrics={
                 ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
-                ClientMetricKeys.MEAN_CONFIDENCE: protected_update.update.mean_confidence,
-                ClientMetricKeys.MEAN_MARGIN: protected_update.update.mean_margin or 0.0,
+                ClientMetricKeys.MEAN_CONFIDENCE: (
+                    protected_update.update.mean_confidence
+                ),
+                ClientMetricKeys.MEAN_MARGIN: (
+                    protected_update.update.mean_margin or 0.0
+                ),
                 ClientMetricKeys.DELTA_L2_NORM: protected_update.update.l2_norm(),
                 ClientMetricKeys.SELECTED_EXAMPLES: float(len(accepted_examples)),
             },

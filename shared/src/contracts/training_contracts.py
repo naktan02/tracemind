@@ -15,10 +15,41 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime, timezone
+from enum import StrEnum
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .common_types import TrainingScope, TrainingTaskType
+
+TRAINING_TASK_V1 = "training_task.v1"
+TRAINING_UPDATE_ENVELOPE_V1 = "training_update_envelope.v1"
+DECISION_FEEDBACK_SIGNAL_V1 = "decision_feedback_signal.v1"
+TrainingTaskSchemaVersion: TypeAlias = Literal["training_task.v1"]
+TrainingUpdateEnvelopeSchemaVersion: TypeAlias = Literal[
+    "training_update_envelope.v1"
+]
+DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal[
+    "decision_feedback_signal.v1"
+]
+
+
+class UpdatePayloadFormat(StrEnum):
+    """Training update payload 포맷 식별자."""
+
+    DIAGONAL_SCALE_UPDATE = "diagonal_scale_update"
+
+
+class FeedbackSignalType(StrEnum):
+    """로컬 학습 signal taxonomy."""
+
+    PSEUDO_LABEL = "pseudo_label"
+    SELF_REPORT = "self_report"
+    SUPPORT_ACTION = "support_action"
+    DELAYED_OUTCOME = "delayed_outcome"
 
 TrainingConfigScalar = str | int | float | bool
 
@@ -95,6 +126,58 @@ class TrainingObjectiveConfigPayload(BaseModel):
         description="Objective family별 추가 하이퍼파라미터 확장 슬롯.",
     )
 
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, TrainingConfigScalar] | None,
+    ) -> "TrainingObjectiveConfigPayload":
+        """Mapping 입력을 canonical objective config로 정규화한다."""
+        if source is None:
+            return cls()
+        return cls(
+            loss=str(source.get("loss", "diagonal_scale_heuristic")),
+            confidence_threshold=_optional_float(source.get("confidence_threshold")),
+            margin_threshold=_optional_float(source.get("margin_threshold")),
+            score_policy_name=_optional_str(source.get("score_policy_name")),
+            score_top_k=_optional_positive_int(source.get("score_top_k")),
+            acceptance_policy_name=_optional_str(
+                source.get("acceptance_policy_name")
+            ),
+            privacy_guard_name=_optional_str(source.get("privacy_guard_name")),
+            extras={
+                key: value
+                for key, value in source.items()
+                if key
+                not in {
+                    "loss",
+                    "confidence_threshold",
+                    "margin_threshold",
+                    "score_policy_name",
+                    "score_top_k",
+                    "acceptance_policy_name",
+                    "privacy_guard_name",
+                }
+            },
+        )
+
+    def to_mapping(self) -> dict[str, TrainingConfigScalar]:
+        """canonical objective config를 저장/전송용 flat mapping으로 변환한다."""
+        result: dict[str, TrainingConfigScalar] = {"loss": self.loss}
+        if self.confidence_threshold is not None:
+            result["confidence_threshold"] = self.confidence_threshold
+        if self.margin_threshold is not None:
+            result["margin_threshold"] = self.margin_threshold
+        if self.score_policy_name is not None:
+            result["score_policy_name"] = self.score_policy_name
+        if self.score_top_k is not None:
+            result["score_top_k"] = self.score_top_k
+        if self.acceptance_policy_name is not None:
+            result["acceptance_policy_name"] = self.acceptance_policy_name
+        if self.privacy_guard_name is not None:
+            result["privacy_guard_name"] = self.privacy_guard_name
+        result.update(self.extras)
+        return result
+
 
 class TrainingSelectionPolicyPayload(BaseModel):
     """로컬 학습 예시 선택 정책 payload.
@@ -120,6 +203,34 @@ class TrainingSelectionPolicyPayload(BaseModel):
         description="Selection policy별 추가 규칙 확장 슬롯.",
     )
 
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, TrainingConfigScalar] | None,
+    ) -> "TrainingSelectionPolicyPayload":
+        """Mapping 입력을 canonical selection policy로 정규화한다."""
+        if source is None:
+            return cls()
+        return cls(
+            max_examples=_optional_int(source.get("max_examples")),
+            require_feedback=_optional_bool(source.get("require_feedback")),
+            extras={
+                key: value
+                for key, value in source.items()
+                if key not in {"max_examples", "require_feedback"}
+            },
+        )
+
+    def to_mapping(self) -> dict[str, TrainingConfigScalar]:
+        """canonical selection policy를 저장/전송용 flat mapping으로 변환한다."""
+        result: dict[str, TrainingConfigScalar] = {}
+        if self.max_examples is not None:
+            result["max_examples"] = self.max_examples
+        if self.require_feedback is not None:
+            result["require_feedback"] = self.require_feedback
+        result.update(self.extras)
+        return result
+
 
 class TrainingTaskPayload(BaseModel):
     """중앙이 로컬에 배포하는 학습 작업 payload.
@@ -130,15 +241,20 @@ class TrainingTaskPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(description="Payload contract 버전.")
+    schema_version: TrainingTaskSchemaVersion = Field(
+        default=TRAINING_TASK_V1,
+        description="Payload contract 버전.",
+    )
     task_id: str = Field(description="이 학습 task의 고유 식별자.")
     round_id: str = Field(description="이 task가 속한 FL round 식별자.")
     model_id: str = Field(description="학습 대상 backbone/model 식별자.")
     model_revision: str = Field(
         description="로컬 학습이 기준으로 삼아야 할 현재 revision."
     )
-    task_type: str = Field(description="학습 task 유형 식별자.")
-    training_scope: str = Field(description="예: adapter_only 같은 학습 범위.")
+    task_type: TrainingTaskType = Field(description="학습 task 유형 식별자.")
+    training_scope: TrainingScope = Field(
+        description="예: adapter_only 같은 학습 범위."
+    )
     local_epochs: int = Field(ge=1, description="로컬 데이터 반복 횟수.")
     batch_size: int = Field(ge=1, description="로컬 학습 배치 크기.")
     learning_rate: float = Field(gt=0.0, description="로컬 optimizer 학습률.")
@@ -182,7 +298,10 @@ class TrainingUpdateEnvelopePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(description="Payload contract 버전.")
+    schema_version: TrainingUpdateEnvelopeSchemaVersion = Field(
+        default=TRAINING_UPDATE_ENVELOPE_V1,
+        description="Payload contract 버전.",
+    )
     update_id: str = Field(description="이 update envelope의 고유 식별자.")
     round_id: str = Field(description="이 update가 속한 FL round 식별자.")
     task_id: str = Field(description="어느 training task의 결과인지 식별자.")
@@ -190,11 +309,13 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     base_model_revision: str = Field(
         description="이 update가 계산된 기준 shared adapter revision."
     )
-    training_scope: str = Field(description="예: adapter_only 같은 학습 범위.")
+    training_scope: TrainingScope = Field(
+        description="예: adapter_only 같은 학습 범위."
+    )
     payload_ref: str = Field(
         description="실제 adapter update payload 파일 경로 또는 참조값."
     )
-    payload_format: str = Field(
+    payload_format: UpdatePayloadFormat = Field(
         description="예: diagonal_scale_update 같은 update payload 포맷 식별자."
     )
     example_count: int = Field(
@@ -251,9 +372,12 @@ class DecisionFeedbackSignalPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(description="Payload contract 버전.")
+    schema_version: DecisionFeedbackSignalSchemaVersion = Field(
+        default=DECISION_FEEDBACK_SIGNAL_V1,
+        description="Payload contract 버전.",
+    )
     signal_id: str = Field(description="Feedback signal 고유 식별자.")
-    signal_type: str = Field(
+    signal_type: FeedbackSignalType = Field(
         description="예: pseudo_label, clinician_feedback 같은 신호 유형."
     )
     label: str = Field(description="이 signal이 가리키는 category/label.")
@@ -283,6 +407,45 @@ def _dump_payload(path: Path, payload: BaseModel) -> None:
         json.dumps(payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+
+
+def _optional_float(value: TrainingConfigScalar | None) -> float | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError("Expected float-like config value, got bool.")
+    return float(value)
+
+
+def _optional_int(value: TrainingConfigScalar | None) -> int | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        raise ValueError("Expected int-like config value, got bool.")
+    return int(value)
+
+
+def _optional_bool(value: TrainingConfigScalar | None) -> bool | None:
+    if value is None:
+        return None
+    if not isinstance(value, bool):
+        raise ValueError("Expected bool config value.")
+    return value
+
+
+def _optional_str(value: TrainingConfigScalar | None) -> str | None:
+    if value is None:
+        return None
+    return str(value)
+
+
+def _optional_positive_int(value: TrainingConfigScalar | None) -> int | None:
+    parsed = _optional_int(value)
+    if parsed is None:
+        return None
+    if parsed < 1:
+        raise ValueError("Expected positive int config value.")
+    return parsed
 
 
 def load_training_task_payload(path: Path) -> TrainingTaskPayload:
@@ -344,8 +507,8 @@ def make_training_update_envelope(
     example_count: int,
     client_metrics: dict[str, float],
     update_id: str | None = None,
-    training_scope: str = "adapter_only",
-    payload_format: str = "diagonal_scale_update",
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
+    payload_format: UpdatePayloadFormat = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE,
     agent_id: str | None = None,
     clipped: bool = False,
     dp_applied: bool = False,
@@ -369,8 +532,9 @@ def make_training_update_envelope(
     ... )
     """
     import uuid as _uuid
+
     return TrainingUpdateEnvelopePayload(
-        schema_version="training_update_envelope.v1",
+        schema_version=TRAINING_UPDATE_ENVELOPE_V1,
         update_id=update_id or str(_uuid.uuid4()),
         round_id=round_id,
         task_id=task_id,
@@ -387,3 +551,41 @@ def make_training_update_envelope(
         agent_id=agent_id,
         notes=notes,
     )
+
+
+TrainingObjectiveConfig = TrainingObjectiveConfigPayload
+TrainingSelectionPolicy = TrainingSelectionPolicyPayload
+TrainingTask = TrainingTaskPayload
+TrainingUpdateEnvelope = TrainingUpdateEnvelopePayload
+DecisionFeedbackSignal = DecisionFeedbackSignalPayload
+
+
+__all__ = [
+    "ClientMetricKeys",
+    "DECISION_FEEDBACK_SIGNAL_V1",
+    "DecisionFeedbackSignal",
+    "DecisionFeedbackSignalPayload",
+    "DecisionFeedbackSignalSchemaVersion",
+    "FeedbackSignalType",
+    "TRAINING_TASK_V1",
+    "TRAINING_UPDATE_ENVELOPE_V1",
+    "TrainingConfigScalar",
+    "TrainingObjectiveConfig",
+    "TrainingObjectiveConfigPayload",
+    "TrainingSelectionPolicy",
+    "TrainingSelectionPolicyPayload",
+    "TrainingTask",
+    "TrainingTaskPayload",
+    "TrainingTaskSchemaVersion",
+    "TrainingUpdateEnvelope",
+    "TrainingUpdateEnvelopePayload",
+    "TrainingUpdateEnvelopeSchemaVersion",
+    "UpdatePayloadFormat",
+    "dump_decision_feedback_signal_payload",
+    "dump_training_task_payload",
+    "dump_training_update_envelope_payload",
+    "load_decision_feedback_signal_payload",
+    "load_training_task_payload",
+    "load_training_update_envelope_payload",
+    "make_training_update_envelope",
+]

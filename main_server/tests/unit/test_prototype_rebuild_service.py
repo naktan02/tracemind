@@ -27,9 +27,9 @@ from main_server.src.services.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.domain.services.clock import FixedClock
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
     KMeansPrototypeBuildStrategy,
     PrototypeBuildRequest,

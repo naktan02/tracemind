@@ -29,7 +29,7 @@ from main_server.src.services.rounds.update_acceptance_policy import (
     RoundValidationError,
     StrictRoundUpdateAcceptancePolicy,
 )
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
 

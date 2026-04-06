@@ -12,17 +12,12 @@ from agent.src.services.training.local_training_service import (
     LocalTrainingResult,
     LocalTrainingService,
 )
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
+    TrainingTask,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.training_task_config import (
-    TrainingObjectiveConfig,
-    TrainingSelectionPolicy,
-)
-
 
 
 class FederationRunStatus(StrEnum):
@@ -74,6 +69,7 @@ class FederationRuntimeService:
         training_examples: tuple[EmbeddedTrainingExample, ...]
         | list[EmbeddedTrainingExample],
         model_manifest: ModelManifest,
+        agent_id: str | None = None,
     ) -> FederationRunResult:
         """현재 active task를 읽어 로컬 학습을 실행하고 결과를 업로드한다.
 
@@ -104,6 +100,7 @@ class FederationRuntimeService:
             training_task=training_task,
             model_manifest=model_manifest,
             created_at=datetime.now(tz=timezone.utc),
+            agent_id=agent_id,
         )
 
         selection = local_result.selection_result
@@ -143,58 +140,12 @@ def _envelope_to_payload(result: LocalTrainingResult) -> TrainingUpdateEnvelopeP
     """LocalTrainingResult에서 서버 업로드용 payload를 만든다."""
     envelope = result.update_envelope
     if envelope is None:
-        raise ValueError("update_envelope이 없는 result를 payload로 변환할 수 없습니다.")
-    return TrainingUpdateEnvelopePayload(
-        schema_version=envelope.schema_version,
-        update_id=envelope.update_id,
-        round_id=envelope.round_id,
-        task_id=envelope.task_id,
-        model_id=envelope.model_id,
-        base_model_revision=envelope.base_model_revision,
-        training_scope=envelope.training_scope,
-        payload_ref=envelope.payload_ref,
-        payload_format=envelope.payload_format,
-        example_count=envelope.example_count,
-        client_metrics=envelope.client_metrics,
-        created_at=envelope.created_at,
-        clipped=envelope.clipped,
-        dp_applied=envelope.dp_applied,
-        agent_id=envelope.agent_id,
-    )
+        raise ValueError(
+            "update_envelope이 없는 result를 payload로 변환할 수 없습니다."
+        )
+    return envelope
 
 
 def _task_from_payload(payload: TrainingTaskPayload) -> TrainingTask:
     """TrainingTaskPayload를 domain TrainingTask로 변환한다."""
-    return TrainingTask(
-        schema_version=payload.schema_version,
-        task_id=payload.task_id,
-        round_id=payload.round_id,
-        model_id=payload.model_id,
-        model_revision=payload.model_revision,
-        task_type=payload.task_type,
-        training_scope=payload.training_scope,
-        local_epochs=payload.local_epochs,
-        batch_size=payload.batch_size,
-        learning_rate=payload.learning_rate,
-        max_steps=payload.max_steps,
-        objective_config=TrainingObjectiveConfig(
-            loss=payload.objective_config.loss,
-            confidence_threshold=payload.objective_config.confidence_threshold,
-            margin_threshold=payload.objective_config.margin_threshold,
-            score_policy_name=payload.objective_config.score_policy_name,
-            score_top_k=payload.objective_config.score_top_k,
-            acceptance_policy_name=payload.objective_config.acceptance_policy_name,
-            privacy_guard_name=payload.objective_config.privacy_guard_name,
-            extras=dict(payload.objective_config.extras),
-        ),
-        selection_policy=TrainingSelectionPolicy(
-            max_examples=payload.selection_policy.max_examples,
-            require_feedback=payload.selection_policy.require_feedback,
-            extras=dict(payload.selection_policy.extras),
-        ),
-        deadline_at=payload.deadline_at,
-        gradient_clip_norm=payload.gradient_clip_norm,
-        min_required_examples=payload.min_required_examples,
-        secure_aggregation_required=payload.secure_aggregation_required,
-        notes=payload.notes,
-    )
+    return payload

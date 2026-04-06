@@ -23,12 +23,12 @@ from main_server.src.services.prototypes import (
     StoredReferencePrototypeRebuildService,
 )
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     load_prototype_pack_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 

@@ -16,10 +16,27 @@
 from __future__ import annotations
 
 import json
+import math
+from collections.abc import Sequence
 from datetime import datetime, timezone
+from enum import StrEnum
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field
+
+from .common_types import TrainingScope
+
+VECTOR_ADAPTER_STATE_V1 = "vector_adapter_state.v1"
+VECTOR_ADAPTER_DELTA_V1 = "vector_adapter_delta.v1"
+VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
+VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
+
+
+class AdapterKind(StrEnum):
+    """Shared adapter family discriminator."""
+
+    DIAGONAL_SCALE = "diagonal_scale"
 
 
 class SharedAdapterStatePayload(BaseModel):
@@ -37,14 +54,19 @@ class SharedAdapterStatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(description="Payload contract 버전.")
-    adapter_kind: str = Field(
-        default="diagonal_scale",
+    schema_version: VectorAdapterStateSchemaVersion = Field(
+        default=VECTOR_ADAPTER_STATE_V1,
+        description="Payload contract 버전.",
+    )
+    adapter_kind: AdapterKind = Field(
+        default=AdapterKind.DIAGONAL_SCALE,
         description="Adapter family discriminator. 현재는 diagonal_scale만 지원한다.",
     )
     model_id: str = Field(description="이 adapter가 결합되는 backbone/model 식별자.")
     model_revision: str = Field(description="서버가 발행한 shared adapter revision.")
-    training_scope: str = Field(description="이 상태가 적용되는 학습 범위 식별자.")
+    training_scope: TrainingScope = Field(
+        description="이 상태가 적용되는 학습 범위 식별자."
+    )
     updated_at: datetime = Field(description="서버가 이 상태를 기록한 UTC 시각.")
 
 
@@ -61,6 +83,48 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
             "늘이거나 줄일지 나타낸다."
         )
     )
+
+    @classmethod
+    def identity(
+        cls,
+        *,
+        model_id: str,
+        model_revision: str,
+        training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
+        embedding_dim: int,
+        updated_at: datetime,
+        schema_version: str = VECTOR_ADAPTER_STATE_V1,
+    ) -> "DiagonalScaleAdapterStatePayload":
+        """아무 보정도 하지 않는 초기 adapter 상태를 만든다."""
+        if embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive.")
+        return cls(
+            schema_version=schema_version,
+            adapter_kind=AdapterKind.DIAGONAL_SCALE,
+            model_id=model_id,
+            model_revision=model_revision,
+            training_scope=training_scope,
+            updated_at=updated_at,
+            dimension_scales=[1.0] * embedding_dim,
+        )
+
+    @property
+    def embedding_dim(self) -> int:
+        """현재 adapter가 기대하는 임베딩 차원을 반환한다."""
+        return len(self.dimension_scales)
+
+    def apply(self, embedding: Sequence[float]) -> list[float]:
+        """임베딩에 차원별 scale을 적용하고 다시 L2 정규화한다."""
+        if len(embedding) != self.embedding_dim:
+            raise ValueError("Embedding dimension does not match adapter state.")
+        scaled = [
+            float(value) * float(scale)
+            for value, scale in zip(embedding, self.dimension_scales, strict=True)
+        ]
+        norm = math.sqrt(sum(value * value for value in scaled))
+        if norm == 0.0:
+            raise ValueError("Adapter-transformed embedding norm must be non-zero.")
+        return [value / norm for value in scaled]
 
 
 class SharedAdapterUpdatePayload(BaseModel):
@@ -79,9 +143,12 @@ class SharedAdapterUpdatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str = Field(description="Payload contract 버전.")
-    adapter_kind: str = Field(
-        default="diagonal_scale",
+    schema_version: VectorAdapterDeltaSchemaVersion = Field(
+        default=VECTOR_ADAPTER_DELTA_V1,
+        description="Payload contract 버전.",
+    )
+    adapter_kind: AdapterKind = Field(
+        default=AdapterKind.DIAGONAL_SCALE,
         description="Adapter family discriminator. 현재는 diagonal_scale만 지원한다.",
     )
     model_id: str = Field(
@@ -90,7 +157,9 @@ class SharedAdapterUpdatePayload(BaseModel):
     base_model_revision: str = Field(
         description="로컬 update가 계산된 기준 shared adapter revision."
     )
-    training_scope: str = Field(description="이 update가 속한 학습 범위 식별자.")
+    training_scope: TrainingScope = Field(
+        description="이 update가 속한 학습 범위 식별자."
+    )
     example_count: int = Field(
         ge=0,
         description="실제 update 계산에 반영된 로컬 예시 수.",
@@ -126,15 +195,26 @@ class DiagonalScaleAdapterUpdatePayload(SharedAdapterUpdatePayload):
         description="Accepted example의 pseudo-label 분포. drift 관찰용 메타데이터다.",
     )
 
+    @property
+    def embedding_dim(self) -> int:
+        """delta가 적용되는 임베딩 차원을 반환한다."""
+        return len(self.dimension_deltas)
+
+    def l2_norm(self) -> float:
+        """delta 벡터의 L2 norm을 반환한다."""
+        return math.sqrt(sum(value * value for value in self.dimension_deltas))
+
 
 VectorAdapterStatePayload = DiagonalScaleAdapterStatePayload
 VectorAdapterDeltaPayload = DiagonalScaleAdapterUpdatePayload
+VectorAdapterState = VectorAdapterStatePayload
+VectorAdapterDelta = VectorAdapterDeltaPayload
 
 _STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {
-    "diagonal_scale": DiagonalScaleAdapterStatePayload,
+    AdapterKind.DIAGONAL_SCALE: DiagonalScaleAdapterStatePayload,
 }
 _UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {
-    "diagonal_scale": DiagonalScaleAdapterUpdatePayload,
+    AdapterKind.DIAGONAL_SCALE: DiagonalScaleAdapterUpdatePayload,
 }
 
 
@@ -153,7 +233,7 @@ def _load_payload_data(path: Path) -> dict[str, object]:
 def load_shared_adapter_state_payload(path: Path) -> SharedAdapterStatePayload:
     """JSON 파일에서 shared adapter state payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(data.get("adapter_kind", "diagonal_scale"))
+    adapter_kind = str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE))
     payload_type = _STATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter state kind: {adapter_kind}")
@@ -171,7 +251,7 @@ def dump_shared_adapter_state_payload(
 def load_shared_adapter_update_payload(path: Path) -> SharedAdapterUpdatePayload:
     """JSON 파일에서 shared adapter update payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(data.get("adapter_kind", "diagonal_scale"))
+    adapter_kind = str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE))
     payload_type = _UPDATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter update kind: {adapter_kind}")
@@ -234,7 +314,7 @@ def make_identity_state_payload(
     model_id: str,
     model_revision: str,
     embedding_dim: int,
-    training_scope: str = "adapter_only",
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
     updated_at: datetime | None = None,
 ) -> DiagonalScaleAdapterStatePayload:
     """모든 차원 scale=1.0 인 identity(단위) adapter state payload를 만든다.
@@ -245,14 +325,12 @@ def make_identity_state_payload(
     ...     model_id="bg-m3", model_revision="rev_001", embedding_dim=768
     ... )
     """
-    return DiagonalScaleAdapterStatePayload(
-        schema_version="shared_adapter_state.v1",
-        adapter_kind="diagonal_scale",
+    return DiagonalScaleAdapterStatePayload.identity(
         model_id=model_id,
         model_revision=model_revision,
-        training_scope=training_scope,
+        training_scope=TrainingScope(training_scope),
+        embedding_dim=embedding_dim,
         updated_at=updated_at or datetime.now(tz=timezone.utc),
-        dimension_scales=[1.0] * embedding_dim,
     )
 
 
@@ -263,7 +341,7 @@ def make_diagonal_delta_payload(
     dimension_deltas: list[float],
     example_count: int,
     mean_confidence: float,
-    training_scope: str = "adapter_only",
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
     mean_margin: float | None = None,
     label_counts: dict[str, int] | None = None,
     created_at: datetime | None = None,
@@ -279,8 +357,8 @@ def make_diagonal_delta_payload(
     ... )
     """
     return DiagonalScaleAdapterUpdatePayload(
-        schema_version="vector_adapter_delta.v1",
-        adapter_kind="diagonal_scale",
+        schema_version=VECTOR_ADAPTER_DELTA_V1,
+        adapter_kind=AdapterKind.DIAGONAL_SCALE,
         model_id=model_id,
         base_model_revision=base_model_revision,
         training_scope=training_scope,
@@ -291,3 +369,30 @@ def make_diagonal_delta_payload(
         mean_margin=mean_margin,
         label_counts=label_counts or {},
     )
+
+
+__all__ = [
+    "AdapterKind",
+    "DiagonalScaleAdapterStatePayload",
+    "DiagonalScaleAdapterUpdatePayload",
+    "SharedAdapterStatePayload",
+    "SharedAdapterUpdatePayload",
+    "VECTOR_ADAPTER_DELTA_V1",
+    "VECTOR_ADAPTER_STATE_V1",
+    "VectorAdapterDelta",
+    "VectorAdapterDeltaPayload",
+    "VectorAdapterDeltaSchemaVersion",
+    "VectorAdapterState",
+    "VectorAdapterStatePayload",
+    "VectorAdapterStateSchemaVersion",
+    "dump_shared_adapter_state_payload",
+    "dump_shared_adapter_update_payload",
+    "dump_vector_adapter_delta_payload",
+    "dump_vector_adapter_state_payload",
+    "load_shared_adapter_state_payload",
+    "load_shared_adapter_update_payload",
+    "load_vector_adapter_delta_payload",
+    "load_vector_adapter_state_payload",
+    "make_diagonal_delta_payload",
+    "make_identity_state_payload",
+]

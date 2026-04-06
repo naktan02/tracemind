@@ -5,6 +5,12 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from shared.src.contracts.personalization_contracts import (
+    PersonalizationState as _PersonalizationState,
+)
+
+PersonalizationState = _PersonalizationState
+
 
 @dataclass(slots=True)
 class BaselineProfile:
@@ -23,21 +29,6 @@ class BaselineProfile:
 
 
 @dataclass(slots=True)
-class PersonalizationState:
-    """개인 baseline, threshold, prototype 참조를 담는 로컬 상태."""
-
-    schema_version: str
-    state_version: str
-    baseline_by_category: dict[str, float] = field(default_factory=dict)
-    threshold_by_category: dict[str, float] = field(default_factory=dict)
-    warmup_status: str = "cold_start"
-    updated_at: datetime | None = None
-    personal_prototype_refs: dict[str, str] = field(default_factory=dict)
-    persistence_features: dict[str, float] = field(default_factory=dict)
-    calibration_notes: str | None = None
-
-
-@dataclass(slots=True)
 class TimeSeriesState:
     """이벤트 점수 흐름을 누적해 persistence를 계산하는 로컬 상태."""
 
@@ -49,3 +40,6 @@ class TimeSeriesState:
     ewma_deltas: dict[str, float] = field(default_factory=dict)
     elevated_streaks: dict[str, int] = field(default_factory=dict)
     event_counts: dict[str, int] = field(default_factory=dict)
+
+
+__all__ = ["BaselineProfile", "PersonalizationState", "TimeSeriesState"]

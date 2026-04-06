@@ -5,9 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any
 
-from shared.src.domain.entities.training.training_task_config import (
-    TrainingConfigScalar,
-)
+from shared.src.contracts.training_contracts import TrainingConfigScalar
 
 
 @dataclass(slots=True)

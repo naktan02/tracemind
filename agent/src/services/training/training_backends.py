@@ -9,15 +9,12 @@ from typing import TYPE_CHECKING, Protocol
 
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
-    VectorAdapterDeltaPayload,
+    VectorAdapterDelta,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
-)
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.vector_adapter_delta import (
-    VectorAdapterDelta,
 )
 
 if TYPE_CHECKING:
@@ -143,19 +140,7 @@ class DiagonalScaleHeuristicTrainingBackend:
                 "DiagonalScaleHeuristicTrainingBackend expects VectorAdapterDelta "
                 f"for payload conversion, got {type(update)!r}."
             )
-        return VectorAdapterDeltaPayload(
-            schema_version=update.schema_version,
-            adapter_kind=update.adapter_kind,
-            model_id=update.model_id,
-            base_model_revision=update.base_model_revision,
-            training_scope=update.training_scope,
-            dimension_deltas=update.dimension_deltas,
-            example_count=update.example_count,
-            mean_confidence=update.mean_confidence,
-            created_at=update.created_at,
-            mean_margin=update.mean_margin,
-            label_counts=update.label_counts,
-        )
+        return update
 
 
 SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend

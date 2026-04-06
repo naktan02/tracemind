@@ -1,18 +1,21 @@
 """Training domain entities."""
 
-from .decision_feedback_signal import DecisionFeedbackSignal
-from .pseudo_label_candidate import PseudoLabelCandidate
-from .shared_adapter_state import SharedAdapterState
-from .shared_adapter_update import SharedAdapterUpdate
-from .training_task import TrainingTask
-from .training_task_config import (
+from shared.src.contracts.adapter_contracts import (
+    VectorAdapterDelta,
+    VectorAdapterState,
+)
+from shared.src.contracts.training_contracts import (
+    DecisionFeedbackSignal,
     TrainingConfigScalar,
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
+    TrainingTask,
+    TrainingUpdateEnvelope,
 )
-from .training_update import TrainingUpdateEnvelope
-from .vector_adapter_delta import VectorAdapterDelta
-from .vector_adapter_state import VectorAdapterState
+
+from .pseudo_label_candidate import PseudoLabelCandidate
+from .shared_adapter_state import SharedAdapterState
+from .shared_adapter_update import SharedAdapterUpdate
 
 __all__ = [
     "DecisionFeedbackSignal",

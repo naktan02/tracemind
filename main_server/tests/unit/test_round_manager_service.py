@@ -18,10 +18,10 @@ from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterUpdatePayload,
     dump_shared_adapter_update_payload,
 )
-from shared.src.domain.entities.artifacts.model_manifest import (  # noqa: E402
+from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifest,
 )
-from shared.src.domain.entities.training.training_update import (  # noqa: E402
+from shared.src.contracts.training_contracts import (  # noqa: E402
     TrainingUpdateEnvelope,
 )
 from shared.src.domain.services.clock import FixedClock

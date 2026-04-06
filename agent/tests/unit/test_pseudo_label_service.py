@@ -9,12 +9,12 @@ import pytest
 from agent.src.services.training.pseudo_label_service import (
     PseudoLabelSelectionService,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.training_task_config import (
+from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
+    TrainingTask,
 )
+from shared.src.domain.entities.inference.events import ScoredEvent
 
 
 def _build_task(

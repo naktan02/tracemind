@@ -6,8 +6,12 @@ import json
 from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
+from typing import Literal, TypeAlias
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+PROTOTYPE_PACK_V1 = "prototype_pack.v1"
+PrototypePackSchemaVersion: TypeAlias = Literal["prototype_pack.v1"]
 
 
 class CategoryPrototypePayload(BaseModel):
@@ -29,7 +33,7 @@ class PrototypePackPayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: str
+    schema_version: PrototypePackSchemaVersion = PROTOTYPE_PACK_V1
     prototype_version: str
     embedding_model_id: str
     embedding_model_revision: str

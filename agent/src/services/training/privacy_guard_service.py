@@ -2,15 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from typing import Protocol
 
+from shared.src.contracts.adapter_contracts import VectorAdapterDelta
+from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
-)
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.vector_adapter_delta import (
-    VectorAdapterDelta,
 )
 
 
@@ -80,9 +78,10 @@ class DiagonalScaleClipOnlyPrivacyGuard:
             return PrivacyProtectedUpdate(update=update)
 
         scale = clip_norm / current_norm
-        clipped = replace(
-            update,
-            dimension_deltas=[value * scale for value in update.dimension_deltas],
+        clipped = update.model_copy(
+            update={
+                "dimension_deltas": [value * scale for value in update.dimension_deltas]
+            }
         )
         return PrivacyProtectedUpdate(update=clipped, clipped=True)
 

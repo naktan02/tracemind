@@ -2,30 +2,28 @@
 
 from __future__ import annotations
 
+import json
 from datetime import datetime, timezone
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
+import httpx
 
-from agent.src.services.federation.round_client import RoundClient, _is_http_not_found
+from agent.src.services.federation.round_client import RoundClient
 from agent.src.services.federation.runtime_service import (
     FederationRunStatus,
     FederationRuntimeService,
 )
 from agent.src.services.training.local_training_service import (
-    EmbeddedTrainingExample,
     LocalTrainingResult,
 )
 from agent.src.services.training.pseudo_label_service import PseudoLabelSelectionResult
-from shared.src.contracts.fl_round_contracts import ActiveRoundPayload
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
+    TrainingUpdateEnvelope,
 )
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.inference.events import ScoredEvent
-
 
 # ─── 공통 fixture ────────────────────────────────────────────────────────────
 
@@ -80,54 +78,39 @@ def _empty_selection_result() -> PseudoLabelSelectionResult:
     )
 
 
+def _transport_with_json(
+    payload: dict[str, object] | None,
+    *,
+    status_code: int = 200,
+) -> httpx.MockTransport:
+    def handler(request: httpx.Request) -> httpx.Response:
+        if payload is None:
+            return httpx.Response(status_code=status_code, request=request)
+        return httpx.Response(
+            status_code=status_code,
+            request=request,
+            content=json.dumps(payload).encode("utf-8"),
+            headers={"content-type": "application/json"},
+        )
+
+    return httpx.MockTransport(handler)
+
+
 # ─── RoundClient 테스트 ───────────────────────────────────────────────────────
 
 
-def test_is_http_not_found_returns_true_for_404() -> None:
-    from urllib.error import HTTPError
-
-    error = HTTPError(url="http://test", code=404, msg="Not Found", hdrs=None, fp=None)
-    assert _is_http_not_found(error) is True
-
-
-def test_is_http_not_found_returns_false_for_500() -> None:
-    from urllib.error import HTTPError
-
-    error = HTTPError(url="http://test", code=500, msg="Error", hdrs=None, fp=None)
-    assert _is_http_not_found(error) is False
-
-
-def test_is_http_not_found_returns_false_for_non_http_error() -> None:
-    assert _is_http_not_found(ValueError("not an http error")) is False
-
-
 def test_round_client_fetch_current_task_returns_none_on_404() -> None:
-    from urllib.error import HTTPError
-
-    client = RoundClient(server_base_url="http://localhost:8000")
-    with patch(
-        "agent.src.services.federation.round_client.urlopen",
-        side_effect=HTTPError(
-            url="http://localhost:8000/api/v1/fl/rounds/current",
-            code=404,
-            msg="Not Found",
-            hdrs=None,
-            fp=None,
-        ),
-    ):
-        result = client.fetch_current_task()
+    client = RoundClient(
+        server_base_url="http://localhost:8000",
+        _transport=_transport_with_json(None, status_code=404),
+    )
+    result = client.fetch_current_task()
 
     assert result is None
 
 
 def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> None:
     """active round 상태가 open이 아니면 task를 None으로 반환한다."""
-    import json
-    from unittest.mock import MagicMock
-
-    client = RoundClient(server_base_url="http://localhost:8000")
-    # ActiveRoundPayload는 extra="ignore"이므로 서버 응답의 추가 필드는 무시된다.
-    # 필수 필드만 포함한 최소 fixture.
     finalized_record = {
         "round_id": "round_0001",
         "status": "finalized",
@@ -149,15 +132,11 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
         "created_at": "2026-03-29T00:00:00Z",
         "updated_at": "2026-03-29T00:00:00Z",
     }
-    mock_response = MagicMock()
-    mock_response.read.return_value = json.dumps(finalized_record).encode("utf-8")
-    mock_response.__enter__ = MagicMock(return_value=mock_response)
-    mock_response.__exit__ = MagicMock(return_value=False)
-    with patch(
-        "agent.src.services.federation.round_client.urlopen",
-        return_value=mock_response,
-    ):
-        result = client.fetch_current_task()
+    client = RoundClient(
+        server_base_url="http://localhost:8000",
+        _transport=_transport_with_json(finalized_record),
+    )
+    result = client.fetch_current_task()
 
     assert result is None
 
@@ -239,11 +218,6 @@ def test_federation_runtime_returns_insufficient_examples_when_no_accepted() -> 
 def test_federation_runtime_uploads_update_and_marks_completed(
     tmp_path,
 ) -> None:
-    from pathlib import Path
-
-    from agent.src.services.training.local_training_service import LocalTrainingResult
-    from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
-
     task_payload = _build_task_payload()
     client = MagicMock(spec=RoundClient)
     client.fetch_current_task.return_value = task_payload
@@ -274,8 +248,6 @@ def test_federation_runtime_uploads_update_and_marks_completed(
         clipped=False,
         dp_applied=False,
     )
-    from agent.src.services.training.pseudo_label_service import PseudoLabelSelectionResult
-
     selection = PseudoLabelSelectionResult(
         candidates=(),
         accepted_candidates=(),

@@ -13,10 +13,18 @@ agent가 round API에서 읽는 것:
 from __future__ import annotations
 
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import BaseModel, ConfigDict, Field
 
 from shared.src.contracts.training_contracts import TrainingTaskPayload
+
+
+class RoundStatusValue(StrEnum):
+    """공유 payload에서 쓰는 round 상태 값."""
+
+    OPEN = "open"
+    FINALIZED = "finalized"
 
 
 class ActiveRoundPayload(BaseModel):
@@ -29,7 +37,7 @@ class ActiveRoundPayload(BaseModel):
     model_config = ConfigDict(extra="ignore")
 
     round_id: str = Field(description="FL round 고유 식별자.")
-    status: str = Field(description="round 상태. 'open' 또는 'finalized'.")
+    status: RoundStatusValue = Field(description="round 상태. 'open' 또는 'finalized'.")
     training_task: TrainingTaskPayload = Field(
         description="이번 라운드에서 agent가 수행할 학습 지시문."
     )
@@ -39,4 +47,4 @@ class ActiveRoundPayload(BaseModel):
     @property
     def is_open(self) -> bool:
         """round가 현재 참여 가능한 상태인지 확인한다."""
-        return self.status == "open"
+        return self.status == RoundStatusValue.OPEN

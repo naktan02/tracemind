@@ -7,14 +7,14 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.training_task import TrainingTask
-from shared.src.domain.entities.training.training_task_config import (
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import (
     TrainingConfigScalar,
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
+    TrainingTask,
+    TrainingUpdateEnvelope,
 )
-from shared.src.domain.entities.training.training_update import TrainingUpdateEnvelope
 
 
 class RoundStatus(StrEnum):

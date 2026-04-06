@@ -10,9 +10,7 @@ from agent.src.services.inference.scoring_policies import (
     PrototypeScorePolicy,
     build_prototype_score_policy,
 )
-from shared.src.domain.entities.training.training_task_config import (
-    TrainingObjectiveConfig,
-)
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
 @dataclass(slots=True)

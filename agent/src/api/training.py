@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from datetime import datetime, timezone
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from agent.src.infrastructure.repositories.scored_event_repository import (
@@ -20,11 +21,11 @@ from agent.src.services.federation.runtime_service import (
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import extract_category_prototypes
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 
 
 class RunCurrentTaskRequest(BaseModel):
@@ -71,30 +72,86 @@ class TrainingStatusResponse(BaseModel):
 
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
+RoundClientFactory = Callable[[str], RoundClient]
+FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
+
 
 # ------------------------------------------------------------------ #
 # 의존성 providers                                                      #
 # ------------------------------------------------------------------ #
 
 
-def get_scored_event_repository() -> ScoredEventRepository:
-    """ScoredEventRepository 의존성 provider."""
-    return ScoredEventRepository()
+def get_scored_event_repository(request: Request) -> ScoredEventRepository:
+    """app.state에서 ScoredEventRepository를 읽는다."""
+    repo = getattr(request.app.state, "scored_event_repository", None)
+    if repo is None:
+        raise RuntimeError(
+            "ScoredEventRepository가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.scored_event_repository를 설정하세요."
+        )
+    return repo
 
 
-def get_prototype_runtime_service() -> PrototypeRuntimeService:
-    """PrototypeRuntimeService 의존성 provider."""
-    return PrototypeRuntimeService()
+def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
+    """app.state에서 PrototypeRuntimeService를 읽는다."""
+    service = getattr(request.app.state, "prototype_runtime_service", None)
+    if service is None:
+        raise RuntimeError(
+            "PrototypeRuntimeService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.prototype_runtime_service를 설정하세요."
+        )
+    return service
 
 
-def get_scoring_service() -> ScoringService:
-    """ScoringService 의존성 provider."""
-    return ScoringService()
+def get_scoring_service(request: Request) -> ScoringService:
+    """app.state에서 ScoringService를 읽는다."""
+    service = getattr(request.app.state, "scoring_service", None)
+    if service is None:
+        raise RuntimeError(
+            "ScoringService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.scoring_service를 설정하세요."
+        )
+    return service
 
 
-ScoredEventRepoDep = Annotated[ScoredEventRepository, Depends(get_scored_event_repository)]
-ProtoServiceDep = Annotated[PrototypeRuntimeService, Depends(get_prototype_runtime_service)]
+def get_round_client_factory(request: Request) -> RoundClientFactory:
+    """app.state에서 RoundClient factory를 읽는다."""
+    factory = getattr(request.app.state, "round_client_factory", None)
+    if factory is None:
+        raise RuntimeError(
+            "RoundClient factory가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.round_client_factory를 설정하세요."
+        )
+    return factory
+
+
+def get_federation_runtime_service_factory(
+    request: Request,
+) -> FederationRuntimeServiceFactory:
+    """app.state에서 FederationRuntimeService factory를 읽는다."""
+    factory = getattr(request.app.state, "federation_runtime_service_factory", None)
+    if factory is None:
+        raise RuntimeError(
+            "FederationRuntimeService factory가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.federation_runtime_service_factory를 설정하세요."
+        )
+    return factory
+
+
+ScoredEventRepoDep = Annotated[
+    ScoredEventRepository,
+    Depends(get_scored_event_repository),
+]
+ProtoServiceDep = Annotated[
+    PrototypeRuntimeService,
+    Depends(get_prototype_runtime_service),
+]
 ScoringServiceDep = Annotated[ScoringService, Depends(get_scoring_service)]
+RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
+FederationRuntimeFactoryDep = Annotated[
+    FederationRuntimeServiceFactory,
+    Depends(get_federation_runtime_service_factory),
+]
 
 
 # ------------------------------------------------------------------ #
@@ -112,6 +169,7 @@ def run_current_task(
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
     scoring_service: ScoringServiceDep,
+    runtime_factory: FederationRuntimeFactoryDep,
 ) -> RunCurrentTaskResponse:
     """현재 active task를 읽어 로컬 학습을 실행하고 update를 업로드한다.
 
@@ -121,10 +179,13 @@ def run_current_task(
     """
     try:
         stored_events = repo.get_recent_stored(days=request.scored_event_days)
-        training_examples = _build_training_examples(stored_events, proto_service, scoring_service)
+        training_examples = _build_training_examples(
+            stored_events,
+            proto_service,
+            scoring_service,
+        )
 
-        client = RoundClient(server_base_url=request.server_base_url)
-        service = FederationRuntimeService(round_client=client)
+        service = runtime_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(
             training_examples=training_examples,
             model_manifest=_get_placeholder_manifest(),
@@ -151,10 +212,13 @@ def run_current_task(
     response_model=TrainingStatusResponse,
     status_code=status.HTTP_200_OK,
 )
-def get_training_status(server_base_url: str) -> TrainingStatusResponse:
+def get_training_status(
+    server_base_url: str,
+    round_client_factory: RoundClientFactoryDep,
+) -> TrainingStatusResponse:
     """현재 active round/task 조회."""
     try:
-        client = RoundClient(server_base_url=server_base_url)
+        client = round_client_factory(server_base_url)
         task_payload = client.fetch_current_task()
         return TrainingStatusResponse(
             has_active_task=task_payload is not None,

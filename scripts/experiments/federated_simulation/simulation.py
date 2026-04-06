@@ -67,10 +67,9 @@ from scripts.experiments.federated_simulation.task_config import (
     resolve_optional_positive_int,
     resolve_threshold,
 )
-from shared.src.contracts.adapter_contracts import DiagonalScaleAdapterStatePayload
+from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
-from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
@@ -174,17 +173,7 @@ def run_simulation(
         embedding_dim=embedding_dim,
         updated_at=now,
     )
-    initial_state_path = state_repository.save_shared_adapter_state(
-        DiagonalScaleAdapterStatePayload(
-            schema_version=initial_state.schema_version,
-            adapter_kind=initial_state.adapter_kind,
-            model_id=initial_state.model_id,
-            model_revision=initial_state.model_revision,
-            training_scope=initial_state.training_scope,
-            dimension_scales=initial_state.dimension_scales,
-            updated_at=initial_state.updated_at,
-        )
-    )
+    initial_state_path = state_repository.save_shared_adapter_state(initial_state)
     SimulationEmbeddingAdapterFactory.adapter = adapter
     input_repository = (
         prototype_rebuild_input_repository.PrototypeRebuildInputRepository(

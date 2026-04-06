@@ -7,11 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildRequest
 
