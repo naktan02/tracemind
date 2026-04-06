@@ -291,7 +291,16 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 
 ## 5. Prototype threshold sweep
 
-선택한 전략 위에서 pseudo-label 채택 threshold를 grid search한다.
+선택한 전략 위에서 static pseudo-label threshold policy를 비교한다.
+
+기본 포함 policy:
+
+- `fixmatch_fixed_confidence`
+  - FixMatch 논문식 전역 confidence cutoff 후보 비교
+- `validation_target_error_confidence`
+  - validation target error를 만족하는 최대 coverage cutoff 탐색
+- `classwise_static_confidence`
+  - predicted label별 정적 confidence cutoff를 validation에서 따로 fit
 
 기본 실행:
 
@@ -313,8 +322,9 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
   embedding=hash_debug \
   runtime=cpu_local \
   strategy.name=single \
-  threshold_grid.confidence_thresholds=[0.6,0.7] \
-  threshold_grid.margin_thresholds=[0.0,0.02]
+  threshold_policies[0].thresholds=[0.8,0.95] \
+  threshold_policies[1].target_errors=[0.05,0.1] \
+  threshold_policies[2].target_errors=[0.1]
 ```
 
 출력 기본 경로:

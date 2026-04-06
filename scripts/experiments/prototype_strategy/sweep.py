@@ -1,22 +1,22 @@
-"""Threshold sweep 실행 로직."""
+"""Static threshold policy 비교 실행 로직."""
 
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import asdict, dataclass, field
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any
 
 from scripts.experiments.prototype_strategy.evaluation import (
     embed_rows,
-    evaluate_scored_predictions,
     group_embeddings_by_label,
     score_embeddings,
 )
 from scripts.experiments.prototype_strategy.io_utils import dump_json
 from scripts.experiments.prototype_strategy.models import (
-    EvaluationMetrics,
-    PrototypeIndex,
+    ThresholdArtifact,
+    ThresholdPolicyEvaluation,
+    ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_strategy.scoring import (
     MaxCosinePrototypeIndexScorer,
@@ -24,81 +24,71 @@ from scripts.experiments.prototype_strategy.scoring import (
 from scripts.experiments.prototype_strategy.strategies import (
     build_requested_strategy,
 )
+from scripts.experiments.prototype_strategy.threshold_policies import (
+    StaticThresholdPolicy,
+)
 
 
 @dataclass(slots=True)
-class ThresholdSweepPoint:
-    confidence_threshold: float
-    margin_threshold: float
-    validation_metrics: EvaluationMetrics
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "confidence_threshold": self.confidence_threshold,
-            "margin_threshold": self.margin_threshold,
-            "validation_metrics": asdict(self.validation_metrics),
-        }
-
-
-@dataclass(slots=True)
-class ThresholdSweepSummary:
-    run_id: str
-    strategy_name: str
-    prototype_index: PrototypeIndex
-    selected_point: ThresholdSweepPoint
-    validation_grid: tuple[ThresholdSweepPoint, ...]
-    test_metrics: EvaluationMetrics
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "run_id": self.run_id,
-            "strategy_name": self.strategy_name,
-            "prototype_index": self.prototype_index.to_dict(),
-            "selected_point": self.selected_point.to_dict(),
-            "validation_grid": [point.to_dict() for point in self.validation_grid],
-            "test_metrics": asdict(self.test_metrics),
-        }
-
-
-@dataclass(slots=True)
-class ThresholdSweepSelectionPolicy:
-    """validation에서 가장 유용한 pseudo-label threshold를 선택한다."""
+class ThresholdPolicySelectionPolicy:
+    """Validation 결과로 가장 적합한 threshold policy 후보를 고른다."""
 
     minimum_accepted_ratio: float = 0.5
 
     def select(
         self,
-        points: Sequence[ThresholdSweepPoint],
-    ) -> ThresholdSweepPoint:
-        if not points:
-            raise ValueError("At least one threshold point is required.")
-        eligible_points = tuple(
-            point
-            for point in points
-            if point.validation_metrics.accepted_ratio >= self.minimum_accepted_ratio
+        evaluations: Sequence[ThresholdPolicyEvaluation],
+    ) -> ThresholdPolicyEvaluation:
+        if not evaluations:
+            raise ValueError("At least one threshold policy evaluation is required.")
+        eligible = tuple(
+            evaluation
+            for evaluation in evaluations
+            if (
+                evaluation.validation_metrics.accepted_ratio
+                >= self.minimum_accepted_ratio
+            )
         )
-        candidate_points = eligible_points or tuple(points)
-        return max(
-            candidate_points,
-            key=lambda point: (
-                point.validation_metrics.accepted_accuracy,
-                point.validation_metrics.accepted_correct_ratio,
-                point.validation_metrics.accepted_ratio,
-                point.confidence_threshold,
-                point.margin_threshold,
-            ),
+        candidates = eligible or tuple(evaluations)
+        return max(candidates, key=self._selection_key)
+
+    def sort(
+        self,
+        evaluations: Sequence[ThresholdPolicyEvaluation],
+    ) -> tuple[ThresholdPolicyEvaluation, ...]:
+        return tuple(
+            sorted(
+                evaluations,
+                key=self._selection_key,
+                reverse=True,
+            )
+        )
+
+    @staticmethod
+    def _selection_key(evaluation: ThresholdPolicyEvaluation) -> tuple[Any, ...]:
+        metrics = evaluation.validation_metrics
+        return (
+            metrics.accepted_accuracy,
+            metrics.accepted_correct_ratio,
+            metrics.accepted_ratio,
+            _confidence_threshold_or_floor(evaluation.threshold_artifact),
+            evaluation.policy_name,
+            evaluation.candidate_name,
         )
 
 
 @dataclass(slots=True)
-class ThresholdSweepRunner:
-    """선택된 prototype 전략 위에서 threshold grid를 평가한다."""
+class ThresholdPolicyExperimentRunner:
+    """선택된 prototype 전략 위에서 static threshold policy를 비교한다."""
 
-    selection_policy: ThresholdSweepSelectionPolicy = field(
-        default_factory=ThresholdSweepSelectionPolicy
+    selection_policy: ThresholdPolicySelectionPolicy = field(
+        default_factory=ThresholdPolicySelectionPolicy
     )
 
-    def run(self, request: "ThresholdSweepRequest") -> ThresholdSweepSummary:
+    def run(
+        self,
+        request: "ThresholdPolicyExperimentRequest",
+    ) -> ThresholdPolicyExperimentSummary:
         request.output_dir.mkdir(parents=True, exist_ok=True)
 
         train_embeddings = embed_rows(request.train_rows, request.adapter)
@@ -140,63 +130,41 @@ class ThresholdSweepRunner:
         )
         categories = sorted(prototype_index.categories.keys())
 
-        points: list[ThresholdSweepPoint] = []
-        for confidence_threshold in request.confidence_thresholds:
-            for margin_threshold in request.margin_thresholds:
-                metrics = evaluate_scored_predictions(
-                    scored_predictions=validation_predictions,
+        evaluations: list[ThresholdPolicyEvaluation] = []
+        for policy in request.threshold_policies:
+            evaluations.extend(
+                policy.build_evaluations(
+                    validation_predictions=validation_predictions,
+                    test_predictions=test_predictions,
                     categories=categories,
-                    confidence_threshold=confidence_threshold,
-                    margin_threshold=margin_threshold,
                 )
-                points.append(
-                    ThresholdSweepPoint(
-                        confidence_threshold=confidence_threshold,
-                        margin_threshold=margin_threshold,
-                        validation_metrics=metrics,
-                    )
-                )
-
-        selected_point = self.selection_policy.select(points)
-        test_metrics = evaluate_scored_predictions(
-            scored_predictions=test_predictions,
-            categories=categories,
-            confidence_threshold=selected_point.confidence_threshold,
-            margin_threshold=selected_point.margin_threshold,
-        )
-
-        sorted_points = tuple(
-            sorted(
-                points,
-                key=lambda point: (
-                    point.validation_metrics.accepted_correct_ratio,
-                    point.validation_metrics.accepted_accuracy,
-                    point.validation_metrics.accepted_ratio,
-                    point.confidence_threshold,
-                    point.margin_threshold,
-                ),
-                reverse=True,
             )
-        )
-        summary = ThresholdSweepSummary(
+
+        selected_evaluation = self.selection_policy.select(evaluations)
+        sorted_evaluations = self.selection_policy.sort(evaluations)
+        summary = ThresholdPolicyExperimentSummary(
             run_id=request.run_id,
             strategy_name=strategy.name,
             prototype_index=prototype_index,
-            selected_point=selected_point,
-            validation_grid=sorted_points,
-            test_metrics=test_metrics,
+            selected_evaluation=selected_evaluation,
+            policy_evaluations=sorted_evaluations,
         )
+        evaluation_payload = {
+            "evaluations": [
+                evaluation.to_dict() for evaluation in sorted_evaluations
+            ]
+        }
         dump_json(
-            request.output_dir / "validation" / "grid.json",
-            {"points": [p.to_dict() for p in sorted_points]},
+            request.output_dir / "validation" / "policy_evaluations.json",
+            evaluation_payload,
         )
         dump_json(request.output_dir / "summary.json", summary.to_dict())
         return summary
 
 
 @dataclass(slots=True, frozen=True)
-class ThresholdSweepRequest:
-    """Threshold grid 평가 입력 묶음."""
+class ThresholdPolicyExperimentRequest:
+    """Threshold policy 비교 실험 입력 묶음."""
 
     train_rows: Sequence[dict[str, Any]]
     validation_rows: Sequence[dict[str, Any]]
@@ -210,37 +178,65 @@ class ThresholdSweepRequest:
     dbscan_min_samples_values: tuple[int, ...]
     dbscan_search_sample_size: int
     dbscan_min_cluster_coverage: float
-    confidence_thresholds: tuple[float, ...]
-    margin_thresholds: tuple[float, ...]
+    threshold_policies: tuple[StaticThresholdPolicy, ...]
     output_dir: Path
     run_id: str
 
 
-def render_sweep_summary(summary: ThresholdSweepSummary) -> str:
+def render_sweep_summary(summary: ThresholdPolicyExperimentSummary) -> str:
+    selected = summary.selected_evaluation
+    validation = selected.validation_metrics
+    test = selected.test_metrics
     lines = [
         f"strategy={summary.strategy_name}",
-        (
-            "selected_thresholds="
-            f"confidence>={summary.selected_point.confidence_threshold:.3f}, "
-            f"margin>={summary.selected_point.margin_threshold:.3f}"
-        ),
+        f"selected_policy={selected.policy_name}",
+        f"selected_candidate={selected.candidate_name}",
+        _render_selected_threshold(selected.threshold_artifact),
         (
             "validation_selected: "
-            "accepted_count="
-            f"{summary.selected_point.validation_metrics.accepted_count}, "
-            "accepted_ratio="
-            f"{summary.selected_point.validation_metrics.accepted_ratio:.4f}, "
-            "accepted_accuracy="
-            f"{summary.selected_point.validation_metrics.accepted_accuracy:.4f}, "
-            f"accepted_correct_ratio="
-            f"{summary.selected_point.validation_metrics.accepted_correct_ratio:.4f}"
+            f"accepted_count={validation.accepted_count}, "
+            f"accepted_ratio={validation.accepted_ratio:.4f}, "
+            f"accepted_accuracy={validation.accepted_accuracy:.4f}, "
+            f"accepted_correct_ratio={validation.accepted_correct_ratio:.4f}"
         ),
         (
             "test_selected: "
-            f"accepted_count={summary.test_metrics.accepted_count}, "
-            f"accepted_ratio={summary.test_metrics.accepted_ratio:.4f}, "
-            f"accepted_accuracy={summary.test_metrics.accepted_accuracy:.4f}, "
-            f"accepted_correct_ratio={summary.test_metrics.accepted_correct_ratio:.4f}"
+            f"accepted_count={test.accepted_count}, "
+            f"accepted_ratio={test.accepted_ratio:.4f}, "
+            f"accepted_accuracy={test.accepted_accuracy:.4f}, "
+            f"accepted_correct_ratio={test.accepted_correct_ratio:.4f}"
         ),
     ]
     return "\n".join(lines)
+
+
+def _confidence_threshold_or_floor(artifact: ThresholdArtifact) -> float:
+    value = artifact.parameters.get("confidence_threshold")
+    if isinstance(value, (int, float)):
+        return float(value)
+    classwise = artifact.parameters.get("confidence_threshold_by_label")
+    if isinstance(classwise, dict) and classwise:
+        numeric_values = [
+            float(item)
+            for item in classwise.values()
+            if isinstance(item, (int, float))
+        ]
+        if numeric_values:
+            return sum(numeric_values) / len(numeric_values)
+    return -1.0
+
+
+def _render_selected_threshold(artifact: ThresholdArtifact) -> str:
+    global_threshold = artifact.parameters.get("confidence_threshold")
+    if isinstance(global_threshold, (int, float)):
+        return f"selected_threshold={float(global_threshold):.3f}"
+
+    classwise = artifact.parameters.get("confidence_threshold_by_label")
+    if isinstance(classwise, dict) and classwise:
+        ordered = ", ".join(
+            f"{label}:{float(value):.3f}"
+            for label, value in sorted(classwise.items())
+            if isinstance(value, (int, float))
+        )
+        return f"selected_thresholds={ordered}"
+    return "selected_threshold=unknown"

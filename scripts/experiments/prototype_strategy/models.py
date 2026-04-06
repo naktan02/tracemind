@@ -70,6 +70,38 @@ class EvaluationMetrics:
 
 
 @dataclass(slots=True, frozen=True)
+class PaperReference:
+    """Threshold policy가 참고하는 논문 메타데이터."""
+
+    title: str
+    url: str
+    venue: str | None = None
+    year: int | None = None
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "title": self.title,
+            "url": self.url,
+            "venue": self.venue,
+            "year": self.year,
+        }
+
+
+@dataclass(slots=True, frozen=True)
+class ThresholdArtifact:
+    """Runtime에 전달 가능한 정적 threshold 결과물."""
+
+    threshold_kind: str
+    parameters: dict[str, Any]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "threshold_kind": self.threshold_kind,
+            "parameters": dict(self.parameters),
+        }
+
+
+@dataclass(slots=True, frozen=True)
 class ScoredPrediction:
     """threshold 실험을 위해 row별 score를 보존한 값 객체."""
 
@@ -80,6 +112,30 @@ class ScoredPrediction:
     top2_score: float
     margin_top1_top2: float
     is_correct: bool
+
+
+@dataclass(slots=True)
+class ThresholdPolicyEvaluation:
+    """하나의 threshold policy 후보 평가 결과."""
+
+    policy_name: str
+    candidate_name: str
+    source_paper: PaperReference
+    selection_params: dict[str, Any]
+    threshold_artifact: ThresholdArtifact
+    validation_metrics: EvaluationMetrics
+    test_metrics: EvaluationMetrics
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "policy_name": self.policy_name,
+            "candidate_name": self.candidate_name,
+            "source_paper": self.source_paper.to_dict(),
+            "selection_params": dict(self.selection_params),
+            "threshold_artifact": self.threshold_artifact.to_dict(),
+            "validation_metrics": asdict(self.validation_metrics),
+            "test_metrics": asdict(self.test_metrics),
+        }
 
 
 @dataclass(slots=True)
@@ -144,6 +200,28 @@ class ExperimentSummary:
                     ),
                 }
                 for artifact in self.projection_artifacts
+            ],
+        }
+
+
+@dataclass(slots=True)
+class ThresholdPolicyExperimentSummary:
+    """Threshold policy 비교 실험 요약."""
+
+    run_id: str
+    strategy_name: str
+    prototype_index: PrototypeIndex
+    selected_evaluation: ThresholdPolicyEvaluation
+    policy_evaluations: tuple[ThresholdPolicyEvaluation, ...]
+
+    def to_dict(self) -> dict[str, Any]:
+        return {
+            "run_id": self.run_id,
+            "strategy_name": self.strategy_name,
+            "prototype_index": self.prototype_index.to_dict(),
+            "selected_evaluation": self.selected_evaluation.to_dict(),
+            "policy_evaluations": [
+                evaluation.to_dict() for evaluation in self.policy_evaluations
             ],
         }
 

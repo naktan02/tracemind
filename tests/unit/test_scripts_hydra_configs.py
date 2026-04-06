@@ -86,6 +86,21 @@ def test_threshold_sweep_supports_short_leaf_override() -> None:
 
     assert cfg.strategy.name == "single"
     assert cfg.runtime.name == "gpu_online"
+    assert len(cfg.threshold_policies) == 3
+    assert (
+        cfg.threshold_policies[0]._target_
+        == (
+            "scripts.experiments.prototype_strategy.threshold_policies."
+            "FixMatchFixedConfidencePolicy"
+        )
+    )
+    assert (
+        cfg.threshold_policies[2]._target_
+        == (
+            "scripts.experiments.prototype_strategy.threshold_policies."
+            "ClasswiseStaticConfidencePolicy"
+        )
+    )
 
 
 def test_federated_simulation_uses_smoke_preset_by_default() -> None:

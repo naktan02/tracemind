@@ -113,6 +113,72 @@ def evaluate_scored_predictions(
     margin_threshold: float,
 ) -> EvaluationMetrics:
     """미리 계산한 row별 score로 threshold를 재평가한다."""
+    accepted_predictions = [
+        prediction
+        for prediction in scored_predictions
+        if (
+            prediction.top1_score >= confidence_threshold
+            and prediction.margin_top1_top2 >= margin_threshold
+        )
+    ]
+    return _build_evaluation_metrics(
+        scored_predictions=scored_predictions,
+        categories=categories,
+        accepted_predictions=accepted_predictions,
+    )
+
+
+def evaluate_global_confidence_threshold(
+    *,
+    scored_predictions: Sequence[ScoredPrediction],
+    categories: Sequence[str],
+    confidence_threshold: float,
+) -> EvaluationMetrics:
+    """전역 confidence threshold 하나로 accepted set을 평가한다."""
+    accepted_predictions = [
+        prediction
+        for prediction in scored_predictions
+        if prediction.top1_score >= confidence_threshold
+    ]
+    return _build_evaluation_metrics(
+        scored_predictions=scored_predictions,
+        categories=categories,
+        accepted_predictions=accepted_predictions,
+    )
+
+
+def evaluate_classwise_confidence_threshold(
+    *,
+    scored_predictions: Sequence[ScoredPrediction],
+    categories: Sequence[str],
+    confidence_threshold_by_label: dict[str, float],
+    default_confidence_threshold: float | None = None,
+) -> EvaluationMetrics:
+    """predicted label별 confidence threshold로 accepted set을 평가한다."""
+    accepted_predictions = [
+        prediction
+        for prediction in scored_predictions
+        if prediction.top1_score
+        >= _resolve_classwise_threshold(
+            predicted_label=prediction.predicted_label,
+            confidence_threshold_by_label=confidence_threshold_by_label,
+            default_confidence_threshold=default_confidence_threshold,
+        )
+    ]
+    return _build_evaluation_metrics(
+        scored_predictions=scored_predictions,
+        categories=categories,
+        accepted_predictions=accepted_predictions,
+    )
+
+
+def _build_evaluation_metrics(
+    *,
+    scored_predictions: Sequence[ScoredPrediction],
+    categories: Sequence[str],
+    accepted_predictions: Sequence[ScoredPrediction],
+) -> EvaluationMetrics:
+    """accepted prediction 집합이 주어졌을 때 공통 메트릭을 계산한다."""
     actual_labels = [prediction.actual_label for prediction in scored_predictions]
     predicted_labels = [
         prediction.predicted_label for prediction in scored_predictions
@@ -122,15 +188,6 @@ def evaluate_scored_predictions(
     ]
     top1_scores = [prediction.top1_score for prediction in scored_predictions]
     margins = [prediction.margin_top1_top2 for prediction in scored_predictions]
-
-    accepted_predictions = [
-        prediction
-        for prediction in scored_predictions
-        if (
-            prediction.top1_score >= confidence_threshold
-            and prediction.margin_top1_top2 >= margin_threshold
-        )
-    ]
 
     correct = sum(1 for prediction in scored_predictions if prediction.is_correct)
     accepted_correct = sum(
@@ -172,6 +229,22 @@ def evaluate_scored_predictions(
             sum(prediction.margin_top1_top2 for prediction in accepted_predictions),
             accepted_count,
         ),
+    )
+
+
+def _resolve_classwise_threshold(
+    *,
+    predicted_label: str,
+    confidence_threshold_by_label: dict[str, float],
+    default_confidence_threshold: float | None,
+) -> float:
+    if predicted_label in confidence_threshold_by_label:
+        return float(confidence_threshold_by_label[predicted_label])
+    if default_confidence_threshold is not None:
+        return float(default_confidence_threshold)
+    raise ValueError(
+        "Missing classwise confidence threshold for predicted label: "
+        f"{predicted_label}."
     )
 
 

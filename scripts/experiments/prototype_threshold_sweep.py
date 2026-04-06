@@ -16,7 +16,7 @@ from scripts.experiments.prototype_strategy.io_utils import (
     resolve_output_dir,
 )
 from scripts.experiments.prototype_strategy.sweep import (
-    ThresholdSweepRequest,
+    ThresholdPolicyExperimentRequest,
     render_sweep_summary,
 )
 
@@ -37,8 +37,11 @@ def main(config: DictConfig) -> None:
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     adapter = EmbeddingAdapterFactory.create(instantiate(config.embedding.spec))
+    threshold_policies = tuple(
+        instantiate(policy_config) for policy_config in config.threshold_policies
+    )
     summary = instantiate(config.runner).run(
-        ThresholdSweepRequest(
+        ThresholdPolicyExperimentRequest(
             train_rows=load_jsonl_rows(config.dataset.train_jsonl),
             validation_rows=load_jsonl_rows(config.dataset.validation_jsonl),
             test_rows=load_jsonl_rows(config.dataset.test_jsonl),
@@ -55,8 +58,7 @@ def main(config: DictConfig) -> None:
             dbscan_min_cluster_coverage=float(
                 config.strategy.dbscan_min_cluster_coverage
             ),
-            confidence_thresholds=tuple(config.threshold_grid.confidence_thresholds),
-            margin_thresholds=tuple(config.threshold_grid.margin_thresholds),
+            threshold_policies=threshold_policies,
             output_dir=output_dir,
             run_id=run_id,
         )

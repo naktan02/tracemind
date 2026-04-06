@@ -1,18 +1,26 @@
-"""Prototype threshold sweep unit tests."""
+"""Prototype threshold policy unit tests."""
 
 from __future__ import annotations
 
 from scripts.experiments.prototype_strategy.evaluation import (
-    evaluate_scored_predictions,
+    evaluate_global_confidence_threshold,
 )
-from scripts.experiments.prototype_strategy.models import ScoredPrediction
+from scripts.experiments.prototype_strategy.models import (
+    ScoredPrediction,
+    ThresholdArtifact,
+    ThresholdPolicyEvaluation,
+)
 from scripts.experiments.prototype_strategy.sweep import (
-    ThresholdSweepPoint,
-    ThresholdSweepSelectionPolicy,
+    ThresholdPolicySelectionPolicy,
+)
+from scripts.experiments.prototype_strategy.threshold_policies import (
+    ClasswiseStaticConfidencePolicy,
+    FixMatchFixedConfidencePolicy,
+    ValidationTargetErrorConfidencePolicy,
 )
 
 
-def test_evaluate_scored_predictions_computes_accepted_metrics() -> None:
+def test_evaluate_global_confidence_threshold_computes_accepted_metrics() -> None:
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -43,126 +51,253 @@ def test_evaluate_scored_predictions_computes_accepted_metrics() -> None:
         ),
     )
 
-    metrics = evaluate_scored_predictions(
+    metrics = evaluate_global_confidence_threshold(
         scored_predictions=predictions,
         categories=("anxiety", "depression", "normal"),
         confidence_threshold=0.8,
-        margin_threshold=0.1,
     )
 
-    assert metrics.accepted_count == 1
-    assert metrics.accepted_ratio == 1 / 3
-    assert metrics.accepted_accuracy == 1.0
+    assert metrics.accepted_count == 2
+    assert metrics.accepted_ratio == 2 / 3
+    assert metrics.accepted_accuracy == 0.5
     assert metrics.accepted_correct_ratio == 1 / 3
 
 
-def test_threshold_selection_prefers_more_correct_accepted_labels() -> None:
-    policy = ThresholdSweepSelectionPolicy(minimum_accepted_ratio=0.05)
+def test_fixmatch_policy_builds_threshold_candidates() -> None:
+    policy = FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
+    predictions = (
+        ScoredPrediction(
+            actual_label="anxiety",
+            predicted_label="anxiety",
+            true_label_score=0.96,
+            top1_score=0.96,
+            top2_score=0.10,
+            margin_top1_top2=0.86,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="depression",
+            predicted_label="depression",
+            true_label_score=0.84,
+            top1_score=0.84,
+            top2_score=0.30,
+            margin_top1_top2=0.54,
+            is_correct=True,
+        ),
+    )
 
-    def point(
+    evaluations = policy.build_evaluations(
+        validation_predictions=predictions,
+        test_predictions=predictions,
+        categories=("anxiety", "depression"),
+    )
+
+    assert len(evaluations) == 2
+    assert evaluations[0].policy_name == "fixmatch_fixed_confidence"
+    assert (
+        evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.8
+    )
+    assert (
+        evaluations[1].threshold_artifact.parameters["confidence_threshold"] == 0.95
+    )
+
+
+def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> None:
+    policy = ValidationTargetErrorConfidencePolicy(target_errors=(0.1,))
+    predictions = (
+        ScoredPrediction(
+            actual_label="anxiety",
+            predicted_label="anxiety",
+            true_label_score=0.95,
+            top1_score=0.95,
+            top2_score=0.10,
+            margin_top1_top2=0.85,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="depression",
+            predicted_label="depression",
+            true_label_score=0.92,
+            top1_score=0.92,
+            top2_score=0.30,
+            margin_top1_top2=0.62,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="normal",
+            predicted_label="anxiety",
+            true_label_score=0.12,
+            top1_score=0.86,
+            top2_score=0.10,
+            margin_top1_top2=0.76,
+            is_correct=False,
+        ),
+        ScoredPrediction(
+            actual_label="anxiety",
+            predicted_label="anxiety",
+            true_label_score=0.80,
+            top1_score=0.80,
+            top2_score=0.40,
+            margin_top1_top2=0.40,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="depression",
+            predicted_label="depression",
+            true_label_score=0.70,
+            top1_score=0.70,
+            top2_score=0.45,
+            margin_top1_top2=0.25,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="normal",
+            predicted_label="depression",
+            true_label_score=0.20,
+            top1_score=0.65,
+            top2_score=0.30,
+            margin_top1_top2=0.35,
+            is_correct=False,
+        ),
+    )
+
+    evaluations = policy.build_evaluations(
+        validation_predictions=predictions,
+        test_predictions=predictions,
+        categories=("anxiety", "depression", "normal"),
+    )
+
+    assert len(evaluations) == 1
+    assert evaluations[0].policy_name == "validation_target_error_confidence"
+    assert evaluations[0].selection_params["target_error"] == 0.1
+    assert evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.92
+    assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
+    assert evaluations[0].validation_metrics.accepted_ratio == 2 / 6
+
+
+def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
+    policy = ClasswiseStaticConfidencePolicy(target_errors=(0.1,))
+    predictions = (
+        ScoredPrediction(
+            actual_label="anxiety",
+            predicted_label="anxiety",
+            true_label_score=0.95,
+            top1_score=0.95,
+            top2_score=0.10,
+            margin_top1_top2=0.85,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="normal",
+            predicted_label="anxiety",
+            true_label_score=0.20,
+            top1_score=0.70,
+            top2_score=0.10,
+            margin_top1_top2=0.60,
+            is_correct=False,
+        ),
+        ScoredPrediction(
+            actual_label="depression",
+            predicted_label="depression",
+            true_label_score=0.92,
+            top1_score=0.92,
+            top2_score=0.20,
+            margin_top1_top2=0.72,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="depression",
+            predicted_label="depression",
+            true_label_score=0.82,
+            top1_score=0.82,
+            top2_score=0.30,
+            margin_top1_top2=0.52,
+            is_correct=True,
+        ),
+        ScoredPrediction(
+            actual_label="normal",
+            predicted_label="normal",
+            true_label_score=0.88,
+            top1_score=0.88,
+            top2_score=0.20,
+            margin_top1_top2=0.68,
+            is_correct=True,
+        ),
+    )
+
+    evaluations = policy.build_evaluations(
+        validation_predictions=predictions,
+        test_predictions=predictions,
+        categories=("anxiety", "depression", "normal"),
+    )
+
+    assert len(evaluations) == 1
+    artifact = evaluations[0].threshold_artifact
+    assert artifact.threshold_kind == "classwise_confidence"
+    assert artifact.parameters["confidence_threshold_by_label"]["anxiety"] == 0.95
+    assert artifact.parameters["confidence_threshold_by_label"]["depression"] == 0.82
+    assert artifact.parameters["confidence_threshold_by_label"]["normal"] == 0.88
+    assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
+
+
+def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met(
+) -> None:
+    policy = ThresholdPolicySelectionPolicy(minimum_accepted_ratio=0.5)
+
+    def evaluation(
         *,
-        confidence: float,
-        margin: float,
+        policy_name: str,
+        confidence_threshold: float,
         accepted_correct_ratio: float,
         accepted_accuracy: float,
         accepted_ratio: float,
-    ) -> ThresholdSweepPoint:
-        metrics = evaluate_scored_predictions(
+    ) -> ThresholdPolicyEvaluation:
+        metrics = evaluate_global_confidence_threshold(
             scored_predictions=(),
             categories=(),
-            confidence_threshold=confidence,
-            margin_threshold=margin,
+            confidence_threshold=confidence_threshold,
         )
         metrics.accepted_correct_ratio = accepted_correct_ratio
         metrics.accepted_accuracy = accepted_accuracy
         metrics.accepted_ratio = accepted_ratio
-        return ThresholdSweepPoint(
-            confidence_threshold=confidence,
-            margin_threshold=margin,
+        return ThresholdPolicyEvaluation(
+            policy_name=policy_name,
+            candidate_name=f"confidence={confidence_threshold:.2f}",
+            source_paper=FixMatchFixedConfidencePolicy().source_paper,
+            selection_params={"confidence_threshold": confidence_threshold},
+            threshold_artifact=ThresholdArtifact(
+                threshold_kind="global_confidence",
+                parameters={"confidence_threshold": confidence_threshold},
+            ),
             validation_metrics=metrics,
+            test_metrics=metrics,
         )
 
     selected = policy.select(
         [
-            point(
-                confidence=0.8,
-                margin=0.15,
+            evaluation(
+                policy_name="fixmatch_fixed_confidence",
+                confidence_threshold=0.8,
                 accepted_correct_ratio=0.01,
                 accepted_accuracy=1.0,
                 accepted_ratio=0.01,
             ),
-            point(
-                confidence=0.7,
-                margin=0.03,
-                accepted_correct_ratio=0.08,
-                accepted_accuracy=0.92,
-                accepted_ratio=0.09,
+            evaluation(
+                policy_name="validation_target_error_confidence",
+                confidence_threshold=0.7,
+                accepted_correct_ratio=0.44,
+                accepted_accuracy=0.88,
+                accepted_ratio=0.50,
             ),
-            point(
-                confidence=0.65,
-                margin=0.01,
-                accepted_correct_ratio=0.06,
+            evaluation(
+                policy_name="fixmatch_fixed_confidence",
+                confidence_threshold=0.6,
+                accepted_correct_ratio=0.69,
                 accepted_accuracy=0.75,
-                accepted_ratio=0.12,
+                accepted_ratio=0.92,
             ),
         ]
     )
 
-    assert selected.confidence_threshold == 0.7
-    assert selected.margin_threshold == 0.03
-
-
-def test_threshold_selection_prefers_precision_when_coverage_floor_is_met() -> None:
-    policy = ThresholdSweepSelectionPolicy(minimum_accepted_ratio=0.5)
-
-    def point(
-        *,
-        confidence: float,
-        margin: float,
-        accepted_correct_ratio: float,
-        accepted_accuracy: float,
-        accepted_ratio: float,
-    ) -> ThresholdSweepPoint:
-        metrics = evaluate_scored_predictions(
-            scored_predictions=(),
-            categories=(),
-            confidence_threshold=confidence,
-            margin_threshold=margin,
-        )
-        metrics.accepted_correct_ratio = accepted_correct_ratio
-        metrics.accepted_accuracy = accepted_accuracy
-        metrics.accepted_ratio = accepted_ratio
-        return ThresholdSweepPoint(
-            confidence_threshold=confidence,
-            margin_threshold=margin,
-            validation_metrics=metrics,
-        )
-
-    selected = policy.select(
-        [
-            point(
-                confidence=0.6,
-                margin=0.0,
-                accepted_correct_ratio=0.6916,
-                accepted_accuracy=0.7462,
-                accepted_ratio=0.9268,
-            ),
-            point(
-                confidence=0.6,
-                margin=0.02,
-                accepted_correct_ratio=0.4425,
-                accepted_accuracy=0.8808,
-                accepted_ratio=0.5023,
-            ),
-            point(
-                confidence=0.6,
-                margin=0.03,
-                accepted_correct_ratio=0.3461,
-                accepted_accuracy=0.9216,
-                accepted_ratio=0.3755,
-            ),
-        ]
-    )
-
-    assert selected.confidence_threshold == 0.6
-    assert selected.margin_threshold == 0.02
+    assert selected.policy_name == "validation_target_error_confidence"
+    assert selected.threshold_artifact.parameters["confidence_threshold"] == 0.7
