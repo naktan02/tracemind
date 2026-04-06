@@ -64,13 +64,28 @@ class IngestBatchResponse(BaseModel):
 # 의존성 주입 자리표시자                                                 #
 # ------------------------------------------------------------------ #
 
-# TODO(Phase-3): 실제 DI 컨테이너 또는 app.state로 교체.
-# 현재는 endpoint 호출 시 pipeline_service를 외부에서 넘기지 않으면 NotImplementedError.
-def get_pipeline_service() -> InferencePipelineService:
-    raise NotImplementedError(
-        "InferencePipelineService가 주입되지 않았습니다. "
-        "app.state.pipeline_service를 설정하거나 Depends를 오버라이드하세요."
-    )
+from fastapi import Request
+
+# ------------------------------------------------------------------ #
+# 의존성 주입                                                            #
+# ------------------------------------------------------------------ #
+
+
+def get_pipeline_service(request: Request) -> InferencePipelineService:
+    """app.state에서 InferencePipelineService를 읽는다.
+
+    서비스는 앱 시작 시 main.py의 lifespan 또는 startup 이벤트에서
+    app.state.pipeline_service = InferencePipelineService(...) 로 설정한다.
+
+    테스트에서는 app.dependency_overrides[get_pipeline_service]로 교체한다.
+    """
+    service = getattr(request.app.state, "pipeline_service", None)
+    if service is None:
+        raise RuntimeError(
+            "InferencePipelineService가 app.state에 설정되지 않았습니다. "
+            "앱 startup 시 app.state.pipeline_service를 설정하세요."
+        )
+    return service
 
 
 PipelineDep = Annotated[InferencePipelineService, Depends(get_pipeline_service)]

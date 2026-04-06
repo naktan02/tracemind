@@ -72,4 +72,5 @@ testpaths = ["tests", "agent/tests", "main_server/tests", "shared/tests"]
 markers = [
     "slow: 실행 시간이 긴 테스트",
     "gpu: GPU가 필요한 테스트",
+    "integration: 실제 서버 프로세스가 필요한 E2E 통합 테스트",
 ]

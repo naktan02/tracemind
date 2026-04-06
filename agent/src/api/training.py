@@ -3,8 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, ConfigDict, Field
 
 from agent.src.infrastructure.repositories.scored_event_repository import (
@@ -16,10 +17,10 @@ from agent.src.services.federation.runtime_service import (
     FederationRunResult,
     FederationRuntimeService,
 )
-
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import extract_category_prototypes
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 from shared.src.domain.entities.inference.events import ScoredEvent
@@ -71,12 +72,47 @@ class TrainingStatusResponse(BaseModel):
 router = APIRouter(prefix="/api/v1/training", tags=["training"])
 
 
+# ------------------------------------------------------------------ #
+# 의존성 providers                                                      #
+# ------------------------------------------------------------------ #
+
+
+def get_scored_event_repository() -> ScoredEventRepository:
+    """ScoredEventRepository 의존성 provider."""
+    return ScoredEventRepository()
+
+
+def get_prototype_runtime_service() -> PrototypeRuntimeService:
+    """PrototypeRuntimeService 의존성 provider."""
+    return PrototypeRuntimeService()
+
+
+def get_scoring_service() -> ScoringService:
+    """ScoringService 의존성 provider."""
+    return ScoringService()
+
+
+ScoredEventRepoDep = Annotated[ScoredEventRepository, Depends(get_scored_event_repository)]
+ProtoServiceDep = Annotated[PrototypeRuntimeService, Depends(get_prototype_runtime_service)]
+ScoringServiceDep = Annotated[ScoringService, Depends(get_scoring_service)]
+
+
+# ------------------------------------------------------------------ #
+# 엔드포인트                                                            #
+# ------------------------------------------------------------------ #
+
+
 @router.post(
     "/run-current-task",
     response_model=RunCurrentTaskResponse,
     status_code=status.HTTP_200_OK,
 )
-def run_current_task(request: RunCurrentTaskRequest) -> RunCurrentTaskResponse:
+def run_current_task(
+    request: RunCurrentTaskRequest,
+    repo: ScoredEventRepoDep,
+    proto_service: ProtoServiceDep,
+    scoring_service: ScoringServiceDep,
+) -> RunCurrentTaskResponse:
     """현재 active task를 읽어 로컬 학습을 실행하고 update를 업로드한다.
 
     학습 예시가 없으면 INSUFFICIENT_EXAMPLES 상태를 반환한다.
@@ -84,10 +120,8 @@ def run_current_task(request: RunCurrentTaskRequest) -> RunCurrentTaskResponse:
     두 경우 모두 200 OK로 응답하고 status 필드로 구분한다.
     """
     try:
-        # stored events 로딩 (base_embedding 포함)
-        repo = ScoredEventRepository()
         stored_events = repo.get_recent_stored(days=request.scored_event_days)
-        training_examples = _build_training_examples(stored_events)
+        training_examples = _build_training_examples(stored_events, proto_service, scoring_service)
 
         client = RoundClient(server_base_url=request.server_base_url)
         service = FederationRuntimeService(round_client=client)
@@ -134,34 +168,36 @@ def get_training_status(server_base_url: str) -> TrainingStatusResponse:
         ) from error
 
 
+# ------------------------------------------------------------------ #
+# 내부 헬퍼                                                             #
+# ------------------------------------------------------------------ #
+
+
 def _get_placeholder_manifest():
     """ModelManifest placeholder.
 
-    TODO(Phase-3 완료): 이 함수를 제거하고 agent 로컈 manifest 저장소에서 읽는다.
-    제거 조건: LocalManifestRepository.get_active() 같은 인터페이스가
-              구현되고 run_current_task가 올바른 model_revision을 넘길 때.
+    TODO(Phase-3 완료): LocalManifestRepository.get_active()로 교체.
+    제거 조건: agent 로컬 manifest 저장소가 구현되고 올바른 model_revision을 제공할 때.
     """
-    from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
-
-    return ModelManifest(
-        schema_version="model_manifest.v1",
+    return make_embedding_manifest(
         model_id="placeholder",
         model_revision="rev_placeholder",
-        published_at=datetime.now(tz=timezone.utc),
-        artifact_kind="embedding",
         prototype_version="proto_placeholder",
-        training_scope="adapter_only",
+        artifact_ref="placeholder",
         training_enabled=True,
     )
 
 
-def _build_training_examples(stored: list[StoredScoredEvent]) -> tuple[EmbeddedTrainingExample, ...]:
+def _build_training_examples(
+    stored: list[StoredScoredEvent],
+    proto_service: PrototypeRuntimeService,
+    scoring_service: ScoringService,
+) -> tuple[EmbeddedTrainingExample, ...]:
     """StoredScoredEvent 목록을 EmbeddedTrainingExample로 변환한다.
 
-    프로토타입과 스코어링은 저장된 base_embedding을 기준으로 현재 active 프로토타입쿉으로 다시 실행한다.
+    base_embedding을 현재 active 프로토타입으로 재스코어링한다.
     adapter state가 없으면 identity (scale=1.0) 를 사용한다.
     """
-    # embedding이 저장된 항목만 사용
     usable = [
         s for s in stored
         if s.base_embedding is not None and len(s.base_embedding) > 0
@@ -169,16 +205,12 @@ def _build_training_examples(stored: list[StoredScoredEvent]) -> tuple[EmbeddedT
     if not usable:
         return ()
 
-    # 현재 active prototype 로딩
     try:
-        proto_service = PrototypeRuntimeService()
         active_pack = proto_service.get_active_pack()
         prototypes = extract_category_prototypes(active_pack)
     except FileNotFoundError:
-        # 로컈에 prototype이 없으면 빈 반환
         return ()
 
-    # 임베딩 차원으로 identity adapter 생성
     embedding_dim = len(usable[0].base_embedding)  # type: ignore[arg-type]
     adapter_state = VectorAdapterState.identity(
         model_id="local",
@@ -188,9 +220,7 @@ def _build_training_examples(stored: list[StoredScoredEvent]) -> tuple[EmbeddedT
         updated_at=datetime.now(tz=timezone.utc),
     )
 
-    scoring_service = ScoringService()
     examples: list[EmbeddedTrainingExample] = []
-
     for stored_item in usable:
         base_emb = stored_item.base_embedding  # type: ignore[assignment]
         adapted_emb = adapter_state.apply(base_emb)

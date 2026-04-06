@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -327,3 +327,63 @@ def dump_decision_feedback_signal_payload(
 ) -> None:
     """feedback signal payload를 JSON 파일로 기록한다."""
     _dump_payload(path, payload)
+
+
+# ------------------------------------------------------------------ #
+# Factory 함수                                                         #
+# ------------------------------------------------------------------ #
+
+
+def make_training_update_envelope(
+    *,
+    round_id: str,
+    task_id: str,
+    model_id: str,
+    base_model_revision: str,
+    payload_ref: str,
+    example_count: int,
+    client_metrics: dict[str, float],
+    update_id: str | None = None,
+    training_scope: str = "adapter_only",
+    payload_format: str = "diagonal_scale_update",
+    agent_id: str | None = None,
+    clipped: bool = False,
+    dp_applied: bool = False,
+    notes: str | None = None,
+    created_at: datetime | None = None,
+) -> TrainingUpdateEnvelopePayload:
+    """TrainingUpdateEnvelopePayload를 만드는 표준 factory.
+
+    round_id, task_id, model 식별자, payload 경로, 예시 수, 메트릭만
+    지정하면 나머지는 기본값으로 채워진다.
+
+    >>> import uuid
+    >>> env = make_training_update_envelope(
+    ...     round_id="round_abc",
+    ...     task_id="task_abc",
+    ...     model_id="bg-m3",
+    ...     base_model_revision="rev_001",
+    ...     payload_ref="/state/updates/delta_001.json",
+    ...     example_count=10,
+    ...     client_metrics={"mean_confidence": 0.85},
+    ... )
+    """
+    import uuid as _uuid
+    return TrainingUpdateEnvelopePayload(
+        schema_version="training_update_envelope.v1",
+        update_id=update_id or str(_uuid.uuid4()),
+        round_id=round_id,
+        task_id=task_id,
+        model_id=model_id,
+        base_model_revision=base_model_revision,
+        training_scope=training_scope,
+        payload_ref=payload_ref,
+        payload_format=payload_format,
+        example_count=example_count,
+        client_metrics=client_metrics,
+        created_at=created_at or datetime.now(tz=timezone.utc),
+        clipped=clipped,
+        dp_applied=dp_applied,
+        agent_id=agent_id,
+        notes=notes,
+    )

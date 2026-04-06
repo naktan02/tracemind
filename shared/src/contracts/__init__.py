@@ -7,9 +7,11 @@ from .adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDeltaPayload,
     VectorAdapterStatePayload,
+    make_diagonal_delta_payload,
+    make_identity_state_payload,
 )
 from .fl_round_contracts import ActiveRoundPayload
-from .model_contracts import ModelManifestPayload
+from .model_contracts import ModelManifestPayload, make_embedding_manifest
 from .personalization_contracts import PersonalizationStatePayload
 from .prototype_contracts import (
     CategoryPrototypePayload,
@@ -23,6 +25,7 @@ from .training_contracts import (
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
+    make_training_update_envelope,
 )
 
 __all__ = [
@@ -33,6 +36,10 @@ __all__ = [
     "DiagonalScaleAdapterUpdatePayload",
     "extract_category_centroids",
     "extract_category_prototypes",
+    "make_diagonal_delta_payload",
+    "make_embedding_manifest",
+    "make_identity_state_payload",
+    "make_training_update_envelope",
     "ModelManifestPayload",
     "PersonalizationStatePayload",
     "PrototypePackPayload",

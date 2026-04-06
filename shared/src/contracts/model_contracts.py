@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
@@ -29,6 +29,45 @@ class ModelManifestPayload(BaseModel):
     translation_model_id: str | None = None
     translation_model_revision: str | None = None
     notes: str | None = None
+
+
+def make_embedding_manifest(
+    *,
+    model_id: str,
+    model_revision: str,
+    prototype_version: str,
+    artifact_ref: str,
+    training_enabled: bool = True,
+    compatible_task_types: list[str] | None = None,
+    published_at: datetime | None = None,
+    training_scope: str = "adapter_only",
+    **kwargs,
+) -> ModelManifestPayload:
+    """임베딩 모델용 manifest payload를 만드는 표준 factory.
+
+    필수 필드(model_id, model_revision, prototype_version, artifact_ref)만
+    지정하면 나머지는 임베딩 배포 기본값으로 채워진다.
+
+    >>> p = make_embedding_manifest(
+    ...     model_id="bg-m3",
+    ...     model_revision="rev_001",
+    ...     prototype_version="proto_v1",
+    ...     artifact_ref="/state/shared_adapter_states/versions/rev_001.json",
+    ... )
+    """
+    return ModelManifestPayload(
+        schema_version="model_manifest.v1",
+        artifact_kind="embedding",
+        model_id=model_id,
+        model_revision=model_revision,
+        prototype_version=prototype_version,
+        artifact_ref=artifact_ref,
+        training_scope=training_scope,
+        training_enabled=training_enabled,
+        compatible_task_types=compatible_task_types or ["pseudo_label_self_training"],
+        published_at=published_at or datetime.now(tz=timezone.utc),
+        **kwargs,
+    )
 
 
 def load_model_manifest_payload(path: Path) -> ModelManifestPayload:

@@ -2,10 +2,9 @@
 
 from __future__ import annotations
 
-import json
-from dataclasses import dataclass
-from urllib.parse import urljoin
-from urllib.request import Request, urlopen
+from dataclasses import dataclass, field
+
+import httpx
 
 from shared.src.contracts.fl_round_contracts import ActiveRoundPayload
 from shared.src.contracts.training_contracts import (
@@ -20,35 +19,29 @@ class RoundClient:
 
     현재 round/task를 가져오고 update를 업로드한다.
     인증이 없는 단순 HTTP 클라이언트다.
+
+    httpx를 사용하므로 테스트에서 ASGITransport로 in-process 교체가 가능하다.
     """
 
     server_base_url: str
+    timeout: float = 10.0
+    # 외부에서 transport를 주입하면 ASGITransport 등으로 교체 가능하다.
+    _transport: httpx.BaseTransport | None = field(default=None, repr=False)
 
-    def _url(self, path: str) -> str:
-        return urljoin(self.server_base_url.rstrip("/") + "/", path.lstrip("/"))
-
-    def _get_json(self, path: str) -> dict:
-        url = self._url(path)
-        with urlopen(url) as response:
-            return json.loads(response.read().decode("utf-8"))
-
-    def _post_json(self, path: str, body: dict) -> dict:
-        url = self._url(path)
-        data = json.dumps(body).encode("utf-8")
-        request = Request(url, data=data, headers={"Content-Type": "application/json"})
-        with urlopen(request) as response:
-            return json.loads(response.read().decode("utf-8"))
+    def _client(self) -> httpx.Client:
+        kwargs: dict = {"base_url": self.server_base_url, "timeout": self.timeout}
+        if self._transport is not None:
+            kwargs["transport"] = self._transport
+        return httpx.Client(**kwargs)
 
     def fetch_current_round(self) -> ActiveRoundPayload | None:
         """현재 active round를 가져온다. round가 없으면 None을 반환한다."""
-        try:
-            raw = self._get_json("api/v1/fl/rounds/current")
-            return ActiveRoundPayload.model_validate(raw)
-        except Exception as error:  # noqa: BLE001
-            # 404(active round 없음) 포함 모든 실패를 None으로 처리한다.
-            if _is_http_not_found(error):
+        with self._client() as client:
+            response = client.get("/api/v1/fl/rounds/current")
+            if response.status_code == 404:
                 return None
-            raise
+            response.raise_for_status()
+            return ActiveRoundPayload.model_validate(response.json())
 
     def fetch_current_task(self) -> TrainingTaskPayload | None:
         """현재 active round의 training task를 가져온다."""
@@ -63,12 +56,10 @@ class RoundClient:
         envelope: TrainingUpdateEnvelopePayload,
     ) -> dict:
         """update envelope을 서버에 업로드하고 수락 응답을 반환한다."""
-        path = f"api/v1/fl/rounds/{round_id}/updates"
-        return self._post_json(path, envelope.model_dump(mode="json"))
-
-
-def _is_http_not_found(error: Exception) -> bool:
-    """urllib HTTPError 404 여부를 확인한다."""
-    from urllib.error import HTTPError
-
-    return isinstance(error, HTTPError) and error.code == 404
+        with self._client() as client:
+            response = client.post(
+                f"/api/v1/fl/rounds/{round_id}/updates",
+                json=envelope.model_dump(mode="json"),
+            )
+            response.raise_for_status()
+            return response.json()

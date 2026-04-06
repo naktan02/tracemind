@@ -16,7 +16,7 @@
 from __future__ import annotations
 
 import json
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict, Field
@@ -222,3 +222,72 @@ def dump_vector_adapter_delta_payload(
 ) -> None:
     """diagonal scale adapter update payload를 JSON 파일로 기록한다."""
     dump_shared_adapter_update_payload(path, payload)
+
+
+# ------------------------------------------------------------------ #
+# Factory 함수                                                         #
+# ------------------------------------------------------------------ #
+
+
+def make_identity_state_payload(
+    *,
+    model_id: str,
+    model_revision: str,
+    embedding_dim: int,
+    training_scope: str = "adapter_only",
+    updated_at: datetime | None = None,
+) -> DiagonalScaleAdapterStatePayload:
+    """모든 차원 scale=1.0 인 identity(단위) adapter state payload를 만든다.
+
+    새 round 시작 또는 테스트 fixture 생성에 사용한다.
+
+    >>> state = make_identity_state_payload(
+    ...     model_id="bg-m3", model_revision="rev_001", embedding_dim=768
+    ... )
+    """
+    return DiagonalScaleAdapterStatePayload(
+        schema_version="shared_adapter_state.v1",
+        adapter_kind="diagonal_scale",
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        updated_at=updated_at or datetime.now(tz=timezone.utc),
+        dimension_scales=[1.0] * embedding_dim,
+    )
+
+
+def make_diagonal_delta_payload(
+    *,
+    model_id: str,
+    base_model_revision: str,
+    dimension_deltas: list[float],
+    example_count: int,
+    mean_confidence: float,
+    training_scope: str = "adapter_only",
+    mean_margin: float | None = None,
+    label_counts: dict[str, int] | None = None,
+    created_at: datetime | None = None,
+) -> DiagonalScaleAdapterUpdatePayload:
+    """diagonal scale adapter update payload를 만드는 표준 factory.
+
+    >>> delta = make_diagonal_delta_payload(
+    ...     model_id="bg-m3",
+    ...     base_model_revision="rev_001",
+    ...     dimension_deltas=[0.01] * 768,
+    ...     example_count=10,
+    ...     mean_confidence=0.85,
+    ... )
+    """
+    return DiagonalScaleAdapterUpdatePayload(
+        schema_version="vector_adapter_delta.v1",
+        adapter_kind="diagonal_scale",
+        model_id=model_id,
+        base_model_revision=base_model_revision,
+        training_scope=training_scope,
+        example_count=example_count,
+        created_at=created_at or datetime.now(tz=timezone.utc),
+        dimension_deltas=dimension_deltas,
+        mean_confidence=mean_confidence,
+        mean_margin=mean_margin,
+        label_counts=label_counts or {},
+    )
