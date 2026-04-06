@@ -2,16 +2,28 @@
 
 from __future__ import annotations
 
-from fastapi import APIRouter, HTTPException, status
-from pydantic import BaseModel, ConfigDict
+from datetime import datetime, timezone
 
-from agent.src.services.federation.runtime_service import (
-    FederationRunResult,
-    FederationRunStatus,
-    FederationRuntimeService,
+from fastapi import APIRouter, HTTPException, status
+from pydantic import BaseModel, ConfigDict, Field
+
+from agent.src.infrastructure.repositories.scored_event_repository import (
+    ScoredEventRepository,
+    StoredScoredEvent,
 )
 from agent.src.services.federation.round_client import RoundClient
+from agent.src.services.federation.runtime_service import (
+    FederationRunResult,
+    FederationRuntimeService,
+)
+
+from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
+from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.contracts.prototype_contracts import extract_category_prototypes
 from shared.src.contracts.training_contracts import TrainingTaskPayload
+from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.vector_adapter_state import VectorAdapterState
 
 
 class RunCurrentTaskRequest(BaseModel):
@@ -20,6 +32,16 @@ class RunCurrentTaskRequest(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
     server_base_url: str
+    scored_event_days: int = Field(
+        default=7,
+        ge=1,
+        le=90,
+        description="학습에 사용할 scored event 보관 기간 (일). 기본 7일.",
+    )
+    agent_id: str | None = Field(
+        default=None,
+        description="Pseudonymous agent UUID. 없으면 서버에 익명으로 전송.",
+    )
 
 
 class RunCurrentTaskResponse(BaseModel):
@@ -60,22 +82,19 @@ def run_current_task(request: RunCurrentTaskRequest) -> RunCurrentTaskResponse:
     학습 예시가 없으면 INSUFFICIENT_EXAMPLES 상태를 반환한다.
     active round 자체가 없으면 NO_ACTIVE_TASK 상태를 반환한다.
     두 경우 모두 200 OK로 응답하고 status 필드로 구분한다.
-
-    NOTE: 현재 구현은 training_examples를 외부에서 주입받지 않아
-    INSUFFICIENT_EXAMPLES가 항상 반환된다. 실제 로컬 데이터 파이프라인
-    연결은 Phase 2 이후 단계에서 추가된다.
     """
     try:
+        # stored events 로딩 (base_embedding 포함)
+        repo = ScoredEventRepository()
+        stored_events = repo.get_recent_stored(days=request.scored_event_days)
+        training_examples = _build_training_examples(stored_events)
+
         client = RoundClient(server_base_url=request.server_base_url)
         service = FederationRuntimeService(round_client=client)
-        # TODO(Phase-3): inference pipeline 연결 후 아래 두 줄을 교체한다.
-        #   training_examples ← InferencePipelineService에서 scored events를 가져옴
-        #   model_manifest    ← agent 로컬 manifest 저장소에서 active manifest를 읽음
-        #   제거 조건: FederationRuntimeService.run_current_task()가 실제 예시를 받아
-        #             UPLOADED 상태를 반환할 수 있을 때.
         result: FederationRunResult = service.run_current_task(
-            training_examples=(),
+            training_examples=training_examples,
             model_manifest=_get_placeholder_manifest(),
+            agent_id=request.agent_id,
         )
         return RunCurrentTaskResponse(
             status=str(result.status),
@@ -118,14 +137,10 @@ def get_training_status(server_base_url: str) -> TrainingStatusResponse:
 def _get_placeholder_manifest():
     """ModelManifest placeholder.
 
-    TODO(Phase-3): 이 함수를 제거하고 agent 로컬 manifest 저장소
-    (예: PrototypePackRepository 또는 별도 ManifestRepository)에서
-    현재 active manifest를 읽는 것으로 교체한다.
+    TODO(Phase-3 완료): 이 함수를 제거하고 agent 로컈 manifest 저장소에서 읽는다.
     제거 조건: LocalManifestRepository.get_active() 같은 인터페이스가
               구현되고 run_current_task가 올바른 model_revision을 넘길 때.
     """
-    from datetime import datetime, timezone
-
     from shared.src.domain.entities.artifacts.model_manifest import ModelManifest
 
     return ModelManifest(
@@ -138,3 +153,63 @@ def _get_placeholder_manifest():
         training_scope="adapter_only",
         training_enabled=True,
     )
+
+
+def _build_training_examples(stored: list[StoredScoredEvent]) -> tuple[EmbeddedTrainingExample, ...]:
+    """StoredScoredEvent 목록을 EmbeddedTrainingExample로 변환한다.
+
+    프로토타입과 스코어링은 저장된 base_embedding을 기준으로 현재 active 프로토타입쿉으로 다시 실행한다.
+    adapter state가 없으면 identity (scale=1.0) 를 사용한다.
+    """
+    # embedding이 저장된 항목만 사용
+    usable = [
+        s for s in stored
+        if s.base_embedding is not None and len(s.base_embedding) > 0
+    ]
+    if not usable:
+        return ()
+
+    # 현재 active prototype 로딩
+    try:
+        proto_service = PrototypeRuntimeService()
+        active_pack = proto_service.get_active_pack()
+        prototypes = extract_category_prototypes(active_pack)
+    except FileNotFoundError:
+        # 로컈에 prototype이 없으면 빈 반환
+        return ()
+
+    # 임베딩 차원으로 identity adapter 생성
+    embedding_dim = len(usable[0].base_embedding)  # type: ignore[arg-type]
+    adapter_state = VectorAdapterState.identity(
+        model_id="local",
+        model_revision="local",
+        training_scope="adapter_only",
+        embedding_dim=embedding_dim,
+        updated_at=datetime.now(tz=timezone.utc),
+    )
+
+    scoring_service = ScoringService()
+    examples: list[EmbeddedTrainingExample] = []
+
+    for stored_item in usable:
+        base_emb = stored_item.base_embedding  # type: ignore[assignment]
+        adapted_emb = adapter_state.apply(base_emb)
+        category_scores = scoring_service.score(adapted_emb, prototypes)
+
+        rescored_event = ScoredEvent(
+            query_id=stored_item.scored_event.query_id,
+            occurred_at=stored_item.scored_event.occurred_at,
+            translated_text=stored_item.scored_event.translated_text,
+            embedding_model_id=stored_item.scored_event.embedding_model_id,
+            translation_model_id=stored_item.scored_event.translation_model_id,
+            category_scores=category_scores,
+        )
+        examples.append(
+            EmbeddedTrainingExample(
+                scored_event=rescored_event,
+                embedding=adapted_emb,
+                base_embedding=base_emb,
+            )
+        )
+
+    return tuple(examples)
