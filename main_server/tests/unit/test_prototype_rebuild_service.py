@@ -19,7 +19,6 @@ from main_server.src.services.prototypes import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,
-    PrototypeRebuildRequest,
     PrototypeRebuildService,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
@@ -115,14 +114,12 @@ def test_rebuild_service_publishes_single_pack_and_build_state(tmp_path: Path) -
     )
 
     result = service.rebuild(
-        PrototypeRebuildRequest(
-            build_request=_build_request(
-                embeddings_by_category={
-                    "anxiety": ((1.0, 3.0), (3.0, 5.0)),
-                    "normal": ((2.0, 2.0), (4.0, 4.0)),
-                },
-                prototype_version="proto_single_v1",
-            )
+        _build_request(
+            embeddings_by_category={
+                "anxiety": ((1.0, 3.0), (3.0, 5.0)),
+                "normal": ((2.0, 2.0), (4.0, 4.0)),
+            },
+            prototype_version="proto_single_v1",
         )
     )
 
@@ -164,19 +161,17 @@ def test_rebuild_service_publishes_multi_pack_without_build_state(
     )
 
     result = service.rebuild(
-        PrototypeRebuildRequest(
-            build_request=_build_request(
-                embeddings_by_category={
-                    "anxiety": (
-                        (1.0, 0.0),
-                        (1.0, 0.1),
-                        (-1.0, 0.0),
-                        (-1.0, -0.1),
-                    ),
-                    "normal": ((0.0, 1.0), (0.0, 1.1)),
-                },
-                prototype_version="proto_kmeans_v1",
-            )
+        _build_request(
+            embeddings_by_category={
+                "anxiety": (
+                    (1.0, 0.0),
+                    (1.0, 0.1),
+                    (-1.0, 0.0),
+                    (-1.0, -0.1),
+                ),
+                "normal": ((0.0, 1.0), (0.0, 1.1)),
+            },
+            prototype_version="proto_kmeans_v1",
         )
     )
 

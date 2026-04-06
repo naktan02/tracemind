@@ -10,7 +10,6 @@ from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
 from main_server.src.services.prototypes.prototype_rebuild_service import (
-    PrototypeRebuildRequest,
     PrototypeRebuildService,
     ReferenceRebuildPrototypePublicationStrategy,
 )
@@ -19,13 +18,13 @@ from scripts.prototypes.io import (
     load_jsonl,
     resolve_metadata_from_manifests,
 )
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
     describe_prototype_build_strategy,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
 def seed_prototype_pack(
@@ -86,22 +85,20 @@ def seed_prototype_pack(
         ),
     )
     rebuild_result = rebuild_service.rebuild(
-        PrototypeRebuildRequest(
-            build_request=PrototypeBuildRequest(
-                embeddings_by_category=embeddings_by_category,
-                prototype_version=prototype_version,
-                embedding_backend=backend,
-                embedding_model_id=embedding_model_id,
-                embedding_model_revision=embedding_model_revision,
-                normalize_embeddings=True,
-                task_prefix=task_prefix,
-                translation_model_id=translation_model_id,
-                translation_model_revision=translation_model_revision,
-                translation_direction=translation_direction,
-                mapping_version=mapping_version,
-                built_at=None,
-                required_categories=expected_categories or None,
-            )
+        PrototypeBuildRequest(
+            embeddings_by_category=embeddings_by_category,
+            prototype_version=prototype_version,
+            embedding_backend=backend,
+            embedding_model_id=embedding_model_id,
+            embedding_model_revision=embedding_model_revision,
+            normalize_embeddings=True,
+            task_prefix=task_prefix,
+            translation_model_id=translation_model_id,
+            translation_model_revision=translation_model_revision,
+            translation_direction=translation_direction,
+            mapping_version=mapping_version,
+            built_at=None,
+            required_categories=expected_categories or None,
         )
     )
     pack_path = rebuild_result.reference_pack_path

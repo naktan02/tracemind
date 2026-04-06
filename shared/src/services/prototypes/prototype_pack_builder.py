@@ -12,12 +12,12 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from shared.src.contracts.prototype_build_state_contracts import (
-    CategoryPrototypeBuildStatePayload,
-    PrototypeBuildStatePayload,
+    SingleCategoryPrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
 )
 from shared.src.domain.entities.artifacts.prototype_pack import (
-    CategoryPrototype,
-    PrototypePack,
+    SingleCategoryPrototype,
+    SinglePrototypePack,
 )
 
 
@@ -46,7 +46,7 @@ class PrototypePackBuilder:
         mapping_version: str,
         built_at: datetime,
         required_categories: Sequence[str] | None = None,
-    ) -> PrototypePack:
+    ) -> SinglePrototypePack:
         build_state = self.build_state(
             embeddings_by_category,
             prototype_version=prototype_version,
@@ -80,7 +80,7 @@ class PrototypePackBuilder:
         mapping_version: str,
         built_at: datetime,
         required_categories: Sequence[str] | None = None,
-    ) -> PrototypeBuildStatePayload:
+    ) -> SinglePrototypeBuildStatePayload:
         if not prototype_version.strip():
             raise ValueError("prototype_version must not be empty.")
         if not embedding_model_id.strip():
@@ -98,7 +98,7 @@ class PrototypePackBuilder:
                 "At least one category is required to build a prototype pack."
             )
 
-        categories: dict[str, CategoryPrototypeBuildStatePayload] = {}
+        categories: dict[str, SingleCategoryPrototypeBuildStatePayload] = {}
         for category in categories_to_build:
             bucket = embeddings_by_category.get(category)
             if not bucket:
@@ -110,12 +110,12 @@ class PrototypePackBuilder:
                 bucket,
                 category=category,
             )
-            categories[category] = CategoryPrototypeBuildStatePayload(
+            categories[category] = SingleCategoryPrototypeBuildStatePayload(
                 embedding_sum=embedding_sum,
                 sample_count=sample_count,
             )
 
-        return PrototypeBuildStatePayload(
+        return SinglePrototypeBuildStatePayload(
             schema_version=self.build_state_schema_version,
             prototype_version=prototype_version,
             embedding_backend=embedding_backend,
@@ -135,21 +135,21 @@ class PrototypePackBuilder:
 
     def build_pack_from_state(
         self,
-        build_state: PrototypeBuildStatePayload,
-    ) -> PrototypePack:
-        categories: dict[str, CategoryPrototype] = {}
+        build_state: SinglePrototypeBuildStatePayload,
+    ) -> SinglePrototypePack:
+        categories: dict[str, SingleCategoryPrototype] = {}
         for category, state in build_state.categories.items():
             centroid = self._normalized_centroid_from_sum(
                 state.embedding_sum,
                 sample_count=state.sample_count,
                 category=category,
             )
-            categories[category] = CategoryPrototype(
+            categories[category] = SingleCategoryPrototype(
                 centroid=centroid,
                 sample_count=state.sample_count,
             )
 
-        return PrototypePack(
+        return SinglePrototypePack(
             schema_version=self.pack_schema_version,
             prototype_version=build_state.prototype_version,
             embedding_model_id=build_state.embedding_model_id,
@@ -166,13 +166,13 @@ class PrototypePackBuilder:
 
     def merge_build_state(
         self,
-        base_state: PrototypeBuildStatePayload,
+        base_state: SinglePrototypeBuildStatePayload,
         embeddings_by_category: Mapping[str, Sequence[Sequence[float]]],
         *,
         prototype_version: str,
         built_at: datetime,
         required_categories: Sequence[str] | None = None,
-    ) -> PrototypeBuildStatePayload:
+    ) -> SinglePrototypeBuildStatePayload:
         if base_state.build_method != self.build_method:
             raise ValueError(
                 "Prototype build_state build_method does not match the current builder."
@@ -203,7 +203,7 @@ class PrototypePackBuilder:
                 f"Unexpected categories for merge: {unexpected_categories}"
             )
 
-        categories: dict[str, CategoryPrototypeBuildStatePayload] = {}
+        categories: dict[str, SingleCategoryPrototypeBuildStatePayload] = {}
         for category in categories_to_build:
             base_category_state = base_state.categories.get(category)
             if base_category_state is None:
@@ -227,12 +227,12 @@ class PrototypePackBuilder:
                 ]
                 total_count += new_count
 
-            categories[category] = CategoryPrototypeBuildStatePayload(
+            categories[category] = SingleCategoryPrototypeBuildStatePayload(
                 embedding_sum=total_sum,
                 sample_count=total_count,
             )
 
-        return PrototypeBuildStatePayload(
+        return SinglePrototypeBuildStatePayload(
             schema_version=base_state.schema_version,
             prototype_version=prototype_version,
             embedding_backend=base_state.embedding_backend,

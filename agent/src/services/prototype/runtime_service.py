@@ -9,8 +9,11 @@ from agent.src.infrastructure.repositories.prototype_pack_repository import (
 )
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
-    extract_category_centroids,
     extract_category_prototypes,
+)
+from shared.src.services.prototypes.projections import (
+    project_category_centroids_by_largest_cluster,
+    require_single_category_centroids,
 )
 
 
@@ -30,8 +33,8 @@ class PrototypeRuntimeService:
         return extract_category_prototypes(self.get_active_pack())
 
     def get_active_single_centroids(self) -> dict[str, list[float]]:
-        return extract_category_centroids(self.get_active_pack())
+        return require_single_category_centroids(self.get_active_pack())
 
-    def get_active_centroids(self) -> dict[str, list[float]]:
-        """하위 호환용 single-centroid alias."""
-        return self.get_active_single_centroids()
+    def get_active_projected_centroids(self) -> dict[str, list[float]]:
+        """multi-prototype pack도 읽을 수 있는 대표 centroid view."""
+        return project_category_centroids_by_largest_cluster(self.get_active_pack())

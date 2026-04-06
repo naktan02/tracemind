@@ -1,4 +1,13 @@
-"""의미 계층용 prototype pack."""
+"""Single-centroid prototype domain entities.
+
+이 모듈의 타입은 canonical wire contract가 아니라,
+single-centroid builder/runtime 보조용 domain 표현이다.
+
+- `SinglePrototypePack`
+  - category마다 정확히 하나의 centroid만 갖는 내부 표현
+- `PrototypePack`
+  - 하위 호환 alias
+"""
 
 from __future__ import annotations
 
@@ -7,16 +16,16 @@ from datetime import datetime
 
 
 @dataclass(slots=True)
-class CategoryPrototype:
-    """의미 카테고리 하나에 대한 대표 벡터와 메타데이터."""
+class SingleCategoryPrototype:
+    """single-centroid category 하나의 대표 벡터와 메타데이터."""
 
     centroid: list[float]
     sample_count: int
 
 
 @dataclass(slots=True)
-class PrototypePack:
-    """하나의 임베딩 공간에 묶인 배포용 semantic layer 산출물."""
+class SinglePrototypePack:
+    """카테고리마다 centroid 하나만 갖는 single-centroid prototype pack."""
 
     schema_version: str
     prototype_version: str
@@ -29,4 +38,16 @@ class PrototypePack:
     build_method: str
     distance_metric: str
     built_at: datetime
-    categories: dict[str, CategoryPrototype] = field(default_factory=dict)
+    categories: dict[str, SingleCategoryPrototype] = field(default_factory=dict)
+
+
+# Backward-compatible aliases for legacy imports.
+CategoryPrototype = SingleCategoryPrototype
+PrototypePack = SinglePrototypePack
+
+__all__ = [
+    "CategoryPrototype",
+    "PrototypePack",
+    "SingleCategoryPrototype",
+    "SinglePrototypePack",
+]

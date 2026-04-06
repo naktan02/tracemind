@@ -9,18 +9,10 @@ from typing import Any
 
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import PrototypeBuildRequest
-
-
-@dataclass(slots=True)
-class PrototypeRebuildRequest:
-    """runtime rebuild에 필요한 canonical build 입력."""
-
-    build_request: PrototypeBuildRequest
 
 
 @dataclass(slots=True)
@@ -84,7 +76,7 @@ class PrototypeRebuildResult:
     """rebuild와 publication 이후의 결과 요약."""
 
     pack_payload: PrototypePackPayload
-    build_state_payload: PrototypeBuildStatePayload | None
+    build_state_payload: SinglePrototypeBuildStatePayload | None
     source_input_id: str | None = None
     published_pack_path: Path | None = None
     published_build_state_path: Path | None = None

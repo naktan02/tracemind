@@ -7,8 +7,11 @@ import math
 from pathlib import Path
 
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
-    extract_category_centroids,
     load_prototype_pack_payload,
+)
+from shared.src.services.prototypes.projections import (  # noqa: E402
+    project_category_centroids_by_largest_cluster,
+    require_single_category_centroids,
 )
 
 
@@ -23,6 +26,12 @@ def parse_args() -> argparse.Namespace:
         required=True,
         type=Path,
         help="Path to the prototype pack JSON file.",
+    )
+    parser.add_argument(
+        "--centroid-view",
+        choices=("strict_single", "largest_cluster"),
+        default="strict_single",
+        help="How to derive one centroid per category from the canonical pack.",
     )
     return parser.parse_args()
 
@@ -69,7 +78,10 @@ def render_table(
 def main() -> None:
     args = parse_args()
     payload = load_prototype_pack_payload(args.prototype_pack)
-    centroids = extract_category_centroids(payload)
+    if args.centroid_view == "strict_single":
+        centroids = require_single_category_centroids(payload)
+    else:
+        centroids = project_category_centroids_by_largest_cluster(payload)
     categories = sorted(centroids)
 
     cosine_values: dict[tuple[str, str], float] = {}

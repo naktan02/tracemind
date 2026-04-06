@@ -6,6 +6,8 @@ from .artifacts import (
     LabeledQuerySet,
     ModelManifest,
     PrototypePack,
+    SingleCategoryPrototype,
+    SinglePrototypePack,
 )
 from .inference import (
     AssessmentResult,
@@ -42,6 +44,8 @@ __all__ = [
     "PrototypePack",
     "QueryEvent",
     "ScoredEvent",
+    "SingleCategoryPrototype",
+    "SinglePrototypePack",
     "SharedAdapterState",
     "SharedAdapterUpdate",
     "TimeSeriesState",

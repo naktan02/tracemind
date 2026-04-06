@@ -2,7 +2,6 @@
 
 from .models import (
     PrototypeRebuildInputRecord,
-    PrototypeRebuildRequest,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
@@ -28,7 +27,6 @@ __all__ = [
     "PrototypePackService",
     "PrototypeRebuildInputRecord",
     "PrototypeRebuildInputRepositoryProtocol",
-    "PrototypeRebuildRequest",
     "PrototypeRebuildResult",
     "PrototypeRebuildService",
     "ReferencePrototypeRebuildRequest",

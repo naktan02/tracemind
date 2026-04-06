@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 
 from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
 )
 from shared.src.services.prototypes.prototype_pack_builder import PrototypePackBuilder
 
@@ -126,7 +126,7 @@ def test_build_state_and_pack_from_state_preserve_exact_mean() -> None:
 
 def test_merge_build_state_accumulates_new_embeddings_exactly() -> None:
     builder = PrototypePackBuilder()
-    base_state = PrototypeBuildStatePayload(
+    base_state = SinglePrototypeBuildStatePayload(
         schema_version="prototype_build_state.v1",
         prototype_version="proto_base_v1",
         embedding_backend="hash_debug",
@@ -180,7 +180,7 @@ def test_merge_build_state_accumulates_new_embeddings_exactly() -> None:
 
 def test_merge_build_state_rejects_unexpected_new_category() -> None:
     builder = PrototypePackBuilder()
-    base_state = PrototypeBuildStatePayload(
+    base_state = SinglePrototypeBuildStatePayload(
         schema_version="prototype_build_state.v1",
         prototype_version="proto_base_v1",
         embedding_backend="hash_debug",

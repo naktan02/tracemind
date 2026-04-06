@@ -7,7 +7,6 @@ from dataclasses import dataclass, field, replace
 
 from main_server.src.services.prototypes.models import (
     PrototypeRebuildInputRecord,
-    PrototypeRebuildRequest,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
@@ -34,7 +33,6 @@ __all__ = [
     "PrototypePublicationStrategy",
     "PrototypeRebuildInputRecord",
     "PrototypeRebuildInputRepositoryProtocol",
-    "PrototypeRebuildRequest",
     "PrototypeRebuildResult",
     "PrototypeRebuildService",
     "ReferencePrototypeRebuildRequest",
@@ -57,8 +55,7 @@ class PrototypeRebuildService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
-    def rebuild(self, request: PrototypeRebuildRequest) -> PrototypeRebuildResult:
-        build_request = request.build_request
+    def rebuild(self, build_request: PrototypeBuildRequest) -> PrototypeRebuildResult:
         if build_request.built_at is None:
             build_request = replace(build_request, built_at=self.clock.now())
 
@@ -86,21 +83,19 @@ class PrototypeRebuildService:
             else tuple(sorted(embeddings_by_category))
         )
         return self.rebuild(
-            PrototypeRebuildRequest(
-                build_request=PrototypeBuildRequest(
-                    embeddings_by_category=embeddings_by_category,
-                    prototype_version=request.prototype_version,
-                    embedding_backend=request.embedding_backend,
-                    embedding_model_id=request.embedding_model_id,
-                    embedding_model_revision=request.embedding_model_revision,
-                    normalize_embeddings=request.normalize_embeddings,
-                    task_prefix=request.task_prefix,
-                    translation_model_id=request.translation_model_id,
-                    translation_model_revision=request.translation_model_revision,
-                    translation_direction=request.translation_direction,
-                    mapping_version=request.mapping_version,
-                    built_at=request.built_at,
-                    required_categories=required_categories,
-                )
+            PrototypeBuildRequest(
+                embeddings_by_category=embeddings_by_category,
+                prototype_version=request.prototype_version,
+                embedding_backend=request.embedding_backend,
+                embedding_model_id=request.embedding_model_id,
+                embedding_model_revision=request.embedding_model_revision,
+                normalize_embeddings=request.normalize_embeddings,
+                task_prefix=request.task_prefix,
+                translation_model_id=request.translation_model_id,
+                translation_model_revision=request.translation_model_revision,
+                translation_direction=request.translation_direction,
+                mapping_version=request.mapping_version,
+                built_at=request.built_at,
+                required_categories=required_categories,
             )
         )

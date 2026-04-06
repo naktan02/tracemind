@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime, timezone
 
 from shared.src.domain.entities.artifacts.prototype_pack import (
-    CategoryPrototype,
-    PrototypePack,
+    SingleCategoryPrototype,
+    SinglePrototypePack,
 )
 from shared.src.services.prototypes.payload_serialization import (
     PrototypePackPayloadSpec,
@@ -16,7 +16,7 @@ from shared.src.services.prototypes.payload_serialization import (
 
 
 def test_build_single_prototype_pack_payload_uses_canonical_list_shape() -> None:
-    pack = PrototypePack(
+    pack = SinglePrototypePack(
         schema_version="prototype_pack.v1",
         prototype_version="proto_test_v1",
         embedding_model_id="hash_debug",
@@ -29,7 +29,7 @@ def test_build_single_prototype_pack_payload_uses_canonical_list_shape() -> None
         distance_metric="cosine",
         built_at=datetime(2026, 3, 31, tzinfo=timezone.utc),
         categories={
-            "normal": CategoryPrototype(
+            "normal": SingleCategoryPrototype(
                 centroid=[1.0, 0.0],
                 sample_count=2,
             )

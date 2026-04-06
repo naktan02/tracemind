@@ -12,7 +12,7 @@ from sklearn.cluster import KMeans
 from sklearn.metrics import silhouette_score
 
 from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.services.prototypes.payload_serialization import (
@@ -47,7 +47,7 @@ class PrototypeBuildArtifacts:
     """생성 전략 결과물."""
 
     pack_payload: PrototypePackPayload
-    build_state_payload: PrototypeBuildStatePayload | None = None
+    build_state_payload: SinglePrototypeBuildStatePayload | None = None
 
 
 class PrototypeBuildStrategy(Protocol):

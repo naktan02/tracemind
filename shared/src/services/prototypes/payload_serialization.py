@@ -9,8 +9,8 @@ from typing import Any
 
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.artifacts.prototype_pack import (
-    CategoryPrototype,
-    PrototypePack,
+    SingleCategoryPrototype,
+    SinglePrototypePack,
 )
 
 
@@ -56,7 +56,7 @@ def build_prototype_pack_payload(
 
 
 def build_single_prototype_categories(
-    categories: Mapping[str, CategoryPrototype],
+    categories: Mapping[str, SingleCategoryPrototype],
 ) -> dict[str, list[dict[str, object]]]:
     """single-centroid category mapping을 canonical list shape로 바꾼다."""
     return {
@@ -71,7 +71,9 @@ def build_single_prototype_categories(
     }
 
 
-def build_single_prototype_pack_payload(pack: PrototypePack) -> PrototypePackPayload:
+def build_single_prototype_pack_payload(
+    pack: SinglePrototypePack,
+) -> PrototypePackPayload:
     """single-centroid domain entity를 canonical payload로 직렬화한다."""
     return build_prototype_pack_payload(
         spec=PrototypePackPayloadSpec(

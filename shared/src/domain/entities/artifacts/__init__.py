@@ -3,7 +3,12 @@
 from shared.src.contracts.model_contracts import ModelManifest
 
 from .labeled_query import LabeledQuery, LabeledQuerySet
-from .prototype_pack import CategoryPrototype, PrototypePack
+from .prototype_pack import (
+    CategoryPrototype,
+    PrototypePack,
+    SingleCategoryPrototype,
+    SinglePrototypePack,
+)
 
 __all__ = [
     "CategoryPrototype",
@@ -11,4 +16,6 @@ __all__ = [
     "LabeledQuerySet",
     "ModelManifest",
     "PrototypePack",
+    "SingleCategoryPrototype",
+    "SinglePrototypePack",
 ]

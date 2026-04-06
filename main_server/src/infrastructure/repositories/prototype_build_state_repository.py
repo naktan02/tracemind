@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
     dump_prototype_build_state_payload,
     load_prototype_build_state_payload,
 )
@@ -26,12 +26,12 @@ class PrototypeBuildStateRepository:
     def versions_dir(self) -> Path:
         return self.state_root / "versions"
 
-    def save_state(self, payload: PrototypeBuildStatePayload) -> Path:
+    def save_state(self, payload: SinglePrototypeBuildStatePayload) -> Path:
         path = self.path_for_version(payload.prototype_version)
         dump_prototype_build_state_payload(path, payload)
         return path
 
-    def load_state(self, prototype_version: str) -> PrototypeBuildStatePayload:
+    def load_state(self, prototype_version: str) -> SinglePrototypeBuildStatePayload:
         path = self.path_for_version(prototype_version)
         if not path.exists():
             raise FileNotFoundError(

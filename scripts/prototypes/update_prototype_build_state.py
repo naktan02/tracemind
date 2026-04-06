@@ -23,7 +23,7 @@ from scripts.prototypes.io import (  # noqa: E402
     resolve_metadata_from_manifests,
 )
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
     dump_prototype_build_state_payload,
     load_prototype_build_state_payload,
 )
@@ -183,7 +183,7 @@ def update_prototype_build_state(
     pack_path = prototype_pack_output_dir / f"{prototype_version}.json"
     manifest_path = prototype_pack_output_dir / f"{prototype_version}.manifest.json"
 
-    build_state_payload = PrototypeBuildStatePayload.model_validate(merged_state)
+    build_state_payload = SinglePrototypeBuildStatePayload.model_validate(merged_state)
     dump_prototype_build_state_payload(build_state_path, build_state_payload)
     pack_payload = build_single_prototype_pack_payload(pack)
     dump_prototype_pack_payload(pack_path, pack_payload)

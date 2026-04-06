@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 
 from shared.src.contracts.prototype_build_state_contracts import (
-    PrototypeBuildStatePayload,
+    SinglePrototypeBuildStatePayload,
     load_prototype_build_state_payload,
 )
 
@@ -23,12 +23,12 @@ class PrototypeBuildStateService:
         default_factory=PrototypeBuildStateRepository
     )
 
-    def publish_state(self, payload: PrototypeBuildStatePayload) -> Path:
+    def publish_state(self, payload: SinglePrototypeBuildStatePayload) -> Path:
         return self.repository.save_state(payload)
 
     def publish_state_file(self, source_path: Path) -> Path:
         payload = load_prototype_build_state_payload(source_path)
         return self.publish_state(payload)
 
-    def get_state(self, prototype_version: str) -> PrototypeBuildStatePayload:
+    def get_state(self, prototype_version: str) -> SinglePrototypeBuildStatePayload:
         return self.repository.load_state(prototype_version)

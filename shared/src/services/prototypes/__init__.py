@@ -15,6 +15,10 @@ from .payload_serialization import (
     build_single_prototype_pack_payload,
     describe_payload_spec,
 )
+from .projections import (
+    project_category_centroids_by_largest_cluster,
+    require_single_category_centroids,
+)
 from .prototype_pack_builder import PrototypePackBuilder
 
 __all__ = [
@@ -30,4 +34,6 @@ __all__ = [
     "build_single_prototype_pack_payload",
     "describe_payload_spec",
     "describe_prototype_build_strategy",
+    "project_category_centroids_by_largest_cluster",
+    "require_single_category_centroids",
 ]
