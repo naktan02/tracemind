@@ -15,13 +15,4 @@ class SharedAdapterUpdate(Protocol):
     base_model_revision: str
     training_scope: str
     example_count: int
-    mean_confidence: float
-    mean_margin: float | None
     created_at: datetime | None
-
-    @property
-    def embedding_dim(self) -> int:
-        """delta가 적용되는 임베딩 차원을 반환한다."""
-
-    def l2_norm(self) -> float:
-        """update 파라미터의 L2 norm을 반환한다."""

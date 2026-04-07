@@ -70,6 +70,14 @@ def test_training_payloads_capture_round_and_revision(
     assert task.selection_policy.max_examples == 32
 
 
+def test_training_update_envelope_accepts_custom_payload_format(
+    make_training_update_envelope_payload,
+) -> None:
+    payload = make_training_update_envelope_payload(payload_format="lora_update")
+
+    assert payload.payload_format == "lora_update"
+
+
 def test_feedback_and_personalization_payloads_are_local_friendly(
     make_feedback_signal_payload,
     make_personalization_state_payload,

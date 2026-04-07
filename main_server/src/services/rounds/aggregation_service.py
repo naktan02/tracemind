@@ -5,6 +5,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, Sequence
@@ -50,6 +51,9 @@ class SharedAdapterAggregationBackend(Protocol):
         aggregated_at: datetime,
     ) -> AggregationResult:
         """같은 adapter family의 update들을 새 전역 상태로 합친다."""
+
+
+AggregationBackendFactory = Callable[[], SharedAdapterAggregationBackend]
 
 
 @dataclass(slots=True)
@@ -156,3 +160,47 @@ class DiagonalScaleAggregationService:
 
 
 AggregationService = DiagonalScaleAggregationService
+
+_AGGREGATION_BACKEND_REGISTRY: dict[
+    tuple[str, str],
+    AggregationBackendFactory,
+] = {}
+
+
+def register_shared_adapter_aggregation_backend(
+    adapter_kind: str,
+    *backend_names: str,
+    factory: AggregationBackendFactory,
+) -> None:
+    """adapter family별 aggregation backend를 얇은 wiring registry에 등록한다."""
+    normalized_adapter_kind = adapter_kind.strip().lower()
+    for backend_name in backend_names:
+        normalized_backend_name = backend_name.strip().lower()
+        _AGGREGATION_BACKEND_REGISTRY[
+            (normalized_adapter_kind, normalized_backend_name)
+        ] = factory
+
+
+def build_shared_adapter_aggregation_backend(
+    *,
+    adapter_kind: str,
+    backend_name: str,
+) -> SharedAdapterAggregationBackend:
+    """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
+
+    normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
+    factory = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
+    if factory is not None:
+        return factory()
+    raise ValueError(
+        "Unsupported aggregation backend for adapter family: "
+        f"adapter_kind={adapter_kind}, backend_name={backend_name}"
+    )
+
+
+register_shared_adapter_aggregation_backend(
+    "diagonal_scale",
+    "fedavg",
+    "diagonal_scale_fedavg",
+    factory=DiagonalScaleAggregationService,
+)

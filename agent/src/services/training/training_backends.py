@@ -13,7 +13,7 @@ from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import TrainingTask
+from shared.src.contracts.training_contracts import ClientMetricKeys, TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
@@ -50,6 +50,9 @@ class SharedAdapterTrainingBackend(Protocol):
 
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
         """저장 가능한 payload 형식으로 변환한다."""
+
+    def build_client_metrics(self, update: SharedAdapterUpdate) -> dict[str, float]:
+        """Envelope.client_metrics에 기록할 backend별 요약 metric을 만든다."""
 
 
 TrainingBackend = SharedAdapterTrainingBackend
@@ -143,6 +146,18 @@ class DiagonalScaleHeuristicTrainingBackend:
                 f"for payload conversion, got {type(update)!r}."
             )
         return update
+
+    def build_client_metrics(self, update: SharedAdapterUpdate) -> dict[str, float]:
+        if not isinstance(update, VectorAdapterDelta):
+            raise TypeError(
+                "DiagonalScaleHeuristicTrainingBackend expects VectorAdapterDelta "
+                f"for metric extraction, got {type(update)!r}."
+            )
+        return {
+            ClientMetricKeys.MEAN_CONFIDENCE: update.mean_confidence,
+            ClientMetricKeys.MEAN_MARGIN: update.mean_margin or 0.0,
+            ClientMetricKeys.DELTA_L2_NORM: update.l2_norm(),
+        }
 
 
 SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend

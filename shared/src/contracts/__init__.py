@@ -12,6 +12,9 @@ from .adapter_contracts import (
     VectorAdapterStatePayload,
     make_diagonal_delta_payload,
     make_identity_state_payload,
+    register_shared_adapter_payload_family,
+    register_shared_adapter_state_payload_type,
+    register_shared_adapter_update_payload_type,
 )
 from .common_types import TrainingScope, TrainingTaskType
 from .fl_round_contracts import ActiveRoundPayload, RoundStatusValue
@@ -96,4 +99,7 @@ __all__ = [
     "VectorAdapterDeltaPayload",
     "VectorAdapterState",
     "VectorAdapterStatePayload",
+    "register_shared_adapter_payload_family",
+    "register_shared_adapter_state_payload_type",
+    "register_shared_adapter_update_payload_type",
 ]

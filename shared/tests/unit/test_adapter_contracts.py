@@ -5,10 +5,13 @@ from pathlib import Path
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
+    SharedAdapterStatePayload,
+    SharedAdapterUpdatePayload,
     dump_shared_adapter_state_payload,
     dump_shared_adapter_update_payload,
     load_shared_adapter_state_payload,
     load_shared_adapter_update_payload,
+    register_shared_adapter_payload_family,
 )
 
 
@@ -58,3 +61,51 @@ def test_generic_shared_adapter_loader_dispatches_diagonal_scale_payloads(
     assert isinstance(loaded_update, DiagonalScaleAdapterUpdatePayload)
     assert loaded_state.adapter_kind == "diagonal_scale"
     assert loaded_update.adapter_kind == "diagonal_scale"
+
+
+def test_shared_adapter_loader_accepts_registered_custom_family(
+    tmp_path: Path,
+    fixed_utc_time,
+) -> None:
+    class TestAdapterStatePayload(SharedAdapterStatePayload):
+        bias: float
+
+    class TestAdapterUpdatePayload(SharedAdapterUpdatePayload):
+        shift: float
+
+    register_shared_adapter_payload_family(
+        "test_family",
+        state_payload_type=TestAdapterStatePayload,
+        update_payload_type=TestAdapterUpdatePayload,
+    )
+
+    state = TestAdapterStatePayload(
+        adapter_kind="test_family",
+        model_id="tracemind-embed",
+        model_revision="rev_test",
+        training_scope="adapter_only",
+        updated_at=fixed_utc_time,
+        bias=0.1,
+    )
+    update = TestAdapterUpdatePayload(
+        adapter_kind="test_family",
+        model_id="tracemind-embed",
+        base_model_revision="rev_test",
+        training_scope="adapter_only",
+        example_count=2,
+        created_at=fixed_utc_time,
+        shift=0.05,
+    )
+    state_path = tmp_path / "custom_state.json"
+    update_path = tmp_path / "custom_update.json"
+
+    dump_shared_adapter_state_payload(state_path, state)
+    dump_shared_adapter_update_payload(update_path, update)
+
+    loaded_state = load_shared_adapter_state_payload(state_path)
+    loaded_update = load_shared_adapter_update_payload(update_path)
+
+    assert isinstance(loaded_state, TestAdapterStatePayload)
+    assert isinstance(loaded_update, TestAdapterUpdatePayload)
+    assert loaded_state.adapter_kind == "test_family"
+    assert loaded_update.adapter_kind == "test_family"

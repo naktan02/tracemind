@@ -58,9 +58,12 @@ class SharedAdapterStatePayload(BaseModel):
         default=VECTOR_ADAPTER_STATE_V1,
         description="Payload contract 버전.",
     )
-    adapter_kind: AdapterKind = Field(
-        default=AdapterKind.DIAGONAL_SCALE,
-        description="Adapter family discriminator. 현재는 diagonal_scale만 지원한다.",
+    adapter_kind: str = Field(
+        default=AdapterKind.DIAGONAL_SCALE.value,
+        description=(
+            "Adapter family discriminator. 현재 기본 구현은 diagonal_scale이며, "
+            "다른 family는 registry 등록으로 확장한다."
+        ),
     )
     model_id: str = Field(description="이 adapter가 결합되는 backbone/model 식별자.")
     model_revision: str = Field(description="서버가 발행한 shared adapter revision.")
@@ -100,7 +103,7 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
             raise ValueError("embedding_dim must be positive.")
         return cls(
             schema_version=schema_version,
-            adapter_kind=AdapterKind.DIAGONAL_SCALE,
+            adapter_kind=AdapterKind.DIAGONAL_SCALE.value,
             model_id=model_id,
             model_revision=model_revision,
             training_scope=training_scope,
@@ -147,9 +150,12 @@ class SharedAdapterUpdatePayload(BaseModel):
         default=VECTOR_ADAPTER_DELTA_V1,
         description="Payload contract 버전.",
     )
-    adapter_kind: AdapterKind = Field(
-        default=AdapterKind.DIAGONAL_SCALE,
-        description="Adapter family discriminator. 현재는 diagonal_scale만 지원한다.",
+    adapter_kind: str = Field(
+        default=AdapterKind.DIAGONAL_SCALE.value,
+        description=(
+            "Adapter family discriminator. 현재 기본 구현은 diagonal_scale이며, "
+            "다른 family는 registry 등록으로 확장한다."
+        ),
     )
     model_id: str = Field(
         description="이 update가 대상으로 삼는 backbone/model 식별자."
@@ -210,12 +216,38 @@ VectorAdapterDeltaPayload = DiagonalScaleAdapterUpdatePayload
 VectorAdapterState = VectorAdapterStatePayload
 VectorAdapterDelta = VectorAdapterDeltaPayload
 
-_STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {
-    AdapterKind.DIAGONAL_SCALE: DiagonalScaleAdapterStatePayload,
-}
-_UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {
-    AdapterKind.DIAGONAL_SCALE: DiagonalScaleAdapterUpdatePayload,
-}
+_STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {}
+_UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {}
+
+
+def register_shared_adapter_state_payload_type(
+    adapter_kind: str,
+    payload_type: type[SharedAdapterStatePayload],
+) -> None:
+    """adapter family별 state payload 타입을 registry에 등록한다."""
+
+    _STATE_PAYLOAD_TYPES[adapter_kind.strip().lower()] = payload_type
+
+
+def register_shared_adapter_update_payload_type(
+    adapter_kind: str,
+    payload_type: type[SharedAdapterUpdatePayload],
+) -> None:
+    """adapter family별 update payload 타입을 registry에 등록한다."""
+
+    _UPDATE_PAYLOAD_TYPES[adapter_kind.strip().lower()] = payload_type
+
+
+def register_shared_adapter_payload_family(
+    adapter_kind: str,
+    *,
+    state_payload_type: type[SharedAdapterStatePayload],
+    update_payload_type: type[SharedAdapterUpdatePayload],
+) -> None:
+    """adapter family의 state/update payload 타입을 함께 등록한다."""
+
+    register_shared_adapter_state_payload_type(adapter_kind, state_payload_type)
+    register_shared_adapter_update_payload_type(adapter_kind, update_payload_type)
 
 
 def _dump_payload(path: Path, payload: BaseModel) -> None:
@@ -233,7 +265,9 @@ def _load_payload_data(path: Path) -> dict[str, object]:
 def load_shared_adapter_state_payload(path: Path) -> SharedAdapterStatePayload:
     """JSON 파일에서 shared adapter state payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE))
+    adapter_kind = str(
+        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
+    ).strip().lower()
     payload_type = _STATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter state kind: {adapter_kind}")
@@ -251,7 +285,9 @@ def dump_shared_adapter_state_payload(
 def load_shared_adapter_update_payload(path: Path) -> SharedAdapterUpdatePayload:
     """JSON 파일에서 shared adapter update payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE))
+    adapter_kind = str(
+        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
+    ).strip().lower()
     payload_type = _UPDATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter update kind: {adapter_kind}")
@@ -358,7 +394,7 @@ def make_diagonal_delta_payload(
     """
     return DiagonalScaleAdapterUpdatePayload(
         schema_version=VECTOR_ADAPTER_DELTA_V1,
-        adapter_kind=AdapterKind.DIAGONAL_SCALE,
+        adapter_kind=AdapterKind.DIAGONAL_SCALE.value,
         model_id=model_id,
         base_model_revision=base_model_revision,
         training_scope=training_scope,
@@ -369,6 +405,13 @@ def make_diagonal_delta_payload(
         mean_margin=mean_margin,
         label_counts=label_counts or {},
     )
+
+
+register_shared_adapter_payload_family(
+    AdapterKind.DIAGONAL_SCALE.value,
+    state_payload_type=DiagonalScaleAdapterStatePayload,
+    update_payload_type=DiagonalScaleAdapterUpdatePayload,
+)
 
 
 __all__ = [
@@ -395,4 +438,7 @@ __all__ = [
     "load_vector_adapter_state_payload",
     "make_diagonal_delta_payload",
     "make_identity_state_payload",
+    "register_shared_adapter_payload_family",
+    "register_shared_adapter_state_payload_type",
+    "register_shared_adapter_update_payload_type",
 ]

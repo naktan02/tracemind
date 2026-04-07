@@ -2,12 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Protocol
 
 from main_server.src.services.rounds.aggregation_service import (
     DiagonalScaleAggregationService,
     SharedAdapterAggregationBackend,
+    build_shared_adapter_aggregation_backend,
 )
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
@@ -46,6 +48,9 @@ class SharedAdapterRoundFamily(Protocol):
         state: SharedAdapterState,
     ) -> SharedAdapterStatePayload:
         """domain state를 contract payload로 변환한다."""
+
+
+RoundFamilyFactory = Callable[[str], SharedAdapterRoundFamily]
 
 
 @dataclass(slots=True)
@@ -110,3 +115,46 @@ class DiagonalScaleRoundFamily:
                 f"{state.adapter_kind}"
             )
         return state
+
+
+_ROUND_FAMILY_REGISTRY: dict[str, RoundFamilyFactory] = {}
+
+
+def register_shared_adapter_round_family(
+    *family_names: str,
+    factory: RoundFamilyFactory,
+) -> None:
+    """adapter family 조합 factory를 얇은 wiring registry에 등록한다."""
+    for family_name in family_names:
+        _ROUND_FAMILY_REGISTRY[family_name.strip().lower()] = factory
+
+
+def build_shared_adapter_round_family(
+    family_name: str,
+    *,
+    aggregation_backend_name: str,
+) -> SharedAdapterRoundFamily:
+    """adapter family와 aggregation backend 이름으로 서버 조합 객체를 만든다."""
+
+    normalized_family_name = family_name.strip().lower()
+    factory = _ROUND_FAMILY_REGISTRY.get(normalized_family_name)
+    if factory is not None:
+        return factory(aggregation_backend_name)
+    raise ValueError(f"Unsupported shared adapter family: {family_name}.")
+
+
+def _build_diagonal_scale_round_family(
+    aggregation_backend_name: str,
+) -> SharedAdapterRoundFamily:
+    return DiagonalScaleRoundFamily(
+        aggregation_backend=build_shared_adapter_aggregation_backend(
+            adapter_kind="diagonal_scale",
+            backend_name=aggregation_backend_name,
+        )
+    )
+
+
+register_shared_adapter_round_family(
+    "diagonal_scale",
+    factory=_build_diagonal_scale_round_family,
+)

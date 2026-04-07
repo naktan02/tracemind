@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -12,6 +13,13 @@ from agent.src.services.training.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingRequest,
     LocalTrainingService,
+)
+from agent.src.services.training.training_backends import (
+    register_shared_adapter_training_backend,
+)
+from shared.src.contracts.adapter_contracts import (
+    SharedAdapterUpdatePayload,
+    register_shared_adapter_update_payload_type,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -43,7 +51,7 @@ def _build_task(
     min_required_examples: int = 1,
     gradient_clip_norm: float | None = 0.05,
     acceptance_policy_name: str | None = None,
-    privacy_guard_name: str | None = None,
+    privacy_guard_name: str | None = "diagonal_scale_clip_only",
     loss: str = "diagonal_scale_heuristic",
 ) -> TrainingTask:
     return TrainingTask(
@@ -286,3 +294,86 @@ def test_local_training_service_uses_injected_clock_when_created_at_missing(
     assert result.update_envelope.created_at == fixed_time
     assert result.update_payload is not None
     assert result.update_payload.created_at == fixed_time
+
+
+def test_local_training_service_can_use_registered_non_diagonal_backend(
+    tmp_path: Path,
+) -> None:
+    class TestShiftUpdatePayload(SharedAdapterUpdatePayload):
+        shift_norm: float
+
+    @dataclass(slots=True)
+    class TestShiftBackend:
+        backend_name: str = "test_shift_backend"
+        payload_format: str = "test_shift_update"
+        adapter_kind: str = "test_shift"
+
+        def build_update(
+            self,
+            *,
+            training_task: TrainingTask,
+            model_manifest: ModelManifest,
+            accepted_examples,
+            created_at: datetime,
+        ) -> TestShiftUpdatePayload:
+            del training_task
+            return TestShiftUpdatePayload(
+                model_id=model_manifest.model_id,
+                base_model_revision=model_manifest.model_revision,
+                training_scope=model_manifest.training_scope,
+                example_count=len(accepted_examples),
+                created_at=created_at,
+                adapter_kind=self.adapter_kind,
+                shift_norm=1.25,
+            )
+
+        def to_payload(
+            self,
+            update: TestShiftUpdatePayload,
+        ) -> SharedAdapterUpdatePayload:
+            return update
+
+        def build_client_metrics(
+            self,
+            update,
+        ) -> dict[str, float]:
+            return {"test_shift_norm": float(update.shift_norm)}
+
+    register_shared_adapter_update_payload_type("test_shift", TestShiftUpdatePayload)
+    register_shared_adapter_training_backend(
+        "test_shift_backend",
+        factory=TestShiftBackend,
+    )
+
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(
+                loss="test_shift_backend",
+                privacy_guard_name="noop",
+            ),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_envelope is not None
+    assert result.update_payload is not None
+    assert result.update_payload.adapter_kind == "test_shift"
+    assert result.update_envelope.payload_format == "test_shift_update"
+    assert result.update_envelope.client_metrics["test_shift_norm"] == 1.25
+    assert "mean_confidence" not in result.update_envelope.client_metrics
+
+    loaded_payload = repository.load_shared_adapter_update(
+        result.update_envelope.update_id
+    )
+    assert isinstance(loaded_payload, TestShiftUpdatePayload)
+    assert loaded_payload.adapter_kind == "test_shift"

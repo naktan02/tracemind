@@ -10,7 +10,7 @@ from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
 from agent.src.services.training.privacy_guard_service import (
-    DiagonalScaleClipOnlyPrivacyGuard,
+    NoOpSharedAdapterPrivacyGuard,
     SharedAdapterPrivacyGuard,
     build_shared_adapter_privacy_guard,
 )
@@ -85,7 +85,7 @@ class LocalTrainingService:
         default_factory=DiagonalScaleHeuristicTrainingBackend
     )
     privacy_guard: SharedAdapterPrivacyGuard = field(
-        default_factory=DiagonalScaleClipOnlyPrivacyGuard
+        default_factory=NoOpSharedAdapterPrivacyGuard
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -145,17 +145,12 @@ class LocalTrainingService:
             payload_ref=str(payload_path),
             payload_format=backend.payload_format,
             example_count=len(accepted_examples),
-            client_metrics={
-                ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
-                ClientMetricKeys.MEAN_CONFIDENCE: (
-                    protected_update.update.mean_confidence
-                ),
-                ClientMetricKeys.MEAN_MARGIN: (
-                    protected_update.update.mean_margin or 0.0
-                ),
-                ClientMetricKeys.DELTA_L2_NORM: protected_update.update.l2_norm(),
-                ClientMetricKeys.SELECTED_EXAMPLES: float(len(accepted_examples)),
-            },
+            client_metrics=self._build_client_metrics(
+                backend=backend,
+                update=protected_update.update,
+                selection_result=selection_result,
+                accepted_example_count=len(accepted_examples),
+            ),
             created_at=effective_created_at,
             clipped=protected_update.clipped,
             dp_applied=protected_update.dp_applied,
@@ -186,6 +181,21 @@ class LocalTrainingService:
         if guard_name is None or guard_name == self.privacy_guard.guard_name:
             return self.privacy_guard
         return build_shared_adapter_privacy_guard(guard_name)
+
+    @staticmethod
+    def _build_client_metrics(
+        *,
+        backend: SharedAdapterTrainingBackend,
+        update: SharedAdapterUpdate,
+        selection_result: PseudoLabelSelectionResult,
+        accepted_example_count: int,
+    ) -> dict[str, float]:
+        client_metrics = {
+            ClientMetricKeys.ACCEPTED_RATIO: selection_result.accepted_ratio,
+            ClientMetricKeys.SELECTED_EXAMPLES: float(accepted_example_count),
+        }
+        client_metrics.update(backend.build_client_metrics(update))
+        return client_metrics
 
     def run_task(
         self,

@@ -13,17 +13,30 @@ from main_server.src.services.prototypes.prototype_pack_service import (
 from main_server.src.services.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
+from main_server.src.services.rounds.runtime_config import (
+    ServerRoundRuntimeConfig,
+    load_server_round_runtime_config_from_env,
+)
+from main_server.src.services.rounds.runtime_factory import (
+    build_round_lifecycle_service_from_config,
+)
 
 
 def create_app(
     *,
     round_lifecycle_service: RoundLifecycleService | None = None,
+    round_runtime_config: ServerRoundRuntimeConfig | None = None,
     prototype_pack_service: PrototypePackService | None = None,
 ) -> FastAPI:
     """Main server 앱을 생성하고 서버 소유 서비스를 app.state에 연결한다."""
     app = FastAPI(title="TraceMind Main Server", version="0.1.0")
+    effective_runtime_config = (
+        round_runtime_config or load_server_round_runtime_config_from_env()
+    )
+    app.state.round_runtime_config = effective_runtime_config
     app.state.round_lifecycle_service = (
-        round_lifecycle_service or RoundLifecycleService()
+        round_lifecycle_service
+        or build_round_lifecycle_service_from_config(effective_runtime_config)
     )
     app.state.prototype_pack_service = prototype_pack_service or PrototypePackService()
     app.include_router(health_router)

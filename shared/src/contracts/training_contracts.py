@@ -38,7 +38,7 @@ DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal[
 
 
 class UpdatePayloadFormat(StrEnum):
-    """Training update payload 포맷 식별자."""
+    """Training update payload 포맷의 알려진 상수 모음."""
 
     DIAGONAL_SCALE_UPDATE = "diagonal_scale_update"
 
@@ -341,7 +341,7 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     payload_ref: str = Field(
         description="실제 adapter update payload 파일 경로 또는 참조값."
     )
-    payload_format: UpdatePayloadFormat = Field(
+    payload_format: str = Field(
         description="예: diagonal_scale_update 같은 update payload 포맷 식별자."
     )
     example_count: int = Field(
@@ -570,7 +570,7 @@ def make_training_update_envelope(
     client_metrics: dict[str, float],
     update_id: str | None = None,
     training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    payload_format: UpdatePayloadFormat = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE,
+    payload_format: str = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE.value,
     agent_id: str | None = None,
     clipped: bool = False,
     dp_applied: bool = False,
