@@ -2,6 +2,12 @@
 
 from .baseline_service import BaselineConfig, BaselineService
 from .decision_service import DecisionEvaluation, DecisionService
+from .scoring_backends import (
+    PrototypeSimilarityScoringBackend,
+    ScoringBackend,
+    build_scoring_backend,
+    register_scoring_backend,
+)
 from .scoring_policies import (
     MaxCosineScorePolicy,
     PrototypeScorePolicy,
@@ -17,10 +23,14 @@ __all__ = [
     "DecisionEvaluation",
     "DecisionService",
     "MaxCosineScorePolicy",
+    "PrototypeSimilarityScoringBackend",
     "PrototypeScorePolicy",
+    "ScoringBackend",
     "ScoringService",
     "TimeSeriesAccumulator",
     "TimeSeriesConfig",
     "TopKMeanCosineScorePolicy",
+    "build_scoring_backend",
     "build_prototype_score_policy",
+    "register_scoring_backend",
 ]

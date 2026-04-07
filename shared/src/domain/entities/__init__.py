@@ -19,6 +19,7 @@ from .inference import (
 )
 from .training import (
     DecisionFeedbackSignal,
+    IdentitySharedAdapterState,
     PseudoLabelCandidate,
     SharedAdapterState,
     SharedAdapterUpdate,
@@ -36,6 +37,7 @@ __all__ = [
     "BaselineProfile",
     "CategoryPrototype",
     "DecisionFeedbackSignal",
+    "IdentitySharedAdapterState",
     "LabeledQuery",
     "LabeledQuerySet",
     "ModelManifest",

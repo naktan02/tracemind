@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -29,6 +30,16 @@ from main_server.src.services.prototypes import (
     ReferenceRebuildPrototypePublicationStrategy,
     StoredReferencePrototypeRebuildService,
 )
+from main_server.src.services.rounds.adapter_family_service import (
+    SharedAdapterRoundFamily,
+    register_shared_adapter_round_family,
+)
+from main_server.src.services.rounds.aggregation_service import (
+    AggregationResult,
+    SharedAdapterAggregationBackend,
+    build_shared_adapter_aggregation_backend,
+    register_shared_adapter_aggregation_backend,
+)
 from main_server.src.services.rounds.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
@@ -40,6 +51,10 @@ from main_server.src.services.rounds.round_lifecycle_service import (
     RoundValidationError,
 )
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.rounds.runtime_config import ServerRoundRuntimeConfig
+from main_server.src.services.rounds.runtime_factory import (
+    build_round_manager_service_from_config,
+)
 from main_server.src.services.rounds.update_acceptance_policy import (
     IdempotentRoundUpdateAcceptancePolicy,
     SingleSubmissionPerAgentTrustPolicy,
@@ -48,10 +63,17 @@ from main_server.src.services.rounds.update_acceptance_policy import (
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
+    SharedAdapterStatePayload,
+    SharedAdapterUpdatePayload,
     dump_shared_adapter_update_payload,
+    register_shared_adapter_payload_family,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
+from shared.src.domain.entities.training.shared_adapter_update import (
+    SharedAdapterUpdate,
+)
 from shared.src.domain.services.clock import FixedClock
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import SinglePrototypeBuildStrategy
@@ -72,6 +94,134 @@ class _StaticEmbeddingAdapterFactory:
     def create(cls, spec: EmbeddingAdapterSpec) -> _StaticEmbeddingAdapter:
         del spec
         return _StaticEmbeddingAdapter(cls._vectors)
+
+
+TEST_SHIFT_ADAPTER_KIND = "test_shift_round_family"
+TEST_SHIFT_FAMILY_NAME = "test_shift_round_family"
+TEST_SHIFT_BACKEND_NAME = "test_shift_avg"
+TEST_SHIFT_PAYLOAD_FORMAT = "test_shift_update"
+
+
+class _TestShiftStatePayload(SharedAdapterStatePayload):
+    shift_bias: float
+
+    @property
+    def embedding_dim(self) -> int:
+        return 1
+
+    def apply(self, embedding) -> list[float]:
+        if len(embedding) != 1:
+            raise ValueError("Expected a one-dimensional embedding.")
+        return [float(embedding[0]) + float(self.shift_bias)]
+
+
+class _TestShiftUpdatePayload(SharedAdapterUpdatePayload):
+    shift_delta: float
+
+
+@dataclass(slots=True)
+class _TestShiftAggregationBackend:
+    adapter_kind: str = TEST_SHIFT_ADAPTER_KIND
+
+    def aggregate(
+        self,
+        *,
+        base_state: SharedAdapterState,
+        update_payloads: tuple[SharedAdapterUpdate, ...] | list[SharedAdapterUpdate],
+        next_model_revision: str,
+        aggregated_at: datetime,
+    ) -> AggregationResult:
+        if not isinstance(base_state, _TestShiftStatePayload):
+            raise TypeError("Expected _TestShiftStatePayload as base state.")
+        valid_updates = [
+            payload
+            for payload in update_payloads
+            if (
+                isinstance(payload, _TestShiftUpdatePayload)
+                and payload.example_count > 0
+            )
+        ]
+        if not valid_updates:
+            raise ValueError("At least one test-shift update is required.")
+
+        total_examples = sum(payload.example_count for payload in valid_updates)
+        weighted_shift = sum(
+            payload.shift_delta * payload.example_count for payload in valid_updates
+        ) / total_examples
+        next_state = _TestShiftStatePayload(
+            model_id=base_state.model_id,
+            model_revision=next_model_revision,
+            training_scope=base_state.training_scope,
+            updated_at=aggregated_at,
+            adapter_kind=self.adapter_kind,
+            shift_bias=base_state.shift_bias + weighted_shift,
+        )
+        return AggregationResult(
+            next_state=next_state,
+            aggregated_metrics={
+                "example_count": float(total_examples),
+                "mean_shift_delta": float(weighted_shift),
+            },
+            update_count=len(valid_updates),
+        )
+
+
+@dataclass(slots=True)
+class _TestShiftRoundFamily:
+    adapter_kind: str = TEST_SHIFT_ADAPTER_KIND
+    accepted_update_formats: tuple[str, ...] = (TEST_SHIFT_PAYLOAD_FORMAT,)
+    aggregation_backend: SharedAdapterAggregationBackend | None = None
+
+    def state_from_payload(
+        self,
+        payload: SharedAdapterStatePayload,
+    ) -> SharedAdapterState:
+        if not isinstance(payload, _TestShiftStatePayload):
+            raise TypeError("Expected _TestShiftStatePayload.")
+        return payload
+
+    def update_from_payload(
+        self,
+        payload: SharedAdapterUpdatePayload,
+    ) -> SharedAdapterUpdate:
+        if not isinstance(payload, _TestShiftUpdatePayload):
+            raise TypeError("Expected _TestShiftUpdatePayload.")
+        return payload
+
+    def state_to_payload(
+        self,
+        state: SharedAdapterState,
+    ) -> SharedAdapterStatePayload:
+        if not isinstance(state, _TestShiftStatePayload):
+            raise TypeError("Expected _TestShiftStatePayload.")
+        return state
+
+
+def _build_test_shift_round_family(
+    aggregation_backend_name: str,
+) -> SharedAdapterRoundFamily:
+    return _TestShiftRoundFamily(
+        aggregation_backend=build_shared_adapter_aggregation_backend(
+            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+            backend_name=aggregation_backend_name,
+        )
+    )
+
+
+register_shared_adapter_payload_family(
+    TEST_SHIFT_ADAPTER_KIND,
+    state_payload_type=_TestShiftStatePayload,
+    update_payload_type=_TestShiftUpdatePayload,
+)
+register_shared_adapter_aggregation_backend(
+    TEST_SHIFT_ADAPTER_KIND,
+    TEST_SHIFT_BACKEND_NAME,
+    factory=_TestShiftAggregationBackend,
+)
+register_shared_adapter_round_family(
+    TEST_SHIFT_FAMILY_NAME,
+    factory=_build_test_shift_round_family,
+)
 
 
 def _build_service(
@@ -490,3 +640,105 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     assert Path(finalized.publication.prototype_pack_ref).exists()
     assert finalized.publication.prototype_build_state_ref is not None
     assert Path(finalized.publication.prototype_build_state_ref).exists()
+
+
+def test_round_lifecycle_finalizes_registered_custom_family(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    round_repository = RoundRepository(state_root=tmp_path / "rounds")
+    state_repository = (
+        shared_adapter_state_repository_module.SharedAdapterStateRepository(
+            state_root=tmp_path / "shared_states"
+        )
+    )
+    state_path = state_repository.save_shared_adapter_state(
+        _TestShiftStatePayload(
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            training_scope="adapter_only",
+            updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+            shift_bias=1.0,
+        )
+    )
+    active_manifest = ModelManifest(
+        schema_version="model_manifest.v1",
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        artifact_kind="shared_adapter_state",
+        artifact_ref=str(state_path),
+        prototype_version="proto_000",
+        training_scope="adapter_only",
+        training_enabled=True,
+        compatible_task_types=("pseudo_label_self_training",),
+    )
+    round_manager_service = build_round_manager_service_from_config(
+        ServerRoundRuntimeConfig(
+            adapter_family_name=TEST_SHIFT_FAMILY_NAME,
+            aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
+        ),
+        artifact_repository=state_repository,
+        clock=FixedClock(fixed_time),
+    )
+    service = RoundLifecycleService(
+        round_repository=round_repository,
+        round_manager_service=round_manager_service,
+        clock=FixedClock(fixed_time),
+    )
+
+    record = service.open_round(
+        RoundOpenRequest(
+            active_manifest=active_manifest,
+            round_id="round_0001",
+        )
+    )
+    payload_path = tmp_path / "updates" / "custom_update.json"
+    dump_shared_adapter_update_payload(
+        payload_path,
+        _TestShiftUpdatePayload(
+            model_id="tracemind-embed",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            example_count=4,
+            created_at=fixed_time,
+            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+            shift_delta=0.3,
+        )
+    )
+    update = TrainingUpdateEnvelope(
+        schema_version="training_update_envelope.v1",
+        update_id="custom_update_001",
+        round_id=record.round_id,
+        task_id=record.training_task.task_id,
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        payload_ref=str(payload_path),
+        payload_format=TEST_SHIFT_PAYLOAD_FORMAT,
+        example_count=4,
+        client_metrics={"test_shift_norm": 0.3},
+    )
+    service.accept_update(record.round_id, update)
+
+    finalized = service.finalize_round(
+        record.round_id,
+        RoundFinalizeRequest(
+            next_prototype_version="proto_001",
+            next_model_revision="rev_001",
+        ),
+    )
+
+    assert finalized.status == RoundStatus.FINALIZED
+    assert finalized.publication is not None
+    assert finalized.publication.aggregated_metrics["mean_shift_delta"] == 0.3
+    assert finalized.publication.next_manifest.model_revision == "rev_001"
+    assert round_repository.load_active_pointer() is None
+
+    next_state_payload = state_repository.load_shared_adapter_state_from_ref(
+        finalized.publication.next_manifest.artifact_ref
+    )
+    assert isinstance(next_state_payload, _TestShiftStatePayload)
+    assert next_state_payload.adapter_kind == TEST_SHIFT_ADAPTER_KIND
+    assert next_state_payload.shift_bias == 1.3

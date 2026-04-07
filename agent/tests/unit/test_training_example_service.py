@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent.src.infrastructure.repositories.scored_event_repository import (
@@ -25,6 +26,20 @@ class _StaticEmbeddingAdapter:
 
     def embed_texts(self, texts: list[str]) -> list[list[float]]:
         return [list(self._vectors[text]) for text in texts]
+
+
+@dataclass(slots=True)
+class _CustomSharedAdapterState:
+    schema_version: str = "custom_state.v1"
+    adapter_kind: str = "custom_state"
+    model_id: str = "hash_debug"
+    model_revision: str = "main"
+    training_scope: str = "adapter_only"
+    updated_at: datetime = datetime(2026, 4, 2, tzinfo=timezone.utc)
+    embedding_dim: int = 2
+
+    def apply(self, embedding) -> list[float]:
+        return [float(embedding[0]), 0.0]
 
 
 def _pack_payload() -> PrototypePackPayload:
@@ -154,4 +169,31 @@ def test_training_example_service_rebuilds_examples_from_stored_events() -> None
     assert len(examples) == 1
     assert examples[0].base_embedding == [1.0, 0.0]
     assert examples[0].embedding == [1.0, 0.0]
+    assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+
+
+def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
+    service = TrainingExampleService()
+    adapter = _StaticEmbeddingAdapter({"panic panic": [0.2, 1.0]})
+
+    examples = service.build_examples(
+        TrainingExampleBuildRequest(
+            source_rows=(
+                TrainingExampleSource(
+                    query_id="q1",
+                    text="panic panic",
+                    occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                ),
+            ),
+            adapter=adapter,
+            adapter_state=_CustomSharedAdapterState(),
+            prototype_pack=_pack_payload(),
+            model_id="hash_debug",
+            scoring_service=ScoringService(),
+        )
+    )
+
+    assert len(examples) == 1
+    assert examples[0].base_embedding == [0.2, 1.0]
+    assert examples[0].embedding == [0.2, 0.0]
     assert examples[0].scored_event.category_scores["anxiety"] == 1.0

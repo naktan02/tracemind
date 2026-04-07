@@ -23,6 +23,10 @@ runner:
     sample_size: 5000
   confidence_threshold: 0.6
   margin_threshold: 0.02
+  similarity_name: cosine
+  scorer_backend_name: prototype_similarity
+  score_policy_name: max_cosine
+  score_top_k: null
 
 strategy:
   name: all

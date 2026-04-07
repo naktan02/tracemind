@@ -14,7 +14,10 @@ from scripts.experiments.prototype_strategy.runner import (
     render_validation_summary,
 )
 from scripts.experiments.prototype_strategy.scoring import (
+    ConfiguredPrototypeIndexScorer,
     MaxCosinePrototypeIndexScorer,
+    PrototypeIndexScorer,
+    build_prototype_index_scorer,
 )
 from scripts.experiments.prototype_strategy.strategies import (
     DbscanPrototypeStrategy,
@@ -28,6 +31,7 @@ from scripts.experiments.prototype_strategy.strategies import (
 
 __all__ = [
     "DbscanPrototypeStrategy",
+    "ConfiguredPrototypeIndexScorer",
     "EvaluationMetrics",
     "ExperimentSummary",
     "KMeansPrototypeStrategy",
@@ -35,10 +39,12 @@ __all__ = [
     "ProjectionArtifact",
     "PrototypeExperimentRunner",
     "PrototypeIndex",
+    "PrototypeIndexScorer",
     "PrototypeVector",
     "SinglePrototypeStrategy",
     "StrategyEvaluationReport",
     "StrategySelectionPolicy",
+    "build_prototype_index_scorer",
     "build_requested_strategies",
     "build_requested_strategy",
     "build_strategies",

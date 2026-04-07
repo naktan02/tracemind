@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field, replace
 from collections.abc import Sequence
+from dataclasses import dataclass, field, replace
 from typing import Protocol
 
 from main_server.src.services.prototypes.models import (

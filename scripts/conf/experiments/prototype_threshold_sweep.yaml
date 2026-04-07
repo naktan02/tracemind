@@ -16,6 +16,10 @@ runner:
   selection_policy:
     _target_: scripts.experiments.prototype_strategy.sweep.ThresholdPolicySelectionPolicy
     minimum_accepted_ratio: 0.5
+  similarity_name: cosine
+  scorer_backend_name: prototype_similarity
+  score_policy_name: max_cosine
+  score_top_k: null
 
 strategy:
   name: kmeans

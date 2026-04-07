@@ -100,6 +100,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         loss_name="cross_entropy",
         confidence_threshold=0.7,
         margin_threshold=0.05,
+        scorer_backend_name="prototype_similarity",
         score_policy_name="topk_mean_cosine",
         score_top_k=3,
         acceptance_policy_name="top1_margin_threshold",
@@ -108,6 +109,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
 
     assert payload.training_backend_name == "contrastive"
     assert payload.loss_name == "cross_entropy"
+    assert payload.scorer_backend_name == "prototype_similarity"
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
     assert payload.acceptance_policy_name == "top1_margin_threshold"
@@ -121,6 +123,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
             "margin_threshold": 0.03,
+            "scorer_backend_name": "prototype_similarity",
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
             "acceptance_policy_name": "top1_confidence_only",
@@ -131,6 +134,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
 
     assert config.training_backend_name == "contrastive"
     assert config.loss_name == "cross_entropy"
+    assert config.scorer_backend_name == "prototype_similarity"
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
     assert config.acceptance_policy_name == "top1_confidence_only"
@@ -141,6 +145,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "loss_name": "cross_entropy",
         "confidence_threshold": 0.65,
         "margin_threshold": 0.03,
+        "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "topk_mean_cosine",
         "score_top_k": 2,
         "acceptance_policy_name": "top1_confidence_only",

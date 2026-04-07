@@ -19,7 +19,7 @@ from scripts.experiments.prototype_strategy.models import (
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_strategy.scoring import (
-    MaxCosinePrototypeIndexScorer,
+    build_prototype_index_scorer,
 )
 from scripts.experiments.prototype_strategy.strategies import (
     build_requested_strategy,
@@ -84,6 +84,10 @@ class ThresholdPolicyExperimentRunner:
     selection_policy: ThresholdPolicySelectionPolicy = field(
         default_factory=ThresholdPolicySelectionPolicy
     )
+    similarity_name: str = "cosine"
+    scorer_backend_name: str = "prototype_similarity"
+    score_policy_name: str = "max_cosine"
+    score_top_k: int | None = None
 
     def run(
         self,
@@ -115,7 +119,12 @@ class ThresholdPolicyExperimentRunner:
             prototype_index.to_dict(),
         )
 
-        scorer = MaxCosinePrototypeIndexScorer()
+        scorer = build_prototype_index_scorer(
+            scorer_backend_name=self.scorer_backend_name,
+            score_policy_name=self.score_policy_name,
+            score_top_k=self.score_top_k,
+            similarity_name=self.similarity_name,
+        )
         validation_predictions = score_embeddings(
             rows=request.validation_rows,
             embeddings=validation_embeddings,

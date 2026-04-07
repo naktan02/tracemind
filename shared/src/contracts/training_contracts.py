@@ -82,6 +82,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     - `loss_name`: 학습 objective의 loss 함수 식별자
     - `confidence_threshold`: pseudo-label 채택 최소 confidence
     - `margin_threshold`: top1-top2 차이 최소값
+    - `scorer_backend_name`: category score 계산 backend 식별자
     - `score_policy_name`: 다중 prototype score 집계 정책 식별자
     - `score_top_k`: top-k 계열 score 정책이 사용할 k 값
     - `acceptance_policy_name`: pseudo-label acceptance 정책 식별자
@@ -113,6 +114,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
     margin_threshold: float | None = Field(
         default=None,
         description="Top1과 top2 score 차이의 최소값.",
+    )
+    scorer_backend_name: str | None = Field(
+        default=None,
+        description="카테고리 score 계산 backend 식별자.",
     )
     score_policy_name: str | None = Field(
         default=None,
@@ -153,6 +158,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
             loss_name=_optional_str(source.get("loss_name")),
             confidence_threshold=_optional_float(source.get("confidence_threshold")),
             margin_threshold=_optional_float(source.get("margin_threshold")),
+            scorer_backend_name=_optional_str(source.get("scorer_backend_name")),
             score_policy_name=_optional_str(source.get("score_policy_name")),
             score_top_k=_optional_positive_int(source.get("score_top_k")),
             acceptance_policy_name=_optional_str(
@@ -169,6 +175,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
                     "loss_name",
                     "confidence_threshold",
                     "margin_threshold",
+                    "scorer_backend_name",
                     "score_policy_name",
                     "score_top_k",
                     "acceptance_policy_name",
@@ -188,6 +195,8 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["confidence_threshold"] = self.confidence_threshold
         if self.margin_threshold is not None:
             result["margin_threshold"] = self.margin_threshold
+        if self.scorer_backend_name is not None:
+            result["scorer_backend_name"] = self.scorer_backend_name
         if self.score_policy_name is not None:
             result["score_policy_name"] = self.score_policy_name
         if self.score_top_k is not None:
@@ -431,6 +440,7 @@ DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING: dict[str, TrainingConfigScalar] = {
     "training_backend_name": "diagonal_scale_heuristic",
     "confidence_threshold": 0.6,
     "margin_threshold": 0.02,
+    "scorer_backend_name": "prototype_similarity",
     "score_policy_name": "max_cosine",
     "acceptance_policy_name": "top1_margin_threshold",
     "privacy_guard_name": "diagonal_scale_clip_only",

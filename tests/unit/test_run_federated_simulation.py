@@ -53,6 +53,7 @@ def _default_training_task_config(
     margin_threshold: float,
     max_examples: int,
     gradient_clip_norm: float | None,
+    scorer_backend_name: str = "prototype_similarity",
     score_policy_name: str = "max_cosine",
     score_top_k: int | None = None,
 ) -> FederatedTrainingTaskConfig:
@@ -68,6 +69,7 @@ def _default_training_task_config(
                 "training_backend_name": "diagonal_scale_heuristic",
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
+                "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
                 **(
                     {}
@@ -88,11 +90,13 @@ def _default_validation_config(
     *,
     confidence_threshold: float,
     margin_threshold: float,
+    scorer_backend_name: str = "prototype_similarity",
     score_policy_name: str = "max_cosine",
     score_top_k: int | None = None,
 ) -> FederatedValidationConfig:
     return FederatedValidationConfig(
         similarity_name="cosine",
+        scorer_backend_name=scorer_backend_name,
         score_policy_name=score_policy_name,
         score_top_k=score_top_k,
         confidence_threshold=confidence_threshold,

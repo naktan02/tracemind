@@ -97,6 +97,7 @@ class FederatedValidationConfig:
     """validation score/acceptance 계산 설정."""
 
     similarity_name: str
+    scorer_backend_name: str
     score_policy_name: str
     confidence_threshold: float
     margin_threshold: float

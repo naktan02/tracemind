@@ -2,10 +2,11 @@
 
 from __future__ import annotations
 
+from typing import TYPE_CHECKING
+
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
-from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.prototypes.prototype_rebuild_service import (
     StoredReferencePrototypeRebuildService,
 )
@@ -22,6 +23,11 @@ from main_server.src.services.rounds.update_acceptance_policy import (
     StrictRoundUpdateAcceptancePolicy,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+
+if TYPE_CHECKING:
+    from main_server.src.infrastructure.repositories.round_repository import (
+        RoundRepository,
+    )
 
 
 def build_round_manager_service_from_config(
@@ -63,6 +69,10 @@ def build_round_lifecycle_service_from_config(
     clock: Clock | None = None,
 ) -> RoundLifecycleService:
     """server-owned runtime config로 RoundLifecycleService를 조립한다."""
+
+    from main_server.src.infrastructure.repositories.round_repository import (
+        RoundRepository,
+    )
 
     effective_clock = clock or SystemUtcClock()
     return RoundLifecycleService(

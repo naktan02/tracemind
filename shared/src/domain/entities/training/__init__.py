@@ -14,11 +14,12 @@ from shared.src.contracts.training_contracts import (
 )
 
 from .pseudo_label_candidate import PseudoLabelCandidate
-from .shared_adapter_state import SharedAdapterState
+from .shared_adapter_state import IdentitySharedAdapterState, SharedAdapterState
 from .shared_adapter_update import SharedAdapterUpdate
 
 __all__ = [
     "DecisionFeedbackSignal",
+    "IdentitySharedAdapterState",
     "PseudoLabelCandidate",
     "SharedAdapterState",
     "SharedAdapterUpdate",

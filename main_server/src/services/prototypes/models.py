@@ -7,11 +7,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
@@ -42,7 +42,7 @@ class PrototypeRebuildInputRecord:
 class StoredReferencePrototypeRebuildRequest:
     """저장된 canonical input 기반 rebuild 요청."""
 
-    adapter_state: VectorAdapterState
+    adapter_state: SharedAdapterState
     prototype_version: str
     embedding_model_id: str
     embedding_model_revision: str
@@ -56,7 +56,7 @@ class ReferencePrototypeRebuildRequest:
 
     rows: tuple[ReferencePrototypeSourceRow, ...] | list[ReferencePrototypeSourceRow]
     adapter: Any
-    adapter_state: VectorAdapterState
+    adapter_state: SharedAdapterState
     prototype_version: str
     embedding_model_id: str
     embedding_model_revision: str

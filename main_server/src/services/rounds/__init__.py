@@ -1,5 +1,7 @@
 """Main-server federated round services."""
 
+from typing import Any
+
 from .adapter_family_service import (
     DiagonalScaleRoundFamily,
     SharedAdapterRoundFamily,
@@ -22,10 +24,6 @@ from .runtime_config import (
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
 )
-from .runtime_factory import (
-    build_round_lifecycle_service_from_config,
-    build_round_manager_service_from_config,
-)
 from .update_acceptance_policy import (
     AllowAllRoundTrustPolicy,
     CompositeRoundUpdateAcceptancePolicy,
@@ -40,6 +38,18 @@ from .update_acceptance_policy import (
     StrictRoundNetworkPolicy,
     StrictRoundUpdateAcceptancePolicy,
 )
+
+
+def build_round_manager_service_from_config(*args: Any, **kwargs: Any):
+    from .runtime_factory import build_round_manager_service_from_config as _build
+
+    return _build(*args, **kwargs)
+
+
+def build_round_lifecycle_service_from_config(*args: Any, **kwargs: Any):
+    from .runtime_factory import build_round_lifecycle_service_from_config as _build
+
+    return _build(*args, **kwargs)
 
 __all__ = [
     "AggregationConfig",

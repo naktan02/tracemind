@@ -151,6 +151,7 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         )
     )
 
+    assert task.objective_config.scorer_backend_name == "prototype_similarity"
     assert task.objective_config.score_policy_name == "max_cosine"
     assert task.objective_config.acceptance_policy_name == "top1_margin_threshold"
     assert task.objective_config.privacy_guard_name == "diagonal_scale_clip_only"

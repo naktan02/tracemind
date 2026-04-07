@@ -65,6 +65,8 @@ def test_prototype_strategy_supports_short_group_override() -> None:
                 "embedding=hash_debug",
                 "strategy.name=kmeans",
                 "strategy.kmeans_candidate_ks=[2]",
+                "runner.score_policy_name=topk_mean_cosine",
+                "runner.score_top_k=2",
             ],
         )
 
@@ -75,17 +77,25 @@ def test_prototype_strategy_supports_short_group_override() -> None:
     assert cfg.embedding.model_id == "hash_debug"
     assert cfg.strategy.name == "kmeans"
     assert list(cfg.strategy.kmeans_candidate_ks) == [2]
+    assert cfg.runner.score_policy_name == "topk_mean_cosine"
+    assert cfg.runner.score_top_k == 2
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/prototype_threshold_sweep",
-            overrides=["strategy.name=single"],
+            overrides=[
+                "strategy.name=single",
+                "runner.score_policy_name=topk_mean_cosine",
+                "runner.score_top_k=2",
+            ],
         )
 
     assert cfg.strategy.name == "single"
     assert cfg.runtime.name == "gpu_online"
+    assert cfg.runner.score_policy_name == "topk_mean_cosine"
+    assert cfg.runner.score_top_k == 2
     assert len(cfg.threshold_policies) == 3
     assert (
         cfg.threshold_policies[0]._target_
@@ -140,8 +150,10 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             config_name="experiments/run_federated_simulation",
             overrides=[
                 "shard_policy.dominant_ratio=0.6",
+                "training_task.objective.scorer_backend_name=prototype_similarity",
                 "training_task.objective.score_policy_name=topk_mean_cosine",
                 "training_task.objective.score_top_k=2",
+                "validation.scorer_backend_name=prototype_similarity",
                 "validation.score_policy_name=topk_mean_cosine",
                 "validation.score_top_k=2",
                 "prototype_rebuild.mapping_version=custom_mapping.v1",
@@ -150,8 +162,10 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         )
 
     assert cfg.shard_policy.dominant_ratio == 0.6
+    assert cfg.training_task.objective.scorer_backend_name == "prototype_similarity"
     assert cfg.training_task.objective.score_policy_name == "topk_mean_cosine"
     assert cfg.training_task.objective.score_top_k == 2
+    assert cfg.validation.scorer_backend_name == "prototype_similarity"
     assert cfg.validation.score_policy_name == "topk_mean_cosine"
     assert cfg.validation.score_top_k == 2
     assert cfg.prototype_rebuild.mapping_version == "custom_mapping.v1"

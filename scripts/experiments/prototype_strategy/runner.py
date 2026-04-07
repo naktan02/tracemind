@@ -21,7 +21,7 @@ from scripts.experiments.prototype_strategy.models import (
 )
 from scripts.experiments.prototype_strategy.projection import ProjectionService
 from scripts.experiments.prototype_strategy.scoring import (
-    MaxCosinePrototypeIndexScorer,
+    build_prototype_index_scorer,
 )
 
 
@@ -52,6 +52,10 @@ class PrototypeExperimentRunner:
     projection_service: ProjectionService
     confidence_threshold: float
     margin_threshold: float
+    similarity_name: str = "cosine"
+    scorer_backend_name: str = "prototype_similarity"
+    score_policy_name: str = "max_cosine"
+    score_top_k: int | None = None
     selection_policy: StrategySelectionPolicy = field(
         default_factory=StrategySelectionPolicy
     )
@@ -67,7 +71,12 @@ class PrototypeExperimentRunner:
             rows=request.train_rows,
             embeddings=train_embeddings,
         )
-        scorer = MaxCosinePrototypeIndexScorer()
+        scorer = build_prototype_index_scorer(
+            scorer_backend_name=self.scorer_backend_name,
+            score_policy_name=self.score_policy_name,
+            score_top_k=self.score_top_k,
+            similarity_name=self.similarity_name,
+        )
         reports: list[StrategyEvaluationReport] = []
         for strategy in request.strategies:
             prototype_index = strategy.build(embeddings_by_label)

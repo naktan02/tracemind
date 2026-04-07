@@ -11,12 +11,15 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
-from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     extract_category_prototypes,
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.shared_adapter_state import (
+    IdentitySharedAdapterState,
+    SharedAdapterState,
+)
 
 
 @dataclass(slots=True)
@@ -35,7 +38,7 @@ class TrainingExampleBuildRequest:
 
     source_rows: tuple[TrainingExampleSource, ...] | list[TrainingExampleSource]
     adapter: Any
-    adapter_state: VectorAdapterState
+    adapter_state: SharedAdapterState
     prototype_pack: PrototypePackPayload
     model_id: str
     scoring_service: ScoringService
@@ -48,7 +51,7 @@ class StoredEventTrainingExampleBuildRequest:
     stored_events: tuple[StoredScoredEvent, ...] | list[StoredScoredEvent]
     prototype_pack: PrototypePackPayload
     scoring_service: ScoringService
-    adapter_state: VectorAdapterState | None = None
+    adapter_state: SharedAdapterState | None = None
 
 
 @dataclass(slots=True)
@@ -105,7 +108,7 @@ class TrainingExampleService:
         if not usable_events:
             return ()
 
-        adapter_state = request.adapter_state or VectorAdapterState.identity(
+        adapter_state = request.adapter_state or IdentitySharedAdapterState(
             model_id=usable_events[0].scored_event.embedding_model_id,
             model_revision="local_cached_identity",
             training_scope="adapter_only",

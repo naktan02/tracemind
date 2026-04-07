@@ -6,9 +6,14 @@ from scripts.experiments.prototype_strategy.evaluation import (
     evaluate_global_confidence_threshold,
 )
 from scripts.experiments.prototype_strategy.models import (
+    PrototypeIndex,
+    PrototypeVector,
     ScoredPrediction,
     ThresholdArtifact,
     ThresholdPolicyEvaluation,
+)
+from scripts.experiments.prototype_strategy.scoring import (
+    build_prototype_index_scorer,
 )
 from scripts.experiments.prototype_strategy.sweep import (
     ThresholdPolicySelectionPolicy,
@@ -61,6 +66,42 @@ def test_evaluate_global_confidence_threshold_computes_accepted_metrics() -> Non
     assert metrics.accepted_ratio == 2 / 3
     assert metrics.accepted_accuracy == 0.5
     assert metrics.accepted_correct_ratio == 1 / 3
+
+
+def test_prototype_index_scorer_can_switch_to_top_k_mean_policy() -> None:
+    scorer = build_prototype_index_scorer(
+        scorer_backend_name="prototype_similarity",
+        score_policy_name="topk_mean_cosine",
+        score_top_k=2,
+    )
+
+    scores = scorer.score(
+        [1.0, 0.0],
+        PrototypeIndex(
+            strategy_name="single",
+            categories={
+                "alert": [
+                    PrototypeVector(
+                        prototype_id="p1",
+                        centroid=[1.0, 0.0],
+                        member_count=1,
+                    ),
+                    PrototypeVector(
+                        prototype_id="p2",
+                        centroid=[0.0, 1.0],
+                        member_count=1,
+                    ),
+                    PrototypeVector(
+                        prototype_id="p3",
+                        centroid=[-1.0, 0.0],
+                        member_count=1,
+                    ),
+                ]
+            },
+        ),
+    )
+
+    assert scores["alert"] == 0.5
 
 
 def test_fixmatch_policy_builds_threshold_candidates() -> None:

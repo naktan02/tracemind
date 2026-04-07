@@ -19,7 +19,7 @@ from scripts.experiments.prototype_strategy.models import (
     ScoredPrediction,
 )
 from scripts.experiments.prototype_strategy.scoring import (
-    MaxCosinePrototypeIndexScorer,
+    PrototypeIndexScorer,
 )
 
 
@@ -51,7 +51,7 @@ def evaluate_embeddings(
     prototype_index: PrototypeIndex,
     confidence_threshold: float,
     margin_threshold: float,
-    scorer: MaxCosinePrototypeIndexScorer,
+    scorer: PrototypeIndexScorer,
 ) -> EvaluationMetrics:
     """prototype 전략으로 평가셋 메트릭을 계산한다."""
     scored_predictions = score_embeddings(
@@ -73,7 +73,7 @@ def score_embeddings(
     rows: Sequence[dict[str, Any]],
     embeddings: np.ndarray,
     prototype_index: PrototypeIndex,
-    scorer: MaxCosinePrototypeIndexScorer,
+    scorer: PrototypeIndexScorer,
 ) -> tuple[ScoredPrediction, ...]:
     """row/embedding으로부터 threshold 재평가 가능한 score 목록을 만든다."""
     categories = sorted(prototype_index.categories.keys())

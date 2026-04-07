@@ -11,11 +11,11 @@ from agent.src.services.federation.training_example_service import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
-from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     build_default_training_objective_config,
 )
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 from .io_utils import parse_created_at
 from .models import FederatedValidationConfig, SimulationEvaluation
@@ -25,7 +25,7 @@ def build_training_examples(
     *,
     rows: list[dict[str, Any]],
     adapter: Any,
-    adapter_state: VectorAdapterState,
+    adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,
     scoring_service: ScoringService,
@@ -56,7 +56,7 @@ def evaluate_rows(
     *,
     rows: list[dict[str, Any]],
     adapter: Any,
-    adapter_state: VectorAdapterState,
+    adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,
     scoring_service: ScoringService,
@@ -107,6 +107,7 @@ def build_validation_scoring_service(
     return ScoringService.from_objective_config(
         build_default_training_objective_config(
             overrides={
+                "scorer_backend_name": validation_config.scorer_backend_name,
                 "score_policy_name": validation_config.score_policy_name,
                 **(
                     {}
