@@ -19,17 +19,16 @@ def split_rows_for_federation(
     bootstrap_ratio: float,
     client_count: int,
     seed: int,
-    shard_policy: FederatedShardPolicyConfig | None = None,
+    shard_policy: FederatedShardPolicyConfig,
 ) -> FederatedDatasetSplit:
     """train row를 prototype bootstrap과 non-IID client shard로 나눈다."""
-    effective_policy = shard_policy or FederatedShardPolicyConfig()
-    if effective_policy.name != "label_dominant":
-        raise ValueError(f"Unsupported federated shard policy: {effective_policy.name}")
+    if shard_policy.name != "label_dominant":
+        raise ValueError(f"Unsupported federated shard policy: {shard_policy.name}")
     if not 0.0 < bootstrap_ratio < 1.0:
         raise ValueError("bootstrap_ratio must be between 0 and 1.")
     if client_count <= 0:
         raise ValueError("client_count must be positive.")
-    if not 0.0 < effective_policy.dominant_ratio <= 1.0:
+    if not 0.0 < shard_policy.dominant_ratio <= 1.0:
         raise ValueError("shard_policy.dominant_ratio must be between 0 and 1.")
 
     rows_by_label: dict[str, list[dict[str, Any]]] = defaultdict(list)
@@ -52,7 +51,7 @@ def split_rows_for_federation(
 
     client_shards = [
         FederatedClientShard(
-            client_id=f"{effective_policy.client_id_prefix}_{index + 1:02d}",
+            client_id=f"{shard_policy.client_id_prefix}_{index + 1:02d}",
             rows=[],
         )
         for index in range(client_count)
@@ -64,7 +63,7 @@ def split_rows_for_federation(
         secondary_index = (
             (label_index + 1) % client_count if client_count > 1 else dominant_index
         )
-        dominant_count = int(round(len(bucket) * effective_policy.dominant_ratio))
+        dominant_count = int(round(len(bucket) * shard_policy.dominant_ratio))
         dominant_count = max(0, min(len(bucket), dominant_count))
         if dominant_count == 0 and bucket:
             dominant_count = len(bucket)

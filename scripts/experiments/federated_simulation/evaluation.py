@@ -13,7 +13,9 @@ from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.contracts.training_contracts import (
+    build_default_training_objective_config,
+)
 
 from .io_utils import parse_created_at
 from .models import FederatedValidationConfig, SimulationEvaluation
@@ -103,9 +105,8 @@ def build_validation_scoring_service(
 ) -> ScoringService:
     """validation 설정으로 scoring service를 조립한다."""
     return ScoringService.from_objective_config(
-        TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "diagonal_scale_heuristic",
+        build_default_training_objective_config(
+            overrides={
                 "score_policy_name": validation_config.score_policy_name,
                 **(
                     {}

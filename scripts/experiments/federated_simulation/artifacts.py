@@ -31,11 +31,10 @@ def save_selection_diagnostics(
     rows: list[dict[str, object]],
     training_examples: tuple[EmbeddedTrainingExample, ...],
     selection_result: PseudoLabelSelectionResult,
-    diagnostics_config: FederatedDiagnosticsConfig | None = None,
+    diagnostics_config: FederatedDiagnosticsConfig,
 ) -> tuple[Path, Path]:
     """row별 selection 원인과 요약을 저장한다."""
-    effective_config = diagnostics_config or FederatedDiagnosticsConfig()
-    diagnostics_dir = output_dir / "agents" / client_id / effective_config.dump_dir_name
+    diagnostics_dir = output_dir / "agents" / client_id / diagnostics_config.dump_dir_name
     diagnostics_dir.mkdir(parents=True, exist_ok=True)
     candidates_path = diagnostics_dir / f"{round_id}.candidates.jsonl"
     summary_path = diagnostics_dir / f"{round_id}.summary.json"

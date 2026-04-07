@@ -63,9 +63,6 @@ from scripts.experiments.federated_simulation.sharding import (
 )
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
-    build_training_task_config_from_legacy_overrides,
-    resolve_optional_positive_int,
-    resolve_threshold,
 )
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
@@ -87,65 +84,20 @@ def run_simulation(
     model_id: str,
     training_scope: str,
     prototype_build_strategy: PrototypeBuildStrategy,
-    confidence_threshold: float | None = None,
-    margin_threshold: float | None = None,
-    max_examples: int | None = None,
-    min_required_examples: int | None = None,
-    gradient_clip_norm: float | None = None,
-    shard_policy: FederatedShardPolicyConfig | None = None,
-    training_task_config: FederatedTrainingTaskConfig | None = None,
-    validation_config: FederatedValidationConfig | None = None,
-    prototype_rebuild_config: FederatedPrototypeRebuildConfig | None = None,
-    diagnostics_config: FederatedDiagnosticsConfig | None = None,
+    shard_policy: FederatedShardPolicyConfig,
+    training_task_config: FederatedTrainingTaskConfig,
+    validation_config: FederatedValidationConfig,
+    prototype_rebuild_config: FederatedPrototypeRebuildConfig,
+    diagnostics_config: FederatedDiagnosticsConfig,
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
-    effective_shard_policy = shard_policy or FederatedShardPolicyConfig()
-    effective_training_task_config = (
-        training_task_config
-        or build_training_task_config_from_legacy_overrides(
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
-            max_examples=max_examples,
-            min_required_examples=min_required_examples,
-            gradient_clip_norm=gradient_clip_norm,
-        )
-    )
-    effective_validation_config = validation_config or FederatedValidationConfig(
-        confidence_threshold=resolve_threshold(
-            confidence_threshold,
-            fallback=effective_training_task_config.objective_config.get(
-                "confidence_threshold"
-            ),
-            default=0.6,
-        ),
-        margin_threshold=resolve_threshold(
-            margin_threshold,
-            fallback=effective_training_task_config.objective_config.get(
-                "margin_threshold"
-            ),
-            default=0.02,
-        ),
-        score_policy_name=str(
-            effective_training_task_config.objective_config.get(
-                "score_policy_name",
-                "max_cosine",
-            )
-        ),
-        score_top_k=resolve_optional_positive_int(
-            effective_training_task_config.objective_config.get("score_top_k")
-        ),
-    )
-    effective_rebuild_config = (
-        prototype_rebuild_config or FederatedPrototypeRebuildConfig()
-    )
-    effective_diagnostics_config = diagnostics_config or FederatedDiagnosticsConfig()
 
     dataset_split = split_rows_for_federation(
         train_rows,
         bootstrap_ratio=bootstrap_ratio,
         client_count=client_count,
         seed=seed,
-        shard_policy=effective_shard_policy,
+        shard_policy=shard_policy,
     )
     adapter = EmbeddingAdapterFactory.create(embedding_spec)
     if not dataset_split.bootstrap_rows:
@@ -159,9 +111,7 @@ def run_simulation(
     round_manager = RoundManagerService(artifact_repository=state_repository)
     round_repository = RoundRepository(state_root=output_dir / "main_server" / "rounds")
 
-    validation_scoring_service = build_validation_scoring_service(
-        effective_validation_config
-    )
+    validation_scoring_service = build_validation_scoring_service(validation_config)
 
     initial_model_revision = "sim_rev_0000"
     initial_prototype_version = "proto_sim_0000"
@@ -184,7 +134,7 @@ def run_simulation(
         rows=dataset_split.bootstrap_rows,
         embedding_spec=embedding_spec,
         repository=input_repository,
-        rebuild_config=effective_rebuild_config,
+        rebuild_config=prototype_rebuild_config,
     )
     stored_rebuild_service = build_prototype_rebuild_runtime_service(
         output_dir=output_dir,
@@ -229,8 +179,8 @@ def run_simulation(
         prototype_pack=active_prototype,
         model_id=model_id,
         scoring_service=validation_scoring_service,
-        confidence_threshold=effective_validation_config.confidence_threshold,
-        margin_threshold=effective_validation_config.margin_threshold,
+        confidence_threshold=validation_config.confidence_threshold,
+        margin_threshold=validation_config.margin_threshold,
     )
 
     round_summaries: list[SimulationRoundSummary] = []
@@ -241,13 +191,13 @@ def run_simulation(
             build_round_open_request(
                 active_manifest=active_manifest,
                 round_id=round_id,
-                training_task_config=effective_training_task_config,
+                training_task_config=training_task_config,
             )
         )
         training_task = round_record.training_task
         training_scoring_service = ScoringService.from_objective_config(
             training_task.objective_config,
-            similarity_name=effective_validation_config.similarity_name,
+            similarity_name=validation_config.similarity_name,
         )
 
         updates = []
@@ -280,7 +230,7 @@ def run_simulation(
                 rows=shard.rows,
                 training_examples=training_examples,
                 selection_result=local_result.selection_result,
-                diagnostics_config=effective_diagnostics_config,
+                diagnostics_config=diagnostics_config,
             )
             if local_result.update_envelope is not None:
                 lifecycle_service.accept_update(
@@ -333,8 +283,8 @@ def run_simulation(
             prototype_pack=active_prototype,
             model_id=model_id,
             scoring_service=validation_scoring_service,
-            confidence_threshold=effective_validation_config.confidence_threshold,
-            margin_threshold=effective_validation_config.margin_threshold,
+            confidence_threshold=validation_config.confidence_threshold,
+            margin_threshold=validation_config.margin_threshold,
         )
         round_summaries.append(
             SimulationRoundSummary(

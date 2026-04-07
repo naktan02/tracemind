@@ -33,6 +33,8 @@ from .prototype_contracts import (
     extract_category_prototypes,
 )
 from .training_contracts import (
+    DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING,
+    DEFAULT_TRAINING_SELECTION_POLICY_MAPPING,
     DecisionFeedbackSignal,
     DecisionFeedbackSignalPayload,
     FeedbackSignalType,
@@ -45,6 +47,8 @@ from .training_contracts import (
     TrainingUpdateEnvelope,
     TrainingUpdateEnvelopePayload,
     UpdatePayloadFormat,
+    build_default_training_objective_config,
+    build_default_training_selection_policy,
     make_training_update_envelope,
 )
 
@@ -52,8 +56,12 @@ __all__ = [
     "ActiveRoundPayload",
     "AdapterKind",
     "ArtifactKind",
+    "build_default_training_objective_config",
+    "build_default_training_selection_policy",
     "DecisionFeedbackSignal",
     "DecisionFeedbackSignalPayload",
+    "DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING",
+    "DEFAULT_TRAINING_SELECTION_POLICY_MAPPING",
     "FeedbackSignalType",
     "CategoryPrototypePayload",
     "DiagonalScaleAdapterStatePayload",

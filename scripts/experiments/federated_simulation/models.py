@@ -2,10 +2,13 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from typing import Any
 
-from shared.src.contracts.training_contracts import TrainingConfigScalar
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
 
 
 @dataclass(slots=True)
@@ -70,53 +73,42 @@ class SimulationResult:
 class FederatedShardPolicyConfig:
     """client shard 분할 정책 설정."""
 
-    name: str = "label_dominant"
-    dominant_ratio: float = 0.75
-    client_id_prefix: str = "agent"
+    name: str
+    dominant_ratio: float
+    client_id_prefix: str
 
 
 @dataclass(slots=True)
 class FederatedTrainingTaskConfig:
     """round별 로컬 학습 task 설정."""
 
-    local_epochs: int = 1
-    batch_size: int = 16
-    learning_rate: float = 1e-4
-    max_steps: int = 50
-    min_required_examples: int = 1
+    local_epochs: int
+    batch_size: int
+    learning_rate: float
+    max_steps: int
+    min_required_examples: int
+    objective_config: TrainingObjectiveConfig
+    selection_policy: TrainingSelectionPolicy
     gradient_clip_norm: float | None = None
-    objective_config: dict[str, TrainingConfigScalar] = field(
-        default_factory=lambda: {
-            "training_backend_name": "diagonal_scale_heuristic",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-            "score_policy_name": "max_cosine",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "diagonal_scale_clip_only",
-        }
-    )
-    selection_policy: dict[str, TrainingConfigScalar] = field(
-        default_factory=lambda: {"max_examples": 128}
-    )
 
 
 @dataclass(slots=True)
 class FederatedValidationConfig:
     """validation score/acceptance 계산 설정."""
 
-    similarity_name: str = "cosine"
-    score_policy_name: str = "max_cosine"
+    similarity_name: str
+    score_policy_name: str
+    confidence_threshold: float
+    margin_threshold: float
     score_top_k: int | None = None
-    confidence_threshold: float = 0.6
-    margin_threshold: float = 0.02
 
 
 @dataclass(slots=True)
 class FederatedPrototypeRebuildConfig:
     """라운드별 prototype 재생성 메타데이터 설정."""
 
-    embedding_backend: str = "simulation"
-    mapping_version: str = "ourafla_to_4cat.v1"
+    embedding_backend: str
+    mapping_version: str
     translation_model_id: str | None = None
     translation_model_revision: str | None = None
     translation_direction: str | None = None
@@ -126,4 +118,4 @@ class FederatedPrototypeRebuildConfig:
 class FederatedDiagnosticsConfig:
     """selection dump 저장 설정."""
 
-    dump_dir_name: str = "selection_dumps"
+    dump_dir_name: str

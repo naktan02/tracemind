@@ -20,6 +20,10 @@ from scripts.experiments.federated_simulation import (
     split_rows_for_federation,
 )
 from scripts.run_artifacts import build_run_dir
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
 
 __all__ = [
     "load_jsonl_rows",
@@ -48,8 +52,8 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
         gradient_clip_norm=(
             None if cfg.gradient_clip_norm is None else float(cfg.gradient_clip_norm)
         ),
-        objective_config=objective_config,
-        selection_policy=selection_policy,
+        objective_config=TrainingObjectiveConfig.from_mapping(objective_config),
+        selection_policy=TrainingSelectionPolicy.from_mapping(selection_policy),
     )
 
 
@@ -82,11 +86,6 @@ def main(cfg: DictConfig) -> None:
         model_id=str(cfg.published_model_id),
         training_scope=str(cfg.training_scope),
         prototype_build_strategy=prototype_build_strategy,
-        confidence_threshold=float(cfg.confidence_threshold),
-        margin_threshold=float(cfg.margin_threshold),
-        gradient_clip_norm=(
-            None if cfg.gradient_clip_norm is None else float(cfg.gradient_clip_norm)
-        ),
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
         training_task_config=_build_training_task_config(cfg.training_task),
         validation_config=FederatedValidationConfig(**_to_plain_dict(cfg.validation)),

@@ -23,6 +23,8 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
     TrainingUpdateEnvelope,
+    build_default_training_objective_config,
+    build_default_training_selection_policy,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.clock import Clock, SystemUtcClock
@@ -189,17 +191,9 @@ class RoundManagerService:
     ) -> TrainingObjectiveConfig:
         if isinstance(source, TrainingObjectiveConfig):
             return source
-        return TrainingObjectiveConfig.from_mapping(
-            source
-            or {
-                "training_backend_name": "diagonal_scale_heuristic",
-                "confidence_threshold": 0.6,
-                "margin_threshold": 0.02,
-                "score_policy_name": "max_cosine",
-                "acceptance_policy_name": "top1_margin_threshold",
-                "privacy_guard_name": "diagonal_scale_clip_only",
-            }
-        )
+        if source is None:
+            return build_default_training_objective_config()
+        return TrainingObjectiveConfig.from_mapping(source)
 
     @staticmethod
     def _resolve_selection_policy(
@@ -207,6 +201,6 @@ class RoundManagerService:
     ) -> TrainingSelectionPolicy:
         if isinstance(source, TrainingSelectionPolicy):
             return source
-        return TrainingSelectionPolicy.from_mapping(
-            source or {"max_examples": 128}
-        )
+        if source is None:
+            return build_default_training_selection_policy()
+        return TrainingSelectionPolicy.from_mapping(source)

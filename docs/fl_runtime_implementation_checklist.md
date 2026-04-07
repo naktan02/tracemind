@@ -161,9 +161,9 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 완료 기준
 
-- [ ] 서버만 띄워도 round 생성, 조회, finalize가 된다.
-- [ ] update ingestion이 파일 저장이 아니라 round lifecycle 문맥으로 연결된다.
-- [ ] aggregation 후 next manifest/state publication이 API 경로에서 일어난다.
+- [x] 서버만 띄워도 round 생성, 조회, finalize가 된다.
+- [x] update ingestion이 파일 저장이 아니라 round lifecycle 문맥으로 연결된다.
+- [x] aggregation 후 next manifest/state publication이 API 경로에서 일어난다.
 
 ## Phase 2. Agent Federated Runtime 닫기
 
@@ -173,49 +173,48 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [ ] `agent/src/services/federation/round_client.py`
+- [x] `agent/src/services/federation/round_client.py`
   - 역할: current round/task fetch, update upload
-- [ ] `agent/src/services/federation/runtime_service.py`
+- [x] `agent/src/services/federation/runtime_service.py`
   - 역할: active pair/task 기준 local training orchestration
 - [x] `agent/src/services/federation/training_example_service.py`
   - 역할: local event/scored event를 `EmbeddedTrainingExample`으로 변환
 
 ### 기존 코드와 연결할 것
 
-- [ ] [local_training_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/local_training_service.py)
+- [x] [local_training_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/local_training_service.py)
   - selection + update generation 코어로 유지
-- [ ] [pseudo_label_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/pseudo_label_service.py)
+- [x] [pseudo_label_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/pseudo_label_service.py)
   - acceptance policy 교체 지점으로 유지
-- [ ] [training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
+- [x] [training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
   - backend 교체 지점으로 유지
 
 ### API로 닫을 것
 
-- [ ] [agent/src/api/routers/training.py](/home/jmgjmg102/tracemind_server/agent/src/api/routers/training.py)
+- [x] [agent/src/api/training.py](/home/jmgjmg102/tracemind_server/agent/src/api/training.py)
   - `POST /api/v1/training/run-current-task`
   - `GET /api/v1/training/status`
   - 필요 시 `POST /api/v1/training/pull-task`
-- [ ] [agent/src/api/main.py](/home/jmgjmg102/tracemind_server/agent/src/api/main.py)
+- [x] [agent/src/api/main.py](/home/jmgjmg102/tracemind_server/agent/src/api/main.py)
   - training router include
 
 ### simulation에서 agent runtime으로 내릴 것
 
-- [ ] `scripts/experiments/federated_simulation/simulation.py`의
-  - training example preparation helper
-  - local runtime orchestration helper
-  를 `agent/src/services/federation/`으로 이동 또는 공통화
-  - 현재 training example preparation은 완료, local runtime orchestration은 남아 있음
+- [x] `scripts/experiments/federated_simulation/simulation.py`의 training example preparation helper
+  - `agent/src/services/federation/training_example_service.py`로 이동 완료
+- [ ] `scripts/experiments/federated_simulation/simulation.py`의 local runtime orchestration helper
+  - runtime 코어 일부는 `FederationRuntimeService`로 이동했지만, simulation loop 자체는 아직 scripts에 남아 있음
 
 ### 검증할 것
 
-- [ ] active manifest/task가 없을 때 안전하게 종료
-- [ ] local accepted examples가 부족할 때 no-update 처리
+- [x] active manifest/task가 없을 때 안전하게 종료
+- [x] local accepted examples가 부족할 때 no-update 처리
 - [ ] upload 성공/실패 상태 분리
-- [ ] 같은 task에 대한 중복 실행 방지 정책
+- [x] 같은 task에 대한 중복 실행 방지 정책
 
 ### 완료 기준
 
-- [ ] agent가 current task를 읽고 local update를 만들어 업로드할 수 있다.
+- [x] agent가 current task를 읽고 local update를 만들어 업로드할 수 있다.
 - [x] local training example preparation이 더 이상 script 전용 helper가 아니다.
 - [ ] `TrainingTask`만 보면 local training 실행 가능 여부가 결정된다.
 
@@ -268,9 +267,9 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 
 ### 만들 것
 
-- [ ] `tests/integration/federation/` 디렉터리 추가
-- [ ] `tests/integration/federation/test_round_trip_http.py`
-  - server 1개 + agent 2개 이상 시나리오
+- [x] `tests/integration/test_fl_round_e2e.py`
+  - server HTTP round lifecycle 기본 완주 시나리오
+- [ ] server 1개 + agent 2개 이상 시나리오 확장
 - [ ] fixture
   - bootstrap canonical input
   - active manifest/state
@@ -278,12 +277,12 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 
 ### 검증 시나리오
 
-- [ ] current round fetch
-- [ ] current task fetch
+- [x] current round fetch
+- [x] current task fetch
 - [ ] local update generation
-- [ ] update upload
-- [ ] finalize
-- [ ] next manifest/prototype publication
+- [x] update upload
+- [x] finalize
+- [x] next manifest/prototype publication
 
 ### 실패 시나리오
 
@@ -295,7 +294,7 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 
 ### 완료 기준
 
-- [ ] `scripts` simulation 없이 runtime API만으로 1 round가 돈다.
+- [x] `scripts` simulation 없이 runtime API만으로 1 round가 돈다. (server 중심 기본 경로)
 - [ ] 최소 2-agent integration test가 안정적으로 통과한다.
 
 ## Phase 5. Policy / Backend 교체성 강화
@@ -307,8 +306,8 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 ### local 쪽
 
 - [ ] heuristic 외 `DiagonalScaleGradientTrainingBackend` 추가
-- [ ] backend 선택 규칙이 `TrainingTask.objective_config.training_backend_name`와 일관되게 매핑되도록 정리
-- [ ] acceptance policy registry를 명시적으로 정리
+- [x] backend 선택 규칙이 `TrainingTask.objective_config.training_backend_name`와 일관되게 매핑되도록 정리
+- [x] acceptance policy registry를 명시적으로 정리
 
 ### server 쪽
 
@@ -317,7 +316,7 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 
 ### config 쪽
 
-- [ ] FL runtime config에 한해 typed config 도입 검토
+- [x] FL runtime config에 한해 typed config 도입
 - [ ] task payload와 runtime config의 drift 방지 테스트 추가
 
 ### 완료 기준

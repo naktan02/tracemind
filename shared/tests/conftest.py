@@ -37,7 +37,7 @@ FIXED_UTC_TIME = datetime(2026, 1, 1, tzinfo=timezone.utc)
 
 @pytest.fixture
 def fixed_utc_time() -> datetime:
-    """테스트 전반에서 재사용하는 고정 UTC 시각."""
+    """shared 테스트 전반에서 재사용하는 고정 UTC 시각."""
     return FIXED_UTC_TIME
 
 

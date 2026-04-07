@@ -53,7 +53,9 @@ v1 원칙:
 11. `max_steps`
 
 12. `objective_config`
-    - loss 종류, margin threshold 등 objective 관련 설정
+    - local update backend 식별자, loss 이름, threshold, score/acceptance/privacy 정책 등
+    - canonical key는 `training_backend_name`
+    - 입력 호환을 위해 legacy key `loss`를 받을 수 있지만, 직렬화와 문서 기준 키는 `training_backend_name`
 
 13. `selection_policy`
     - 어떤 로컬 샘플을 학습에 사용할지
@@ -96,7 +98,10 @@ v1 원칙:
     "training_backend_name": "diagonal_scale_heuristic",
     "loss_name": "contrastive",
     "confidence_threshold": 0.8,
-    "margin_threshold": 0.15
+    "margin_threshold": 0.15,
+    "score_policy_name": "max_cosine",
+    "acceptance_policy_name": "top1_margin_threshold",
+    "privacy_guard_name": "diagonal_scale_clip_only"
   },
   "selection_policy": {
     "max_examples": 128,

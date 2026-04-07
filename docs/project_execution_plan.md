@@ -88,12 +88,17 @@ Raw Event / Local Signal
 4. 계약 필드 의미를 `shared/src/contracts` 가까이에 두기 시작했다.
 5. `main_server`는 round lifecycle, update acceptance policy, prototype rebuild runtime을 소유한다.
 6. `agent`는 runtime training example builder를 소유한다.
-7. `scripts/experiments/federated_simulation`은 `RoundLifecycleService`와 prototype rebuild runtime을 직접 조합한다.
-8. `scripts/experiments/prototype_strategy`의 single/kmeans는 shared canonical builder를 재사용한다.
+7. `agent`는 `RoundClient`, `FederationRuntimeService`, training API(`run-current-task`, `status`)를 가진다.
+8. `scripts/experiments/federated_simulation`은 `RoundLifecycleService`와 prototype rebuild runtime을 직접 조합한다.
+9. `scripts/experiments/prototype_strategy`의 single/kmeans는 shared canonical builder를 재사용한다.
+10. 기본 local training objective/selection fallback은 `shared/src/contracts/training_contracts.py`에 canonical builder로 모였다.
 
 아직 남은 핵심:
 
-1. ~~`agent`의 real round client/runtime 닫기~~ ✅ (Phase 2 완료)
+1. `agent` round runtime을 운영 배포 기준으로 더 단단하게 닫기
+   - 주기 실행/polling 운영 모델
+   - 실패 재시도/관측성
+   - agent API 기준 end-to-end 검증 확대
 2. `diagonal_scale` heuristic update를 gradient backend로 교체
 3. runtime의 multi-prototype 지원 확대 여부 결정
 4. privacy hardening의 실제 프로토콜 추가
@@ -132,12 +137,11 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. ~~`agent` round client/runtime 추가~~ ✅ 완료
-2. Phase 3: inference pipeline 연결 (scored events → training_examples 주입)
-3. Phase 4: end-to-end HTTP integration test (server + agent 실제 round 완주)
-4. `DiagonalScaleGradientTrainingBackend` 추가 (Phase 5 선행)
-5. local objective에 drift correction 항 추가
-6. multi-prototype runtime과 FL 연결 여부 결정
+1. Phase 3: inference pipeline 연결 (scored events → training_examples 주입)
+2. Phase 4: end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
+3. `DiagonalScaleGradientTrainingBackend` 추가 (Phase 5 선행)
+4. local objective에 drift correction 항 추가
+5. multi-prototype runtime과 FL 연결 여부 결정
 
 ## 8. 검증 기준
 

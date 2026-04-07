@@ -15,10 +15,10 @@
 |---|---|---|---|
 | Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
-| Pseudo-label Selection Policy | agent | Top1MarginSelectionPolicy | `agent/src/services/training/pseudo_label_service.py` |
-| Scoring Policy | agent | MaxCosineScoringPolicy | `agent/src/services/inference/scoring_policies.py` |
+| Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy | `agent/src/services/training/acceptance_policies.py` |
+| Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService | `main_server/src/services/rounds/aggregation_service.py` |
-| Update Acceptance Policy | main_server | Strict / Idempotent | `main_server/src/services/rounds/update_acceptance_policy.py` |
+| Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
 | Adapter Family | shared | diagonal_scale | `shared/src/contracts/adapter_contracts.py` |
 
 ---
@@ -58,7 +58,7 @@ class SharedAdapterTrainingBackend(Protocol):
 
 **교체 절차:**
 1. 이 파일에 새 클래스 추가 (`SharedAdapterTrainingBackend` Protocol 구현)
-2. `build_shared_adapter_training_backend()` factory에 등록
+2. `register_shared_adapter_training_backend()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.training_backend_name` 값과 backend_name을 맞춤
 
 **건드리지 않는 것:** `LocalTrainingService`는 backend를 주입받으므로 수정 불필요.
@@ -91,7 +91,7 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 **교체 절차:**
 1. 이 파일에 새 클래스 추가
-2. `build_shared_adapter_privacy_guard()` factory에 등록
+2. `register_shared_adapter_privacy_guard()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.privacy_guard_name`으로 선택
 
 **Envelope 영향:** `clipped`, `dp_applied` 필드가 각 guard의 결과를 반영함.
@@ -99,33 +99,34 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 ---
 
-### 3. Pseudo-label Selection Policy (agent)
+### 3. Pseudo-label Acceptance Policy (agent)
 
-**역할:** scored event 중 어떤 예시를 학습에 채택할지 결정.
+**역할:** category score를 pseudo-label acceptance decision으로 해석한다.
 
 **Protocol:**
 ```python
-# agent/src/services/training/pseudo_label_service.py
+# agent/src/services/training/acceptance_policies.py
 class PseudoLabelAcceptancePolicy(Protocol):
     policy_name: str
 
-    def accept(
+    def evaluate(
         self,
         *,
-        candidates: tuple[PseudoLabelCandidate, ...],
-        training_task: TrainingTask,
-    ) -> tuple[PseudoLabelCandidate, ...]: ...
+        category_scores: Mapping[str, float],
+        confidence_threshold: float,
+        margin_threshold: float,
+    ) -> AcceptanceDecision: ...
 ```
 
-**현재:** `Top1MarginAcceptancePolicy` — confidence ≥ threshold AND margin ≥ threshold.
+**현재:** `Top1MarginThresholdAcceptancePolicy` — confidence ≥ threshold AND margin ≥ threshold.
 
 **교체 시나리오:**
 - TopK 기반 선별
 - Calibrated confidence 기반 policy
 
 **교체 절차:**
-1. 이 파일에 새 Policy 클래스 추가
-2. `build_pseudo_label_acceptance_policy()` factory에 등록
+1. `acceptance_policies.py`에 새 Policy 클래스 추가
+2. `register_pseudo_label_acceptance_policy()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택
 
 ---
@@ -137,18 +138,18 @@ class PseudoLabelAcceptancePolicy(Protocol):
 **Protocol:**
 ```python
 # agent/src/services/inference/scoring_policies.py
-class CategoryScoringPolicy(Protocol):
-    policy_name: str
-
-    def score(
+class PrototypeScorePolicy(Protocol):
+    def score_category(
         self,
         *,
-        embedding: list[float],
-        prototypes: list[list[float]],
+        embedding_vector: Sequence[float],
+        prototype_vectors: tuple[tuple[float, ...], ...],
+        similarity_name: str,
+        category: str,
     ) -> float: ...
 ```
 
-**현재:** `MaxCosineScoringPolicy` (최대 cosine), `TopKMeanScoringPolicy` (상위 K 평균).
+**현재:** `MaxCosineScorePolicy` (최대 cosine), `TopKMeanCosineScorePolicy` (상위 K 평균).
 
 **교체 시나리오:**
 - Mahalanobis distance 기반 policy
@@ -156,8 +157,8 @@ class CategoryScoringPolicy(Protocol):
 
 **교체 절차:**
 1. `scoring_policies.py`에 새 클래스 추가
-2. `ScoringService.build_from_objective_config()`에 등록
-3. `TrainingObjectiveConfigPayload` 또는 별도 config로 선택
+2. `register_prototype_score_policy()`로 thin registry wiring에 등록
+3. `ScoringService.from_objective_config()`가 읽는 `TrainingObjectiveConfigPayload.score_policy_name`과 맞춤
 
 ---
 
@@ -216,17 +217,18 @@ class RoundUpdateAcceptancePolicy(Protocol):
 ```
 
 **현재:**
-- `StrictRoundUpdateAcceptancePolicy` — 같은 update_id 재전송 거부
-- `IdempotentRoundUpdateAcceptancePolicy` — 동일 내용 재전송 허용
+- `CompositeRoundUpdateAcceptancePolicy` — network policy와 trust policy를 조합
+- `StrictRoundNetworkPolicy` / `IdempotentRoundNetworkPolicy` — update_id 재전송 처리
+- `AllowAllRoundTrustPolicy` / `SingleSubmissionPerAgentTrustPolicy` — 제출 주체 규칙
 
 **교체 시나리오:**
 - `agent_id` 기반 중복 차단: 같은 round에 같은 agent가 두 번 제출 불가
 - Trust score 기반 사전 필터: 신뢰도 임계값 미달 agent update 거부
 
 **교체 절차:**
-1. `update_acceptance_policy.py`에 새 클래스 추가
-2. `round_lifecycle_service.py`에서 주입 방식 선택
-3. `agent_id` 기반이라면 `_idempotency_fingerprint()`에 `agent_id` 포함 검토
+1. `update_acceptance_policy.py`에 network policy 또는 trust policy를 추가
+2. `CompositeRoundUpdateAcceptancePolicy`에 조합해 `round_lifecycle_service.py`에서 주입
+3. trust 판단과 idempotency 판단을 같은 클래스에 섞지 않음
 
 ---
 
@@ -263,8 +265,8 @@ class RoundUpdateAcceptancePolicy(Protocol):
 [ ] agent가 보내고 server가 읽는 것이 같은 계약인지 확인
     → ClientMetricKeys, TrainingUpdateEnvelopePayload
 
-[ ] factory 또는 등록 함수에 새 구현체 추가
-    → build_*() 함수 패턴 사용
+[ ] thin registry wiring 또는 family registration에 새 구현체 추가
+    → register_*() 또는 family 조합 지점을 사용
 
 [ ] 기존 구현체를 제거하지 않고 새 것을 추가 (교체는 나중에)
     → 스위치 전에 병행 운용 가능한 구조 확인

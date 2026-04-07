@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 
 from scripts.experiments.federated_simulation import (
+    FederatedDiagnosticsConfig,
+    FederatedPrototypeRebuildConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
@@ -12,6 +14,10 @@ from scripts.experiments.federated_simulation import (
 from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
+)
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
 )
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
@@ -33,6 +39,81 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
     }
 
 
+def _default_shard_policy() -> FederatedShardPolicyConfig:
+    return FederatedShardPolicyConfig(
+        name="label_dominant",
+        dominant_ratio=0.75,
+        client_id_prefix="agent",
+    )
+
+
+def _default_training_task_config(
+    *,
+    confidence_threshold: float,
+    margin_threshold: float,
+    max_examples: int,
+    gradient_clip_norm: float | None,
+    score_policy_name: str = "max_cosine",
+    score_top_k: int | None = None,
+) -> FederatedTrainingTaskConfig:
+    return FederatedTrainingTaskConfig(
+        local_epochs=1,
+        batch_size=16,
+        learning_rate=1e-4,
+        max_steps=50,
+        min_required_examples=1,
+        gradient_clip_norm=gradient_clip_norm,
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "diagonal_scale_heuristic",
+                "confidence_threshold": confidence_threshold,
+                "margin_threshold": margin_threshold,
+                "score_policy_name": score_policy_name,
+                **(
+                    {}
+                    if score_top_k is None
+                    else {"score_top_k": score_top_k}
+                ),
+                "acceptance_policy_name": "top1_margin_threshold",
+                "privacy_guard_name": "diagonal_scale_clip_only",
+            }
+        ),
+        selection_policy=TrainingSelectionPolicy.from_mapping(
+            {"max_examples": max_examples}
+        ),
+    )
+
+
+def _default_validation_config(
+    *,
+    confidence_threshold: float,
+    margin_threshold: float,
+    score_policy_name: str = "max_cosine",
+    score_top_k: int | None = None,
+) -> FederatedValidationConfig:
+    return FederatedValidationConfig(
+        similarity_name="cosine",
+        score_policy_name=score_policy_name,
+        score_top_k=score_top_k,
+        confidence_threshold=confidence_threshold,
+        margin_threshold=margin_threshold,
+    )
+
+
+def _default_prototype_rebuild_config() -> FederatedPrototypeRebuildConfig:
+    return FederatedPrototypeRebuildConfig(
+        embedding_backend="simulation",
+        mapping_version="ourafla_to_4cat.v1",
+        translation_model_id=None,
+        translation_model_revision=None,
+        translation_direction=None,
+    )
+
+
+def _default_diagnostics_config() -> FederatedDiagnosticsConfig:
+    return FederatedDiagnosticsConfig(dump_dir_name="selection_dumps")
+
+
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:
     rows = [
         _row("a1", "panic panic", "anxiety"),
@@ -50,6 +131,7 @@ def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() ->
         bootstrap_ratio=0.5,
         client_count=2,
         seed=42,
+        shard_policy=_default_shard_policy(),
     )
 
     bootstrap_ids = {row["query_id"] for row in split.bootstrap_rows}
@@ -75,7 +157,11 @@ def test_split_rows_for_federation_supports_configurable_dominant_ratio() -> Non
         bootstrap_ratio=0.25,
         client_count=2,
         seed=42,
-        shard_policy=FederatedShardPolicyConfig(dominant_ratio=0.5),
+        shard_policy=FederatedShardPolicyConfig(
+            name="label_dominant",
+            dominant_ratio=0.5,
+            client_id_prefix="agent",
+        ),
     )
 
     shard_sizes = [len(shard.rows) for shard in split.client_shards]
@@ -120,12 +206,20 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         ),
         model_id="tracemind-embed-sim",
         training_scope="adapter_only",
-        confidence_threshold=0.0,
-        margin_threshold=0.0,
-        max_examples=4,
-        min_required_examples=1,
-        gradient_clip_norm=1.0,
         prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
     )
 
     assert result.rounds
@@ -191,27 +285,27 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
         model_id="tracemind-embed-sim",
         training_scope="adapter_only",
         prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=FederatedShardPolicyConfig(dominant_ratio=0.5),
-        training_task_config=FederatedTrainingTaskConfig(
-            min_required_examples=1,
-            gradient_clip_norm=1.0,
-            objective_config={
-                "training_backend_name": "diagonal_scale_heuristic",
-                "confidence_threshold": 0.0,
-                "margin_threshold": 0.0,
-                "score_policy_name": "topk_mean_cosine",
-                "score_top_k": 1,
-                "acceptance_policy_name": "top1_margin_threshold",
-                "privacy_guard_name": "diagonal_scale_clip_only",
-            },
-            selection_policy={"max_examples": 4},
+        shard_policy=FederatedShardPolicyConfig(
+            name="label_dominant",
+            dominant_ratio=0.5,
+            client_id_prefix="agent",
         ),
-        validation_config=FederatedValidationConfig(
-            score_policy_name="topk_mean_cosine",
-            score_top_k=1,
+        training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            score_policy_name="topk_mean_cosine",
+            score_top_k=1,
         ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            score_policy_name="topk_mean_cosine",
+            score_top_k=1,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
     )
 
     assert result.rounds
