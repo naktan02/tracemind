@@ -9,6 +9,7 @@ from pathlib import Path
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.inference.scoring_backends import register_scoring_backend
 from agent.src.services.training.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingRequest,
@@ -52,6 +53,7 @@ def _build_task(
     gradient_clip_norm: float | None = 0.05,
     acceptance_policy_name: str | None = None,
     privacy_guard_name: str | None = "diagonal_scale_clip_only",
+    scorer_backend_name: str | None = None,
     loss: str = "diagonal_scale_heuristic",
 ) -> TrainingTask:
     return TrainingTask(
@@ -70,6 +72,7 @@ def _build_task(
             loss=loss,
             confidence_threshold=0.6,
             margin_threshold=0.02,
+            scorer_backend_name=scorer_backend_name,
             acceptance_policy_name=acceptance_policy_name,
             privacy_guard_name=privacy_guard_name,
         ),
@@ -377,3 +380,161 @@ def test_local_training_service_can_use_registered_non_diagonal_backend(
     )
     assert isinstance(loaded_payload, TestShiftUpdatePayload)
     assert loaded_payload.adapter_kind == "test_shift"
+
+
+def test_local_training_service_rejects_incompatible_privacy_guard(
+    tmp_path: Path,
+) -> None:
+    class TestShiftUpdatePayload(SharedAdapterUpdatePayload):
+        shift_norm: float
+
+    @dataclass(slots=True)
+    class TestShiftBackend:
+        backend_name: str = "test_shift_backend_incompatible_guard"
+        payload_format: str = "test_shift_update_incompatible_guard"
+        adapter_kind: str = "test_shift"
+
+        def build_update(
+            self,
+            *,
+            training_task: TrainingTask,
+            model_manifest: ModelManifest,
+            accepted_examples,
+            created_at: datetime,
+        ) -> TestShiftUpdatePayload:
+            del training_task, model_manifest, accepted_examples, created_at
+            raise AssertionError("호환성 검증 전에 update 생성이 호출되면 안 됩니다.")
+
+        def to_payload(
+            self,
+            update: TestShiftUpdatePayload,
+        ) -> SharedAdapterUpdatePayload:
+            return update
+
+        def build_client_metrics(
+            self,
+            update,
+        ) -> dict[str, float]:
+            del update
+            return {}
+
+    register_shared_adapter_update_payload_type(
+        "test_shift_incompatible_guard",
+        TestShiftUpdatePayload,
+    )
+    register_shared_adapter_training_backend(
+        "test_shift_backend_incompatible_guard",
+        factory=TestShiftBackend,
+    )
+
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    try:
+        service.run(
+            LocalTrainingRequest(
+                training_examples=(
+                    _make_example(
+                        query_id="q1",
+                        scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                        embedding=[1.0, 0.0],
+                    ),
+                ),
+                training_task=_build_task(
+                    loss="test_shift_backend_incompatible_guard",
+                    privacy_guard_name="diagonal_scale_clip_only",
+                ),
+                model_manifest=_build_manifest(),
+            )
+        )
+    except ValueError as error:
+        assert "Incompatible privacy guard" in str(error)
+    else:
+        raise AssertionError("호환되지 않는 privacy guard 조합이 허용되었습니다.")
+
+
+def test_local_training_service_rejects_incompatible_scoring_backend(
+    tmp_path: Path,
+) -> None:
+    class TestShiftUpdatePayload(SharedAdapterUpdatePayload):
+        shift_norm: float
+
+    @dataclass(slots=True)
+    class TestShiftBackend:
+        backend_name: str = "test_shift_backend_incompatible_scorer"
+        payload_format: str = "test_shift_update_incompatible_scorer"
+        adapter_kind: str = "test_shift"
+
+        def build_update(
+            self,
+            *,
+            training_task: TrainingTask,
+            model_manifest: ModelManifest,
+            accepted_examples,
+            created_at: datetime,
+        ) -> TestShiftUpdatePayload:
+            del training_task, model_manifest, accepted_examples, created_at
+            raise AssertionError("호환성 검증 전에 update 생성이 호출되면 안 됩니다.")
+
+        def to_payload(
+            self,
+            update: TestShiftUpdatePayload,
+        ) -> SharedAdapterUpdatePayload:
+            return update
+
+        def build_client_metrics(
+            self,
+            update,
+        ) -> dict[str, float]:
+            del update
+            return {}
+
+    @dataclass(slots=True)
+    class DiagonalOnlyScoringBackend:
+        backend_name: str = "diagonal_only_test_scorer"
+        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+
+        def score(self, embedding, prototypes):
+            del embedding, prototypes
+            return {"anxiety": 1.0}
+
+    register_shared_adapter_update_payload_type(
+        "test_shift_incompatible_scorer",
+        TestShiftUpdatePayload,
+    )
+    register_shared_adapter_training_backend(
+        "test_shift_backend_incompatible_scorer",
+        factory=TestShiftBackend,
+    )
+    register_scoring_backend(
+        "diagonal_only_test_scorer",
+        factory=lambda _objective_config, _similarity_name: (
+            DiagonalOnlyScoringBackend()
+        ),
+    )
+
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    try:
+        service.run(
+            LocalTrainingRequest(
+                training_examples=(
+                    _make_example(
+                        query_id="q1",
+                        scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                        embedding=[1.0, 0.0],
+                    ),
+                ),
+                training_task=_build_task(
+                    loss="test_shift_backend_incompatible_scorer",
+                    privacy_guard_name="noop",
+                    scorer_backend_name="diagonal_only_test_scorer",
+                ),
+                model_manifest=_build_manifest(),
+            )
+        )
+    except ValueError as error:
+        assert "Incompatible scoring backend" in str(error)
+    else:
+        raise AssertionError("호환되지 않는 scoring backend 조합이 허용되었습니다.")

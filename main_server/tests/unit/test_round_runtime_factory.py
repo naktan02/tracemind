@@ -33,11 +33,27 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 TEST_ADAPTER_KIND = "test_adapter_runtime_factory"
 TEST_FAMILY_NAME = "test_family_runtime_factory"
 TEST_BACKEND_NAME = "test_avg_runtime_factory"
+TEST_MISMATCH_BACKEND_NAME = "test_mismatch_avg_runtime_factory"
 
 
 @dataclass(slots=True)
 class _TestAggregationBackend:
     adapter_kind: str = TEST_ADAPTER_KIND
+
+    def aggregate(
+        self,
+        *,
+        base_state: SharedAdapterState,
+        update_payloads: Sequence[SharedAdapterUpdate],
+        next_model_revision: str,
+        aggregated_at: datetime,
+    ):
+        raise NotImplementedError
+
+
+@dataclass(slots=True)
+class _MismatchedAggregationBackend:
+    adapter_kind: str = "wrong_adapter_kind"
 
     def aggregate(
         self,
@@ -89,6 +105,11 @@ register_shared_adapter_aggregation_backend(
     TEST_BACKEND_NAME,
     factory=_TestAggregationBackend,
 )
+register_shared_adapter_aggregation_backend(
+    TEST_ADAPTER_KIND,
+    TEST_MISMATCH_BACKEND_NAME,
+    factory=_MismatchedAggregationBackend,
+)
 register_shared_adapter_round_family(
     TEST_FAMILY_NAME,
     factory=_build_test_round_family,
@@ -116,6 +137,16 @@ def test_round_runtime_config_rejects_incompatible_family_backend() -> None:
             ServerRoundRuntimeConfig(
                 adapter_family_name="diagonal_scale",
                 aggregation_backend_name=TEST_BACKEND_NAME,
+            )
+        )
+
+
+def test_round_runtime_config_rejects_mismatched_backend_adapter_kind() -> None:
+    with pytest.raises(ValueError, match="Incompatible round runtime config"):
+        build_round_manager_service_from_config(
+            ServerRoundRuntimeConfig(
+                adapter_family_name=TEST_FAMILY_NAME,
+                aggregation_backend_name=TEST_MISMATCH_BACKEND_NAME,
             )
         )
 

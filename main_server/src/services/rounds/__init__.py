@@ -18,6 +18,10 @@ from .aggregation_service import (
     register_shared_adapter_aggregation_backend,
 )
 from .round_manager_service import RoundManagerService, RoundPublication
+from .runtime_compatibility import (
+    ServerRoundRuntimeCompatibility,
+    validate_server_round_runtime_config,
+)
 from .runtime_config import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
@@ -77,10 +81,12 @@ __all__ = [
     "load_server_round_runtime_config_from_env",
     "RoundManagerService",
     "RoundPublication",
+    "ServerRoundRuntimeCompatibility",
     "RoundTrustPolicy",
     "RoundUpdateAcceptancePolicy",
     "RoundValidationError",
     "SingleSubmissionPerAgentTrustPolicy",
     "StrictRoundNetworkPolicy",
     "StrictRoundUpdateAcceptancePolicy",
+    "validate_server_round_runtime_config",
 ]

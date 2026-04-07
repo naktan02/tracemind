@@ -100,17 +100,6 @@ def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
     return service
 
 
-def get_scoring_service(request: Request) -> ScoringService:
-    """app.state에서 ScoringService를 읽는다."""
-    service = getattr(request.app.state, "scoring_service", None)
-    if service is None:
-        raise RuntimeError(
-            "ScoringService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.scoring_service를 설정하세요."
-        )
-    return service
-
-
 def get_round_client_factory(request: Request) -> RoundClientFactory:
     """app.state에서 RoundClient factory를 읽는다."""
     factory = getattr(request.app.state, "round_client_factory", None)
@@ -154,7 +143,6 @@ ProtoServiceDep = Annotated[
     PrototypeRuntimeService,
     Depends(get_prototype_runtime_service),
 ]
-ScoringServiceDep = Annotated[ScoringService, Depends(get_scoring_service)]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
 TrainingExampleServiceDep = Annotated[
     TrainingExampleService,
@@ -180,7 +168,7 @@ def run_current_task(
     request: RunCurrentTaskRequest,
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
-    scoring_service: ScoringServiceDep,
+    round_client_factory: RoundClientFactoryDep,
     training_example_service: TrainingExampleServiceDep,
     runtime_factory: FederationRuntimeFactoryDep,
 ) -> RunCurrentTaskResponse:
@@ -191,12 +179,23 @@ def run_current_task(
     두 경우 모두 200 OK로 응답하고 status 필드로 구분한다.
     """
     try:
+        round_client = round_client_factory(request.server_base_url)
+        task_payload = round_client.fetch_current_task()
+        if task_payload is None:
+            return RunCurrentTaskResponse(
+                status="no_active_task",
+                message="현재 active round 또는 open task가 없습니다.",
+            )
+
         stored_events = repo.get_recent_stored(days=request.scored_event_days)
         try:
             active_pack = proto_service.get_active_pack()
         except FileNotFoundError:
             training_examples = ()
         else:
+            scoring_service = ScoringService.from_objective_config(
+                task_payload.objective_config
+            )
             training_examples = (
                 training_example_service.build_examples_from_stored_events(
                     StoredEventTrainingExampleBuildRequest(
@@ -212,6 +211,7 @@ def run_current_task(
             training_examples=training_examples,
             model_manifest=None,
             agent_id=request.agent_id,
+            task_payload=task_payload,
         )
         return RunCurrentTaskResponse(
             status=str(result.status),

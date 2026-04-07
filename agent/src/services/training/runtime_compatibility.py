@@ -1,0 +1,116 @@
+"""로컬 학습 runtime 조합 호환성 검증."""
+
+from __future__ import annotations
+
+from dataclasses import dataclass
+
+from agent.src.services.inference.scoring_backends import build_scoring_backend
+from agent.src.services.training.acceptance_policies import (
+    PseudoLabelAcceptancePolicy,
+    build_pseudo_label_acceptance_policy,
+)
+from agent.src.services.training.privacy_guard_service import (
+    SharedAdapterPrivacyGuard,
+    build_shared_adapter_privacy_guard,
+)
+from agent.src.services.training.training_backends import (
+    SharedAdapterTrainingBackend,
+    build_shared_adapter_training_backend,
+)
+from shared.src.contracts.training_contracts import TrainingTask
+
+ANY_ADAPTER_KIND = "*"
+
+
+@dataclass(slots=True)
+class LocalTrainingRuntimeCompatibility:
+    """검증된 로컬 학습 runtime 조합 요약."""
+
+    adapter_kind: str
+    training_backend_name: str
+    scorer_backend_name: str
+    acceptance_policy_name: str
+    privacy_guard_name: str
+
+
+def validate_local_training_runtime(
+    training_task: TrainingTask,
+    *,
+    similarity_name: str = "cosine",
+    default_acceptance_policy_name: str = "top1_margin_threshold",
+    default_privacy_guard_name: str = "noop",
+    training_backend: SharedAdapterTrainingBackend | None = None,
+    acceptance_policy: PseudoLabelAcceptancePolicy | None = None,
+    privacy_guard: SharedAdapterPrivacyGuard | None = None,
+) -> LocalTrainingRuntimeCompatibility:
+    """TrainingTask가 선택한 로컬 runtime 조합이 서로 호환되는지 검증한다."""
+
+    objective = training_task.objective_config
+    resolved_training_backend = training_backend or (
+        build_shared_adapter_training_backend(objective.training_backend_name)
+    )
+    scorer_backend_name = objective.scorer_backend_name or "prototype_similarity"
+    scorer_backend = build_scoring_backend(
+        scorer_backend_name,
+        objective_config=objective,
+        similarity_name=similarity_name,
+    )
+    acceptance_policy_name = (
+        objective.acceptance_policy_name or default_acceptance_policy_name
+    )
+    resolved_acceptance_policy = acceptance_policy or (
+        build_pseudo_label_acceptance_policy(acceptance_policy_name)
+    )
+    privacy_guard_name = objective.privacy_guard_name or default_privacy_guard_name
+    resolved_privacy_guard = privacy_guard or build_shared_adapter_privacy_guard(
+        privacy_guard_name
+    )
+
+    _require_adapter_kind_support(
+        component_type="scoring backend",
+        component_name=scorer_backend.backend_name,
+        supported_adapter_kinds=scorer_backend.supported_adapter_kinds,
+        adapter_kind=resolved_training_backend.adapter_kind,
+    )
+    _require_adapter_kind_support(
+        component_type="acceptance policy",
+        component_name=resolved_acceptance_policy.policy_name,
+        supported_adapter_kinds=resolved_acceptance_policy.supported_adapter_kinds,
+        adapter_kind=resolved_training_backend.adapter_kind,
+    )
+    _require_adapter_kind_support(
+        component_type="privacy guard",
+        component_name=resolved_privacy_guard.guard_name,
+        supported_adapter_kinds=resolved_privacy_guard.supported_adapter_kinds,
+        adapter_kind=resolved_training_backend.adapter_kind,
+    )
+
+    return LocalTrainingRuntimeCompatibility(
+        adapter_kind=resolved_training_backend.adapter_kind,
+        training_backend_name=resolved_training_backend.backend_name,
+        scorer_backend_name=scorer_backend.backend_name,
+        acceptance_policy_name=resolved_acceptance_policy.policy_name,
+        privacy_guard_name=resolved_privacy_guard.guard_name,
+    )
+
+
+def _require_adapter_kind_support(
+    *,
+    component_type: str,
+    component_name: str,
+    supported_adapter_kinds: tuple[str, ...],
+    adapter_kind: str,
+) -> None:
+    normalized_supported = tuple(
+        value.strip().lower() for value in supported_adapter_kinds
+    )
+    normalized_adapter_kind = adapter_kind.strip().lower()
+    if (
+        ANY_ADAPTER_KIND in normalized_supported
+        or normalized_adapter_kind in normalized_supported
+    ):
+        return
+    raise ValueError(
+        f"Incompatible {component_type}: {component_name} does not support "
+        f"adapter_kind={adapter_kind}."
+    )

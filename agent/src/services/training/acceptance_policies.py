@@ -23,6 +23,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
     """카테고리 score를 pseudo-label 후보로 해석하는 정책."""
 
     policy_name: str
+    supported_adapter_kinds: tuple[str, ...]
 
     def evaluate(
         self,
@@ -42,6 +43,7 @@ class Top1MarginThresholdAcceptancePolicy:
     """Top1 confidence와 top1-top2 margin을 함께 본다."""
 
     policy_name: str = "top1_margin_threshold"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def evaluate(
         self,
@@ -74,6 +76,7 @@ class Top1ConfidenceOnlyAcceptancePolicy:
     """Top1 confidence만으로 pseudo-label 채택 여부를 결정한다."""
 
     policy_name: str = "top1_confidence_only"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def evaluate(
         self,

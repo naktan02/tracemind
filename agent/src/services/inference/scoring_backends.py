@@ -18,6 +18,7 @@ class ScoringBackend(Protocol):
     """category score dict를 계산하는 backend 인터페이스."""
 
     backend_name: str
+    supported_adapter_kinds: tuple[str, ...]
 
     def score(
         self,
@@ -37,6 +38,7 @@ class PrototypeSimilarityScoringBackend:
     similarity_name: str = "cosine"
     policy: PrototypeScorePolicy = field(default_factory=MaxCosineScorePolicy)
     backend_name: str = "prototype_similarity"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def score(
         self,

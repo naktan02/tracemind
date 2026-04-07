@@ -26,6 +26,7 @@ class SharedAdapterPrivacyGuard(Protocol):
     """Shared adapter update에 clipping/DP를 적용하는 인터페이스."""
 
     guard_name: str
+    supported_adapter_kinds: tuple[str, ...]
 
     def protect(
         self,
@@ -44,6 +45,7 @@ class NoOpSharedAdapterPrivacyGuard:
     """privacy/safety 처리를 적용하지 않는 no-op guard."""
 
     guard_name: str = "noop"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def protect(
         self,
@@ -60,6 +62,7 @@ class DiagonalScaleClipOnlyPrivacyGuard:
     """현재 diagonal scale update에 clip만 적용하는 기본 privacy guard."""
 
     guard_name: str = "diagonal_scale_clip_only"
+    supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
 
     def protect(
         self,

@@ -17,6 +17,9 @@ from main_server.src.services.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.rounds.runtime_compatibility import (
+    validate_server_round_runtime_config,
+)
 from main_server.src.services.rounds.runtime_config import ServerRoundRuntimeConfig
 from main_server.src.services.rounds.update_acceptance_policy import (
     RoundUpdateAcceptancePolicy,
@@ -41,6 +44,7 @@ def build_round_manager_service_from_config(
     """server-owned runtime config로 RoundManagerService를 조립한다."""
 
     effective_clock = clock or SystemUtcClock()
+    validate_server_round_runtime_config(config)
     adapter_family = build_shared_adapter_round_family(
         config.adapter_family_name,
         aggregation_backend_name=config.aggregation_backend_name,

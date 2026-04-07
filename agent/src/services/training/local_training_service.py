@@ -18,6 +18,9 @@ from agent.src.services.training.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
+from agent.src.services.training.runtime_compatibility import (
+    validate_local_training_runtime,
+)
 from agent.src.services.training.training_backends import (
     DiagonalScaleHeuristicTrainingBackend,
     SharedAdapterTrainingBackend,
@@ -99,6 +102,23 @@ class LocalTrainingService:
         effective_created_at = request.created_at or self.clock.now()
         backend = self._resolve_backend(training_task=request.training_task)
         privacy_guard = self._resolve_privacy_guard(training_task=request.training_task)
+        acceptance_policy_name = (
+            request.training_task.objective_config.acceptance_policy_name
+        )
+        default_acceptance_policy = (
+            self.selector.default_policy
+            if acceptance_policy_name is None
+            or acceptance_policy_name == self.selector.default_policy.policy_name
+            else None
+        )
+        validate_local_training_runtime(
+            request.training_task,
+            default_acceptance_policy_name=self.selector.config.acceptance_policy_name,
+            default_privacy_guard_name=self.privacy_guard.guard_name,
+            training_backend=backend,
+            acceptance_policy=default_acceptance_policy,
+            privacy_guard=privacy_guard,
+        )
         scored_events = [example.scored_event for example in request.training_examples]
         selection_result = self.selector.select(
             scored_events=scored_events,

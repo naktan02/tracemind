@@ -70,21 +70,22 @@ class FederationRuntimeService:
         | list[EmbeddedTrainingExample],
         model_manifest: ModelManifest | None = None,
         agent_id: str | None = None,
+        task_payload: TrainingTaskPayload | None = None,
     ) -> FederationRunResult:
         """현재 active task를 읽어 로컬 학습을 실행하고 결과를 업로드한다.
 
         학습에 필요한 EmbeddedTrainingExample은 호출자가 준비해서 넘긴다.
         서버에 active round가 없거나 task가 없으면 NO_ACTIVE_TASK를 반환한다.
         """
-        task_payload = self.round_client.fetch_current_task()
-        if task_payload is None:
+        effective_task_payload = task_payload or self.round_client.fetch_current_task()
+        if effective_task_payload is None:
             return FederationRunResult(
                 status=FederationRunStatus.NO_ACTIVE_TASK,
                 message="현재 active round 또는 open task가 없습니다.",
             )
 
-        round_id = task_payload.round_id
-        task_id = task_payload.task_id
+        round_id = effective_task_payload.round_id
+        task_id = effective_task_payload.task_id
 
         if task_id in self._completed_task_ids:
             return FederationRunResult(
@@ -94,7 +95,7 @@ class FederationRuntimeService:
                 message=f"이미 완료한 task입니다: {task_id}",
             )
 
-        training_task = _task_from_payload(task_payload)
+        training_task = _task_from_payload(effective_task_payload)
         effective_manifest = model_manifest or _fallback_manifest_from_task(
             training_task
         )

@@ -24,6 +24,10 @@ from .pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
+from .runtime_compatibility import (
+    LocalTrainingRuntimeCompatibility,
+    validate_local_training_runtime,
+)
 from .training_backends import (
     DiagonalScaleHeuristicTrainingBackend,
     SharedAdapterTrainingBackend,
@@ -39,6 +43,7 @@ __all__ = [
     "LocalTrainingResult",
     "LocalTrainingService",
     "DiagonalScaleClipOnlyPrivacyGuard",
+    "LocalTrainingRuntimeCompatibility",
     "NoOpSharedAdapterPrivacyGuard",
     "PrivacyProtectedUpdate",
     "PseudoLabelAcceptancePolicy",
@@ -54,4 +59,5 @@ __all__ = [
     "build_pseudo_label_acceptance_policy",
     "build_shared_adapter_privacy_guard",
     "build_shared_adapter_training_backend",
+    "validate_local_training_runtime",
 ]

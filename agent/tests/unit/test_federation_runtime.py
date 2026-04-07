@@ -161,6 +161,29 @@ def test_federation_runtime_returns_no_active_task_when_no_round() -> None:
     assert result.update_id is None
 
 
+def test_federation_runtime_uses_supplied_task_payload_without_refetch() -> None:
+    client = MagicMock(spec=RoundClient)
+    local_service = MagicMock()
+    local_service.run_task.return_value = LocalTrainingResult(
+        selection_result=_empty_selection_result(),
+        update_envelope=None,
+    )
+    supplied_task = _build_task_payload(task_id="task_supplied")
+    service = FederationRuntimeService(
+        round_client=client,
+        local_training_service=local_service,
+    )
+
+    result = service.run_current_task(
+        training_examples=(),
+        model_manifest=_build_manifest(),
+        task_payload=supplied_task,
+    )
+
+    assert result.status == FederationRunStatus.INSUFFICIENT_EXAMPLES
+    client.fetch_current_task.assert_not_called()
+
+
 def test_federation_runtime_returns_already_completed_on_duplicate() -> None:
     client = MagicMock(spec=RoundClient)
     client.fetch_current_task.return_value = _build_task_payload()
