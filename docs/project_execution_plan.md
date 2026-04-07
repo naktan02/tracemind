@@ -67,7 +67,8 @@ Raw Event / Local Signal
 
 1. `v1`에서는 backbone은 고정하고 shared adapter만 다룬다.
 2. 현재 adapter family는 `diagonal_scale` 하나다.
-3. 현재 로컬 update는 heuristic 기반이고, 다음 단계는 gradient 기반 shared adapter FL이다.
+3. 현재 로컬 update는 heuristic 기반이고, local training / example generation /
+   scorer / acceptance / privacy 축은 각각 독립적으로 교체 가능하게 정리됐다.
 4. prototype은 직접 FL 파라미터라기보다 shared state로부터 재생성되는 artifact에 가깝다.
 
 ## 4. 구현 배치 규칙
@@ -92,16 +93,17 @@ Raw Event / Local Signal
 8. `scripts/experiments/federated_simulation`은 `RoundLifecycleService`와 prototype rebuild runtime을 직접 조합한다.
 9. `scripts/experiments/prototype_strategy`의 single/kmeans는 shared canonical builder를 재사용한다.
 10. 기본 local training objective/selection fallback은 `shared/src/contracts/training_contracts.py`에 canonical builder로 모였다.
+11. scorer backend와 example-generation backend를 독립 축으로 분리했다.
+12. 서버는 `adapter_family`, `aggregation_backend`를 server-owned config axis로 고른다.
+13. secure aggregation 메타데이터는 typed contract로 승격했다.
 
 아직 남은 핵심:
 
-1. `agent` round runtime을 운영 배포 기준으로 더 단단하게 닫기
-   - 주기 실행/polling 운영 모델
-   - 실패 재시도/관측성
-   - agent API 기준 end-to-end 검증 확대
-2. `diagonal_scale` heuristic update를 gradient backend로 교체
-3. runtime의 multi-prototype 지원 확대 여부 결정
-4. privacy hardening의 실제 프로토콜 추가
+1. 두 번째 real adapter family를 추가해 family 교체 실험을 실제로 연다.
+2. 두 번째 real aggregation backend를 추가해 server 전략 비교를 실제로 연다.
+3. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
+4. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
+5. 필요하면 learned scorer / richer example-generation backend를 구현한다.
 
 ## 6. Phase 요약
 
@@ -137,11 +139,11 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. Phase 3: inference pipeline 연결 (scored events → training_examples 주입)
-2. Phase 4: end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
-3. `DiagonalScaleGradientTrainingBackend` 추가 (Phase 5 선행)
-4. local objective에 drift correction 항 추가
-5. multi-prototype runtime과 FL 연결 여부 결정
+1. 두 번째 real `adapter_family` 하나를 end-to-end로 추가
+2. 두 번째 real `aggregation_backend` 하나를 추가
+3. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
+4. `DiagonalScaleGradientTrainingBackend` 추가
+5. 필요 시 learned scorer 또는 richer example-generation backend 추가
 
 ## 8. 검증 기준
 

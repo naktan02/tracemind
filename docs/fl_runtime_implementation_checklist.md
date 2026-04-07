@@ -21,14 +21,18 @@
   - training backend / privacy guard 교체 지점
 - `agent/src/services/federation/training_example_service.py`
   - runtime training example preparation
+  - example-generation backend 교체 지점
+- `agent/src/services/inference/`
+  - scorer backend / score policy 교체 지점
 - `main_server/src/services/rounds/`
   - round lifecycle
   - update acceptance policy
   - adapter-family 기준 aggregation
+  - server-owned config axis (`adapter_family`, `aggregation_backend`)
   - next manifest/state publication
 - `scripts/experiments/federated_simulation/`
   - synthetic shard split
-  - runtime core 직접 조합 실험
+  - runtime core 조합 실험
   - evaluation / artifact dump
 - `main_server/src/services/prototypes/`
   - runtime rebuild/publication
@@ -36,9 +40,12 @@
 
 현재 비어 있거나 아직 약한 것:
 
-- 실제 HTTP 기반 FL round/task/update runtime
-- server/agent 간 end-to-end HTTP federation integration test
-- `agent` current round polling/upload runtime
+- 실제 두 번째 adapter family 구현
+- 실제 두 번째 aggregation backend 구현
+- learned scorer / scorer artifact lifecycle
+- full FixMatch류 example-generation + training backend 조합
+- secure aggregation runtime 자체
+- 일부 integration test 인프라 안정화
 
 ## 최종 구조 원칙
 
@@ -106,7 +113,7 @@ server runtime을 끝까지 닫을 수 없다.
 ### 문서/코드 반영 위치
 
 - [x] [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-- [ ] [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
+- [x] [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
 - [ ] 새 runtime service contract 문서가 필요하면 `docs/contracts/` 아래에 추가
 
 ### 완료 기준
@@ -209,14 +216,14 @@ server runtime을 끝까지 닫을 수 없다.
 
 - [x] active manifest/task가 없을 때 안전하게 종료
 - [x] local accepted examples가 부족할 때 no-update 처리
-- [ ] upload 성공/실패 상태 분리
+- [x] upload 성공/실패 상태 분리
 - [x] 같은 task에 대한 중복 실행 방지 정책
 
 ### 완료 기준
 
 - [x] agent가 current task를 읽고 local update를 만들어 업로드할 수 있다.
 - [x] local training example preparation이 더 이상 script 전용 helper가 아니다.
-- [ ] `TrainingTask`만 보면 local training 실행 가능 여부가 결정된다.
+- [x] `TrainingTask`만 보면 local training 실행 가능 여부가 결정된다.
 
 ## Phase 3. Prototype Rebuild Runtime 경로 닫기
 
@@ -283,6 +290,7 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 - [x] update upload
 - [x] finalize
 - [x] next manifest/prototype publication
+- [ ] integration test infra를 최신 httpx/transport 방식에 맞게 안정화
 
 ### 실패 시나리오
 
@@ -308,21 +316,28 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 - [ ] heuristic 외 `DiagonalScaleGradientTrainingBackend` 추가
 - [x] backend 선택 규칙이 `TrainingTask.objective_config.training_backend_name`와 일관되게 매핑되도록 정리
 - [x] acceptance policy registry를 명시적으로 정리
+- [x] scorer backend를 독립 축으로 분리
+- [x] example-generation backend를 독립 축으로 분리
+- [x] local runtime compatibility validator 추가
 
 ### server 쪽
 
-- [ ] aggregation backend registry 또는 family 확장 규칙 정리
-- [ ] adapter family별 state/update/payload compatibility 검증 강화
+- [x] aggregation backend registry 또는 family 확장 규칙 정리
+- [x] adapter family별 state/update/payload compatibility 검증 강화
+- [x] server-owned config axis (`adapter_family`, `aggregation_backend`) 도입
+- [ ] real second family / second aggregation backend 추가
 
 ### config 쪽
 
 - [x] FL runtime config에 한해 typed config 도입
 - [ ] task payload와 runtime config의 drift 방지 테스트 추가
+- [x] secure aggregation을 bool이 아니라 typed contract로 승격
 
 ### 완료 기준
 
-- [ ] acceptance policy, training backend, aggregation backend를 각각 독립적으로 교체 가능하다.
-- [ ] 새 backend 하나 추가 시 lifecycle/API 계층을 뜯지 않는다.
+- [x] acceptance policy, training backend, aggregation backend를 각각 독립적으로 교체 가능하다.
+- [x] 새 backend 하나 추가 시 lifecycle/API 계층을 뜯지 않는다.
+- [ ] 계약 자체가 달라지는 family까지 새 구현체 추가로 닫혔는지 확인한다.
 
 ## Phase 6. Privacy / Robustness Hardening
 
@@ -332,7 +347,7 @@ training과 aggregation이 먼저 닫힌 뒤, privacy와 robustness를 분리된
 
 ### 추가할 것
 
-- [ ] secure aggregation 적용 지점 확정
+- [x] secure aggregation 적용 지점 확정
 - [ ] DP/noise mechanism 적용 지점 확정
 - [ ] stale revision / malformed payload / oversized norm 방어
 - [ ] robust aggregation 후보 실험
@@ -367,6 +382,6 @@ training과 aggregation이 먼저 닫힌 뒤, privacy와 robustness를 분리된
 
 ## 가장 먼저 시작할 실제 작업 3개
 
-- [ ] prototype rebuild source와 publication policy 확정
-- [ ] `main_server` round lifecycle service + FL router 구현
-- [ ] `agent` federation client/orchestration + training router 구현
+- [ ] 두 번째 real adapter family 추가
+- [ ] 두 번째 real aggregation backend 추가
+- [ ] integration test infra 안정화 후 multi-agent 시나리오 확장

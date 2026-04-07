@@ -66,7 +66,7 @@ v1 원칙:
 
 1. `gradient_clip_norm`
 2. `min_required_examples`
-3. `secure_aggregation_required`
+3. `secure_aggregation`
 4. `notes`
 
 ---
@@ -76,6 +76,36 @@ v1 원칙:
 1. 개인화 상태
 2. 개별 샘플 본문
 3. 학습 결과 payload
+
+---
+
+## 4-1. `training_scope` 의미
+
+`training_scope`는 "모델의 어느 파라미터 범위를 업데이트 대상으로 삼는가"를
+나타낸다. 이것은 `adapter_family`나 `training_backend`와는 다른 축이다.
+
+1. `adapter_only`
+   - adapter 파라미터만 학습한다.
+   - 현재 TraceMind v1의 주 경로는 사실상 이 범위를 중심으로 설계돼 있다.
+
+2. `head_only`
+   - backbone/encoder는 고정하고 최종 분류 head만 학습한다.
+   - shared adapter family와는 별개 축이다.
+
+3. `selected_encoder_block`
+   - encoder 전체가 아니라 미리 정한 일부 블록만 학습한다.
+
+4. `full_encoder`
+   - encoder 전체를 학습한다.
+   - 현재 운영 경로의 기본 대상은 아니다.
+
+정리하면:
+
+- `training_scope`는 "어디를 학습하느냐"
+- `adapter_family`는 "그 범위를 어떤 구조로 파라미터화하느냐"
+
+예를 들어 `adapter_only` 범위 안에서도 `diagonal_scale` family와 `LoRA`
+family는 서로 다른 선택이다.
 
 ---
 
@@ -99,6 +129,8 @@ v1 원칙:
     "loss_name": "contrastive",
     "confidence_threshold": 0.8,
     "margin_threshold": 0.15,
+    "example_generation_backend_name": "prototype_rescore",
+    "scorer_backend_name": "prototype_similarity",
     "score_policy_name": "max_cosine",
     "acceptance_policy_name": "top1_margin_threshold",
     "privacy_guard_name": "diagonal_scale_clip_only"
@@ -110,7 +142,10 @@ v1 원칙:
   "deadline_at": "2026-03-30T00:00:00Z",
   "gradient_clip_norm": 1.0,
   "min_required_examples": 20,
-  "secure_aggregation_required": false
+  "secure_aggregation": {
+    "required": false,
+    "aggregation_backend_name": "plaintext_fedavg"
+  }
 }
 ```
 
@@ -121,3 +156,7 @@ v1 원칙:
 1. task만 보고 로컬이 학습 가능 여부를 판단할 수 있어야 한다.
 2. `training_scope`와 `model_revision`이 빠지지 않아야 한다.
 3. objective와 selection policy가 분리돼 있어야 한다.
+4. `training_backend_name`, `example_generation_backend_name`,
+   `scorer_backend_name`, `score_policy_name`,
+   `acceptance_policy_name`, `privacy_guard_name`은 서로 다른 교체 축으로
+   해석돼야 한다.

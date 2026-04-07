@@ -7,23 +7,26 @@
 
 ## 읽는 순서
 
-1. `plan.md` (repo root)
+1. `AGENTS.md`
+   - 저장소 구조, 소유 경계, 작업 규칙
+2. `plan.md` (repo root)
    - 왜 이 구조를 택했는지
-2. `docs/project_execution_plan.md`
+3. `docs/project_execution_plan.md`
    - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
-3. `shared/src/contracts/README.md`
+4. `shared/src/contracts/README.md`
    - 현재 payload 계약 해석
-4. `docs/fl_runtime_implementation_checklist.md`
+5. `docs/fl_runtime_implementation_checklist.md`
    - 실제 구현 순서와 완료 기준
-5. `docs/contracts/algorithm_extension_guide.md`
+6. `docs/contracts/algorithm_extension_guide.md`
    - 알고리즘/전략 교체 시 어느 파일을 보고 어떤 Protocol을 구현할지
-6. 필요한 경우만 `docs/staged_execution_roadmap.md`
+7. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
 
 ## 문서 역할
 
 | 파일 | 역할 |
 |---|---|
+| `AGENTS.md` | 저장소 구조, 소유 경계, 작업 규칙 |
 | `plan.md` | 연구 비전, 핵심 가설, global/local 분리 원칙 |
 | `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |
 | `docs/fl_runtime_implementation_checklist.md` | 실제 구현 작업 순서, 파일 후보, 완료 기준 |
@@ -37,11 +40,19 @@
 ## 작업 시작 체크리스트
 
 1. 이번 요청이 `global/shared`인지 `local/private`인지 먼저 구분한다.
-2. 바뀔 축이 무엇인지 적는다.
+2. 변경 소유 경계가 `shared`, `agent`, `main_server`, `scripts` 중 어디인지 적는다.
+3. 바뀔 축이 무엇인지 적는다.
    - 예: adapter family, training backend, aggregation backend, privacy layer, scoring policy
-3. `docs/contracts/algorithm_extension_guide.md`에서 해당 전략 지점을 찾는다.
-4. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
-5. 사용자 판단이 필요한 항목인지 확인한다.
+4. `docs/contracts/algorithm_extension_guide.md`에서 해당 전략 지점을 찾는다.
+5. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
+6. 사용자 판단이 필요한 항목인지 확인한다.
+
+## 문서 우선순위
+
+1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
+2. `shared/src/contracts/README.md`
+3. `docs/contracts/*`, `docs/*`
+4. `docs/notes/*`
 
 ## 사용자 확인이 필요한 변경
 

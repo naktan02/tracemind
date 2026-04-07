@@ -14,12 +14,14 @@
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
 | Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends.py` |
+| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend | `agent/src/services/federation/training_example_service.py` |
+| Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy | `agent/src/services/training/acceptance_policies.py` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
-| Aggregation Backend | main_server | DiagonalScaleAggregationService | `main_server/src/services/rounds/aggregation_service.py` |
+| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
-| Adapter Family | shared | diagonal_scale | `shared/src/contracts/adapter_contracts.py` |
+| Adapter Family | main_server/shared | diagonal_scale | `main_server/src/services/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
 
 ---
 
@@ -65,7 +67,63 @@ class SharedAdapterTrainingBackend(Protocol):
 
 ---
 
-### 2. Privacy Guard (agent)
+### 2. Example Generation Backend (agent)
+
+**역할:** raw row 또는 stored scored event를 `EmbeddedTrainingExample`으로
+재구성하는 방식.
+
+**Protocol:**
+```python
+# agent/src/services/federation/training_example_service.py
+class TrainingExampleBackend(Protocol):
+    backend_name: str
+
+    def build_examples(
+        self,
+        request: TrainingExampleBuildRequest,
+    ) -> tuple[EmbeddedTrainingExample, ...]: ...
+
+    def build_examples_from_stored_events(
+        self,
+        request: StoredEventTrainingExampleBuildRequest,
+    ) -> tuple[EmbeddedTrainingExample, ...]: ...
+```
+
+**현재:** `PrototypeRescoringTrainingExampleBackend`
+- 현재 adapter state를 적용하고
+- 현재 prototype pack 기준으로 다시 점수 계산한 뒤
+- 학습용 example로 변환한다.
+
+**교체 시나리오:**
+- cached score 재사용 backend
+- feedback-only example backend
+- FixMatch류 weak/strong augmentation example backend
+
+**교체 절차:**
+1. `training_example_service.py`에 새 backend 클래스 추가
+2. `register_training_example_backend()`로 thin registry wiring에 등록
+3. `TrainingObjectiveConfigPayload.example_generation_backend_name`으로 선택
+
+---
+
+### 3. Scorer Backend (agent/scripts)
+
+**역할:** 카테고리 score를 만드는 전체 방식 자체를 고른다.
+`score_policy`보다 한 단계 위 축이다.
+
+**예시 구분:**
+- scorer backend: prototype similarity, learned scorer g, calibrated scorer
+- scoring policy: 같은 scorer backend 안에서 `max`, `top-k mean` 같은 집계 방식
+
+**교체 절차:**
+1. `scoring_backends.py`에 새 backend 추가
+2. `register_scoring_backend()`로 등록
+3. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
+4. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
+
+---
+
+### 4. Privacy Guard (agent)
 
 **역할:** local training 후 delta를 서버에 보내기 전 privacy 보호 적용.
 
@@ -99,7 +157,7 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 ---
 
-### 3. Pseudo-label Acceptance Policy (agent)
+### 5. Pseudo-label Acceptance Policy (agent)
 
 **역할:** category score를 pseudo-label acceptance decision으로 해석한다.
 
@@ -131,7 +189,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 ---
 
-### 4. Scoring Policy (agent)
+### 6. Scoring Policy (agent)
 
 **역할:** 임베딩과 prototype 간 유사도 계산 방식.
 
@@ -162,7 +220,7 @@ class PrototypeScorePolicy(Protocol):
 
 ---
 
-### 5. Aggregation Backend (main_server)
+### 7. Aggregation Backend (main_server)
 
 **역할:** 여러 agent update를 합쳐 새 전역 adapter state를 만드는 방식.
 
@@ -182,7 +240,9 @@ class SharedAdapterAggregationBackend(Protocol):
     ) -> AggregationResult: ...
 ```
 
-**현재:** `DiagonalScaleAggregationService` — example_count 가중 평균 (FedAvg 변형).
+**현재:** `DiagonalScaleAggregationService`
+- `diagonal_scale` family용
+- example_count 가중 평균 기반
 
 **교체 시나리오:**
 - q-합의: 최소 q개 update가 합의할 때만 반영하는 방식. `agent_id`로 per-agent 신뢰도 추적.
@@ -191,7 +251,7 @@ class SharedAdapterAggregationBackend(Protocol):
 
 **교체 절차:**
 1. `aggregation_service.py`에 새 클래스 추가 (Protocol 구현)
-2. `adapter_family_service.py`에 등록
+2. `register_shared_adapter_aggregation_backend()` 또는 family 조합 지점에 등록
 3. q-합의 등 trust 기반이라면 `TrainingUpdateEnvelope.agent_id`를 사전 단계에서 활용
 
 **참고 필드:** `client_metrics`의 `ClientMetricKeys` 상수들 (`mean_confidence`, `delta_l2_norm` 등)이
@@ -199,7 +259,7 @@ aggregation 품질 판단에 활용 가능.
 
 ---
 
-### 6. Update Acceptance Policy (main_server)
+### 8. Update Acceptance Policy (main_server)
 
 **역할:** agent가 보낸 update를 round에 받아들일지, 중복으로 볼지 결정.
 
@@ -232,7 +292,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
 
 ---
 
-### 7. Adapter Family 추가 (shared)
+### 9. Adapter Family 추가 (shared/main_server)
 
 **역할:** diagonal_scale 외 다른 adapter 구조 도입.
 
@@ -250,6 +310,30 @@ class RoundUpdateAcceptancePolicy(Protocol):
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).
 
 **미래 후보:** LoRA adapter, projection head, prefix tuning.
+
+---
+
+## 현재 구조에서 바로 쉬운 교체와 아닌 교체
+
+### 바로 쉬운 교체
+
+- 같은 계약 안의 새 `training_backend`
+- 새 `example_generation_backend`
+- 새 `scorer_backend`
+- 새 `score_policy`
+- 새 `acceptance_policy`
+- 새 `privacy_guard`
+- 같은 family 안의 새 `aggregation_backend`
+
+### 아직 계약 확장이 필요한 교체
+
+- `LoRA`처럼 state/update payload가 달라지는 family
+- `FixMatch`처럼 example generation과 training backend가 함께 바뀌는 방식
+- `PabLO`처럼 learned scorer artifact를 fit/store/load해야 하는 방식
+- 실제 동형암호/secure aggregation runtime
+
+즉 registry는 "같은 계약 안의 교체"를 쉽게 만드는 장치이고,
+계약 자체가 달라지는 경우까지 자동으로 해결하지는 않는다.
 
 ---
 
@@ -275,9 +359,8 @@ class RoundUpdateAcceptancePolicy(Protocol):
     → 기존 테스트가 깨지지 않는지 확인 (회귀)
     → 새 구현체에 대한 최소 케이스 추가
 
-[ ] 실험은 scripts/ 에서 먼저
-    → 운영 후보가 확인되면 agent/main_server로 옮김
-    → scripts에 implementation을 두지 않음
+[ ] 운영 후보 구현체는 shared/agent/main_server의 소유 경계에 바로 둔다
+    → scripts는 config, sweep, report, visualization만 담당
 ```
 
 ---
@@ -288,8 +371,8 @@ class RoundUpdateAcceptancePolicy(Protocol):
 |---|---|
 | `shared/src/contracts/fl_round_contracts.py` | agent↔server 통신 계약. 알고리즘과 무관 |
 | `agent/src/services/federation/round_client.py` | HTTP 통신 레이어. 알고리즘 교체와 무관 |
-| `agent/src/services/federation/runtime_service.py` | orchestration 흐름. backend 교체와 무관 |
-| `agent/src/api/training.py` | API endpoint. 알고리즘 교체와 무관 |
+| `agent/src/services/federation/runtime_service.py` | orchestration 흐름. 같은 계약 안의 backend 교체와 무관 |
+| `agent/src/api/training.py` | API endpoint. 교체 축 선택은 task/objective config가 담당 |
 | `shared/src/contracts/prototype_contracts.py` | prototype 동기화 계약. adapter 교체와 독립 |
 
 ---

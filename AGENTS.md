@@ -1,8 +1,55 @@
 # Repository Guidelines
 
 ## Project Structure & Module Organization
-Keep runtime code inside `src/`, grouped by responsibility: `src/api` for FastAPI routers, `src/core` for shared domain models, and `src/services` for background or external integrations. Unit and integration tests mirror the package layout inside `tests/`. Reusable task runners or data seeding scripts live in `scripts/`, while deployment manifests (Dockerfiles, Terraform, GitHub Actions) belong in `infra/`.
+이 저장소는 단일 `src/` 앱이 아니라 역할별 모듈이 나뉜 monorepo 구조다.
+
+- `shared/`
+  - 공통 contract, domain entity, canonical 계산 규칙의 source of truth
+- `agent/`
+  - agent-owned 로컬 추론/로컬 학습 runtime과 API
+- `main_server/`
+  - server-owned round lifecycle, aggregation, publication orchestration과 API
+- `scripts/`
+  - 위 코어를 조합하는 실험층
+  - thin wrapper, sweep, report, visualization, exploratory-only logic만 둔다
+- `tests/`
+  - cross-boundary integration/e2e 중심
+- `agent/tests`, `main_server/tests`, `shared/tests`
+  - 각 패키지 경계 안의 unit/contract test
+- `infra/`
+  - 배포/운영 manifest
+
+중요:
+
+- 운영 후보 알고리즘 구현은 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
+- 공용 계산 규칙은 `shared`, agent-owned 로컬 실행은 `agent`,
+  server-owned orchestration은 `main_server`에 둔다.
+- 테스트 위치도 책임 경계를 따른다. 패키지별 테스트는 각 패키지 아래에 두고,
+  경계를 넘는 검증만 repo 루트 `tests/`에 둔다.
 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로 사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다. 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
+
+## Documentation Entry Points
+문서를 읽을 때는 아래 순서를 기본 진입점으로 본다.
+
+1. `docs/execution_index.md`
+   - 전체 문서 지도와 읽는 순서
+2. `plan.md`
+   - 프로젝트 목적, 연구 메시지, global/local 분리 원칙
+3. `docs/project_execution_plan.md`
+   - 현재 활성 아키텍처, 구현 상태, 다음 우선순위
+4. `shared/src/contracts/README.md`
+   - 현재 contract 해석 규칙
+5. `docs/fl_runtime_implementation_checklist.md`
+   - 실제 구현 순서와 남은 작업
+6. `docs/contracts/algorithm_extension_guide.md`
+   - 교체 가능한 전략 지점과 확장 절차
+
+문서 우선순위는 다음과 같이 본다.
+
+1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
+2. `shared/src/contracts/README.md`
+3. `docs/contracts/*`, `docs/*`
+4. `docs/notes/*`
 
 ## Architecture Direction
 구조 변경은 contract-first와 change-axis separation을 우선한다. 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다. `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로 보고, 중요한 필드 의미는 코드 가까이에 둔다. 경계에서는 canonical representation을 우선하고, producer와 consumer가 같은 shape와 같은 의미를 보도록 맞춘다. legacy format이나 임시 변환은 compatibility 계층으로 명시적으로 격리하고 제거 조건을 남긴다. 공통 계층과 문맥별 계층을 분리하고, 정책과 실행 메커니즘을 분리하며, 튜닝 전에 dump·trace·summary 같은 관측 가능성을 먼저 만든다. 특정 패턴을 고집하지 말고 변화 구조에 맞는 패턴을 선택한다. raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지 않는다.
