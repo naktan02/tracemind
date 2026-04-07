@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
+from contextlib import AbstractContextManager
 from dataclasses import dataclass, field
 
 import httpx
@@ -11,6 +13,8 @@ from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
 )
+
+RoundHttpClientFactory = Callable[[], AbstractContextManager[httpx.Client]]
 
 
 @dataclass(slots=True)
@@ -27,8 +31,15 @@ class RoundClient:
     timeout: float = 10.0
     # 외부에서 transport를 주입하면 ASGITransport 등으로 교체 가능하다.
     _transport: httpx.BaseTransport | None = field(default=None, repr=False)
+    # 테스트에서 기존 client를 빌려 쓰고 싶을 때 context factory를 주입한다.
+    _client_factory: RoundHttpClientFactory | None = field(
+        default=None,
+        repr=False,
+    )
 
-    def _client(self) -> httpx.Client:
+    def _client(self) -> AbstractContextManager[httpx.Client]:
+        if self._client_factory is not None:
+            return self._client_factory()
         kwargs: dict = {"base_url": self.server_base_url, "timeout": self.timeout}
         if self._transport is not None:
             kwargs["transport"] = self._transport
