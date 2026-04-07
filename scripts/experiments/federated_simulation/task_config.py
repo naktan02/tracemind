@@ -46,7 +46,7 @@ def build_training_task_config_from_legacy_overrides(
         min_required_examples=min_required_examples or 1,
         gradient_clip_norm=gradient_clip_norm,
         objective_config={
-            "loss": "diagonal_scale_heuristic",
+            "training_backend_name": "diagonal_scale_heuristic",
             "confidence_threshold": resolve_threshold(
                 confidence_threshold,
                 fallback=None,

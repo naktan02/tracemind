@@ -7,6 +7,7 @@ from .runtime_service import (
     FederationRuntimeService,
 )
 from .training_example_service import (
+    StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
@@ -17,6 +18,7 @@ __all__ = [
     "FederationRunStatus",
     "FederationRuntimeService",
     "RoundClient",
+    "StoredEventTrainingExampleBuildRequest",
     "TrainingExampleBuildRequest",
     "TrainingExampleService",
     "TrainingExampleSource",

@@ -59,7 +59,7 @@ class SharedAdapterTrainingBackend(Protocol):
 **교체 절차:**
 1. 이 파일에 새 클래스 추가 (`SharedAdapterTrainingBackend` Protocol 구현)
 2. `build_shared_adapter_training_backend()` factory에 등록
-3. `TrainingObjectiveConfigPayload.loss` 값과 backend_name을 맞춤
+3. `TrainingObjectiveConfigPayload.training_backend_name` 값과 backend_name을 맞춤
 
 **건드리지 않는 것:** `LocalTrainingService`는 backend를 주입받으므로 수정 불필요.
 
@@ -125,8 +125,8 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 **교체 절차:**
 1. 이 파일에 새 Policy 클래스 추가
-2. `build_acceptance_policy()` factory에 등록
-3. `TrainingSelectionPolicyPayload.policy_name`으로 선택
+2. `build_pseudo_label_acceptance_policy()` factory에 등록
+3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택
 
 ---
 

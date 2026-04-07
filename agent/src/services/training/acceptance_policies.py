@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -32,6 +32,9 @@ class PseudoLabelAcceptancePolicy(Protocol):
         margin_threshold: float,
     ) -> AcceptanceDecision:
         """Score dict를 해석해 acceptance 결과를 만든다."""
+
+
+AcceptancePolicyFactory = Callable[[], PseudoLabelAcceptancePolicy]
 
 
 @dataclass(slots=True)
@@ -96,16 +99,27 @@ class Top1ConfidenceOnlyAcceptancePolicy:
         )
 
 
+_ACCEPTANCE_POLICY_REGISTRY: dict[str, AcceptancePolicyFactory] = {}
+
+
+def register_pseudo_label_acceptance_policy(
+    *policy_names: str,
+    factory: AcceptancePolicyFactory,
+) -> None:
+    """얇은 wiring registry에 pseudo-label acceptance policy를 등록한다."""
+    for policy_name in policy_names:
+        _ACCEPTANCE_POLICY_REGISTRY[policy_name.strip().lower()] = factory
+
+
 def build_pseudo_label_acceptance_policy(
     policy_name: str,
 ) -> PseudoLabelAcceptancePolicy:
     """정책 이름으로 acceptance policy를 생성한다."""
 
     normalized_name = policy_name.strip().lower()
-    if normalized_name == "top1_margin_threshold":
-        return Top1MarginThresholdAcceptancePolicy()
-    if normalized_name == "top1_confidence_only":
-        return Top1ConfidenceOnlyAcceptancePolicy()
+    factory = _ACCEPTANCE_POLICY_REGISTRY.get(normalized_name)
+    if factory is not None:
+        return factory()
     raise ValueError(f"Unsupported pseudo-label acceptance policy: {policy_name}.")
 
 
@@ -120,3 +134,13 @@ def _rank_category_scores(
     if not ranked_scores:
         raise ValueError("ScoredEvent must contain at least one category score.")
     return ranked_scores
+
+
+register_pseudo_label_acceptance_policy(
+    "top1_margin_threshold",
+    factory=Top1MarginThresholdAcceptancePolicy,
+)
+register_pseudo_label_acceptance_policy(
+    "top1_confidence_only",
+    factory=Top1ConfidenceOnlyAcceptancePolicy,
+)

@@ -62,7 +62,7 @@ def _build_task_payload(
         learning_rate=1e-2,
         max_steps=10,
         objective_config=TrainingObjectiveConfigPayload(
-            loss="diagonal_scale_heuristic",
+            training_backend_name="diagonal_scale_heuristic",
             confidence_threshold=0.6,
             margin_threshold=0.02,
         ),
@@ -126,7 +126,9 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
             "batch_size": 8,
             "learning_rate": 1e-2,
             "max_steps": 10,
-            "objective_config": {"loss": "diagonal_scale_heuristic"},
+            "objective_config": {
+                "training_backend_name": "diagonal_scale_heuristic"
+            },
             "selection_policy": {},
         },
         "created_at": "2026-03-29T00:00:00Z",
@@ -213,6 +215,33 @@ def test_federation_runtime_returns_insufficient_examples_when_no_accepted() -> 
     assert result.update_id is None
     # update가 없으므로 task_id를 완료 목록에 추가하지 않는다.
     assert "task_001" not in service._completed_task_ids
+
+
+def test_federation_runtime_builds_fallback_manifest_when_none_is_given() -> None:
+    client = MagicMock(spec=RoundClient)
+    client.fetch_current_task.return_value = _build_task_payload(
+        model_revision="rev_123"
+    )
+    local_service = MagicMock()
+    local_service.run_task.return_value = LocalTrainingResult(
+        selection_result=_empty_selection_result(),
+        update_envelope=None,
+    )
+    service = FederationRuntimeService(
+        round_client=client,
+        local_training_service=local_service,
+    )
+
+    service.run_current_task(
+        training_examples=(),
+        model_manifest=None,
+    )
+
+    call_kwargs = local_service.run_task.call_args.kwargs
+    manifest = call_kwargs["model_manifest"]
+    assert manifest.model_id == "tracemind-embed"
+    assert manifest.model_revision == "rev_123"
+    assert manifest.training_scope == "adapter_only"
 
 
 def test_federation_runtime_uploads_update_and_marks_completed(

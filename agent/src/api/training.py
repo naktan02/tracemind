@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Callable
-from datetime import datetime, timezone
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
@@ -11,21 +10,19 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
-    StoredScoredEvent,
 )
+from agent.src.services.federation import StoredEventTrainingExampleBuildRequest
 from agent.src.services.federation.round_client import RoundClient
 from agent.src.services.federation.runtime_service import (
     FederationRunResult,
     FederationRuntimeService,
 )
+from agent.src.services.federation.training_example_service import (
+    TrainingExampleService,
+)
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
-from agent.src.services.training.local_training_service import EmbeddedTrainingExample
-from shared.src.contracts.adapter_contracts import VectorAdapterState
-from shared.src.contracts.model_contracts import make_embedding_manifest
-from shared.src.contracts.prototype_contracts import extract_category_prototypes
 from shared.src.contracts.training_contracts import TrainingTaskPayload
-from shared.src.domain.entities.inference.events import ScoredEvent
 
 
 class RunCurrentTaskRequest(BaseModel):
@@ -125,6 +122,17 @@ def get_round_client_factory(request: Request) -> RoundClientFactory:
     return factory
 
 
+def get_training_example_service(request: Request) -> TrainingExampleService:
+    """app.state에서 TrainingExampleService를 읽는다."""
+    service = getattr(request.app.state, "training_example_service", None)
+    if service is None:
+        raise RuntimeError(
+            "TrainingExampleService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.training_example_service를 설정하세요."
+        )
+    return service
+
+
 def get_federation_runtime_service_factory(
     request: Request,
 ) -> FederationRuntimeServiceFactory:
@@ -148,6 +156,10 @@ ProtoServiceDep = Annotated[
 ]
 ScoringServiceDep = Annotated[ScoringService, Depends(get_scoring_service)]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
+TrainingExampleServiceDep = Annotated[
+    TrainingExampleService,
+    Depends(get_training_example_service),
+]
 FederationRuntimeFactoryDep = Annotated[
     FederationRuntimeServiceFactory,
     Depends(get_federation_runtime_service_factory),
@@ -169,6 +181,7 @@ def run_current_task(
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
     scoring_service: ScoringServiceDep,
+    training_example_service: TrainingExampleServiceDep,
     runtime_factory: FederationRuntimeFactoryDep,
 ) -> RunCurrentTaskResponse:
     """현재 active task를 읽어 로컬 학습을 실행하고 update를 업로드한다.
@@ -179,16 +192,25 @@ def run_current_task(
     """
     try:
         stored_events = repo.get_recent_stored(days=request.scored_event_days)
-        training_examples = _build_training_examples(
-            stored_events,
-            proto_service,
-            scoring_service,
-        )
+        try:
+            active_pack = proto_service.get_active_pack()
+        except FileNotFoundError:
+            training_examples = ()
+        else:
+            training_examples = (
+                training_example_service.build_examples_from_stored_events(
+                    StoredEventTrainingExampleBuildRequest(
+                        stored_events=stored_events,
+                        prototype_pack=active_pack,
+                        scoring_service=scoring_service,
+                    )
+                )
+            )
 
         service = runtime_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(
             training_examples=training_examples,
-            model_manifest=_get_placeholder_manifest(),
+            model_manifest=None,
             agent_id=request.agent_id,
         )
         return RunCurrentTaskResponse(
@@ -235,75 +257,3 @@ def get_training_status(
 # ------------------------------------------------------------------ #
 # 내부 헬퍼                                                             #
 # ------------------------------------------------------------------ #
-
-
-def _get_placeholder_manifest():
-    """ModelManifest placeholder.
-
-    TODO(Phase-3 완료): LocalManifestRepository.get_active()로 교체.
-    제거 조건: agent 로컬 manifest 저장소가 구현되고 올바른 model_revision을 제공할 때.
-    """
-    return make_embedding_manifest(
-        model_id="placeholder",
-        model_revision="rev_placeholder",
-        prototype_version="proto_placeholder",
-        artifact_ref="placeholder",
-        training_enabled=True,
-    )
-
-
-def _build_training_examples(
-    stored: list[StoredScoredEvent],
-    proto_service: PrototypeRuntimeService,
-    scoring_service: ScoringService,
-) -> tuple[EmbeddedTrainingExample, ...]:
-    """StoredScoredEvent 목록을 EmbeddedTrainingExample로 변환한다.
-
-    base_embedding을 현재 active 프로토타입으로 재스코어링한다.
-    adapter state가 없으면 identity (scale=1.0) 를 사용한다.
-    """
-    usable = [
-        s for s in stored
-        if s.base_embedding is not None and len(s.base_embedding) > 0
-    ]
-    if not usable:
-        return ()
-
-    try:
-        active_pack = proto_service.get_active_pack()
-        prototypes = extract_category_prototypes(active_pack)
-    except FileNotFoundError:
-        return ()
-
-    embedding_dim = len(usable[0].base_embedding)  # type: ignore[arg-type]
-    adapter_state = VectorAdapterState.identity(
-        model_id="local",
-        model_revision="local",
-        training_scope="adapter_only",
-        embedding_dim=embedding_dim,
-        updated_at=datetime.now(tz=timezone.utc),
-    )
-
-    examples: list[EmbeddedTrainingExample] = []
-    for stored_item in usable:
-        base_emb = stored_item.base_embedding  # type: ignore[assignment]
-        adapted_emb = adapter_state.apply(base_emb)
-        category_scores = scoring_service.score(adapted_emb, prototypes)
-
-        rescored_event = ScoredEvent(
-            query_id=stored_item.scored_event.query_id,
-            occurred_at=stored_item.scored_event.occurred_at,
-            translated_text=stored_item.scored_event.translated_text,
-            embedding_model_id=stored_item.scored_event.embedding_model_id,
-            translation_model_id=stored_item.scored_event.translation_model_id,
-            category_scores=category_scores,
-        )
-        examples.append(
-            EmbeddedTrainingExample(
-                scored_event=rescored_event,
-                embedding=adapted_emb,
-                base_embedding=base_emb,
-            )
-        )
-
-    return tuple(examples)

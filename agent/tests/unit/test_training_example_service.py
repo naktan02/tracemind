@@ -4,7 +4,11 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from agent.src.infrastructure.repositories.scored_event_repository import (
+    StoredScoredEvent,
+)
 from agent.src.services.federation import (
+    StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
@@ -12,6 +16,7 @@ from agent.src.services.federation import (
 from agent.src.services.inference.scoring_service import ScoringService
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.domain.entities.inference.events import ScoredEvent
 
 
 class _StaticEmbeddingAdapter:
@@ -122,3 +127,31 @@ def test_training_example_service_returns_empty_tuple_for_empty_rows() -> None:
     )
 
     assert examples == ()
+
+
+def test_training_example_service_rebuilds_examples_from_stored_events() -> None:
+    service = TrainingExampleService()
+    examples = service.build_examples_from_stored_events(
+        StoredEventTrainingExampleBuildRequest(
+            stored_events=(
+                StoredScoredEvent(
+                    scored_event=ScoredEvent(
+                        query_id="q1",
+                        occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                        translated_text="panic panic",
+                        embedding_model_id="hash_debug",
+                        translation_model_id=None,
+                        category_scores={"anxiety": 0.4, "normal": 0.6},
+                    ),
+                    base_embedding=[1.0, 0.0],
+                ),
+            ),
+            prototype_pack=_pack_payload(),
+            scoring_service=ScoringService(),
+        )
+    )
+
+    assert len(examples) == 1
+    assert examples[0].base_embedding == [1.0, 0.0]
+    assert examples[0].embedding == [1.0, 0.0]
+    assert examples[0].scored_event.category_scores["anxiety"] == 1.0

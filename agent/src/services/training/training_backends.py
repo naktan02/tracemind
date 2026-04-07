@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
@@ -52,6 +53,7 @@ class SharedAdapterTrainingBackend(Protocol):
 
 
 TrainingBackend = SharedAdapterTrainingBackend
+TrainingBackendFactory = Callable[[], SharedAdapterTrainingBackend]
 
 
 @dataclass(slots=True)
@@ -145,6 +147,17 @@ class DiagonalScaleHeuristicTrainingBackend:
 
 SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend
 
+_TRAINING_BACKEND_REGISTRY: dict[str, TrainingBackendFactory] = {}
+
+
+def register_shared_adapter_training_backend(
+    *backend_names: str,
+    factory: TrainingBackendFactory,
+) -> None:
+    """얇은 wiring registry에 backend factory를 등록한다."""
+    for backend_name in backend_names:
+        _TRAINING_BACKEND_REGISTRY[backend_name.strip().lower()] = factory
+
 
 def build_shared_adapter_training_backend(
     backend_name: str,
@@ -152,9 +165,14 @@ def build_shared_adapter_training_backend(
     """backend 이름으로 로컬 학습 backend를 생성한다."""
 
     normalized_name = backend_name.strip().lower()
-    if normalized_name in {
-        "diagonal_scale_heuristic",
-        "synthetic_vector_adapter",
-    }:
-        return DiagonalScaleHeuristicTrainingBackend(backend_name=normalized_name)
+    factory = _TRAINING_BACKEND_REGISTRY.get(normalized_name)
+    if factory is not None:
+        return factory()
     raise ValueError(f"Unsupported local training backend: {backend_name}.")
+
+
+register_shared_adapter_training_backend(
+    "diagonal_scale_heuristic",
+    "synthetic_vector_adapter",
+    factory=DiagonalScaleHeuristicTrainingBackend,
+)

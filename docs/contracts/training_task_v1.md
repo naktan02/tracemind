@@ -93,7 +93,8 @@ v1 원칙:
   "learning_rate": 0.0001,
   "max_steps": 50,
   "objective_config": {
-    "loss": "contrastive",
+    "training_backend_name": "diagonal_scale_heuristic",
+    "loss_name": "contrastive",
     "confidence_threshold": 0.8,
     "margin_threshold": 0.15
   },

@@ -42,6 +42,8 @@ from main_server.src.services.rounds.round_lifecycle_service import (
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
 from main_server.src.services.rounds.update_acceptance_policy import (
     IdempotentRoundUpdateAcceptancePolicy,
+    SingleSubmissionPerAgentTrustPolicy,
+    StrictRoundUpdateAcceptancePolicy,
 )
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
@@ -124,6 +126,7 @@ def _build_update(
     task_id: str,
     update_id: str = "update_001",
     base_model_revision: str = "rev_000",
+    agent_id: str | None = None,
 ) -> TrainingUpdateEnvelope:
     payload_path = tmp_path / "updates" / f"{update_id}.json"
     dump_shared_adapter_update_payload(
@@ -152,6 +155,7 @@ def _build_update(
         payload_format="diagonal_scale_update",
         example_count=3,
         client_metrics={"mean_loss": 0.2},
+        agent_id=agent_id,
     )
 
 
@@ -229,6 +233,44 @@ def test_round_lifecycle_can_accept_idempotent_duplicate_update(tmp_path: Path) 
     assert second.idempotent is True
     assert second.update_count == 1
     assert len(round_repository.load_round(record.round_id).updates) == 1
+
+
+def test_round_lifecycle_can_split_agent_trust_policy_from_network_policy(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, active_manifest, _ = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    service.update_acceptance_policy = StrictRoundUpdateAcceptancePolicy(
+        trust_policy=SingleSubmissionPerAgentTrustPolicy()
+    )
+    record = service.open_round(
+        RoundOpenRequest(
+            active_manifest=active_manifest,
+            round_id="round_0001",
+        )
+    )
+    first_update = _build_update(
+        tmp_path=tmp_path,
+        round_id=record.round_id,
+        task_id=record.training_task.task_id,
+        update_id="update_001",
+        agent_id="agent_alpha",
+    )
+    second_update = _build_update(
+        tmp_path=tmp_path,
+        round_id=record.round_id,
+        task_id=record.training_task.task_id,
+        update_id="update_002",
+        agent_id="agent_alpha",
+    )
+
+    service.accept_update(record.round_id, first_update)
+
+    with pytest.raises(RoundConflictError):
+        service.accept_update(record.round_id, second_update)
 
 
 def test_round_lifecycle_rejects_base_revision_mismatch(tmp_path: Path) -> None:

@@ -123,7 +123,9 @@ def make_training_task_payload() -> Callable[..., TrainingTaskPayload]:
             "batch_size": 8,
             "learning_rate": 1e-4,
             "max_steps": 10,
-            "objective_config": TrainingObjectiveConfigPayload(loss="contrastive"),
+            "objective_config": TrainingObjectiveConfigPayload(
+                training_backend_name="contrastive"
+            ),
             "selection_policy": TrainingSelectionPolicyPayload(max_examples=32),
         }
         return TrainingTaskPayload(**(defaults | overrides))

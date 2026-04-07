@@ -21,7 +21,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 from .common_types import TrainingScope, TrainingTaskType
 
@@ -78,7 +78,8 @@ class ClientMetricKeys:
 class TrainingObjectiveConfigPayload(BaseModel):
     """학습 objective 관련 payload.
 
-    - `loss`: 어떤 local training objective를 쓸지 식별자
+    - `training_backend_name`: 어떤 local update backend를 쓸지 식별자
+    - `loss_name`: 학습 objective의 loss 함수 식별자
     - `confidence_threshold`: pseudo-label 채택 최소 confidence
     - `margin_threshold`: top1-top2 차이 최소값
     - `score_policy_name`: 다중 prototype score 집계 정책 식별자
@@ -88,11 +89,20 @@ class TrainingObjectiveConfigPayload(BaseModel):
     - `extras`: family별 추가 하이퍼파라미터 확장 슬롯
     """
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
-    loss: str = Field(
+    training_backend_name: str = Field(
         default="diagonal_scale_heuristic",
-        description="Local training objective 식별자.",
+        validation_alias=AliasChoices("training_backend_name", "loss"),
+        serialization_alias="training_backend_name",
+        description="로컬 update backend 식별자.",
+    )
+    loss_name: str | None = Field(
+        default=None,
+        description=(
+            "학습 objective의 loss 함수 식별자. "
+            "backend 선택과는 독립적인 의미 축이다."
+        ),
     )
     confidence_threshold: float | None = Field(
         default=None,
@@ -134,8 +144,13 @@ class TrainingObjectiveConfigPayload(BaseModel):
         """Mapping 입력을 canonical objective config로 정규화한다."""
         if source is None:
             return cls()
+        backend_name = source.get(
+            "training_backend_name",
+            source.get("loss", "diagonal_scale_heuristic"),
+        )
         return cls(
-            loss=str(source.get("loss", "diagonal_scale_heuristic")),
+            training_backend_name=str(backend_name),
+            loss_name=_optional_str(source.get("loss_name")),
             confidence_threshold=_optional_float(source.get("confidence_threshold")),
             margin_threshold=_optional_float(source.get("margin_threshold")),
             score_policy_name=_optional_str(source.get("score_policy_name")),
@@ -149,7 +164,9 @@ class TrainingObjectiveConfigPayload(BaseModel):
                 for key, value in source.items()
                 if key
                 not in {
+                    "training_backend_name",
                     "loss",
+                    "loss_name",
                     "confidence_threshold",
                     "margin_threshold",
                     "score_policy_name",
@@ -162,7 +179,11 @@ class TrainingObjectiveConfigPayload(BaseModel):
 
     def to_mapping(self) -> dict[str, TrainingConfigScalar]:
         """canonical objective config를 저장/전송용 flat mapping으로 변환한다."""
-        result: dict[str, TrainingConfigScalar] = {"loss": self.loss}
+        result: dict[str, TrainingConfigScalar] = {
+            "training_backend_name": self.training_backend_name
+        }
+        if self.loss_name is not None:
+            result["loss_name"] = self.loss_name
         if self.confidence_threshold is not None:
             result["confidence_threshold"] = self.confidence_threshold
         if self.margin_threshold is not None:
@@ -177,6 +198,11 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["privacy_guard_name"] = self.privacy_guard_name
         result.update(self.extras)
         return result
+
+    @property
+    def loss(self) -> str:
+        """구버전 config key와의 호환을 위한 deprecated alias."""
+        return self.training_backend_name
 
 
 class TrainingSelectionPolicyPayload(BaseModel):

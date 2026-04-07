@@ -196,7 +196,7 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
             min_required_examples=1,
             gradient_clip_norm=1.0,
             objective_config={
-                "loss": "diagonal_scale_heuristic",
+                "training_backend_name": "diagonal_scale_heuristic",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
                 "score_policy_name": "topk_mean_cosine",

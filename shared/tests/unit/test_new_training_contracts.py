@@ -48,7 +48,9 @@ def test_training_payloads_capture_round_and_revision(
         batch_size=8,
         learning_rate=1e-4,
         max_steps=10,
-        objective_config=TrainingObjectiveConfigPayload(loss="contrastive"),
+        objective_config=TrainingObjectiveConfigPayload(
+            training_backend_name="contrastive"
+        ),
     )
     update = make_training_update_envelope_payload(
         update_id="update_001",
@@ -86,7 +88,8 @@ def test_feedback_and_personalization_payloads_are_local_friendly(
 
 def test_training_objective_config_payload_accepts_policy_fields() -> None:
     payload = TrainingObjectiveConfigPayload(
-        loss="contrastive",
+        training_backend_name="contrastive",
+        loss_name="cross_entropy",
         confidence_threshold=0.7,
         margin_threshold=0.05,
         score_policy_name="topk_mean_cosine",
@@ -95,6 +98,8 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         privacy_guard_name="diagonal_scale_clip_only",
     )
 
+    assert payload.training_backend_name == "contrastive"
+    assert payload.loss_name == "cross_entropy"
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
     assert payload.acceptance_policy_name == "top1_margin_threshold"
@@ -104,7 +109,8 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
 def test_training_objective_config_round_trips_policy_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "loss": "contrastive",
+            "training_backend_name": "contrastive",
+            "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
             "margin_threshold": 0.03,
             "score_policy_name": "topk_mean_cosine",
@@ -115,13 +121,16 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         }
     )
 
+    assert config.training_backend_name == "contrastive"
+    assert config.loss_name == "cross_entropy"
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
     assert config.extras == {"temperature": 0.8}
     assert config.to_mapping() == {
-        "loss": "contrastive",
+        "training_backend_name": "contrastive",
+        "loss_name": "cross_entropy",
         "confidence_threshold": 0.65,
         "margin_threshold": 0.03,
         "score_policy_name": "topk_mean_cosine",
@@ -130,3 +139,10 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "privacy_guard_name": "noop",
         "temperature": 0.8,
     }
+
+
+def test_training_objective_config_accepts_legacy_loss_alias() -> None:
+    payload = TrainingObjectiveConfigPayload(loss="legacy_backend")
+
+    assert payload.training_backend_name == "legacy_backend"
+    assert payload.loss == "legacy_backend"

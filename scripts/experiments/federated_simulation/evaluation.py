@@ -105,7 +105,7 @@ def build_validation_scoring_service(
     return ScoringService.from_objective_config(
         TrainingObjectiveConfig.from_mapping(
             {
-                "loss": "diagonal_scale_heuristic",
+                "training_backend_name": "diagonal_scale_heuristic",
                 "score_policy_name": validation_config.score_policy_name,
                 **(
                     {}

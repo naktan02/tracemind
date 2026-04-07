@@ -32,7 +32,7 @@ training_task:
   min_required_examples: ${federated_run_preset.min_required_examples}
   gradient_clip_norm: ${gradient_clip_norm}
   objective:
-    loss: diagonal_scale_heuristic
+    training_backend_name: diagonal_scale_heuristic
     confidence_threshold: ${confidence_threshold}
     margin_threshold: ${margin_threshold}
     score_policy_name: max_cosine

@@ -12,7 +12,7 @@ from agent.src.services.training.local_training_service import (
     LocalTrainingResult,
     LocalTrainingService,
 )
-from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.model_contracts import ModelManifest, make_embedding_manifest
 from shared.src.contracts.training_contracts import (
     TrainingTask,
     TrainingTaskPayload,
@@ -68,7 +68,7 @@ class FederationRuntimeService:
         *,
         training_examples: tuple[EmbeddedTrainingExample, ...]
         | list[EmbeddedTrainingExample],
-        model_manifest: ModelManifest,
+        model_manifest: ModelManifest | None = None,
         agent_id: str | None = None,
     ) -> FederationRunResult:
         """현재 active task를 읽어 로컬 학습을 실행하고 결과를 업로드한다.
@@ -95,10 +95,13 @@ class FederationRuntimeService:
             )
 
         training_task = _task_from_payload(task_payload)
+        effective_manifest = model_manifest or _fallback_manifest_from_task(
+            training_task
+        )
         local_result: LocalTrainingResult = self.local_training_service.run_task(
             training_examples=training_examples,
             training_task=training_task,
-            model_manifest=model_manifest,
+            model_manifest=effective_manifest,
             created_at=datetime.now(tz=timezone.utc),
             agent_id=agent_id,
         )
@@ -149,3 +152,16 @@ def _envelope_to_payload(result: LocalTrainingResult) -> TrainingUpdateEnvelopeP
 def _task_from_payload(payload: TrainingTaskPayload) -> TrainingTask:
     """TrainingTaskPayload를 domain TrainingTask로 변환한다."""
     return payload
+
+
+def _fallback_manifest_from_task(task: TrainingTask) -> ModelManifest:
+    """task payload만 있을 때 local training이 쓸 최소 manifest를 만든다."""
+    return make_embedding_manifest(
+        model_id=task.model_id,
+        model_revision=task.model_revision,
+        prototype_version=f"task::{task.round_id}",
+        artifact_ref=f"training_task::{task.task_id}",
+        published_at=datetime.now(tz=timezone.utc),
+        training_scope=task.training_scope,
+        compatible_task_types=(task.task_type,),
+    )

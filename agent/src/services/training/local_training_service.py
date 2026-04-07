@@ -172,7 +172,7 @@ class LocalTrainingService:
         *,
         training_task: TrainingTask,
     ) -> SharedAdapterTrainingBackend:
-        backend_name = training_task.objective_config.loss
+        backend_name = training_task.objective_config.training_backend_name
         if backend_name == self.backend.backend_name:
             return self.backend
         return build_shared_adapter_training_backend(backend_name)

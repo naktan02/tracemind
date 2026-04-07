@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -33,6 +34,9 @@ class SharedAdapterPrivacyGuard(Protocol):
         training_task: TrainingTask,
     ) -> PrivacyProtectedUpdate:
         """update에 privacy/safety 보호 계층을 적용한다."""
+
+
+PrivacyGuardFactory = Callable[[], SharedAdapterPrivacyGuard]
 
 
 @dataclass(slots=True)
@@ -86,14 +90,35 @@ class DiagonalScaleClipOnlyPrivacyGuard:
         return PrivacyProtectedUpdate(update=clipped, clipped=True)
 
 
+_PRIVACY_GUARD_REGISTRY: dict[str, PrivacyGuardFactory] = {}
+
+
+def register_shared_adapter_privacy_guard(
+    *guard_names: str,
+    factory: PrivacyGuardFactory,
+) -> None:
+    """얇은 wiring registry에 privacy guard를 등록한다."""
+    for guard_name in guard_names:
+        _PRIVACY_GUARD_REGISTRY[guard_name.strip().lower()] = factory
+
+
 def build_shared_adapter_privacy_guard(
     guard_name: str,
 ) -> SharedAdapterPrivacyGuard:
     """guard 이름으로 privacy guard를 생성한다."""
 
     normalized_name = guard_name.strip().lower()
-    if normalized_name == "diagonal_scale_clip_only":
-        return DiagonalScaleClipOnlyPrivacyGuard()
-    if normalized_name == "noop":
-        return NoOpSharedAdapterPrivacyGuard()
+    factory = _PRIVACY_GUARD_REGISTRY.get(normalized_name)
+    if factory is not None:
+        return factory()
     raise ValueError(f"Unsupported privacy guard: {guard_name}.")
+
+
+register_shared_adapter_privacy_guard(
+    "diagonal_scale_clip_only",
+    factory=DiagonalScaleClipOnlyPrivacyGuard,
+)
+register_shared_adapter_privacy_guard(
+    "noop",
+    factory=NoOpSharedAdapterPrivacyGuard,
+)

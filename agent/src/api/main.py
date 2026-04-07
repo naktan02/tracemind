@@ -15,6 +15,9 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 )
 from agent.src.services.federation.round_client import RoundClient
 from agent.src.services.federation.runtime_service import FederationRuntimeService
+from agent.src.services.federation.training_example_service import (
+    TrainingExampleService,
+)
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
@@ -42,6 +45,7 @@ def create_app(
     scored_event_repository: ScoredEventRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
+    training_example_service: TrainingExampleService | None = None,
     scoring_service: ScoringService | None = None,
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
@@ -56,6 +60,9 @@ def create_app(
         prototype_runtime_service or PrototypeRuntimeService()
     )
     app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
+    app.state.training_example_service = (
+        training_example_service or TrainingExampleService()
+    )
     app.state.scoring_service = scoring_service or ScoringService()
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory

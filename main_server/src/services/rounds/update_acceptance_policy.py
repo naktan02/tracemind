@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 from typing import Protocol
@@ -49,6 +49,32 @@ class RoundUpdateAcceptancePolicy(Protocol):
         accepted_at: datetime,
     ) -> UpdateAcceptanceDecision:
         """update를 accept할지, idempotent로 처리할지 결정한다."""
+
+
+class RoundNetworkPolicy(Protocol):
+    """중복/재전송 같은 네트워크 수명주기 정책."""
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> UpdateAcceptanceDecision:
+        """update를 accept할지, idempotent로 처리할지 결정한다."""
+
+
+class RoundTrustPolicy(Protocol):
+    """데이터 신뢰도와 제출 주체 규칙을 판단하는 정책."""
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> TrainingUpdateEnvelope:
+        """update를 허용하거나 거부하고, 필요시 보정된 update를 돌려준다."""
 
 
 def _normalize_update(
@@ -103,6 +129,17 @@ def _find_existing_update(
     return None
 
 
+def _find_existing_agent_update(
+    *,
+    record: RoundRecord,
+    agent_id: str,
+) -> TrainingUpdateEnvelope | None:
+    for existing in record.updates:
+        if existing.agent_id == agent_id:
+            return existing
+    return None
+
+
 def _idempotency_fingerprint(
     update: TrainingUpdateEnvelope,
 ) -> tuple[
@@ -138,8 +175,51 @@ def _idempotency_fingerprint(
 
 
 @dataclass(slots=True)
-class StrictRoundUpdateAcceptancePolicy:
-    """같은 update_id 재전송을 거부하는 기본 정책."""
+class AllowAllRoundTrustPolicy:
+    """신뢰도 관점에서 추가 필터링을 하지 않는 기본 정책."""
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> TrainingUpdateEnvelope:
+        del record, accepted_at
+        return update
+
+
+@dataclass(slots=True)
+class SingleSubmissionPerAgentTrustPolicy:
+    """한 round에서 같은 agent_id의 중복 제출을 막는 trust 정책."""
+
+    allow_anonymous: bool = True
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> TrainingUpdateEnvelope:
+        del accepted_at
+        if update.agent_id is None:
+            if self.allow_anonymous:
+                return update
+            raise RoundValidationError(
+                "agent_id is required by the configured trust policy."
+            )
+        existing = _find_existing_agent_update(record=record, agent_id=update.agent_id)
+        if existing is None:
+            return update
+        raise RoundConflictError(
+            f"Duplicate agent_id is not allowed within the round: {update.agent_id}"
+        )
+
+
+@dataclass(slots=True)
+class StrictRoundNetworkPolicy:
+    """같은 update_id 재전송을 거부하는 네트워크 정책."""
 
     def evaluate(
         self,
@@ -160,8 +240,8 @@ class StrictRoundUpdateAcceptancePolicy:
 
 
 @dataclass(slots=True)
-class IdempotentRoundUpdateAcceptancePolicy:
-    """동일한 update 재전송은 idempotent accept로 처리하는 정책."""
+class IdempotentRoundNetworkPolicy:
+    """동일한 update 재전송은 idempotent accept로 처리하는 네트워크 정책."""
 
     def evaluate(
         self,
@@ -191,4 +271,84 @@ class IdempotentRoundUpdateAcceptancePolicy:
         return UpdateAcceptanceDecision(
             action=UpdateAcceptanceAction.IDEMPOTENT,
             update_envelope=existing_update,
+        )
+
+
+@dataclass(slots=True)
+class CompositeRoundUpdateAcceptancePolicy:
+    """네트워크 정책과 trust 정책을 조합하는 acceptance policy."""
+
+    network_policy: RoundNetworkPolicy = field(default_factory=StrictRoundNetworkPolicy)
+    trust_policy: RoundTrustPolicy = field(default_factory=AllowAllRoundTrustPolicy)
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> UpdateAcceptanceDecision:
+        _validate_update_context(record=record, update=update)
+        trusted_update = self.trust_policy.evaluate(
+            record=record,
+            update=update,
+            accepted_at=accepted_at,
+        )
+        return self.network_policy.evaluate(
+            record=record,
+            update=trusted_update,
+            accepted_at=accepted_at,
+        )
+
+
+@dataclass(slots=True)
+class StrictRoundUpdateAcceptancePolicy:
+    """기본 acceptance policy.
+
+    네트워크 수명주기 정책과 데이터 trust 정책을 조합한다.
+    """
+
+    network_policy: RoundNetworkPolicy = field(default_factory=StrictRoundNetworkPolicy)
+    trust_policy: RoundTrustPolicy = field(default_factory=AllowAllRoundTrustPolicy)
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> UpdateAcceptanceDecision:
+        return CompositeRoundUpdateAcceptancePolicy(
+            network_policy=self.network_policy,
+            trust_policy=self.trust_policy,
+        ).evaluate(
+            record=record,
+            update=update,
+            accepted_at=accepted_at,
+        )
+
+
+@dataclass(slots=True)
+class IdempotentRoundUpdateAcceptancePolicy:
+    """idempotent 네트워크 정책을 쓰는 acceptance policy."""
+
+    network_policy: RoundNetworkPolicy = field(
+        default_factory=IdempotentRoundNetworkPolicy
+    )
+    trust_policy: RoundTrustPolicy = field(default_factory=AllowAllRoundTrustPolicy)
+
+    def evaluate(
+        self,
+        *,
+        record: RoundRecord,
+        update: TrainingUpdateEnvelope,
+        accepted_at: datetime,
+    ) -> UpdateAcceptanceDecision:
+        return CompositeRoundUpdateAcceptancePolicy(
+            network_policy=self.network_policy,
+            trust_policy=self.trust_policy,
+        ).evaluate(
+            record=record,
+            update=update,
+            accepted_at=accepted_at,
         )

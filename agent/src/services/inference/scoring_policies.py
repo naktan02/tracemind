@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import math
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
@@ -20,6 +20,9 @@ class PrototypeScorePolicy(Protocol):
         category: str,
     ) -> float:
         """단일 카테고리의 최종 score를 계산한다."""
+
+
+PrototypeScorePolicyFactory = Callable[[int | None], PrototypeScorePolicy]
 
 
 @dataclass(slots=True)
@@ -74,6 +77,18 @@ class TopKMeanCosineScorePolicy:
         return math.fsum(selected) / len(selected)
 
 
+_PROTOTYPE_SCORE_POLICY_REGISTRY: dict[str, PrototypeScorePolicyFactory] = {}
+
+
+def register_prototype_score_policy(
+    *policy_names: str,
+    factory: PrototypeScorePolicyFactory,
+) -> None:
+    """얇은 wiring registry에 prototype score policy를 등록한다."""
+    for policy_name in policy_names:
+        _PROTOTYPE_SCORE_POLICY_REGISTRY[policy_name.strip().lower()] = factory
+
+
 def build_prototype_score_policy(
     policy_name: str,
     *,
@@ -82,10 +97,9 @@ def build_prototype_score_policy(
     """정책 이름으로 prototype score policy를 생성한다."""
 
     normalized_name = policy_name.strip().lower()
-    if normalized_name == "max_cosine":
-        return MaxCosineScorePolicy()
-    if normalized_name == "topk_mean_cosine":
-        return TopKMeanCosineScorePolicy(top_k=top_k or 2)
+    factory = _PROTOTYPE_SCORE_POLICY_REGISTRY.get(normalized_name)
+    if factory is not None:
+        return factory(top_k)
     raise ValueError(f"Unsupported prototype score policy: {policy_name}.")
 
 
@@ -133,3 +147,13 @@ def _pairwise_scores(
 
 def _vector_norm(vector: Sequence[float]) -> float:
     return math.sqrt(math.fsum(value * value for value in vector))
+
+
+register_prototype_score_policy(
+    "max_cosine",
+    factory=lambda _top_k: MaxCosineScorePolicy(),
+)
+register_prototype_score_policy(
+    "topk_mean_cosine",
+    factory=lambda top_k: TopKMeanCosineScorePolicy(top_k=top_k or 2),
+)

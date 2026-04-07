@@ -87,7 +87,7 @@ class FederatedTrainingTaskConfig:
     gradient_clip_norm: float | None = None
     objective_config: dict[str, TrainingConfigScalar] = field(
         default_factory=lambda: {
-            "loss": "diagonal_scale_heuristic",
+            "training_backend_name": "diagonal_scale_heuristic",
             "confidence_threshold": 0.6,
             "margin_threshold": 0.02,
             "score_policy_name": "max_cosine",

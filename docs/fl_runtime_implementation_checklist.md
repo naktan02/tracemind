@@ -307,7 +307,7 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 ### local 쪽
 
 - [ ] heuristic 외 `DiagonalScaleGradientTrainingBackend` 추가
-- [ ] backend 선택 규칙이 `TrainingTask.objective_config.loss`와 일관되게 매핑되도록 정리
+- [ ] backend 선택 규칙이 `TrainingTask.objective_config.training_backend_name`와 일관되게 매핑되도록 정리
 - [ ] acceptance policy registry를 명시적으로 정리
 
 ### server 쪽
