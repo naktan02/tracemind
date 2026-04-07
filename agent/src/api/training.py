@@ -111,17 +111,6 @@ def get_round_client_factory(request: Request) -> RoundClientFactory:
     return factory
 
 
-def get_training_example_service(request: Request) -> TrainingExampleService:
-    """app.state에서 TrainingExampleService를 읽는다."""
-    service = getattr(request.app.state, "training_example_service", None)
-    if service is None:
-        raise RuntimeError(
-            "TrainingExampleService가 app.state에 설정되지 않았습니다. "
-            "앱 생성 시 app.state.training_example_service를 설정하세요."
-        )
-    return service
-
-
 def get_federation_runtime_service_factory(
     request: Request,
 ) -> FederationRuntimeServiceFactory:
@@ -144,10 +133,6 @@ ProtoServiceDep = Annotated[
     Depends(get_prototype_runtime_service),
 ]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
-TrainingExampleServiceDep = Annotated[
-    TrainingExampleService,
-    Depends(get_training_example_service),
-]
 FederationRuntimeFactoryDep = Annotated[
     FederationRuntimeServiceFactory,
     Depends(get_federation_runtime_service_factory),
@@ -169,7 +154,6 @@ def run_current_task(
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
     round_client_factory: RoundClientFactoryDep,
-    training_example_service: TrainingExampleServiceDep,
     runtime_factory: FederationRuntimeFactoryDep,
 ) -> RunCurrentTaskResponse:
     """현재 active task를 읽어 로컬 학습을 실행하고 update를 업로드한다.
@@ -194,6 +178,9 @@ def run_current_task(
             training_examples = ()
         else:
             scoring_service = ScoringService.from_objective_config(
+                task_payload.objective_config
+            )
+            training_example_service = TrainingExampleService.from_objective_config(
                 task_payload.objective_config
             )
             training_examples = (

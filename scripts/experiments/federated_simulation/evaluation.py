@@ -13,6 +13,7 @@ from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
     build_default_training_objective_config,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -29,9 +30,14 @@ def build_training_examples(
     prototype_pack: PrototypePackPayload,
     model_id: str,
     scoring_service: ScoringService,
+    objective_config: TrainingObjectiveConfig | None = None,
 ) -> tuple[EmbeddedTrainingExample, ...]:
     """simulation row를 agent runtime training example builder로 변환한다."""
-    service = TrainingExampleService()
+    service = (
+        TrainingExampleService()
+        if objective_config is None
+        else TrainingExampleService.from_objective_config(objective_config)
+    )
     source_rows = tuple(
         TrainingExampleSource(
             query_id=str(row["query_id"]),
@@ -62,6 +68,7 @@ def evaluate_rows(
     scoring_service: ScoringService,
     confidence_threshold: float,
     margin_threshold: float,
+    objective_config: TrainingObjectiveConfig | None = None,
 ) -> SimulationEvaluation:
     """validation row에 대해 top1 accuracy와 pseudo-label acceptance 비율을 계산한다."""
     examples = build_training_examples(
@@ -71,6 +78,7 @@ def evaluate_rows(
         prototype_pack=prototype_pack,
         model_id=model_id,
         scoring_service=scoring_service,
+        objective_config=objective_config,
     )
     if not examples:
         return SimulationEvaluation(row_count=0, top1_accuracy=0.0, accepted_ratio=0.0)

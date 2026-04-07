@@ -9,14 +9,17 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
 from agent.src.services.federation import (
+    PrototypeRescoringTrainingExampleBackend,
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
+    register_training_example_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.inference.events import ScoredEvent
 
 
@@ -197,3 +200,38 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
     assert examples[0].base_embedding == [0.2, 1.0]
     assert examples[0].embedding == [0.2, 0.0]
     assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+
+
+@dataclass(slots=True)
+class _ConstantTrainingExampleBackend:
+    backend_name: str = "constant_examples"
+
+    def build_examples(
+        self,
+        request: TrainingExampleBuildRequest,
+    ) -> tuple:
+        return ()
+
+    def build_examples_from_stored_events(
+        self,
+        request: StoredEventTrainingExampleBuildRequest,
+    ) -> tuple:
+        return ()
+
+
+def test_training_example_service_selects_backend_from_objective_config() -> None:
+    register_training_example_backend(
+        "constant_examples",
+        factory=lambda _objective_config: _ConstantTrainingExampleBackend(),
+    )
+
+    service = TrainingExampleService.from_objective_config(
+        TrainingObjectiveConfig(
+            training_backend_name="diagonal_scale_heuristic",
+            example_generation_backend_name="constant_examples",
+        )
+    )
+
+    assert isinstance(service.backend, _ConstantTrainingExampleBackend)
+    assert service.backend.backend_name == "constant_examples"
+    assert not isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)

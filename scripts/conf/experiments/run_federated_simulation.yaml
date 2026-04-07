@@ -35,6 +35,7 @@ training_task:
     training_backend_name: diagonal_scale_heuristic
     confidence_threshold: ${confidence_threshold}
     margin_threshold: ${margin_threshold}
+    example_generation_backend_name: prototype_rescore
     scorer_backend_name: prototype_similarity
     score_policy_name: max_cosine
     score_top_k: null

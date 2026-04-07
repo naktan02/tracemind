@@ -10,6 +10,9 @@ from shared.src.contracts.personalization_contracts import (
 )
 from shared.src.contracts.training_contracts import (
     FeedbackSignalType,
+    SecureAggregationConfig,
+    SecureAggregationConfigPayload,
+    SecureAggregationSubmissionPayload,
     TrainingObjectiveConfig,
     TrainingObjectiveConfigPayload,
 )
@@ -51,6 +54,7 @@ def test_training_payloads_capture_round_and_revision(
         objective_config=TrainingObjectiveConfigPayload(
             training_backend_name="contrastive"
         ),
+        secure_aggregation=SecureAggregationConfigPayload(required=True),
     )
     update = make_training_update_envelope_payload(
         update_id="update_001",
@@ -63,11 +67,17 @@ def test_training_payloads_capture_round_and_revision(
         payload_format="diagonal_scale_update",
         example_count=12,
         client_metrics={"mean_loss": 0.5},
+        secure_aggregation=SecureAggregationSubmissionPayload(
+            aggregation_backend_name="he_ckks"
+        ),
     )
 
     assert task.round_id == update.round_id
     assert update.base_model_revision == "rev_001"
     assert task.selection_policy.max_examples == 32
+    assert task.secure_aggregation.required is True
+    assert update.secure_aggregation is not None
+    assert update.secure_aggregation.aggregation_backend_name == "he_ckks"
 
 
 def test_training_update_envelope_accepts_custom_payload_format(
@@ -100,6 +110,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         loss_name="cross_entropy",
         confidence_threshold=0.7,
         margin_threshold=0.05,
+        example_generation_backend_name="prototype_rescore",
         scorer_backend_name="prototype_similarity",
         score_policy_name="topk_mean_cosine",
         score_top_k=3,
@@ -109,6 +120,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
 
     assert payload.training_backend_name == "contrastive"
     assert payload.loss_name == "cross_entropy"
+    assert payload.example_generation_backend_name == "prototype_rescore"
     assert payload.scorer_backend_name == "prototype_similarity"
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
@@ -123,6 +135,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
             "margin_threshold": 0.03,
+            "example_generation_backend_name": "prototype_rescore",
             "scorer_backend_name": "prototype_similarity",
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
@@ -134,6 +147,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
 
     assert config.training_backend_name == "contrastive"
     assert config.loss_name == "cross_entropy"
+    assert config.example_generation_backend_name == "prototype_rescore"
     assert config.scorer_backend_name == "prototype_similarity"
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
@@ -145,6 +159,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "loss_name": "cross_entropy",
         "confidence_threshold": 0.65,
         "margin_threshold": 0.03,
+        "example_generation_backend_name": "prototype_rescore",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "topk_mean_cosine",
         "score_top_k": 2,
@@ -159,3 +174,40 @@ def test_training_objective_config_accepts_legacy_loss_alias() -> None:
 
     assert payload.training_backend_name == "legacy_backend"
     assert payload.loss == "legacy_backend"
+
+
+def test_training_task_payload_accepts_legacy_secure_aggregation_required(
+    make_training_task_payload,
+) -> None:
+    payload = make_training_task_payload(secure_aggregation_required=True)
+
+    assert payload.secure_aggregation.required is True
+    assert payload.secure_aggregation_required is True
+
+
+def test_secure_aggregation_config_round_trips_metadata() -> None:
+    config = SecureAggregationConfig.from_mapping(
+        {
+            "required": True,
+            "aggregation_backend_name": "he_ckks",
+            "encryption_scheme_name": "ckks",
+            "key_ref": "keys/tenant_a_pubkey",
+            "ciphertext_format": "ckks_vector_v1",
+            "poly_modulus_degree": 8192,
+        }
+    )
+
+    assert config.required is True
+    assert config.aggregation_backend_name == "he_ckks"
+    assert config.encryption_scheme_name == "ckks"
+    assert config.key_ref == "keys/tenant_a_pubkey"
+    assert config.ciphertext_format == "ckks_vector_v1"
+    assert config.extras == {"poly_modulus_degree": 8192}
+    assert config.to_mapping() == {
+        "required": True,
+        "aggregation_backend_name": "he_ckks",
+        "encryption_scheme_name": "ckks",
+        "key_ref": "keys/tenant_a_pubkey",
+        "ciphertext_format": "ckks_vector_v1",
+        "poly_modulus_degree": 8192,
+    }

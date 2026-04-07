@@ -16,13 +16,16 @@ from main_server.src.services.rounds.adapter_family_service import (
     SharedAdapterRoundFamily,
 )
 from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
+    SecureAggregationConfig,
     TrainingConfigScalar,
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
     TrainingTask,
     TrainingUpdateEnvelope,
+    build_default_secure_aggregation_config,
     build_default_training_objective_config,
     build_default_training_selection_policy,
 )
@@ -47,7 +50,7 @@ class TrainingTaskRequest:
     active_manifest: ModelManifest
     round_id: str
     task_id: str | None = None
-    task_type: str = "pseudo_label_self_training"
+    task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
     local_epochs: int = 1
     batch_size: int = 16
     learning_rate: float = 1e-4
@@ -57,6 +60,9 @@ class TrainingTaskRequest:
     ) = None
     selection_policy: (
         TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None
+    ) = None
+    secure_aggregation: (
+        SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
     ) = None
     min_required_examples: int | None = None
     gradient_clip_norm: float | None = None
@@ -106,10 +112,12 @@ class RoundManagerService:
             max_steps=request.max_steps,
             objective_config=self._resolve_objective_config(request.objective_config),
             selection_policy=self._resolve_selection_policy(request.selection_policy),
+            secure_aggregation=self._resolve_secure_aggregation(
+                request.secure_aggregation
+            ),
             deadline_at=request.deadline_at,
             gradient_clip_norm=request.gradient_clip_norm,
             min_required_examples=request.min_required_examples,
-            secure_aggregation_required=False,
             notes=request.notes,
         )
 
@@ -204,3 +212,22 @@ class RoundManagerService:
         if source is None:
             return build_default_training_selection_policy()
         return TrainingSelectionPolicy.from_mapping(source)
+
+    @staticmethod
+    def _resolve_secure_aggregation(
+        source: (
+            SecureAggregationConfig
+            | Mapping[str, TrainingConfigScalar]
+            | bool
+            | None
+        ),
+    ) -> SecureAggregationConfig:
+        if isinstance(source, SecureAggregationConfig):
+            return source
+        if isinstance(source, bool):
+            return build_default_secure_aggregation_config(
+                overrides={"required": source}
+            )
+        if source is None:
+            return build_default_secure_aggregation_config()
+        return SecureAggregationConfig.from_mapping(source)

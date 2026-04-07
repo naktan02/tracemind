@@ -9,8 +9,10 @@ from pathlib import Path
 from pydantic import BaseModel, ConfigDict, Field
 
 from main_server.src.services.rounds.models import RoundStatus
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifestPayload
 from shared.src.contracts.training_contracts import (
+    SecureAggregationConfigPayload,
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
@@ -66,13 +68,14 @@ class RoundOpenRequestPayload(BaseModel):
     active_manifest: ModelManifestPayload
     round_id: str | None = None
     task_id: str | None = None
-    task_type: str = "pseudo_label_self_training"
+    task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
     local_epochs: int = Field(default=1, ge=1)
     batch_size: int = Field(default=16, ge=1)
     learning_rate: float = Field(default=1e-4, gt=0.0)
     max_steps: int = Field(default=50, ge=1)
     objective_config: TrainingObjectiveConfigPayload | None = None
     selection_policy: TrainingSelectionPolicyPayload | None = None
+    secure_aggregation: SecureAggregationConfigPayload | None = None
     min_required_examples: int | None = Field(default=None, ge=1)
     gradient_clip_norm: float | None = Field(default=None, gt=0.0)
     deadline_at: datetime | None = None

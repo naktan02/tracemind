@@ -181,6 +181,7 @@ def run_simulation(
         scoring_service=validation_scoring_service,
         confidence_threshold=validation_config.confidence_threshold,
         margin_threshold=validation_config.margin_threshold,
+        objective_config=training_task_config.objective_config,
     )
 
     round_summaries: list[SimulationRoundSummary] = []
@@ -210,6 +211,7 @@ def run_simulation(
                 prototype_pack=active_prototype,
                 model_id=model_id,
                 scoring_service=training_scoring_service,
+                objective_config=training_task.objective_config,
             )
             local_training_service = LocalTrainingService(
                 repository=TrainingArtifactRepository(
@@ -285,6 +287,7 @@ def run_simulation(
             scoring_service=validation_scoring_service,
             confidence_threshold=validation_config.confidence_threshold,
             margin_threshold=validation_config.margin_threshold,
+            objective_config=training_task.objective_config,
         )
         round_summaries.append(
             SimulationRoundSummary(

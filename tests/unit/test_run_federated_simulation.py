@@ -69,6 +69,7 @@ def _default_training_task_config(
                 "training_backend_name": "diagonal_scale_heuristic",
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
+                "example_generation_backend_name": "prototype_rescore",
                 "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
                 **(

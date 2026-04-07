@@ -21,7 +21,7 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field
+from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
 from .common_types import TrainingScope, TrainingTaskType
 
@@ -82,6 +82,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     - `loss_name`: 학습 objective의 loss 함수 식별자
     - `confidence_threshold`: pseudo-label 채택 최소 confidence
     - `margin_threshold`: top1-top2 차이 최소값
+    - `example_generation_backend_name`: 학습 예시 재구성 backend 식별자
     - `scorer_backend_name`: category score 계산 backend 식별자
     - `score_policy_name`: 다중 prototype score 집계 정책 식별자
     - `score_top_k`: top-k 계열 score 정책이 사용할 k 값
@@ -114,6 +115,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
     margin_threshold: float | None = Field(
         default=None,
         description="Top1과 top2 score 차이의 최소값.",
+    )
+    example_generation_backend_name: str | None = Field(
+        default=None,
+        description="학습 예시 재구성 backend 식별자.",
     )
     scorer_backend_name: str | None = Field(
         default=None,
@@ -158,6 +163,9 @@ class TrainingObjectiveConfigPayload(BaseModel):
             loss_name=_optional_str(source.get("loss_name")),
             confidence_threshold=_optional_float(source.get("confidence_threshold")),
             margin_threshold=_optional_float(source.get("margin_threshold")),
+            example_generation_backend_name=_optional_str(
+                source.get("example_generation_backend_name")
+            ),
             scorer_backend_name=_optional_str(source.get("scorer_backend_name")),
             score_policy_name=_optional_str(source.get("score_policy_name")),
             score_top_k=_optional_positive_int(source.get("score_top_k")),
@@ -175,6 +183,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
                     "loss_name",
                     "confidence_threshold",
                     "margin_threshold",
+                    "example_generation_backend_name",
                     "scorer_backend_name",
                     "score_policy_name",
                     "score_top_k",
@@ -195,6 +204,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["confidence_threshold"] = self.confidence_threshold
         if self.margin_threshold is not None:
             result["margin_threshold"] = self.margin_threshold
+        if self.example_generation_backend_name is not None:
+            result["example_generation_backend_name"] = (
+                self.example_generation_backend_name
+            )
         if self.scorer_backend_name is not None:
             result["scorer_backend_name"] = self.scorer_backend_name
         if self.score_policy_name is not None:
@@ -267,6 +280,123 @@ class TrainingSelectionPolicyPayload(BaseModel):
         return result
 
 
+class SecureAggregationConfigPayload(BaseModel):
+    """학습 task가 요구하는 secure aggregation/encryption 설정."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    required: bool = Field(
+        default=False,
+        description="이번 task에서 secure aggregation이 필수인지 여부.",
+    )
+    aggregation_backend_name: str | None = Field(
+        default=None,
+        description="secure aggregation backend 식별자.",
+    )
+    encryption_scheme_name: str | None = Field(
+        default=None,
+        description="예: ckks, paillier 같은 encryption scheme 식별자.",
+    )
+    key_ref: str | None = Field(
+        default=None,
+        description="암호화 컨텍스트/공개키 material 참조값.",
+    )
+    ciphertext_format: str | None = Field(
+        default=None,
+        description="예: ckks_vector_v1 같은 ciphertext 직렬화 포맷 식별자.",
+    )
+    extras: dict[str, TrainingConfigScalar] = Field(
+        default_factory=dict,
+        description="secure aggregation backend별 추가 파라미터 확장 슬롯.",
+    )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, TrainingConfigScalar] | None,
+    ) -> "SecureAggregationConfigPayload":
+        if source is None:
+            return cls()
+        return cls(
+            required=_optional_bool(source.get("required")) or False,
+            aggregation_backend_name=_optional_str(
+                source.get("aggregation_backend_name")
+            ),
+            encryption_scheme_name=_optional_str(
+                source.get("encryption_scheme_name")
+            ),
+            key_ref=_optional_str(source.get("key_ref")),
+            ciphertext_format=_optional_str(source.get("ciphertext_format")),
+            extras={
+                key: value
+                for key, value in source.items()
+                if key
+                not in {
+                    "required",
+                    "aggregation_backend_name",
+                    "encryption_scheme_name",
+                    "key_ref",
+                    "ciphertext_format",
+                }
+            },
+        )
+
+    @model_validator(mode="after")
+    def _normalize_required(self) -> "SecureAggregationConfigPayload":
+        if self.required:
+            return self
+        if any(
+            value is not None
+            for value in (
+                self.aggregation_backend_name,
+                self.encryption_scheme_name,
+                self.key_ref,
+                self.ciphertext_format,
+            )
+        ) or self.extras:
+            self.required = True
+        return self
+
+    def to_mapping(self) -> dict[str, TrainingConfigScalar]:
+        result: dict[str, TrainingConfigScalar] = {"required": self.required}
+        if self.aggregation_backend_name is not None:
+            result["aggregation_backend_name"] = self.aggregation_backend_name
+        if self.encryption_scheme_name is not None:
+            result["encryption_scheme_name"] = self.encryption_scheme_name
+        if self.key_ref is not None:
+            result["key_ref"] = self.key_ref
+        if self.ciphertext_format is not None:
+            result["ciphertext_format"] = self.ciphertext_format
+        result.update(self.extras)
+        return result
+
+
+class SecureAggregationSubmissionPayload(BaseModel):
+    """업로드된 update가 어떤 secure aggregation/encryption metadata를 따르는지."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    aggregation_backend_name: str = Field(
+        description="제출된 암호문/secure aggregation backend 식별자."
+    )
+    encryption_scheme_name: str | None = Field(
+        default=None,
+        description="예: ckks, paillier 같은 encryption scheme 식별자.",
+    )
+    key_ref: str | None = Field(
+        default=None,
+        description="사용한 키 material 또는 encryption context 참조값.",
+    )
+    ciphertext_format: str | None = Field(
+        default=None,
+        description="업로드 payload의 ciphertext 직렬화 포맷 식별자.",
+    )
+    extras: dict[str, TrainingConfigScalar] = Field(
+        default_factory=dict,
+        description="secure submission별 추가 메타데이터 확장 슬롯.",
+    )
+
+
 class TrainingTaskPayload(BaseModel):
     """중앙이 로컬에 배포하는 학습 작업 payload.
 
@@ -314,14 +444,44 @@ class TrainingTaskPayload(BaseModel):
         ge=1,
         description="Update를 만들기 위해 필요한 최소 accepted example 수.",
     )
-    secure_aggregation_required: bool = Field(
-        default=False,
-        description="중앙 업로드 시 secure aggregation이 필수인지 여부.",
+    secure_aggregation: SecureAggregationConfigPayload = Field(
+        default_factory=SecureAggregationConfigPayload,
+        description="중앙 업로드 시 요구되는 secure aggregation/encryption 설정.",
     )
     notes: str | None = Field(
         default=None,
         description="운영 메모 또는 디버깅용 설명.",
     )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_legacy_secure_aggregation_flag(
+        cls,
+        source: object,
+    ) -> object:
+        if not isinstance(source, Mapping):
+            return source
+        data = dict(source)
+        legacy_required = data.pop("secure_aggregation_required", None)
+        secure_aggregation = data.get("secure_aggregation")
+        if secure_aggregation is None:
+            if legacy_required is not None:
+                data["secure_aggregation"] = {
+                    "required": bool(legacy_required)
+                }
+            return data
+        if legacy_required is None or not isinstance(secure_aggregation, Mapping):
+            return data
+        normalized = dict(secure_aggregation)
+        normalized.setdefault("required", bool(legacy_required))
+        data["secure_aggregation"] = normalized
+        return data
+
+    @property
+    def secure_aggregation_required(self) -> bool:
+        """구버전 bool 플래그와의 호환을 위한 derived alias."""
+
+        return self.secure_aggregation.required
 
 
 class TrainingUpdateEnvelopePayload(BaseModel):
@@ -392,6 +552,10 @@ class TrainingUpdateEnvelopePayload(BaseModel):
             "None이면 완전 익명 모드."
         ),
     )
+    secure_aggregation: SecureAggregationSubmissionPayload | None = Field(
+        default=None,
+        description="secure aggregation/encryption 제출 메타데이터.",
+    )
     notes: str | None = Field(
         default=None,
         description="운영 메모 또는 디버깅용 설명.",
@@ -440,6 +604,7 @@ DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING: dict[str, TrainingConfigScalar] = {
     "training_backend_name": "diagonal_scale_heuristic",
     "confidence_threshold": 0.6,
     "margin_threshold": 0.02,
+    "example_generation_backend_name": "prototype_rescore",
     "scorer_backend_name": "prototype_similarity",
     "score_policy_name": "max_cosine",
     "acceptance_policy_name": "top1_margin_threshold",
@@ -471,6 +636,16 @@ def build_default_training_selection_policy(
     if overrides is not None:
         source.update(dict(overrides))
     return TrainingSelectionPolicy.from_mapping(source)
+
+
+def build_default_secure_aggregation_config(
+    *,
+    overrides: Mapping[str, TrainingConfigScalar] | None = None,
+) -> SecureAggregationConfigPayload:
+    source: dict[str, TrainingConfigScalar] = {"required": False}
+    if overrides is not None:
+        source.update(dict(overrides))
+    return SecureAggregationConfigPayload.from_mapping(source)
 
 
 def _dump_payload(path: Path, payload: BaseModel) -> None:
@@ -582,6 +757,7 @@ def make_training_update_envelope(
     training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
     payload_format: str = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE.value,
     agent_id: str | None = None,
+    secure_aggregation: SecureAggregationSubmissionPayload | None = None,
     clipped: bool = False,
     dp_applied: bool = False,
     notes: str | None = None,
@@ -621,11 +797,14 @@ def make_training_update_envelope(
         clipped=clipped,
         dp_applied=dp_applied,
         agent_id=agent_id,
+        secure_aggregation=secure_aggregation,
         notes=notes,
     )
 
 
 TrainingObjectiveConfig = TrainingObjectiveConfigPayload
+SecureAggregationConfig = SecureAggregationConfigPayload
+SecureAggregationSubmission = SecureAggregationSubmissionPayload
 TrainingSelectionPolicy = TrainingSelectionPolicyPayload
 TrainingTask = TrainingTaskPayload
 TrainingUpdateEnvelope = TrainingUpdateEnvelopePayload
@@ -639,6 +818,10 @@ __all__ = [
     "DecisionFeedbackSignalPayload",
     "DecisionFeedbackSignalSchemaVersion",
     "FeedbackSignalType",
+    "SecureAggregationConfig",
+    "SecureAggregationConfigPayload",
+    "SecureAggregationSubmission",
+    "SecureAggregationSubmissionPayload",
     "TRAINING_TASK_V1",
     "TRAINING_UPDATE_ENVELOPE_V1",
     "TrainingConfigScalar",
@@ -653,6 +836,7 @@ __all__ = [
     "TrainingUpdateEnvelopePayload",
     "TrainingUpdateEnvelopeSchemaVersion",
     "UpdatePayloadFormat",
+    "build_default_secure_aggregation_config",
     "dump_decision_feedback_signal_payload",
     "dump_training_task_payload",
     "dump_training_update_envelope_payload",

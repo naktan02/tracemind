@@ -77,6 +77,7 @@ class RoundLifecycleService:
                 max_steps=request.max_steps,
                 objective_config=request.objective_config,
                 selection_policy=request.selection_policy,
+                secure_aggregation=request.secure_aggregation,
                 min_required_examples=request.min_required_examples,
                 gradient_clip_norm=request.gradient_clip_norm,
                 deadline_at=request.deadline_at,

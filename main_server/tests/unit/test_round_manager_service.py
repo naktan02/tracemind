@@ -157,6 +157,40 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     assert task.objective_config.privacy_guard_name == "diagonal_scale_clip_only"
     assert task.objective_config.confidence_threshold == 0.6
     assert task.objective_config.margin_threshold == 0.02
+    assert task.secure_aggregation.required is False
+
+
+def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:
+    service = RoundManagerService()
+
+    task = service.create_training_task(
+        TrainingTaskRequest(
+            active_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-embed",
+                model_revision="rev_000",
+                published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref="/tmp/rev_000.json",
+                prototype_version="proto_000",
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            round_id="round_0001",
+            secure_aggregation={
+                "required": True,
+                "aggregation_backend_name": "he_ckks",
+                "encryption_scheme_name": "ckks",
+                "key_ref": "keys/tenant_a_pubkey",
+            },
+        )
+    )
+
+    assert task.secure_aggregation.required is True
+    assert task.secure_aggregation.aggregation_backend_name == "he_ckks"
+    assert task.secure_aggregation.encryption_scheme_name == "ckks"
+    assert task.secure_aggregation.key_ref == "keys/tenant_a_pubkey"
 
 
 def test_round_manager_uses_injected_clock_for_publication_time(

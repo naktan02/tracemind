@@ -150,6 +150,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             config_name="experiments/run_federated_simulation",
             overrides=[
                 "shard_policy.dominant_ratio=0.6",
+                "training_task.objective.example_generation_backend_name=prototype_rescore",
                 "training_task.objective.scorer_backend_name=prototype_similarity",
                 "training_task.objective.score_policy_name=topk_mean_cosine",
                 "training_task.objective.score_top_k=2",
@@ -162,6 +163,10 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         )
 
     assert cfg.shard_policy.dominant_ratio == 0.6
+    assert (
+        cfg.training_task.objective.example_generation_backend_name
+        == "prototype_rescore"
+    )
     assert cfg.training_task.objective.scorer_backend_name == "prototype_similarity"
     assert cfg.training_task.objective.score_policy_name == "topk_mean_cosine"
     assert cfg.training_task.objective.score_top_k == 2

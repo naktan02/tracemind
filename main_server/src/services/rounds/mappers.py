@@ -154,6 +154,11 @@ def round_open_request_from_payload(
             if payload.selection_policy is not None
             else None
         ),
+        secure_aggregation=(
+            payload.secure_aggregation
+            if payload.secure_aggregation is not None
+            else None
+        ),
         min_required_examples=payload.min_required_examples,
         gradient_clip_norm=payload.gradient_clip_norm,
         deadline_at=payload.deadline_at,
