@@ -94,10 +94,10 @@ def build_labeled_query_set(
     rows_written = 0
     rows_excluded = 0
 
-    with raw_csv_path.open(newline="", encoding="utf-8") as source_file, jsonl_path.open(
-        "w",
-        encoding="utf-8",
-    ) as output_file:
+    with (
+        raw_csv_path.open(newline="", encoding="utf-8") as source_file,
+        jsonl_path.open("w", encoding="utf-8") as output_file,
+    ):
         reader = csv.DictReader(source_file)
         for row_index, row in enumerate(reader, start=1):
             rows_seen += 1

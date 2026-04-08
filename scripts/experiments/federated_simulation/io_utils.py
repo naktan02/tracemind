@@ -2,20 +2,15 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+
+from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 
-def load_jsonl_rows(path: str | Path) -> list[dict[str, Any]]:
+def load_jsonl_rows(path: str | Path) -> list[LabeledQueryRow]:
     """JSONL 파일을 row 목록으로 읽는다."""
-    resolved_path = Path(path)
-    rows: list[dict[str, Any]] = []
-    for line in resolved_path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rows.append(json.loads(line))
-    return rows
+    return load_labeled_query_rows(path)
 
 
 def parse_created_at(value: str) -> datetime:

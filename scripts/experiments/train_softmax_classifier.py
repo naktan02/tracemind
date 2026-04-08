@@ -25,21 +25,18 @@ from scripts.classification_report import (  # noqa: E402
     safe_divide,
     summarize_per_category,
 )
+from scripts.labeled_query_rows import (  # noqa: E402
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 from scripts.run_artifacts import build_run_dir  # noqa: E402
-
-
-def load_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rows.append(json.loads(line))
-    return rows
+from shared.src.domain.services import EmbeddingAdapter  # noqa: E402
 
 
 def batched_rows(
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     chunk_size: int,
-) -> list[list[dict[str, Any]]]:
+) -> list[list[LabeledQueryRow]]:
     return [
         rows[index : index + chunk_size] for index in range(0, len(rows), chunk_size)
     ]
@@ -47,8 +44,8 @@ def batched_rows(
 
 def embed_rows(
     *,
-    rows: list[dict[str, Any]],
-    adapter: Any,
+    rows: list[LabeledQueryRow],
+    adapter: EmbeddingAdapter,
     chunk_size: int,
 ) -> torch.Tensor:
     tensors: list[torch.Tensor] = []
@@ -59,13 +56,15 @@ def embed_rows(
     return torch.cat(tensors, dim=0)
 
 
-def build_label_index(rows: list[dict[str, Any]]) -> tuple[list[str], dict[str, int]]:
+def build_label_index(
+    rows: list[LabeledQueryRow],
+) -> tuple[list[str], dict[str, int]]:
     categories = sorted({row["mapped_label_4"] for row in rows})
     return categories, {category: index for index, category in enumerate(categories)}
 
 
 def labels_to_tensor(
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     label_to_index: dict[str, int],
 ) -> torch.Tensor:
     indices = [label_to_index[row["mapped_label_4"]] for row in rows]
@@ -254,7 +253,7 @@ def main(cfg: DictConfig) -> None:
             f"selection_set '{cfg.selection_set}' is not included in eval_sets."
         )
 
-    train_rows = load_jsonl(Path(cfg.train_jsonl))
+    train_rows = load_labeled_query_rows(Path(cfg.train_jsonl))
     categories, label_to_index = build_label_index(train_rows)
     embedding_spec = instantiate(cfg.embedding.spec)
     training_device = resolve_runtime_device(embedding_spec.device)
@@ -275,9 +274,9 @@ def main(cfg: DictConfig) -> None:
 
     eval_features_by_name: dict[str, torch.Tensor] = {}
     eval_targets_by_name: dict[str, torch.Tensor] = {}
-    eval_rows_by_name: dict[str, list[dict[str, Any]]] = {}
+    eval_rows_by_name: dict[str, list[LabeledQueryRow]] = {}
     for dataset_name, path in eval_set_map.items():
-        rows = load_jsonl(path)
+        rows = load_labeled_query_rows(path)
         eval_rows_by_name[dataset_name] = rows
         print(f"embedding_eval_set={dataset_name} rows={len(rows)}", flush=True)
         eval_features_by_name[dataset_name] = embed_rows(

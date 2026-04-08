@@ -15,6 +15,7 @@ from agent.src.services.training.training_example_models import (
 from scripts.experiments.federated_simulation.models import (
     FederatedDiagnosticsConfig,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import (
     ModelManifest,
     dump_model_manifest_payload,
@@ -30,7 +31,7 @@ def save_selection_diagnostics(
     output_dir: Path,
     round_id: str,
     client_id: str,
-    rows: list[dict[str, object]],
+    rows: list[LabeledQueryRow],
     training_examples: tuple[EmbeddedTrainingExample, ...],
     selection_result: PseudoLabelSelectionResult,
     diagnostics_config: FederatedDiagnosticsConfig,

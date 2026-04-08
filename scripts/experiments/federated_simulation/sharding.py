@@ -4,17 +4,17 @@ from __future__ import annotations
 
 import random
 from collections import defaultdict
-from typing import Any
 
 from scripts.experiments.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
     FederatedShardPolicyConfig,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 
 
 def split_rows_for_federation(
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     *,
     bootstrap_ratio: float,
     client_count: int,
@@ -31,13 +31,13 @@ def split_rows_for_federation(
     if not 0.0 < shard_policy.dominant_ratio <= 1.0:
         raise ValueError("shard_policy.dominant_ratio must be between 0 and 1.")
 
-    rows_by_label: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    rows_by_label: dict[str, list[LabeledQueryRow]] = defaultdict(list)
     for row in rows:
         rows_by_label[str(row["mapped_label_4"])].append(row)
 
     rng = random.Random(seed)
-    bootstrap_rows: list[dict[str, Any]] = []
-    remaining_by_label: dict[str, list[dict[str, Any]]] = {}
+    bootstrap_rows: list[LabeledQueryRow] = []
+    remaining_by_label: dict[str, list[LabeledQueryRow]] = {}
     for label in sorted(rows_by_label):
         bucket = list(rows_by_label[label])
         rng.shuffle(bucket)

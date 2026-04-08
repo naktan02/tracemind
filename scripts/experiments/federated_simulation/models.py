@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Any
 
 from main_server.src.services.rounds.models import RoundTaskConfig
+from scripts.labeled_query_rows import LabeledQueryRow
 
 
 @dataclass(slots=True)
@@ -13,14 +13,14 @@ class FederatedClientShard:
     """한 client에 할당된 train row 묶음."""
 
     client_id: str
-    rows: list[dict[str, Any]]
+    rows: list[LabeledQueryRow]
 
 
 @dataclass(slots=True)
 class FederatedDatasetSplit:
     """bootstrap과 client shard로 나눈 train subset."""
 
-    bootstrap_rows: list[dict[str, Any]]
+    bootstrap_rows: list[LabeledQueryRow]
     client_shards: tuple[FederatedClientShard, ...]
 
 

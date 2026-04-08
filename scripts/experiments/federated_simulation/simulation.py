@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
 
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
@@ -64,6 +63,7 @@ from scripts.experiments.federated_simulation.sharding import (
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
@@ -73,8 +73,8 @@ from shared.src.services.prototypes.build_strategies import PrototypeBuildStrate
 
 def run_simulation(
     *,
-    train_rows: list[dict[str, Any]],
-    validation_rows: list[dict[str, Any]],
+    train_rows: list[LabeledQueryRow],
+    validation_rows: list[LabeledQueryRow],
     output_dir: Path,
     client_count: int,
     rounds: int,

@@ -21,6 +21,7 @@ from scripts.experiments.prototype_strategy.models import (
     PrototypeVector,
 )
 from scripts.experiments.prototype_strategy.sampling import sample_index_array
+from scripts.labeled_query_rows import LabeledQueryRow
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402
@@ -36,7 +37,7 @@ class ProjectionService:
     def create(
         self,
         *,
-        rows: Sequence[dict[str, str]],
+        rows: Sequence[LabeledQueryRow],
         embeddings: np.ndarray,
         reducers: tuple[str, ...],
         output_dir: Path,
@@ -199,7 +200,7 @@ class ProjectionService:
     def _build_visual_center_points(
         self,
         *,
-        rows: Sequence[dict[str, str]],
+        rows: Sequence[LabeledQueryRow],
         embeddings: np.ndarray,
         sample_index: np.ndarray,
         point_rows: Sequence[dict[str, float | str]],
@@ -221,7 +222,7 @@ class ProjectionService:
     def _build_kmeans_visual_centers(
         self,
         *,
-        rows: Sequence[dict[str, str]],
+        rows: Sequence[LabeledQueryRow],
         embeddings: np.ndarray,
         sample_index: np.ndarray,
         point_rows: Sequence[dict[str, float | str]],
@@ -291,7 +292,7 @@ class ProjectionService:
     def _assign_kmeans_clusters(
         self,
         *,
-        rows: Sequence[dict[str, str]],
+        rows: Sequence[LabeledQueryRow],
         embeddings: np.ndarray,
         prototype_index: PrototypeIndex,
     ) -> dict[int, int]:

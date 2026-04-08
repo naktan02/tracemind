@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from scripts.experiments.prototype_strategy.evaluation import (
     embed_rows,
@@ -21,9 +20,10 @@ from scripts.experiments.prototype_strategy.models import (
 )
 from scripts.experiments.prototype_strategy.projection import ProjectionService
 from scripts.experiments.prototype_strategy.scoring import (
-    build_prototype_index_scorer,
+    PrototypeScoringRuntimeMixin,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.domain.services import EmbeddingAdapter
 
 
 @dataclass(slots=True)
@@ -46,17 +46,13 @@ class StrategySelectionPolicy:
         )
 
 
-@dataclass(slots=True)
-class PrototypeExperimentRunner:
+@dataclass(slots=True, kw_only=True)
+class PrototypeExperimentRunner(PrototypeScoringRuntimeMixin):
     """train/validation/test 흐름 전체를 오케스트레이션한다."""
 
     projection_service: ProjectionService
     confidence_threshold: float
     margin_threshold: float
-    similarity_name: str = "cosine"
-    scorer_backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name
-    score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name
-    score_top_k: int | None = None
     selection_policy: StrategySelectionPolicy = field(
         default_factory=StrategySelectionPolicy
     )
@@ -72,12 +68,7 @@ class PrototypeExperimentRunner:
             rows=request.train_rows,
             embeddings=train_embeddings,
         )
-        scorer = build_prototype_index_scorer(
-            scorer_backend_name=self.scorer_backend_name,
-            score_policy_name=self.score_policy_name,
-            score_top_k=self.score_top_k,
-            similarity_name=self.similarity_name,
-        )
+        scorer = self.build_prototype_index_scorer()
         reports: list[StrategyEvaluationReport] = []
         for strategy in request.strategies:
             prototype_index = strategy.build(embeddings_by_label)
@@ -155,10 +146,10 @@ class PrototypeExperimentRequest:
     """Prototype 전략 비교 실험 입력 묶음."""
 
     strategies: tuple[PrototypeBuildStrategy, ...]
-    train_rows: Sequence[dict[str, Any]]
-    validation_rows: Sequence[dict[str, Any]]
-    test_rows: Sequence[dict[str, Any]]
-    adapter: Any
+    train_rows: Sequence[LabeledQueryRow]
+    validation_rows: Sequence[LabeledQueryRow]
+    test_rows: Sequence[LabeledQueryRow]
+    adapter: EmbeddingAdapter
     output_dir: Path
     run_id: str
     projection_reducers: tuple[str, ...]

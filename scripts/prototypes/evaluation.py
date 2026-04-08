@@ -2,14 +2,13 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from agent.src.services.inference.scoring_service import ScoringService
 from scripts.classification_report import (
     build_confusion_matrix,
     safe_divide,
     summarize_per_category,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 
 
 def predict_label(scores: dict[str, float]) -> tuple[str, float, float]:
@@ -24,10 +23,10 @@ def predict_label(scores: dict[str, float]) -> tuple[str, float, float]:
 
 def evaluate_rows(
     *,
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     prototypes: dict[str, tuple[list[float], ...]],
     embeddings: list[list[float]],
-) -> dict[str, Any]:
+) -> dict[str, object]:
     scoring_service = ScoringService()
     categories = sorted(prototypes)
     actual_labels: list[str] = []

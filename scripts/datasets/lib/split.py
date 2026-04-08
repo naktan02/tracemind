@@ -4,48 +4,45 @@ from __future__ import annotations
 
 import json
 import random
-from collections import Counter, defaultdict
 from pathlib import Path
-from typing import Any
+
+from scripts.labeled_query_rows import (
+    LabeledQueryRow,
+    count_labeled_query_rows_by_label,
+    dump_labeled_query_rows,
+    group_labeled_query_rows_by_label,
+    load_labeled_query_rows,
+)
 
 
-def load_jsonl(path: Path) -> list[dict[str, Any]]:
-    rows: list[dict[str, Any]] = []
-    for line in path.read_text(encoding="utf-8").splitlines():
-        if line.strip():
-            rows.append(json.loads(line))
-    return rows
+def load_jsonl(path: Path) -> list[LabeledQueryRow]:
+    return load_labeled_query_rows(path)
 
 
-def load_json(path: Path) -> dict[str, Any] | None:
+def load_json(path: Path) -> dict[str, object] | None:
     if not path.exists():
         return None
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def dump_jsonl(path: Path, rows: list[dict[str, Any]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        for row in rows:
-            file.write(json.dumps(row, ensure_ascii=True) + "\n")
+def dump_jsonl(path: Path, rows: list[LabeledQueryRow]) -> None:
+    dump_labeled_query_rows(path, rows)
 
 
 def split_rows(
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     *,
     validation_ratio: float,
     seed: int,
-) -> tuple[list[dict[str, Any]], list[dict[str, Any]]]:
+) -> tuple[list[LabeledQueryRow], list[LabeledQueryRow]]:
     if not 0.0 < validation_ratio < 1.0:
         raise ValueError("validation_ratio must be between 0 and 1.")
 
-    rows_by_label: dict[str, list[dict[str, Any]]] = defaultdict(list)
-    for row in rows:
-        rows_by_label[row["mapped_label_4"]].append(row)
+    rows_by_label = group_labeled_query_rows_by_label(rows)
 
     rng = random.Random(seed)
-    train_rows: list[dict[str, Any]] = []
-    validation_rows: list[dict[str, Any]] = []
+    train_rows: list[LabeledQueryRow] = []
+    validation_rows: list[LabeledQueryRow] = []
 
     for label in sorted(rows_by_label):
         bucket = list(rows_by_label[label])
@@ -63,8 +60,8 @@ def split_rows(
     return train_rows, validation_rows
 
 
-def counts_by_label(rows: list[dict[str, Any]]) -> dict[str, int]:
-    return dict(sorted(Counter(row["mapped_label_4"] for row in rows).items()))
+def counts_by_label(rows: list[LabeledQueryRow]) -> dict[str, int]:
+    return count_labeled_query_rows_by_label(rows)
 
 
 def build_split_artifacts(

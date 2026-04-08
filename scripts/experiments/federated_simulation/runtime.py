@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository,
@@ -23,6 +22,7 @@ from main_server.src.services.prototypes import (
     StoredReferencePrototypeRebuildService,
 )
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import (
@@ -51,7 +51,7 @@ class SimulationEmbeddingAdapterFactory:
 
 def store_prototype_rebuild_input(
     *,
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     embedding_spec: EmbeddingAdapterSpec,
     repository: (
         prototype_rebuild_input_repository.PrototypeRebuildInputRepository

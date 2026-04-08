@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 from collections.abc import Sequence
-from typing import Any
 
 import numpy as np
 
@@ -21,9 +20,14 @@ from scripts.experiments.prototype_strategy.models import (
 from scripts.experiments.prototype_strategy.scoring import (
     PrototypeIndexScorer,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.domain.services import EmbeddingAdapter
 
 
-def embed_rows(rows: Sequence[dict[str, Any]], adapter: Any) -> np.ndarray:
+def embed_rows(
+    rows: Sequence[LabeledQueryRow],
+    adapter: EmbeddingAdapter,
+) -> np.ndarray:
     """row의 text를 임베딩한다."""
     texts = [str(row["text"]) for row in rows]
     return np.asarray(adapter.embed_texts(texts), dtype=np.float64)
@@ -31,7 +35,7 @@ def embed_rows(rows: Sequence[dict[str, Any]], adapter: Any) -> np.ndarray:
 
 def group_embeddings_by_label(
     *,
-    rows: Sequence[dict[str, Any]],
+    rows: Sequence[LabeledQueryRow],
     embeddings: np.ndarray,
 ) -> dict[str, np.ndarray]:
     """row와 임베딩을 라벨별로 묶는다."""
@@ -46,7 +50,7 @@ def group_embeddings_by_label(
 
 def evaluate_embeddings(
     *,
-    rows: Sequence[dict[str, Any]],
+    rows: Sequence[LabeledQueryRow],
     embeddings: np.ndarray,
     prototype_index: PrototypeIndex,
     confidence_threshold: float,
@@ -70,7 +74,7 @@ def evaluate_embeddings(
 
 def score_embeddings(
     *,
-    rows: Sequence[dict[str, Any]],
+    rows: Sequence[LabeledQueryRow],
     embeddings: np.ndarray,
     prototype_index: PrototypeIndex,
     scorer: PrototypeIndexScorer,

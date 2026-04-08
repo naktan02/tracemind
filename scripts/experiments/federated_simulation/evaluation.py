@@ -2,8 +2,6 @@
 
 from __future__ import annotations
 
-from typing import Any
-
 from agent.src.services.federation.training_example_service import (
     TrainingExampleBuildRequest,
     TrainingExampleService,
@@ -13,6 +11,7 @@ from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.training_example_models import (
     EmbeddedTrainingExample,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.config.training_defaults import (
     build_default_training_objective_config,
 )
@@ -27,7 +26,7 @@ from .models import FederatedValidationConfig, SimulationEvaluation
 
 def build_training_examples(
     *,
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     adapter: EmbeddingAdapter,
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
@@ -63,7 +62,7 @@ def build_training_examples(
 
 def evaluate_rows(
     *,
-    rows: list[dict[str, Any]],
+    rows: list[LabeledQueryRow],
     adapter: EmbeddingAdapter,
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,

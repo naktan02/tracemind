@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
 
 from scripts.experiments.prototype_strategy.evaluation import (
     embed_rows,
@@ -19,7 +18,7 @@ from scripts.experiments.prototype_strategy.models import (
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_strategy.scoring import (
-    build_prototype_index_scorer,
+    PrototypeScoringRuntimeMixin,
 )
 from scripts.experiments.prototype_strategy.strategies import (
     build_requested_strategy,
@@ -27,7 +26,8 @@ from scripts.experiments.prototype_strategy.strategies import (
 from scripts.experiments.prototype_strategy.threshold_policies import (
     StaticThresholdPolicy,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.domain.services import EmbeddingAdapter
 
 
 @dataclass(slots=True)
@@ -66,7 +66,9 @@ class ThresholdPolicySelectionPolicy:
         )
 
     @staticmethod
-    def _selection_key(evaluation: ThresholdPolicyEvaluation) -> tuple[Any, ...]:
+    def _selection_key(
+        evaluation: ThresholdPolicyEvaluation,
+    ) -> tuple[float | str, ...]:
         metrics = evaluation.validation_metrics
         return (
             metrics.accepted_accuracy,
@@ -78,17 +80,13 @@ class ThresholdPolicySelectionPolicy:
         )
 
 
-@dataclass(slots=True)
-class ThresholdPolicyExperimentRunner:
+@dataclass(slots=True, kw_only=True)
+class ThresholdPolicyExperimentRunner(PrototypeScoringRuntimeMixin):
     """선택된 prototype 전략 위에서 static threshold policy를 비교한다."""
 
     selection_policy: ThresholdPolicySelectionPolicy = field(
         default_factory=ThresholdPolicySelectionPolicy
     )
-    similarity_name: str = "cosine"
-    scorer_backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name
-    score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name
-    score_top_k: int | None = None
 
     def run(
         self,
@@ -120,12 +118,7 @@ class ThresholdPolicyExperimentRunner:
             prototype_index.to_dict(),
         )
 
-        scorer = build_prototype_index_scorer(
-            scorer_backend_name=self.scorer_backend_name,
-            score_policy_name=self.score_policy_name,
-            score_top_k=self.score_top_k,
-            similarity_name=self.similarity_name,
-        )
+        scorer = self.build_prototype_index_scorer()
         validation_predictions = score_embeddings(
             rows=request.validation_rows,
             embeddings=validation_embeddings,
@@ -176,10 +169,10 @@ class ThresholdPolicyExperimentRunner:
 class ThresholdPolicyExperimentRequest:
     """Threshold policy 비교 실험 입력 묶음."""
 
-    train_rows: Sequence[dict[str, Any]]
-    validation_rows: Sequence[dict[str, Any]]
-    test_rows: Sequence[dict[str, Any]]
-    adapter: Any
+    train_rows: Sequence[LabeledQueryRow]
+    validation_rows: Sequence[LabeledQueryRow]
+    test_rows: Sequence[LabeledQueryRow]
+    adapter: EmbeddingAdapter
     strategy_name: str
     seed: int
     kmeans_candidate_ks: tuple[int, ...]

@@ -17,6 +17,7 @@ from scripts.experiments.prototype_strategy.scoring import (
     ConfiguredPrototypeIndexScorer,
     MaxCosinePrototypeIndexScorer,
     PrototypeIndexScorer,
+    PrototypeScoringConfig,
     build_prototype_index_scorer,
 )
 from scripts.experiments.prototype_strategy.strategies import (
@@ -40,6 +41,7 @@ __all__ = [
     "PrototypeExperimentRunner",
     "PrototypeIndex",
     "PrototypeIndexScorer",
+    "PrototypeScoringConfig",
     "PrototypeVector",
     "SinglePrototypeStrategy",
     "StrategyEvaluationReport",
