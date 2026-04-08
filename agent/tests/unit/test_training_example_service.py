@@ -17,6 +17,7 @@ from agent.src.services.federation import (
     register_training_example_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -235,3 +236,16 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
     assert isinstance(service.backend, _ConstantTrainingExampleBackend)
     assert service.backend.backend_name == "constant_examples"
     assert not isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)
+
+
+def test_training_example_service_uses_profile_default_backend_when_omitted() -> None:
+    service = TrainingExampleService.from_objective_config(
+        TrainingObjectiveConfig(
+            training_backend_name=DEFAULT_TRAINING_PROFILE.training_backend_name,
+        )
+    )
+
+    assert isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)
+    assert service.backend.backend_name == (
+        DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )

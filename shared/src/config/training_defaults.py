@@ -10,6 +10,14 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from shared.src.config.training_default_values import (
+    DEFAULT_TRAINING_OBJECTIVE_MAPPING,
+    DEFAULT_TRAINING_SECURE_AGGREGATION_MAPPING,
+    DEFAULT_TRAINING_SELECTION_MAPPING,
+    DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
+    PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE_NAME,
+    TrainingTaskRuntimeDefaults,
+)
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
     TrainingConfigScalar,
@@ -26,6 +34,7 @@ class TrainingDefaultsProfile:
     objective_mapping: Mapping[str, TrainingConfigScalar]
     selection_mapping: Mapping[str, TrainingConfigScalar]
     secure_aggregation_mapping: Mapping[str, TrainingConfigScalar]
+    task_runtime_defaults: TrainingTaskRuntimeDefaults
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -49,6 +58,20 @@ class TrainingDefaultsProfile:
         return self._require_str(
             self.objective_mapping,
             "acceptance_policy_name",
+        )
+
+    @property
+    def training_backend_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "training_backend_name",
+        )
+
+    @property
+    def example_generation_backend_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "example_generation_backend_name",
         )
 
     @property
@@ -80,6 +103,13 @@ class TrainingDefaultsProfile:
         )
 
     @property
+    def privacy_guard_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "privacy_guard_name",
+        )
+
+    @property
     def max_examples(self) -> int | None:
         value = self.selection_mapping.get("max_examples")
         if value is None:
@@ -87,6 +117,30 @@ class TrainingDefaultsProfile:
         if isinstance(value, bool):
             raise ValueError("Default max_examples must not be bool.")
         return int(value)
+
+    @property
+    def local_epochs(self) -> int:
+        return self.task_runtime_defaults.local_epochs
+
+    @property
+    def batch_size(self) -> int:
+        return self.task_runtime_defaults.batch_size
+
+    @property
+    def learning_rate(self) -> float:
+        return self.task_runtime_defaults.learning_rate
+
+    @property
+    def max_steps(self) -> int:
+        return self.task_runtime_defaults.max_steps
+
+    @property
+    def min_required_examples(self) -> int | None:
+        return self.task_runtime_defaults.min_required_examples
+
+    @property
+    def gradient_clip_norm(self) -> float | None:
+        return self.task_runtime_defaults.gradient_clip_norm
 
     def build_objective_config(
         self,
@@ -142,19 +196,11 @@ class TrainingDefaultsProfile:
 
 
 PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE = TrainingDefaultsProfile(
-    profile_name="pseudo_label_self_training.v1",
-    objective_mapping={
-        "training_backend_name": "diagonal_scale_heuristic",
-        "confidence_threshold": 0.6,
-        "margin_threshold": 0.02,
-        "example_generation_backend_name": "prototype_rescore",
-        "scorer_backend_name": "prototype_similarity",
-        "score_policy_name": "max_cosine",
-        "acceptance_policy_name": "top1_margin_threshold",
-        "privacy_guard_name": "diagonal_scale_clip_only",
-    },
-    selection_mapping={"max_examples": 128},
-    secure_aggregation_mapping={"required": False},
+    profile_name=PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE_NAME,
+    objective_mapping=DEFAULT_TRAINING_OBJECTIVE_MAPPING,
+    selection_mapping=DEFAULT_TRAINING_SELECTION_MAPPING,
+    secure_aggregation_mapping=DEFAULT_TRAINING_SECURE_AGGREGATION_MAPPING,
+    task_runtime_defaults=DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
 )
 
 DEFAULT_TRAINING_PROFILE = PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE

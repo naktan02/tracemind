@@ -14,6 +14,8 @@ from agent.src.services.inference.scoring_policies import (
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
+PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
+
 
 class ScoringBackend(Protocol):
     """category score dict를 계산하는 backend 인터페이스."""
@@ -38,7 +40,7 @@ class PrototypeSimilarityScoringBackend:
 
     similarity_name: str = "cosine"
     policy: PrototypeScorePolicy = field(default_factory=MaxCosineScorePolicy)
-    backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    backend_name: str = PROTOTYPE_SIMILARITY_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def score(
@@ -146,6 +148,6 @@ def _coerce_prototype_vectors(
 
 
 register_scoring_backend(
-    DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+    PROTOTYPE_SIMILARITY_BACKEND_NAME,
     factory=_build_prototype_similarity_backend,
 )

@@ -13,6 +13,7 @@ from main_server.src.services.rounds.round_manager_service import (  # noqa: E40
     RoundPublicationRequest,
     TrainingTaskRequest,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -151,12 +152,36 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         )
     )
 
-    assert task.objective_config.scorer_backend_name == "prototype_similarity"
-    assert task.objective_config.score_policy_name == "max_cosine"
-    assert task.objective_config.acceptance_policy_name == "top1_margin_threshold"
-    assert task.objective_config.privacy_guard_name == "diagonal_scale_clip_only"
-    assert task.objective_config.confidence_threshold == 0.6
-    assert task.objective_config.margin_threshold == 0.02
+    assert task.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
+    assert task.batch_size == DEFAULT_TRAINING_PROFILE.batch_size
+    assert task.learning_rate == DEFAULT_TRAINING_PROFILE.learning_rate
+    assert task.max_steps == DEFAULT_TRAINING_PROFILE.max_steps
+    assert (
+        task.objective_config.training_backend_name
+        == DEFAULT_TRAINING_PROFILE.training_backend_name
+    )
+    assert (
+        task.objective_config.example_generation_backend_name
+        == DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )
+    assert task.objective_config.scorer_backend_name == (
+        DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    )
+    assert task.objective_config.score_policy_name == (
+        DEFAULT_TRAINING_PROFILE.score_policy_name
+    )
+    assert task.objective_config.acceptance_policy_name == (
+        DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+    )
+    assert task.objective_config.privacy_guard_name == (
+        DEFAULT_TRAINING_PROFILE.privacy_guard_name
+    )
+    assert task.objective_config.confidence_threshold == (
+        DEFAULT_TRAINING_PROFILE.confidence_threshold
+    )
+    assert task.objective_config.margin_threshold == (
+        DEFAULT_TRAINING_PROFILE.margin_threshold
+    )
     assert task.secure_aggregation.required is False
 
 

@@ -12,6 +12,7 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
@@ -80,12 +81,14 @@ TrainingExampleBackendFactory = Callable[
     TrainingExampleBackend,
 ]
 
+PROTOTYPE_RESCORE_BACKEND_NAME = "prototype_rescore"
+
 
 @dataclass(slots=True)
 class PrototypeRescoringTrainingExampleBackend:
     """현재 prototype 재점수화 기반 학습 예시 재구성 backend."""
 
-    backend_name: str = "prototype_rescore"
+    backend_name: str = PROTOTYPE_RESCORE_BACKEND_NAME
 
     def build_examples(
         self,
@@ -210,7 +213,7 @@ class TrainingExampleService:
     ) -> "TrainingExampleService":
         backend_name = (
             objective_config.example_generation_backend_name
-            or "prototype_rescore"
+            or DEFAULT_TRAINING_PROFILE.example_generation_backend_name
         )
         return cls(
             backend=build_training_example_backend(
@@ -233,6 +236,6 @@ class TrainingExampleService:
 
 
 register_training_example_backend(
-    "prototype_rescore",
+    PROTOTYPE_RESCORE_BACKEND_NAME,
     factory=lambda _objective_config: PrototypeRescoringTrainingExampleBackend(),
 )

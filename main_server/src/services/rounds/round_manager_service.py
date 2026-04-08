@@ -16,6 +16,7 @@ from main_server.src.services.rounds.adapter_family_service import (
     SharedAdapterRoundFamily,
 )
 from shared.src.config.training_defaults import (
+    DEFAULT_TRAINING_PROFILE,
     build_default_secure_aggregation_config,
     build_default_training_objective_config,
     build_default_training_selection_policy,
@@ -53,10 +54,10 @@ class TrainingTaskRequest:
     round_id: str
     task_id: str | None = None
     task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
-    local_epochs: int = 1
-    batch_size: int = 16
-    learning_rate: float = 1e-4
-    max_steps: int = 50
+    local_epochs: int = DEFAULT_TRAINING_PROFILE.local_epochs
+    batch_size: int = DEFAULT_TRAINING_PROFILE.batch_size
+    learning_rate: float = DEFAULT_TRAINING_PROFILE.learning_rate
+    max_steps: int = DEFAULT_TRAINING_PROFILE.max_steps
     objective_config: (
         TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
     ) = None
@@ -66,8 +67,8 @@ class TrainingTaskRequest:
     secure_aggregation: (
         SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
     ) = None
-    min_required_examples: int | None = None
-    gradient_clip_norm: float | None = None
+    min_required_examples: int | None = DEFAULT_TRAINING_PROFILE.min_required_examples
+    gradient_clip_norm: float | None = DEFAULT_TRAINING_PROFILE.gradient_clip_norm
     deadline_at: datetime | None = None
     notes: str | None = None
 

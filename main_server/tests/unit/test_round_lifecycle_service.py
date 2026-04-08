@@ -60,6 +60,7 @@ from main_server.src.services.rounds.update_acceptance_policy import (
     SingleSubmissionPerAgentTrustPolicy,
     StrictRoundUpdateAcceptancePolicy,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -325,6 +326,10 @@ def test_round_lifecycle_opens_round_and_sets_active_pointer(tmp_path: Path) -> 
 
     assert record.status == RoundStatus.OPEN
     assert record.training_task.round_id == "round_0001"
+    assert record.training_task.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
+    assert record.training_task.batch_size == DEFAULT_TRAINING_PROFILE.batch_size
+    assert record.training_task.learning_rate == DEFAULT_TRAINING_PROFILE.learning_rate
+    assert record.training_task.max_steps == DEFAULT_TRAINING_PROFILE.max_steps
     assert record.updated_at == fixed_time
     assert service.get_current_round().round_id == "round_0001"
     active_pointer = round_repository.load_active_pointer()

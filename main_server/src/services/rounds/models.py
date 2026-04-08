@@ -7,6 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -62,10 +63,10 @@ class RoundOpenRequest:
     round_id: str | None = None
     task_id: str | None = None
     task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
-    local_epochs: int = 1
-    batch_size: int = 16
-    learning_rate: float = 1e-4
-    max_steps: int = 50
+    local_epochs: int = DEFAULT_TRAINING_PROFILE.local_epochs
+    batch_size: int = DEFAULT_TRAINING_PROFILE.batch_size
+    learning_rate: float = DEFAULT_TRAINING_PROFILE.learning_rate
+    max_steps: int = DEFAULT_TRAINING_PROFILE.max_steps
     objective_config: (
         TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
     ) = None
@@ -75,8 +76,8 @@ class RoundOpenRequest:
     secure_aggregation: (
         SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
     ) = None
-    min_required_examples: int | None = None
-    gradient_clip_norm: float | None = None
+    min_required_examples: int | None = DEFAULT_TRAINING_PROFILE.min_required_examples
+    gradient_clip_norm: float | None = DEFAULT_TRAINING_PROFILE.gradient_clip_norm
     deadline_at: datetime | None = None
     notes: str | None = None
 

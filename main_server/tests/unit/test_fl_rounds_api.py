@@ -26,6 +26,7 @@ from main_server.src.services.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -214,3 +215,25 @@ def test_fl_rounds_router_is_registered_on_main_app() -> None:
     assert "/api/v1/fl/rounds/{round_id}" in route_paths
     assert "/api/v1/fl/rounds/{round_id}/updates" in route_paths
     assert "/api/v1/fl/rounds/{round_id}/finalize" in route_paths
+
+
+def test_round_open_request_payload_uses_shared_task_runtime_defaults() -> None:
+    payload = RoundOpenRequestPayload(
+        active_manifest=ModelManifest(
+            schema_version="model_manifest.v1",
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+            artifact_kind="shared_adapter_state",
+            artifact_ref="/tmp/rev_000.json",
+            prototype_version="proto_000",
+            training_scope="adapter_only",
+            training_enabled=True,
+            compatible_task_types=("pseudo_label_self_training",),
+        )
+    )
+
+    assert payload.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
+    assert payload.batch_size == DEFAULT_TRAINING_PROFILE.batch_size
+    assert payload.learning_rate == DEFAULT_TRAINING_PROFILE.learning_rate
+    assert payload.max_steps == DEFAULT_TRAINING_PROFILE.max_steps

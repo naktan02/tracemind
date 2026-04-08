@@ -23,6 +23,8 @@ from typing import Literal, TypeAlias
 
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
 
+from shared.src.config.training_default_values import DEFAULT_TRAINING_OBJECTIVE_MAPPING
+
 from .common_types import TrainingScope, TrainingTaskType
 
 TRAINING_TASK_V1 = "training_task.v1"
@@ -52,6 +54,9 @@ class FeedbackSignalType(StrEnum):
     DELAYED_OUTCOME = "delayed_outcome"
 
 TrainingConfigScalar = str | int | float | bool
+DEFAULT_TRAINING_BACKEND_NAME = str(
+    DEFAULT_TRAINING_OBJECTIVE_MAPPING["training_backend_name"]
+)
 
 
 class ClientMetricKeys:
@@ -94,7 +99,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     training_backend_name: str = Field(
-        default="diagonal_scale_heuristic",
+        default=DEFAULT_TRAINING_BACKEND_NAME,
         validation_alias=AliasChoices("training_backend_name", "loss"),
         serialization_alias="training_backend_name",
         description="로컬 update backend 식별자.",
@@ -156,7 +161,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
             return cls()
         backend_name = source.get(
             "training_backend_name",
-            source.get("loss", "diagonal_scale_heuristic"),
+            source.get("loss", DEFAULT_TRAINING_BACKEND_NAME),
         )
         return cls(
             training_backend_name=str(backend_name),

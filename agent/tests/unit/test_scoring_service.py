@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from agent.src.services.inference.scoring_backends import (
+    PROTOTYPE_SIMILARITY_BACKEND_NAME,
     PrototypeSimilarityScoringBackend,
     register_scoring_backend,
 )
@@ -117,6 +118,12 @@ def test_score_service_can_be_built_from_objective_config() -> None:
     )
 
     assert scores["alert"] == pytest.approx(0.5)
+
+
+def test_prototype_similarity_backend_keeps_fixed_implementation_name() -> None:
+    backend = PrototypeSimilarityScoringBackend()
+
+    assert backend.backend_name == PROTOTYPE_SIMILARITY_BACKEND_NAME
 
 
 def test_score_service_can_switch_registered_scoring_backend() -> None:

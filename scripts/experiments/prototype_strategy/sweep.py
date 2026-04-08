@@ -27,6 +27,7 @@ from scripts.experiments.prototype_strategy.strategies import (
 from scripts.experiments.prototype_strategy.threshold_policies import (
     StaticThresholdPolicy,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 
 
 @dataclass(slots=True)
@@ -85,8 +86,8 @@ class ThresholdPolicyExperimentRunner:
         default_factory=ThresholdPolicySelectionPolicy
     )
     similarity_name: str = "cosine"
-    scorer_backend_name: str = "prototype_similarity"
-    score_policy_name: str = "max_cosine"
+    scorer_backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name
     score_top_k: int | None = None
 
     def run(

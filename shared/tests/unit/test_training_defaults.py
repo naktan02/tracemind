@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from shared.src.config.training_default_values import (
+    DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
+)
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE,
@@ -17,9 +20,17 @@ def test_default_training_profile_points_to_versioned_bundle() -> None:
 def test_default_training_objective_builder_uses_shared_profile() -> None:
     config = build_default_training_objective_config()
 
+    assert (
+        config.training_backend_name == DEFAULT_TRAINING_PROFILE.training_backend_name
+    )
     assert config.confidence_threshold == DEFAULT_TRAINING_PROFILE.confidence_threshold
     assert config.margin_threshold == DEFAULT_TRAINING_PROFILE.margin_threshold
+    assert (
+        config.example_generation_backend_name
+        == DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )
     assert config.scorer_backend_name == DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    assert config.privacy_guard_name == DEFAULT_TRAINING_PROFILE.privacy_guard_name
     assert (
         config.acceptance_policy_name
         == DEFAULT_TRAINING_PROFILE.acceptance_policy_name
@@ -48,3 +59,14 @@ def test_default_secure_aggregation_builder_starts_disabled() -> None:
     config = build_default_secure_aggregation_config()
 
     assert config.required is False
+
+
+def test_default_training_profile_exposes_round_task_runtime_defaults() -> None:
+    assert DEFAULT_TRAINING_PROFILE.local_epochs == 1
+    assert DEFAULT_TRAINING_PROFILE.batch_size == 16
+    assert DEFAULT_TRAINING_PROFILE.learning_rate == 1e-4
+    assert DEFAULT_TRAINING_PROFILE.max_steps == 50
+    assert (
+        DEFAULT_TRAINING_PROFILE.task_runtime_defaults
+        is DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS
+    )
