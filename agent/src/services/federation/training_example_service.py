@@ -12,6 +12,10 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from agent.src.services.training.training_backends import (
+    SharedAdapterTrainingBackend,
+    build_shared_adapter_training_backend,
+)
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.prototype_contracts import (
@@ -62,6 +66,7 @@ class TrainingExampleBackend(Protocol):
     """학습 예시 재구성 backend 인터페이스."""
 
     backend_name: str
+    supported_adapter_kinds: tuple[str, ...]
 
     def build_examples(
         self,
@@ -81,6 +86,7 @@ TrainingExampleBackendFactory = Callable[
     TrainingExampleBackend,
 ]
 
+ANY_ADAPTER_KIND = "*"
 PROTOTYPE_RESCORE_BACKEND_NAME = "prototype_rescore"
 
 
@@ -89,6 +95,7 @@ class PrototypeRescoringTrainingExampleBackend:
     """현재 prototype 재점수화 기반 학습 예시 재구성 backend."""
 
     backend_name: str = PROTOTYPE_RESCORE_BACKEND_NAME
+    supported_adapter_kinds: tuple[str, ...] = (ANY_ADAPTER_KIND,)
 
     def build_examples(
         self,
@@ -198,6 +205,37 @@ def build_training_example_backend(
     raise ValueError(f"Unsupported training example backend: {backend_name}.")
 
 
+def resolve_training_example_backend(
+    *,
+    objective_config: TrainingObjectiveConfig,
+    training_backend: SharedAdapterTrainingBackend | None = None,
+) -> TrainingExampleBackend:
+    """objective config 기준으로 example backend를 검증해 조립한다."""
+
+    backend_name = (
+        objective_config.example_generation_backend_name
+        or DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )
+    backend = build_training_example_backend(
+        backend_name,
+        objective_config=objective_config,
+    )
+    resolved_training_backend = (
+        training_backend
+        or build_shared_adapter_training_backend(
+            objective_config.training_backend_name,
+            objective_config=objective_config,
+        )
+    )
+    _require_adapter_kind_support(
+        component_type="training example backend",
+        component_name=backend.backend_name,
+        supported_adapter_kinds=backend.supported_adapter_kinds,
+        adapter_kind=resolved_training_backend.adapter_kind,
+    )
+    return backend
+
+
 @dataclass(slots=True)
 class TrainingExampleService:
     """로컬 source row를 EmbeddedTrainingExample으로 변환한다."""
@@ -211,15 +249,8 @@ class TrainingExampleService:
         cls,
         objective_config: TrainingObjectiveConfig,
     ) -> "TrainingExampleService":
-        backend_name = (
-            objective_config.example_generation_backend_name
-            or DEFAULT_TRAINING_PROFILE.example_generation_backend_name
-        )
         return cls(
-            backend=build_training_example_backend(
-                backend_name,
-                objective_config=objective_config,
-            )
+            backend=resolve_training_example_backend(objective_config=objective_config)
         )
 
     def build_examples(
@@ -239,3 +270,25 @@ register_training_example_backend(
     PROTOTYPE_RESCORE_BACKEND_NAME,
     factory=lambda _objective_config: PrototypeRescoringTrainingExampleBackend(),
 )
+
+
+def _require_adapter_kind_support(
+    *,
+    component_type: str,
+    component_name: str,
+    supported_adapter_kinds: tuple[str, ...],
+    adapter_kind: str,
+) -> None:
+    normalized_supported = tuple(
+        value.strip().lower() for value in supported_adapter_kinds
+    )
+    normalized_adapter_kind = adapter_kind.strip().lower()
+    if (
+        ANY_ADAPTER_KIND in normalized_supported
+        or normalized_adapter_kind in normalized_supported
+    ):
+        return
+    raise ValueError(
+        f"Incompatible {component_type}: {component_name} does not support "
+        f"adapter_kind={adapter_kind}."
+    )

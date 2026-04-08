@@ -9,6 +9,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
+from shared.src.config.diagonal_scale_defaults import (
+    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
+)
+
 TrainingDefaultScalar = str | int | float | bool
 
 
@@ -42,6 +46,9 @@ PSEUDO_LABEL_SELF_TRAINING_V1_OBJECTIVE_MAPPING = _freeze_mapping(
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",
         "privacy_guard_name": "diagonal_scale_clip_only",
+        **dict(
+            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
+        ),
     }
 )
 

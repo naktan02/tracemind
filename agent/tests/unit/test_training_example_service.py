@@ -5,6 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
+import pytest
+
 from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
@@ -17,6 +19,9 @@ from agent.src.services.federation import (
     register_training_example_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.training_backends import (
+    register_shared_adapter_training_backend,
+)
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -206,6 +211,7 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
 @dataclass(slots=True)
 class _ConstantTrainingExampleBackend:
     backend_name: str = "constant_examples"
+    supported_adapter_kinds: tuple[str, ...] = ("*",)
 
     def build_examples(
         self,
@@ -249,3 +255,64 @@ def test_training_example_service_uses_profile_default_backend_when_omitted() ->
     assert service.backend.backend_name == (
         DEFAULT_TRAINING_PROFILE.example_generation_backend_name
     )
+
+
+def test_training_example_service_rejects_incompatible_backend_family() -> None:
+    @dataclass(slots=True)
+    class _TestShiftTrainingBackend:
+        backend_name: str = "test_shift_example_training_backend"
+        payload_format: str = "test_shift_update"
+        adapter_kind: str = "test_shift"
+
+        def build_update(
+            self,
+            *,
+            training_task,
+            model_manifest,
+            accepted_examples,
+            created_at,
+        ):
+            raise AssertionError("이 테스트에서는 호출되면 안 됩니다.")
+
+        def to_payload(self, update):
+            return update
+
+        def build_client_metrics(self, update) -> dict[str, float]:
+            del update
+            return {}
+
+    @dataclass(slots=True)
+    class _DiagonalOnlyTrainingExampleBackend:
+        backend_name: str = "diagonal_only_training_examples"
+        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+
+        def build_examples(self, request: TrainingExampleBuildRequest) -> tuple:
+            del request
+            return ()
+
+        def build_examples_from_stored_events(
+            self,
+            request: StoredEventTrainingExampleBuildRequest,
+        ) -> tuple:
+            del request
+            return ()
+
+    register_shared_adapter_training_backend(
+        "test_shift_example_training_backend",
+        factory=lambda _objective_config: _TestShiftTrainingBackend(),
+    )
+    register_training_example_backend(
+        "diagonal_only_training_examples",
+        factory=lambda _objective_config: _DiagonalOnlyTrainingExampleBackend(),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="Incompatible training example backend",
+    ):
+        TrainingExampleService.from_objective_config(
+            TrainingObjectiveConfig(
+                training_backend_name="test_shift_example_training_backend",
+                example_generation_backend_name="diagonal_only_training_examples",
+            )
+        )

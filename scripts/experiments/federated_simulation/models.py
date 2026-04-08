@@ -5,10 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from shared.src.contracts.training_contracts import (
-    TrainingObjectiveConfig,
-    TrainingSelectionPolicy,
-)
+from main_server.src.services.rounds.models import RoundTaskConfig
 
 
 @dataclass(slots=True)
@@ -78,18 +75,7 @@ class FederatedShardPolicyConfig:
     client_id_prefix: str
 
 
-@dataclass(slots=True)
-class FederatedTrainingTaskConfig:
-    """round별 로컬 학습 task 설정."""
-
-    local_epochs: int
-    batch_size: int
-    learning_rate: float
-    max_steps: int
-    min_required_examples: int
-    objective_config: TrainingObjectiveConfig
-    selection_policy: TrainingSelectionPolicy
-    gradient_clip_norm: float | None = None
+FederatedTrainingTaskConfig = RoundTaskConfig
 
 
 @dataclass(slots=True)

@@ -15,14 +15,13 @@ from main_server.src.services.rounds.adapter_family_service import (
     DiagonalScaleRoundFamily,
     SharedAdapterRoundFamily,
 )
+from main_server.src.services.rounds.models import RoundOpenRequest
 from shared.src.config.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
     build_default_secure_aggregation_config,
     build_default_training_objective_config,
     build_default_training_selection_policy,
 )
 from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
-from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -44,34 +43,6 @@ class RoundPublication:
     next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
-
-
-@dataclass(slots=True)
-class TrainingTaskRequest:
-    """라운드 학습 task 생성 요청."""
-
-    active_manifest: ModelManifest
-    round_id: str
-    task_id: str | None = None
-    task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
-    local_epochs: int = DEFAULT_TRAINING_PROFILE.local_epochs
-    batch_size: int = DEFAULT_TRAINING_PROFILE.batch_size
-    learning_rate: float = DEFAULT_TRAINING_PROFILE.learning_rate
-    max_steps: int = DEFAULT_TRAINING_PROFILE.max_steps
-    objective_config: (
-        TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
-    ) = None
-    selection_policy: (
-        TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None
-    ) = None
-    secure_aggregation: (
-        SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
-    ) = None
-    min_required_examples: int | None = DEFAULT_TRAINING_PROFILE.min_required_examples
-    gradient_clip_norm: float | None = DEFAULT_TRAINING_PROFILE.gradient_clip_norm
-    deadline_at: datetime | None = None
-    notes: str | None = None
-
 
 @dataclass(slots=True)
 class RoundPublicationRequest:
@@ -100,7 +71,9 @@ class RoundManagerService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
-    def create_training_task(self, request: TrainingTaskRequest) -> TrainingTask:
+    def create_training_task(self, request: RoundOpenRequest) -> TrainingTask:
+        if request.round_id is None:
+            raise ValueError("RoundOpenRequest.round_id must be set.")
         return TrainingTask(
             schema_version="training_task.v1",
             task_id=request.task_id or f"task_{request.round_id}_{uuid4().hex[:8]}",

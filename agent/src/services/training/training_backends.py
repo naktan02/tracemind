@@ -8,12 +8,22 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
 
+from shared.src.config.diagonal_scale_defaults import (
+    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
+    DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS,
+    TRAINING_BACKEND_EXTRA_SCOPE,
+    DiagonalScaleHeuristicTrainingBackendConfig,
+)
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import ClientMetricKeys, TrainingTask
+from shared.src.contracts.training_contracts import (
+    ClientMetricKeys,
+    TrainingObjectiveConfig,
+    TrainingTask,
+)
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
@@ -56,7 +66,26 @@ class SharedAdapterTrainingBackend(Protocol):
 
 
 TrainingBackend = SharedAdapterTrainingBackend
-TrainingBackendFactory = Callable[[], SharedAdapterTrainingBackend]
+TrainingBackendFactory = Callable[
+    [TrainingObjectiveConfig | None],
+    SharedAdapterTrainingBackend,
+]
+
+
+def build_diagonal_scale_heuristic_training_backend_config(
+    objective_config: TrainingObjectiveConfig | None,
+) -> DiagonalScaleHeuristicTrainingBackendConfig:
+    """objective config에서 diagonal-scale heuristic backend 설정을 읽는다."""
+
+    extras = (
+        {}
+        if objective_config is None
+        else objective_config.get_component_extras(
+            TRAINING_BACKEND_EXTRA_SCOPE,
+            legacy_keys=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS,
+        )
+    )
+    return DiagonalScaleHeuristicTrainingBackendConfig.from_mapping(extras)
 
 
 @dataclass(slots=True)
@@ -66,9 +95,20 @@ class DiagonalScaleHeuristicTrainingBackend:
     backend_name: str = "diagonal_scale_heuristic"
     payload_format: str = "diagonal_scale_update"
     adapter_kind: str = "diagonal_scale"
-    delta_scale_multiplier: float = 10.0
-    max_abs_delta: float = 0.05
-    minimum_effective_scale: float = 1e-4
+    config: DiagonalScaleHeuristicTrainingBackendConfig = (
+        DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG
+    )
+
+    @classmethod
+    def from_objective_config(
+        cls,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> "DiagonalScaleHeuristicTrainingBackend":
+        return cls(
+            config=build_diagonal_scale_heuristic_training_backend_config(
+                objective_config
+            )
+        )
 
     def build_update(
         self,
@@ -108,17 +148,17 @@ class DiagonalScaleHeuristicTrainingBackend:
                 weighted_sums[index] += weight * float(value)
 
         effective_scale = max(
-            self.minimum_effective_scale,
+            self.config.minimum_effective_scale,
             training_task.learning_rate
             * max(training_task.local_epochs, 1)
             * max(training_task.max_steps, 1)
-            * self.delta_scale_multiplier,
+            * self.config.delta_scale_multiplier,
         )
         dimension_deltas = [
             max(
-                -self.max_abs_delta,
+                -self.config.max_abs_delta,
                 min(
-                    self.max_abs_delta,
+                    self.config.max_abs_delta,
                     (value / total_weight) * effective_scale,
                 ),
             )
@@ -176,18 +216,20 @@ def register_shared_adapter_training_backend(
 
 def build_shared_adapter_training_backend(
     backend_name: str,
+    *,
+    objective_config: TrainingObjectiveConfig | None = None,
 ) -> SharedAdapterTrainingBackend:
     """backend 이름으로 로컬 학습 backend를 생성한다."""
 
     normalized_name = backend_name.strip().lower()
     factory = _TRAINING_BACKEND_REGISTRY.get(normalized_name)
     if factory is not None:
-        return factory()
+        return factory(objective_config)
     raise ValueError(f"Unsupported local training backend: {backend_name}.")
 
 
 register_shared_adapter_training_backend(
     "diagonal_scale_heuristic",
     "synthetic_vector_adapter",
-    factory=DiagonalScaleHeuristicTrainingBackend,
+    factory=DiagonalScaleHeuristicTrainingBackend.from_objective_config,
 )

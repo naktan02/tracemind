@@ -55,13 +55,10 @@ class RoundRecord:
     publication: RoundPublicationSummary | None = None
 
 
-@dataclass(slots=True)
-class RoundOpenRequest:
-    """새 round open 요청."""
+@dataclass(slots=True, kw_only=True)
+class RoundTaskConfig:
+    """active manifest를 제외한 reusable round task 설정."""
 
-    active_manifest: ModelManifest
-    round_id: str | None = None
-    task_id: str | None = None
     task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
     local_epochs: int = DEFAULT_TRAINING_PROFILE.local_epochs
     batch_size: int = DEFAULT_TRAINING_PROFILE.batch_size
@@ -80,6 +77,42 @@ class RoundOpenRequest:
     gradient_clip_norm: float | None = DEFAULT_TRAINING_PROFILE.gradient_clip_norm
     deadline_at: datetime | None = None
     notes: str | None = None
+
+    def to_round_open_request(
+        self,
+        *,
+        active_manifest: ModelManifest,
+        round_id: str | None = None,
+        task_id: str | None = None,
+    ) -> "RoundOpenRequest":
+        """reusable task 설정을 round open request로 변환한다."""
+
+        return RoundOpenRequest(
+            active_manifest=active_manifest,
+            round_id=round_id,
+            task_id=task_id,
+            task_type=self.task_type,
+            local_epochs=self.local_epochs,
+            batch_size=self.batch_size,
+            learning_rate=self.learning_rate,
+            max_steps=self.max_steps,
+            objective_config=self.objective_config,
+            selection_policy=self.selection_policy,
+            secure_aggregation=self.secure_aggregation,
+            min_required_examples=self.min_required_examples,
+            gradient_clip_norm=self.gradient_clip_norm,
+            deadline_at=self.deadline_at,
+            notes=self.notes,
+        )
+
+
+@dataclass(slots=True, kw_only=True)
+class RoundOpenRequest(RoundTaskConfig):
+    """새 round open 요청."""
+
+    active_manifest: ModelManifest
+    round_id: str | None = None
+    task_id: str | None = None
 
 
 @dataclass(slots=True)

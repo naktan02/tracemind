@@ -3,7 +3,9 @@
 from __future__ import annotations
 
 import json
+from datetime import datetime, timezone
 
+from main_server.src.services.rounds.models import RoundTaskConfig
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
@@ -11,10 +13,14 @@ from scripts.experiments.federated_simulation import (
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
 )
+from scripts.experiments.federated_simulation.task_config import (
+    build_round_open_request,
+)
 from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
 )
+from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
@@ -171,6 +177,40 @@ def test_split_rows_for_federation_supports_configurable_dominant_ratio() -> Non
 
     shard_sizes = [len(shard.rows) for shard in split.client_shards]
     assert shard_sizes == [2, 1]
+
+
+def test_federated_training_task_config_reuses_round_task_config() -> None:
+    training_task_config = _default_training_task_config(
+        confidence_threshold=0.6,
+        margin_threshold=0.02,
+        max_examples=8,
+        gradient_clip_norm=0.5,
+    )
+
+    request = build_round_open_request(
+        active_manifest=ModelManifest(
+            schema_version="model_manifest.v1",
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
+            artifact_kind="shared_adapter_state",
+            artifact_ref="/tmp/rev_000.json",
+            prototype_version="proto_000",
+            training_scope="adapter_only",
+            training_enabled=True,
+            compatible_task_types=("pseudo_label_self_training",),
+        ),
+        round_id="round_0001",
+        training_task_config=training_task_config,
+    )
+
+    assert isinstance(training_task_config, RoundTaskConfig)
+    assert request.local_epochs == training_task_config.local_epochs
+    assert request.batch_size == training_task_config.batch_size
+    assert request.learning_rate == training_task_config.learning_rate
+    assert request.max_steps == training_task_config.max_steps
+    assert request.objective_config is training_task_config.objective_config
+    assert request.selection_policy is training_task_config.selection_policy
 
 
 def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:

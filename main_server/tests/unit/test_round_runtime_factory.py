@@ -11,6 +11,7 @@ import pytest
 from main_server.src.api.main import create_app
 from main_server.src.services.rounds import (
     ROUND_ADAPTER_FAMILY_ENV,
+    ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ServerRoundRuntimeConfig,
     SharedAdapterAggregationBackend,
@@ -91,7 +92,11 @@ class _TestRoundFamily:
         raise NotImplementedError
 
 
-def _build_test_round_family(aggregation_backend_name: str) -> SharedAdapterRoundFamily:
+def _build_test_round_family(
+    aggregation_backend_name: str,
+    aggregation_backend_overrides,
+) -> SharedAdapterRoundFamily:
+    del aggregation_backend_overrides
     return _TestRoundFamily(
         aggregation_backend=build_shared_adapter_aggregation_backend(
             adapter_kind=TEST_ADAPTER_KIND,
@@ -103,12 +108,12 @@ def _build_test_round_family(aggregation_backend_name: str) -> SharedAdapterRoun
 register_shared_adapter_aggregation_backend(
     TEST_ADAPTER_KIND,
     TEST_BACKEND_NAME,
-    factory=_TestAggregationBackend,
+    factory=lambda _overrides: _TestAggregationBackend(),
 )
 register_shared_adapter_aggregation_backend(
     TEST_ADAPTER_KIND,
     TEST_MISMATCH_BACKEND_NAME,
-    factory=_MismatchedAggregationBackend,
+    factory=lambda _overrides: _MismatchedAggregationBackend(),
 )
 register_shared_adapter_round_family(
     TEST_FAMILY_NAME,
@@ -172,11 +177,13 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
         environ={
             ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
             ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
+            ROUND_AGGREGATION_BACKEND_CONFIG_ENV: '{"min_scale": 0.8}',
         }
     )
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
+    assert config.aggregation_backend_overrides == {"min_scale": 0.8}
 
 
 def test_main_server_app_uses_environment_runtime_config(
@@ -184,6 +191,7 @@ def test_main_server_app_uses_environment_runtime_config(
 ) -> None:
     monkeypatch.setenv(ROUND_ADAPTER_FAMILY_ENV, TEST_FAMILY_NAME)
     monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_ENV, TEST_BACKEND_NAME)
+    monkeypatch.setenv(ROUND_AGGREGATION_BACKEND_CONFIG_ENV, '{"max_scale": 1.1}')
 
     app = create_app()
     config = app.state.round_runtime_config
@@ -191,4 +199,5 @@ def test_main_server_app_uses_environment_runtime_config(
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
+    assert config.aggregation_backend_overrides == {"max_scale": 1.1}
     assert isinstance(service.round_manager_service.adapter_family, _TestRoundFamily)

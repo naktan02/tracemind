@@ -200,7 +200,9 @@ class _TestShiftRoundFamily:
 
 def _build_test_shift_round_family(
     aggregation_backend_name: str,
+    aggregation_backend_overrides,
 ) -> SharedAdapterRoundFamily:
+    del aggregation_backend_overrides
     return _TestShiftRoundFamily(
         aggregation_backend=build_shared_adapter_aggregation_backend(
             adapter_kind=TEST_SHIFT_ADAPTER_KIND,
@@ -217,7 +219,7 @@ register_shared_adapter_payload_family(
 register_shared_adapter_aggregation_backend(
     TEST_SHIFT_ADAPTER_KIND,
     TEST_SHIFT_BACKEND_NAME,
-    factory=_TestShiftAggregationBackend,
+    factory=lambda _overrides: _TestShiftAggregationBackend(),
 )
 register_shared_adapter_round_family(
     TEST_SHIFT_FAMILY_NAME,

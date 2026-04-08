@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import Protocol
 
@@ -10,6 +10,9 @@ from main_server.src.services.rounds.aggregation_service import (
     DiagonalScaleAggregationService,
     SharedAdapterAggregationBackend,
     build_shared_adapter_aggregation_backend,
+)
+from main_server.src.services.rounds.diagonal_scale_defaults import (
+    AggregationConfigScalar,
 )
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
@@ -50,7 +53,10 @@ class SharedAdapterRoundFamily(Protocol):
         """domain state를 contract payload로 변환한다."""
 
 
-RoundFamilyFactory = Callable[[str], SharedAdapterRoundFamily]
+RoundFamilyFactory = Callable[
+    [str, Mapping[str, AggregationConfigScalar] | None],
+    SharedAdapterRoundFamily,
+]
 
 
 @dataclass(slots=True)
@@ -133,23 +139,26 @@ def build_shared_adapter_round_family(
     family_name: str,
     *,
     aggregation_backend_name: str,
+    aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] | None = None,
 ) -> SharedAdapterRoundFamily:
     """adapter family와 aggregation backend 이름으로 서버 조합 객체를 만든다."""
 
     normalized_family_name = family_name.strip().lower()
     factory = _ROUND_FAMILY_REGISTRY.get(normalized_family_name)
     if factory is not None:
-        return factory(aggregation_backend_name)
+        return factory(aggregation_backend_name, aggregation_backend_overrides)
     raise ValueError(f"Unsupported shared adapter family: {family_name}.")
 
 
 def _build_diagonal_scale_round_family(
     aggregation_backend_name: str,
+    aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] | None,
 ) -> SharedAdapterRoundFamily:
     return DiagonalScaleRoundFamily(
         aggregation_backend=build_shared_adapter_aggregation_backend(
             adapter_kind="diagonal_scale",
             backend_name=aggregation_backend_name,
+            overrides=aggregation_backend_overrides,
         )
     )
 

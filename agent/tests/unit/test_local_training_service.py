@@ -6,8 +6,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
+)
+from agent.src.services.federation.training_example_service import (
+    register_training_example_backend,
 )
 from agent.src.services.inference.scoring_backends import register_scoring_backend
 from agent.src.services.training.local_training_service import (
@@ -55,6 +60,7 @@ def _build_task(
     privacy_guard_name: str | None = "diagonal_scale_clip_only",
     scorer_backend_name: str | None = None,
     loss: str = "diagonal_scale_heuristic",
+    extras: dict[str, str | int | float | bool] | None = None,
 ) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
@@ -75,6 +81,7 @@ def _build_task(
             scorer_backend_name=scorer_backend_name,
             acceptance_policy_name=acceptance_policy_name,
             privacy_guard_name=privacy_guard_name,
+            extras={} if extras is None else extras,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=1),
         min_required_examples=min_required_examples,
@@ -161,6 +168,69 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert candidates["q4"].metadata["selection_stage"] == "threshold_rejected"
     assert candidates["q2"].metadata["threshold_accepted"] is True
     assert candidates["q4"].metadata["threshold_accepted"] is False
+
+
+def test_local_training_service_applies_training_backend_extra_overrides(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(
+                privacy_guard_name="noop",
+                gradient_clip_norm=None,
+                extras={
+                    "training_backend.delta_scale_multiplier": 0.1,
+                    "training_backend.max_abs_delta": 0.2,
+                    "training_backend.minimum_effective_scale": 0.0,
+                },
+            ),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_payload is not None
+    assert result.update_payload.dimension_deltas == pytest.approx([0.01, 0.0])
+
+
+def test_local_training_service_rejects_unknown_training_backend_extra_key(
+    tmp_path: Path,
+) -> None:
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    with pytest.raises(
+        ValueError,
+        match="Unsupported diagonal-scale heuristic training backend config key",
+    ):
+        service.run(
+            LocalTrainingRequest(
+                training_examples=(
+                    _make_example(
+                        query_id="q1",
+                        scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                        embedding=[1.0, 0.0],
+                    ),
+                ),
+                training_task=_build_task(
+                    privacy_guard_name="noop",
+                    gradient_clip_norm=None,
+                    extras={
+                        "training_backend.max_abs_dleta": 0.2,
+                    },
+                ),
+                model_manifest=_build_manifest(),
+            )
+        )
 
 
 def test_local_training_service_skips_update_when_examples_are_insufficient(
@@ -345,7 +415,7 @@ def test_local_training_service_can_use_registered_non_diagonal_backend(
     register_shared_adapter_update_payload_type("test_shift", TestShiftUpdatePayload)
     register_shared_adapter_training_backend(
         "test_shift_backend",
-        factory=TestShiftBackend,
+        factory=lambda _objective_config: TestShiftBackend(),
     )
 
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -424,7 +494,7 @@ def test_local_training_service_rejects_incompatible_privacy_guard(
     )
     register_shared_adapter_training_backend(
         "test_shift_backend_incompatible_guard",
-        factory=TestShiftBackend,
+        factory=lambda _objective_config: TestShiftBackend(),
     )
 
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -504,7 +574,7 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
     )
     register_shared_adapter_training_backend(
         "test_shift_backend_incompatible_scorer",
-        factory=TestShiftBackend,
+        factory=lambda _objective_config: TestShiftBackend(),
     )
     register_scoring_backend(
         "diagonal_only_test_scorer",
@@ -538,3 +608,114 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
         assert "Incompatible scoring backend" in str(error)
     else:
         raise AssertionError("호환되지 않는 scoring backend 조합이 허용되었습니다.")
+
+
+def test_local_training_service_rejects_incompatible_training_example_backend(
+    tmp_path: Path,
+) -> None:
+    class TestShiftUpdatePayload(SharedAdapterUpdatePayload):
+        shift_norm: float
+
+    @dataclass(slots=True)
+    class TestShiftBackend:
+        backend_name: str = "test_shift_backend_incompatible_examples"
+        payload_format: str = "test_shift_update_incompatible_examples"
+        adapter_kind: str = "test_shift"
+
+        def build_update(
+            self,
+            *,
+            training_task: TrainingTask,
+            model_manifest: ModelManifest,
+            accepted_examples,
+            created_at: datetime,
+        ) -> TestShiftUpdatePayload:
+            del training_task, model_manifest, accepted_examples, created_at
+            raise AssertionError("호환성 검증 전에 update 생성이 호출되면 안 됩니다.")
+
+        def to_payload(
+            self,
+            update: TestShiftUpdatePayload,
+        ) -> SharedAdapterUpdatePayload:
+            return update
+
+        def build_client_metrics(
+            self,
+            update,
+        ) -> dict[str, float]:
+            del update
+            return {}
+
+    @dataclass(slots=True)
+    class DiagonalOnlyTrainingExampleBackend:
+        backend_name: str = "diagonal_only_training_examples"
+        supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+
+        def build_examples(self, request) -> tuple:
+            del request
+            return ()
+
+        def build_examples_from_stored_events(self, request) -> tuple:
+            del request
+            return ()
+
+    register_shared_adapter_update_payload_type(
+        "test_shift_incompatible_examples",
+        TestShiftUpdatePayload,
+    )
+    register_shared_adapter_training_backend(
+        "test_shift_backend_incompatible_examples",
+        factory=lambda _objective_config: TestShiftBackend(),
+    )
+    register_training_example_backend(
+        "diagonal_only_training_examples",
+        factory=lambda _objective_config: DiagonalOnlyTrainingExampleBackend(),
+    )
+
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(repository=repository)
+
+    try:
+        service.run(
+            LocalTrainingRequest(
+                training_examples=(
+                    _make_example(
+                        query_id="q1",
+                        scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                        embedding=[1.0, 0.0],
+                    ),
+                ),
+                training_task=TrainingTask(
+                    schema_version="training_task.v1",
+                    task_id="task_001",
+                    round_id="round_0001",
+                    model_id="tracemind-embed",
+                    model_revision="rev_000",
+                    task_type="pseudo_label_self_training",
+                    training_scope="adapter_only",
+                    local_epochs=1,
+                    batch_size=8,
+                    learning_rate=1e-2,
+                    max_steps=10,
+                    objective_config=TrainingObjectiveConfig(
+                        loss="test_shift_backend_incompatible_examples",
+                        confidence_threshold=0.6,
+                        margin_threshold=0.02,
+                        example_generation_backend_name=(
+                            "diagonal_only_training_examples"
+                        ),
+                        privacy_guard_name="noop",
+                    ),
+                    selection_policy=TrainingSelectionPolicy(max_examples=1),
+                    min_required_examples=1,
+                    gradient_clip_norm=0.05,
+                ),
+                model_manifest=_build_manifest(),
+            )
+        )
+    except ValueError as error:
+        assert "Incompatible training example backend" in str(error)
+    else:
+        raise AssertionError(
+            "호환되지 않는 training example backend 조합이 허용되었습니다."
+        )

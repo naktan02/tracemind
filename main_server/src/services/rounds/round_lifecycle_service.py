@@ -21,7 +21,6 @@ from main_server.src.services.rounds.models import (
 from main_server.src.services.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
-    TrainingTaskRequest,
 )
 from main_server.src.services.rounds.update_acceptance_policy import (
     RoundConflictError,
@@ -66,23 +65,7 @@ class RoundLifecycleService:
 
         created_at = self.clock.now()
         training_task = self.round_manager_service.create_training_task(
-            TrainingTaskRequest(
-                active_manifest=request.active_manifest,
-                round_id=round_id,
-                task_id=request.task_id,
-                task_type=request.task_type,
-                local_epochs=request.local_epochs,
-                batch_size=request.batch_size,
-                learning_rate=request.learning_rate,
-                max_steps=request.max_steps,
-                objective_config=request.objective_config,
-                selection_policy=request.selection_policy,
-                secure_aggregation=request.secure_aggregation,
-                min_required_examples=request.min_required_examples,
-                gradient_clip_norm=request.gradient_clip_norm,
-                deadline_at=request.deadline_at,
-                notes=request.notes,
-            )
+            replace(request, round_id=round_id)
         )
         record = RoundRecord(
             round_id=round_id,

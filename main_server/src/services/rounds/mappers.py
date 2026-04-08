@@ -15,6 +15,7 @@ from .models import (
     RoundOpenRequest,
     RoundPublicationSummary,
     RoundRecord,
+    RoundTaskConfig,
     RoundUpdateAcceptance,
 )
 from .payloads import (
@@ -135,10 +136,7 @@ def round_open_request_from_payload(
     payload: RoundOpenRequestPayload,
 ) -> RoundOpenRequest:
     """API payload를 domain open request로 변환한다."""
-    return RoundOpenRequest(
-        active_manifest=model_manifest_from_payload(payload.active_manifest),
-        round_id=payload.round_id,
-        task_id=payload.task_id,
+    return RoundTaskConfig(
         task_type=payload.task_type,
         local_epochs=payload.local_epochs,
         batch_size=payload.batch_size,
@@ -163,6 +161,10 @@ def round_open_request_from_payload(
         gradient_clip_norm=payload.gradient_clip_norm,
         deadline_at=payload.deadline_at,
         notes=payload.notes,
+    ).to_round_open_request(
+        active_manifest=model_manifest_from_payload(payload.active_manifest),
+        round_id=payload.round_id,
+        task_id=payload.task_id,
     )
 
 

@@ -24,6 +24,7 @@ from .runtime_compatibility import (
 )
 from .runtime_config import (
     ROUND_ADAPTER_FAMILY_ENV,
+    ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
@@ -75,6 +76,7 @@ __all__ = [
     "RoundNetworkPolicy",
     "ROUND_ADAPTER_FAMILY_ENV",
     "ROUND_AGGREGATION_BACKEND_ENV",
+    "ROUND_AGGREGATION_BACKEND_CONFIG_ENV",
     "ServerRoundRuntimeConfig",
     "SharedAdapterRoundFamily",
     "SharedAdapterAggregationBackend",

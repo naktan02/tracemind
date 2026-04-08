@@ -29,6 +29,7 @@ class LocalTrainingRuntimeCompatibility:
 
     adapter_kind: str
     training_backend_name: str
+    example_generation_backend_name: str
     scorer_backend_name: str
     acceptance_policy_name: str
     privacy_guard_name: str
@@ -50,7 +51,18 @@ def validate_local_training_runtime(
 
     objective = training_task.objective_config
     resolved_training_backend = training_backend or (
-        build_shared_adapter_training_backend(objective.training_backend_name)
+        build_shared_adapter_training_backend(
+            objective.training_backend_name,
+            objective_config=objective,
+        )
+    )
+    from agent.src.services.federation.training_example_service import (
+        resolve_training_example_backend,
+    )
+
+    training_example_backend = resolve_training_example_backend(
+        objective_config=objective,
+        training_backend=resolved_training_backend,
     )
     scorer_backend_name = (
         objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
@@ -93,6 +105,7 @@ def validate_local_training_runtime(
     return LocalTrainingRuntimeCompatibility(
         adapter_kind=resolved_training_backend.adapter_kind,
         training_backend_name=resolved_training_backend.backend_name,
+        example_generation_backend_name=training_example_backend.backend_name,
         scorer_backend_name=scorer_backend.backend_name,
         acceptance_policy_name=resolved_acceptance_policy.policy_name,
         privacy_guard_name=resolved_privacy_guard.guard_name,

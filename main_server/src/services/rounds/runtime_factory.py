@@ -48,6 +48,7 @@ def build_round_manager_service_from_config(
     adapter_family = build_shared_adapter_round_family(
         config.adapter_family_name,
         aggregation_backend_name=config.aggregation_backend_name,
+        aggregation_backend_overrides=config.aggregation_backend_overrides,
     )
     return RoundManagerService(
         adapter_family=adapter_family,

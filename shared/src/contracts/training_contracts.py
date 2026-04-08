@@ -15,7 +15,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Mapping
+from collections.abc import Collection, Mapping
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
@@ -225,6 +225,29 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["privacy_guard_name"] = self.privacy_guard_name
         result.update(self.extras)
         return result
+
+    def get_component_extras(
+        self,
+        component_scope: str,
+        *,
+        legacy_keys: Collection[str] = (),
+    ) -> dict[str, TrainingConfigScalar]:
+        """컴포넌트 scope별 extra 파라미터를 추출한다."""
+
+        normalized_scope = component_scope.strip()
+        if not normalized_scope:
+            raise ValueError("component_scope must not be empty.")
+        prefix = f"{normalized_scope}."
+        scoped = {
+            key[len(prefix) :]: value
+            for key, value in self.extras.items()
+            if key.startswith(prefix)
+        }
+        if scoped:
+            return scoped
+        return {
+            key: value for key, value in self.extras.items() if key in legacy_keys
+        }
 
     @property
     def loss(self) -> str:

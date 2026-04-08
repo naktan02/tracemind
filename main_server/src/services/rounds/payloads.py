@@ -61,14 +61,11 @@ class ActiveRoundPointerPayload(BaseModel):
     activated_at: datetime
 
 
-class RoundOpenRequestPayload(BaseModel):
-    """round open API payload."""
+class RoundTaskConfigPayload(BaseModel):
+    """round task template API payload."""
 
     model_config = ConfigDict(extra="forbid")
 
-    active_manifest: ModelManifestPayload
-    round_id: str | None = None
-    task_id: str | None = None
     task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
     local_epochs: int = Field(default=DEFAULT_TRAINING_PROFILE.local_epochs, ge=1)
     batch_size: int = Field(default=DEFAULT_TRAINING_PROFILE.batch_size, ge=1)
@@ -90,6 +87,16 @@ class RoundOpenRequestPayload(BaseModel):
     )
     deadline_at: datetime | None = None
     notes: str | None = None
+
+
+class RoundOpenRequestPayload(RoundTaskConfigPayload):
+    """round open API payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    active_manifest: ModelManifestPayload
+    round_id: str | None = None
+    task_id: str | None = None
 
 
 class RoundFinalizeRequestPayload(BaseModel):

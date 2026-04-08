@@ -5,11 +5,16 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol, Sequence
 
+from main_server.src.services.rounds.diagonal_scale_defaults import (
+    DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG,
+    AggregationConfigScalar,
+    DiagonalScaleFedAvgAggregationConfig,
+)
 from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
     VectorAdapterState,
@@ -19,13 +24,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-
-@dataclass(slots=True)
-class AggregationConfig:
-    """전역 adapter state 집계 시 적용할 안전 범위."""
-
-    min_scale: float = 0.75
-    max_scale: float = 1.25
+AggregationConfig = DiagonalScaleFedAvgAggregationConfig
 
 
 @dataclass(slots=True)
@@ -53,7 +52,10 @@ class SharedAdapterAggregationBackend(Protocol):
         """같은 adapter family의 update들을 새 전역 상태로 합친다."""
 
 
-AggregationBackendFactory = Callable[[], SharedAdapterAggregationBackend]
+AggregationBackendFactory = Callable[
+    [Mapping[str, AggregationConfigScalar] | None],
+    SharedAdapterAggregationBackend,
+]
 
 
 @dataclass(slots=True)
@@ -61,7 +63,16 @@ class DiagonalScaleAggregationService:
     """Diagonal scale adapter update를 전역 상태로 집계한다."""
 
     adapter_kind: str = "diagonal_scale"
-    config: AggregationConfig = field(default_factory=AggregationConfig)
+    config: AggregationConfig = field(
+        default_factory=lambda: DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG
+    )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, AggregationConfigScalar] | None,
+    ) -> "DiagonalScaleAggregationService":
+        return cls(config=AggregationConfig.from_mapping(source))
 
     def aggregate(
         self,
@@ -185,13 +196,14 @@ def build_shared_adapter_aggregation_backend(
     *,
     adapter_kind: str,
     backend_name: str,
+    overrides: Mapping[str, AggregationConfigScalar] | None = None,
 ) -> SharedAdapterAggregationBackend:
     """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
 
     normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
     factory = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
     if factory is not None:
-        return factory()
+        return factory(overrides)
     raise ValueError(
         "Unsupported aggregation backend for adapter family: "
         f"adapter_kind={adapter_kind}, backend_name={backend_name}"
@@ -202,5 +214,5 @@ register_shared_adapter_aggregation_backend(
     "diagonal_scale",
     "fedavg",
     "diagonal_scale_fedavg",
-    factory=DiagonalScaleAggregationService,
+    factory=DiagonalScaleAggregationService.from_mapping,
 )

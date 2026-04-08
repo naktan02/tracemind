@@ -1,5 +1,8 @@
 from __future__ import annotations
 
+from shared.src.config.diagonal_scale_defaults import (
+    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
+)
 from shared.src.config.training_default_values import (
     DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
 )
@@ -35,6 +38,17 @@ def test_default_training_objective_builder_uses_shared_profile() -> None:
         config.acceptance_policy_name
         == DEFAULT_TRAINING_PROFILE.acceptance_policy_name
     )
+    assert config.extras == {
+        "training_backend.delta_scale_multiplier": (
+            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.delta_scale_multiplier
+        ),
+        "training_backend.max_abs_delta": (
+            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.max_abs_delta
+        ),
+        "training_backend.minimum_effective_scale": (
+            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.minimum_effective_scale
+        ),
+    }
 
 
 def test_default_training_objective_builder_accepts_overrides() -> None:
@@ -42,11 +56,13 @@ def test_default_training_objective_builder_accepts_overrides() -> None:
         overrides={
             "confidence_threshold": 0.75,
             "score_top_k": 3,
+            "training_backend.max_abs_delta": 0.02,
         }
     )
 
     assert config.confidence_threshold == 0.75
     assert config.score_top_k == 3
+    assert config.extras["training_backend.max_abs_delta"] == 0.02
 
 
 def test_default_training_selection_policy_builder_uses_shared_profile() -> None:
