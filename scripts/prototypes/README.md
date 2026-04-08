@@ -1,0 +1,60 @@
+# Prototype Scripts
+
+이 디렉터리는 prototype pack 생성, 평가, build-state 갱신 같은
+prototype artifact 작업 entrypoint를 모은다.
+
+## 먼저 읽을 파일
+
+1. `seed_prototypes.py`
+   - dataset row로부터 최초 prototype pack/build state를 생성
+2. `evaluate_prototype_pack.py`
+   - 이미 만든 prototype pack을 validation/test set으로 평가
+3. `seeding.py`
+   - embedding adapter 생성과 rebuild 호출을 실제로 수행
+
+## 바로 조절 가능한 축
+
+- `embedding`
+- `embedding.model_id`
+- `embedding.revision`
+- `runtime.device`
+- `prototype_builder`
+- `translation_model_id`
+- `translation_model_revision`
+- `translation_direction`
+
+예시:
+
+```bash
+python -m scripts.prototypes.seed_prototypes \
+  embedding=hash_debug \
+  prototype_builder=kmeans \
+  prototype_builder.candidate_ks=[2,3] \
+  translation_model_id=facebook/nllb-200-distilled-600M \
+  translation_model_revision=main \
+  translation_direction=kor_Hang->eng_Latn
+```
+
+## 중요한 구분
+
+- `embedding`은 실제 runtime knob다.
+  `scripts/conf/embedding/*.yaml`에서 backend/model을 고르고,
+  `EmbeddingAdapterFactory`가 실제 adapter를 만든다.
+- `translation_model_id`, `translation_model_revision`, `translation_direction`은
+  현재 prototype pack/build state에 남는 provenance metadata다.
+  이 값들이 곧바로 translation adapter를 instantiate해서
+  원문을 번역한 뒤 임베딩한다는 뜻은 아니다.
+- 실제 번역 모델 교체가 runtime knob로 열려 있는 경로는 현재
+  `agent` inference pipeline 쪽이다.
+
+## newcomer 메모
+
+- embedding backend를 더 추가하고 싶으면
+  [agent/src/infrastructure/model_adapters/embedding/factory.py](/home/jmgjmg102/tracemind_server/agent/src/infrastructure/model_adapters/embedding/factory.py)를
+  먼저 본다.
+- prototype pack의 translation 관련 필드 의미는
+  [docs/contracts/prototype_pack_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/prototype_pack_v1.md)를
+  같이 보는 편이 빠르다.
+- 현재 전략 축 전체 상태는
+  [docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)에
+  요약돼 있다.

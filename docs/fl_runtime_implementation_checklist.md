@@ -97,18 +97,17 @@ server runtime을 끝까지 닫을 수 없다.
   - 옵션 A: server-owned canonical bootstrap corpus
   - 옵션 B: server-owned canonical base-embedding cache
   - 권장: v1은 canonical bootstrap corpus부터 시작
-- [ ] v1 round participation 모델을 확정한다.
-  - polling 기반 agent self-check
-  - 또는 server push 없이 수동/주기적 participation
-  - 권장: polling 기반 단순 모델
+- [x] v1 round participation 모델을 확정한다.
+  - 현재 구현: polling 기반 agent self-check
+  - `RoundClient.fetch_current_round()` / `fetch_current_task()`로 현재 active round를 조회
+  - server push는 v1 범위 밖
 - [x] update upload idempotency 정책을 확정한다.
   - 같은 `update_id` 재전송 허용 여부
   - 같은 `task_id`에 agent당 1회만 허용할지 여부
-- [ ] round close 조건을 확정한다.
-  - deadline 기반
-  - 최소 update 수 기반
-  - manual finalize 기반
-  - 권장: deadline + manual finalize
+- [x] round close 조건을 확정한다.
+  - 현재 구현: manual finalize 기반
+  - `deadline_at`은 task 메타데이터로 전달되지만 서버가 자동 close를 트리거하지는 않음
+  - deadline/min update 기반 자동 finalize는 future extension으로 둠
 
 ### 문서/코드 반영 위치
 
@@ -119,7 +118,7 @@ server runtime을 끝까지 닫을 수 없다.
 ### 완료 기준
 
 - [x] 서버가 prototype rebuild에 사용할 canonical input이 무엇인지 한 문장으로 설명 가능하다.
-- [ ] round 하나가 어떤 조건에서 열리고 닫히는지 ambiguity가 없다.
+- [x] round 하나가 어떤 조건에서 열리고 닫히는지 ambiguity가 없다.
 - [x] 같은 update 재전송 시 서버 행동이 결정돼 있다.
 
 ## Phase 1. Main Server FL Runtime 닫기

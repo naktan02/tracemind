@@ -143,11 +143,15 @@ family는 서로 다른 선택이다.
   "gradient_clip_norm": 1.0,
   "min_required_examples": 20,
   "secure_aggregation": {
-    "required": false,
-    "aggregation_backend_name": "plaintext_fedavg"
+    "required": false
   }
 }
 ```
+
+`secure_aggregation`은 secure aggregation 계층 요구사항을 나타내는 task 축이다.
+server round runtime이 내부적으로 어떤 aggregation backend를 쓰는지와는 별도다.
+예를 들어 현재 server-owned round runtime 기본 aggregation backend는 `fedavg`지만,
+이 값은 `TrainingTaskPayload.secure_aggregation` 필드와 같은 의미가 아니다.
 
 ---
 

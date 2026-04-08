@@ -7,6 +7,15 @@
 
 새 알고리즘을 추가하거나 기존 것을 교체할 때 이 문서를 출발점으로 삼는다.
 
+실제 구현 순서와 테스트 순서를 따라가려면
+[strategy_addition_playbook.md](/home/jmgjmg102/tracemind_server/docs/contracts/strategy_addition_playbook.md)를
+함께 본다.
+
+지금 어떤 축이 실제 runtime에서 선택 가능하고,
+어떤 축이 typed metadata만 있는지는
+[docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)에서
+먼저 확인한다.
+
 ---
 
 ## 교체 가능한 전략 지점 전체 맵
@@ -302,10 +311,10 @@ class RoundUpdateAcceptancePolicy(Protocol):
 |---|---|
 | `shared/src/contracts/adapter_contracts.py` | 새 State/Update payload 클래스 추가 |
 | `shared/src/domain/entities/training/` | 새 도메인 객체 추가 |
-| `agent/training_backends.py` | 새 family용 backend 추가 |
-| `main_server/aggregation_service.py` | 새 family용 aggregation backend 추가 |
-| `main_server/adapter_family_service.py` | 라우팅 등록 |
-| `main_server/mappers.py` | 새 payload 변환 추가 |
+| `agent/src/services/training/training_backends.py` | 새 family용 backend 추가 |
+| `main_server/src/services/rounds/aggregation_service.py` | 새 family용 aggregation backend 추가 |
+| `main_server/src/services/rounds/adapter_family_service.py` | 라우팅 등록 |
+| `main_server/src/services/rounds/mappers.py` | 새 payload 변환 추가 |
 
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).
 
