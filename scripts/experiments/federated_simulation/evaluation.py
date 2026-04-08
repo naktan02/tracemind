@@ -11,11 +11,11 @@ from agent.src.services.federation.training_example_service import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.local_training_service import EmbeddedTrainingExample
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.contracts.training_contracts import (
-    TrainingObjectiveConfig,
+from shared.src.config.training_defaults import (
     build_default_training_objective_config,
 )
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 from .io_utils import parse_created_at

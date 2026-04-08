@@ -8,10 +8,11 @@ from typing import Protocol
 
 from agent.src.services.inference.scoring_service import ScoringService
 from scripts.experiments.prototype_strategy.models import PrototypeIndex
-from shared.src.contracts.training_contracts import (
-    TrainingConfigScalar,
+from shared.src.config.training_defaults import (
+    DEFAULT_TRAINING_PROFILE,
     build_default_training_objective_config,
 )
+from shared.src.contracts.training_contracts import TrainingConfigScalar
 
 
 class PrototypeIndexScorer(Protocol):
@@ -29,8 +30,8 @@ class PrototypeIndexScorer(Protocol):
 class ConfiguredPrototypeIndexScorer:
     """shared scoring service를 재사용하는 prototype index scorer."""
 
-    scorer_backend_name: str = "prototype_similarity"
-    score_policy_name: str = "max_cosine"
+    scorer_backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name
     score_top_k: int | None = None
     similarity_name: str = "cosine"
     scoring_service: ScoringService = field(init=False, repr=False)
@@ -67,8 +68,8 @@ class MaxCosinePrototypeIndexScorer:
 
     def __post_init__(self) -> None:
         self.delegate = ConfiguredPrototypeIndexScorer(
-            scorer_backend_name="prototype_similarity",
-            score_policy_name="max_cosine",
+            scorer_backend_name=DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+            score_policy_name=DEFAULT_TRAINING_PROFILE.score_policy_name,
             score_top_k=None,
             similarity_name=self.similarity_name,
         )
@@ -83,8 +84,8 @@ class MaxCosinePrototypeIndexScorer:
 
 def build_prototype_index_scorer(
     *,
-    scorer_backend_name: str = "prototype_similarity",
-    score_policy_name: str = "max_cosine",
+    scorer_backend_name: str = DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+    score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name,
     score_top_k: int | None = None,
     similarity_name: str = "cosine",
 ) -> PrototypeIndexScorer:

@@ -9,6 +9,10 @@ from agent.src.services.training.acceptance_policies import (
     Top1MarginThresholdAcceptancePolicy,
     build_pseudo_label_acceptance_policy,
 )
+from shared.src.config.training_defaults import (
+    DEFAULT_TRAINING_PROFILE,
+    TrainingDefaultsProfile,
+)
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,
     TrainingTask,
@@ -17,15 +21,6 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
-
-
-@dataclass(slots=True)
-class PseudoLabelSelectionConfig:
-    """pseudo-label 선택 기본 설정."""
-
-    confidence_threshold: float = 0.6
-    margin_threshold: float = 0.02
-    acceptance_policy_name: str = "top1_margin_threshold"
 
 
 @dataclass(slots=True)
@@ -55,12 +50,31 @@ class PseudoLabelSelectionResult:
 class PseudoLabelSelectionService:
     """score threshold와 margin 기준으로 pseudo-label을 선별한다."""
 
-    config: PseudoLabelSelectionConfig = field(
-        default_factory=PseudoLabelSelectionConfig
+    default_profile: TrainingDefaultsProfile = field(
+        default=DEFAULT_TRAINING_PROFILE
     )
     default_policy: PseudoLabelAcceptancePolicy = field(
         default_factory=Top1MarginThresholdAcceptancePolicy
     )
+
+    def __post_init__(self) -> None:
+        if self.default_acceptance_policy_name != self.default_policy.policy_name:
+            raise ValueError(
+                "Default pseudo-label acceptance policy does not match the "
+                "configured default objective profile."
+            )
+
+    @property
+    def default_confidence_threshold(self) -> float:
+        return self.default_profile.confidence_threshold
+
+    @property
+    def default_margin_threshold(self) -> float:
+        return self.default_profile.margin_threshold
+
+    @property
+    def default_acceptance_policy_name(self) -> str:
+        return self.default_profile.acceptance_policy_name
 
     def select(
         self,
@@ -71,12 +85,12 @@ class PseudoLabelSelectionService:
         confidence_threshold = (
             training_task.objective_config.confidence_threshold
             if training_task.objective_config.confidence_threshold is not None
-            else self.config.confidence_threshold
+            else self.default_confidence_threshold
         )
         margin_threshold = (
             training_task.objective_config.margin_threshold
             if training_task.objective_config.margin_threshold is not None
-            else self.config.margin_threshold
+            else self.default_margin_threshold
         )
         acceptance_policy = self._resolve_policy(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
@@ -200,7 +214,7 @@ class PseudoLabelSelectionService:
     ) -> PseudoLabelAcceptancePolicy:
         policy_name = (
             training_task.objective_config.acceptance_policy_name
-            or self.config.acceptance_policy_name
+            or self.default_acceptance_policy_name
         )
         if policy_name == self.default_policy.policy_name:
             return self.default_policy

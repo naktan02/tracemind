@@ -600,54 +600,6 @@ class DecisionFeedbackSignalPayload(BaseModel):
     )
 
 
-DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING: dict[str, TrainingConfigScalar] = {
-    "training_backend_name": "diagonal_scale_heuristic",
-    "confidence_threshold": 0.6,
-    "margin_threshold": 0.02,
-    "example_generation_backend_name": "prototype_rescore",
-    "scorer_backend_name": "prototype_similarity",
-    "score_policy_name": "max_cosine",
-    "acceptance_policy_name": "top1_margin_threshold",
-    "privacy_guard_name": "diagonal_scale_clip_only",
-}
-
-DEFAULT_TRAINING_SELECTION_POLICY_MAPPING: dict[str, TrainingConfigScalar] = {
-    "max_examples": 128
-}
-
-
-def build_default_training_objective_config(
-    *,
-    overrides: Mapping[str, TrainingConfigScalar] | None = None,
-) -> TrainingObjectiveConfig:
-    """공용 기본 local training objective config를 조립한다."""
-    source = dict(DEFAULT_TRAINING_OBJECTIVE_CONFIG_MAPPING)
-    if overrides is not None:
-        source.update(dict(overrides))
-    return TrainingObjectiveConfig.from_mapping(source)
-
-
-def build_default_training_selection_policy(
-    *,
-    overrides: Mapping[str, TrainingConfigScalar] | None = None,
-) -> TrainingSelectionPolicy:
-    """공용 기본 local training selection policy를 조립한다."""
-    source = dict(DEFAULT_TRAINING_SELECTION_POLICY_MAPPING)
-    if overrides is not None:
-        source.update(dict(overrides))
-    return TrainingSelectionPolicy.from_mapping(source)
-
-
-def build_default_secure_aggregation_config(
-    *,
-    overrides: Mapping[str, TrainingConfigScalar] | None = None,
-) -> SecureAggregationConfigPayload:
-    source: dict[str, TrainingConfigScalar] = {"required": False}
-    if overrides is not None:
-        source.update(dict(overrides))
-    return SecureAggregationConfigPayload.from_mapping(source)
-
-
 def _dump_payload(path: Path, payload: BaseModel) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(
@@ -836,7 +788,6 @@ __all__ = [
     "TrainingUpdateEnvelopePayload",
     "TrainingUpdateEnvelopeSchemaVersion",
     "UpdatePayloadFormat",
-    "build_default_secure_aggregation_config",
     "dump_decision_feedback_signal_payload",
     "dump_training_task_payload",
     "dump_training_update_envelope_payload",

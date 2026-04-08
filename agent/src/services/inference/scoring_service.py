@@ -10,6 +10,7 @@ from agent.src.services.inference.scoring_backends import (
     ScoringBackend,
     build_scoring_backend,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
@@ -29,7 +30,8 @@ class ScoringService:
         """학습 objective config로부터 scoring service를 조립한다."""
 
         backend_name = (
-            objective_config.scorer_backend_name or "prototype_similarity"
+            objective_config.scorer_backend_name
+            or DEFAULT_TRAINING_PROFILE.scorer_backend_name
         )
         backend = build_scoring_backend(
             backend_name,

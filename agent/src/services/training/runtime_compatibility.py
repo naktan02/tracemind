@@ -17,6 +17,7 @@ from agent.src.services.training.training_backends import (
     SharedAdapterTrainingBackend,
     build_shared_adapter_training_backend,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingTask
 
 ANY_ADAPTER_KIND = "*"
@@ -37,7 +38,9 @@ def validate_local_training_runtime(
     training_task: TrainingTask,
     *,
     similarity_name: str = "cosine",
-    default_acceptance_policy_name: str = "top1_margin_threshold",
+    default_acceptance_policy_name: str = (
+        DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+    ),
     default_privacy_guard_name: str = "noop",
     training_backend: SharedAdapterTrainingBackend | None = None,
     acceptance_policy: PseudoLabelAcceptancePolicy | None = None,
@@ -49,7 +52,9 @@ def validate_local_training_runtime(
     resolved_training_backend = training_backend or (
         build_shared_adapter_training_backend(objective.training_backend_name)
     )
-    scorer_backend_name = objective.scorer_backend_name or "prototype_similarity"
+    scorer_backend_name = (
+        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    )
     scorer_backend = build_scoring_backend(
         scorer_backend_name,
         objective_config=objective,

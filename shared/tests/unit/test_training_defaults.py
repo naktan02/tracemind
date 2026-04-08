@@ -1,0 +1,50 @@
+from __future__ import annotations
+
+from shared.src.config.training_defaults import (
+    DEFAULT_TRAINING_PROFILE,
+    PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE,
+    build_default_secure_aggregation_config,
+    build_default_training_objective_config,
+    build_default_training_selection_policy,
+)
+
+
+def test_default_training_profile_points_to_versioned_bundle() -> None:
+    assert DEFAULT_TRAINING_PROFILE is PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE
+    assert DEFAULT_TRAINING_PROFILE.profile_name == "pseudo_label_self_training.v1"
+
+
+def test_default_training_objective_builder_uses_shared_profile() -> None:
+    config = build_default_training_objective_config()
+
+    assert config.confidence_threshold == DEFAULT_TRAINING_PROFILE.confidence_threshold
+    assert config.margin_threshold == DEFAULT_TRAINING_PROFILE.margin_threshold
+    assert config.scorer_backend_name == DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    assert (
+        config.acceptance_policy_name
+        == DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+    )
+
+
+def test_default_training_objective_builder_accepts_overrides() -> None:
+    config = build_default_training_objective_config(
+        overrides={
+            "confidence_threshold": 0.75,
+            "score_top_k": 3,
+        }
+    )
+
+    assert config.confidence_threshold == 0.75
+    assert config.score_top_k == 3
+
+
+def test_default_training_selection_policy_builder_uses_shared_profile() -> None:
+    policy = build_default_training_selection_policy()
+
+    assert policy.max_examples == DEFAULT_TRAINING_PROFILE.max_examples
+
+
+def test_default_secure_aggregation_builder_starts_disabled() -> None:
+    config = build_default_secure_aggregation_config()
+
+    assert config.required is False

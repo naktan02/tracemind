@@ -113,7 +113,9 @@ class LocalTrainingService:
         )
         validate_local_training_runtime(
             request.training_task,
-            default_acceptance_policy_name=self.selector.config.acceptance_policy_name,
+            default_acceptance_policy_name=(
+                self.selector.default_acceptance_policy_name
+            ),
             default_privacy_guard_name=self.privacy_guard.guard_name,
             training_backend=backend,
             acceptance_policy=default_acceptance_policy,

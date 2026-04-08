@@ -20,7 +20,6 @@ from .privacy_guard_service import (
     build_shared_adapter_privacy_guard,
 )
 from .pseudo_label_service import (
-    PseudoLabelSelectionConfig,
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
@@ -47,7 +46,6 @@ __all__ = [
     "NoOpSharedAdapterPrivacyGuard",
     "PrivacyProtectedUpdate",
     "PseudoLabelAcceptancePolicy",
-    "PseudoLabelSelectionConfig",
     "PseudoLabelSelectionResult",
     "PseudoLabelSelectionService",
     "SharedAdapterPrivacyGuard",

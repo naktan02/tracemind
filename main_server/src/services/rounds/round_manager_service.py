@@ -15,6 +15,11 @@ from main_server.src.services.rounds.adapter_family_service import (
     DiagonalScaleRoundFamily,
     SharedAdapterRoundFamily,
 )
+from shared.src.config.training_defaults import (
+    build_default_secure_aggregation_config,
+    build_default_training_objective_config,
+    build_default_training_selection_policy,
+)
 from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
@@ -25,9 +30,6 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
     TrainingUpdateEnvelope,
-    build_default_secure_aggregation_config,
-    build_default_training_objective_config,
-    build_default_training_selection_policy,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.clock import Clock, SystemUtcClock
