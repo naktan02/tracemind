@@ -15,6 +15,7 @@ from main_server.src.services.rounds.diagonal_scale_defaults import (
     AggregationConfigScalar,
     DiagonalScaleFedAvgAggregationConfig,
 )
+from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
     VectorAdapterState,
@@ -62,7 +63,7 @@ AggregationBackendFactory = Callable[
 class DiagonalScaleAggregationService:
     """Diagonal scale adapter update를 전역 상태로 집계한다."""
 
-    adapter_kind: str = "diagonal_scale"
+    adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind
     config: AggregationConfig = field(
         default_factory=lambda: DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG
     )
@@ -211,7 +212,7 @@ def build_shared_adapter_aggregation_backend(
 
 
 register_shared_adapter_aggregation_backend(
-    "diagonal_scale",
+    DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
     "fedavg",
     "diagonal_scale_fedavg",
     factory=DiagonalScaleAggregationService.from_mapping,

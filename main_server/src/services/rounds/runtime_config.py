@@ -10,6 +10,7 @@ from dataclasses import dataclass, field
 from main_server.src.services.rounds.diagonal_scale_defaults import (
     AggregationConfigScalar,
 )
+from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 
 ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
@@ -20,7 +21,7 @@ ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONF
 class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
-    adapter_family_name: str = "diagonal_scale"
+    adapter_family_name: str = DIAGONAL_SCALE_FAMILY_METADATA.family_name
     aggregation_backend_name: str = "fedavg"
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
         default_factory=dict
@@ -37,7 +38,7 @@ def load_server_round_runtime_config_from_env(
     return ServerRoundRuntimeConfig(
         adapter_family_name=source.get(
             ROUND_ADAPTER_FAMILY_ENV,
-            "diagonal_scale",
+            DIAGONAL_SCALE_FAMILY_METADATA.family_name,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,

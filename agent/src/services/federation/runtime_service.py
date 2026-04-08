@@ -8,9 +8,11 @@ from enum import StrEnum
 
 from agent.src.services.federation.round_client import RoundClient
 from agent.src.services.training.local_training_service import (
-    EmbeddedTrainingExample,
     LocalTrainingResult,
     LocalTrainingService,
+)
+from agent.src.services.training.training_example_models import (
+    EmbeddedTrainingExample,
 )
 from shared.src.contracts.model_contracts import ModelManifest, make_embedding_manifest
 from shared.src.contracts.training_contracts import (

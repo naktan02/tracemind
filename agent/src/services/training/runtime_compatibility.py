@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from agent.src.services.federation.training_example_service import (
+    resolve_training_example_backend,
+)
 from agent.src.services.inference.scoring_backends import build_scoring_backend
 from agent.src.services.training.acceptance_policies import (
     PseudoLabelAcceptancePolicy,
@@ -56,10 +59,6 @@ def validate_local_training_runtime(
             objective_config=objective,
         )
     )
-    from agent.src.services.federation.training_example_service import (
-        resolve_training_example_backend,
-    )
-
     training_example_backend = resolve_training_example_backend(
         objective_config=objective,
         training_backend=resolved_training_backend,

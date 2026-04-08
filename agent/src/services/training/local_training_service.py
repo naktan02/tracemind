@@ -24,8 +24,10 @@ from agent.src.services.training.runtime_compatibility import (
 from agent.src.services.training.training_backends import (
     DiagonalScaleHeuristicTrainingBackend,
     SharedAdapterTrainingBackend,
-    build_diagonal_scale_heuristic_training_backend_config,
     build_shared_adapter_training_backend,
+)
+from agent.src.services.training.training_example_models import (
+    EmbeddedTrainingExample,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -33,24 +35,10 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
     TrainingUpdateEnvelope,
 )
-from shared.src.domain.entities.inference.events import ScoredEvent
-from shared.src.domain.entities.training.pseudo_label_candidate import (
-    PseudoLabelCandidate,
-)
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
-
-
-@dataclass(slots=True)
-class EmbeddedTrainingExample:
-    """학습 후보가 된 로컬 scored event와 임베딩."""
-
-    scored_event: ScoredEvent
-    embedding: list[float]
-    base_embedding: list[float] | None = None
-    candidate: PseudoLabelCandidate | None = None
 
 
 @dataclass(slots=True)
@@ -191,17 +179,10 @@ class LocalTrainingService:
         training_task: TrainingTask,
     ) -> SharedAdapterTrainingBackend:
         backend_name = training_task.objective_config.training_backend_name
-        if backend_name == self.backend.backend_name:
-            if not training_task.objective_config.extras:
-                return self.backend
-            if isinstance(self.backend, DiagonalScaleHeuristicTrainingBackend):
-                expected_config = (
-                    build_diagonal_scale_heuristic_training_backend_config(
-                        training_task.objective_config
-                    )
-                )
-                if self.backend.config == expected_config:
-                    return self.backend
+        if backend_name == self.backend.backend_name and (
+            self.backend.matches_objective_config(training_task.objective_config)
+        ):
+            return self.backend
         return build_shared_adapter_training_backend(
             backend_name,
             objective_config=training_task.objective_config,

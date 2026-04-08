@@ -5,13 +5,13 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
@@ -55,7 +55,7 @@ class ReferencePrototypeRebuildRequest:
     """reference row 기반 prototype rebuild 요청."""
 
     rows: tuple[ReferencePrototypeSourceRow, ...] | list[ReferencePrototypeSourceRow]
-    adapter: Any
+    adapter: EmbeddingAdapter
     adapter_state: SharedAdapterState
     prototype_version: str
     embedding_model_id: str

@@ -25,6 +25,7 @@ from agent.src.services.training.training_backends import (
 )
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
+    VectorAdapterDelta,
     register_shared_adapter_update_payload_type,
 )
 from shared.src.contracts.model_contracts import ModelManifest
@@ -367,6 +368,83 @@ def test_local_training_service_uses_injected_clock_when_created_at_missing(
     assert result.update_envelope.created_at == fixed_time
     assert result.update_payload is not None
     assert result.update_payload.created_at == fixed_time
+
+
+def test_local_training_service_reuses_injected_backend_on_matching_objective(
+    tmp_path: Path,
+) -> None:
+    @dataclass(slots=True)
+    class ReusableTestBackend:
+        backend_name: str = "reusable_test_backend"
+        payload_format: str = "reusable_test_update"
+        adapter_kind: str = "diagonal_scale"
+
+        def build_update(
+            self,
+            *,
+            training_task: TrainingTask,
+            model_manifest: ModelManifest,
+            accepted_examples,
+            created_at: datetime,
+        ) -> VectorAdapterDelta:
+            del training_task
+            return VectorAdapterDelta(
+                schema_version="vector_adapter_delta.v1",
+                model_id=model_manifest.model_id,
+                base_model_revision=model_manifest.model_revision,
+                training_scope=model_manifest.training_scope,
+                dimension_deltas=[0.01, 0.0],
+                example_count=len(accepted_examples),
+                mean_confidence=0.91,
+                mean_margin=0.71,
+                created_at=created_at,
+                adapter_kind=self.adapter_kind,
+            )
+
+        def to_payload(self, update: VectorAdapterDelta) -> SharedAdapterUpdatePayload:
+            return update
+
+        def build_client_metrics(
+            self,
+            update: VectorAdapterDelta,
+        ) -> dict[str, float]:
+            return {"reused_backend": float(update.example_count)}
+
+        def matches_objective_config(
+            self,
+            objective_config: TrainingObjectiveConfig | None,
+        ) -> bool:
+            del objective_config
+            return True
+
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = LocalTrainingService(
+        repository=repository,
+        backend=ReusableTestBackend(),
+    )
+
+    result = service.run(
+        LocalTrainingRequest(
+            training_examples=(
+                _make_example(
+                    query_id="q1",
+                    scores={"anxiety": 0.91, "depression": 0.2, "normal": 0.1},
+                    embedding=[1.0, 0.0],
+                ),
+            ),
+            training_task=_build_task(
+                loss="reusable_test_backend",
+                privacy_guard_name="noop",
+            ),
+            model_manifest=_build_manifest(),
+        )
+    )
+
+    assert result.update_envelope is not None
+    assert result.update_envelope.payload_format == "reusable_test_update"
+    assert result.update_envelope.client_metrics["reused_backend"] == 1.0
+    assert result.update_payload is not None
+    assert result.update_payload.adapter_kind == "diagonal_scale"
 
 
 def test_local_training_service_can_use_registered_non_diagonal_backend(

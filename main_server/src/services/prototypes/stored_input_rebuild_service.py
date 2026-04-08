@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
@@ -12,6 +11,7 @@ from main_server.src.services.prototypes.models import (
     ReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildRequest,
 )
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
@@ -35,17 +35,10 @@ class ReferenceRowPrototypeRebuildServiceProtocol(Protocol):
         """reference row로부터 rebuild를 실행한다."""
 
 
-class TextEmbeddingAdapterProtocol(Protocol):
-    """reference row rebuild에 필요한 최소 임베딩 adapter protocol."""
-
-    def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
-        """텍스트 목록을 임베딩한다."""
-
-
 class EmbeddingAdapterFactoryProtocol(Protocol):
     """EmbeddingAdapterSpec으로 runtime adapter를 생성하는 protocol."""
 
-    def create(self, spec: EmbeddingAdapterSpec) -> TextEmbeddingAdapterProtocol:
+    def create(self, spec: EmbeddingAdapterSpec) -> EmbeddingAdapter:
         """spec으로부터 임베딩 adapter를 생성한다."""
 
 

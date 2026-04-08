@@ -8,7 +8,6 @@ from .acceptance_policies import (
     build_pseudo_label_acceptance_policy,
 )
 from .local_training_service import (
-    EmbeddedTrainingExample,
     LocalTrainingResult,
     LocalTrainingService,
 )
@@ -34,6 +33,7 @@ from .training_backends import (
     TrainingBackend,
     build_shared_adapter_training_backend,
 )
+from .training_example_models import EmbeddedTrainingExample
 
 __all__ = [
     "AcceptanceDecision",

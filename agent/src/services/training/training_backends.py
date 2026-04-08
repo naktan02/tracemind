@@ -8,6 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
 
+from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.config.diagonal_scale_defaults import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
     DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS,
@@ -15,6 +16,7 @@ from shared.src.config.diagonal_scale_defaults import (
     DiagonalScaleHeuristicTrainingBackendConfig,
 )
 from shared.src.contracts.adapter_contracts import (
+    VECTOR_ADAPTER_DELTA_V1,
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
 )
@@ -64,6 +66,12 @@ class SharedAdapterTrainingBackend(Protocol):
     def build_client_metrics(self, update: SharedAdapterUpdate) -> dict[str, float]:
         """Envelope.client_metrics에 기록할 backend별 요약 metric을 만든다."""
 
+    def matches_objective_config(
+        self,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> bool:
+        """현재 인스턴스를 objective config에 재사용할 수 있는지 판단한다."""
+
 
 TrainingBackend = SharedAdapterTrainingBackend
 TrainingBackendFactory = Callable[
@@ -93,8 +101,8 @@ class DiagonalScaleHeuristicTrainingBackend:
     """결정적 통계 기반으로 diagonal scale adapter update를 만든다."""
 
     backend_name: str = "diagonal_scale_heuristic"
-    payload_format: str = "diagonal_scale_update"
-    adapter_kind: str = "diagonal_scale"
+    payload_format: str = DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
+    adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind
     config: DiagonalScaleHeuristicTrainingBackendConfig = (
         DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG
     )
@@ -166,7 +174,7 @@ class DiagonalScaleHeuristicTrainingBackend:
         ]
 
         return VectorAdapterDelta(
-            schema_version="vector_adapter_delta.v1",
+            schema_version=VECTOR_ADAPTER_DELTA_V1,
             model_id=model_manifest.model_id,
             base_model_revision=model_manifest.model_revision,
             training_scope=training_task.training_scope,
@@ -198,6 +206,14 @@ class DiagonalScaleHeuristicTrainingBackend:
             ClientMetricKeys.MEAN_MARGIN: update.mean_margin or 0.0,
             ClientMetricKeys.DELTA_L2_NORM: update.l2_norm(),
         }
+
+    def matches_objective_config(
+        self,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> bool:
+        return self.config == build_diagonal_scale_heuristic_training_backend_config(
+            objective_config
+        )
 
 
 SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend

@@ -5,16 +5,18 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass, field, replace
 from datetime import datetime, timezone
-from typing import Any, Protocol
+from typing import Protocol
 
 from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.local_training_service import EmbeddedTrainingExample
 from agent.src.services.training.training_backends import (
     SharedAdapterTrainingBackend,
     build_shared_adapter_training_backend,
+)
+from agent.src.services.training.training_example_models import (
+    EmbeddedTrainingExample,
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingScope
@@ -28,6 +30,7 @@ from shared.src.domain.entities.training.shared_adapter_state import (
     IdentitySharedAdapterState,
     SharedAdapterState,
 )
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 @dataclass(slots=True)
@@ -45,7 +48,7 @@ class TrainingExampleBuildRequest:
     """학습 예시 생성 요청."""
 
     source_rows: tuple[TrainingExampleSource, ...] | list[TrainingExampleSource]
-    adapter: Any
+    adapter: EmbeddingAdapter
     adapter_state: SharedAdapterState
     prototype_pack: PrototypePackPayload
     model_id: str

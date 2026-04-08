@@ -10,13 +10,16 @@ from agent.src.services.federation.training_example_service import (
     TrainingExampleSource,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.local_training_service import EmbeddedTrainingExample
+from agent.src.services.training.training_example_models import (
+    EmbeddedTrainingExample,
+)
 from shared.src.config.training_defaults import (
     build_default_training_objective_config,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from .io_utils import parse_created_at
 from .models import FederatedValidationConfig, SimulationEvaluation
@@ -25,7 +28,7 @@ from .models import FederatedValidationConfig, SimulationEvaluation
 def build_training_examples(
     *,
     rows: list[dict[str, Any]],
-    adapter: Any,
+    adapter: EmbeddingAdapter,
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,
@@ -61,7 +64,7 @@ def build_training_examples(
 def evaluate_rows(
     *,
     rows: list[dict[str, Any]],
-    adapter: Any,
+    adapter: EmbeddingAdapter,
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,

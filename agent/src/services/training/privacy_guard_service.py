@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
+from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import VectorAdapterDelta
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
@@ -62,7 +63,9 @@ class DiagonalScaleClipOnlyPrivacyGuard:
     """현재 diagonal scale update에 clip만 적용하는 기본 privacy guard."""
 
     guard_name: str = "diagonal_scale_clip_only"
-    supported_adapter_kinds: tuple[str, ...] = ("diagonal_scale",)
+    supported_adapter_kinds: tuple[str, ...] = (
+        DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    )
 
     def protect(
         self,

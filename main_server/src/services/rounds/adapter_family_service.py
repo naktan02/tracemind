@@ -14,6 +14,7 @@ from main_server.src.services.rounds.aggregation_service import (
 from main_server.src.services.rounds.diagonal_scale_defaults import (
     AggregationConfigScalar,
 )
+from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -63,10 +64,9 @@ RoundFamilyFactory = Callable[
 class DiagonalScaleRoundFamily:
     """현재 diagonal scale adapter family의 서버 측 조합 객체."""
 
-    adapter_kind: str = "diagonal_scale"
+    adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind
     accepted_update_formats: tuple[str, ...] = (
-        "diagonal_scale_update",
-        "vector_adapter_delta",
+        DIAGONAL_SCALE_FAMILY_METADATA.accepted_update_payload_formats
     )
     aggregation_backend: SharedAdapterAggregationBackend = field(
         default_factory=DiagonalScaleAggregationService
@@ -156,7 +156,7 @@ def _build_diagonal_scale_round_family(
 ) -> SharedAdapterRoundFamily:
     return DiagonalScaleRoundFamily(
         aggregation_backend=build_shared_adapter_aggregation_backend(
-            adapter_kind="diagonal_scale",
+            adapter_kind=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
             backend_name=aggregation_backend_name,
             overrides=aggregation_backend_overrides,
         )
@@ -164,6 +164,6 @@ def _build_diagonal_scale_round_family(
 
 
 register_shared_adapter_round_family(
-    "diagonal_scale",
+    DIAGONAL_SCALE_FAMILY_METADATA.family_name,
     factory=_build_diagonal_scale_round_family,
 )

@@ -29,6 +29,7 @@ from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     load_prototype_pack_payload,
 )
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
@@ -38,10 +39,10 @@ from .models import FederatedPrototypeRebuildConfig
 class SimulationEmbeddingAdapterFactory:
     """Simulation 중 실제 adapter 인스턴스를 재사용하는 test/runtime seam."""
 
-    adapter: Any = None
+    adapter: EmbeddingAdapter | None = None
 
     @classmethod
-    def create(cls, spec: EmbeddingAdapterSpec) -> Any:
+    def create(cls, spec: EmbeddingAdapterSpec) -> EmbeddingAdapter:
         del spec
         if cls.adapter is None:
             raise ValueError("Simulation embedding adapter is not configured.")

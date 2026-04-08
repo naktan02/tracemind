@@ -6,9 +6,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from agent.src.services.training.local_training_service import EmbeddedTrainingExample
 from agent.src.services.training.pseudo_label_service import (
     PseudoLabelSelectionResult,
+)
+from agent.src.services.training.training_example_models import (
+    EmbeddedTrainingExample,
 )
 from scripts.experiments.federated_simulation.models import (
     FederatedDiagnosticsConfig,
@@ -34,7 +36,12 @@ def save_selection_diagnostics(
     diagnostics_config: FederatedDiagnosticsConfig,
 ) -> tuple[Path, Path]:
     """row별 selection 원인과 요약을 저장한다."""
-    diagnostics_dir = output_dir / "agents" / client_id / diagnostics_config.dump_dir_name
+    diagnostics_dir = (
+        output_dir
+        / "agents"
+        / client_id
+        / diagnostics_config.dump_dir_name
+    )
     diagnostics_dir.mkdir(parents=True, exist_ok=True)
     candidates_path = diagnostics_dir / f"{round_id}.candidates.jsonl"
     summary_path = diagnostics_dir / f"{round_id}.summary.json"
