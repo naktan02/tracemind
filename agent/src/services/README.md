@@ -13,7 +13,7 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - prototype score 계산, baseline, 의사결정, 시계열 누적 담당
+  - global classifier/prototype evidence 계산, 의사결정, 시계열 누적 담당
 - `training/`
   - 로컬 학습 rail
   - pseudo-label selection, backend, privacy guard, compatibility 검증 담당
@@ -24,6 +24,12 @@
   - prototype artifact 동기화/로컬 runtime helper
 
 ## 먼저 읽을 파일
+
+현재 v1에서 권장하는 읽기 관점:
+
+- `global classifier`는 공통 evidence producer다.
+- `local interpretation`이 final decision owner다.
+- shared adapter와 prototype scoring은 비교/확장 경로로 유지한다.
 
 ### 1. 로컬 추론 흐름을 보고 싶을 때
 

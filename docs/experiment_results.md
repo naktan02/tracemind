@@ -62,7 +62,8 @@
 
 - 현재 저장소에 남아 있는 static baseline 중 가장 높은 정확도다.
 - 다만 이 경로는 prototype 해석 구조가 아니라 별도 classifier head baseline이다.
-- TraceMind v1 active path는 여전히 `PrototypePack + local interpretation`이므로, 이 결과는 비교군으로 본다.
+- 현재 v1 계획의 우선 baseline은 `global classifier + local interpretation`이지만,
+  이 결과는 아직 static classifier baseline이므로 비교군으로 본다.
 
 ---
 

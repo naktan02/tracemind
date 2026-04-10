@@ -10,6 +10,12 @@
 
 `docs/contracts/*`는 배경과 설계 이유를 설명하는 보조 문서이고, 실제 필드 의미와 포맷은 이 폴더 파일이 기준이다.
 
+현재 v1 계획 기준:
+
+- 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
+- 여기서 classifier는 공통 class evidence를 만드는 shared artifact로 본다.
+- `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
+
 ## 주요 파일
 
 ### `adapter_contracts.py`
@@ -54,6 +60,7 @@ Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.
 - `PrototypePackPayload`
   - category마다 하나 이상의 prototype을 가진다
   - single prototype도 길이 1 리스트로 정규화해서 해석한다
+  - v1 classifier-first baseline에서는 bootstrap/comparison artifact로도 쓴다
 - `CategoryPrototypePayload`
   - `prototype_id`, `centroid`, `sample_count`를 담는다
 - `extract_category_prototypes(...)`
@@ -83,6 +90,11 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision
   - `base_model_revision`: 로컬 update가 계산된 기준 revision
+
+추가 원칙:
+
+- `classifier_head` family는 전역 class evidence를 제공하는 shared head로 해석한다.
+- 로컬 개인화와 최종 판단은 이 계약 파일이 아니라 agent 로컬 runtime 계층이 소유한다.
 
 ## 현재 diagonal scale adapter 의미
 

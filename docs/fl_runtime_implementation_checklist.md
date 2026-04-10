@@ -40,10 +40,10 @@
 
 현재 비어 있거나 아직 약한 것:
 
-- classifier-head 기반 두 번째 real family 구현 완료
+- classifier-first baseline의 live agent 경로 확장
 - 실제 두 번째 aggregation backend 구현
 - learned scorer / scorer artifact lifecycle
-- supervised branch까지 포함한 full FixMatch 재현
+- adapter 유무 비교 실험과 classifier baseline 안정화
 - secure aggregation runtime 자체
 - 일부 integration test 인프라 안정화
 
@@ -224,6 +224,7 @@ server runtime을 끝까지 닫을 수 없다.
 - [x] agent가 current task를 읽고 local update를 만들어 업로드할 수 있다.
 - [x] local training example preparation이 더 이상 script 전용 helper가 아니다.
 - [x] `TrainingTask`만 보면 local training 실행 가능 여부가 결정된다.
+- [ ] classifier-first baseline이 live agent stored-event 경로까지 닫힌다.
 
 ## Phase 3. Prototype Rebuild Runtime 경로 닫기
 
@@ -259,6 +260,7 @@ server runtime을 끝까지 닫을 수 없다.
 - [ ] `PrototypeBuildState`를 운영에서 계속 저장할지
 - [ ] single builder only exact incremental을 v1 운영 경로에 포함할지
 - [ ] multi-prototype runtime을 rebuild에 같이 열지, 나중에 열지
+- [ ] prototype rebuild를 classifier-first baseline의 bootstrap/comparison artifact로 계속 유지할지
 
 ### 완료 기준
 
@@ -339,6 +341,25 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 - [x] 새 backend 하나 추가 시 lifecycle/API 계층을 뜯지 않는다.
 - [ ] 계약 자체가 달라지는 family까지 새 구현체 추가로 닫혔는지 확인한다.
 
+## Phase 5-1. Classifier-First Baseline 정리
+
+### 목표
+
+`embedding -> global classifier -> local interpretation`을 v1의 기본 실험선으로
+명확히 하고, shared adapter는 비교 실험 축으로 내린다.
+
+### 해야 할 일
+
+- [ ] classifier-head family의 live agent state fetch / manifest sync 경로 추가
+- [ ] stored-event 경로에서 classifier-first baseline이 실제로 도는지 검증
+- [ ] classifier-only baseline과 shared adapter baseline의 ablation 실험 추가
+- [ ] single prototype baseline으로 충분한지 error analysis 수행
+
+### 완료 기준
+
+- [ ] classifier-first baseline이 simulation과 live agent 양쪽에서 같은 계약으로 돈다.
+- [ ] shared adapter를 기본선으로 둘 근거가 있는지, 비교축으로 둘 근거가 있는지 문서화된다.
+
 ## Phase 6. Privacy / Robustness Hardening
 
 ### 목표
@@ -384,4 +405,4 @@ training과 aggregation이 먼저 닫힌 뒤, privacy와 robustness를 분리된
 
 - [x] 두 번째 real family(`classifier_head`) 추가
 - [ ] 두 번째 real aggregation backend 추가
-- [ ] integration test infra 안정화 후 multi-agent 시나리오 확장
+- [ ] classifier-first baseline live agent 확장

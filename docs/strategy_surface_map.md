@@ -30,6 +30,24 @@
 - `상태`
   - `활성 runtime`, `코드 주입 지점`, `typed metadata only` 중 무엇인지
 
+## 현재 권장 기본선
+
+현재 v1에서 권장하는 기본 실험선은 아래다.
+
+```text
+Embedding
+-> Global Classifier
+-> Local Interpretation
+-> Final Decision
+```
+
+중요:
+
+- 전역 classifier는 공통 class evidence를 만드는 역할로 본다.
+- 최종 판단은 로컬 `PersonalizationState`, 시계열 누적, decision policy가 수행한다.
+- shared adapter와 prototype scoring은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
+- single prototype baseline은 허용하지만, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
+
 ## 0. 모델/전처리 축
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
@@ -77,11 +95,13 @@
 
 추가 설명:
 
+- 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
 - pseudo-label selection은 `example generation -> evidence backend -> acceptance policy`로 분리돼 있다.
 - `weak_strong_pair` backend는 official FixMatch류 multiview input을 위한 활성 runtime이다.
 - `fixmatch_weak_view_evidence`는 weak-view confidence gating backend다.
   `classifier_head_logits` scorer와 결합되면 classifier posterior를 직접 사용한다.
+- classifier posterior는 공통 evidence로 읽고, final decision은 local interpretation이 계속 맡는다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.
 - `run-current-task` live agent 경로는 stored-event 재구성을 지원하지 않는 backend나
   active shared_state가 필요한 scorer를 받으면 `unsupported_runtime`으로 조기 종료한다.

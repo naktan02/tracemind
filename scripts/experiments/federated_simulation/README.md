@@ -6,6 +6,10 @@
 production runtime이 아니라, production service를 조립해서 검증하는
 experiment package로 이해하면 된다.
 
+현재 v1에서 이 패키지의 기본 비교선은
+`embedding -> global classifier -> local interpretation`이다.
+shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한다.
+
 ## 읽기 순서
 
 1. `../run_federated_simulation.py`

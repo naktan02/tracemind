@@ -12,9 +12,11 @@
 중요:
 
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
-- `PrototypePack`은 유지한다.
-- `v1`은 `same global representation + different local interpretation`이다.
+- `PrototypePack`은 유지하지만, 우선은 bootstrap/comparison artifact로 본다.
+- `v1`의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
+- `v1`은 여전히 `same global representation + different local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
+- multi-prototype runtime은 v1 필수가 아니라 future option으로 둔다.
 
 ## 2. 활성 계약
 
@@ -45,10 +47,20 @@
 Raw Event
 -> Preprocess / Translation
 -> Embedding
--> Prototype Scoring or Personal Head
+-> Global Classifier
 -> PersonalizationState
 -> Time-Series Accumulator / Persistence
 -> DecisionPolicy
+-> AssessmentResult
+```
+
+비교/확장 레일:
+
+```text
+Raw Event
+-> Embedding
+-> Prototype Scoring or Shared Adapter
+-> Local Interpretation
 -> AssessmentResult
 ```
 
@@ -58,22 +70,21 @@ Raw Event
 Raw Event / Local Signal
 -> Pseudo-label or Feedback Signal
 -> Local Training
--> SharedAdapterUpdate
+-> SharedClassifierUpdate or SharedAdapterUpdate
 -> Central Aggregation
 -> New ModelManifest / PrototypePack pair
 ```
 
 설명:
 
-1. `v1`에서는 backbone은 고정하고 shared adapter/head family를 다룬다.
-2. 현재 활성 family는 `diagonal_scale`, `classifier_head` 두 개다.
-3. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
+1. `v1`에서는 backbone은 고정하고 shared classifier/head family를 우선 baseline으로 다룬다.
+2. 현재 구현된 family는 `diagonal_scale`, `classifier_head` 두 개다.
+3. 앞으로의 기본 비교축은 `global classifier + local interpretation`이고,
+   `diagonal_scale`과 prototype scoring은 비교 실험/확장 레일로 유지한다.
+4. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
    stored scored event를 쓰는 real agent 경로는 아직 `diagonal_scale`만 안전하다.
    현재 live agent API는 지원하지 않는 조합이 오면 `unsupported_runtime`으로 조기 종료한다.
-4. 현재 로컬 update는 heuristic 기반과 classifier-head FixMatch-style consistency
-   두 경로가 있으며, local training / example generation / scorer / acceptance /
-   privacy 축은 각각 독립적으로 교체 가능하게 정리됐다.
-5. prototype은 직접 FL 파라미터라기보다 shared state로부터 재생성되는 artifact에 가깝다.
+5. prototype은 직접 FL 파라미터라기보다 bootstrap/비교용 semantic artifact에 가깝다.
 
 ## 4. 구현 배치 규칙
 
@@ -100,15 +111,16 @@ Raw Event / Local Signal
 11. scorer backend와 example-generation backend를 독립 축으로 분리했다.
 12. 서버는 `adapter_family`, `aggregation_backend`를 server-owned config axis로 고른다.
 13. secure aggregation 메타데이터는 typed contract로 승격했다.
+14. 다음 기본 실험선은 `embedding -> global classifier -> local interpretation`으로 정리하기로 했다.
 
 아직 남은 핵심:
 
-1. 두 번째 real family(`classifier_head`)를 simulation/runtime 레일에 추가했다.
+1. classifier-first baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
 2. 아직 두 번째 real aggregation backend는 없다.
 3. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
 4. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
-5. stored scored event 기반 real agent 경로에도 classifier-head family를 연결할지 결정한다.
-6. 필요하면 learned scorer 또는 richer example-generation backend를 구현한다.
+5. shared adapter를 다시 주 경로로 둘지, classifier baseline의 비교축으로 둘지 ablation으로 정리한다.
+6. single prototype baseline으로 충분한지 확인하고, 부족할 때만 multi-prototype runtime을 다시 연다.
 
 ## 6. Phase 요약
 
@@ -134,7 +146,7 @@ Raw Event / Local Signal
 
 ### Phase 5. richer shared adapter
 
-- 필요 시 diagonal scale보다 표현력 있는 shared adapter로 확장한다.
+- classifier-first baseline이 충분하지 않을 때만 diagonal scale보다 표현력 있는 shared adapter로 확장한다.
 
 ### Phase 6. privacy hardening
 
@@ -144,12 +156,12 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. 두 번째 real `aggregation_backend` 하나를 추가
-2. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
-3. `DiagonalScaleGradientTrainingBackend` 추가
-4. classifier-head family의 real agent stored-event 경로 확장 여부 결정
-5. 필요 시 learned scorer 또는 richer example-generation backend 추가
-6. classifier-head bootstrap을 multi-prototype까지 확장할지 결정
+1. `global classifier + local interpretation` baseline을 live agent path까지 확장
+2. 두 번째 real `aggregation_backend` 하나를 추가
+3. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
+4. shared adapter 유무 비교 실험을 붙여 classifier-only baseline과 비교
+5. single prototype baseline으로 충분한지 error analysis 수행
+6. 필요 시 learned scorer 또는 richer example-generation backend 추가
 
 ## 8. 검증 기준
 
@@ -178,3 +190,4 @@ Raw Event / Local Signal
 3. private adapter/head를 언제 도입할지
 4. secure aggregation과 DP 도입 시점
 5. multi-prototype를 runtime까지 확장할지
+6. shared adapter를 기본선으로 복귀시킬지, 비교축으로 유지할지

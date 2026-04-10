@@ -4,6 +4,7 @@
 
 이 문서는 TraceMind 작업의 짧은 진입점이다.
 현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
+현재 우선 baseline은 `embedding -> global classifier -> local interpretation`으로 본다.
 
 Codex CLI와 VS Code Codex extension을 사용할 때는
 `docs/ai_context_manifest.yaml`을 함께 읽어 task별 읽기 순서와
