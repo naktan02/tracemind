@@ -28,6 +28,7 @@ class PrototypeRescoringTrainingExampleBackend:
 
     backend_name: str = PROTOTYPE_RESCORE_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = (ANY_ADAPTER_KIND,)
+    supports_stored_event_rebuild: bool = True
 
     def build_examples(
         self,

@@ -69,6 +69,7 @@ Raw Event / Local Signal
 2. 현재 활성 family는 `diagonal_scale`, `classifier_head` 두 개다.
 3. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
    stored scored event를 쓰는 real agent 경로는 아직 `diagonal_scale`만 안전하다.
+   현재 live agent API는 지원하지 않는 조합이 오면 `unsupported_runtime`으로 조기 종료한다.
 4. 현재 로컬 update는 heuristic 기반과 classifier-head FixMatch-style consistency
    두 경로가 있으며, local training / example generation / scorer / acceptance /
    privacy 축은 각각 독립적으로 교체 가능하게 정리됐다.
@@ -148,6 +149,7 @@ Raw Event / Local Signal
 3. `DiagonalScaleGradientTrainingBackend` 추가
 4. classifier-head family의 real agent stored-event 경로 확장 여부 결정
 5. 필요 시 learned scorer 또는 richer example-generation backend 추가
+6. classifier-head bootstrap을 multi-prototype까지 확장할지 결정
 
 ## 8. 검증 기준
 

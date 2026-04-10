@@ -22,6 +22,9 @@ from agent.src.services.federation.training_example_service import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
+from agent.src.services.training.runtime_compatibility import (
+    validate_live_agent_stored_event_runtime,
+)
 from shared.src.contracts.training_contracts import TrainingTaskPayload
 
 
@@ -169,6 +172,15 @@ def run_current_task(
             return RunCurrentTaskResponse(
                 status="no_active_task",
                 message="현재 active round 또는 open task가 없습니다.",
+            )
+        try:
+            validate_live_agent_stored_event_runtime(task_payload)
+        except ValueError as error:
+            return RunCurrentTaskResponse(
+                status="unsupported_runtime",
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=str(error),
             )
 
         stored_events = repo.get_recent_stored(days=request.scored_event_days)

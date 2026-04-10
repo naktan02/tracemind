@@ -23,6 +23,7 @@ gradient_clip_norm: 0.5
 round_runtime:
   adapter_family_name: ${training_algorithm_profile.adapter_family_name}
   aggregation_backend_name: ${training_algorithm_profile.aggregation_backend_name}
+  classifier_head_bootstrap_logit_scale: 8.0
 
 shard_policy:
   name: label_dominant
@@ -52,7 +53,6 @@ training_task:
     training_backend.step_scale_multiplier: ${training_algorithm_profile.training_backend_step_scale_multiplier}
     training_backend.bias_learning_rate_multiplier: ${training_algorithm_profile.training_backend_bias_learning_rate_multiplier}
     evidence_backend.temperature: ${training_algorithm_profile.evidence_backend_temperature}
-    fixmatch.uratio: ${training_algorithm_profile.fixmatch_uratio}
   selection_policy:
     max_examples: ${federated_run_preset.max_examples}
 

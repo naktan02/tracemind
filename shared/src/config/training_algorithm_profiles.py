@@ -67,7 +67,6 @@ FIXMATCH_V1_OBJECTIVE_MAPPING = _freeze_mapping(
         **dict(
             DEFAULT_CLASSIFIER_HEAD_FIXMATCH_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
         ),
-        "fixmatch.uratio": 7,
     }
 )
 

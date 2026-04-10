@@ -121,6 +121,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_algorithm_profile.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
     )
+    assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 1

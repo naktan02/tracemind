@@ -83,6 +83,8 @@
 - `fixmatch_weak_view_evidence`는 weak-view confidence gating backend다.
   `classifier_head_logits` scorer와 결합되면 classifier posterior를 직접 사용한다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.
+- `run-current-task` live agent 경로는 stored-event 재구성을 지원하지 않는 backend나
+  active shared_state가 필요한 scorer를 받으면 `unsupported_runtime`으로 조기 종료한다.
 - 실험에서는 위 축을 하나씩 직접 override할 수도 있고, `algorithm profile`로 묶어 한 번에 바꿀 수도 있다.
 - acceptance는 `policy`와 `threshold`가 분리돼 있다.
 - privacy는 현재 `clip only`와 `noop`만 runtime 구현이 있다.
@@ -106,6 +108,7 @@
 |---|---|---|---|---|---|
 | Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
 | Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
+| Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `scripts/conf/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 
@@ -113,6 +116,8 @@
 
 - `aggregation backend`는 문자열로 고를 수 있지만, 현재 `run_federated_simulation` Hydra config에는 top-level knob로 노출돼 있지 않다.
 - `update acceptance`는 교체 지점은 있지만 registry나 public config key보다 코드 주입 형태에 가깝다.
+- `classifier_head` family bootstrap은 현재 category별 centroid 하나를 classifier weight로 바꾸므로
+  `prototype_builder=single`일 때만 안전하다.
 
 관련 파일:
 

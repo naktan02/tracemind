@@ -114,3 +114,4 @@ class FederatedRoundRuntimeConfig:
 
     adapter_family_name: str
     aggregation_backend_name: str
+    classifier_head_bootstrap_logit_scale: float = 8.0

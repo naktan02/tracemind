@@ -171,6 +171,15 @@ def run_simulation(
         embedding_model_revision=initial_model_revision,
         built_at=now,
     )
+    if (
+        round_runtime_config.adapter_family_name == "classifier_head"
+        and getattr(prototype_build_strategy, "name", "") != "single"
+    ):
+        raise ValueError(
+            "classifier_head bootstrap currently requires prototype_builder=single. "
+            "The current bootstrap path converts one centroid per category into "
+            "classifier weights and does not support multi-prototype packs yet."
+        )
     if round_runtime_config.adapter_family_name == "classifier_head":
         initial_state = build_classifier_head_state_from_prototype_pack(
             prototype_pack=active_prototype,
@@ -178,6 +187,7 @@ def run_simulation(
             model_revision=initial_model_revision,
             training_scope=training_scope,
             updated_at=now,
+            logit_scale=round_runtime_config.classifier_head_bootstrap_logit_scale,
         )
     validation_scoring_service = build_validation_scoring_service(
         validation_config,

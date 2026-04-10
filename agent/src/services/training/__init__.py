@@ -31,6 +31,7 @@ from .pseudo_label_service import (
 )
 from .runtime_compatibility import (
     LocalTrainingRuntimeCompatibility,
+    validate_live_agent_stored_event_runtime,
     validate_local_training_runtime,
 )
 from .training_backends import (
@@ -71,5 +72,6 @@ __all__ = [
     "build_pseudo_label_evidence_backend",
     "build_shared_adapter_privacy_guard",
     "build_shared_adapter_training_backend",
+    "validate_live_agent_stored_event_runtime",
     "validate_local_training_runtime",
 ]

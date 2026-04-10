@@ -23,6 +23,7 @@ class WeakStrongPairTrainingExampleBackend:
 
     backend_name: str = WEAK_STRONG_PAIR_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = (ANY_ADAPTER_KIND,)
+    supports_stored_event_rebuild: bool = False
 
     def build_examples(
         self,

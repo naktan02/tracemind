@@ -42,6 +42,55 @@ class LocalTrainingRuntimeCompatibility:
     privacy_guard_name: str
 
 
+def validate_live_agent_stored_event_runtime(
+    training_task: TrainingTask,
+    *,
+    similarity_name: str = "cosine",
+) -> LocalTrainingRuntimeCompatibility:
+    """stored-event 기반 live agent 경로에서 허용되는 조합만 통과시킨다."""
+
+    objective = training_task.objective_config
+    resolved_training_backend = build_shared_adapter_training_backend(
+        objective.training_backend_name,
+        objective_config=objective,
+    )
+    training_example_backend = resolve_training_example_backend(
+        objective_config=objective,
+        training_backend=resolved_training_backend,
+    )
+    scorer_backend_name = (
+        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+    )
+    scorer_backend = build_scoring_backend(
+        scorer_backend_name,
+        objective_config=objective,
+        similarity_name=similarity_name,
+    )
+    compatibility = validate_local_training_runtime(
+        training_task,
+        similarity_name=similarity_name,
+        training_backend=resolved_training_backend,
+    )
+
+    unsupported_reasons: list[str] = []
+    if not training_example_backend.supports_stored_event_rebuild:
+        unsupported_reasons.append(
+            "stored-event 재구성을 지원하지 않는 example backend="
+            f"{training_example_backend.backend_name}"
+        )
+    if scorer_backend.requires_shared_state:
+        unsupported_reasons.append(
+            "현재 live agent 경로에서 active shared_state fetch가 없는 scorer backend="
+            f"{scorer_backend.backend_name}"
+        )
+    if unsupported_reasons:
+        raise ValueError(
+            "run-current-task does not support this runtime yet: "
+            + "; ".join(unsupported_reasons)
+        )
+    return compatibility
+
+
 def validate_local_training_runtime(
     training_task: TrainingTask,
     *,
@@ -145,3 +194,10 @@ def _require_adapter_kind_support(
         f"Incompatible {component_type}: {component_name} does not support "
         f"adapter_kind={adapter_kind}."
     )
+
+
+__all__ = [
+    "LocalTrainingRuntimeCompatibility",
+    "validate_live_agent_stored_event_runtime",
+    "validate_local_training_runtime",
+]

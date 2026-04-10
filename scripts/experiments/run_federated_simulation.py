@@ -89,6 +89,9 @@ def main(cfg: DictConfig) -> None:
         round_runtime_config=FederatedRoundRuntimeConfig(
             adapter_family_name=str(cfg.round_runtime.adapter_family_name),
             aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
+            classifier_head_bootstrap_logit_scale=float(
+                cfg.round_runtime.classifier_head_bootstrap_logit_scale
+            ),
         ),
         prototype_build_strategy=prototype_build_strategy,
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),

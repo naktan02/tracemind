@@ -37,6 +37,7 @@ from shared.src.contracts.training_contracts import (
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
+    KMeansPrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
 )
 
@@ -178,10 +179,12 @@ def _default_round_runtime_config(
     *,
     adapter_family_name: str = "diagonal_scale",
     aggregation_backend_name: str = "fedavg",
+    classifier_head_bootstrap_logit_scale: float = 8.0,
 ) -> FederatedRoundRuntimeConfig:
     return FederatedRoundRuntimeConfig(
         adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
+        classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
     )
 
 
@@ -605,7 +608,6 @@ def test_run_simulation_supports_classifier_head_fixmatch_path(tmp_path) -> None
                     "training_backend.consistency_loss_weight": 1.0,
                     "training_backend.step_scale_multiplier": 1.0,
                     "training_backend.bias_learning_rate_multiplier": 1.0,
-                    "fixmatch.uratio": 7,
                 }
             ),
             selection_policy=TrainingSelectionPolicy(max_examples=8),
@@ -622,3 +624,64 @@ def test_run_simulation_supports_classifier_head_fixmatch_path(tmp_path) -> None
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
+
+
+def test_run_simulation_rejects_classifier_head_with_multi_prototype_builder(
+    tmp_path,
+) -> None:
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+        _row("a3", "panic panic", "anxiety"),
+        _row("n3", "calm calm", "normal"),
+    ]
+    validation_rows = [
+        _row("va1", "panic panic", "anxiety"),
+        _row("vn1", "calm calm", "normal"),
+    ]
+    for row in (*train_rows, *validation_rows):
+        row["weak_text"] = str(row["text"])
+        row["strong_text"] = str(row["text"])
+
+    with pytest.raises(ValueError, match="prototype_builder=single"):
+        run_simulation(
+            train_rows=train_rows,
+            validation_rows=validation_rows,
+            output_dir=tmp_path / "simulation_fixmatch_kmeans",
+            client_count=2,
+            rounds=1,
+            bootstrap_ratio=0.5,
+            seed=7,
+            embedding_spec=EmbeddingAdapterSpec(
+                backend="hash_debug",
+                model_id="hash_debug",
+                revision="sim",
+                hash_dim=32,
+            ),
+            model_id="tracemind-embed-sim",
+            training_scope="head_only",
+            round_runtime_config=_default_round_runtime_config(
+                adapter_family_name="classifier_head",
+                aggregation_backend_name="fedavg",
+            ),
+            prototype_build_strategy=KMeansPrototypeBuildStrategy(candidate_ks=(2,)),
+            shard_policy=_default_shard_policy(),
+            training_task_config=_default_training_task_config(
+                confidence_threshold=0.95,
+                margin_threshold=0.0,
+                max_examples=8,
+                gradient_clip_norm=1.0,
+                scorer_backend_name="classifier_head_logits",
+                score_policy_name=None,
+            ),
+            validation_config=_default_validation_config(
+                confidence_threshold=0.95,
+                margin_threshold=0.0,
+                scorer_backend_name="classifier_head_logits",
+                score_policy_name=None,
+            ),
+            prototype_rebuild_config=_default_prototype_rebuild_config(),
+            diagnostics_config=_default_diagnostics_config(),
+        )

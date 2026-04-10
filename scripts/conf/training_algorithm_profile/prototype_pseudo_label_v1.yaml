@@ -16,4 +16,3 @@ training_backend_consistency_loss_weight: 1.0
 training_backend_step_scale_multiplier: 1.0
 training_backend_bias_learning_rate_multiplier: 1.0
 evidence_backend_temperature: 1.0
-fixmatch_uratio: 7

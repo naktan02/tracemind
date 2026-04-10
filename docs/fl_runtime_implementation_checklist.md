@@ -217,6 +217,7 @@ server runtime을 끝까지 닫을 수 없다.
 - [x] local accepted examples가 부족할 때 no-update 처리
 - [x] upload 성공/실패 상태 분리
 - [x] 같은 task에 대한 중복 실행 방지 정책
+- [x] stored-event 경로가 지원하지 않는 runtime 조합은 `unsupported_runtime`으로 조기 거부
 
 ### 완료 기준
 

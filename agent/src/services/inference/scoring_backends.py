@@ -25,6 +25,7 @@ class ScoringBackend(Protocol):
 
     backend_name: str
     supported_adapter_kinds: tuple[str, ...]
+    requires_shared_state: bool
 
     def score(
         self,
@@ -46,6 +47,7 @@ class PrototypeSimilarityScoringBackend:
     policy: PrototypeScorePolicy = field(default_factory=MaxCosineScorePolicy)
     backend_name: str = PROTOTYPE_SIMILARITY_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = ("*",)
+    requires_shared_state: bool = False
 
     def score(
         self,
@@ -76,6 +78,7 @@ class ClassifierHeadLogitsScoringBackend:
 
     backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
     supported_adapter_kinds: tuple[str, ...] = ("classifier_head",)
+    requires_shared_state: bool = True
 
     def score(
         self,

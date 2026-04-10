@@ -25,6 +25,7 @@ class TrainingExampleBackend(Protocol):
 
     backend_name: str
     supported_adapter_kinds: tuple[str, ...]
+    supports_stored_event_rebuild: bool
 
     def build_examples(
         self,

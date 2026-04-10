@@ -39,6 +39,7 @@ experiment package로 이해하면 된다.
 - `training_algorithm_profile`
 - `round_runtime.adapter_family_name`
 - `round_runtime.aggregation_backend_name`
+- `round_runtime.classifier_head_bootstrap_logit_scale`
 - `confidence_threshold`
 - `margin_threshold`
 - `training_task.objective.training_backend_name`
@@ -75,6 +76,8 @@ python -m scripts.experiments.run_federated_simulation \
 - `fixmatch_v1`는 weak/strong row와 classifier-head family가 함께 있어야 의미가 있다.
   real agent의 stored scored event 경로는 아직 weak/strong view를 저장하지 않으므로
   현재는 simulation/row-source 경로가 우선이다.
+- `classifier_head` bootstrap은 현재 category당 centroid 하나를 classifier weight로 바꾸는 방식이라
+  `prototype_builder=single` 조합만 지원한다.
 - validation의 accepted_ratio는 raw score threshold가 아니라
   runtime과 같은 `evidence backend -> acceptance policy` 경로로 계산한다.
 - `training_task.secure_aggregation.*` 필드는 실을 수 있지만,
