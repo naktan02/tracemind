@@ -1,0 +1,7 @@
+# TraceMind project-scoped Codex defaults.
+# CLI와 VS Code IDE extension이 이 설정을 함께 사용한다.
+
+model = "gpt-5.4"
+approval_policy = "on-request"
+sandbox_mode = "workspace-write"
+web_search = "cached"

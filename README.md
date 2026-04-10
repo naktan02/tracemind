@@ -6,10 +6,22 @@ agent 로컬 runtime, server orchestration, 실험층을 역할별로 분리해 
 
 처음 읽을 때는 코드보다 문서 진입점을 먼저 보는 편이 빠르다.
 
-1. [docs/execution_index.md](/home/jmgjmg102/tracemind_server/docs/execution_index.md)
-2. [plan.md](/home/jmgjmg102/tracemind_server/plan.md)
-3. [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-4. [shared/src/contracts/README.md](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+1. [docs/ai_context_manifest.yaml](/home/jmgjmg102/tracemind_server/docs/ai_context_manifest.yaml)
+2. [docs/execution_index.md](/home/jmgjmg102/tracemind_server/docs/execution_index.md)
+3. [plan.md](/home/jmgjmg102/tracemind_server/plan.md)
+4. [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
+5. [shared/src/contracts/README.md](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+
+## AI Harness Quick Start
+
+Codex CLI와 VS Code Codex extension을 같이 쓸 때는 아래 계층을 기준으로
+운영한다.
+
+- project-scoped 실행 설정: [.codex/config.toml](/home/jmgjmg102/tracemind_server/.codex/config.toml)
+- repo-wide 규칙: [AGENTS.md](/home/jmgjmg102/tracemind_server/AGENTS.md)
+- task별 문맥 라우팅: [docs/ai_context_manifest.yaml](/home/jmgjmg102/tracemind_server/docs/ai_context_manifest.yaml)
+- 반복 workflow: [.codex/skills](/home/jmgjmg102/tracemind_server/.codex/skills)
+- 하네스 자체 유지보수 시만: [docs/ai_harness_operating_model.md](/home/jmgjmg102/tracemind_server/docs/ai_harness_operating_model.md)
 
 ## Top-Level Ownership
 

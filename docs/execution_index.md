@@ -5,26 +5,41 @@
 이 문서는 TraceMind 작업의 짧은 진입점이다.
 현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
 
+Codex CLI와 VS Code Codex extension을 사용할 때는
+`docs/ai_context_manifest.yaml`을 함께 읽어 task별 읽기 순서와
+source-of-truth 우선순위를 먼저 확인한다.
+
 ## 읽는 순서
 
-1. `AGENTS.md`
+1. `docs/ai_context_manifest.yaml`
+   - AI용 문맥 지도와 task route
+2. `AGENTS.md`
    - 저장소 구조, 소유 경계, 작업 규칙
-2. `plan.md` (repo root)
+3. `plan.md` (repo root)
    - 왜 이 구조를 택했는지
-3. `docs/project_execution_plan.md`
+4. `docs/project_execution_plan.md`
    - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
-4. `shared/src/contracts/README.md`
+5. `shared/src/contracts/README.md`
    - 현재 payload 계약 해석
-5. `docs/fl_runtime_implementation_checklist.md`
+6. `docs/fl_runtime_implementation_checklist.md`
    - 실제 구현 순서와 완료 기준
-6. `docs/contracts/algorithm_extension_guide.md`
+7. `docs/contracts/algorithm_extension_guide.md`
    - 알고리즘/전략 교체 시 어느 파일을 보고 어떤 Protocol을 구현할지
-7. `docs/contracts/strategy_addition_playbook.md`
+8. `docs/contracts/strategy_addition_playbook.md`
    - 새 전략을 어떤 순서로 구현, 등록, 기본값 반영, 테스트할지
-8. `docs/strategy_surface_map.md`
+9. `docs/strategy_surface_map.md`
    - 지금 실제로 바꿀 수 있는 전략 축과 metadata-only 축을 한눈에 확인
-9. 필요한 경우만 `docs/staged_execution_roadmap.md`
+10. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
+
+## AI Harness 빠른 경로
+
+Codex용 하네스 문서는 아래 순서를 권장한다.
+
+1. `docs/ai_context_manifest.yaml`
+2. 관련 path-specific `AGENTS.md`
+3. 하네스 자체를 유지보수할 때만 `docs/ai_harness_operating_model.md`
+4. harness spot check가 필요할 때만 `docs/ai_harness_eval_cases.yaml`
 
 ## 코드 읽기 빠른 경로
 
@@ -61,6 +76,9 @@
 
 | 파일 | 역할 |
 |---|---|
+| `docs/ai_context_manifest.yaml` | AI용 문맥 지도, task route, source-of-truth 우선순위 |
+| `docs/ai_harness_operating_model.md` | 하네스 유지보수용 보조 문서 |
+| `docs/ai_harness_eval_cases.yaml` | maintainer 전용 harness spot check sample |
 | `AGENTS.md` | 저장소 구조, 소유 경계, 작업 규칙 |
 | `plan.md` | 연구 비전, 핵심 가설, global/local 분리 원칙 |
 | `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |

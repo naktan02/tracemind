@@ -1,0 +1,106 @@
+version: 1
+repo: tracemind_server
+goal: privacy-preserving personalized local inference + federated shared model improvement
+
+canonical_layers:
+  - .codex/config.toml
+  - AGENTS.md
+  - path-specific AGENTS.md
+  - docs/ai_context_manifest.yaml
+  - .codex/skills/*
+
+path_specific_instructions:
+  - shared/AGENTS.md
+  - agent/AGENTS.md
+  - main_server/AGENTS.md
+  - scripts/AGENTS.md
+  - tests/AGENTS.md
+  - docs/AGENTS.md
+
+source_of_truth_priority:
+  - shared/src/contracts/*.py
+  - shared/src/domain/entities/*
+  - shared/src/contracts/README.md
+  - docs/contracts/*
+  - docs/*
+  - docs/notes/*
+
+active_entrypoints:
+  - path: docs/execution_index.md
+    use_for: first repo entry and reading order
+  - path: plan.md
+    use_for: research goal and global/local boundary
+  - path: docs/project_execution_plan.md
+    use_for: active architecture and next priorities
+  - path: shared/src/contracts/README.md
+    use_for: payload interpretation
+  - path: docs/contracts/algorithm_extension_guide.md
+    use_for: strategy addition and replacement
+  - path: docs/fl_runtime_implementation_checklist.md
+    use_for: fl runtime implementation work
+
+task_routes:
+  contract_change:
+    read_order:
+      - AGENTS.md
+      - shared/AGENTS.md
+      - shared/src/contracts/README.md
+      - docs/contracts/algorithm_extension_guide.md
+      - docs/project_execution_plan.md
+    verify:
+      - producer and consumer stay aligned
+      - related tests are updated
+      - relevant docs and readmes are synced
+
+  strategy_addition:
+    read_order:
+      - AGENTS.md
+      - docs/project_execution_plan.md
+      - docs/contracts/algorithm_extension_guide.md
+      - docs/strategy_surface_map.md
+      - relevant path-specific AGENTS.md
+    verify:
+      - family or strategy boundary stays explicit
+      - config source of truth stays singular
+      - tests and docs are closed in the same change
+
+  federation_debug:
+    read_order:
+      - AGENTS.md
+      - agent/AGENTS.md
+      - main_server/AGENTS.md
+      - docs/project_execution_plan.md
+      - docs/fl_runtime_implementation_checklist.md
+    verify:
+      - stale processes are checked first
+      - dump, trace, or summary exists before tuning
+      - reproduction path is left behind
+
+  scripts_change:
+    read_order:
+      - AGENTS.md
+      - scripts/AGENTS.md
+      - scripts/README.md
+      - scripts/conf/*
+    verify:
+      - Hydra config remains the source of truth
+      - script-only logic does not absorb runtime core
+      - related script tests are updated
+
+  docs_sync:
+    read_order:
+      - AGENTS.md
+      - docs/AGENTS.md
+      - docs/execution_index.md
+      - docs/project_execution_plan.md
+    verify:
+      - duplicate guidance is reduced
+      - notes stay archive-only
+      - source of truth remains code-adjacent
+
+archive_paths:
+  - docs/notes/*
+
+maintainer_docs:
+  - docs/ai_harness_operating_model.md
+  - docs/ai_harness_eval_cases.yaml

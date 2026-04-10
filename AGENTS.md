@@ -1,7 +1,21 @@
 # Repository Guidelines
 
-## Project Structure & Module Organization
-이 저장소는 단일 `src/` 앱이 아니라 역할별 모듈이 나뉜 monorepo 구조다.
+## AI Harness Entry Points
+
+이 저장소는 Codex CLI와 VS Code Codex extension이 같은 하네스를 공유하도록
+구성한다. 작업 시작 기본 순서는 아래와 같다.
+
+1. `docs/ai_context_manifest.yaml`
+   - task별 읽기 순서와 source-of-truth 우선순위
+2. `docs/execution_index.md`
+   - 짧은 문서 지도
+3. 현재 작업 경로의 path-specific `AGENTS.md`
+   - `shared/`, `agent/`, `main_server/`, `scripts/`, `tests/`, `docs/`
+4. 관련 code contract와 active docs
+
+## Project Structure & Ownership
+
+이 저장소는 역할별 모듈이 나뉜 monorepo 구조다.
 
 - `shared/`
   - 공통 contract, domain entity, canonical 계산 규칙의 source of truth
@@ -10,12 +24,10 @@
 - `main_server/`
   - server-owned round lifecycle, aggregation, publication orchestration과 API
 - `scripts/`
-  - 위 코어를 조합하는 실험층
+  - 코어를 조합하는 실험층
   - thin wrapper, sweep, report, visualization, exploratory-only logic만 둔다
 - `tests/`
-  - cross-boundary integration/e2e 중심
-- `agent/tests`, `main_server/tests`, `shared/tests`
-  - 각 패키지 경계 안의 unit/contract test
+  - cross-boundary integration/e2e 및 architecture 검증
 - `infra/`
   - 배포/운영 manifest
 
@@ -26,23 +38,11 @@
   server-owned orchestration은 `main_server`에 둔다.
 - 테스트 위치도 책임 경계를 따른다. 패키지별 테스트는 각 패키지 아래에 두고,
   경계를 넘는 검증만 repo 루트 `tests/`에 둔다.
-실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로 사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다. 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
+- 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of
+  truth로 유지한다. `dataset`, `embedding`, `runtime` group를 기본 축으로
+  사용하고, 스크립트의 기본 runtime은 `gpu_online`으로 본다.
 
-## Documentation Entry Points
-문서를 읽을 때는 아래 순서를 기본 진입점으로 본다.
-
-1. `docs/execution_index.md`
-   - 전체 문서 지도와 읽는 순서
-2. `plan.md`
-   - 프로젝트 목적, 연구 메시지, global/local 분리 원칙
-3. `docs/project_execution_plan.md`
-   - 현재 활성 아키텍처, 구현 상태, 다음 우선순위
-4. `shared/src/contracts/README.md`
-   - 현재 contract 해석 규칙
-5. `docs/fl_runtime_implementation_checklist.md`
-   - 실제 구현 순서와 남은 작업
-6. `docs/contracts/algorithm_extension_guide.md`
-   - 교체 가능한 전략 지점과 확장 절차
+## Documentation Priority
 
 문서 우선순위는 다음과 같이 본다.
 
@@ -51,23 +51,75 @@
 3. `docs/contracts/*`, `docs/*`
 4. `docs/notes/*`
 
+기본 진입점은 아래 순서를 따른다.
+
+1. `docs/ai_context_manifest.yaml`
+2. `docs/execution_index.md`
+3. `plan.md`
+4. `docs/project_execution_plan.md`
+5. `shared/src/contracts/README.md`
+6. `docs/fl_runtime_implementation_checklist.md`
+7. `docs/contracts/algorithm_extension_guide.md`
+
 ## Architecture Direction
-구조 변경은 contract-first와 change-axis separation을 우선한다. 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다. `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로 보고, 중요한 필드 의미는 코드 가까이에 둔다. 경계에서는 canonical representation을 우선하고, producer와 consumer가 같은 shape와 같은 의미를 보도록 맞춘다. legacy format이나 임시 변환은 compatibility 계층으로 명시적으로 격리하고 제거 조건을 남긴다. 공통 계층과 문맥별 계층을 분리하고, 정책과 실행 메커니즘을 분리하며, 튜닝 전에 dump·trace·summary 같은 관측 가능성을 먼저 만든다. 특정 패턴을 고집하지 말고 변화 구조에 맞는 패턴을 선택한다. raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지 않는다.
-운영 후보 알고리즘과 backend는 `scripts`에 먼저 만들고 나중에 복사하지 않는다. 공용 계산 규칙은 `shared`, agent-owned 로컬 실행은 `agent`, server-owned orchestration은 `main_server`에 둔다. `scripts`는 runtime 코어를 조합하는 실험층으로만 유지하고, 허용되는 것은 thin wrapper, report, sweep, visualization, exploratory-only logic뿐이다.
+
+구조 변경은 contract-first와 change-axis separation을 우선한다.
+
+- 서로 다른 이유로 바뀌는 책임을 한 클래스나 한 payload에 섞지 않는다.
+- `shared/src/contracts/`와 `shared/src/domain/entities/`를 source of truth로
+  본다.
+- 중요한 필드 의미는 코드 가까이에 둔다.
+- 경계에서는 canonical representation을 우선한다.
+- legacy format이나 임시 변환은 compatibility 계층으로 명시적으로 격리한다.
+- 공통 계층과 문맥별 계층을 분리한다.
+- policy와 mechanism을 분리한다.
+- 튜닝 전에 dump, trace, summary 같은 관측 가능성을 먼저 만든다.
+- raw registry는 얇은 wiring 용도로만 쓰고 핵심 도메인 추상화로 남용하지
+  않는다.
 
 ## Build, Test, and Development Commands
-Create a virtual environment (`python -m venv .venv && source .venv/bin/activate`) and install dependencies with `pip install -r requirements.txt`. `uvicorn main_server.src.api.main:app --reload` starts the local API server with auto-reload. Run `pytest` for the default test suite. Use `ruff check main_server/src agent/src shared/src tests` before pushing to catch lint violations, and `black main_server/src agent/src shared/src tests` if formatting drifts. Container workflows should rely on `docker compose up api` to ensure parity with production services.
-테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 `ps aux`를 실행해 남아 있는 `pytest`, `uv run python`, 기타 작업 프로세스를 확인한다. 이전에 띄운 stale 프로세스가 남아 있으면 목록을 확인한 뒤 필요한 것만 정리하고 계속 진행한다.
+
+- 환경 준비: `python -m venv .venv && source .venv/bin/activate`
+- 의존성 설치: `pip install -r requirements.txt`
+- API 서버: `uvicorn main_server.src.api.main:app --reload`
+- 기본 테스트: `pytest`
+- lint: `ruff check main_server/src agent/src shared/src tests`
+- format: `black main_server/src agent/src shared/src tests`
+- 컨테이너 parity: `docker compose up api`
+
+테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 `ps aux`를
+실행해 남아 있는 `pytest`, `uv run python`, 기타 stale 프로세스를 확인한다.
 
 ## Coding Style & Naming Conventions
-Target Python 3.11, four-space indentation, and Black-compatible line wrapping (88 chars). Prefer dataclasses or Pydantic models for request/response bodies. Use descriptive snake_case for modules, functions, and variables, PascalCase for classes, and SCREAMING_SNAKE_CASE for constants. Annotate public functions with explicit type hints.
-Write comments and explanatory prose in Korean unless a path, code identifier, third-party model name, or protocol term needs to stay in its original language.
+
+- Python 3.11 기준
+- four-space indentation
+- Black-compatible line wrapping
+- public 함수는 명시적 type hint
+- 모듈/함수/변수는 snake_case
+- 클래스는 PascalCase
+- 상수는 SCREAMING_SNAKE_CASE
+- request/response body는 dataclass 또는 Pydantic 우선
+- 주석과 설명 문서는 기본적으로 한국어로 쓴다
 
 ## Testing Guidelines
-Pytest is the authoritative framework. Name files `test_<module>.py` and functions `test_<behavior>`. Keep fast, deterministic cases in `tests/unit`, while contract and integration checks belong in `tests/integration` and may use the `slow` marker. Aim for ≥90% statement coverage on core services; fail the pipeline if coverage drops below the threshold by using `pytest --cov=src --cov-fail-under=90`. Use factories/fixtures to build domain objects instead of manual dictionaries to reduce brittleness.
+
+- Pytest가 authoritative framework다.
+- 파일명은 `test_<module>.py`, 함수명은 `test_<behavior>`를 쓴다.
+- 빠른 deterministic 검증은 `tests/unit`
+- contract/integration 검증은 `tests/integration`
+- core service는 statement coverage 90% 이상을 목표로 본다.
+- 수동 dict보다 fixture/factory를 우선한다.
 
 ## Commit & Pull Request Guidelines
-Write commits in the imperative mood (`feat: add session cache`) and keep them scoped to a single concern. Reference an issue ID in the body when applicable, and include test evidence (`pytest -m 'not slow'`) if behavior changes. Pull requests should describe the motivation, summarize architectural decisions, and attach screenshots or API samples when the change is user-facing. Ensure CI is green, link design docs when touching shared interfaces, and request reviews from both backend and infra maintainers if changes span modules.
+
+- commit message는 imperative mood로 쓴다. 예: `feat: add session cache`
+- 한 commit은 한 concern에 집중한다.
+- behavior 변경 시 테스트 근거를 남긴다.
+- shared interface를 건드리면 관련 설계 문서를 함께 연결한다.
 
 ## Security & Configuration Tips
-Never commit `.env` files; instead, maintain `.env.example` with placeholder values. Rotate API keys quarterly and prefer environment variables over hard-coded secrets. If a migration touches personally identifiable data, document the retention policy in the PR and obtain approval before deploying.
+
+- `.env`는 커밋하지 않는다. 대신 `.env.example`을 유지한다.
+- 비밀값은 하드코딩보다 environment variable을 우선한다.
+- PII가 관련된 migration은 retention policy를 문서화하고 승인 후 배포한다.

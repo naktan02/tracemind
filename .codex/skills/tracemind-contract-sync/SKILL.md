@@ -1,0 +1,44 @@
+---
+name: tracemind-contract-sync
+description: Use when changing shared payloads, field meaning, contract interpretation, or any producer-consumer agreement that crosses shared, agent, main_server, scripts, and tests.
+---
+
+# TraceMind Contract Sync
+
+이 스킬은 `shared/src/contracts` 또는 그에 준하는 canonical payload shape를
+바꿀 때 쓴다.
+
+## 언제 쓸지
+
+- 새 필드를 추가/삭제/이름 변경할 때
+- field 의미나 해석 규칙을 바꿀 때
+- producer와 consumer가 같은 payload를 다르게 읽고 있을 때
+- serialization, manifest, envelope shape를 맞춰야 할 때
+
+## 작업 순서
+
+1. 변경 축을 먼저 적는다.
+   - shape 변경인지
+   - 의미 변경인지
+   - compatibility 추가인지
+2. 아래 순서로 읽는다.
+   - root `AGENTS.md`
+   - `shared/AGENTS.md`
+   - `shared/src/contracts/README.md`
+   - 관련 contract file
+   - 필요한 경우 `docs/contracts/*`
+3. contract와 domain 의미를 먼저 고친다.
+4. producer와 consumer를 함께 맞춘다.
+   - `agent`
+   - `main_server`
+   - 필요한 경우 `scripts`
+5. package test와 integration test를 함께 고친다.
+6. README, execution index, plan 중 drift 난 문서를 정리한다.
+
+## 체크리스트
+
+- 같은 의미의 데이터가 경로마다 다른 shape로 흐르지 않는가
+- compatibility가 필요하면 핵심 경로와 분리했는가
+- 필드 의미가 코드 가까이에 드러나는가
+- producer와 consumer가 같은 contract를 보고 있는가
+- 테스트와 문서까지 한 흐름으로 닫았는가
