@@ -127,21 +127,21 @@ def evaluate_rows(
 
 def build_validation_scoring_service(
     validation_config: FederatedValidationConfig,
+    *,
+    shared_state: SharedAdapterState | None = None,
 ) -> ScoringService:
     """validation 설정으로 scoring service를 조립한다."""
+    overrides: dict[str, str | int | float | bool] = {
+        "scorer_backend_name": validation_config.scorer_backend_name,
+    }
+    if validation_config.score_policy_name is not None:
+        overrides["score_policy_name"] = validation_config.score_policy_name
+    if validation_config.score_top_k is not None:
+        overrides["score_top_k"] = validation_config.score_top_k
     return ScoringService.from_objective_config(
-        build_default_training_objective_config(
-            overrides={
-                "scorer_backend_name": validation_config.scorer_backend_name,
-                "score_policy_name": validation_config.score_policy_name,
-                **(
-                    {}
-                    if validation_config.score_top_k is None
-                    else {"score_top_k": validation_config.score_top_k}
-                ),
-            }
-        ),
+        build_default_training_objective_config(overrides=overrides),
         similarity_name=validation_config.similarity_name,
+        shared_state=shared_state,
     )
 
 

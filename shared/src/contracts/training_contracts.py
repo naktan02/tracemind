@@ -43,6 +43,7 @@ class UpdatePayloadFormat(StrEnum):
     """Training update payload 포맷의 알려진 상수 모음."""
 
     DIAGONAL_SCALE_UPDATE = "diagonal_scale_update"
+    CLASSIFIER_HEAD_UPDATE = "classifier_head_update"
     LEGACY_VECTOR_ADAPTER_DELTA = "vector_adapter_delta"
 
 

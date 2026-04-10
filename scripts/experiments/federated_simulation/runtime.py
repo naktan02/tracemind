@@ -21,14 +21,20 @@ from main_server.src.services.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )
+from main_server.src.services.rounds import build_shared_adapter_round_family
 from main_server.src.services.rounds.round_manager_service import RoundManagerService
 from scripts.labeled_query_rows import LabeledQueryRow
-from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.contracts.adapter_contracts import (
+    ClassifierHeadState,
+    VectorAdapterState,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
+    extract_category_centroids,
     load_prototype_pack_payload,
 )
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
@@ -122,7 +128,7 @@ def build_prototype_rebuild_runtime_service(
 def rebuild_reference_prototype_pack(
     *,
     stored_rebuild_service: StoredReferencePrototypeRebuildService,
-    adapter_state: VectorAdapterState,
+    adapter_state: SharedAdapterState,
     prototype_version: str,
     embedding_model_id: str,
     embedding_model_revision: str,
@@ -148,12 +154,79 @@ def load_active_state(
     manifest: ModelManifest,
     state_repository: shared_adapter_state_repository.SharedAdapterStateRepository,
     round_manager: RoundManagerService,
-) -> VectorAdapterState:
+) -> SharedAdapterState:
     """현재 active manifest가 가리키는 shared adapter state를 domain으로 읽는다."""
     payload = state_repository.load_state_from_ref(manifest.artifact_ref)
-    state = round_manager.adapter_family.state_from_payload(payload)
-    if not isinstance(state, VectorAdapterState):
-        raise TypeError(
-            f"Expected VectorAdapterState from simulation runtime, got {type(state)!r}."
+    return round_manager.adapter_family.state_from_payload(payload)
+
+
+def build_simulation_round_family(
+    *,
+    adapter_family_name: str,
+    aggregation_backend_name: str,
+):
+    """simulation이 사용할 round family 조합을 만든다."""
+    return build_shared_adapter_round_family(
+        adapter_family_name,
+        aggregation_backend_name=aggregation_backend_name,
+    )
+
+
+def build_initial_shared_state(
+    *,
+    adapter_family_name: str,
+    model_id: str,
+    model_revision: str,
+    training_scope: str,
+    embedding_dim: int,
+    labels: tuple[str, ...] | list[str],
+    updated_at: datetime,
+) -> SharedAdapterState:
+    """simulation bootstrap용 초기 shared state를 family별로 만든다."""
+    if adapter_family_name.strip().lower() == "classifier_head":
+        return ClassifierHeadState.zero_initialized(
+            model_id=model_id,
+            model_revision=model_revision,
+            labels=labels,
+            embedding_dim=embedding_dim,
+            training_scope=training_scope,
+            updated_at=updated_at,
         )
-    return state
+    return VectorAdapterState.identity(
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        embedding_dim=embedding_dim,
+        updated_at=updated_at,
+    )
+
+
+def build_classifier_head_state_from_prototype_pack(
+    *,
+    prototype_pack: PrototypePackPayload,
+    model_id: str,
+    model_revision: str,
+    training_scope: str,
+    updated_at: datetime,
+    logit_scale: float = 8.0,
+) -> SharedAdapterState:
+    """bootstrap prototype centroid로 classifier-head 초기 상태를 만든다."""
+    centroids = extract_category_centroids(prototype_pack)
+    if not centroids:
+        raise ValueError(
+            "Classifier-head initialization requires at least one centroid."
+        )
+    embedding_dim = len(next(iter(centroids.values())))
+    return ClassifierHeadState(
+        schema_version="classifier_head_state.v1",
+        adapter_kind="classifier_head",
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        updated_at=updated_at,
+        label_weights={
+            label: [float(value) * logit_scale for value in centroid]
+            for label, centroid in centroids.items()
+        },
+        label_biases={label: 0.0 for label in centroids},
+    )

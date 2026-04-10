@@ -40,10 +40,10 @@
 
 현재 비어 있거나 아직 약한 것:
 
-- 실제 두 번째 adapter family 구현
+- classifier-head 기반 두 번째 real family 구현 완료
 - 실제 두 번째 aggregation backend 구현
 - learned scorer / scorer artifact lifecycle
-- full FixMatch류 example-generation + training backend 조합
+- supervised branch까지 포함한 full FixMatch 재현
 - secure aggregation runtime 자체
 - 일부 integration test 인프라 안정화
 
@@ -324,7 +324,7 @@ unit test와 script simulation이 아니라 실제 HTTP runtime으로 federation
 - [x] aggregation backend registry 또는 family 확장 규칙 정리
 - [x] adapter family별 state/update/payload compatibility 검증 강화
 - [x] server-owned config axis (`adapter_family`, `aggregation_backend`) 도입
-- [ ] real second family / second aggregation backend 추가
+- [ ] real second aggregation backend 추가
 
 ### config 쪽
 
@@ -381,6 +381,6 @@ training과 aggregation이 먼저 닫힌 뒤, privacy와 robustness를 분리된
 
 ## 가장 먼저 시작할 실제 작업 3개
 
-- [ ] 두 번째 real adapter family 추가
+- [x] 두 번째 real family(`classifier_head`) 추가
 - [ ] 두 번째 real aggregation backend 추가
 - [ ] integration test infra 안정화 후 multi-agent 시나리오 확장

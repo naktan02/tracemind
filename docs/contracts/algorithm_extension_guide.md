@@ -22,17 +22,17 @@
 
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
-| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
-| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends/` |
+| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `fixmatch_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
+| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend, ClassifierHeadFixMatchConsistencyTrainingBackend | `agent/src/services/training/training_backends/` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/input_backends/`, `agent/src/services/federation/training_example_service.py` |
 | Evidence Backend | agent | PrototypeSimilarityEvidenceBackend, FixMatchWeakViewEvidenceBackend | `agent/src/services/training/evidence_backends/` |
-| Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend | `agent/src/services/inference/scoring_backends.py` |
-| Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
+| Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
+| Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
-| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
+| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
-| Adapter Family | main_server/shared | diagonal_scale | `main_server/src/services/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
+| Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
 
 ---
 
@@ -84,14 +84,14 @@ class SharedAdapterTrainingBackend(Protocol):
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload: ...
 ```
 
-**현재:** `DiagonalScaleHeuristicTrainingBackend` — gradient 없이 confidence 가중 방향으로 delta 계산.
+**현재:** `DiagonalScaleHeuristicTrainingBackend`, `ClassifierHeadFixMatchConsistencyTrainingBackend`
+- `DiagonalScaleHeuristicTrainingBackend`는 gradient 없이 confidence 가중 방향으로 delta를 계산한다.
+- `ClassifierHeadFixMatchConsistencyTrainingBackend`는 weak-view pseudo-label과 strong-view logits로 linear classifier head delta를 계산한다.
 
 주의:
-- current runtime의 `SharedAdapterTrainingBackend`는 classifier head weight update가 아니라
-  `shared adapter delta`를 반환한다.
-- 따라서 official FixMatch의 cross-entropy consistency training을 그대로 넣으려면
-  새 backend 클래스만 추가하는 것으로는 부족하고, scorer/logit source와
-  adapter family contract까지 함께 넓혀야 한다.
+- 현재 runtime의 `SharedAdapterTrainingBackend`는 family별 shared state delta를 반환한다.
+- `classifier_head` family는 classifier weight/bias delta를, `diagonal_scale` family는
+  차원별 scale delta를 만든다.
 
 **교체 시나리오:**
 - Gradient 기반 backend 추가: `DiagonalScaleGradientTrainingBackend`
@@ -174,8 +174,8 @@ class PseudoLabelEvidenceBackend(Protocol):
 - `ScoredEvent.category_scores`를 top1/top2/margin 기반 evidence로 정규화한다.
 - 현재 baseline에서는 `confidence_kind=prototype_similarity`를 사용한다.
 - `FixMatchWeakViewEvidenceBackend`는 weak-view score를 posterior-like distribution으로
-  정규화하는 scaffold다. 현재는 classifier logits가 아니라 기존 score를 softmax로
-  변환하므로, official FixMatch와 완전히 같지는 않다.
+  정규화한다. `classifier_head_logits` scorer와 결합되면 실제 classifier logits를,
+  prototype scorer와 결합되면 existing score softmax를 사용한다.
 
 **교체 시나리오:**
 - classifier posterior evidence backend

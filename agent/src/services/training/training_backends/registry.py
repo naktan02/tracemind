@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from .base import SharedAdapterTrainingBackend, TrainingBackendFactory
 from .diagonal_scale_heuristic import DiagonalScaleHeuristicTrainingBackend
+from .fixmatch_consistency import (
+    ClassifierHeadFixMatchConsistencyTrainingBackend,
+)
 
 _TRAINING_BACKEND_REGISTRY: dict[str, TrainingBackendFactory] = {}
 
@@ -36,6 +39,11 @@ register_shared_adapter_training_backend(
     "diagonal_scale_heuristic",
     "synthetic_vector_adapter",
     factory=DiagonalScaleHeuristicTrainingBackend.from_objective_config,
+)
+register_shared_adapter_training_backend(
+    "classifier_head_fixmatch_consistency",
+    "fixmatch_consistency",
+    factory=ClassifierHeadFixMatchConsistencyTrainingBackend.from_objective_config,
 )
 
 

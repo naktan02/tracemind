@@ -12,6 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
@@ -85,6 +86,10 @@ def main(cfg: DictConfig) -> None:
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
         training_scope=str(cfg.training_scope),
+        round_runtime_config=FederatedRoundRuntimeConfig(
+            adapter_family_name=str(cfg.round_runtime.adapter_family_name),
+            aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
+        ),
         prototype_build_strategy=prototype_build_strategy,
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
         training_task_config=_build_training_task_config(cfg.training_task),

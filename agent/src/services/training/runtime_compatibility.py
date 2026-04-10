@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.federation.training_example_service import (
-    resolve_training_example_backend,
-)
 from agent.src.services.inference.scoring_backends import build_scoring_backend
 from agent.src.services.training.acceptance_policies import (
     PseudoLabelAcceptancePolicy,
@@ -14,6 +11,9 @@ from agent.src.services.training.acceptance_policies import (
 )
 from agent.src.services.training.evidence_backends import (
     resolve_pseudo_label_evidence_backend,
+)
+from agent.src.services.training.input_backends import (
+    resolve_training_example_backend,
 )
 from agent.src.services.training.privacy_guard_service import (
     SharedAdapterPrivacyGuard,

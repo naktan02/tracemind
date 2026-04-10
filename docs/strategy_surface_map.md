@@ -65,24 +65,23 @@
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
-| Training Backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.training_backend_name` | 활성 runtime |
-| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
+| Training Backend | `diagonal_scale_heuristic`, `classifier_head_fixmatch_consistency` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.training_backend_name` | 활성 runtime |
+| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `fixmatch_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
 | Example Generation Backend | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.example_generation_backend_name` | 활성 runtime |
 | Evidence Backend | `prototype_similarity_evidence`, `fixmatch_weak_view_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
-| Scorer Backend | `prototype_similarity` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
+| Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
 | Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.objective.score_policy_name`, `score_top_k` | 활성 runtime |
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
-| Privacy Guard | `diagonal_scale_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
+| Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
 
 추가 설명:
 
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
 - pseudo-label selection은 `example generation -> evidence backend -> acceptance policy`로 분리돼 있다.
-- `weak_strong_pair` backend는 official FixMatch류 multiview input을 위한 scaffold다.
-- `fixmatch_weak_view_evidence`는 weak-view confidence gating scaffold다.
-  현재는 classifier logits가 아니라 existing score를 softmax로 정규화하므로
-  full official FixMatch runtime과는 다르다.
+- `weak_strong_pair` backend는 official FixMatch류 multiview input을 위한 활성 runtime이다.
+- `fixmatch_weak_view_evidence`는 weak-view confidence gating backend다.
+  `classifier_head_logits` scorer와 결합되면 classifier posterior를 직접 사용한다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.
 - 실험에서는 위 축을 하나씩 직접 override할 수도 있고, `algorithm profile`로 묶어 한 번에 바꿀 수도 있다.
 - acceptance는 `policy`와 `threshold`가 분리돼 있다.
@@ -105,8 +104,8 @@
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
-| Adapter Family | `diagonal_scale` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/rounds/runtime_config.py` | 현재 scripts 기본 preset에는 직접 노출되지 않음 | 활성 runtime |
-| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/rounds/runtime_config.py` | 현재 scripts 기본 preset에는 직접 노출되지 않음 | 활성 runtime |
+| Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
+| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 
@@ -128,7 +127,7 @@
 
 | 축 | 현재 값 | 선택 위치 | 상태 |
 |---|---|---|---|
-| Local clipping guard | `diagonal_scale_clip_only` | `TrainingObjectiveConfig.privacy_guard_name` + `gradient_clip_norm` | 활성 runtime |
+| Local clipping guard | `diagonal_scale_clip_only`, `classifier_head_clip_only` | `TrainingObjectiveConfig.privacy_guard_name` + `gradient_clip_norm` | 활성 runtime |
 | No-op guard | `noop` | `TrainingObjectiveConfig.privacy_guard_name` | 활성 runtime |
 
 반영 위치:

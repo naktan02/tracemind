@@ -11,10 +11,13 @@ from agent.src.services.inference.scoring_policies import (
     PrototypeScorePolicy,
     build_prototype_score_policy,
 )
+from shared.src.contracts.adapter_contracts import ClassifierHeadState
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
+CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
 
 
 class ScoringBackend(Protocol):
@@ -27,6 +30,7 @@ class ScoringBackend(Protocol):
         self,
         embedding: Sequence[float],
         prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
         """임베딩과 prototype들로 category score dict를 계산한다."""
 
@@ -47,7 +51,9 @@ class PrototypeSimilarityScoringBackend:
         self,
         embedding: Sequence[float],
         prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
+        del shared_state
         embedding_vector = _coerce_vector(embedding, vector_name="embedding")
         scores: dict[str, float] = {}
         for category, category_prototypes in prototypes.items():
@@ -62,6 +68,29 @@ class PrototypeSimilarityScoringBackend:
                 category=category,
             )
         return scores
+
+
+@dataclass(slots=True)
+class ClassifierHeadLogitsScoringBackend:
+    """공통 classifier head state로 category logits를 계산한다."""
+
+    backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
+    supported_adapter_kinds: tuple[str, ...] = ("classifier_head",)
+
+    def score(
+        self,
+        embedding: Sequence[float],
+        prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        shared_state: SharedAdapterState | None = None,
+    ) -> dict[str, float]:
+        del prototypes
+        if not isinstance(shared_state, ClassifierHeadState):
+            raise ValueError(
+                "classifier_head_logits backend requires "
+                "ClassifierHeadState as shared_state."
+            )
+        embedding_vector = _coerce_vector(embedding, vector_name="embedding")
+        return shared_state.compute_logits(embedding_vector)
 
 
 _SCORING_BACKEND_REGISTRY: dict[str, ScoringBackendFactory] = {}
@@ -110,6 +139,14 @@ def _build_prototype_similarity_backend(
     )
 
 
+def _build_classifier_head_logits_backend(
+    objective_config: TrainingObjectiveConfig,
+    similarity_name: str,
+) -> ScoringBackend:
+    del objective_config, similarity_name
+    return ClassifierHeadLogitsScoringBackend()
+
+
 def _coerce_vector(
     values: Sequence[float],
     *,
@@ -150,4 +187,8 @@ def _coerce_prototype_vectors(
 register_scoring_backend(
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
     factory=_build_prototype_similarity_backend,
+)
+register_scoring_backend(
+    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+    factory=_build_classifier_head_logits_backend,
 )

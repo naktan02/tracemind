@@ -44,6 +44,7 @@ from scripts.experiments.federated_simulation.models import (
     ClientRoundSummary,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
@@ -52,7 +53,10 @@ from scripts.experiments.federated_simulation.models import (
 )
 from scripts.experiments.federated_simulation.runtime import (
     SimulationEmbeddingAdapterFactory,
+    build_classifier_head_state_from_prototype_pack,
+    build_initial_shared_state,
     build_prototype_rebuild_runtime_service,
+    build_simulation_round_family,
     load_active_state,
     rebuild_reference_prototype_pack,
     store_prototype_rebuild_input,
@@ -64,7 +68,6 @@ from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
-from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
@@ -83,6 +86,7 @@ def run_simulation(
     embedding_spec: EmbeddingAdapterSpec,
     model_id: str,
     training_scope: str,
+    round_runtime_config: FederatedRoundRuntimeConfig,
     prototype_build_strategy: PrototypeBuildStrategy,
     shard_policy: FederatedShardPolicyConfig,
     training_task_config: FederatedTrainingTaskConfig,
@@ -108,22 +112,35 @@ def run_simulation(
     state_repository = shared_adapter_state_repository.SharedAdapterStateRepository(
         state_root=output_dir / "main_server" / "shared_adapter_states"
     )
-    round_manager = RoundManagerService(artifact_repository=state_repository)
+    round_manager = RoundManagerService(
+        adapter_family=build_simulation_round_family(
+            adapter_family_name=round_runtime_config.adapter_family_name,
+            aggregation_backend_name=round_runtime_config.aggregation_backend_name,
+        ),
+        artifact_repository=state_repository,
+    )
     round_repository = RoundRepository(state_root=output_dir / "main_server" / "rounds")
-
-    validation_scoring_service = build_validation_scoring_service(validation_config)
 
     initial_model_revision = "sim_rev_0000"
     initial_prototype_version = "proto_sim_0000"
     now = datetime.now(timezone.utc)
-    initial_state = VectorAdapterState.identity(
+    category_labels = tuple(
+        sorted(
+            {
+                str(row["mapped_label_4"])
+                for row in (*train_rows, *validation_rows)
+            }
+        )
+    )
+    initial_state = build_initial_shared_state(
+        adapter_family_name=round_runtime_config.adapter_family_name,
         model_id=model_id,
         model_revision=initial_model_revision,
         training_scope=training_scope,
         embedding_dim=embedding_dim,
+        labels=category_labels,
         updated_at=now,
     )
-    initial_state_path = state_repository.save_shared_adapter_state(initial_state)
     SimulationEmbeddingAdapterFactory.adapter = adapter
     input_repository = (
         prototype_rebuild_input_repository.PrototypeRebuildInputRepository(
@@ -154,6 +171,19 @@ def run_simulation(
         embedding_model_revision=initial_model_revision,
         built_at=now,
     )
+    if round_runtime_config.adapter_family_name == "classifier_head":
+        initial_state = build_classifier_head_state_from_prototype_pack(
+            prototype_pack=active_prototype,
+            model_id=model_id,
+            model_revision=initial_model_revision,
+            training_scope=training_scope,
+            updated_at=now,
+        )
+    validation_scoring_service = build_validation_scoring_service(
+        validation_config,
+        shared_state=initial_state,
+    )
+    initial_state_path = state_repository.save_shared_adapter_state(initial_state)
     save_prototype_pack(output_dir, active_prototype)
     active_manifest = ModelManifest(
         schema_version="model_manifest.v1",
@@ -199,6 +229,7 @@ def run_simulation(
         training_scoring_service = ScoringService.from_objective_config(
             training_task.objective_config,
             similarity_name=validation_config.similarity_name,
+            shared_state=active_state,
         )
 
         updates = []
@@ -284,7 +315,10 @@ def run_simulation(
             adapter_state=active_state,
             prototype_pack=active_prototype,
             model_id=model_id,
-            scoring_service=validation_scoring_service,
+            scoring_service=build_validation_scoring_service(
+                validation_config,
+                shared_state=active_state,
+            ),
             confidence_threshold=validation_config.confidence_threshold,
             margin_threshold=validation_config.margin_threshold,
             objective_config=training_task.objective_config,

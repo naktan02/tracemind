@@ -34,6 +34,7 @@ from .runtime_compatibility import (
     validate_local_training_runtime,
 )
 from .training_backends import (
+    ClassifierHeadFixMatchConsistencyTrainingBackend,
     DiagonalScaleHeuristicTrainingBackend,
     SharedAdapterTrainingBackend,
     SyntheticVectorAdapterTrainingBackend,
@@ -44,6 +45,7 @@ from .training_example_models import EmbeddedTrainingExample
 
 __all__ = [
     "AcceptanceDecision",
+    "ClassifierHeadFixMatchConsistencyTrainingBackend",
     "DiagonalScaleHeuristicTrainingBackend",
     "EmbeddedTrainingExample",
     "FixMatchWeakViewEvidenceBackend",

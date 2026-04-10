@@ -3,6 +3,7 @@
 from .baseline_service import BaselineConfig, BaselineService
 from .decision_service import DecisionEvaluation, DecisionService
 from .scoring_backends import (
+    ClassifierHeadLogitsScoringBackend,
     PrototypeSimilarityScoringBackend,
     ScoringBackend,
     build_scoring_backend,
@@ -20,6 +21,7 @@ from .time_series_service import TimeSeriesAccumulator, TimeSeriesConfig
 __all__ = [
     "BaselineConfig",
     "BaselineService",
+    "ClassifierHeadLogitsScoringBackend",
     "DecisionEvaluation",
     "DecisionService",
     "MaxCosineScorePolicy",

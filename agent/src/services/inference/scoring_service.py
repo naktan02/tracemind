@@ -12,6 +12,7 @@ from agent.src.services.inference.scoring_backends import (
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
 @dataclass(slots=True)
@@ -19,6 +20,7 @@ class ScoringService:
     """설정된 scoring backend로 category score dict를 계산한다."""
 
     backend: ScoringBackend = field(default_factory=PrototypeSimilarityScoringBackend)
+    shared_state: SharedAdapterState | None = None
 
     @classmethod
     def from_objective_config(
@@ -26,6 +28,7 @@ class ScoringService:
         objective_config: TrainingObjectiveConfig,
         *,
         similarity_name: str = "cosine",
+        shared_state: SharedAdapterState | None = None,
     ) -> "ScoringService":
         """학습 objective config로부터 scoring service를 조립한다."""
 
@@ -38,11 +41,15 @@ class ScoringService:
             objective_config=objective_config,
             similarity_name=similarity_name,
         )
-        return cls(backend=backend)
+        return cls(backend=backend, shared_state=shared_state)
 
     def score(
         self,
         embedding: Sequence[float],
         prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
     ) -> dict[str, float]:
-        return self.backend.score(embedding, prototypes)
+        return self.backend.score(
+            embedding,
+            prototypes,
+            shared_state=self.shared_state,
+        )

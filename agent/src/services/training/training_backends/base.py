@@ -14,6 +14,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 if TYPE_CHECKING:
+    from shared.src.domain.entities.inference.events import ScoredEvent
     from shared.src.domain.entities.training.pseudo_label_candidate import (
         PseudoLabelCandidate,
     )
@@ -23,6 +24,7 @@ class AcceptedTrainingExample(Protocol):
     """로컬 학습 backend가 필요로 하는 최소 accepted example shape."""
 
     update_embedding: list[float]
+    update_scored_event: "ScoredEvent"
     candidate: "PseudoLabelCandidate | None"
 
 

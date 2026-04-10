@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from .adapter_family_service import (
+    ClassifierHeadRoundFamily,
     DiagonalScaleRoundFamily,
     SharedAdapterRoundFamily,
     build_shared_adapter_round_family,
@@ -14,6 +15,7 @@ from .aggregation_service import (
     AggregationConfig,
     AggregationResult,
     AggregationService,
+    ClassifierHeadFedAvgAggregationService,
     DiagonalScaleAggregationService,
     SharedAdapterAggregationBackend,
     build_shared_adapter_aggregation_backend,
@@ -109,6 +111,8 @@ __all__ = [
     "build_round_manager_service_from_config",
     "build_shared_adapter_aggregation_backend",
     "build_shared_adapter_round_family",
+    "ClassifierHeadFedAvgAggregationService",
+    "ClassifierHeadRoundFamily",
     "CompositeRoundUpdateAcceptancePolicy",
     "DiagonalScaleRoundFamily",
     "DiagonalScaleAggregationService",

@@ -65,11 +65,14 @@ Raw Event / Local Signal
 
 설명:
 
-1. `v1`에서는 backbone은 고정하고 shared adapter만 다룬다.
-2. 현재 adapter family는 `diagonal_scale` 하나다.
-3. 현재 로컬 update는 heuristic 기반이고, local training / example generation /
-   scorer / acceptance / privacy 축은 각각 독립적으로 교체 가능하게 정리됐다.
-4. prototype은 직접 FL 파라미터라기보다 shared state로부터 재생성되는 artifact에 가깝다.
+1. `v1`에서는 backbone은 고정하고 shared adapter/head family를 다룬다.
+2. 현재 활성 family는 `diagonal_scale`, `classifier_head` 두 개다.
+3. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
+   stored scored event를 쓰는 real agent 경로는 아직 `diagonal_scale`만 안전하다.
+4. 현재 로컬 update는 heuristic 기반과 classifier-head FixMatch-style consistency
+   두 경로가 있으며, local training / example generation / scorer / acceptance /
+   privacy 축은 각각 독립적으로 교체 가능하게 정리됐다.
+5. prototype은 직접 FL 파라미터라기보다 shared state로부터 재생성되는 artifact에 가깝다.
 
 ## 4. 구현 배치 규칙
 
@@ -99,11 +102,12 @@ Raw Event / Local Signal
 
 아직 남은 핵심:
 
-1. 두 번째 real adapter family를 추가해 family 교체 실험을 실제로 연다.
-2. 두 번째 real aggregation backend를 추가해 server 전략 비교를 실제로 연다.
+1. 두 번째 real family(`classifier_head`)를 simulation/runtime 레일에 추가했다.
+2. 아직 두 번째 real aggregation backend는 없다.
 3. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
 4. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
-5. 필요하면 learned scorer / richer example-generation backend를 구현한다.
+5. stored scored event 기반 real agent 경로에도 classifier-head family를 연결할지 결정한다.
+6. 필요하면 learned scorer 또는 richer example-generation backend를 구현한다.
 
 ## 6. Phase 요약
 
@@ -139,10 +143,10 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. 두 번째 real `adapter_family` 하나를 end-to-end로 추가
-2. 두 번째 real `aggregation_backend` 하나를 추가
-3. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
-4. `DiagonalScaleGradientTrainingBackend` 추가
+1. 두 번째 real `aggregation_backend` 하나를 추가
+2. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
+3. `DiagonalScaleGradientTrainingBackend` 추가
+4. classifier-head family의 real agent stored-event 경로 확장 여부 결정
 5. 필요 시 learned scorer 또는 richer example-generation backend 추가
 
 ## 8. 검증 기준

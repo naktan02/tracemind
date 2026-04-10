@@ -21,12 +21,18 @@ Shared adapter 상태와 update payload를 정의한다.
 - `DiagonalScaleAdapterStatePayload`
   - 현재 concrete 구현
   - `dimension_scales`는 임베딩 차원별 전역 scale 벡터
+- `ClassifierHeadAdapterStatePayload`
+  - classifier-head concrete 구현
+  - `label_weights`, `label_biases`는 category별 linear head 파라미터다
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
 - `DiagonalScaleAdapterUpdatePayload`
   - 현재 concrete 구현
   - `dimension_deltas`는 차원별 scale 변화량
   - `label_counts`는 drift 관찰용 메타데이터이며, 직접 gradient 자체는 아니다
+- `ClassifierHeadAdapterUpdatePayload`
+  - classifier-head concrete 구현
+  - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
 
 ### `training_contracts.py`
 
@@ -68,12 +74,12 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 
 - `adapter_kind`
   - adapter family discriminator
-  - 예: `diagonal_scale`
+  - 예: `diagonal_scale`, `classifier_head`
 - `payload_format`
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
-  - 현재는 주로 `adapter_only`
+  - 현재는 주로 `adapter_only`, `head_only`
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision
   - `base_model_revision`: 로컬 update가 계산된 기준 revision

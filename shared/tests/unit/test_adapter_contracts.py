@@ -3,6 +3,8 @@ from __future__ import annotations
 from pathlib import Path
 
 from shared.src.contracts.adapter_contracts import (
+    ClassifierHeadAdapterStatePayload,
+    ClassifierHeadAdapterUpdatePayload,
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
     SharedAdapterStatePayload,
@@ -109,3 +111,53 @@ def test_shared_adapter_loader_accepts_registered_custom_family(
     assert isinstance(loaded_update, TestAdapterUpdatePayload)
     assert loaded_state.adapter_kind == "test_family"
     assert loaded_update.adapter_kind == "test_family"
+
+
+def test_generic_shared_adapter_loader_dispatches_classifier_head_payloads(
+    tmp_path: Path,
+    fixed_utc_time,
+) -> None:
+    state_path = tmp_path / "classifier_state.json"
+    update_path = tmp_path / "classifier_update.json"
+    dump_shared_adapter_state_payload(
+        state_path,
+        ClassifierHeadAdapterStatePayload(
+            adapter_kind="classifier_head",
+            model_id="tracemind-embed",
+            model_revision="rev_head_001",
+            training_scope="head_only",
+            updated_at=fixed_utc_time,
+            label_weights={
+                "anxiety": [0.5, -0.1],
+                "normal": [-0.2, 0.4],
+            },
+            label_biases={"anxiety": 0.1, "normal": -0.1},
+        ),
+    )
+    dump_shared_adapter_update_payload(
+        update_path,
+        ClassifierHeadAdapterUpdatePayload(
+            adapter_kind="classifier_head",
+            model_id="tracemind-embed",
+            base_model_revision="rev_head_001",
+            training_scope="head_only",
+            example_count=3,
+            created_at=fixed_utc_time,
+            label_weight_deltas={
+                "anxiety": [0.01, -0.02],
+                "normal": [-0.01, 0.02],
+            },
+            label_bias_deltas={"anxiety": 0.03, "normal": -0.03},
+            mean_confidence=0.92,
+            mean_margin=0.4,
+            label_counts={"anxiety": 2, "normal": 1},
+        ),
+    )
+
+    loaded_state = load_shared_adapter_state_payload(state_path)
+    loaded_update = load_shared_adapter_update_payload(update_path)
+
+    assert isinstance(loaded_state, ClassifierHeadAdapterStatePayload)
+    assert isinstance(loaded_update, ClassifierHeadAdapterUpdatePayload)
+    assert loaded_state.embedding_dim == 2
+    assert loaded_update.labels == ("anxiety", "normal")

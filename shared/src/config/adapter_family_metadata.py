@@ -28,8 +28,18 @@ DIAGONAL_SCALE_FAMILY_METADATA = SharedAdapterFamilyMetadata(
     ),
 )
 
+CLASSIFIER_HEAD_FAMILY_METADATA = SharedAdapterFamilyMetadata(
+    family_name=AdapterKind.CLASSIFIER_HEAD.value,
+    adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
+    canonical_update_payload_format=UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,
+    accepted_update_payload_formats=(
+        UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,
+    ),
+)
+
 
 __all__ = [
+    "CLASSIFIER_HEAD_FAMILY_METADATA",
     "DIAGONAL_SCALE_FAMILY_METADATA",
     "SharedAdapterFamilyMetadata",
 ]

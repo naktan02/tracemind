@@ -6,8 +6,14 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
-from shared.src.contracts.adapter_contracts import VectorAdapterDelta
+from shared.src.config.adapter_family_metadata import (
+    CLASSIFIER_HEAD_FAMILY_METADATA,
+    DIAGONAL_SCALE_FAMILY_METADATA,
+)
+from shared.src.contracts.adapter_contracts import (
+    ClassifierHeadDelta,
+    VectorAdapterDelta,
+)
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
@@ -96,6 +102,51 @@ class DiagonalScaleClipOnlyPrivacyGuard:
         return PrivacyProtectedUpdate(update=clipped, clipped=True)
 
 
+@dataclass(slots=True)
+class ClassifierHeadClipOnlyPrivacyGuard:
+    """Classifier-head update에 clip만 적용하는 privacy guard."""
+
+    guard_name: str = "classifier_head_clip_only"
+    supported_adapter_kinds: tuple[str, ...] = (
+        CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    )
+
+    def protect(
+        self,
+        *,
+        update: SharedAdapterUpdate,
+        training_task: TrainingTask,
+    ) -> PrivacyProtectedUpdate:
+        if not isinstance(update, ClassifierHeadDelta):
+            raise TypeError(
+                "ClassifierHeadClipOnlyPrivacyGuard expects ClassifierHeadDelta, "
+                f"got {type(update)!r}."
+            )
+
+        clip_norm = training_task.gradient_clip_norm
+        if clip_norm is None:
+            return PrivacyProtectedUpdate(update=update)
+
+        current_norm = update.l2_norm()
+        if current_norm == 0.0 or current_norm <= clip_norm:
+            return PrivacyProtectedUpdate(update=update)
+
+        scale = clip_norm / current_norm
+        clipped = update.model_copy(
+            update={
+                "label_weight_deltas": {
+                    label: [value * scale for value in deltas]
+                    for label, deltas in update.label_weight_deltas.items()
+                },
+                "label_bias_deltas": {
+                    label: value * scale
+                    for label, value in update.label_bias_deltas.items()
+                },
+            }
+        )
+        return PrivacyProtectedUpdate(update=clipped, clipped=True)
+
+
 _PRIVACY_GUARD_REGISTRY: dict[str, PrivacyGuardFactory] = {}
 
 
@@ -123,6 +174,10 @@ def build_shared_adapter_privacy_guard(
 register_shared_adapter_privacy_guard(
     "diagonal_scale_clip_only",
     factory=DiagonalScaleClipOnlyPrivacyGuard,
+)
+register_shared_adapter_privacy_guard(
+    "classifier_head_clip_only",
+    factory=ClassifierHeadClipOnlyPrivacyGuard,
 )
 register_shared_adapter_privacy_guard(
     "noop",

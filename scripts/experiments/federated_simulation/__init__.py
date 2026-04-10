@@ -4,6 +4,7 @@ from .io_utils import load_jsonl_rows
 from .models import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
@@ -14,6 +15,7 @@ from .simulation import run_simulation
 __all__ = [
     "FederatedDiagnosticsConfig",
     "FederatedPrototypeRebuildConfig",
+    "FederatedRoundRuntimeConfig",
     "FederatedShardPolicyConfig",
     "FederatedTrainingTaskConfig",
     "FederatedValidationConfig",

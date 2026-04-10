@@ -84,7 +84,7 @@ class FederatedValidationConfig:
 
     similarity_name: str
     scorer_backend_name: str
-    score_policy_name: str
+    score_policy_name: str | None
     confidence_threshold: float
     margin_threshold: float
     score_top_k: int | None = None
@@ -106,3 +106,11 @@ class FederatedDiagnosticsConfig:
     """selection dump 저장 설정."""
 
     dump_dir_name: str
+
+
+@dataclass(slots=True)
+class FederatedRoundRuntimeConfig:
+    """simulation이 사용할 shared family / aggregation backend 설정."""
+
+    adapter_family_name: str
+    aggregation_backend_name: str

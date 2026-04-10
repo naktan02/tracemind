@@ -23,20 +23,25 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from .common_types import TrainingScope
 
 VECTOR_ADAPTER_STATE_V1 = "vector_adapter_state.v1"
 VECTOR_ADAPTER_DELTA_V1 = "vector_adapter_delta.v1"
+CLASSIFIER_HEAD_STATE_V1 = "classifier_head_state.v1"
+CLASSIFIER_HEAD_DELTA_V1 = "classifier_head_delta.v1"
 VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
 VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
+ClassifierHeadStateSchemaVersion: TypeAlias = Literal["classifier_head_state.v1"]
+ClassifierHeadDeltaSchemaVersion: TypeAlias = Literal["classifier_head_delta.v1"]
 
 
 class AdapterKind(StrEnum):
     """Shared adapter family discriminator."""
 
     DIAGONAL_SCALE = "diagonal_scale"
+    CLASSIFIER_HEAD = "classifier_head"
 
 
 class SharedAdapterStatePayload(BaseModel):
@@ -130,6 +135,111 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
         return [value / norm for value in scaled]
 
 
+class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
+    """선형 classifier head family 상태 payload.
+
+    이 family는 임베딩 자체를 변형하지 않고, 공통 임베딩 위에 category별
+    linear head를 얹어 logits를 계산한다. `apply`는 prototype rebuild 등
+    shared-state 공용 경로와의 호환을 위해 임베딩을 L2 정규화해 통과시킨다.
+    """
+
+    schema_version: ClassifierHeadStateSchemaVersion = Field(
+        default=CLASSIFIER_HEAD_STATE_V1,
+        description="Classifier head state payload contract 버전.",
+    )
+    label_weights: dict[str, list[float]] = Field(
+        description="카테고리별 선형 head weight 벡터."
+    )
+    label_biases: dict[str, float] = Field(
+        default_factory=dict,
+        description="카테고리별 bias 항. 없는 카테고리는 0.0으로 간주한다.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_classifier_head_shape(self) -> "ClassifierHeadAdapterStatePayload":
+        if not self.label_weights:
+            raise ValueError("label_weights must not be empty.")
+
+        labels = tuple(sorted(self.label_weights))
+        dims = {len(weights) for weights in self.label_weights.values()}
+        if dims == {0}:
+            raise ValueError("Classifier head weights must be non-empty.")
+        if len(dims) != 1:
+            raise ValueError("All classifier head weight vectors must share one dim.")
+
+        normalized_biases = {
+            label: float(self.label_biases.get(label, 0.0)) for label in labels
+        }
+        extra_bias_labels = set(self.label_biases) - set(labels)
+        if extra_bias_labels:
+            raise ValueError(
+                "Classifier head biases include unknown labels: "
+                f"{sorted(extra_bias_labels)}"
+            )
+        self.label_biases = normalized_biases
+        return self
+
+    @classmethod
+    def zero_initialized(
+        cls,
+        *,
+        model_id: str,
+        model_revision: str,
+        labels: Sequence[str],
+        embedding_dim: int,
+        training_scope: TrainingScope = TrainingScope.HEAD_ONLY,
+        updated_at: datetime,
+    ) -> "ClassifierHeadAdapterStatePayload":
+        """0으로 초기화된 선형 classifier head 상태를 만든다."""
+        normalized_labels = tuple(sorted({str(label) for label in labels if str(label)}))
+        if not normalized_labels:
+            raise ValueError("labels must not be empty.")
+        if embedding_dim <= 0:
+            raise ValueError("embedding_dim must be positive.")
+        return cls(
+            schema_version=CLASSIFIER_HEAD_STATE_V1,
+            adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
+            model_id=model_id,
+            model_revision=model_revision,
+            training_scope=training_scope,
+            updated_at=updated_at,
+            label_weights={
+                label: [0.0] * embedding_dim for label in normalized_labels
+            },
+            label_biases={label: 0.0 for label in normalized_labels},
+        )
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        return tuple(sorted(self.label_weights))
+
+    @property
+    def embedding_dim(self) -> int:
+        first_label = self.labels[0]
+        return len(self.label_weights[first_label])
+
+    def apply(self, embedding: Sequence[float]) -> list[float]:
+        if len(embedding) != self.embedding_dim:
+            raise ValueError("Embedding dimension does not match classifier head.")
+        norm = math.sqrt(sum(float(value) * float(value) for value in embedding))
+        if norm == 0.0:
+            raise ValueError("Classifier-head input embedding norm must be non-zero.")
+        return [float(value) / norm for value in embedding]
+
+    def compute_logits(self, embedding: Sequence[float]) -> dict[str, float]:
+        """정규화된 임베딩에 대해 category별 linear logits를 계산한다."""
+        if len(embedding) != self.embedding_dim:
+            raise ValueError("Embedding dimension does not match classifier head.")
+        return {
+            label: sum(
+                float(weight) * float(value)
+                for weight, value in zip(weights, embedding, strict=True)
+            )
+            + float(self.label_biases.get(label, 0.0))
+            for label, weights in sorted(self.label_weights.items())
+        }
+
+
 class SharedAdapterUpdatePayload(BaseModel):
     """로컬 학습이 생성한 shared adapter update payload 공통 필드.
 
@@ -211,10 +321,90 @@ class DiagonalScaleAdapterUpdatePayload(SharedAdapterUpdatePayload):
         return math.sqrt(sum(value * value for value in self.dimension_deltas))
 
 
+class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
+    """선형 classifier head family update payload."""
+
+    schema_version: ClassifierHeadDeltaSchemaVersion = Field(
+        default=CLASSIFIER_HEAD_DELTA_V1,
+        description="Classifier head update payload contract 버전.",
+    )
+    label_weight_deltas: dict[str, list[float]] = Field(
+        description="카테고리별 weight delta 벡터."
+    )
+    label_bias_deltas: dict[str, float] = Field(
+        default_factory=dict,
+        description="카테고리별 bias delta. 없는 카테고리는 0.0으로 간주한다.",
+    )
+    mean_confidence: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="Update에 반영된 accepted example들의 평균 confidence.",
+    )
+    mean_margin: float | None = Field(
+        default=None,
+        description="Accepted example들의 평균 top1-top2 margin.",
+    )
+    label_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Accepted example의 pseudo-label 분포. drift 관찰용 메타데이터다.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_classifier_head_delta_shape(
+        self,
+    ) -> "ClassifierHeadAdapterUpdatePayload":
+        if not self.label_weight_deltas:
+            raise ValueError("label_weight_deltas must not be empty.")
+
+        labels = tuple(sorted(self.label_weight_deltas))
+        dims = {len(weights) for weights in self.label_weight_deltas.values()}
+        if dims == {0}:
+            raise ValueError("Classifier head delta vectors must be non-empty.")
+        if len(dims) != 1:
+            raise ValueError("All classifier head delta vectors must share one dim.")
+
+        normalized_biases = {
+            label: float(self.label_bias_deltas.get(label, 0.0)) for label in labels
+        }
+        extra_bias_labels = set(self.label_bias_deltas) - set(labels)
+        if extra_bias_labels:
+            raise ValueError(
+                "Classifier head bias deltas include unknown labels: "
+                f"{sorted(extra_bias_labels)}"
+            )
+        self.label_bias_deltas = normalized_biases
+        return self
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        return tuple(sorted(self.label_weight_deltas))
+
+    @property
+    def embedding_dim(self) -> int:
+        first_label = self.labels[0]
+        return len(self.label_weight_deltas[first_label])
+
+    def l2_norm(self) -> float:
+        """weight/bias delta 전체의 L2 norm을 반환한다."""
+        squared_weight_norm = sum(
+            float(value) * float(value)
+            for deltas in self.label_weight_deltas.values()
+            for value in deltas
+        )
+        squared_bias_norm = sum(
+            float(value) * float(value) for value in self.label_bias_deltas.values()
+        )
+        return math.sqrt(squared_weight_norm + squared_bias_norm)
+
+
 VectorAdapterStatePayload = DiagonalScaleAdapterStatePayload
 VectorAdapterDeltaPayload = DiagonalScaleAdapterUpdatePayload
 VectorAdapterState = VectorAdapterStatePayload
 VectorAdapterDelta = VectorAdapterDeltaPayload
+ClassifierHeadStatePayload = ClassifierHeadAdapterStatePayload
+ClassifierHeadDeltaPayload = ClassifierHeadAdapterUpdatePayload
+ClassifierHeadState = ClassifierHeadStatePayload
+ClassifierHeadDelta = ClassifierHeadDeltaPayload
 
 _STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {}
 _UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {}
@@ -407,15 +597,80 @@ def make_diagonal_delta_payload(
     )
 
 
+def make_zero_classifier_head_state_payload(
+    *,
+    model_id: str,
+    model_revision: str,
+    labels: Sequence[str],
+    embedding_dim: int,
+    training_scope: TrainingScope = TrainingScope.HEAD_ONLY,
+    updated_at: datetime | None = None,
+) -> ClassifierHeadAdapterStatePayload:
+    """0으로 초기화된 classifier head state payload를 만든다."""
+    return ClassifierHeadAdapterStatePayload.zero_initialized(
+        model_id=model_id,
+        model_revision=model_revision,
+        labels=labels,
+        embedding_dim=embedding_dim,
+        training_scope=TrainingScope(training_scope),
+        updated_at=updated_at or datetime.now(tz=timezone.utc),
+    )
+
+
+def make_classifier_head_delta_payload(
+    *,
+    model_id: str,
+    base_model_revision: str,
+    label_weight_deltas: dict[str, list[float]],
+    example_count: int,
+    mean_confidence: float,
+    training_scope: TrainingScope = TrainingScope.HEAD_ONLY,
+    label_bias_deltas: dict[str, float] | None = None,
+    mean_margin: float | None = None,
+    label_counts: dict[str, int] | None = None,
+    created_at: datetime | None = None,
+) -> ClassifierHeadAdapterUpdatePayload:
+    """classifier head update payload를 만드는 표준 factory."""
+    return ClassifierHeadAdapterUpdatePayload(
+        schema_version=CLASSIFIER_HEAD_DELTA_V1,
+        adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
+        model_id=model_id,
+        base_model_revision=base_model_revision,
+        training_scope=training_scope,
+        example_count=example_count,
+        created_at=created_at or datetime.now(tz=timezone.utc),
+        label_weight_deltas=label_weight_deltas,
+        label_bias_deltas=label_bias_deltas or {},
+        mean_confidence=mean_confidence,
+        mean_margin=mean_margin,
+        label_counts=label_counts or {},
+    )
+
+
 register_shared_adapter_payload_family(
     AdapterKind.DIAGONAL_SCALE.value,
     state_payload_type=DiagonalScaleAdapterStatePayload,
     update_payload_type=DiagonalScaleAdapterUpdatePayload,
 )
+register_shared_adapter_payload_family(
+    AdapterKind.CLASSIFIER_HEAD.value,
+    state_payload_type=ClassifierHeadAdapterStatePayload,
+    update_payload_type=ClassifierHeadAdapterUpdatePayload,
+)
 
 
 __all__ = [
     "AdapterKind",
+    "CLASSIFIER_HEAD_DELTA_V1",
+    "CLASSIFIER_HEAD_STATE_V1",
+    "ClassifierHeadAdapterStatePayload",
+    "ClassifierHeadAdapterUpdatePayload",
+    "ClassifierHeadDelta",
+    "ClassifierHeadDeltaPayload",
+    "ClassifierHeadDeltaSchemaVersion",
+    "ClassifierHeadState",
+    "ClassifierHeadStatePayload",
+    "ClassifierHeadStateSchemaVersion",
     "DiagonalScaleAdapterStatePayload",
     "DiagonalScaleAdapterUpdatePayload",
     "SharedAdapterStatePayload",
@@ -436,8 +691,10 @@ __all__ = [
     "load_shared_adapter_update_payload",
     "load_vector_adapter_delta_payload",
     "load_vector_adapter_state_payload",
+    "make_classifier_head_delta_payload",
     "make_diagonal_delta_payload",
     "make_identity_state_payload",
+    "make_zero_classifier_head_state_payload",
     "register_shared_adapter_payload_family",
     "register_shared_adapter_state_payload_type",
     "register_shared_adapter_update_payload_type",
