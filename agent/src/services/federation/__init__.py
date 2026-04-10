@@ -12,6 +12,7 @@ from .training_example_service import (
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
+    WeakStrongPairTrainingExampleBackend,
     build_training_example_backend,
     register_training_example_backend,
 )
@@ -47,6 +48,7 @@ __all__ = [
     "TrainingExampleBuildRequest",
     "TrainingExampleService",
     "TrainingExampleSource",
+    "WeakStrongPairTrainingExampleBackend",
     "build_training_example_backend",
     "register_training_example_backend",
 ]

@@ -49,7 +49,10 @@ def save_selection_diagnostics(
 
     rows_by_query_id = {str(row["query_id"]): row for row in rows}
     examples_by_query_id = {
-        example.scored_event.query_id: example for example in training_examples
+        example.selection_key: example for example in training_examples
+    }
+    evidences_by_query_id = {
+        evidence.source_event_ref: evidence for evidence in selection_result.evidences
     }
     stage_counts: dict[str, int] = defaultdict(int)
     by_true_label: dict[str, dict[str, int]] = defaultdict(lambda: defaultdict(int))
@@ -62,10 +65,17 @@ def save_selection_diagnostics(
         query_id = candidate.source_event_ref
         row = rows_by_query_id[query_id]
         example = examples_by_query_id[query_id]
+        evidence = evidences_by_query_id.get(query_id)
         selection_stage = str(candidate.metadata.get("selection_stage", "unknown"))
         threshold_accepted = bool(candidate.metadata.get("threshold_accepted", False))
         selected_by_cap = bool(candidate.metadata.get("selected_by_cap", False))
         pre_cap_rank = candidate.metadata.get("pre_cap_rank")
+        raw_scores = (
+            example.evidence_scored_event.category_scores
+            if evidence is None
+            else evidence.raw_scores
+        )
+        label_distribution = None if evidence is None else evidence.label_distribution
 
         stage_counts[selection_stage] += 1
         by_true_label[str(row["mapped_label_4"])]["total"] += 1
@@ -91,7 +101,19 @@ def save_selection_diagnostics(
                     "selection_stage": selection_stage,
                     "pre_cap_rank": pre_cap_rank,
                     "is_prediction_correct": candidate.label == row["mapped_label_4"],
-                    "category_scores": example.scored_event.category_scores,
+                    "view_kind": example.view_kind,
+                    "confidence_kind": candidate.confidence_kind,
+                    "category_scores": raw_scores,
+                    "label_distribution": label_distribution,
+                    "evidence_view_kind": (
+                        example.view_kind if evidence is None else evidence.view_kind
+                    ),
+                    "evidence_confidence": (
+                        candidate.confidence if evidence is None else evidence.top1_score
+                    ),
+                    "evidence_margin": (
+                        candidate.margin if evidence is None else evidence.margin
+                    ),
                 },
                 ensure_ascii=True,
             )

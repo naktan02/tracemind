@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from datetime import datetime, timezone
 
+import pytest
+
+from agent.src.services.inference.scoring_service import ScoringService
 from main_server.src.services.rounds.models import RoundTaskConfig
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
@@ -12,6 +15,10 @@ from scripts.experiments.federated_simulation import (
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
+)
+from scripts.experiments.federated_simulation.evaluation import (
+    build_training_examples,
+    evaluate_rows,
 )
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
@@ -21,14 +28,24 @@ from scripts.experiments.run_federated_simulation import (
     split_rows_for_federation,
 )
 from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
     SinglePrototypeBuildStrategy,
 )
+
+
+class _StaticEmbeddingAdapter:
+    def __init__(self, vectors: dict[str, list[float]]) -> None:
+        self._vectors = vectors
+
+    def embed_texts(self, texts: list[str]) -> list[list[float]]:
+        return [list(self._vectors[text]) for text in texts]
 
 
 def _row(query_id: str, text: str, label: str) -> dict[str, str]:
@@ -43,6 +60,37 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
         "approved_by": "test",
         "created_at": "2026-03-29T00:00:00+00:00",
     }
+
+
+def _pack_payload() -> PrototypePackPayload:
+    return PrototypePackPayload.model_validate(
+        {
+            "schema_version": "prototype_pack.v1",
+            "prototype_version": "proto_test_v1",
+            "embedding_model_id": "hash_debug",
+            "embedding_model_revision": "main",
+            "mapping_version": "ourafla_to_4cat.v1",
+            "build_method": "mean_centroid_l2_normalized",
+            "distance_metric": "cosine",
+            "built_at": "2026-04-02T00:00:00+00:00",
+            "categories": {
+                "anxiety": [
+                    {
+                        "prototype_id": "anxiety:single",
+                        "centroid": [1.0, 0.0],
+                        "sample_count": 2,
+                    }
+                ],
+                "normal": [
+                    {
+                        "prototype_id": "normal:single",
+                        "centroid": [0.0, 1.0],
+                        "sample_count": 2,
+                    }
+                ],
+            },
+        }
+    )
 
 
 def _default_shard_policy() -> FederatedShardPolicyConfig:
@@ -355,3 +403,121 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
+
+
+def test_evaluate_rows_uses_evidence_backend_for_acceptance_ratio() -> None:
+    rows = [_row("q1", "panic panic", "anxiety")]
+    adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    result = evaluate_rows(
+        rows=rows,
+        adapter=adapter,
+        adapter_state=adapter_state,
+        prototype_pack=_pack_payload(),
+        model_id="hash_debug",
+        scoring_service=ScoringService(),
+        confidence_threshold=0.8,
+        margin_threshold=0.0,
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "diagonal_scale_heuristic",
+                "example_generation_backend_name": "prototype_rescore",
+                "evidence_backend_name": "fixmatch_weak_view_evidence",
+                "scorer_backend_name": "prototype_similarity",
+                "score_policy_name": "max_cosine",
+                "acceptance_policy_name": "top1_confidence_only",
+                "privacy_guard_name": "noop",
+            }
+        ),
+    )
+
+    assert result.top1_accuracy == 1.0
+    assert result.accepted_ratio == 0.0
+
+
+def test_build_training_examples_requires_multiview_fields_for_weak_strong_backend() -> None:
+    adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="requires each row to include both weak_text and strong_text",
+    ):
+        build_training_examples(
+            rows=[_row("q1", "panic panic", "anxiety")],
+            adapter=adapter,
+            adapter_state=adapter_state,
+            prototype_pack=_pack_payload(),
+            model_id="hash_debug",
+            scoring_service=ScoringService(),
+            objective_config=TrainingObjectiveConfig.from_mapping(
+                {
+                    "training_backend_name": "diagonal_scale_heuristic",
+                    "example_generation_backend_name": "weak_strong_pair",
+                    "evidence_backend_name": "prototype_similarity_evidence",
+                    "scorer_backend_name": "prototype_similarity",
+                    "score_policy_name": "max_cosine",
+                    "acceptance_policy_name": "top1_margin_threshold",
+                    "privacy_guard_name": "noop",
+                }
+            ),
+        )
+
+
+def test_build_training_examples_supports_multiview_row_fields_when_present() -> None:
+    adapter = _StaticEmbeddingAdapter(
+        {
+            "panic weak": [1.0, 0.0],
+            "panic strong": [0.8, 0.2],
+        }
+    )
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+    row = _row("q1", "panic panic", "anxiety")
+    row["weak_text"] = "panic weak"
+    row["strong_text"] = "panic strong"
+
+    examples = build_training_examples(
+        rows=[row],
+        adapter=adapter,
+        adapter_state=adapter_state,
+        prototype_pack=_pack_payload(),
+        model_id="hash_debug",
+        scoring_service=ScoringService(),
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "diagonal_scale_heuristic",
+                "example_generation_backend_name": "weak_strong_pair",
+                "evidence_backend_name": "prototype_similarity_evidence",
+                "scorer_backend_name": "prototype_similarity",
+                "score_policy_name": "max_cosine",
+                "acceptance_policy_name": "top1_margin_threshold",
+                "privacy_guard_name": "noop",
+            }
+        ),
+    )
+
+    assert len(examples) == 1
+    assert examples[0].view_kind == "weak_strong_pair"
+    assert examples[0].weak_embedding == [1.0, 0.0]
+    assert examples[0].strong_embedding == pytest.approx(
+        [0.9701425001453318, 0.24253562503633294]
+    )

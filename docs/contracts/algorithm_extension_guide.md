@@ -23,12 +23,12 @@
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
 | Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
-| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends.py` |
-| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend | `agent/src/services/federation/training_example_service.py` |
-| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/evidence_backends.py` |
+| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends/` |
+| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/input_backends/`, `agent/src/services/federation/training_example_service.py` |
+| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend, FixMatchWeakViewEvidenceBackend | `agent/src/services/training/evidence_backends/` |
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
-| Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy | `agent/src/services/training/acceptance_policies.py` |
+| Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
@@ -67,7 +67,7 @@
 
 **Protocol:**
 ```python
-# agent/src/services/training/training_backends.py
+# agent/src/services/training/training_backends/base.py
 class SharedAdapterTrainingBackend(Protocol):
     backend_name: str
     payload_format: str
@@ -86,12 +86,20 @@ class SharedAdapterTrainingBackend(Protocol):
 
 **현재:** `DiagonalScaleHeuristicTrainingBackend` — gradient 없이 confidence 가중 방향으로 delta 계산.
 
+주의:
+- current runtime의 `SharedAdapterTrainingBackend`는 classifier head weight update가 아니라
+  `shared adapter delta`를 반환한다.
+- 따라서 official FixMatch의 cross-entropy consistency training을 그대로 넣으려면
+  새 backend 클래스만 추가하는 것으로는 부족하고, scorer/logit source와
+  adapter family contract까지 함께 넓혀야 한다.
+
 **교체 시나리오:**
 - Gradient 기반 backend 추가: `DiagonalScaleGradientTrainingBackend`
 - 다른 adapter family용 backend 추가 (LoRA 등)
+- official FixMatch류 classifier/logit update backend 추가
 
 **교체 절차:**
-1. 이 파일에 새 클래스 추가 (`SharedAdapterTrainingBackend` Protocol 구현)
+1. `training_backends/` 아래에 새 구현 파일을 추가한다
 2. `register_shared_adapter_training_backend()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.training_backend_name` 값과 backend_name을 맞춤
 
@@ -107,7 +115,7 @@ class SharedAdapterTrainingBackend(Protocol):
 
 **Protocol:**
 ```python
-# agent/src/services/federation/training_example_service.py
+# agent/src/services/training/input_backends/base.py
 class TrainingExampleBackend(Protocol):
     backend_name: str
 
@@ -132,8 +140,13 @@ class TrainingExampleBackend(Protocol):
 - feedback-only example backend
 - FixMatch류 weak/strong augmentation example backend
 
+**현재 추가 구현:**
+- `weak_strong_pair`
+  - source row에 weak/strong view가 미리 준비돼 있으면 multiview example을 만든다.
+  - 현재는 stored scored event 재구성 경로를 아직 지원하지 않는다.
+
 **교체 절차:**
-1. `training_example_service.py`에 새 backend 클래스 추가
+1. `training/input_backends/` 아래에 새 backend 구현 파일을 추가한다
 2. `register_training_example_backend()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.example_generation_backend_name`으로 선택
 
@@ -146,7 +159,7 @@ class TrainingExampleBackend(Protocol):
 
 **Protocol:**
 ```python
-# agent/src/services/training/evidence_backends.py
+# agent/src/services/training/evidence_backends/base.py
 class PseudoLabelEvidenceBackend(Protocol):
     backend_name: str
 
@@ -157,9 +170,12 @@ class PseudoLabelEvidenceBackend(Protocol):
     ) -> PseudoLabelEvidence: ...
 ```
 
-**현재:** `PrototypeSimilarityEvidenceBackend`
+**현재:** `PrototypeSimilarityEvidenceBackend`, `FixMatchWeakViewEvidenceBackend`
 - `ScoredEvent.category_scores`를 top1/top2/margin 기반 evidence로 정규화한다.
 - 현재 baseline에서는 `confidence_kind=prototype_similarity`를 사용한다.
+- `FixMatchWeakViewEvidenceBackend`는 weak-view score를 posterior-like distribution으로
+  정규화하는 scaffold다. 현재는 classifier logits가 아니라 기존 score를 softmax로
+  변환하므로, official FixMatch와 완전히 같지는 않다.
 
 **교체 시나리오:**
 - classifier posterior evidence backend
@@ -167,7 +183,7 @@ class PseudoLabelEvidenceBackend(Protocol):
 - teacher-student agreement evidence backend
 
 **교체 절차:**
-1. `evidence_backends.py`에 새 backend 클래스 추가
+1. `training/evidence_backends/` 아래에 새 backend 구현 파일을 추가한다
 2. `register_pseudo_label_evidence_backend()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.evidence_backend_name`으로 선택
 
@@ -230,7 +246,7 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 **Protocol:**
 ```python
-# agent/src/services/training/acceptance_policies.py
+# agent/src/services/training/acceptance_policies/base.py
 class PseudoLabelAcceptancePolicy(Protocol):
     policy_name: str
 
@@ -250,7 +266,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - Calibrated confidence 기반 policy
 
 **교체 절차:**
-1. `acceptance_policies.py`에 새 Policy 클래스 추가
+1. `training/acceptance_policies/` 아래에 새 Policy 구현 파일을 추가한다
 2. `register_pseudo_label_acceptance_policy()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택
 
@@ -369,7 +385,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
 |---|---|
 | `shared/src/contracts/adapter_contracts.py` | 새 State/Update payload 클래스 추가 |
 | `shared/src/domain/entities/training/` | 새 도메인 객체 추가 |
-| `agent/src/services/training/training_backends.py` | 새 family용 backend 추가 |
+| `agent/src/services/training/training_backends/` | 새 family용 backend 추가 |
 | `main_server/src/services/rounds/aggregation_service.py` | 새 family용 aggregation backend 추가 |
 | `main_server/src/services/rounds/adapter_family_service.py` | 라우팅 등록 |
 | `main_server/src/services/rounds/mappers.py` | 새 payload 변환 추가 |

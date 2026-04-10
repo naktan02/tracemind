@@ -6,7 +6,7 @@ import json
 from collections import Counter, defaultdict
 from collections.abc import Sequence
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
 class LabeledQueryRow(TypedDict):
@@ -21,6 +21,10 @@ class LabeledQueryRow(TypedDict):
     annotation_source: str
     approved_by: str | None
     created_at: str
+    weak_text: NotRequired[str]
+    strong_text: NotRequired[str]
+    weak_translated_text: NotRequired[str]
+    strong_translated_text: NotRequired[str]
 
 
 def load_labeled_query_rows(path: str | Path) -> list[LabeledQueryRow]:

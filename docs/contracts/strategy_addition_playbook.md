@@ -67,7 +67,7 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
+- [agent/src/services/training/training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
 - 필요 시 [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](/home/jmgjmg102/tracemind_server/shared/src/config/training_defaults.py)
 
@@ -96,6 +96,7 @@
 
 보통 수정 파일:
 
+- [agent/src/services/training/input_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/input_backends/__init__.py)
 - [agent/src/services/federation/training_example_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/federation/training_example_service.py)
 - 필요 시 [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
 
@@ -167,7 +168,7 @@
 
 - [shared/src/contracts/adapter_contracts.py](/home/jmgjmg102/tracemind_server/shared/src/contracts/adapter_contracts.py)
 - [shared/src/config/adapter_family_metadata.py](/home/jmgjmg102/tracemind_server/shared/src/config/adapter_family_metadata.py)
-- [agent/src/services/training/training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
+- [agent/src/services/training/training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
 - [agent/src/services/training/privacy_guard_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/privacy_guard_service.py)
 - [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
 - [main_server/src/services/rounds/aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)

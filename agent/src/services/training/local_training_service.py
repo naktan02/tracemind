@@ -110,7 +110,9 @@ class LocalTrainingService:
             acceptance_policy=default_acceptance_policy,
             privacy_guard=privacy_guard,
         )
-        scored_events = [example.scored_event for example in request.training_examples]
+        scored_events = [
+            example.evidence_scored_event for example in request.training_examples
+        ]
         selection_result = self.selector.select(
             scored_events=scored_events,
             training_task=request.training_task,
@@ -120,9 +122,9 @@ class LocalTrainingService:
             for candidate in selection_result.accepted_candidates
         }
         accepted_examples = tuple(
-            replace(example, candidate=accepted_by_event[example.scored_event.query_id])
+            replace(example, candidate=accepted_by_event[example.selection_key])
             for example in request.training_examples
-            if example.scored_event.query_id in accepted_by_event
+            if example.selection_key in accepted_by_event
         )
 
         minimum_examples = request.training_task.min_required_examples or 1

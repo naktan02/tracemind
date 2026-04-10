@@ -8,6 +8,7 @@ from .acceptance_policies import (
     build_pseudo_label_acceptance_policy,
 )
 from .evidence_backends import (
+    FixMatchWeakViewEvidenceBackend,
     PrototypeSimilarityEvidenceBackend,
     PseudoLabelEvidenceBackend,
     build_pseudo_label_evidence_backend,
@@ -45,6 +46,7 @@ __all__ = [
     "AcceptanceDecision",
     "DiagonalScaleHeuristicTrainingBackend",
     "EmbeddedTrainingExample",
+    "FixMatchWeakViewEvidenceBackend",
     "LocalTrainingResult",
     "LocalTrainingService",
     "DiagonalScaleClipOnlyPrivacyGuard",

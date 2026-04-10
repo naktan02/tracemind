@@ -37,7 +37,7 @@
 1. `federation/training_example_service.py`
 2. `training/runtime_compatibility.py`
 3. `training/local_training_service.py`
-4. `training/training_backends.py`
+4. `training/training_backends/`
 5. `training/privacy_guard_service.py`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
@@ -60,11 +60,19 @@
   - training/example/scorer/privacy 조합 검증
 - `federation/training_example_service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
+- `training/input_backends/`
+  - single-view, weak/strong pair 같은 training input backend 구현
+- `training/evidence_backends/`
+  - pseudo-label evidence 정규화 backend 구현
+- `training/acceptance_policies/`
+  - evidence 기반 pseudo-label acceptance 정책 구현
+- `training/training_backends/`
+  - adapter update 생성 backend 구현과 registry wiring
 
 ## 전략 추가 시 출발점
 
-- training backend 추가: `training/training_backends.py`
-- example-generation backend 추가: `federation/training_example_service.py`
+- training backend 추가: `training/training_backends/`
+- example-generation backend 추가: `training/input_backends/`와 `federation/training_example_service.py`
 - scorer backend/policy 추가: `inference/scoring_backends.py`, `inference/scoring_policies.py`
 - privacy guard 추가: `training/privacy_guard_service.py`
 

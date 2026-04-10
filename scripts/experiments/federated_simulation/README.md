@@ -71,6 +71,11 @@ python -m scripts.experiments.run_federated_simulation \
 
 - `aggregation_backend_name`과 `adapter_family_name`은 현재 이 simulation config에서
   top-level Hydra leaf로 직접 노출돼 있지 않다.
+- `weak_strong_pair` example backend는 source row에 weak/strong view가 이미 있어야 한다.
+  현재 기본 JSONL row shape는 그 view를 따로 저장하지 않으므로, 별도 multiview row 공급이 없으면
+  `prototype_rescore`를 계속 써야 한다.
+- validation의 accepted_ratio는 raw score threshold가 아니라
+  runtime과 같은 `evidence backend -> acceptance policy` 경로로 계산한다.
 - `training_task.secure_aggregation.*` 필드는 실을 수 있지만,
   실제 secure aggregation/encryption runtime 실험이 되는 것은 아니다.
 

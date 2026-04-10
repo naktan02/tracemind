@@ -192,7 +192,7 @@ server runtime을 끝까지 닫을 수 없다.
   - selection + update generation 코어로 유지
 - [x] [pseudo_label_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/pseudo_label_service.py)
   - acceptance policy 교체 지점으로 유지
-- [x] [training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
+- [x] [training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
   - backend 교체 지점으로 유지
 
 ### API로 닫을 것

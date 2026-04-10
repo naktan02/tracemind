@@ -16,6 +16,7 @@ from agent.src.services.federation import (
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
+    WeakStrongPairTrainingExampleBackend,
     register_training_example_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
@@ -206,6 +207,77 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
     assert examples[0].base_embedding == [0.2, 1.0]
     assert examples[0].embedding == [0.2, 0.0]
     assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+
+
+def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
+    service = TrainingExampleService(
+        backend=WeakStrongPairTrainingExampleBackend()
+    )
+    adapter = _StaticEmbeddingAdapter(
+        {
+            "panic weak": [1.0, 0.0],
+            "panic strong": [0.8, 0.2],
+        }
+    )
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    examples = service.build_examples(
+        TrainingExampleBuildRequest(
+            source_rows=(
+                TrainingExampleSource(
+                    query_id="q_fix",
+                    text="panic panic",
+                    weak_text="panic weak",
+                    strong_text="panic strong",
+                    occurred_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+                ),
+            ),
+            adapter=adapter,
+            adapter_state=adapter_state,
+            prototype_pack=_pack_payload(),
+            model_id="hash_debug",
+            scoring_service=ScoringService(),
+        )
+    )
+
+    assert len(examples) == 1
+    example = examples[0]
+    assert example.view_kind == "weak_strong_pair"
+    assert example.evidence_scored_event.query_id == "q_fix"
+    assert example.update_scored_event.query_id == "q_fix"
+    assert example.weak_embedding == [1.0, 0.0]
+    assert example.strong_embedding == pytest.approx(
+        [0.9701425001453318, 0.24253562503633294]
+    )
+    assert example.update_embedding == pytest.approx(
+        [0.9701425001453318, 0.24253562503633294]
+    )
+    assert example.metadata["selection_view"] == "weak"
+    assert example.metadata["update_view"] == "strong"
+
+
+def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
+    service = TrainingExampleService(
+        backend=WeakStrongPairTrainingExampleBackend()
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="not supported for stored scored events yet",
+    ):
+        service.build_examples_from_stored_events(
+            StoredEventTrainingExampleBuildRequest(
+                stored_events=(),
+                prototype_pack=_pack_payload(),
+                scoring_service=ScoringService(),
+            )
+        )
 
 
 @dataclass(slots=True)
