@@ -68,10 +68,24 @@ class TrainingDefaultsProfile:
         )
 
     @property
+    def algorithm_profile_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "algorithm_profile_name",
+        )
+
+    @property
     def example_generation_backend_name(self) -> str:
         return self._require_str(
             self.objective_mapping,
             "example_generation_backend_name",
+        )
+
+    @property
+    def evidence_backend_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "evidence_backend_name",
         )
 
     @property

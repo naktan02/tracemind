@@ -107,10 +107,12 @@ def test_feedback_and_personalization_payloads_are_local_friendly(
 def test_training_objective_config_payload_accepts_policy_fields() -> None:
     payload = TrainingObjectiveConfigPayload(
         training_backend_name="contrastive",
+        algorithm_profile_name="prototype_pseudo_label_v1",
         loss_name="cross_entropy",
         confidence_threshold=0.7,
         margin_threshold=0.05,
         example_generation_backend_name="prototype_rescore",
+        evidence_backend_name="prototype_similarity_evidence",
         scorer_backend_name="prototype_similarity",
         score_policy_name="topk_mean_cosine",
         score_top_k=3,
@@ -119,8 +121,10 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
     )
 
     assert payload.training_backend_name == "contrastive"
+    assert payload.algorithm_profile_name == "prototype_pseudo_label_v1"
     assert payload.loss_name == "cross_entropy"
     assert payload.example_generation_backend_name == "prototype_rescore"
+    assert payload.evidence_backend_name == "prototype_similarity_evidence"
     assert payload.scorer_backend_name == "prototype_similarity"
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
@@ -131,12 +135,10 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
 def test_training_objective_config_round_trips_policy_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
-            "training_backend_name": "contrastive",
+            "algorithm_profile_name": "prototype_pseudo_label_v1",
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
             "margin_threshold": 0.03,
-            "example_generation_backend_name": "prototype_rescore",
-            "scorer_backend_name": "prototype_similarity",
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
             "acceptance_policy_name": "top1_confidence_only",
@@ -145,9 +147,11 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         }
     )
 
-    assert config.training_backend_name == "contrastive"
+    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.algorithm_profile_name == "prototype_pseudo_label_v1"
     assert config.loss_name == "cross_entropy"
     assert config.example_generation_backend_name == "prototype_rescore"
+    assert config.evidence_backend_name == "prototype_similarity_evidence"
     assert config.scorer_backend_name == "prototype_similarity"
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
@@ -155,11 +159,13 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.privacy_guard_name == "noop"
     assert config.extras == {"temperature": 0.8}
     assert config.to_mapping() == {
-        "training_backend_name": "contrastive",
+        "training_backend_name": "diagonal_scale_heuristic",
+        "algorithm_profile_name": "prototype_pseudo_label_v1",
         "loss_name": "cross_entropy",
         "confidence_threshold": 0.65,
         "margin_threshold": 0.03,
         "example_generation_backend_name": "prototype_rescore",
+        "evidence_backend_name": "prototype_similarity_evidence",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "topk_mean_cosine",
         "score_top_k": 2,
@@ -167,6 +173,19 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "privacy_guard_name": "noop",
         "temperature": 0.8,
     }
+
+
+def test_training_objective_config_can_expand_algorithm_profile_only() -> None:
+    config = TrainingObjectiveConfig.from_mapping(
+        {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+    )
+
+    assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
+    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.example_generation_backend_name == "prototype_rescore"
+    assert config.evidence_backend_name == "prototype_similarity_evidence"
+    assert config.acceptance_policy_name == "top1_confidence_only"
+    assert config.margin_threshold == 0.0
 
 
 def test_training_objective_config_accepts_legacy_loss_alias() -> None:

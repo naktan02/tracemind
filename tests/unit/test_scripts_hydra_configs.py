@@ -118,6 +118,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="experiments/run_federated_simulation")
 
     assert cfg.federated_run_preset.name == "smoke"
+    assert cfg.training_algorithm_profile.algorithm_profile_name == (
+        "prototype_pseudo_label_v1"
+    )
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 1
@@ -149,8 +152,10 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="experiments/run_federated_simulation",
             overrides=[
+                "training_algorithm_profile=prototype_top1_confidence_v1",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.example_generation_backend_name=prototype_rescore",
+                "training_task.objective.evidence_backend_name=prototype_similarity_evidence",
                 "training_task.objective.scorer_backend_name=prototype_similarity",
                 "training_task.objective.score_policy_name=topk_mean_cosine",
                 "training_task.objective.score_top_k=2",
@@ -163,9 +168,16 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         )
 
     assert cfg.shard_policy.dominant_ratio == 0.6
+    assert cfg.training_task.objective.algorithm_profile_name == (
+        "prototype_top1_confidence_v1"
+    )
     assert (
         cfg.training_task.objective.example_generation_backend_name
         == "prototype_rescore"
+    )
+    assert (
+        cfg.training_task.objective.evidence_backend_name
+        == "prototype_similarity_evidence"
     )
     assert cfg.training_task.objective.scorer_backend_name == "prototype_similarity"
     assert cfg.training_task.objective.score_policy_name == "topk_mean_cosine"

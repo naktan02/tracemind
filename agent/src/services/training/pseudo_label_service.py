@@ -9,6 +9,9 @@ from agent.src.services.training.acceptance_policies import (
     Top1MarginThresholdAcceptancePolicy,
     build_pseudo_label_acceptance_policy,
 )
+from agent.src.services.training.evidence_service import (
+    PseudoLabelEvidenceService,
+)
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     TrainingDefaultsProfile,
@@ -21,6 +24,9 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
+from shared.src.domain.entities.training.pseudo_label_evidence import (
+    PseudoLabelEvidence,
+)
 
 
 @dataclass(slots=True)
@@ -30,6 +36,7 @@ class PseudoLabelSelectionResult:
     candidates: tuple[PseudoLabelCandidate, ...]
     accepted_candidates: tuple[PseudoLabelCandidate, ...]
     feedback_signals: tuple[DecisionFeedbackSignal, ...]
+    evidences: tuple[PseudoLabelEvidence, ...] = ()
 
     @property
     def total_count(self) -> int:
@@ -53,6 +60,9 @@ class PseudoLabelSelectionService:
     default_profile: TrainingDefaultsProfile = field(
         default=DEFAULT_TRAINING_PROFILE
     )
+    evidence_service: PseudoLabelEvidenceService = field(
+        default_factory=PseudoLabelEvidenceService
+    )
     default_policy: PseudoLabelAcceptancePolicy = field(
         default_factory=Top1MarginThresholdAcceptancePolicy
     )
@@ -61,6 +71,14 @@ class PseudoLabelSelectionService:
         if self.default_acceptance_policy_name != self.default_policy.policy_name:
             raise ValueError(
                 "Default pseudo-label acceptance policy does not match the "
+                "configured default objective profile."
+            )
+        if (
+            self.default_profile.evidence_backend_name
+            != self.evidence_service.default_evidence_backend_name
+        ):
+            raise ValueError(
+                "Default pseudo-label evidence backend does not match the "
                 "configured default objective profile."
             )
 
@@ -94,16 +112,20 @@ class PseudoLabelSelectionService:
         )
         acceptance_policy = self._resolve_policy(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
+        evidences = self.evidence_service.build_evidences(
+            scored_events=scored_events,
+            training_task=training_task,
+        )
 
         initial_candidates = [
             self._build_candidate(
-                scored_event=event,
+                evidence=evidence,
                 training_task=training_task,
                 confidence_threshold=confidence_threshold,
                 margin_threshold=margin_threshold,
                 acceptance_policy=acceptance_policy,
             )
-            for event in scored_events
+            for evidence in evidences
         ]
         prelim_accepted = [
             candidate for candidate in initial_candidates if candidate.accepted
@@ -167,6 +189,7 @@ class PseudoLabelSelectionService:
                 )
 
         return PseudoLabelSelectionResult(
+            evidences=evidences,
             candidates=tuple(finalized_candidates),
             accepted_candidates=tuple(accepted_candidates),
             feedback_signals=tuple(feedback_signals),
@@ -175,35 +198,44 @@ class PseudoLabelSelectionService:
     def _build_candidate(
         self,
         *,
-        scored_event: ScoredEvent,
+        evidence: PseudoLabelEvidence,
         training_task: TrainingTask,
         confidence_threshold: float,
         margin_threshold: float,
         acceptance_policy: PseudoLabelAcceptancePolicy,
     ) -> PseudoLabelCandidate:
         decision = acceptance_policy.evaluate(
-            category_scores=scored_event.category_scores,
+            evidence=evidence,
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
         )
 
         return PseudoLabelCandidate(
             schema_version="pseudo_label_candidate.v1",
-            candidate_id=f"{training_task.round_id}:{scored_event.query_id}",
-            source_event_ref=scored_event.query_id,
-            occurred_at=scored_event.occurred_at,
+            candidate_id=f"{training_task.round_id}:{evidence.source_event_ref}",
+            source_event_ref=evidence.source_event_ref,
+            occurred_at=evidence.occurred_at,
             label=decision.label,
             confidence=decision.confidence,
             margin=decision.margin,
             accepted=decision.accepted,
             runner_up_label=decision.runner_up_label,
             runner_up_score=decision.runner_up_score,
+            evidence_ref=evidence.evidence_id,
+            confidence_kind=decision.confidence_kind,
+            sample_weight=decision.sample_weight,
             task_id=training_task.task_id,
             round_id=training_task.round_id,
             metadata={
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
                 "acceptance_policy_name": acceptance_policy.policy_name,
+                "evidence_backend_name": (
+                    training_task.objective_config.evidence_backend_name
+                    or self.default_profile.evidence_backend_name
+                ),
+                "confidence_kind": evidence.confidence_kind,
+                "view_kind": evidence.view_kind,
             },
         )
 
@@ -239,5 +271,8 @@ class PseudoLabelSelectionService:
                 "round_id": training_task.round_id,
                 "margin": candidate.margin,
                 "runner_up_score": candidate.runner_up_score or 0.0,
+                "confidence_kind": candidate.confidence_kind or "unknown",
+                "sample_weight": candidate.sample_weight,
+                "evidence_ref": candidate.evidence_ref or "",
             },
         )

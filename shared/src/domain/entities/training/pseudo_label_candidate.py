@@ -20,6 +20,9 @@ class PseudoLabelCandidate:
     accepted: bool
     runner_up_label: str | None = None
     runner_up_score: float | None = None
+    evidence_ref: str | None = None
+    confidence_kind: str | None = None
+    sample_weight: float = 1.0
     task_id: str | None = None
     round_id: str | None = None
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)

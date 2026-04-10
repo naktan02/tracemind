@@ -7,6 +7,12 @@ from .acceptance_policies import (
     Top1MarginThresholdAcceptancePolicy,
     build_pseudo_label_acceptance_policy,
 )
+from .evidence_backends import (
+    PrototypeSimilarityEvidenceBackend,
+    PseudoLabelEvidenceBackend,
+    build_pseudo_label_evidence_backend,
+)
+from .evidence_service import PseudoLabelEvidenceService
 from .local_training_service import (
     LocalTrainingResult,
     LocalTrainingService,
@@ -46,8 +52,11 @@ __all__ = [
     "NoOpSharedAdapterPrivacyGuard",
     "PrivacyProtectedUpdate",
     "PseudoLabelAcceptancePolicy",
+    "PseudoLabelEvidenceBackend",
+    "PseudoLabelEvidenceService",
     "PseudoLabelSelectionResult",
     "PseudoLabelSelectionService",
+    "PrototypeSimilarityEvidenceBackend",
     "SharedAdapterPrivacyGuard",
     "SharedAdapterTrainingBackend",
     "SyntheticVectorAdapterTrainingBackend",
@@ -55,6 +64,7 @@ __all__ = [
     "Top1MarginThresholdAcceptancePolicy",
     "TrainingBackend",
     "build_pseudo_label_acceptance_policy",
+    "build_pseudo_label_evidence_backend",
     "build_shared_adapter_privacy_guard",
     "build_shared_adapter_training_backend",
     "validate_local_training_runtime",

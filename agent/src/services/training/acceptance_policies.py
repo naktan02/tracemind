@@ -2,9 +2,13 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
+
+from shared.src.domain.entities.training.pseudo_label_evidence import (
+    PseudoLabelEvidence,
+)
 
 
 @dataclass(slots=True)
@@ -13,14 +17,16 @@ class AcceptanceDecision:
 
     label: str
     confidence: float
+    confidence_kind: str | None
     margin: float
     accepted: bool
     runner_up_label: str | None = None
     runner_up_score: float | None = None
+    sample_weight: float = 1.0
 
 
 class PseudoLabelAcceptancePolicy(Protocol):
-    """카테고리 score를 pseudo-label 후보로 해석하는 정책."""
+    """Evidence를 pseudo-label 후보로 해석하는 정책."""
 
     policy_name: str
     supported_adapter_kinds: tuple[str, ...]
@@ -28,11 +34,11 @@ class PseudoLabelAcceptancePolicy(Protocol):
     def evaluate(
         self,
         *,
-        category_scores: Mapping[str, float],
+        evidence: PseudoLabelEvidence,
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        """Score dict를 해석해 acceptance 결과를 만든다."""
+        """Evidence를 해석해 acceptance 결과를 만든다."""
 
 
 AcceptancePolicyFactory = Callable[[], PseudoLabelAcceptancePolicy]
@@ -48,26 +54,16 @@ class Top1MarginThresholdAcceptancePolicy:
     def evaluate(
         self,
         *,
-        category_scores: Mapping[str, float],
+        evidence: PseudoLabelEvidence,
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        ranked_scores = _rank_category_scores(category_scores)
-        top_label, top_score = ranked_scores[0]
-        if len(ranked_scores) > 1:
-            runner_up_label, runner_up_score = ranked_scores[1]
-        else:
-            runner_up_label, runner_up_score = None, 0.0
-        margin = top_score - runner_up_score
-        return AcceptanceDecision(
-            label=top_label,
-            confidence=top_score,
-            margin=margin,
+        return _build_acceptance_decision(
+            evidence=evidence,
             accepted=(
-                top_score >= confidence_threshold and margin >= margin_threshold
+                evidence.top1_score >= confidence_threshold
+                and evidence.margin >= margin_threshold
             ),
-            runner_up_label=runner_up_label,
-            runner_up_score=runner_up_score,
         )
 
 
@@ -81,24 +77,13 @@ class Top1ConfidenceOnlyAcceptancePolicy:
     def evaluate(
         self,
         *,
-        category_scores: Mapping[str, float],
+        evidence: PseudoLabelEvidence,
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        ranked_scores = _rank_category_scores(category_scores)
-        top_label, top_score = ranked_scores[0]
-        if len(ranked_scores) > 1:
-            runner_up_label, runner_up_score = ranked_scores[1]
-        else:
-            runner_up_label, runner_up_score = None, 0.0
-        margin = top_score - runner_up_score
-        return AcceptanceDecision(
-            label=top_label,
-            confidence=top_score,
-            margin=margin,
-            accepted=top_score >= confidence_threshold,
-            runner_up_label=runner_up_label,
-            runner_up_score=runner_up_score,
+        return _build_acceptance_decision(
+            evidence=evidence,
+            accepted=evidence.top1_score >= confidence_threshold,
         )
 
 
@@ -126,17 +111,21 @@ def build_pseudo_label_acceptance_policy(
     raise ValueError(f"Unsupported pseudo-label acceptance policy: {policy_name}.")
 
 
-def _rank_category_scores(
-    category_scores: Mapping[str, float],
-) -> list[tuple[str, float]]:
-    ranked_scores = sorted(
-        category_scores.items(),
-        key=lambda item: item[1],
-        reverse=True,
+def _build_acceptance_decision(
+    *,
+    evidence: PseudoLabelEvidence,
+    accepted: bool,
+) -> AcceptanceDecision:
+    return AcceptanceDecision(
+        label=evidence.top1_label,
+        confidence=evidence.top1_score,
+        confidence_kind=evidence.confidence_kind,
+        margin=evidence.margin,
+        accepted=accepted,
+        runner_up_label=evidence.top2_label,
+        runner_up_score=evidence.top2_score,
+        sample_weight=evidence.sample_weight,
     )
-    if not ranked_scores:
-        raise ValueError("ScoredEvent must contain at least one category score.")
-    return ranked_scores
 
 
 register_pseudo_label_acceptance_policy(

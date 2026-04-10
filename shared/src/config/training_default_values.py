@@ -38,10 +38,12 @@ PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE_NAME = "pseudo_label_self_training.v1"
 
 PSEUDO_LABEL_SELF_TRAINING_V1_OBJECTIVE_MAPPING = _freeze_mapping(
     {
+        "algorithm_profile_name": "prototype_pseudo_label_v1",
         "training_backend_name": "diagonal_scale_heuristic",
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
         "example_generation_backend_name": "prototype_rescore",
+        "evidence_backend_name": "prototype_similarity_evidence",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",

@@ -147,7 +147,7 @@ class DiagonalScaleHeuristicTrainingBackend:
                     "Accepted example must carry a pseudo-label candidate."
                 )
 
-            weight = max(example.candidate.confidence, 1e-6)
+            weight = max(example.candidate.sample_weight, 1e-6)
             total_weight += weight
             total_confidence += example.candidate.confidence
             total_margin += example.candidate.margin

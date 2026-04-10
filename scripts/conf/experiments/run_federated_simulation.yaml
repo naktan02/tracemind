@@ -5,6 +5,7 @@ defaults:
   - /embedding: mxbai
   - /runtime: gpu_online
   - /federated_run_preset: smoke
+  - /training_algorithm_profile: prototype_pseudo_label_v1
   - /prototype_builder: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
@@ -15,8 +16,8 @@ validation_jsonl: ${dataset.validation_jsonl}
 published_model_id: tracemind-embed-sim
 training_scope: adapter_only
 seed: 42
-confidence_threshold: 0.6
-margin_threshold: 0.02
+confidence_threshold: ${training_algorithm_profile.confidence_threshold}
+margin_threshold: ${training_algorithm_profile.margin_threshold}
 gradient_clip_norm: 0.5
 
 shard_policy:
@@ -32,15 +33,17 @@ training_task:
   min_required_examples: ${federated_run_preset.min_required_examples}
   gradient_clip_norm: ${gradient_clip_norm}
   objective:
-    training_backend_name: diagonal_scale_heuristic
+    algorithm_profile_name: ${training_algorithm_profile.algorithm_profile_name}
+    training_backend_name: ${training_algorithm_profile.training_backend_name}
     confidence_threshold: ${confidence_threshold}
     margin_threshold: ${margin_threshold}
-    example_generation_backend_name: prototype_rescore
-    scorer_backend_name: prototype_similarity
-    score_policy_name: max_cosine
-    score_top_k: null
-    acceptance_policy_name: top1_margin_threshold
-    privacy_guard_name: diagonal_scale_clip_only
+    example_generation_backend_name: ${training_algorithm_profile.example_generation_backend_name}
+    evidence_backend_name: ${training_algorithm_profile.evidence_backend_name}
+    scorer_backend_name: ${training_algorithm_profile.scorer_backend_name}
+    score_policy_name: ${training_algorithm_profile.score_policy_name}
+    score_top_k: ${training_algorithm_profile.score_top_k}
+    acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
+    privacy_guard_name: ${training_algorithm_profile.privacy_guard_name}
   selection_policy:
     max_examples: ${federated_run_preset.max_examples}
 

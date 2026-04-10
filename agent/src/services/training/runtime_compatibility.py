@@ -12,6 +12,9 @@ from agent.src.services.training.acceptance_policies import (
     PseudoLabelAcceptancePolicy,
     build_pseudo_label_acceptance_policy,
 )
+from agent.src.services.training.evidence_backends import (
+    resolve_pseudo_label_evidence_backend,
+)
 from agent.src.services.training.privacy_guard_service import (
     SharedAdapterPrivacyGuard,
     build_shared_adapter_privacy_guard,
@@ -33,6 +36,7 @@ class LocalTrainingRuntimeCompatibility:
     adapter_kind: str
     training_backend_name: str
     example_generation_backend_name: str
+    evidence_backend_name: str
     scorer_backend_name: str
     acceptance_policy_name: str
     privacy_guard_name: str
@@ -63,6 +67,9 @@ def validate_local_training_runtime(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
+    evidence_backend = resolve_pseudo_label_evidence_backend(
+        objective_config=objective,
+    )
     scorer_backend_name = (
         objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
     )
@@ -82,6 +89,12 @@ def validate_local_training_runtime(
         privacy_guard_name
     )
 
+    _require_adapter_kind_support(
+        component_type="evidence backend",
+        component_name=evidence_backend.backend_name,
+        supported_adapter_kinds=evidence_backend.supported_adapter_kinds,
+        adapter_kind=resolved_training_backend.adapter_kind,
+    )
     _require_adapter_kind_support(
         component_type="scoring backend",
         component_name=scorer_backend.backend_name,
@@ -105,6 +118,7 @@ def validate_local_training_runtime(
         adapter_kind=resolved_training_backend.adapter_kind,
         training_backend_name=resolved_training_backend.backend_name,
         example_generation_backend_name=training_example_backend.backend_name,
+        evidence_backend_name=evidence_backend.backend_name,
         scorer_backend_name=scorer_backend.backend_name,
         acceptance_policy_name=resolved_acceptance_policy.policy_name,
         privacy_guard_name=resolved_privacy_guard.guard_name,

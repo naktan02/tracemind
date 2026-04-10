@@ -163,9 +163,15 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         task.objective_config.training_backend_name
         == DEFAULT_TRAINING_PROFILE.training_backend_name
     )
+    assert task.objective_config.algorithm_profile_name == (
+        DEFAULT_TRAINING_PROFILE.algorithm_profile_name
+    )
     assert (
         task.objective_config.example_generation_backend_name
         == DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )
+    assert task.objective_config.evidence_backend_name == (
+        DEFAULT_TRAINING_PROFILE.evidence_backend_name
     )
     assert task.objective_config.scorer_backend_name == (
         DEFAULT_TRAINING_PROFILE.scorer_backend_name

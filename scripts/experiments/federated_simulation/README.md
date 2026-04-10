@@ -36,10 +36,13 @@ experiment package로 이해하면 된다.
 
 ## 바로 조절 가능한 실험 축
 
+- `training_algorithm_profile`
 - `confidence_threshold`
 - `margin_threshold`
 - `training_task.objective.training_backend_name`
+- `training_task.objective.algorithm_profile_name`
 - `training_task.objective.example_generation_backend_name`
+- `training_task.objective.evidence_backend_name`
 - `training_task.objective.scorer_backend_name`
 - `training_task.objective.score_policy_name`
 - `training_task.objective.score_top_k`
@@ -54,6 +57,7 @@ experiment package로 이해하면 된다.
 
 ```bash
 python -m scripts.experiments.run_federated_simulation \
+  training_algorithm_profile=prototype_top1_confidence_v1 \
   confidence_threshold=0.7 \
   margin_threshold=0.05 \
   training_task.objective.score_policy_name=topk_mean_cosine \

@@ -22,8 +22,10 @@
 
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
+| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
 | Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends.py` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend | `agent/src/services/federation/training_example_service.py` |
+| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/evidence_backends.py` |
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy | `agent/src/services/training/acceptance_policies.py` |
@@ -38,7 +40,28 @@
 
 ---
 
-### 1. Training Backend (agent)
+### 1. Algorithm Profile (shared/scripts)
+
+**역할:** 논문/알고리즘 단위로 여러 전략 축을 묶어 기본 조합을 제공한다.
+
+**현재:**
+- `prototype_pseudo_label_v1`
+- `prototype_top1_confidence_v1`
+
+**구성 위치:**
+- shared canonical registry:
+  - `shared/src/config/training_algorithm_profiles.py`
+- scripts 실험 선택:
+  - `scripts/conf/training_algorithm_profile/*.yaml`
+
+**권장 사용법:**
+- 새 논문 방법을 넣을 때 먼저 공통 backend 축을 구현한다.
+- 그 다음 해당 논문 이름의 algorithm profile을 추가해 기본 조합을 묶는다.
+- 실험에서는 profile을 고르고, 필요할 때 개별 축만 override한다.
+
+---
+
+### 2. Training Backend (agent)
 
 **역할:** 채택된 pseudo-label 예시로 adapter delta를 실제로 계산하는 방식.
 
@@ -76,10 +99,11 @@ class SharedAdapterTrainingBackend(Protocol):
 
 ---
 
-### 2. Example Generation Backend (agent)
+### 3. Example Generation Backend (agent)
 
 **역할:** raw row 또는 stored scored event를 `EmbeddedTrainingExample`으로
-재구성하는 방식.
+재구성하는 방식. 역할상 `training input backend`에 가깝지만,
+현재 코드 식별자는 `Example Generation Backend`를 유지한다.
 
 **Protocol:**
 ```python
@@ -115,7 +139,41 @@ class TrainingExampleBackend(Protocol):
 
 ---
 
-### 3. Scorer Backend (agent/scripts)
+### 4. Evidence Backend (agent)
+
+**역할:** `ScoredEvent`나 다른 방법별 신호를 공통 `PseudoLabelEvidence`로
+정규화하는 방식.
+
+**Protocol:**
+```python
+# agent/src/services/training/evidence_backends.py
+class PseudoLabelEvidenceBackend(Protocol):
+    backend_name: str
+
+    def build_evidence(
+        self,
+        *,
+        scored_event: ScoredEvent,
+    ) -> PseudoLabelEvidence: ...
+```
+
+**현재:** `PrototypeSimilarityEvidenceBackend`
+- `ScoredEvent.category_scores`를 top1/top2/margin 기반 evidence로 정규화한다.
+- 현재 baseline에서는 `confidence_kind=prototype_similarity`를 사용한다.
+
+**교체 시나리오:**
+- classifier posterior evidence backend
+- FixMatch weak-view evidence backend
+- teacher-student agreement evidence backend
+
+**교체 절차:**
+1. `evidence_backends.py`에 새 backend 클래스 추가
+2. `register_pseudo_label_evidence_backend()`로 thin registry wiring에 등록
+3. `TrainingObjectiveConfigPayload.evidence_backend_name`으로 선택
+
+---
+
+### 5. Scorer Backend (agent/scripts)
 
 **역할:** 카테고리 score를 만드는 전체 방식 자체를 고른다.
 `score_policy`보다 한 단계 위 축이다.
@@ -132,7 +190,7 @@ class TrainingExampleBackend(Protocol):
 
 ---
 
-### 4. Privacy Guard (agent)
+### 6. Privacy Guard (agent)
 
 **역할:** local training 후 delta를 서버에 보내기 전 privacy 보호 적용.
 
@@ -166,9 +224,9 @@ class SharedAdapterPrivacyGuard(Protocol):
 
 ---
 
-### 5. Pseudo-label Acceptance Policy (agent)
+### 7. Pseudo-label Acceptance Policy (agent)
 
-**역할:** category score를 pseudo-label acceptance decision으로 해석한다.
+**역할:** `PseudoLabelEvidence`를 pseudo-label acceptance decision으로 해석한다.
 
 **Protocol:**
 ```python
@@ -179,7 +237,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
     def evaluate(
         self,
         *,
-        category_scores: Mapping[str, float],
+        evidence: PseudoLabelEvidence,
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision: ...
@@ -198,7 +256,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 ---
 
-### 6. Scoring Policy (agent)
+### 8. Scoring Policy (agent)
 
 **역할:** 임베딩과 prototype 간 유사도 계산 방식.
 

@@ -26,11 +26,18 @@ def test_default_training_objective_builder_uses_shared_profile() -> None:
     assert (
         config.training_backend_name == DEFAULT_TRAINING_PROFILE.training_backend_name
     )
+    assert (
+        config.algorithm_profile_name == DEFAULT_TRAINING_PROFILE.algorithm_profile_name
+    )
     assert config.confidence_threshold == DEFAULT_TRAINING_PROFILE.confidence_threshold
     assert config.margin_threshold == DEFAULT_TRAINING_PROFILE.margin_threshold
     assert (
         config.example_generation_backend_name
         == DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+    )
+    assert (
+        config.evidence_backend_name
+        == DEFAULT_TRAINING_PROFILE.evidence_backend_name
     )
     assert config.scorer_backend_name == DEFAULT_TRAINING_PROFILE.scorer_backend_name
     assert config.privacy_guard_name == DEFAULT_TRAINING_PROFILE.privacy_guard_name

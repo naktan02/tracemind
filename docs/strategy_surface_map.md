@@ -66,7 +66,9 @@
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
 | Training Backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.training_backend_name` | 활성 runtime |
+| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
 | Example Generation Backend | `prototype_rescore` | `TrainingObjectiveConfig.example_generation_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.example_generation_backend_name` | 활성 runtime |
+| Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
 | Scorer Backend | `prototype_similarity` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
 | Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.objective.score_policy_name`, `score_top_k` | 활성 runtime |
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
@@ -76,6 +78,8 @@
 추가 설명:
 
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
+- pseudo-label selection은 `example generation -> evidence backend -> acceptance policy`로 분리돼 있다.
+- 실험에서는 위 축을 하나씩 직접 override할 수도 있고, `algorithm profile`로 묶어 한 번에 바꿀 수도 있다.
 - acceptance는 `policy`와 `threshold`가 분리돼 있다.
 - privacy는 현재 `clip only`와 `noop`만 runtime 구현이 있다.
 
@@ -83,6 +87,9 @@
 
 - [agent/src/services/training/training_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends.py)
 - [agent/src/services/federation/training_example_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/federation/training_example_service.py)
+- [agent/src/services/training/evidence_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/evidence_backends.py)
+- [shared/src/config/training_algorithm_profiles.py](/home/jmgjmg102/tracemind_server/shared/src/config/training_algorithm_profiles.py)
+- [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
 - [agent/src/services/inference/scoring_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_backends.py)
 - [agent/src/services/inference/scoring_policies.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_policies.py)
 - [agent/src/services/training/acceptance_policies.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/acceptance_policies.py)

@@ -85,10 +85,12 @@ class TrainingObjectiveConfigPayload(BaseModel):
     """학습 objective 관련 payload.
 
     - `training_backend_name`: 어떤 local update backend를 쓸지 식별자
+    - `algorithm_profile_name`: 논문/알고리즘 단위 조합 preset 식별자
     - `loss_name`: 학습 objective의 loss 함수 식별자
     - `confidence_threshold`: pseudo-label 채택 최소 confidence
     - `margin_threshold`: top1-top2 차이 최소값
     - `example_generation_backend_name`: 학습 예시 재구성 backend 식별자
+    - `evidence_backend_name`: pseudo-label evidence 정규화 backend 식별자
     - `scorer_backend_name`: category score 계산 backend 식별자
     - `score_policy_name`: 다중 prototype score 집계 정책 식별자
     - `score_top_k`: top-k 계열 score 정책이 사용할 k 값
@@ -104,6 +106,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
         validation_alias=AliasChoices("training_backend_name", "loss"),
         serialization_alias="training_backend_name",
         description="로컬 update backend 식별자.",
+    )
+    algorithm_profile_name: str | None = Field(
+        default=None,
+        description="논문/알고리즘 단위 objective 조합 preset 식별자.",
     )
     loss_name: str | None = Field(
         default=None,
@@ -125,6 +131,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
     example_generation_backend_name: str | None = Field(
         default=None,
         description="학습 예시 재구성 backend 식별자.",
+    )
+    evidence_backend_name: str | None = Field(
+        default=None,
+        description="Pseudo-label evidence 정규화 backend 식별자.",
     )
     scorer_backend_name: str | None = Field(
         default=None,
@@ -160,18 +170,25 @@ class TrainingObjectiveConfigPayload(BaseModel):
         """Mapping 입력을 canonical objective config로 정규화한다."""
         if source is None:
             return cls()
+        from shared.src.config.training_algorithm_profiles import (
+            expand_training_objective_mapping,
+        )
+
+        source = expand_training_objective_mapping(source)
         backend_name = source.get(
             "training_backend_name",
             source.get("loss", DEFAULT_TRAINING_BACKEND_NAME),
         )
         return cls(
             training_backend_name=str(backend_name),
+            algorithm_profile_name=_optional_str(source.get("algorithm_profile_name")),
             loss_name=_optional_str(source.get("loss_name")),
             confidence_threshold=_optional_float(source.get("confidence_threshold")),
             margin_threshold=_optional_float(source.get("margin_threshold")),
             example_generation_backend_name=_optional_str(
                 source.get("example_generation_backend_name")
             ),
+            evidence_backend_name=_optional_str(source.get("evidence_backend_name")),
             scorer_backend_name=_optional_str(source.get("scorer_backend_name")),
             score_policy_name=_optional_str(source.get("score_policy_name")),
             score_top_k=_optional_positive_int(source.get("score_top_k")),
@@ -185,11 +202,13 @@ class TrainingObjectiveConfigPayload(BaseModel):
                 if key
                 not in {
                     "training_backend_name",
+                    "algorithm_profile_name",
                     "loss",
                     "loss_name",
                     "confidence_threshold",
                     "margin_threshold",
                     "example_generation_backend_name",
+                    "evidence_backend_name",
                     "scorer_backend_name",
                     "score_policy_name",
                     "score_top_k",
@@ -204,6 +223,8 @@ class TrainingObjectiveConfigPayload(BaseModel):
         result: dict[str, TrainingConfigScalar] = {
             "training_backend_name": self.training_backend_name
         }
+        if self.algorithm_profile_name is not None:
+            result["algorithm_profile_name"] = self.algorithm_profile_name
         if self.loss_name is not None:
             result["loss_name"] = self.loss_name
         if self.confidence_threshold is not None:
@@ -214,6 +235,8 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["example_generation_backend_name"] = (
                 self.example_generation_backend_name
             )
+        if self.evidence_backend_name is not None:
+            result["evidence_backend_name"] = self.evidence_backend_name
         if self.scorer_backend_name is not None:
             result["scorer_backend_name"] = self.scorer_backend_name
         if self.score_policy_name is not None:

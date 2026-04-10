@@ -20,6 +20,7 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 def _build_task(
     *,
     acceptance_policy_name: str | None = None,
+    evidence_backend_name: str | None = None,
 ) -> TrainingTask:
     return TrainingTask(
         schema_version="training_task.v1",
@@ -37,6 +38,7 @@ def _build_task(
             loss="diagonal_scale_heuristic",
             confidence_threshold=0.6,
             margin_threshold=0.02,
+            evidence_backend_name=evidence_backend_name,
             acceptance_policy_name=acceptance_policy_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
@@ -61,8 +63,16 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
     )
 
     candidate = result.candidates[0]
+    evidence = result.evidences[0]
+
+    assert evidence.confidence_kind == "prototype_similarity"
+    assert evidence.top1_label == "anxiety"
     assert candidate.accepted is False
+    assert candidate.evidence_ref == "evidence:q1"
+    assert candidate.confidence_kind == "prototype_similarity"
+    assert candidate.sample_weight == pytest.approx(0.62)
     assert candidate.margin == pytest.approx(0.01)
+    assert candidate.metadata["evidence_backend_name"] == "prototype_similarity_evidence"
     assert candidate.metadata["acceptance_policy_name"] == "top1_margin_threshold"
 
 
@@ -87,5 +97,6 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
 
     candidate = result.candidates[0]
     assert candidate.accepted is True
+    assert candidate.evidence_ref == "evidence:q1"
     assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
     assert result.accepted_count == 1
