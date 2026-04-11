@@ -10,7 +10,7 @@
 중요:
 
 - 이 문서에 적힌 현재 결과는 대부분 `fixed embedding` 또는 시스템 트랙 기준 실험이다.
-- 앞으로 논문용 `central LoRA classifier` 결과는 별도 섹션으로 추가한다.
+- 앞으로 query-domain 적응용 `central LoRA classifier` 결과는 별도 섹션으로 추가한다.
 - 즉 현재 숫자를 `논문 fidelity baseline`과 동일하게 읽으면 안 된다.
 
 ---
@@ -68,7 +68,7 @@
 
 - 현재 저장소에 남아 있는 static baseline 중 가장 높은 정확도다.
 - 현재 v1 계획의 classifier-first 연구선에서 가장 직접적인 supervised seed 기준선이다.
-- 이후 논문 트랙의 LoRA scaffold에서 FixMatch -> FreeMatch -> PabLO를 올릴 때
+- 이후 query-domain 적응 단계의 LoRA scaffold에서 FixMatch -> FreeMatch -> PabLO를 올릴 때
   가장 먼저 비교할 reference baseline이다.
 
 ---

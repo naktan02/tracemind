@@ -109,7 +109,7 @@ v1에서는 아래를 포함하지 않는다.
 ```
 
 위 예시는 현재 시스템/FL runtime의 shared classifier head 배포 예시다.
-논문 트랙의 `central LoRA classifier`는 frozen backbone에 LoRA adapter와 classifier를 함께 두므로,
+query-domain 적응 단계의 `central LoRA classifier`는 frozen backbone에 LoRA adapter와 classifier를 함께 두므로,
 checkpoint 배치 방식이 이 예시와 다를 수 있다.
 
 ---

@@ -80,6 +80,7 @@ def run_supervised_lora_baseline(cfg) -> dict[str, str]:
         classifier_learning_rate=float(cfg.classifier_learning_rate),
         weight_decay=float(cfg.weight_decay),
         max_grad_norm=float(cfg.max_grad_norm),
+        log_every_steps=int(cfg.log_every_steps),
     )
 
     results: dict[str, Any] = {}

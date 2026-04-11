@@ -151,6 +151,7 @@ def train_classifier(
     classifier_learning_rate: float,
     weight_decay: float,
     max_grad_norm: float,
+    log_every_steps: int,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     optimizer = build_optimizer(
         model=model,
@@ -169,7 +170,7 @@ def train_classifier(
         epoch_loss_total = 0.0
         epoch_rows = 0
 
-        for batch in train_loader:
+        for step_index, batch in enumerate(train_loader, start=1):
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
@@ -185,6 +186,14 @@ def train_classifier(
             batch_rows = len(labels)
             epoch_rows += batch_rows
             epoch_loss_total += float(loss.item()) * batch_rows
+
+            if log_every_steps > 0 and step_index % log_every_steps == 0:
+                running_loss = safe_divide(epoch_loss_total, epoch_rows)
+                print(
+                    f"[epoch={epoch} step={step_index}] "
+                    f"running_train_loss={running_loss:.4f}",
+                    flush=True,
+                )
 
         selection_report = evaluate_classifier(
             model=model,

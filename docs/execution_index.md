@@ -4,7 +4,7 @@
 
 이 문서는 TraceMind 작업의 짧은 진입점이다.
 현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
-현재 작업 순서는 `논문용 central LoRA classifier 비교 -> 시스템용 FL translation`으로 본다.
+현재 작업 순서는 `central fixed+classifier seed -> query 적응 LoRA+classifier -> 시스템용 FL translation`으로 본다.
 
 Codex CLI와 VS Code Codex extension을 사용할 때는
 `docs/ai_context_manifest.yaml`을 함께 읽어 task별 읽기 순서와
@@ -17,7 +17,7 @@ source-of-truth 우선순위를 먼저 확인한다.
 2. `AGENTS.md`
    - 저장소 구조, 소유 경계, 작업 규칙
 3. `plan.md` (repo root)
-   - 왜 논문 트랙과 시스템 트랙을 분리했는지
+   - 왜 seed 단계와 적응 단계를 분리했는지
 4. `docs/project_execution_plan.md`
    - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
 5. `shared/src/contracts/README.md`
@@ -46,13 +46,14 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 문서까지 읽은 뒤 코드를 볼 때는 아래 순서가 가장 빠르다.
 
-### 논문 트랙 실험
+### seed / 적응 실험
 
 1. `scripts/README.md`
-2. `docs/contracts/central_lora_classifier_trainer_contract.md`
-3. `scripts/experiments/train_lora_classifier.py`
-4. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-5. 필요 시 논문별 실험 스크립트/노트북
+2. `scripts/experiments/train_softmax_classifier.py`
+3. `docs/contracts/central_lora_classifier_trainer_contract.md`
+4. `scripts/experiments/train_lora_classifier.py`
+5. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
+6. 필요 시 적응 단계 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 
@@ -89,14 +90,14 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 | `docs/ai_harness_operating_model.md` | 하네스 유지보수용 보조 문서 |
 | `docs/ai_harness_eval_cases.yaml` | maintainer 전용 harness spot check sample |
 | `AGENTS.md` | 저장소 구조, 소유 경계, 작업 규칙 |
-| `plan.md` | 연구 비전, 핵심 가설, 논문/시스템 트랙 분리 원칙 |
+| `plan.md` | 연구 비전, 핵심 가설, staged seed/adaptation 원칙 |
 | `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |
 | `docs/fl_runtime_implementation_checklist.md` | 시스템 FL 트랙 구현 작업표 |
 | `docs/staged_execution_roadmap.md` | 중복 설명 없이 Phase map만 제공 |
 | `shared/src/contracts/README.md` | 코드 가까운 contract 해설 |
 | `docs/contracts/` | 계약 설계 배경, 알고리즘 확장 가이드 |
 | `docs/contracts/algorithm_extension_guide.md` | 교체 가능한 모든 전략 지점과 교체 절차 |
-| `docs/contracts/central_lora_classifier_trainer_contract.md` | 논문 트랙 LoRA scaffold와 산출물 경계 |
+| `docs/contracts/central_lora_classifier_trainer_contract.md` | query-domain LoRA 적응 scaffold와 산출물 경계 |
 | `docs/contracts/strategy_addition_playbook.md` | 전략 추가 시 실제 작업 순서와 검증 순서 |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값 source, 실험 override 가능 여부, 구현 상태 |
 | `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |
@@ -104,10 +105,10 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 ## 작업 시작 체크리스트
 
-1. 이번 요청이 `논문 트랙`인지 `시스템 FL 트랙`인지 먼저 구분한다.
+1. 이번 요청이 `seed baseline`, `query-domain 적응`, `시스템 FL 트랙` 중 어디인지 먼저 구분한다.
 2. 변경 소유 경계가 `shared`, `agent`, `main_server`, `scripts` 중 어디인지 적는다.
 3. 바뀔 축이 무엇인지 적는다.
-   - 예: backbone scope, classifier family, training backend, aggregation backend, privacy layer, scoring policy
+   - 예: classifier family, query buffer, training backend, aggregation backend, privacy layer, scoring policy
 4. `docs/contracts/algorithm_extension_guide.md`에서 해당 전략 지점을 찾는다.
 5. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
 6. 사용자 판단이 필요한 항목인지 확인한다.
@@ -121,9 +122,10 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 ## 사용자 확인이 필요한 변경
 
-1. 논문 트랙 backbone과 LoRA spec 고정
-2. `lora` family FL 활성화
-3. pseudo-label을 정식 학습 신호로 승격
-4. 서버로 보내는 update 메타데이터 확대
-5. private adapter/head를 언제 열지
-6. secure aggregation, DP, HE 도입 시점
+1. query 버퍼에 raw text를 어떤 retention policy로 남길지
+2. 적응 단계 LoRA spec과 threshold/policy를 무엇으로 고정할지
+3. `lora` family FL 활성화
+4. pseudo-label을 정식 학습 신호로 승격
+5. 서버로 보내는 update 메타데이터 확대
+6. private adapter/head를 언제 열지
+7. secure aggregation, DP, HE 도입 시점

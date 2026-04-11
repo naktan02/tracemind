@@ -23,7 +23,7 @@ v1 원칙:
 4. 초기에는 작은 param subset 학습을 우선한다.
 5. `task.model_revision`은 현재 active pair의 `model_revision`과 일치해야 한다.
 6. 이 문서는 현재 시스템/FL runtime task 계약을 설명한다. 논문 트랙의
-   `central LoRA classifier` trainer는 별도 중앙 실험 레일 config를 사용할 수 있다.
+   query-domain 적응 단계의 `central LoRA classifier` trainer는 별도 중앙 실험 레일 config를 사용할 수 있다.
 
 ---
 

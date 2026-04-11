@@ -17,7 +17,7 @@
 중요:
 
 - 이 문서는 현재 시스템/FL runtime의 shared state/update 계약을 다룬다.
-- 논문 트랙의 `central LoRA classifier` checkpoint 전체를 설명하는
+- query-domain 적응 단계의 `central LoRA classifier` checkpoint 전체를 설명하는
   문서는 아니다.
 
 ---

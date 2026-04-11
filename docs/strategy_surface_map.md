@@ -37,7 +37,7 @@
 주의:
 
 - 이 문서는 현재 시스템/FL runtime에서 바로 고를 수 있는 축을 중심으로 정리한다.
-- 논문 트랙의 `central LoRA classifier` trainer는 별도 중앙 실험 레일이며, 이 표의 active runtime knob와 1:1 대응한다고 보지 않는다.
+- query-domain 적응 단계의 `central LoRA classifier` trainer는 별도 중앙 실험 레일이며, 이 표의 active runtime knob와 1:1 대응한다고 보지 않는다.
 
 ```text
 Embedding

@@ -43,7 +43,8 @@ class LoraTextClassifier(nn.Module):
         hidden = outputs.last_hidden_state
         mask = attention_mask.unsqueeze(-1).to(hidden.dtype)
         pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-        return self.classifier(self.dropout(pooled))
+        pooled = self.dropout(pooled).to(self.classifier.weight.dtype)
+        return self.classifier(pooled)
 
 
 def count_parameters(model: nn.Module) -> dict[str, int]:

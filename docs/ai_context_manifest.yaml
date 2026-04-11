@@ -33,7 +33,7 @@ active_entrypoints:
   - path: docs/project_execution_plan.md
     use_for: active architecture and next priorities
   - path: docs/contracts/central_lora_classifier_trainer_contract.md
-    use_for: paper-track LoRA scaffold and output boundary
+    use_for: query-domain LoRA adaptation scaffold and output boundary
   - path: shared/src/contracts/README.md
     use_for: payload interpretation
   - path: docs/contracts/algorithm_extension_guide.md
@@ -65,8 +65,8 @@ task_routes:
       - scripts/AGENTS.md
       - scripts/README.md
     verify:
-      - backbone, tokenizer, LoRA spec stay fixed inside one comparison table
-      - method changes are separated from trainable-scope changes
+      - seed baseline과 adaptation scaffold가 섞이지 않는다
+      - backbone, tokenizer, LoRA spec stay fixed inside one adaptation comparison table
       - outputs keep enough metadata for later FL translation
 
   strategy_addition:

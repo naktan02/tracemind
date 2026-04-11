@@ -4,8 +4,9 @@
 
 현재 실행 순서:
 
-1. 논문 트랙: `central LoRA classifier` 비교
-2. 시스템 트랙: winner를 `FL/runtime` 제약에 맞게 translation
+1. seed 단계: `central fixed embedding + classifier`
+2. 적응 단계: `query accumulation -> threshold/policy -> LoRA + classifier`
+3. 시스템 트랙: winner를 `FL/runtime` 제약에 맞게 translation
 
 즉 `federated_simulation`은 현재도 중요하지만, 논문용 중앙 비교선을 먼저 닫은 뒤에 따라오는 후행 단계로 본다.
 
@@ -316,7 +317,7 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 ## 5. Prototype threshold sweep
 
 선택한 전략 위에서 static pseudo-label threshold policy를 비교한다.
-현재 classifier-first 연구선의 주 경로라기보다 prototype comparison용 실험이다.
+현재 classifier-first staged 구조의 보조 실험이며, prototype comparison용으로 유지한다.
 
 기본 포함 policy:
 
@@ -361,8 +362,8 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
 ## 6. Softmax classifier head baseline
 
 고정 임베딩 위에 linear classifier head를 학습한다.
-현재 저장소에 남아 있는 `fixed embedding + linear head` supervised seed baseline으로 본다.
-논문 트랙의 `central LoRA supervised baseline`은 이와 별도 레일로 추가할 대상이다.
+현재 staged 구조의 `seed baseline`으로 본다.
+이 baseline을 먼저 닫은 뒤 query-domain 적응 단계에서만 `LoRA + classifier`를 연다.
 라벨된 데이터셋은 prototype build 전용이 아니라 이 baseline을 직접 학습하는
 source로도 사용한다.
 
@@ -384,16 +385,24 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 ---
 
-## 7. Central LoRA supervised baseline
+## 7. Query-domain LoRA adaptation baseline
 
-논문 트랙의 첫 baseline은 `frozen backbone + LoRA + classifier`다.
-현재는 supervised baseline만 닫고, 이후 같은 scaffold 위에 `FixMatch`,
-`FreeMatch`, `PabLO`를 올린다.
+이 레일은 첫 seed baseline이 아니라 query-domain 적응 단계용 scaffold다.
+초기 `fixed embedding + classifier` seed를 먼저 닫고, query가 충분히 쌓인 뒤에만
+같은 scaffold 위에 `supervised adaptation`, `FixMatch`, `FreeMatch`, `PabLO`를 올린다.
 
 실행 예시:
 
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py
+```
+
+첫 실행에서 scaffold와 산출물만 빠르게 검증하려면:
+
+```bash
+uv run python scripts/experiments/train_lora_classifier.py \
+  runtime=gpu_local \
+  epochs=1
 ```
 
 주요 산출물:
@@ -407,7 +416,10 @@ uv run python scripts/experiments/train_lora_classifier.py
 - 이 실험은 `peft`가 필요하므로 `experiments` extra 설치가 필요하다.
 - 기본 LoRA target은 공식 PEFT 문서의 shorthand인 `all-linear`를 사용한다.
 - 현재 기본 backbone은 `mixedbread-ai/mxbai-embed-large-v1`이지만,
-  실제 최종 논문 표에서는 backbone과 LoRA spec을 먼저 고정한 뒤 비교해야 한다.
+  실제 최종 적응 비교 표에서는 backbone과 LoRA spec을 먼저 고정한 뒤 비교해야 한다.
+- 이 레일을 쓰려면 raw query text가 로컬에 남아 있어야 한다. LoRA 재학습과 weak/strong augmentation은 embedding만으로는 닫히지 않는다.
+- epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
+  긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.
 
 ## 8. Federated simulation smoke
 
@@ -429,7 +441,7 @@ uv run python scripts/experiments/run_federated_simulation.py
 - 현재 v1 권장 시스템 baseline은 classifier-first이므로, classifier 실험에서는
   `training_algorithm_profile=fixmatch_v1` 또는 classifier-head 관련 override를
   명시적으로 주는 편이 맞다.
-- 단, 논문 트랙의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 이 entrypoint가 아니라 별도 중앙 trainer 레일에서 진행한다.
+- 단, query-domain 적응의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 이 entrypoint가 아니라 별도 중앙 trainer 레일에서 진행한다.
 
 라운드와 client 수를 바꾸려면:
 
@@ -497,7 +509,7 @@ uv run python scripts/experiments/run_federated_simulation.py \
   classifier-head + `fixmatch_v1` simulation path도 지원한다.
 - `FreeMatch`, `PabLO`는 아직 direct system-FL preset이 없으므로 classifier-first 확장으로
   추가할 대상이다.
-- 논문 트랙에서는 이 둘을 `central LoRA` 비교선에서 먼저 닫고, 그 다음 시스템 translation 여부를 판단한다.
+- staged 구조에서는 먼저 `fixed embedding + classifier` seed를 닫고, 그 다음 query-domain LoRA 적응과 시스템 translation 여부를 판단한다.
 
 ---
 

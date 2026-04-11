@@ -23,9 +23,9 @@
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
 - `train_lora_classifier.py`
-  - 논문 트랙의 `frozen backbone + LoRA + classifier` supervised baseline entrypoint
+  - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` scaffold entrypoint
 - `lora_classifier/`
-  - LoRA scaffold의 data/modeling/training/artifact helper
+  - query-domain LoRA scaffold의 data/modeling/training/artifact helper
 
 ## 공통 helper
 
@@ -48,7 +48,7 @@
 1. `run_federated_simulation.py`
 2. `federated_simulation/README.md`
 
-### baseline classifier를 보고 싶을 때
+### seed / adaptation classifier를 보고 싶을 때
 
 1. `train_softmax_classifier.py`
 2. `train_lora_classifier.py`

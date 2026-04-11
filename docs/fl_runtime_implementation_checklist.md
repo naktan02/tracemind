@@ -14,7 +14,7 @@
 중요:
 
 - 이 체크리스트는 `시스템 FL 트랙`의 작업표다.
-- 현재 전체 로드맵에서는 `central LoRA classifier` 논문 비교선을 먼저 닫고,
+- 현재 전체 로드맵에서는 `central fixed+classifier seed`와 query 적응 설계를 먼저 닫고,
   그 다음에 이 문서 순서대로 FL translation을 진행한다.
 - 즉 이 문서는 repo의 유일한 다음 단계 문서가 아니라, `논문 트랙 이후`에
   따라갈 시스템 구현 체크리스트다.
@@ -93,7 +93,7 @@
 
 ## Phase 0. 선행 결정 고정
 
-이 phase에 들어오기 전에 논문 트랙의 `central LoRA supervised -> FixMatch -> FreeMatch -> PabLO` 비교가 먼저 끝나야 한다.
+이 phase에 들어오기 전에 `fixed embedding + classifier` seed baseline과 query 적응 단계의 `LoRA + classifier` 비교가 먼저 끝나야 한다.
 
 ### 왜 먼저 해야 하나
 
