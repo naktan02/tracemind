@@ -50,8 +50,9 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 1. `scripts/README.md`
 2. `docs/contracts/central_lora_classifier_trainer_contract.md`
-3. 중앙집중형 LoRA classifier entrypoint와 관련 config
-4. 필요 시 논문별 실험 스크립트/노트북
+3. `scripts/experiments/train_lora_classifier.py`
+4. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
+5. 필요 시 논문별 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 

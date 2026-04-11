@@ -22,6 +22,10 @@
   - agent/main_server 코어를 조합한 synthetic FL loop
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
+- `train_lora_classifier.py`
+  - 논문 트랙의 `frozen backbone + LoRA + classifier` supervised baseline entrypoint
+- `lora_classifier/`
+  - LoRA scaffold의 data/modeling/training/artifact helper
 
 ## 공통 helper
 
@@ -47,6 +51,8 @@
 ### baseline classifier를 보고 싶을 때
 
 1. `train_softmax_classifier.py`
+2. `train_lora_classifier.py`
+3. 필요하면 `lora_classifier/` 하위 모듈
 
 ## 주의할 점
 

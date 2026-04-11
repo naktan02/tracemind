@@ -1,0 +1,131 @@
+"""LoRA classifier supervised baseline runner."""
+
+from __future__ import annotations
+
+from datetime import datetime, timezone
+from pathlib import Path
+from typing import Any
+
+from agent.src.infrastructure.runtime import resolve_runtime_device
+from scripts.classification_report import render_confusion_table, render_per_category_table
+from scripts.labeled_query_rows import load_labeled_query_rows
+
+from .artifacts import write_run_artifacts
+from .data import build_dataloader, build_label_index
+from .modeling import build_model
+from .training import evaluate_classifier, set_seed, train_classifier
+
+
+def run_supervised_lora_baseline(cfg) -> dict[str, str]:
+    eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
+    if cfg.selection_set not in eval_set_map:
+        raise ValueError(
+            f"selection_set '{cfg.selection_set}' is not included in eval_sets."
+        )
+
+    set_seed(int(cfg.seed))
+    train_rows = load_labeled_query_rows(Path(cfg.train_jsonl))
+    categories, label_to_index = build_label_index(train_rows)
+    training_device = resolve_runtime_device(str(cfg.runtime.device))
+    created_at = datetime.now(timezone.utc)
+    trainer_version = cfg.trainer_version or created_at.strftime(
+        "lora_clf_%Y_%m_%d_%H%M%S"
+    )
+
+    model, tokenizer, backbone_summary = build_model(
+        cfg=cfg,
+        categories=categories,
+        device=training_device,
+    )
+    print(
+        "trainable_params="
+        f"{backbone_summary['parameter_counts']['trainable']} / "
+        f"{backbone_summary['parameter_counts']['total']}",
+        flush=True,
+    )
+
+    train_loader = build_dataloader(
+        rows=train_rows,
+        label_to_index=label_to_index,
+        tokenizer=tokenizer,
+        batch_size=int(cfg.train_batch_size),
+        max_length=int(cfg.paper_backbone.max_length),
+        task_prefix=str(cfg.paper_backbone.task_prefix),
+        shuffle=True,
+    )
+
+    eval_loaders = {}
+    for dataset_name, path in eval_set_map.items():
+        rows = load_labeled_query_rows(path)
+        eval_loaders[dataset_name] = build_dataloader(
+            rows=rows,
+            label_to_index=label_to_index,
+            tokenizer=tokenizer,
+            batch_size=int(cfg.eval_batch_size),
+            max_length=int(cfg.paper_backbone.max_length),
+            task_prefix=str(cfg.paper_backbone.task_prefix),
+            shuffle=False,
+        )
+        print(f"tokenized_eval_set={dataset_name} rows={len(rows)}", flush=True)
+
+    selection_loader = eval_loaders[str(cfg.selection_set)]
+    model, history, best_selection_report = train_classifier(
+        model=model,
+        train_loader=train_loader,
+        selection_loader=selection_loader,
+        categories=categories,
+        device=training_device,
+        epochs=int(cfg.epochs),
+        learning_rate=float(cfg.learning_rate),
+        classifier_learning_rate=float(cfg.classifier_learning_rate),
+        weight_decay=float(cfg.weight_decay),
+        max_grad_norm=float(cfg.max_grad_norm),
+    )
+
+    results: dict[str, Any] = {}
+    for dataset_name, dataloader in eval_loaders.items():
+        report = evaluate_classifier(
+            model=model,
+            dataloader=dataloader,
+            categories=categories,
+            device=training_device,
+        )
+        results[dataset_name] = report
+        print(
+            f"[{dataset_name}] "
+            f"accuracy_top_1={report['accuracy_top_1']:.4f} "
+            f"rows={report['rows_total']} "
+            f"mean_true_prob={report['mean_true_label_probability']:.4f} "
+            f"mean_margin={report['mean_margin_top1_top2']:.4f}",
+            flush=True,
+        )
+        print(render_confusion_table(report["confusion_matrix"]))
+        print()
+        print(
+            render_per_category_table(
+                report["per_category"],
+                primary_metric_key="mean_true_label_probability",
+                top_1_metric_key="mean_top_1_probability",
+                primary_header="mean_true_prob",
+                top_1_header="mean_top1_prob",
+            )
+        )
+        print()
+
+    outputs = write_run_artifacts(
+        cfg=cfg,
+        trainer_version=trainer_version,
+        created_at=created_at,
+        model=model,
+        tokenizer=tokenizer,
+        categories=categories,
+        eval_set_map=eval_set_map,
+        training_device=training_device,
+        backbone_summary=backbone_summary,
+        history=history,
+        best_selection_report=best_selection_report,
+        results=results,
+    )
+    for key, value in outputs.items():
+        print(f"{key}={value}")
+    return outputs

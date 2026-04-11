@@ -384,7 +384,32 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 ---
 
-## 7. Federated simulation smoke
+## 7. Central LoRA supervised baseline
+
+논문 트랙의 첫 baseline은 `frozen backbone + LoRA + classifier`다.
+현재는 supervised baseline만 닫고, 이후 같은 scaffold 위에 `FixMatch`,
+`FreeMatch`, `PabLO`를 올린다.
+
+실행 예시:
+
+```bash
+uv run python scripts/experiments/train_lora_classifier.py
+```
+
+주요 산출물:
+
+- `runs/train_lora_classifier/<run_id>/reports/report.json`
+- `data/processed/lora_adapters/<run_id>/`
+- `data/processed/lora_classifier_heads/<run_id>.pt`
+
+주의:
+
+- 이 실험은 `peft`가 필요하므로 `experiments` extra 설치가 필요하다.
+- 기본 LoRA target은 공식 PEFT 문서의 shorthand인 `all-linear`를 사용한다.
+- 현재 기본 backbone은 `mixedbread-ai/mxbai-embed-large-v1`이지만,
+  실제 최종 논문 표에서는 backbone과 LoRA spec을 먼저 고정한 뒤 비교해야 한다.
+
+## 8. Federated simulation smoke
 
 bootstrap train subset으로 prototype semantic artifact를 만들고, 나머지 train을
 client shard로 나눠 `pseudo-label -> local update -> aggregation -> republish`
@@ -476,7 +501,7 @@ uv run python scripts/experiments/run_federated_simulation.py \
 
 ---
 
-## 8. Local demo
+## 9. Local demo
 
 현재 상태:
 
