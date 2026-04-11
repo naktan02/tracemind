@@ -41,7 +41,7 @@ v1 원칙:
    - 실제 update tensor/blob 위치 또는 조회 키
 
 9. `payload_format`
-   - 예: `state_dict_delta`, `adapter_weights`, `lora_delta`
+   - 예: `classifier_head_update`, `diagonal_scale_update`, `lora_delta`
 
 10. `example_count`
 
@@ -83,15 +83,15 @@ v1 원칙:
   "task_id": "task_2026_03_29_001",
   "model_id": "tracemind-embed",
   "base_model_revision": "tm_embed_2026_03_29_001",
-  "training_scope": "adapter_only",
+  "training_scope": "head_only",
   "payload_ref": "updates/round_0001/update_2026_03_29_001",
-  "payload_format": "diagonal_scale_update",
+  "payload_format": "classifier_head_update",
   "example_count": 64,
   "client_metrics": {
     "accepted_ratio": 0.31,
     "mean_confidence": 0.87,
     "mean_margin": 0.12,
-    "delta_l2_norm": 0.04,
+    "delta_l2_norm": 0.19,
     "selected_examples": 64.0
   },
   "created_at": "2026-03-29T14:20:00Z",

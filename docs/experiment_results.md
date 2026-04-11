@@ -9,7 +9,7 @@
 
 ---
 
-## 1. PrototypePack single-centroid baseline
+## 1. PrototypePack single-centroid comparison baseline
 
 관련 경로:
 
@@ -31,9 +31,9 @@
 
 해석:
 
-- single centroid만으로도 baseline은 성립한다.
+- single centroid만으로도 comparison baseline은 성립한다.
 - `normal`은 비교적 강하고, `depression`과 `suicidal` 사이 혼동이 크다.
-- 이후 multi-prototype 비교 실험의 기준점 역할을 한다.
+- classifier-first 체계에서는 semantic bootstrap/comparison 기준점 역할을 한다.
 
 ---
 
@@ -61,9 +61,9 @@
 해석:
 
 - 현재 저장소에 남아 있는 static baseline 중 가장 높은 정확도다.
-- 다만 이 경로는 prototype 해석 구조가 아니라 별도 classifier head baseline이다.
-- 현재 v1 계획의 우선 baseline은 `global classifier + local interpretation`이지만,
-  이 결과는 아직 static classifier baseline이므로 비교군으로 본다.
+- 현재 v1 계획의 classifier-first 연구선에서 가장 직접적인 supervised seed 기준선이다.
+- 이후 unlabeled query에 대해 FixMatch -> FreeMatch -> PabLO를 올릴 때
+  가장 먼저 비교할 reference baseline이다.
 
 ---
 

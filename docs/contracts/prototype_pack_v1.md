@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-`PrototypePack`은 로컬 `agent`가 카테고리 점수 계산에 사용하는
+`PrototypePack`은 로컬 `agent`와 실험층이 사용하는
 배포용 semantic 기준 객체다.
 
 이 객체는 관리자 라벨 데이터셋인 `LabeledQuerySet`을 직접 담지 않고,
@@ -15,23 +15,30 @@
 2. 개별 query 임베딩 모음이 아니다.
 3. 또래 기준인 `NormPack`이 아니다.
 4. FL 모델 파라미터가 아니다.
-5. 로컬 scoring runtime이 바로 사용할 semantic layer 산출물이다.
+5. classifier-first v1에서는 bootstrap/comparison에 쓰는 semantic layer 산출물이다.
 
 ---
 
 ## 2. v1 설계 방향
 
-`PrototypePack v1`은 초기 MVP에서
-`text -> translation(optional) -> embedding -> prototype scoring`
-경로를 안정적으로 닫기 위한 최소 계약이다.
+`PrototypePack v1`은 prototype scoring comparison rail과 classifier bootstrap을
+안정적으로 닫기 위한 최소 계약이다.
 
 v1 원칙:
 
 1. `main-server` 또는 별도 빌드 경로가 생성하고 배포한다.
-2. 로컬 `agent`는 이를 내려받아 query scoring에 사용한다.
+2. 로컬 `agent`는 이를 내려받아 bootstrap/comparison artifact로 사용한다.
 3. `LabeledQuerySet` 원문이나 예시 query는 포함하지 않는다.
 4. 어떤 임베딩 공간에서 생성됐는지 추적 가능한 메타데이터를 반드시 가진다.
 5. 향후 centroid 외 다른 prototype 방식으로 자연스럽게 확장 가능해야 한다.
+
+현재 v1 classifier-first와의 관계:
+
+1. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
+   validation/calibration split source로도 직접 사용한다.
+2. main inference path의 category 판정은 `global classifier`가 맡는다.
+3. `PrototypePack`은 classifier bootstrap, semantic reference, comparison/ablation
+   artifact로 남는다.
 
 ---
 
@@ -58,19 +65,21 @@ v1 원칙:
 1. 관리자 라벨 query를 보관
 2. `raw_label`과 `mapped_label_4`를 보존
 3. prototype 생성과 평가의 근거 제공
+4. supervised classifier seed와 calibration split의 원천 데이터 제공
 
 ### `PrototypePack`이 하는 일
 
 1. 카테고리별 대표 벡터 제공
-2. scoring에 필요한 최소 메타데이터 제공
-3. 로컬 `agent`가 내려받아 즉시 사용 가능한 형태 제공
+2. classifier bootstrap과 comparison scoring에 필요한 최소 메타데이터 제공
+3. 로컬 `agent`가 내려받아 즉시 사용할 수 있는 semantic reference 형태 제공
 
 ### 로컬 `agent`가 하는 일
 
 1. 입력 query 전처리
 2. 필요 시 번역
 3. 임베딩 생성
-4. `PrototypePack` 기준으로 카테고리 점수 계산
+4. main path에서는 global classifier로 category evidence 계산
+5. comparison/ablation 또는 bootstrap 검증에서는 `PrototypePack` 기준 점수 계산
 
 ### 중앙 `main-server`가 하는 일
 

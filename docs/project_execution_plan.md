@@ -14,6 +14,10 @@
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
 - `PrototypePack`은 유지하지만, 우선은 bootstrap/comparison artifact로 본다.
 - `v1`의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
+- 라벨된 데이터셋은 prototype build 전용이 아니라 supervised classifier seed와
+  validation/calibration split source로도 직접 사용한다.
+- classifier 연구선의 현재 권장 순서는 supervised seed classifier -> FixMatch ->
+  FreeMatch -> PabLO이며, JointMatch는 구조 변화가 더 큰 후순위 비교축이다.
 - `v1`은 여전히 `same global representation + different local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 - multi-prototype runtime은 v1 필수가 아니라 future option으로 둔다.
@@ -81,10 +85,12 @@ Raw Event / Local Signal
 2. 현재 구현된 family는 `diagonal_scale`, `classifier_head` 두 개다.
 3. 앞으로의 기본 비교축은 `global classifier + local interpretation`이고,
    `diagonal_scale`과 prototype scoring은 비교 실험/확장 레일로 유지한다.
-4. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
+4. 라벨된 데이터셋은 prototype bootstrap뿐 아니라 classifier supervised seed와
+   calibration용 split source로 직접 사용한다.
+5. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
    stored scored event를 쓰는 real agent 경로는 아직 `diagonal_scale`만 안전하다.
    현재 live agent API는 지원하지 않는 조합이 오면 `unsupported_runtime`으로 조기 종료한다.
-5. prototype은 직접 FL 파라미터라기보다 bootstrap/비교용 semantic artifact에 가깝다.
+6. prototype은 직접 FL 파라미터라기보다 bootstrap/비교용 semantic artifact에 가깝다.
 
 ## 4. 구현 배치 규칙
 
@@ -156,12 +162,12 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. `global classifier + local interpretation` baseline을 live agent path까지 확장
-2. 두 번째 real `aggregation_backend` 하나를 추가
-3. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
-4. shared adapter 유무 비교 실험을 붙여 classifier-only baseline과 비교
-5. single prototype baseline으로 충분한지 error analysis 수행
-6. 필요 시 learned scorer 또는 richer example-generation backend 추가
+1. 라벨된 데이터셋 기반 supervised global classifier seed와 live agent path를 먼저 닫는다
+2. unlabeled 일반 query용 classifier SSL baseline을 FixMatch로 연다
+3. FreeMatch와 PabLO를 threshold/calibration 비교축으로 추가한다
+4. 두 번째 real `aggregation_backend` 하나를 추가
+5. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
+6. shared adapter 유무 비교 실험과 prototype comparison ablation을 붙인다
 
 ## 8. 검증 기준
 

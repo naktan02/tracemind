@@ -86,10 +86,11 @@ v1 원칙:
 
 1. `adapter_only`
    - adapter 파라미터만 학습한다.
-   - 현재 TraceMind v1의 주 경로는 사실상 이 범위를 중심으로 설계돼 있다.
+   - 현재 TraceMind v1에서는 비교/확장 축에서 주로 사용한다.
 
 2. `head_only`
    - backbone/encoder는 고정하고 최종 분류 head만 학습한다.
+   - 현재 TraceMind v1의 classifier-first 우선 baseline이다.
    - shared adapter family와는 별개 축이다.
 
 3. `selected_encoder_block`
@@ -119,21 +120,21 @@ family는 서로 다른 선택이다.
   "model_id": "tracemind-embed",
   "model_revision": "tm_embed_2026_03_29_001",
   "task_type": "pseudo_label_self_training",
-  "training_scope": "adapter_only",
+  "training_scope": "head_only",
   "local_epochs": 1,
   "batch_size": 16,
   "learning_rate": 0.0001,
   "max_steps": 50,
   "objective_config": {
-    "training_backend_name": "diagonal_scale_heuristic",
-    "loss_name": "contrastive",
-    "confidence_threshold": 0.8,
-    "margin_threshold": 0.15,
-    "example_generation_backend_name": "prototype_rescore",
-    "scorer_backend_name": "prototype_similarity",
-    "score_policy_name": "max_cosine",
-    "acceptance_policy_name": "top1_margin_threshold",
-    "privacy_guard_name": "diagonal_scale_clip_only"
+    "algorithm_profile_name": "fixmatch_v1",
+    "training_backend_name": "classifier_head_fixmatch_consistency",
+    "confidence_threshold": 0.95,
+    "margin_threshold": 0.0,
+    "example_generation_backend_name": "weak_strong_pair",
+    "evidence_backend_name": "fixmatch_weak_view_evidence",
+    "scorer_backend_name": "classifier_head_logits",
+    "acceptance_policy_name": "top1_confidence_only",
+    "privacy_guard_name": "classifier_head_clip_only"
   },
   "selection_policy": {
     "max_examples": 128,

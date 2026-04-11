@@ -292,6 +292,7 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 ## 5. Prototype threshold sweep
 
 선택한 전략 위에서 static pseudo-label threshold policy를 비교한다.
+현재 classifier-first 연구선의 주 경로라기보다 prototype comparison용 실험이다.
 
 기본 포함 policy:
 
@@ -336,6 +337,9 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
 ## 6. Softmax classifier head baseline
 
 고정 임베딩 위에 linear classifier head를 학습한다.
+현재 classifier-first 연구선의 supervised seed baseline으로 본다.
+라벨된 데이터셋은 prototype build 전용이 아니라 이 baseline을 직접 학습하는
+source로도 사용한다.
 
 ```bash
 uv run python scripts/experiments/train_softmax_classifier.py
@@ -357,14 +361,23 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 ## 7. Federated simulation smoke
 
-bootstrap train subset으로 prototype을 만들고, 나머지 train을 client shard로 나눠
-`pseudo-label -> local update -> aggregation -> republish` 루프를 검증한다.
+bootstrap train subset으로 prototype semantic artifact를 만들고, 나머지 train을
+client shard로 나눠 `pseudo-label -> local update -> aggregation -> republish`
+루프를 검증한다. classifier_head family를 쓰는 경우 prototype centroid는 초기
+classifier bootstrap에도 사용할 수 있다.
 
 기본 smoke 실행:
 
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py
 ```
+
+주의:
+
+- 현재 Hydra 기본 preset은 `prototype_pseudo_label_v1`다.
+- 현재 v1 권장 연구선은 classifier-first이므로, classifier 실험에서는
+  `training_algorithm_profile=fixmatch_v1` 또는 classifier-head 관련 override를
+  명시적으로 주는 편이 맞다.
 
 라운드와 client 수를 바꾸려면:
 
@@ -428,7 +441,10 @@ uv run python scripts/experiments/run_federated_simulation.py \
   `threshold_accepted`, `selected_by_cap`, `selection_stage`가 저장된다.
 - 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
 - prototype 재빌드는 `prototype_builder` 설정을 그대로 따른다.
-- 아직 실제 LoRA 분산 학습은 아니고, diagonal scale shared adapter 기반 simulation이다.
+- 현재 default smoke는 diagonal scale preset이지만,
+  classifier-head + `fixmatch_v1` simulation path도 지원한다.
+- `FreeMatch`, `PabLO`는 아직 direct preset이 없으므로 classifier-first 확장으로
+  추가할 대상이다.
 
 ---
 

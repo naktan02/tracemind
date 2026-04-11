@@ -29,10 +29,14 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 
 1. `WindowSummary`와 `NormPack`은 활성 아키텍처에서 제외한다.
 2. `PrototypePack`은 유지하지만, cohort norm artifact가 아니라
-   bootstrap semantic artifact이자 비교 실험용 semantic artifact로 해석한다.
+   classifier bootstrap과 비교 실험용 semantic artifact로 해석한다.
+   라벨된 데이터셋을 직접 사용하는 supervised/shared classifier seed를
+   대체하지는 않는다.
 3. shared representation은 전역에서 관리한다.
 4. 개인화 해석과 최종 판단은 로컬에서 수행한다.
 5. v1의 우선 baseline은 `embedding -> global classifier -> local interpretation`으로 둔다.
+   라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
+   validation/calibration split의 source로도 직접 사용한다.
 6. shared adapter와 prototype scoring은 비교 실험 및 확장 축으로 유지한다.
 7. single prototype baseline은 허용하고, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
 8. full encoder FL은 마지막 확장 옵션으로 둔다.
