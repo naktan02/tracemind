@@ -111,6 +111,23 @@ uv run python <script>.py --cfg job
 
 ## 1. Dataset 준비
 
+### classifier-first 자산 필드
+
+`scripts/conf/dataset/*.yaml`은 classifier-first 실험의 데이터 자산 source of truth다.
+현재 활성 필드 의미는 아래로 고정한다.
+
+- `train_jsonl`: supervised classifier seed 학습용 labeled train split
+- `validation_jsonl`: labeled validation split
+- `test_jsonl`: labeled held-out test split
+- `prototype_input_jsonl`: prototype bootstrap/comparison artifact 생성 입력
+- `query_dev_jsonl`: 나중에 추가할 실제 query 도메인용 소량 labeled dev set
+- `query_calibration_jsonl`: threshold/calibration 용 labeled query set
+- `unlabeled_query_pool_jsonl`: SSL/FixMatch류에 넣을 unlabeled 일반 query pool
+
+현재 `ourafla`는 labeled split과 prototype 입력만 채워져 있고,
+query-domain 자산은 아직 `null` placeholder로 둔다. 실제 query 세트가 준비되면
+해당 dataset alias에서 위 세 필드만 채우면 된다.
+
 ### 가장 짧은 경로
 
 dataset Hydra group 기준으로 `download -> map -> split -> prototype`를 한 번에 실행한다.
