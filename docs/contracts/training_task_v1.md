@@ -22,6 +22,8 @@ v1 원칙:
 3. task는 model artifact 자체를 담지 않고, `ModelManifest`를 참조한다.
 4. 초기에는 작은 param subset 학습을 우선한다.
 5. `task.model_revision`은 현재 active pair의 `model_revision`과 일치해야 한다.
+6. 이 문서는 현재 시스템/FL runtime task 계약을 설명한다. 논문 트랙의
+   `central LoRA classifier` trainer는 별도 중앙 실험 레일 config를 사용할 수 있다.
 
 ---
 
@@ -90,15 +92,17 @@ v1 원칙:
 
 2. `head_only`
    - backbone/encoder는 고정하고 최종 분류 head만 학습한다.
-   - 현재 TraceMind v1의 classifier-first 우선 baseline이다.
+   - 현재 TraceMind v1의 시스템/FL classifier baseline이다.
    - shared adapter family와는 별개 축이다.
 
 3. `selected_encoder_block`
    - encoder 전체가 아니라 미리 정한 일부 블록만 학습한다.
+   - future `lora` family처럼 특정 transformer block에 trainable module을
+     삽입하는 경우와 잘 맞는다.
 
 4. `full_encoder`
    - encoder 전체를 학습한다.
-   - 현재 운영 경로의 기본 대상은 아니다.
+   - 현재 논문 트랙의 기본 대상은 아니며, upper-bound 비교나 별도 benchmark용에 가깝다.
 
 정리하면:
 
@@ -153,6 +157,10 @@ family는 서로 다른 선택이다.
 server round runtime이 내부적으로 어떤 aggregation backend를 쓰는지와는 별도다.
 예를 들어 현재 server-owned round runtime 기본 aggregation backend는 `fedavg`지만,
 이 값은 `TrainingTaskPayload.secure_aggregation` 필드와 같은 의미가 아니다.
+
+위 JSON은 시스템/FL runtime의 `head_only + classifier_head` 계열 예시다.
+논문 트랙의 `central LoRA FixMatch/FreeMatch/PabLO` 비교는 별도 중앙 trainer
+config를 사용하며, 이 예시를 그대로 재현 기준으로 삼지 않는다.
 
 ---
 

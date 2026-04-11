@@ -25,6 +25,8 @@ v1 원칙:
 3. artifact 자체와 manifest를 분리한다.
 4. 추론 호환성과 학습 가능 범위를 함께 명시한다.
 5. v1에서는 `model_revision + prototype_version` 조합이 하나의 active pair를 이룬다.
+6. 이 문서는 현재 시스템/FL runtime의 배포 메타데이터를 설명한다. 논문 트랙의
+   중앙집중형 LoRA trainer checkpoint/optimizer state는 범위 밖이다.
 
 ---
 
@@ -90,12 +92,12 @@ v1에서는 아래를 포함하지 않는다.
 {
   "schema_version": "model_manifest.v1",
   "model_id": "tracemind-embed",
-  "model_revision": "tm_embed_2026_03_29_001",
+  "model_revision": "tm_head_2026_03_29_001",
   "published_at": "2026-03-29T12:00:00Z",
-  "artifact_kind": "embedding_backbone",
-  "artifact_ref": "models/tracemind-embed/tm_embed_2026_03_29_001",
+  "artifact_kind": "decision_head",
+  "artifact_ref": "models/tracemind-embed/heads/tm_head_2026_03_29_001",
   "prototype_version": "proto_2026_03_28_163056",
-  "training_scope": "adapter_only",
+  "training_scope": "head_only",
   "training_enabled": true,
   "compatible_task_types": [
     "pseudo_label_self_training",
@@ -105,6 +107,10 @@ v1에서는 아래를 포함하지 않는다.
   "base_model_revision": "main"
 }
 ```
+
+위 예시는 현재 시스템/FL runtime의 shared classifier head 배포 예시다.
+논문 트랙의 `central LoRA classifier`는 frozen backbone에 LoRA adapter와 classifier를 함께 두므로,
+checkpoint 배치 방식이 이 예시와 다를 수 있다.
 
 ---
 

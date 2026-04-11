@@ -1,16 +1,22 @@
 """Shared adapter 상태/업데이트 payload와 직렬화 유틸리티.
 
-이 모듈은 "서버와 agent 사이에서 어떤 adapter 상태/업데이트를 주고받는가"를
-정의하는 source of truth다.
+이 모듈은 시스템/FL runtime에서 "서버와 agent 사이에 어떤 shared state/update를
+주고받는가"를 정의하는 source of truth다.
 
-현재 concrete 구현은 `diagonal_scale` 하나뿐이며, 의미는 다음과 같다.
+현재 concrete family는 둘이다.
 
-1. state payload
-   - 현재 라운드에서 모든 agent가 공통으로 적용하는 전역 shared adapter 상태
-2. update payload
-   - 개별 agent가 로컬 학습 후 서버로 올리는 shared adapter 업데이트
-3. diagonal scale family
+1. `diagonal_scale`
    - 임베딩 각 차원에 곱하는 scale 벡터를 공유하는 adapter family
+2. `classifier_head`
+   - 고정 임베딩 위 category별 선형 분류 head를 공유하는 family
+
+주의:
+
+- 이 모듈은 현재 시스템/FL runtime 계약을 다룬다.
+- 논문 트랙의 `central LoRA classifier` trainer가 이 payload를 그대로
+  재사용해야 한다는 의미는 아니다.
+- 다만 이후 시스템 FL translation에서 `lora` family를 열 때는 이 모듈이
+  canonical state/update payload source of truth가 된다.
 """
 
 from __future__ import annotations

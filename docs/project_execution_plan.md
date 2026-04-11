@@ -2,23 +2,27 @@
 
 ## 1. 현재 활성 목표
 
-현재 TraceMind의 활성 목표는 아래 네 가지다.
+현재 TraceMind의 활성 목표는 아래 다섯 가지다.
 
 1. 로컬에서 원문을 처리한다.
 2. 공통 의미 표현 공간은 전역 모델과 shared artifact로 유지한다.
 3. 해석과 최종 판단은 로컬 개인화 상태로 수행한다.
-4. 필요 시 FL로 shared representation 계층만 점진적으로 개선한다.
+4. 논문 비교는 중앙집중형 LoRA classifier 레일에서 핵심 알고리즘 fidelity를 우선한다.
+5. 시스템 구현은 논문 winner를 FL/runtime 제약에 맞게 후행 translation 한다.
 
 중요:
 
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
 - `PrototypePack`은 유지하지만, 우선은 bootstrap/comparison artifact로 본다.
-- `v1`의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
+- 논문 트랙의 우선 baseline은 `central + frozen backbone + LoRA + classifier`다.
+- 시스템 트랙의 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 라벨된 데이터셋은 prototype build 전용이 아니라 supervised classifier seed와
   validation/calibration split source로도 직접 사용한다.
-- classifier 연구선의 현재 권장 순서는 supervised seed classifier -> FixMatch ->
-  FreeMatch -> PabLO이며, JointMatch는 구조 변화가 더 큰 후순위 비교축이다.
-- `v1`은 여전히 `same global representation + different local interpretation`이다.
+- 논문 비교선의 현재 권장 순서는 같은 LoRA scaffold 위의
+  supervised -> FixMatch -> FreeMatch -> PabLO이며, JointMatch는 구조 변화가 더 큰 후순위 비교축이다.
+- `UPET`, `LiST`, `SAT`는 메인 FixMatch family와 분리된 보조 비교축이다.
+- LoRA는 핵심 SSL 알고리즘을 유지하면서도 이후 FL LoRA family translation에 유리하다.
+- `v1` 시스템은 여전히 `same global representation + different local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 - multi-prototype runtime은 v1 필수가 아니라 future option으로 둔다.
 
@@ -42,6 +46,13 @@
 7. `DecisionFeedbackSignal`
 8. `PersonalizationState`
 9. `AssessmentResult`
+
+주의:
+
+- 위 계약은 현재 시스템/FL runtime의 source of truth다.
+- 논문 트랙의 `central LoRA classifier` trainer는 별도 실험 레일로 둔다.
+- 즉 이 비교선이 곧바로 현재 shared adapter contract나 update envelope을 의미하지는 않는다.
+- paper-track canonical scaffold와 산출물 규칙은 `docs/contracts/central_lora_classifier_trainer_contract.md`를 기준으로 본다.
 
 ## 3. 활성 아키텍처
 
@@ -68,7 +79,26 @@ Raw Event
 -> AssessmentResult
 ```
 
-### 3-2. 연합 학습 레일
+### 3-2. 논문 비교 레일
+
+```text
+Labeled Data + Unlabeled Pool
+-> Frozen Backbone + LoRA Modules
+-> Classifier
+-> Weak/Strong Views
+-> SSL Objective (FixMatch / FreeMatch / PabLO)
+-> Central Evaluation
+```
+
+설명:
+
+1. 이 레일의 목적은 논문 fidelity를 우선한 중앙집중형 비교다.
+2. 메인 라벨링은 classifier posterior가 담당하고, prototype은 메인 판정기가 아니다.
+3. `FixMatch`, `FreeMatch`, `PabLO`는 가능한 한 같은 backbone, 같은 LoRA spec, 같은 데이터 split 위에서 비교한다.
+4. real query calibration set이 아직 없으면 구조만 열어두고, 우선 현재 labeled split 내부에서 비교를 닫는다.
+5. `UPET`, `LiST`, `SAT`는 동일한 LoRA scaffold를 공유하되 메인 FixMatch family 표와는 분리해 읽는다.
+
+### 3-3. 시스템 FL 레일
 
 ```text
 Raw Event / Local Signal
@@ -81,16 +111,15 @@ Raw Event / Local Signal
 
 설명:
 
-1. `v1`에서는 backbone은 고정하고 shared classifier/head family를 우선 baseline으로 다룬다.
+1. 시스템 v1에서는 backbone은 고정하고 shared classifier/head family를 우선 baseline으로 다룬다.
 2. 현재 구현된 family는 `diagonal_scale`, `classifier_head` 두 개다.
-3. 앞으로의 기본 비교축은 `global classifier + local interpretation`이고,
+3. 논문 winner를 FL로 옮길 때는 `lora` family를 새로 추가하는 것이 1순위 translation 후보다.
+4. 시스템 기본 비교축은 `global classifier + local interpretation`이고,
    `diagonal_scale`과 prototype scoring은 비교 실험/확장 레일로 유지한다.
-4. 라벨된 데이터셋은 prototype bootstrap뿐 아니라 classifier supervised seed와
-   calibration용 split source로 직접 사용한다.
-5. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
-   stored scored event를 쓰는 real agent 경로는 아직 `diagonal_scale`만 안전하다.
-   현재 live agent API는 지원하지 않는 조합이 오면 `unsupported_runtime`으로 조기 종료한다.
-6. prototype은 직접 FL 파라미터라기보다 bootstrap/비교용 semantic artifact에 가깝다.
+5. `diagonal_scale`은 lightweight baseline으로 계속 유지하지만, 메인 FixMatch family 비교 scaffold는 아니다.
+6. `classifier_head` family는 simulation과 row-source multiview 경로까지 닫혔고,
+   stored scored event를 쓰는 real agent 경로는 아직 제한이 있다.
+7. prototype은 직접 FL 파라미터라기보다 bootstrap/비교용 semantic artifact에 가깝다.
 
 ## 4. 구현 배치 규칙
 
@@ -99,6 +128,7 @@ Raw Event / Local Signal
 3. server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.
 4. `scripts`는 위 코어를 조합하는 실험층으로만 유지한다.
 5. 운영 후보 로직을 `scripts`에 먼저 만들고 나중에 복사하는 흐름은 허용하지 않는다.
+6. 논문 fidelity를 위한 중앙 trainer는 시스템 runtime contract를 오염시키지 않게 별도 레일로 둔다.
 
 ## 5. 현재 구현 상태
 
@@ -117,16 +147,17 @@ Raw Event / Local Signal
 11. scorer backend와 example-generation backend를 독립 축으로 분리했다.
 12. 서버는 `adapter_family`, `aggregation_backend`를 server-owned config axis로 고른다.
 13. secure aggregation 메타데이터는 typed contract로 승격했다.
-14. 다음 기본 실험선은 `embedding -> global classifier -> local interpretation`으로 정리하기로 했다.
+14. fixed-embedding + linear classifier supervised baseline은 이미 실행 가능하다.
 
 아직 남은 핵심:
 
-1. classifier-first baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
-2. 아직 두 번째 real aggregation backend는 없다.
-3. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
-4. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
-5. shared adapter를 다시 주 경로로 둘지, classifier baseline의 비교축으로 둘지 ablation으로 정리한다.
-6. single prototype baseline으로 충분한지 확인하고, 부족할 때만 multi-prototype runtime을 다시 연다.
+1. 중앙집중형 `frozen backbone + LoRA + classifier` 논문 비교 레일을 연다.
+2. 같은 LoRA scaffold에서 `FixMatch -> FreeMatch -> PabLO`를 핵심 알고리즘 변경 최소화 기준으로 닫는다.
+3. 이후에야 시스템 FL translation 기준선을 선택한다.
+4. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
+5. 아직 두 번째 real aggregation backend는 없다.
+6. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
+7. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
 
 ## 6. Phase 요약
 
@@ -134,25 +165,25 @@ Raw Event / Local Signal
 
 - 활성 contract와 보관 contract를 분리한다.
 
-### Phase 1. 로컬 개인화 추론 MVP
+### Phase 1. 중앙집중형 논문 baseline
 
-- `AssessmentResult`를 안정적으로 생성한다.
+- `central LoRA supervised classifier`를 만든다.
 
-### Phase 2. 로컬 update 생성 MVP
+### Phase 2. 중앙집중형 SSL 비교
 
-- pseudo-label 또는 feedback 기반 local update를 생성한다.
+- `FixMatch -> FreeMatch -> PabLO`를 같은 backbone/LoRA spec 위에서 비교한다.
 
-### Phase 3. 중앙 FL coordinator MVP
+### Phase 3. 시스템 FL baseline
 
-- task publication, update 수집, aggregation, revision 발행을 닫는다.
+- `fixed embedding + classifier_head` 기준의 FL baseline을 닫는다.
 
-### Phase 4. end-to-end federation
+### Phase 4. 시스템 FL translation
 
-- 여러 agent가 참여하는 배포/학습 루프를 검증한다.
+- 논문 winner를 우선 `LoRA family + classifier` 후보로 FL/runtime 제약에 맞게 옮긴다.
 
 ### Phase 5. richer shared adapter
 
-- classifier-first baseline이 충분하지 않을 때만 diagonal scale보다 표현력 있는 shared adapter로 확장한다.
+- classifier-first 시스템 baseline이 충분하지 않을 때만 diagonal scale보다 표현력 있는 shared adapter로 확장한다.
 
 ### Phase 6. privacy hardening
 
@@ -162,22 +193,23 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. 라벨된 데이터셋 기반 supervised global classifier seed와 live agent path를 먼저 닫는다
-2. unlabeled 일반 query용 classifier SSL baseline을 FixMatch로 연다
-3. FreeMatch와 PabLO를 threshold/calibration 비교축으로 추가한다
-4. 두 번째 real `aggregation_backend` 하나를 추가
-5. end-to-end HTTP integration test를 multi-agent/agent API 기준으로 확장
-6. shared adapter 유무 비교 실험과 prototype comparison ablation을 붙인다
+1. 중앙집중형 LoRA용 supervised classifier baseline을 연다.
+2. 같은 backbone/LoRA spec에서 `FixMatch`를 핵심 알고리즘 변경 최소화 기준으로 연다.
+3. `FreeMatch`와 `PabLO`를 같은 조건에서 비교한다.
+4. 필요하면 `UPET`, `LiST`, `SAT`를 보조 비교축으로 추가한다.
+5. 논문 winner를 고른 뒤에 시스템용 `FL supervised classifier` baseline으로 넘어간다.
+6. 그 winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
+7. 그 다음에야 live agent path와 richer FL family를 닫는다.
 
 ## 8. 검증 기준
 
-### 로컬 추론
+### 논문 트랙
 
-1. 같은 입력과 같은 shared artifact에 대해 raw score가 재현된다.
-2. 다른 `PersonalizationState`를 적용하면 다른 해석 결과가 나올 수 있다.
-3. 단발 high score와 지속 high score가 다른 최종 판단으로 이어진다.
+1. 같은 backbone, 같은 LoRA spec, 같은 split 위에서 supervised / FixMatch / FreeMatch / PabLO 비교가 가능하다.
+2. real query set이 없더라도 어떤 데이터로 무엇을 주장하는지 명확하다.
+3. prototype은 메인 라벨러가 아니라 comparison/reference artifact로만 쓰인다.
 
-### shared FL
+### 시스템 FL
 
 1. update가 base revision과 호환된다.
 2. aggregation 후 새 revision이 일관되게 발행된다.
@@ -191,9 +223,10 @@ Raw Event / Local Signal
 
 ## 9. 사용자 확인이 필요한 결정
 
-1. pseudo-label을 정식 학습 신호로 얼마나 신뢰할지
-2. FL 범위를 adapter/head에서 어디까지 열지
-3. private adapter/head를 언제 도입할지
-4. secure aggregation과 DP 도입 시점
-5. multi-prototype를 runtime까지 확장할지
-6. shared adapter를 기본선으로 복귀시킬지, 비교축으로 유지할지
+1. 논문 트랙 backbone과 LoRA target module/rank를 무엇으로 고정할지
+2. pseudo-label을 정식 학습 신호로 얼마나 신뢰할지
+3. FL 범위를 `lora` family/head에서 어디까지 열지
+4. private adapter/head를 언제 도입할지
+5. secure aggregation과 DP 도입 시점
+6. multi-prototype를 runtime까지 확장할지
+7. shared adapter를 기본선으로 복귀시킬지, 비교축으로 유지할지

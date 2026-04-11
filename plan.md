@@ -18,6 +18,9 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 2. 최종 해석은 로컬 개인화 상태에서 수행해야 한다.
 3. 중앙은 개인 상태를 판정하는 서버가 아니라, 전역 shared artifact와
    학습 라운드를 조정하는 서버가 되어야 한다.
+4. 논문 비교선과 시스템 구현선은 같은 속도로 닫히지 않는다.
+   논문 비교는 중앙집중형 LoRA classifier로, 시스템 구현은 그 결과를 FL에
+   옮기는 후행 트랙으로 분리하는 편이 더 정직하고 실용적이다.
 
 즉 활성 방향은
 `normative modeling + peer norm`
@@ -29,17 +32,21 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 
 1. `WindowSummary`와 `NormPack`은 활성 아키텍처에서 제외한다.
 2. `PrototypePack`은 유지하지만, cohort norm artifact가 아니라
-   classifier bootstrap과 비교 실험용 semantic artifact로 해석한다.
-   라벨된 데이터셋을 직접 사용하는 supervised/shared classifier seed를
-   대체하지는 않는다.
-3. shared representation은 전역에서 관리한다.
-4. 개인화 해석과 최종 판단은 로컬에서 수행한다.
-5. v1의 우선 baseline은 `embedding -> global classifier -> local interpretation`으로 둔다.
-   라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
-   validation/calibration split의 source로도 직접 사용한다.
-6. shared adapter와 prototype scoring은 비교 실험 및 확장 축으로 유지한다.
-7. single prototype baseline은 허용하고, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
-8. full encoder FL은 마지막 확장 옵션으로 둔다.
+   bootstrap, comparison baseline, semantic reference artifact로 해석한다.
+   메인 classifier를 대체하지는 않는다.
+3. 활성 연구 로드맵은 두 트랙으로 분리한다.
+   - 논문 트랙: `central + frozen backbone + LoRA + classifier`
+   - 시스템 트랙: 논문 winner를 `FL/runtime` 제약에 맞게 translation
+4. 논문 트랙의 우선 비교축은 `LoRA + classifier` scaffold 위의
+   `supervised -> FixMatch -> FreeMatch -> PabLO`다.
+5. `UPET`, `LiST`, `SAT`는 메인 FixMatch family와 분리된 보조 비교축으로 둔다.
+6. 시스템 트랙의 v1 baseline은 여전히
+   `embedding -> global classifier -> local interpretation`으로 둔다.
+7. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
+   validation/calibration split source로도 직접 사용한다.
+8. diagonal scale adapter와 prototype scoring은 비교 실험 및 확장 축으로 유지한다.
+9. single prototype baseline은 허용하고, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
+10. full encoder FL은 upper-bound 또는 마지막 확장 옵션으로 둔다.
 
 ## 4. 구조 원칙
 
@@ -79,8 +86,8 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 ## 6. 구현 원칙
 
 1. 계약과 도메인을 먼저 고정한다.
-2. 로컬 추론 폐회로를 먼저 안정화한다.
-3. 그 다음 로컬 update 생성과 중앙 aggregation을 붙인다.
+2. 논문 fidelity가 핵심인 비교 실험은 시스템 translation과 분리한다.
+3. 중앙집중형 논문 비교선에서 winner를 고른 뒤 FL로 옮긴다.
 4. heuristic과 gradient, runtime과 aggregation, privacy와 training을 분리한다.
 5. source of truth는 코드 가까이에 둔다.
 6. raw registry보다 strategy/factory/family object를 우선한다.
@@ -94,12 +101,17 @@ TraceMind의 메시지는 아래와 같다.
 > 사용자별 변화와 시계열 맥락을 해석하고,
 > 필요 시 연합학습으로 공통 표현 계층을 점진적으로 개선하는
 > privacy-preserving personalized local inference 시스템을 제안한다.
+>
+> 또한 논문 비교선에서는 semi-supervised classifier 방법을 중앙집중형
+> `frozen backbone + LoRA + classifier` 설정에서 핵심 알고리즘을 유지한 채 비교하고,
+> 시스템 구현선에서는 그 결과를 FL/runtime 제약에 맞게 재설계한다.
 
 ## 8. 현재 결론
 
-1. shared representation과 shared class evidence는 전역으로 관리할 수 있다.
-2. 최종 판단까지 전역 하나로 밀면 drift와 개인 해석 손실이 커진다.
-3. 따라서 v1의 기본선은 `global classifier + local personalized interpretation`으로 두되,
-   최종 구조 원칙은 계속 `global shared representation + local personalized interpretation`
-   이어야 한다.
-4. shared adapter와 multi-prototype은 v1 필수가 아니라 비교/확장 축으로 두는 편이 실용적이다.
+1. 논문 트랙은 `central LoRA classifier`가 우선이다.
+2. 시스템 트랙은 논문 winner를 FL로 옮기는 후행 단계다.
+3. LoRA는 핵심 SSL 알고리즘을 유지하면서도 이후 FL translation 비용을 낮춘다.
+4. `head_only` classifier family와 `diagonal_scale` adapter는 시스템 translation과
+   lightweight baseline에는 유용하지만, 메인 논문 비교선은 아니다.
+5. prototype은 메인 라벨러가 아니라 bootstrap/comparison/reference artifact다.
+6. shared adapter와 multi-prototype은 v1 필수가 아니라 비교/확장 축으로 두는 편이 실용적이다.

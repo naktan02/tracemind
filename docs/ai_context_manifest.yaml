@@ -32,6 +32,8 @@ active_entrypoints:
     use_for: research goal and global/local boundary
   - path: docs/project_execution_plan.md
     use_for: active architecture and next priorities
+  - path: docs/contracts/central_lora_classifier_trainer_contract.md
+    use_for: paper-track LoRA scaffold and output boundary
   - path: shared/src/contracts/README.md
     use_for: payload interpretation
   - path: docs/contracts/algorithm_extension_guide.md
@@ -45,12 +47,27 @@ task_routes:
       - AGENTS.md
       - shared/AGENTS.md
       - shared/src/contracts/README.md
+      - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/algorithm_extension_guide.md
       - docs/project_execution_plan.md
     verify:
       - producer and consumer stay aligned
       - related tests are updated
       - relevant docs and readmes are synced
+
+  paper_track_experiment:
+    read_order:
+      - AGENTS.md
+      - docs/execution_index.md
+      - plan.md
+      - docs/project_execution_plan.md
+      - docs/contracts/central_lora_classifier_trainer_contract.md
+      - scripts/AGENTS.md
+      - scripts/README.md
+    verify:
+      - backbone, tokenizer, LoRA spec stay fixed inside one comparison table
+      - method changes are separated from trainable-scope changes
+      - outputs keep enough metadata for later FL translation
 
   strategy_addition:
     read_order:
@@ -93,6 +110,7 @@ task_routes:
       - docs/AGENTS.md
       - docs/execution_index.md
       - docs/project_execution_plan.md
+      - docs/contracts/central_lora_classifier_trainer_contract.md
     verify:
       - duplicate guidance is reduced
       - notes stay archive-only

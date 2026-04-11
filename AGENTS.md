@@ -57,9 +57,11 @@
 2. `docs/execution_index.md`
 3. `plan.md`
 4. `docs/project_execution_plan.md`
-5. `shared/src/contracts/README.md`
-6. `docs/fl_runtime_implementation_checklist.md`
-7. `docs/contracts/algorithm_extension_guide.md`
+5. `docs/contracts/central_lora_classifier_trainer_contract.md`
+   - 논문 트랙의 canonical LoRA scaffold와 산출물 경계
+6. `shared/src/contracts/README.md`
+7. `docs/fl_runtime_implementation_checklist.md`
+8. `docs/contracts/algorithm_extension_guide.md`
 
 ## Architecture Direction
 

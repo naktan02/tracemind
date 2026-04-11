@@ -1,6 +1,13 @@
 # Scripts Guide
 
-이 디렉터리는 데이터 준비, `PrototypePack` 관리, 분류 baseline, prototype 전략 비교, threshold sweep, federated simulation용 스크립트를 모아 둔 곳이다.
+이 디렉터리는 데이터 준비, `PrototypePack` 관리, 중앙집중형 classifier/SSL baseline, prototype 전략 비교, threshold sweep, federated simulation용 스크립트를 모아 둔 곳이다.
+
+현재 실행 순서:
+
+1. 논문 트랙: `central LoRA classifier` 비교
+2. 시스템 트랙: winner를 `FL/runtime` 제약에 맞게 translation
+
+즉 `federated_simulation`은 현재도 중요하지만, 논문용 중앙 비교선을 먼저 닫은 뒤에 따라오는 후행 단계로 본다.
 
 ## 구조 인덱스
 
@@ -113,7 +120,7 @@ uv run python <script>.py --cfg job
 
 ### classifier-first 자산 필드
 
-`scripts/conf/dataset/*.yaml`은 classifier-first 실험의 데이터 자산 source of truth다.
+`scripts/conf/dataset/*.yaml`은 논문 트랙과 시스템 트랙이 공유하는 데이터 자산 source of truth다.
 현재 활성 필드 의미는 아래로 고정한다.
 
 - `train_jsonl`: supervised classifier seed 학습용 labeled train split
@@ -354,7 +361,8 @@ uv run python scripts/experiments/prototype_threshold_sweep.py \
 ## 6. Softmax classifier head baseline
 
 고정 임베딩 위에 linear classifier head를 학습한다.
-현재 classifier-first 연구선의 supervised seed baseline으로 본다.
+현재 저장소에 남아 있는 `fixed embedding + linear head` supervised seed baseline으로 본다.
+논문 트랙의 `central LoRA supervised baseline`은 이와 별도 레일로 추가할 대상이다.
 라벨된 데이터셋은 prototype build 전용이 아니라 이 baseline을 직접 학습하는
 source로도 사용한다.
 
@@ -392,9 +400,11 @@ uv run python scripts/experiments/run_federated_simulation.py
 주의:
 
 - 현재 Hydra 기본 preset은 `prototype_pseudo_label_v1`다.
-- 현재 v1 권장 연구선은 classifier-first이므로, classifier 실험에서는
+- 현재 `run_federated_simulation`은 시스템 FL 트랙용 entrypoint다.
+- 현재 v1 권장 시스템 baseline은 classifier-first이므로, classifier 실험에서는
   `training_algorithm_profile=fixmatch_v1` 또는 classifier-head 관련 override를
   명시적으로 주는 편이 맞다.
+- 단, 논문 트랙의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 이 entrypoint가 아니라 별도 중앙 trainer 레일에서 진행한다.
 
 라운드와 client 수를 바꾸려면:
 
@@ -460,8 +470,9 @@ uv run python scripts/experiments/run_federated_simulation.py \
 - prototype 재빌드는 `prototype_builder` 설정을 그대로 따른다.
 - 현재 default smoke는 diagonal scale preset이지만,
   classifier-head + `fixmatch_v1` simulation path도 지원한다.
-- `FreeMatch`, `PabLO`는 아직 direct preset이 없으므로 classifier-first 확장으로
+- `FreeMatch`, `PabLO`는 아직 direct system-FL preset이 없으므로 classifier-first 확장으로
   추가할 대상이다.
+- 논문 트랙에서는 이 둘을 `central LoRA` 비교선에서 먼저 닫고, 그 다음 시스템 translation 여부를 판단한다.
 
 ---
 

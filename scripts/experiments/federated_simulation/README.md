@@ -6,6 +6,12 @@
 production runtime이 아니라, production service를 조립해서 검증하는
 experiment package로 이해하면 된다.
 
+중요:
+
+- 이 패키지는 현재 로드맵에서 `시스템 FL 트랙`에 해당한다.
+- `central LoRA classifier` 논문 비교선을 먼저 닫은 뒤, winner를 FL로 옮길 때
+  이 패키지가 직접적인 기준 entrypoint가 된다.
+
 현재 v1에서 이 패키지의 기본 비교선은
 `embedding -> global classifier -> local interpretation`이다.
 shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한다.

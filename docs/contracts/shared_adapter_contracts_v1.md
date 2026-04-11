@@ -14,6 +14,12 @@
 즉 이 문서는 `TrainingUpdateEnvelope`의 메타데이터가 아니라,
 그 안에 실제로 담기는 shared adapter payload의 의미를 설명한다.
 
+중요:
+
+- 이 문서는 현재 시스템/FL runtime의 shared state/update 계약을 다룬다.
+- 논문 트랙의 `central LoRA classifier` checkpoint 전체를 설명하는
+  문서는 아니다.
+
 ---
 
 ## 2. 왜 별도 계약이 필요한가
@@ -101,7 +107,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
 7. `created_at`
    - 로컬 update 생성 시각
 
-현재 v1 권장 baseline은 `classifier_head + head_only`이고,
+현재 시스템/FL v1 권장 baseline은 `classifier_head + head_only`이고,
 `diagonal_scale`은 비교/확장용 shared adapter family로 유지한다.
 
 ---
@@ -156,8 +162,8 @@ x' = normalize(x ⊙ s)
 
 ## 6. 현재 concrete 구현 2: `classifier_head`
 
-현재 v1의 우선 baseline은 backbone을 고정한 채 category별 선형 classifier head를
-공유하는 방식이다.
+현재 시스템/FL v1의 우선 baseline은 backbone을 고정한 채 category별 선형
+classifier head를 공유하는 방식이다.
 
 state payload:
 
@@ -197,6 +203,8 @@ p(c | x) = softmax(z)_c
    현재 임베딩 공간 위에서 category decision boundary를 학습한다.
 4. prototype은 main scoring 파라미터가 아니라 classifier bootstrap/comparison
    artifact로 남는다.
+5. 이 family는 시스템 translation용 shared head를 뜻하며, 논문 트랙의
+   frozen backbone + LoRA + classifier checkpoint 전체와 동일한 개념은 아니다.
 
 update payload:
 

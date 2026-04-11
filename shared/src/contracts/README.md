@@ -10,11 +10,13 @@
 
 `docs/contracts/*`는 배경과 설계 이유를 설명하는 보조 문서이고, 실제 필드 의미와 포맷은 이 폴더 파일이 기준이다.
 
-현재 v1 계획 기준:
+현재 활성 계획 기준:
 
-- 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
+- 논문 트랙의 우선 baseline은 `central + frozen backbone + LoRA + classifier`다.
+- 시스템/FL 트랙의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 여기서 classifier는 공통 class evidence를 만드는 shared artifact로 본다.
 - `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
+- 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 LoRA 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_lora_classifier_trainer_contract.md`를 기준으로 본다.
 
 ## 주요 파일
 
@@ -86,7 +88,9 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
-  - 현재는 주로 `adapter_only`, `head_only`
+  - 현재 시스템 runtime에서는 주로 `adapter_only`, `head_only`
+  - future `lora` family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
+  - `full_encoder`는 upper-bound 또는 미래 확장 값으로 남아 있지만, 현재 시스템 FL 기본 경로는 아니다
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision
   - `base_model_revision`: 로컬 update가 계산된 기준 revision

@@ -11,6 +11,14 @@
 이 문서는 "다음에 무엇을 할지"만 적는 메모가 아니라,
 "어떤 순서로, 왜, 어느 파일에, 어떤 완료 기준으로 구현할지"를 고정하는 체크리스트다.
 
+중요:
+
+- 이 체크리스트는 `시스템 FL 트랙`의 작업표다.
+- 현재 전체 로드맵에서는 `central LoRA classifier` 논문 비교선을 먼저 닫고,
+  그 다음에 이 문서 순서대로 FL translation을 진행한다.
+- 즉 이 문서는 repo의 유일한 다음 단계 문서가 아니라, `논문 트랙 이후`에
+  따라갈 시스템 구현 체크리스트다.
+
 ## 현재 상태 요약
 
 현재 코드 기준으로 이미 있는 것:
@@ -43,7 +51,7 @@
 - classifier-first baseline의 live agent 경로 확장
 - 실제 두 번째 aggregation backend 구현
 - learned scorer / scorer artifact lifecycle
-- adapter 유무 비교 실험과 classifier baseline 안정화
+- 논문 winner, 특히 future `lora` family를 시스템 FL로 옮기는 translation 설계
 - secure aggregation runtime 자체
 - 일부 integration test 인프라 안정화
 
@@ -84,6 +92,8 @@
 ## 구현 순서
 
 ## Phase 0. 선행 결정 고정
+
+이 phase에 들어오기 전에 논문 트랙의 `central LoRA supervised -> FixMatch -> FreeMatch -> PabLO` 비교가 먼저 끝나야 한다.
 
 ### 왜 먼저 해야 하나
 

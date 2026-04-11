@@ -17,6 +17,8 @@ v1 원칙:
 2. 어떤 base model revision에서 생성된 update인지 반드시 남긴다.
 3. 로컬 개인화 상태를 직접 포함하지 않는다.
 4. 개인정보성 원문이나 개별 샘플을 포함하지 않는다.
+5. 이 문서는 현재 시스템/FL runtime update 봉투를 설명한다. 중앙집중형
+   논문 트랙의 LoRA trainer checkpoint/gradient 저장 형식은 범위 밖이다.
 
 ---
 
@@ -100,6 +102,9 @@ v1 원칙:
   "agent_id": "3f4a2b1c-9e8d-4f7e-a6b5-2c1d0e9f8a7b"
 }
 ```
+
+위 예시는 시스템/FL runtime의 `classifier_head` update 봉투 예시다.
+논문 트랙의 중앙집중형 LoRA trainer 결과물은 이 envelope을 직접 쓰지 않는다.
 
 ---
 

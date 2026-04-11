@@ -16,6 +16,12 @@
 [docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)에서
 먼저 확인한다.
 
+중요:
+
+- 이 가이드는 현재 시스템/FL runtime에 wiring된 전략 축을 중심으로 설명한다.
+- 논문 트랙의 `central LoRA classifier` 비교선은 별도 중앙 trainer를
+  사용하며, 그 구현이 자동으로 이 registry 축 안에 들어와야 한다는 뜻은 아니다.
+
 ---
 
 ## 교체 가능한 전략 지점 전체 맵
@@ -47,6 +53,12 @@
 **현재:**
 - `prototype_pseudo_label_v1`
 - `prototype_top1_confidence_v1`
+- `fixmatch_v1`
+
+주의:
+- `fixmatch_v1`는 현재 시스템 runtime에서 쓰는 `head_only` adaptation profile이다.
+- 논문 트랙의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 별도
+  중앙 trainer 레일에서 먼저 닫고, 그 뒤에 system translation 여부를 판단한다.
 
 **구성 위치:**
 - shared canonical registry:
