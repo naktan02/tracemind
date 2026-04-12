@@ -66,6 +66,8 @@
 - adaptation dataset export는 JSONL/manifest와 함께 summary JSON도 남긴다.
 - adaptation dataset export 결과로 기존 `run_supervised_lora_baseline`을 호출하는 scripts 실행 helper가 들어갔다.
 - `runtime=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
+- query-buffer selection 결과를 family-agnostic summary/trace diagnostics shape로 정리하고,
+  JSON/JSONL dump로 저장하는 helper가 들어갔다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - multiview/weak-strong query adaptation row 준비
@@ -74,10 +76,9 @@
 
 ## Next Session Checklist
 
-1. query-buffer selection summary / trace dump를 추가한다.
-2. weak/strong augmentation이 필요한 family의 multiview row 준비 경로를 연다.
-3. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
-4. supervised LoRA smoke 결과를 기준으로 weak-view evidence / acceptance policy 확장 지점을 고정한다.
+1. weak/strong augmentation이 필요한 family의 multiview row 준비 경로를 연다.
+2. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
+3. supervised LoRA smoke 결과를 기준으로 weak-view evidence / acceptance policy 확장 지점을 고정한다.
 
 ## Guardrails
 

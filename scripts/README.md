@@ -441,6 +441,9 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - 이 레일을 쓰려면 raw query text가 로컬에 남아 있어야 한다. LoRA 재학습과 weak/strong augmentation은 embedding만으로는 닫히지 않는다.
 - agent-local `QueryAdaptationDataset`은 `scripts/experiments/lora_classifier/query_adaptation_io.py`로
   현재 `train_lora_classifier.py`가 읽는 `labeled_query_rows` JSONL shape로 export할 수 있다.
+- query-buffer selection 결과는 `agent/src/services/training/query_buffer_selection_diagnostics.py`로
+  canonical summary/trace shape를 만들고,
+  `scripts/query_buffer_selection_diagnostics.py`로 JSON/JSONL dump를 남길 수 있다.
 - adaptation dataset의 canonical provenance (`locale`, `source_type`, `model_revision`)는
   free-form metadata key가 아니라 typed field로 유지한다.
 - export 시 JSONL/manifest와 함께 dataset summary JSON도 같이 기록한다.

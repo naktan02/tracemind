@@ -69,6 +69,8 @@
   - query buffer snapshot + scored event를 `PseudoLabelEvidence`로 정규화
 - `training/query_buffer_selection_service.py`
   - query buffer 기반 selection runner
+- `training/query_buffer_selection_diagnostics.py`
+  - selection 결과를 family-agnostic summary/trace 진단 shape로 정리
 - `training/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,

@@ -35,6 +35,8 @@
 
 - `scripts/labeled_query_rows.py`
   - 실험/프로토타입 스크립트가 공유하는 labeled row JSONL shape
+- `scripts/query_buffer_selection_diagnostics.py`
+  - query-buffer selection summary/trace dump 저장 helper
 - `scripts/run_artifacts.py`
   - run 출력 디렉터리 생성 helper
 - `scripts/classification_report.py`
