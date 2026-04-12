@@ -104,6 +104,19 @@
 - request/response body는 dataclass 또는 Pydantic 우선
 - 주석과 설명 문서는 기본적으로 한국어로 쓴다
 
+## Package Import Conventions
+
+- 기본값은 직접 파일 import다.
+  - 예: `from agent.src.services.training.local_training_service import LocalTrainingService`
+- package-level import는 실제 공개 API surface가 필요할 때만 연다.
+  - 예: 여러 모듈에서 반복적으로 쓰는 stable entrypoint, contract boundary, script helper package
+- 내부 구현 패키지의 `__init__.py`는 기본적으로 marker/docstring only로 유지한다.
+- `__init__.py`에 concrete 구현체를 광범위하게 re-export하지 않는다.
+- `__all__`은 package가 의도적으로 공개하는 이름 집합이 있을 때만 둔다.
+- `__getattr__` lazy export는 순환 import 회피나 무거운 import 지연이 명확할 때만 사용한다.
+- repo 내부에서 package-level import 사용이 거의 없으면 barrel export를 추가하지 않고 direct-file import를 유지한다.
+- 새 코드를 추가할 때는 먼저 direct-file import로 두고, 반복 사용이 확인된 뒤에만 `__init__.py` export를 승격한다.
+
 ## Testing Guidelines
 
 - Pytest가 authoritative framework다.

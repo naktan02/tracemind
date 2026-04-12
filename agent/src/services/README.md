@@ -7,6 +7,7 @@
 - `shared` 계약을 읽어 local inference와 local training을 실행한다.
 - 서버와 통신하는 orchestration은 `federation/`에 두고,
   실제 scoring/training 메커니즘은 `inference/`, `training/`에 둔다.
+- `services/*/__init__.py`는 기본적으로 marker만 두고 direct-file import를 우선한다.
 - newcomer는 `__init__.py`보다 아래 읽기 순서로 시작하는 편이 빠르다.
 
 ## 하위 패키지 역할
