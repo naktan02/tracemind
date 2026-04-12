@@ -1,26 +1,45 @@
 # Notes Directory
 
-이 디렉터리는 구현 중 나온 대화 요약, 아키텍처 결정, API 논의 메모를 보관한다.
+이 디렉터리는 구현 중 나온 대화 요약, 아키텍처 결정, incident 기록을 보관한다.
 여기 문서에는 현재 비활성 또는 대체된 구조 논의가 남아 있을 수 있으므로,
 현재 source of truth로 읽지 말고 참고/아카이브 용도로만 사용한다.
+
+문제를 바로 해결하려고 할 때 이 디렉터리를 먼저 뒤지지 않는다.
+
+- 현재 행동 규칙: root `AGENTS.md`
+- 반복 실행 절차: 관련 `README.md`
+- 활성 구현 계획: `docs/project_execution_plan.md`
+- notes는 왜 그런 규칙이 생겼는지, 과거 대화에서 무엇을 결정했는지 찾는 용도다.
+
+## 하위 디렉터리
+
+- `incidents/`
+  - 실수, 장애, 환경 오판, 재발 방지 guardrail 기록
+- `decisions/`
+  - 구조/계약/실행 흐름 관련 결정 기록
+  - `배경 / 결정 내용 / 이유 / 보류 사항 / 다음 액션`처럼 구조화된 문서만 둔다.
+- `sessions/`
+  - 대화 요약, 질의응답, 세션 로그 성격의 기록
+  - `User/Assistant` 흐름이 많이 남아 있거나 설명 중심 문서는 기본적으로 여기 둔다.
 
 ## 권장 규칙
 
 파일명은 날짜와 주제를 함께 쓴다.
 
-- `2026-03-22-architecture-notes.md`
-- `2026-03-22-fl-roadmap.md`
-- `2026-03-22-contract-decisions.md`
+- `incidents/2026-04-12-gpu-runtime-preflight-guardrail.md`
+- `decisions/2026-04-02-federated-simulation-orchestration-split.md`
+- `sessions/2026-03-23-session-transcript.md`
 
 ## 문서 종류
 
 1. 대화 요약
    - Codex와 논의한 핵심 결론만 정리
-
 2. 결정 기록
    - 왜 이 구조를 선택했는지, 대안은 무엇이었는지 기록
-
-3. 임시 실험 메모
+   - 대화 전문이 아니라 정리된 결론 문서일 때만 `decisions/`에 둔다.
+3. incident 기록
+   - 무엇이 있었고, 왜 잘못 판단했는지, 어떤 guardrail로 승격했는지 기록
+4. 임시 실험 메모
    - 추후 폐기될 수 있는 아이디어나 TODO 기록
 
 ## 권장 포맷

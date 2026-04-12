@@ -49,7 +49,7 @@
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
 3. `docs/contracts/*`, `docs/*`
-4. `docs/notes/*`
+4. `docs/notes/**`
 
 기본 진입점은 아래 순서를 따른다.
 

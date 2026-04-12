@@ -23,7 +23,7 @@ source_of_truth_priority:
   - shared/src/contracts/README.md
   - docs/contracts/*
   - docs/*
-  - docs/notes/*
+  - docs/notes/**
 
 active_entrypoints:
   - path: docs/execution_index.md
@@ -120,7 +120,7 @@ task_routes:
       - source of truth remains code-adjacent
 
 archive_paths:
-  - docs/notes/*
+  - docs/notes/**
 
 maintainer_docs:
   - docs/ai_harness_operating_model.md

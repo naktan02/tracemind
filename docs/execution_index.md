@@ -122,7 +122,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
 3. `docs/contracts/*`, `docs/*`
-4. `docs/notes/*`
+4. `docs/notes/**`
 
 ## 사용자 확인이 필요한 변경
 
