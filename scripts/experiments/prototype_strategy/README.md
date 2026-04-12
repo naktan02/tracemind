@@ -73,7 +73,7 @@ python -m scripts.experiments.prototype_threshold_sweep \
 - 새 전략을 추가하고 싶으면 `strategies.py`와
   `shared/src/services/prototypes/build_strategies.py`를 같이 본다.
 - threshold와 scorer 관련 knob가 실제로 어디까지 열려 있는지는
-  [docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)를
+  [docs/strategy_surface_map.md](../../../docs/strategy_surface_map.md)를
   같이 보면 빠르다.
 - 이 패키지는 prototype 전략 비교 실험용이다.
   운영 runtime의 canonical prototype 계약은 `shared/src/contracts/prototype_contracts.py`가 기준이다.

@@ -121,8 +121,8 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 문서/코드 반영 위치
 
-- [x] [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-- [x] [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
+- [x] [docs/project_execution_plan.md](project_execution_plan.md)
+- [x] [docs/contracts/training_task_v1.md](contracts/training_task_v1.md)
 - [ ] 새 runtime service contract 문서가 필요하면 `docs/contracts/` 아래에 추가
 
 ### 완료 기준
@@ -148,23 +148,23 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 기존 코드와 연결할 것
 
-- [x] [round_manager_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_manager_service.py)
+- [x] [round_manager_service.py](../main_server/src/services/rounds/round_manager_service.py)
   - domain primitive로 유지
   - lifecycle orchestration의 하위 구성 요소로 사용
-- [x] [adapter_family_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/adapter_family_service.py)
+- [x] [adapter_family_service.py](../main_server/src/services/rounds/adapter_family_service.py)
   - family-based aggregation 확장 지점으로 유지
-- [x] [aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
+- [x] [aggregation_service.py](../main_server/src/services/rounds/aggregation_service.py)
   - aggregation backend 교체 지점으로 유지
 
 ### API로 닫을 것
 
-- [x] [main_server/src/api/fl_rounds.py](/home/jmgjmg102/tracemind_server/main_server/src/api/fl_rounds.py)
+- [x] [main_server/src/api/fl_rounds.py](../main_server/src/api/fl_rounds.py)
   - `GET /api/v1/fl/rounds/current`
   - `POST /api/v1/fl/rounds`
   - `GET /api/v1/fl/rounds/{round_id}`
   - `POST /api/v1/fl/rounds/{round_id}/updates`
   - `POST /api/v1/fl/rounds/{round_id}/finalize`
-- [x] [main_server/src/api/main.py](/home/jmgjmg102/tracemind_server/main_server/src/api/main.py)
+- [x] [main_server/src/api/main.py](../main_server/src/api/main.py)
   - FL router include
 
 ### 검증할 것
@@ -198,20 +198,20 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 기존 코드와 연결할 것
 
-- [x] [local_training_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/local_training_service.py)
+- [x] [local_training_service.py](../agent/src/services/training/local_training_service.py)
   - selection + update generation 코어로 유지
-- [x] [pseudo_label_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/pseudo_label_service.py)
+- [x] [pseudo_label_service.py](../agent/src/services/training/pseudo_label_service.py)
   - acceptance policy 교체 지점으로 유지
-- [x] [training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
+- [x] [training_backends/__init__.py](../agent/src/services/training/training_backends/__init__.py)
   - backend 교체 지점으로 유지
 
 ### API로 닫을 것
 
-- [x] [agent/src/api/training.py](/home/jmgjmg102/tracemind_server/agent/src/api/training.py)
+- [x] [agent/src/api/training.py](../agent/src/api/training.py)
   - `POST /api/v1/training/run-current-task`
   - `GET /api/v1/training/status`
   - 필요 시 `POST /api/v1/training/pull-task`
-- [x] [agent/src/api/main.py](/home/jmgjmg102/tracemind_server/agent/src/api/main.py)
+- [x] [agent/src/api/main.py](../agent/src/api/main.py)
   - training router include
 
 ### simulation에서 agent runtime으로 내릴 것
@@ -256,11 +256,11 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 기존 코드와 연결할 것
 
-- [ ] [prototype_build_state_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/prototypes/prototype_build_state_service.py)
+- [ ] [prototype_build_state_service.py](../main_server/src/services/prototypes/prototype_build_state_service.py)
   - 운영 경로에서 build state를 유지할지 여부 결정
-- [x] [scripts/prototypes/seeding.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/seeding.py)
+- [x] [scripts/prototypes/seeding.py](../scripts/prototypes/seeding.py)
   - production logic을 그대로 재사용할지, server service 전용 core로 분리할지 결정
-- [x] [round_lifecycle_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/round_lifecycle_service.py)
+- [x] [round_lifecycle_service.py](../main_server/src/services/rounds/round_lifecycle_service.py)
   - next pair publication 직후 rebuild 호출 흐름과 연결
 - [x] `scripts/experiments/prototype_strategy`의 single/kmeans
   - shared canonical builder를 재사용
@@ -405,11 +405,11 @@ training과 aggregation이 먼저 닫힌 뒤, privacy와 robustness를 분리된
 
 아래 문서가 서로 같은 이야기를 해야 한다.
 
-- [ ] [plan.md](/home/jmgjmg102/tracemind_server/plan.md)
-- [ ] [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
-- [ ] [docs/staged_execution_roadmap.md](/home/jmgjmg102/tracemind_server/docs/staged_execution_roadmap.md)
-- [ ] [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
-- [ ] [shared/src/contracts/README.md](/home/jmgjmg102/tracemind_server/shared/src/contracts/README.md)
+- [ ] [plan.md](../plan.md)
+- [ ] [docs/project_execution_plan.md](project_execution_plan.md)
+- [ ] [docs/staged_execution_roadmap.md](staged_execution_roadmap.md)
+- [ ] [docs/contracts/training_task_v1.md](contracts/training_task_v1.md)
+- [ ] [shared/src/contracts/README.md](../shared/src/contracts/README.md)
 
 ## 가장 먼저 시작할 실제 작업 3개
 

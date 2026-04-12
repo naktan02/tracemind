@@ -8,12 +8,12 @@
 새 알고리즘을 추가하거나 기존 것을 교체할 때 이 문서를 출발점으로 삼는다.
 
 실제 구현 순서와 테스트 순서를 따라가려면
-[strategy_addition_playbook.md](/home/jmgjmg102/tracemind_server/docs/contracts/strategy_addition_playbook.md)를
+[strategy_addition_playbook.md](strategy_addition_playbook.md)를
 함께 본다.
 
 지금 어떤 축이 실제 runtime에서 선택 가능하고,
 어떤 축이 typed metadata만 있는지는
-[docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)에서
+[docs/strategy_surface_map.md](../strategy_surface_map.md)에서
 먼저 확인한다.
 
 중요:

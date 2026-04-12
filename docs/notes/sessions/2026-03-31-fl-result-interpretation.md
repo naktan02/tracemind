@@ -195,15 +195,15 @@ normal을 학습신호로 왜 못 쓰는데?
 
 근거:
 
-1. [`agent/src/services/training/pseudo_label_service.py`](/home/jmgjmg102/tracemind_server/agent/src/services/training/pseudo_label_service.py)
+1. [`agent/src/services/training/pseudo_label_service.py`](../../../agent/src/services/training/pseudo_label_service.py)
    - top1 label만 pseudo-label 후보가 된다.
    - `confidence >= 0.6` and `margin >= 0.02`를 만족해야 accepted 된다.
    - 그 뒤 accepted 후보를 confidence, margin 순으로 정렬해서 `max_examples`까지만 남긴다.
 
-2. [`scripts/conf/experiments/run_federated_simulation.yaml`](/home/jmgjmg102/tracemind_server/scripts/conf/experiments/run_federated_simulation.yaml)
+2. [`scripts/conf/experiments/run_federated_simulation.yaml`](../../../scripts/conf/experiments/run_federated_simulation.yaml)
    - 이번 run threshold는 `confidence_threshold=0.6`, `margin_threshold=0.02`
 
-3. [`scripts/conf/federated_run_preset/standard.yaml`](/home/jmgjmg102/tracemind_server/scripts/conf/federated_run_preset/standard.yaml)
+3. [`scripts/conf/federated_run_preset/standard.yaml`](../../../scripts/conf/federated_run_preset/standard.yaml)
    - client당 최대 반영 예시는 `64`
 
 4. 따라서 `normal`이 빠질 수 있는 지점은 두 군데다.

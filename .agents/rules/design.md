@@ -149,5 +149,5 @@ repo instruction은 계층적으로 둔다.
 - 구조 변경의 검증 흔적이 남아 있는가
 - 새 implementation 추가 시 기존 구현을 뜯지 않고 확장 가능한가
 
-필요하면 [instruction_layers.md](references/instruction_layers.md)를 읽고,
+필요하면 [instruction_layers.md](../../.codex/skills/architecture-first-modular-engineering/references/instruction_layers.md)를 읽고,
 도구별 적용 형식을 고른다.

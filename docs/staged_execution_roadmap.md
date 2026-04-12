@@ -2,7 +2,7 @@
 
 이 문서는 phase 이름과 큰 순서만 빠르게 확인하는 축약본이다.
 세부 설명과 현재 우선순위는
-[`docs/project_execution_plan.md`](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
+[`docs/project_execution_plan.md`](project_execution_plan.md)
 를 기준으로 본다.
 
 ## Phase Map

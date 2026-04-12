@@ -9,7 +9,7 @@
 - Hydra top-level config는 `scripts/conf/experiments/*.yaml`이 source of truth다.
 
 전략 축 전체와 현재 override 가능 여부는
-[docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)를
+[docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)를
 먼저 보는 편이 빠르다.
 
 ## 직접 실행하는 entrypoint

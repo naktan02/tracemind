@@ -119,5 +119,5 @@ v1 원칙:
 
 ## 7. 관련 가이드
 
-- [aggregation_algorithm_transition_guide.md](aggregation_algorithm_transition_guide.md)
+- [aggregation_algorithm_transition_guide.md](algorithm_extension_guide.md#7-aggregation-backend-main_server)
   — q-합의 등 aggregation 알고리즘 추가 시 교체 지점과 체크리스트

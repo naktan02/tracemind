@@ -6,13 +6,13 @@
 `무엇을 어디에 구현하고, 어떻게 연결하고, 무엇을 검증할지`
 를 순서대로 설명하는 실전용 플레이북이다.
 
-[algorithm_extension_guide.md](/home/jmgjmg102/tracemind_server/docs/contracts/algorithm_extension_guide.md)가
+[algorithm_extension_guide.md](algorithm_extension_guide.md)가
 전략 축과 출발 파일을 알려주는 지도라면,
 이 문서는 실제 작업 순서를 알려주는 매뉴얼이다.
 
 현재 어떤 전략 축이 이미 활성 runtime인지,
 어떤 축이 metadata only인지 보려면
-[docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)를
+[docs/strategy_surface_map.md](../strategy_surface_map.md)를
 먼저 본다.
 
 ## 1. 먼저 변경 종류를 분류한다
@@ -67,9 +67,9 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
-- 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](/home/jmgjmg102/tracemind_server/shared/src/config/training_defaults.py)
+- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
+- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 
 작업 순서:
 
@@ -87,8 +87,8 @@
 
 우선 볼 테스트:
 
-- [agent/tests/unit/test_local_training_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_local_training_service.py)
-- 필요 시 [agent/tests/unit/test_training_example_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_training_example_service.py)
+- [agent/tests/unit/test_local_training_service.py](../../agent/tests/unit/test_local_training_service.py)
+- 필요 시 [agent/tests/unit/test_training_example_service.py](../../agent/tests/unit/test_training_example_service.py)
 
 ### 3-2. 새 example-generation backend 추가
 
@@ -96,9 +96,9 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/input_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/federation/training_example_service.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
+- [agent/src/services/training/input_backends/__init__.py](../../agent/src/services/training/input_backends/__init__.py)
+- [agent/src/services/federation/training_example_service.py](../../agent/src/services/federation/training_example_service.py)
+- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
 
 작업 순서:
 
@@ -110,16 +110,16 @@
 
 우선 볼 테스트:
 
-- [agent/tests/unit/test_training_example_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_training_example_service.py)
-- [agent/tests/unit/test_local_training_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_local_training_service.py)
+- [agent/tests/unit/test_training_example_service.py](../../agent/tests/unit/test_training_example_service.py)
+- [agent/tests/unit/test_local_training_service.py](../../agent/tests/unit/test_local_training_service.py)
 
 ### 3-3. 새 scorer backend 또는 scoring policy 추가
 
 보통 수정 파일:
 
-- [agent/src/services/inference/scoring_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_backends.py)
-- [agent/src/services/inference/scoring_policies.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_policies.py)
-- 필요 시 [scripts/experiments/prototype_strategy/scoring.py](/home/jmgjmg102/tracemind_server/scripts/experiments/prototype_strategy/scoring.py)
+- [agent/src/services/inference/scoring_backends.py](../../agent/src/services/inference/scoring_backends.py)
+- [agent/src/services/inference/scoring_policies.py](../../agent/src/services/inference/scoring_policies.py)
+- 필요 시 [scripts/experiments/prototype_strategy/scoring.py](../../scripts/experiments/prototype_strategy/scoring.py)
 
 작업 순서:
 
@@ -130,8 +130,8 @@
 
 우선 볼 테스트:
 
-- [agent/tests/unit/test_scoring_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_scoring_service.py)
-- [tests/unit/test_prototype_strategy_experiment.py](/home/jmgjmg102/tracemind_server/tests/unit/test_prototype_strategy_experiment.py)
+- [agent/tests/unit/test_scoring_service.py](../../agent/tests/unit/test_scoring_service.py)
+- [tests/unit/test_prototype_strategy_experiment.py](../../tests/unit/test_prototype_strategy_experiment.py)
 
 ### 3-4. 새 aggregation backend 추가
 
@@ -139,8 +139,8 @@
 
 보통 수정 파일:
 
-- [main_server/src/services/rounds/aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
-- 기본 backend를 바꿀 때만 [main_server/src/services/rounds/runtime_config.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/runtime_config.py)
+- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
+- 기본 backend를 바꿀 때만 [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
 
 작업 순서:
 
@@ -156,8 +156,8 @@
 
 우선 볼 테스트:
 
-- [main_server/tests/unit/test_aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/tests/unit/test_aggregation_service.py)
-- [main_server/tests/unit/test_round_runtime_factory.py](/home/jmgjmg102/tracemind_server/main_server/tests/unit/test_round_runtime_factory.py)
+- [main_server/tests/unit/test_aggregation_service.py](../../main_server/tests/unit/test_aggregation_service.py)
+- [main_server/tests/unit/test_round_runtime_factory.py](../../main_server/tests/unit/test_round_runtime_factory.py)
 
 ## 4. 새 adapter family 추가
 
@@ -166,14 +166,14 @@
 
 보통 수정 파일:
 
-- [shared/src/contracts/adapter_contracts.py](/home/jmgjmg102/tracemind_server/shared/src/contracts/adapter_contracts.py)
-- [shared/src/config/adapter_family_metadata.py](/home/jmgjmg102/tracemind_server/shared/src/config/adapter_family_metadata.py)
-- [agent/src/services/training/training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/privacy_guard_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/privacy_guard_service.py)
-- [agent/src/services/training/runtime_compatibility.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/runtime_compatibility.py)
-- [main_server/src/services/rounds/aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/mappers.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/mappers.py)
+- [shared/src/contracts/adapter_contracts.py](../../shared/src/contracts/adapter_contracts.py)
+- [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
+- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
+- [agent/src/services/training/privacy_guard_service.py](../../agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
+- [main_server/src/services/rounds/adapter_family_service.py](../../main_server/src/services/rounds/adapter_family_service.py)
+- [main_server/src/services/rounds/mappers.py](../../main_server/src/services/rounds/mappers.py)
 
 작업 순서:
 
@@ -195,9 +195,9 @@
 ### 기본값만 바꾸는 경우
 
 - local training 기본 전략:
-  - [shared/src/config/training_defaults.py](/home/jmgjmg102/tracemind_server/shared/src/config/training_defaults.py)
+  - [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 - server round runtime 기본 aggregation:
-  - [main_server/src/services/rounds/runtime_config.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/runtime_config.py)
+  - [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
 - experiment preset:
   - `scripts/conf/experiments/` 아래 Hydra config group
 
@@ -219,13 +219,13 @@
 
 권장 대상 테스트:
 
-- [agent/tests/unit/test_local_training_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_local_training_service.py)
-- [agent/tests/unit/test_training_example_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_training_example_service.py)
-- [agent/tests/unit/test_scoring_service.py](/home/jmgjmg102/tracemind_server/agent/tests/unit/test_scoring_service.py)
-- [main_server/tests/unit/test_aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/tests/unit/test_aggregation_service.py)
-- [main_server/tests/unit/test_round_runtime_factory.py](/home/jmgjmg102/tracemind_server/main_server/tests/unit/test_round_runtime_factory.py)
-- [tests/unit/test_run_federated_simulation.py](/home/jmgjmg102/tracemind_server/tests/unit/test_run_federated_simulation.py)
-- [tests/unit/test_prototype_strategy_experiment.py](/home/jmgjmg102/tracemind_server/tests/unit/test_prototype_strategy_experiment.py)
+- [agent/tests/unit/test_local_training_service.py](../../agent/tests/unit/test_local_training_service.py)
+- [agent/tests/unit/test_training_example_service.py](../../agent/tests/unit/test_training_example_service.py)
+- [agent/tests/unit/test_scoring_service.py](../../agent/tests/unit/test_scoring_service.py)
+- [main_server/tests/unit/test_aggregation_service.py](../../main_server/tests/unit/test_aggregation_service.py)
+- [main_server/tests/unit/test_round_runtime_factory.py](../../main_server/tests/unit/test_round_runtime_factory.py)
+- [tests/unit/test_run_federated_simulation.py](../../tests/unit/test_run_federated_simulation.py)
+- [tests/unit/test_prototype_strategy_experiment.py](../../tests/unit/test_prototype_strategy_experiment.py)
 
 ## 7. 빠른 판단 규칙
 

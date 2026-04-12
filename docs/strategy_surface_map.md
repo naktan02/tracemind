@@ -14,9 +14,9 @@
 5. 현재 runtime이 실제로 구현된 축인가, 아니면 metadata만 있는 축인가
 
 전략을 **추가**하는 절차는
-[docs/contracts/strategy_addition_playbook.md](/home/jmgjmg102/tracemind_server/docs/contracts/strategy_addition_playbook.md)를
+[docs/contracts/strategy_addition_playbook.md](contracts/strategy_addition_playbook.md)를
 보고, 교체 가능한 전략 지점 목록은
-[docs/contracts/algorithm_extension_guide.md](/home/jmgjmg102/tracemind_server/docs/contracts/algorithm_extension_guide.md)를
+[docs/contracts/algorithm_extension_guide.md](contracts/algorithm_extension_guide.md)를
 본다.
 
 ## 읽는 법
@@ -75,14 +75,14 @@ Embedding
 
 관련 파일:
 
-- [agent/src/infrastructure/model_adapters/embedding/factory.py](/home/jmgjmg102/tracemind_server/agent/src/infrastructure/model_adapters/embedding/factory.py)
-- [shared/src/domain/value_objects/embedding_adapter_spec.py](/home/jmgjmg102/tracemind_server/shared/src/domain/value_objects/embedding_adapter_spec.py)
-- [agent/conf/embedding/mxbai_large.yaml](/home/jmgjmg102/tracemind_server/agent/conf/embedding/mxbai_large.yaml)
-- [agent/conf/translation/nllb_200_distilled_600m.yaml](/home/jmgjmg102/tracemind_server/agent/conf/translation/nllb_200_distilled_600m.yaml)
-- [agent/conf/translation/opus_mt_tc_big_ko_en.yaml](/home/jmgjmg102/tracemind_server/agent/conf/translation/opus_mt_tc_big_ko_en.yaml)
-- [agent/src/services/inference/pipeline_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/pipeline_service.py)
-- [scripts/prototypes/seed_prototypes.py](/home/jmgjmg102/tracemind_server/scripts/prototypes/seed_prototypes.py)
-- [scripts/conf/prototypes/seed_prototypes.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/prototypes/seed_prototypes.yaml)
+- [agent/src/infrastructure/model_adapters/embedding/factory.py](../agent/src/infrastructure/model_adapters/embedding/factory.py)
+- [shared/src/domain/value_objects/embedding_adapter_spec.py](../shared/src/domain/value_objects/embedding_adapter_spec.py)
+- [agent/conf/embedding/mxbai_large.yaml](../agent/conf/embedding/mxbai_large.yaml)
+- [agent/conf/translation/nllb_200_distilled_600m.yaml](../agent/conf/translation/nllb_200_distilled_600m.yaml)
+- [agent/conf/translation/opus_mt_tc_big_ko_en.yaml](../agent/conf/translation/opus_mt_tc_big_ko_en.yaml)
+- [agent/src/services/inference/pipeline_service.py](../agent/src/services/inference/pipeline_service.py)
+- [scripts/prototypes/seed_prototypes.py](../scripts/prototypes/seed_prototypes.py)
+- [scripts/conf/prototypes/seed_prototypes.yaml](../scripts/conf/prototypes/seed_prototypes.yaml)
 
 ## 1. agent 로컬 학습/추론 전략 축
 
@@ -116,16 +116,16 @@ Embedding
 
 관련 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/input_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/federation/training_example_service.py)
-- [agent/src/services/training/evidence_backends/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/evidence_backends/__init__.py)
-- [shared/src/config/training_algorithm_profiles.py](/home/jmgjmg102/tracemind_server/shared/src/config/training_algorithm_profiles.py)
-- [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
-- [agent/src/services/inference/scoring_backends.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_backends.py)
-- [agent/src/services/inference/scoring_policies.py](/home/jmgjmg102/tracemind_server/agent/src/services/inference/scoring_policies.py)
-- [agent/src/services/training/acceptance_policies/__init__.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/acceptance_policies/__init__.py)
-- [agent/src/services/training/privacy_guard_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/training_backends/__init__.py](../agent/src/services/training/training_backends/__init__.py)
+- [agent/src/services/training/input_backends/__init__.py](../agent/src/services/training/input_backends/__init__.py)
+- [agent/src/services/federation/training_example_service.py](../agent/src/services/federation/training_example_service.py)
+- [agent/src/services/training/evidence_backends/__init__.py](../agent/src/services/training/evidence_backends/__init__.py)
+- [shared/src/config/training_algorithm_profiles.py](../shared/src/config/training_algorithm_profiles.py)
+- [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
+- [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
+- [agent/src/services/inference/scoring_policies.py](../agent/src/services/inference/scoring_policies.py)
+- [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
+- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
 
 ## 2. main_server round/runtime 전략 축
 
@@ -146,10 +146,10 @@ Embedding
 
 관련 파일:
 
-- [main_server/src/services/rounds/runtime_config.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/runtime_config.py)
-- [main_server/src/services/rounds/aggregation_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/update_acceptance_policy.py](/home/jmgjmg102/tracemind_server/main_server/src/services/rounds/update_acceptance_policy.py)
+- [main_server/src/services/rounds/runtime_config.py](../main_server/src/services/rounds/runtime_config.py)
+- [main_server/src/services/rounds/aggregation_service.py](../main_server/src/services/rounds/aggregation_service.py)
+- [main_server/src/services/rounds/adapter_family_service.py](../main_server/src/services/rounds/adapter_family_service.py)
+- [main_server/src/services/rounds/update_acceptance_policy.py](../main_server/src/services/rounds/update_acceptance_policy.py)
 
 ## 3. 보호/암호화 관련 축
 
@@ -167,8 +167,8 @@ Embedding
 
 관련 파일:
 
-- [agent/src/services/training/privacy_guard_service.py](/home/jmgjmg102/tracemind_server/agent/src/services/training/privacy_guard_service.py)
-- [docs/contracts/training_update_envelope_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_update_envelope_v1.md)
+- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
+- [docs/contracts/training_update_envelope_v1.md](contracts/training_update_envelope_v1.md)
 
 ### 3-2. typed contract는 있으나 runtime은 아직 없는 것
 
@@ -190,9 +190,9 @@ Embedding
 
 관련 파일:
 
-- [shared/src/contracts/training_contracts.py](/home/jmgjmg102/tracemind_server/shared/src/contracts/training_contracts.py)
-- [docs/contracts/training_task_v1.md](/home/jmgjmg102/tracemind_server/docs/contracts/training_task_v1.md)
-- [docs/project_execution_plan.md](/home/jmgjmg102/tracemind_server/docs/project_execution_plan.md)
+- [shared/src/contracts/training_contracts.py](../shared/src/contracts/training_contracts.py)
+- [docs/contracts/training_task_v1.md](contracts/training_task_v1.md)
+- [docs/project_execution_plan.md](project_execution_plan.md)
 
 ## 4. 실험에서 바로 돌려볼 수 있는 조정 축
 
@@ -200,8 +200,8 @@ Embedding
 
 entrypoint:
 
-- [scripts/experiments/prototype_strategy_experiment.py](/home/jmgjmg102/tracemind_server/scripts/experiments/prototype_strategy_experiment.py)
-- config: [scripts/conf/experiments/prototype_strategy.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/experiments/prototype_strategy.yaml)
+- [scripts/experiments/prototype_strategy_experiment.py](../scripts/experiments/prototype_strategy_experiment.py)
+- config: [scripts/conf/experiments/prototype_strategy.yaml](../scripts/conf/experiments/prototype_strategy.yaml)
 
 바로 조절 가능한 값:
 
@@ -233,8 +233,8 @@ python -m scripts.experiments.prototype_strategy_experiment \
 
 entrypoint:
 
-- [scripts/experiments/prototype_threshold_sweep.py](/home/jmgjmg102/tracemind_server/scripts/experiments/prototype_threshold_sweep.py)
-- config: [scripts/conf/experiments/prototype_threshold_sweep.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/experiments/prototype_threshold_sweep.yaml)
+- [scripts/experiments/prototype_threshold_sweep.py](../scripts/experiments/prototype_threshold_sweep.py)
+- config: [scripts/conf/experiments/prototype_threshold_sweep.yaml](../scripts/conf/experiments/prototype_threshold_sweep.yaml)
 
 바로 조절 가능한 값:
 
@@ -262,8 +262,8 @@ python -m scripts.experiments.prototype_threshold_sweep \
 
 entrypoint:
 
-- [scripts/experiments/run_federated_simulation.py](/home/jmgjmg102/tracemind_server/scripts/experiments/run_federated_simulation.py)
-- config: [scripts/conf/experiments/run_federated_simulation.yaml](/home/jmgjmg102/tracemind_server/scripts/conf/experiments/run_federated_simulation.yaml)
+- [scripts/experiments/run_federated_simulation.py](../scripts/experiments/run_federated_simulation.py)
+- config: [scripts/conf/experiments/run_federated_simulation.yaml](../scripts/conf/experiments/run_federated_simulation.yaml)
 
 바로 조절 가능한 값:
 

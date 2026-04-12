@@ -100,5 +100,5 @@ python -m scripts.experiments.run_federated_simulation \
 - validation scorer를 바꾸고 싶으면 `evaluation.py`와
   `shared/src/contracts/training_contracts.py`의 objective 축을 함께 본다.
 - threshold, scorer, privacy knob의 현재 노출 범위는
-  [docs/strategy_surface_map.md](/home/jmgjmg102/tracemind_server/docs/strategy_surface_map.md)를
+  [docs/strategy_surface_map.md](../../../docs/strategy_surface_map.md)를
   먼저 보는 편이 빠르다.
