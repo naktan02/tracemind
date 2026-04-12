@@ -450,6 +450,15 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - `scripts/experiments/lora_classifier/query_adaptation_runner.py`는 이 exported dataset path를
   기존 `run_supervised_lora_baseline()` 호출까지 연결하고,
   준비 결과는 typed object로 반환한다.
+- `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
+  family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의
+  `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.
+- weak/strong augmentation recipe는 이 단계에서 고정하지 않고,
+  agent의 `QueryAdaptationMultiviewService`에 pluggable augmenter로 주입한다.
+- `scripts/conf/experiments/train_lora_fixmatch.yaml`은
+  query-domain `FixMatch-LoRA` 실험의 source-of-truth config다.
+- `scripts/experiments/lora_classifier/ssl_data.py`는
+  `labeled / weak unlabeled / strong unlabeled` 3-branch batch loader를 제공한다.
 - 로컬 smoke 검증은 `runtime=auto_local`이 권장된다.
 - epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
   긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.

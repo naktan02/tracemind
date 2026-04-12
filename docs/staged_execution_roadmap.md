@@ -68,17 +68,23 @@
 - `runtime=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
 - query-buffer selection 결과를 family-agnostic summary/trace diagnostics shape로 정리하고,
   JSON/JSONL dump로 저장하는 helper가 들어갔다.
+- single-view query adaptation dataset에서 weak/strong source row를 만드는
+  multiview preparation service와 JSONL export helper가 들어갔다.
+- multiview preparation은 augmentation recipe를 고정하지 않고 pluggable augmenter hook으로 연다.
+- `scripts/conf/experiments/train_lora_fixmatch.yaml`이
+  query-domain `FixMatch-LoRA` 실험의 config source of truth로 추가됐다.
+- `scripts/experiments/lora_classifier/ssl_data.py`가
+  `labeled / weak unlabeled / strong unlabeled` 3-branch batch loader를 제공한다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
-  - multiview/weak-strong query adaptation row 준비
   - `lora family` shared/FL contract 추가
   - FL update 생성 및 서버 집계
 
 ## Next Session Checklist
 
-1. weak/strong augmentation이 필요한 family의 multiview row 준비 경로를 연다.
-2. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
-3. supervised LoRA smoke 결과를 기준으로 weak-view evidence / acceptance policy 확장 지점을 고정한다.
+1. `FixMatchTextAugmenterV1`을 붙여 weak/strong recipe를 실제로 만든다.
+2. trainer step 안에 `weak -> pseudo-label -> threshold gate -> strong consistency`를 구현한다.
+3. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
 
 ## Guardrails
 

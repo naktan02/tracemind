@@ -75,6 +75,9 @@
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,
     locale/source_type/model_revision은 typed provenance로 보존
+- `training/query_adaptation_multiview_service.py`
+  - single-view adaptation dataset을 weak/strong source row가 있는 multiview dataset으로 확장
+  - augmentation recipe는 여기서 고정하지 않고 pluggable augmenter hook으로 분리
 - `training/query_buffer_lifecycle_service.py`
   - query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/training_example_models.py`
