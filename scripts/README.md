@@ -418,6 +418,13 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - 현재 기본 backbone은 `mixedbread-ai/mxbai-embed-large-v1`이지만,
   실제 최종 적응 비교 표에서는 backbone과 LoRA spec을 먼저 고정한 뒤 비교해야 한다.
 - 이 레일을 쓰려면 raw query text가 로컬에 남아 있어야 한다. LoRA 재학습과 weak/strong augmentation은 embedding만으로는 닫히지 않는다.
+- agent-local `QueryAdaptationDataset`은 `scripts/experiments/lora_classifier/query_adaptation_io.py`로
+  현재 `train_lora_classifier.py`가 읽는 `labeled_query_rows` JSONL shape로 export할 수 있다.
+- adaptation dataset의 canonical provenance (`locale`, `source_type`, `model_revision`)는
+  free-form metadata key가 아니라 typed field로 유지한다.
+- `scripts/experiments/lora_classifier/query_adaptation_runner.py`는 이 exported dataset path를
+  기존 `run_supervised_lora_baseline()` 호출까지 연결하고,
+  준비 결과는 typed object로 반환한다.
 - epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
   긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.
 

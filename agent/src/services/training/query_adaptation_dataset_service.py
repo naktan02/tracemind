@@ -22,6 +22,7 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 from shared.src.domain.entities.inference.events import ScoredEvent
 
 _T = TypeVar("_T")
+_MetadataScalar = str | int | float | bool
 _SUPPORTED_LABEL_POLICY_NAMES = frozenset(
     {"pseudo_label_only", "prefer_manual_label"}
 )
@@ -42,16 +43,54 @@ class QueryAdaptationDatasetConfig:
 
 
 @dataclass(slots=True)
+class QueryAdaptationDatasetProvenance:
+    """query adaptation 예시의 canonical provenance."""
+
+    locale: str
+    source_type: str
+    model_revision: str
+    selection_confidence_kind: str
+    translated_text_present: bool
+    candidate_id: str
+    evidence_ref: str | None = None
+    candidate_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
+    query_buffer_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.locale.strip():
+            raise ValueError("locale must not be empty.")
+        if not self.source_type.strip():
+            raise ValueError("source_type must not be empty.")
+        if not self.model_revision.strip():
+            raise ValueError("model_revision must not be empty.")
+        if not self.selection_confidence_kind.strip():
+            raise ValueError("selection_confidence_kind must not be empty.")
+        if not self.candidate_id.strip():
+            raise ValueError("candidate_id must not be empty.")
+
+
+@dataclass(slots=True)
 class QueryAdaptationDatasetExample:
     """LoRA/query 적응에 넘길 단일 raw-text pseudo-labeled row."""
 
-    query_id: str
     source_row: TrainingExampleSource
     label: str
+    provenance: QueryAdaptationDatasetProvenance
     label_source: str = "pseudo_label"
     confidence: float = 0.0
     margin: float = 0.0
-    metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.source_row.query_id.strip():
+            raise ValueError("source_row.query_id must not be empty.")
+        if not self.label.strip():
+            raise ValueError("label must not be empty.")
+        if not self.label_source.strip():
+            raise ValueError("label_source must not be empty.")
+
+    @property
+    def query_id(self) -> str:
+        return self.source_row.query_id
 
 
 @dataclass(slots=True)
@@ -123,7 +162,6 @@ class QueryAdaptationDatasetService:
             )
             dataset_examples.append(
                 QueryAdaptationDatasetExample(
-                    query_id=record.query_id,
                     source_row=TrainingExampleSource(
                         query_id=record.query_id,
                         text=record.raw_text,
@@ -135,14 +173,14 @@ class QueryAdaptationDatasetService:
                         ),
                     ),
                     label=label,
-                    label_source=label_source,
-                    confidence=candidate.confidence,
-                    margin=candidate.margin,
-                    metadata=_build_dataset_metadata(
+                    provenance=_build_dataset_provenance(
                         record=record,
                         candidate=candidate,
                         scored_event=scored_event,
                     ),
+                    label_source=label_source,
+                    confidence=candidate.confidence,
+                    margin=candidate.margin,
                 )
             )
         return QueryAdaptationDataset(examples=tuple(dataset_examples))
@@ -164,34 +202,37 @@ class QueryAdaptationDatasetService:
         return candidate.label, "pseudo_label"
 
 
-def _build_dataset_metadata(
+def _build_dataset_provenance(
     *,
     record: QueryBufferRecord,
     candidate: PseudoLabelCandidate,
     scored_event: ScoredEvent | None,
-) -> dict[str, str | int | float | bool]:
-    metadata: dict[str, str | int | float | bool] = {
-        "candidate_id": str(candidate.candidate_id),
-        "source_event_ref": str(candidate.source_event_ref),
-        "query_buffer_model_revision": record.model_revision,
-        "query_buffer_locale": record.locale,
-        "query_buffer_source_type": record.source_type,
-        "selection_confidence_kind": (
+) -> QueryAdaptationDatasetProvenance:
+    return QueryAdaptationDatasetProvenance(
+        locale=record.locale,
+        source_type=record.source_type,
+        model_revision=record.model_revision,
+        selection_confidence_kind=(
             "unknown"
             if candidate.confidence_kind is None
             else str(candidate.confidence_kind)
         ),
-        "translated_text_present": (
+        translated_text_present=(
             False if scored_event is None else scored_event.translated_text is not None
         ),
-    }
-    if candidate.evidence_ref is not None:
-        metadata["evidence_ref"] = str(candidate.evidence_ref)
-    for key, value in candidate.metadata.items():
-        metadata[f"candidate.{key}"] = _coerce_metadata_scalar(value)
-    for key, value in record.metadata.items():
-        metadata[f"query_buffer.{key}"] = _coerce_metadata_scalar(value)
-    return metadata
+        candidate_id=str(candidate.candidate_id),
+        evidence_ref=(
+            None if candidate.evidence_ref is None else str(candidate.evidence_ref)
+        ),
+        candidate_metadata={
+            str(key): _coerce_metadata_scalar(value)
+            for key, value in candidate.metadata.items()
+        },
+        query_buffer_metadata={
+            str(key): _coerce_metadata_scalar(value)
+            for key, value in record.metadata.items()
+        },
+    )
 
 
 def _index_unique(
@@ -209,7 +250,7 @@ def _index_unique(
     return indexed
 
 
-def _coerce_metadata_scalar(value: object) -> str | int | float | bool:
+def _coerce_metadata_scalar(value: object) -> _MetadataScalar:
     if isinstance(value, bool):
         return value
     if isinstance(value, int):
@@ -225,5 +266,6 @@ __all__ = [
     "QueryAdaptationDataset",
     "QueryAdaptationDatasetConfig",
     "QueryAdaptationDatasetExample",
+    "QueryAdaptationDatasetProvenance",
     "QueryAdaptationDatasetService",
 ]

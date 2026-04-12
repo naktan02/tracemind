@@ -142,7 +142,7 @@ def _build_projection_metadata(
         "translated_text_present": scored_event.translated_text is not None,
     }
     for key, value in record.metadata.items():
-        metadata[str(key)] = _coerce_metadata_scalar(value)
+        metadata[f"query_buffer.{key}"] = _coerce_metadata_scalar(value)
     return metadata
 
 

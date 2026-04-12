@@ -58,19 +58,23 @@
 - query buffer와 scored event를 `PseudoLabelEvidence`로 연결하는 projection helper가 들어갔다.
 - query buffer snapshot을 기존 acceptance policy로 평가하는 selection runner가 들어갔다.
 - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립하는 경로가 들어갔다.
+- adaptation dataset은 `source_row.query_id`를 single source of truth로 두고,
+  canonical provenance는 typed field로 유지한다.
 - query buffer retention / purge는 agent-local config로 분리했고 기본값은 `30일 + 최신 5000건 유지`다.
 - adaptation dataset label 기본 정책은 `pseudo_label_only`이며 future manual override hook을 열어 두었다.
+- adaptation dataset을 기존 `train_lora_classifier` JSONL 입력 shape로 export하는 scripts bridge가 들어갔다.
+- adaptation dataset export 결과로 기존 `run_supervised_lora_baseline`을 호출하는 scripts 실행 helper가 들어갔다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - threshold 통과 query로 실제 학습
-  - `LoRA + classifier` 적응
+  - multiview/weak-strong query adaptation row 준비
   - `lora family` shared/FL contract 추가
   - FL update 생성 및 서버 집계
 
 ## Next Session Checklist
 
 1. query-buffer selection summary / trace dump를 추가한다.
-2. adaptation dataset을 `LoRA + classifier` supervised baseline 입력 경로에 연결한다.
+2. exported adaptation dataset으로 실제 supervised `LoRA + classifier` smoke run을 한 번 닫는다.
 3. weak/strong augmentation이 필요한 family의 multiview row 준비 경로를 연다.
 4. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
 

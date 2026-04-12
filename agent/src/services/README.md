@@ -71,6 +71,8 @@
   - query buffer 기반 selection runner
 - `training/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
+  - `query_id`는 `source_row.query_id`를 single source of truth로 두고,
+    locale/source_type/model_revision은 typed provenance로 보존
 - `training/query_buffer_lifecycle_service.py`
   - query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/training_example_models.py`

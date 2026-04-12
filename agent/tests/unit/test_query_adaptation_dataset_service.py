@@ -121,9 +121,12 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
     assert dataset.source_rows[0].translated_text == "I feel anxious"
     assert dataset.source_rows[1].text == "요즘 너무 가라앉아요"
     assert dataset.source_rows[1].translated_text is None
-    assert dataset.examples[0].metadata["query_buffer_locale"] == "ko-KR"
-    assert dataset.examples[0].metadata["candidate.selection_stage"] == "accepted"
-    assert dataset.examples[0].metadata["query_buffer.was_translated"] is True
+    assert dataset.examples[0].provenance.locale == "ko-KR"
+    assert (
+        dataset.examples[0].provenance.candidate_metadata["selection_stage"]
+        == "accepted"
+    )
+    assert dataset.examples[0].provenance.query_buffer_metadata["was_translated"] is True
     assert dataset.examples[0].label_source == "pseudo_label"
 
 

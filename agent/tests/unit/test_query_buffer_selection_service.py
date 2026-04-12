@@ -115,7 +115,10 @@ def test_build_query_buffer_evidence_preserves_snapshot_metadata() -> None:
     assert evidence.metadata["query_buffer_model_revision"] == "rev_001"
     assert evidence.metadata["query_buffer_locale"] == "ko-KR"
     assert evidence.metadata["query_buffer_source_type"] == "user_message"
-    assert evidence.metadata["scorer_backend_name"] == "prototype_similarity"
+    assert (
+        evidence.metadata["query_buffer.scorer_backend_name"]
+        == "prototype_similarity"
+    )
     assert evidence.metadata["translation_used"] is False
 
 
