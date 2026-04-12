@@ -65,6 +65,10 @@
   - agent-owned local query retention과 selection 입력 경계
 - `infrastructure/repositories/query_buffer_repository.py`
   - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
+- `training/query_buffer_projection.py`
+  - query buffer snapshot + scored event를 `PseudoLabelEvidence`로 정규화
+- `training/query_buffer_selection_service.py`
+  - query buffer 기반 selection runner
 - `training/training_example_models.py`
   - local training과 federation이 공유하는 example DTO
 - `training/runtime_compatibility.py`

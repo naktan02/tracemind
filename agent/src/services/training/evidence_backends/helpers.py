@@ -16,9 +16,8 @@ def rank_category_scores(
     category_scores: Mapping[str, float],
 ) -> list[tuple[str, float]]:
     ranked_scores = sorted(
-        category_scores.items(),
-        key=lambda item: item[1],
-        reverse=True,
+        ((str(label), float(score)) for label, score in category_scores.items()),
+        key=lambda item: (-item[1], item[0]),
     )
     if not ranked_scores:
         raise ValueError("ScoredEvent must contain at least one category score.")

@@ -100,6 +100,21 @@ class PseudoLabelSelectionService:
         scored_events: tuple[ScoredEvent, ...] | list[ScoredEvent],
         training_task: TrainingTask,
     ) -> PseudoLabelSelectionResult:
+        evidences = self.evidence_service.build_evidences(
+            scored_events=scored_events,
+            training_task=training_task,
+        )
+        return self.select_evidences(
+            evidences=evidences,
+            training_task=training_task,
+        )
+
+    def select_evidences(
+        self,
+        *,
+        evidences: tuple[PseudoLabelEvidence, ...] | list[PseudoLabelEvidence],
+        training_task: TrainingTask,
+    ) -> PseudoLabelSelectionResult:
         confidence_threshold = (
             training_task.objective_config.confidence_threshold
             if training_task.objective_config.confidence_threshold is not None
@@ -112,10 +127,7 @@ class PseudoLabelSelectionService:
         )
         acceptance_policy = self._resolve_policy(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
-        evidences = self.evidence_service.build_evidences(
-            scored_events=scored_events,
-            training_task=training_task,
-        )
+        evidence_list = tuple(evidences)
 
         initial_candidates = [
             self._build_candidate(
@@ -125,7 +137,7 @@ class PseudoLabelSelectionService:
                 margin_threshold=margin_threshold,
                 acceptance_policy=acceptance_policy,
             )
-            for evidence in evidences
+            for evidence in evidence_list
         ]
         prelim_accepted = [
             candidate for candidate in initial_candidates if candidate.accepted
@@ -189,7 +201,7 @@ class PseudoLabelSelectionService:
                 )
 
         return PseudoLabelSelectionResult(
-            evidences=evidences,
+            evidences=evidence_list,
             candidates=tuple(finalized_candidates),
             accepted_candidates=tuple(accepted_candidates),
             feedback_signals=tuple(feedback_signals),
@@ -230,9 +242,9 @@ class PseudoLabelSelectionService:
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
                 "acceptance_policy_name": acceptance_policy.policy_name,
-                "evidence_backend_name": (
-                    training_task.objective_config.evidence_backend_name
-                    or self.default_profile.evidence_backend_name
+                "evidence_backend_name": self._resolve_evidence_backend_name(
+                    evidence=evidence,
+                    training_task=training_task,
                 ),
                 "confidence_kind": evidence.confidence_kind,
                 "view_kind": evidence.view_kind,
@@ -251,6 +263,20 @@ class PseudoLabelSelectionService:
         if policy_name == self.default_policy.policy_name:
             return self.default_policy
         return build_pseudo_label_acceptance_policy(policy_name)
+
+    def _resolve_evidence_backend_name(
+        self,
+        *,
+        evidence: PseudoLabelEvidence,
+        training_task: TrainingTask,
+    ) -> str:
+        evidence_backend_name = evidence.metadata.get("evidence_backend_name")
+        if isinstance(evidence_backend_name, str) and evidence_backend_name.strip():
+            return evidence_backend_name
+        return (
+            training_task.objective_config.evidence_backend_name
+            or self.default_profile.evidence_backend_name
+        )
 
     @staticmethod
     def _to_feedback_signal(

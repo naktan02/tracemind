@@ -55,8 +55,11 @@
 - `QueryBuffer`는 `agent` 소유 local state이고, source of truth는 `docs/contracts/query_buffer_v1.md`다.
 - `agent`에는 `QueryBufferRepository`와 inference append 경로가 들어갔다.
 - 현재 local query buffer 최소 조회는 `count`, `get(query_id)`, `get_recent(limit)` 기준으로 닫혔다.
+- query buffer와 scored event를 `PseudoLabelEvidence`로 연결하는 projection helper가 들어갔다.
+- query buffer snapshot을 기존 acceptance policy로 평가하는 selection runner가 들어갔다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
+  - accepted candidate를 adaptation dataset으로 조립
   - threshold 통과 query로 실제 학습
   - `LoRA + classifier` 적응
   - `lora family` shared/FL contract 추가
@@ -64,10 +67,10 @@
 
 ## Next Session Checklist
 
-1. query buffer -> `PseudoLabelEvidence` projection helper를 추가한다.
-2. threshold/policy selection runner를 구현한다.
-3. accepted candidate를 adaptation dataset assembly 경로와 연결한다.
-4. manual label 개입 지점과 retention purge 조건을 config 레벨에서 노출한다.
+1. accepted candidate를 adaptation dataset assembly 경로와 연결한다.
+2. manual label 개입 지점과 retention purge 조건을 config 레벨에서 노출한다.
+3. query-buffer selection summary / trace dump를 추가한다.
+4. 그다음 `LoRA + classifier` supervised adaptation baseline 입력 경로를 연다.
 
 ## Guardrails
 
