@@ -46,3 +46,32 @@
 3. query 버퍼와 training/aggregation/privacy가 섞여 있지 않은가
 4. source of truth가 코드 가까이에 있는가
 5. full encoder FL이 너무 이르게 열리지 않았는가
+
+
+## Current Checkpoint
+
+- `Phase 1` 방향은 `central fixed embedding + classifier` seed로 확정했다.
+- query-domain 적응은 바로 학습하지 않고, 먼저 `query buffer` 로컬 저장과 selection 준비를 닫는다.
+- `QueryBuffer`는 `agent` 소유 local state이고, source of truth는 `docs/contracts/query_buffer_v1.md`다.
+- `agent`에는 `QueryBufferRepository`와 inference append 경로가 들어갔다.
+- 현재 local query buffer 최소 조회는 `count`, `get(query_id)`, `get_recent(limit)` 기준으로 닫혔다.
+- selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
+- 아직 하지 않는 것:
+  - threshold 통과 query로 실제 학습
+  - `LoRA + classifier` 적응
+  - `lora family` shared/FL contract 추가
+  - FL update 생성 및 서버 집계
+
+## Next Session Checklist
+
+1. query buffer -> `PseudoLabelEvidence` projection helper를 추가한다.
+2. threshold/policy selection runner를 구현한다.
+3. accepted candidate를 adaptation dataset assembly 경로와 연결한다.
+4. manual label 개입 지점과 retention purge 조건을 config 레벨에서 노출한다.
+
+## Guardrails
+
+- `QueryBuffer` 단계에서는 저장만 하고 실제 학습은 하지 않는다.
+- raw query text는 로컬에만 남기고 서버로 보내지 않는다.
+- `ScoredEventRepository`와 `QueryBuffer` 역할을 섞지 않는다.
+- `shared` contract에 아직 `lora family` payload를 추가하지 않는다.

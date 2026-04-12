@@ -30,7 +30,9 @@ source-of-truth 우선순위를 먼저 확인한다.
    - 새 전략을 어떤 순서로 구현, 등록, 기본값 반영, 테스트할지
 9. `docs/strategy_surface_map.md`
    - 지금 실제로 바꿀 수 있는 전략 축과 metadata-only 축을 한눈에 확인
-10. 필요한 경우만 `docs/staged_execution_roadmap.md`
+10. `docs/contracts/query_buffer_v1.md`
+   - query buffer와 threshold/policy selection의 local boundary
+11. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
 
 ## AI Harness 빠른 경로
@@ -50,10 +52,11 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 1. `scripts/README.md`
 2. `scripts/experiments/train_softmax_classifier.py`
-3. `docs/contracts/central_lora_classifier_trainer_contract.md`
-4. `scripts/experiments/train_lora_classifier.py`
-5. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-6. 필요 시 적응 단계 실험 스크립트/노트북
+3. `docs/contracts/query_buffer_v1.md`
+4. `docs/contracts/central_lora_classifier_trainer_contract.md`
+5. `scripts/experiments/train_lora_classifier.py`
+6. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
+7. 필요 시 적응 단계 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 
@@ -98,6 +101,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 | `docs/contracts/` | 계약 설계 배경, 알고리즘 확장 가이드 |
 | `docs/contracts/algorithm_extension_guide.md` | 교체 가능한 모든 전략 지점과 교체 절차 |
 | `docs/contracts/central_lora_classifier_trainer_contract.md` | query-domain LoRA 적응 scaffold와 산출물 경계 |
+| `docs/contracts/query_buffer_v1.md` | agent-owned local query retention, selection 입력, adaptation 준비 경계 |
 | `docs/contracts/strategy_addition_playbook.md` | 전략 추가 시 실제 작업 순서와 검증 순서 |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값 source, 실험 override 가능 여부, 구현 상태 |
 | `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |

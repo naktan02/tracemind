@@ -10,6 +10,9 @@ from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
+from agent.src.infrastructure.repositories.query_buffer_repository import (
+    QueryBufferRepository,
+)
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
@@ -39,6 +42,7 @@ def create_app(
     *,
     pipeline_service: InferencePipelineService | None = None,
     scored_event_repository: ScoredEventRepository | None = None,
+    query_buffer_repository: QueryBufferRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
     round_client_factory: RoundClientFactory | None = None,
@@ -49,6 +53,9 @@ def create_app(
 
     app.state.scored_event_repository = (
         scored_event_repository or ScoredEventRepository()
+    )
+    app.state.query_buffer_repository = (
+        query_buffer_repository or QueryBufferRepository()
     )
     app.state.prototype_runtime_service = (
         prototype_runtime_service or PrototypeRuntimeService()

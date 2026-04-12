@@ -60,6 +60,10 @@
   - 같은 scorer backend 안에서 score 집계 정책
 - `training/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
+- `docs/contracts/query_buffer_v1.md`
+  - agent-owned local query retention과 selection 입력 경계
+- `infrastructure/repositories/query_buffer_repository.py`
+  - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
 - `training/training_example_models.py`
   - local training과 federation이 공유하는 example DTO
 - `training/runtime_compatibility.py`

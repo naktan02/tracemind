@@ -54,6 +54,7 @@
 - query-domain 적응 단계의 `central LoRA classifier` trainer는 별도 실험 레일로 둔다.
 - 즉 이 비교선이 곧바로 현재 shared adapter contract나 update envelope을 의미하지는 않는다.
 - LoRA 적응 scaffold와 산출물 규칙은 `docs/contracts/central_lora_classifier_trainer_contract.md`를 기준으로 본다.
+- query buffer와 selection 입력 경계는 `docs/contracts/query_buffer_v1.md`를 기준으로 본다.
 
 ## 3. 활성 아키텍처
 
@@ -157,6 +158,7 @@ Raw Event / Local Signal
 
 1. 중앙집중형 `fixed embedding + classifier` seed baseline을 canonical하게 닫는다.
 2. query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 설계한다.
+   - local source of truth: `docs/contracts/query_buffer_v1.md`
 3. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `FixMatch -> FreeMatch -> PabLO`를 핵심 알고리즘 변경 최소화 기준으로 닫는다.
 4. 이후에야 시스템 FL translation 기준선을 선택한다.
 5. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
@@ -177,6 +179,7 @@ Raw Event / Local Signal
 ### Phase 2. query 적응 준비
 
 - query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 정한다.
+- query buffer local contract는 `docs/contracts/query_buffer_v1.md`로 고정한다.
 
 ### Phase 3. 중앙집중형 적응 비교
 
@@ -203,7 +206,7 @@ Raw Event / Local Signal
 가장 자연스러운 다음 작업은 아래 순서다.
 
 1. 중앙집중형 `fixed embedding + classifier` seed baseline을 canonical하게 확정한다.
-2. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp)를 남길지 정한다.
+2. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp, model_revision)를 남길지 정한다.
 3. threshold/policy selection과 소량 수동 라벨 개입 지점을 설계한다.
 4. 그다음 `LoRA + classifier` 적응용 supervised baseline을 연다.
 5. 같은 query-domain 적응 scaffold에서 `FixMatch`, `FreeMatch`, `PabLO`를 비교한다.

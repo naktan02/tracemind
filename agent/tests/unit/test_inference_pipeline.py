@@ -2,20 +2,20 @@
 
 from __future__ import annotations
 
-import json
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
-from typing import Any
 from unittest.mock import MagicMock
 
 import pytest
 
+from agent.src.infrastructure.repositories.query_buffer_repository import (
+    QueryBufferRepository,
+)
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
 from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
-    InferencePipelineResult,
 )
 from agent.src.services.preprocess_service import PreprocessService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
@@ -130,7 +130,9 @@ def _make_pipeline(
     embedding_service.embed_batch.return_value = [[0.1, 0.2, 0.3]]
 
     scoring_service = MagicMock()
-    scoring_service.score.return_value = {"anxiety": 0.85}
+    scoring_service.score.return_value = {"anxiety": 0.85, "depression": 0.25}
+    scoring_service.backend = MagicMock()
+    scoring_service.backend.backend_name = "prototype_similarity"
 
     prototype_provider = MagicMock()
     prototype_provider.get_active_prototypes.return_value = {
@@ -138,6 +140,7 @@ def _make_pipeline(
     }
 
     repo = ScoredEventRepository(db_path=tmp_path / "events.db")
+    query_buffer_repo = QueryBufferRepository(db_path=tmp_path / "query_buffer.db")
 
     translation_service = None
     if with_translation:
@@ -149,10 +152,12 @@ def _make_pipeline(
         scoring_service=scoring_service,
         prototype_provider=prototype_provider,
         event_repository=repo,
+        query_buffer_repository=query_buffer_repo,
         preprocess_service=PreprocessService(),
         translation_service=translation_service,
         translation_locales=frozenset({"ko", "ja"}),
         embedding_model_id="test-embed",
+        model_revision="seed_rev_001",
     )
 
 
@@ -199,7 +204,35 @@ def test_pipeline_returns_correct_category_scores(tmp_path: Path) -> None:
     pipeline = _make_pipeline(tmp_path)
     event = _make_query_event(locale="en")
     result = pipeline.process(event)
-    assert result.scored_event.category_scores == {"anxiety": 0.85}
+    assert result.scored_event.category_scores == {
+        "anxiety": 0.85,
+        "depression": 0.25,
+    }
+
+
+def test_pipeline_stores_query_buffer_record_with_same_query_id(tmp_path: Path) -> None:
+    """ScoredEvent 저장 뒤 같은 query_id의 query buffer snapshot을 남긴다."""
+    pipeline = _make_pipeline(tmp_path)
+    event = _make_query_event(text="I feel anxious", locale="en")
+
+    result = pipeline.process(event)
+
+    assert result.query_buffer_record is not None
+    assert result.query_buffer_record.query_id == event.query_id
+    assert result.query_buffer_record.model_revision == "seed_rev_001"
+    assert result.query_buffer_record.predicted_label == "anxiety"
+    assert result.query_buffer_record.runner_up_label == "depression"
+    assert result.query_buffer_record.confidence == pytest.approx(0.85)
+    assert result.query_buffer_record.margin == pytest.approx(0.6)
+
+    assert pipeline.query_buffer_repository is not None
+    stored_record = pipeline.query_buffer_repository.get(event.query_id)
+    assert stored_record is not None
+    assert stored_record.query_id == result.scored_event.query_id
+    assert stored_record.raw_text == "I feel anxious"
+    assert stored_record.confidence_kind == "prototype_similarity_top1"
+    assert stored_record.metadata["embedding_model_id"] == "test-embed"
+    assert stored_record.metadata["was_translated"] is False
 
 
 def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:
@@ -218,6 +251,8 @@ def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:
     results = pipeline.process_batch(events)
     assert len(results) == 3
     assert pipeline.event_repository.count() == 3
+    assert pipeline.query_buffer_repository is not None
+    assert pipeline.query_buffer_repository.count() == 3
 
 
 # ---------------------------------------------------------- #

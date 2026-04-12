@@ -34,6 +34,8 @@ active_entrypoints:
     use_for: active architecture and next priorities
   - path: docs/contracts/central_lora_classifier_trainer_contract.md
     use_for: query-domain LoRA adaptation scaffold and output boundary
+  - path: docs/contracts/query_buffer_v1.md
+    use_for: agent-owned local query retention and threshold/policy selection boundary
   - path: shared/src/contracts/README.md
     use_for: payload interpretation
   - path: docs/contracts/algorithm_extension_guide.md
@@ -62,6 +64,7 @@ task_routes:
       - plan.md
       - docs/project_execution_plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
+      - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
       - scripts/README.md
     verify:
