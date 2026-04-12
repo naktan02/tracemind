@@ -69,6 +69,10 @@
   - query buffer snapshot + scored event를 `PseudoLabelEvidence`로 정규화
 - `training/query_buffer_selection_service.py`
   - query buffer 기반 selection runner
+- `training/query_adaptation_dataset_service.py`
+  - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
+- `training/query_buffer_lifecycle_service.py`
+  - query buffer raw text retention / purge 정책과 lifecycle 실행
 - `training/training_example_models.py`
   - local training과 federation이 공유하는 example DTO
 - `training/runtime_compatibility.py`

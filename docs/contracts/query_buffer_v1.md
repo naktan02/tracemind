@@ -124,12 +124,15 @@ v1 기본 방향:
 3. raw text가 만료돼도 selection summary와 update metric은 남길 수 있다.
 4. raw text를 서버나 shared artifact로 승격하지 않는다.
 
-권장 기본값은 아직 정책 확정 전이다.
-구현 전 사용자 확인이 필요한 항목:
+현재 local 기본 구현값:
 
-1. raw text retention 기간
-2. manual label 개입 여부
-3. query buffer purge 조건
+1. raw text retention: 30일
+2. capacity purge: 최신 5000건 유지
+3. adaptation dataset label 정책: `pseudo_label_only`
+4. future manual label override는 열어 두되, 기본 경로에서는 사용하지 않는다.
+
+즉 v1은 pseudo-label only를 기본으로 두고,
+manual label은 이후 같은 dataset shape 위에 override로 얹는 방향이다.
 
 ## 8. v1 구현 순서
 

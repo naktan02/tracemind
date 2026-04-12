@@ -243,8 +243,8 @@ Raw Event / Local Signal
 
 ## 9. 사용자 확인이 필요한 결정
 
-1. query 버퍼에 raw text를 어떤 retention policy로 남길지
-2. threshold/policy로 채택한 query를 pseudo-label만으로 학습할지, 소량 수동 라벨을 섞을지
+1. query 버퍼 raw text retention 기본값은 현재 `30일 + 최신 5000건 유지`로 둔다. 필요 시 로컬 config로 조정한다.
+2. threshold/policy로 채택한 query는 현재 `pseudo-label only`로 학습하고, manual label은 이후 같은 dataset shape 위에 override로 얹는다.
 3. query-domain 적응에서 LoRA target module/rank를 무엇으로 고정할지
 4. FL 범위를 `lora` family/head에서 어디까지 열지
 5. private adapter/head를 언제 도입할지

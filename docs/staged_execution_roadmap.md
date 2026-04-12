@@ -57,9 +57,11 @@
 - 현재 local query buffer 최소 조회는 `count`, `get(query_id)`, `get_recent(limit)` 기준으로 닫혔다.
 - query buffer와 scored event를 `PseudoLabelEvidence`로 연결하는 projection helper가 들어갔다.
 - query buffer snapshot을 기존 acceptance policy로 평가하는 selection runner가 들어갔다.
+- accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립하는 경로가 들어갔다.
+- query buffer retention / purge는 agent-local config로 분리했고 기본값은 `30일 + 최신 5000건 유지`다.
+- adaptation dataset label 기본 정책은 `pseudo_label_only`이며 future manual override hook을 열어 두었다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
-  - accepted candidate를 adaptation dataset으로 조립
   - threshold 통과 query로 실제 학습
   - `LoRA + classifier` 적응
   - `lora family` shared/FL contract 추가
@@ -67,10 +69,10 @@
 
 ## Next Session Checklist
 
-1. accepted candidate를 adaptation dataset assembly 경로와 연결한다.
-2. manual label 개입 지점과 retention purge 조건을 config 레벨에서 노출한다.
-3. query-buffer selection summary / trace dump를 추가한다.
-4. 그다음 `LoRA + classifier` supervised adaptation baseline 입력 경로를 연다.
+1. query-buffer selection summary / trace dump를 추가한다.
+2. adaptation dataset을 `LoRA + classifier` supervised baseline 입력 경로에 연결한다.
+3. weak/strong augmentation이 필요한 family의 multiview row 준비 경로를 연다.
+4. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
 
 ## Guardrails
 

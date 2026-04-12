@@ -91,6 +91,40 @@ def test_repo_get_recent_returns_latest_first(
     assert recent[0].query_id == "new"
 
 
+def test_repo_delete_older_than_removes_old_records(
+    tmp_repo: QueryBufferRepository,
+) -> None:
+    """cutoff 이전 레코드는 purge 대상이다."""
+    now = datetime.now(tz=timezone.utc)
+    tmp_repo.save(
+        _make_record(query_id="old", occurred_at=now - timedelta(days=31))
+    )
+    tmp_repo.save(_make_record(query_id="new", occurred_at=now))
+
+    deleted = tmp_repo.delete_older_than(cutoff=now - timedelta(days=30))
+
+    assert deleted == 1
+    assert tmp_repo.get("old") is None
+    assert tmp_repo.get("new") is not None
+
+
+def test_repo_delete_oldest_excess_keeps_latest_records(
+    tmp_repo: QueryBufferRepository,
+) -> None:
+    """capacity purge는 최신 keep_latest개만 남긴다."""
+    now = datetime.now(tz=timezone.utc)
+    tmp_repo.save(_make_record(query_id="q1", occurred_at=now - timedelta(minutes=2)))
+    tmp_repo.save(_make_record(query_id="q2", occurred_at=now - timedelta(minutes=1)))
+    tmp_repo.save(_make_record(query_id="q3", occurred_at=now))
+
+    deleted = tmp_repo.delete_oldest_excess(keep_latest=2)
+
+    assert deleted == 1
+    assert tmp_repo.get("q1") is None
+    assert tmp_repo.get("q2") is not None
+    assert tmp_repo.get("q3") is not None
+
+
 def test_build_query_buffer_record_uses_query_text_and_score_snapshot() -> None:
     """helper가 raw text와 top1/top2 snapshot을 올바르게 추출한다."""
     occurred_at = datetime.now(tz=timezone.utc)

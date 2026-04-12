@@ -66,6 +66,21 @@ LIMIT ?;
 
 _COUNT_SQL = "SELECT COUNT(*) FROM query_buffer_records;"
 
+_DELETE_OLDER_THAN_SQL = """
+DELETE FROM query_buffer_records
+WHERE occurred_at < ?;
+"""
+
+_DELETE_EXCESS_SQL = """
+DELETE FROM query_buffer_records
+WHERE query_id IN (
+    SELECT query_id
+    FROM query_buffer_records
+    ORDER BY occurred_at DESC
+    LIMIT -1 OFFSET ?
+);
+"""
+
 
 @dataclass(slots=True)
 class QueryBufferRecord:
@@ -202,6 +217,22 @@ class QueryBufferRepository:
 
         with self._connect() as conn:
             return conn.execute(_COUNT_SQL).fetchone()[0]
+
+    def delete_older_than(self, *, cutoff: datetime) -> int:
+        """cutoff보다 오래된 query buffer 레코드를 삭제한다."""
+
+        with self._connect() as conn:
+            cursor = conn.execute(_DELETE_OLDER_THAN_SQL, (cutoff.isoformat(),))
+        return max(cursor.rowcount, 0)
+
+    def delete_oldest_excess(self, *, keep_latest: int) -> int:
+        """최신 keep_latest개를 제외한 오래된 레코드를 삭제한다."""
+
+        if keep_latest < 0:
+            raise ValueError("keep_latest must not be negative.")
+        with self._connect() as conn:
+            cursor = conn.execute(_DELETE_EXCESS_SQL, (keep_latest,))
+        return max(cursor.rowcount, 0)
 
     def _connect(self) -> sqlite3.Connection:
         return sqlite3.connect(self.db_path)
