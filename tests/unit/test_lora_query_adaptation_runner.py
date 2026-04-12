@@ -88,6 +88,7 @@ def test_prepare_query_adaptation_supervised_run_exports_train_and_selection(
     assert export_dir == tmp_path / "adapt_run_v1"
     assert train_jsonl.exists()
     assert prepared.train_artifacts.manifest_path.exists()
+    assert prepared.train_artifacts.summary_path.exists()
     assert str(prepared_cfg.train_jsonl) == str(train_jsonl)
     assert str(prepared_cfg.selection_set) == "selection"
     assert str(prepared_cfg.eval_sets["selection"]) == str(train_jsonl)
@@ -143,3 +144,5 @@ def test_run_query_adaptation_supervised_baseline_calls_existing_runner(
     assert outputs["output_dir"] == "runs/fake"
     assert Path(outputs["train_jsonl"]).exists()
     assert Path(outputs["selection_jsonl"]).exists()
+    assert Path(outputs["train_summary"]).exists()
+    assert Path(outputs["selection_summary"]).exists()

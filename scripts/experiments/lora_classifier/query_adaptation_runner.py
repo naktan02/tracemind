@@ -39,6 +39,7 @@ class PreparedQueryAdaptationSupervisedRun:
         outputs = {
             "train_jsonl": str(self.train_artifacts.jsonl_path),
             "train_manifest": str(self.train_artifacts.manifest_path),
+            "train_summary": str(self.train_artifacts.summary_path),
         }
         if self.selection_artifacts is not None:
             outputs[f"{self.selection_set_name}_jsonl"] = str(
@@ -47,9 +48,13 @@ class PreparedQueryAdaptationSupervisedRun:
             outputs[f"{self.selection_set_name}_manifest"] = str(
                 self.selection_artifacts.manifest_path
             )
+            outputs[f"{self.selection_set_name}_summary"] = str(
+                self.selection_artifacts.summary_path
+            )
         for dataset_name, artifacts in self.eval_artifacts.items():
             outputs[f"{dataset_name}_jsonl"] = str(artifacts.jsonl_path)
             outputs[f"{dataset_name}_manifest"] = str(artifacts.manifest_path)
+            outputs[f"{dataset_name}_summary"] = str(artifacts.summary_path)
         return outputs
 
 

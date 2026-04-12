@@ -6,6 +6,7 @@ import json
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+from math import fsum
 from pathlib import Path
 
 from agent.src.services.training.query_adaptation_dataset_service import (
@@ -14,6 +15,7 @@ from agent.src.services.training.query_adaptation_dataset_service import (
 from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION = "query_adaptation_lora_export.v1"
+QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION = "query_adaptation_dataset_summary.v1"
 
 
 @dataclass(slots=True)
@@ -22,6 +24,7 @@ class QueryAdaptationLoraExportArtifacts:
 
     jsonl_path: Path
     manifest_path: Path
+    summary_path: Path
 
 
 def build_labeled_rows_from_query_adaptation_dataset(
@@ -72,6 +75,9 @@ def write_query_adaptation_lora_dataset(
     manifest_path = resolved_output_path.with_suffix(
         f"{resolved_output_path.suffix}.manifest.json"
     )
+    summary_path = resolved_output_path.with_suffix(
+        f"{resolved_output_path.suffix}.summary.json"
+    )
     manifest = {
         "schema_version": QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION,
         "generated_at": effective_generated_at.isoformat(),
@@ -88,14 +94,94 @@ def write_query_adaptation_lora_dataset(
         json.dumps(manifest, indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
+    summary_path.write_text(
+        json.dumps(
+            _build_query_adaptation_summary(
+                dataset=dataset,
+                annotation_source=annotation_source,
+                generated_at=effective_generated_at,
+            ),
+            indent=2,
+            ensure_ascii=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
     return QueryAdaptationLoraExportArtifacts(
         jsonl_path=resolved_output_path,
         manifest_path=manifest_path,
+        summary_path=summary_path,
     )
+
+
+def _build_query_adaptation_summary(
+    *,
+    dataset: QueryAdaptationDataset,
+    annotation_source: str,
+    generated_at: datetime,
+) -> dict[str, object]:
+    selection_stage_counts: Counter[str] = Counter()
+    locale_counts: Counter[str] = Counter()
+    source_type_counts: Counter[str] = Counter()
+    model_revision_counts: Counter[str] = Counter()
+    confidence_kind_counts: Counter[str] = Counter()
+    translated_text_present_counts: Counter[str] = Counter()
+    confidence_values: list[float] = []
+    margin_values: list[float] = []
+
+    for example in dataset.examples:
+        provenance = example.provenance
+        locale_counts[provenance.locale] += 1
+        source_type_counts[provenance.source_type] += 1
+        model_revision_counts[provenance.model_revision] += 1
+        confidence_kind_counts[provenance.selection_confidence_kind] += 1
+        translated_text_present_counts[str(provenance.translated_text_present).lower()] += 1
+        selection_stage = provenance.candidate_metadata.get("selection_stage")
+        if isinstance(selection_stage, str) and selection_stage.strip():
+            selection_stage_counts[selection_stage] += 1
+        confidence_values.append(float(example.confidence))
+        margin_values.append(float(example.margin))
+
+    return {
+        "schema_version": QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION,
+        "generated_at": generated_at.isoformat(),
+        "annotation_source": annotation_source,
+        "row_count": dataset.count,
+        "label_counts": dict(
+            sorted(Counter(example.label for example in dataset.examples).items())
+        ),
+        "label_source_counts": dict(
+            sorted(Counter(example.label_source for example in dataset.examples).items())
+        ),
+        "locale_counts": dict(sorted(locale_counts.items())),
+        "source_type_counts": dict(sorted(source_type_counts.items())),
+        "model_revision_counts": dict(sorted(model_revision_counts.items())),
+        "selection_confidence_kind_counts": dict(
+            sorted(confidence_kind_counts.items())
+        ),
+        "translated_text_present_counts": dict(
+            sorted(translated_text_present_counts.items())
+        ),
+        "selection_stage_counts": dict(sorted(selection_stage_counts.items())),
+        "confidence_stats": _summarize_scalar_values(confidence_values),
+        "margin_stats": _summarize_scalar_values(margin_values),
+    }
+
+
+def _summarize_scalar_values(values: list[float]) -> dict[str, float | int | None]:
+    if not values:
+        return {"count": 0, "min": None, "max": None, "mean": None}
+    return {
+        "count": len(values),
+        "min": min(values),
+        "max": max(values),
+        "mean": fsum(values) / len(values),
+    }
 
 
 __all__ = [
     "QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION",
+    "QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION",
     "QueryAdaptationLoraExportArtifacts",
     "build_labeled_rows_from_query_adaptation_dataset",
     "write_query_adaptation_lora_dataset",

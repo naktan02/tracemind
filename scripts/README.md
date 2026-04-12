@@ -83,9 +83,30 @@ uv sync --extra dev --extra experiments
   - `device=cpu`
   - `local_files_only=true`
 
+- `runtime=auto_local`
+  - `device=auto`
+  - `local_files_only=true`
+  - GPU가 보이면 GPU를 쓰고, 없으면 CPU로 fallback한다.
+  - smoke나 로컬 캐시 기반 검증에 권장한다.
+
 - `runtime=auto_online`
   - `device=auto`
   - `local_files_only=false`
+
+### GPU Preflight
+
+LoRA나 transformer 실험을 GPU로 돌리기 전에 아래를 먼저 확인한다.
+
+```bash
+nvidia-smi
+./.venv/bin/python - <<'PY'
+import torch
+print(torch.cuda.is_available(), torch.cuda.device_count())
+PY
+```
+
+- sandbox 안에서 GPU가 안 보여도 실제 머신에 GPU가 있을 수 있다.
+- GPU 의존 smoke/run은 실제 실행 환경에서 위 두 명령을 먼저 확인한 뒤 시작한다.
 
 ### 자주 쓰는 override 예시
 
@@ -422,9 +443,11 @@ uv run python scripts/experiments/train_lora_classifier.py \
   현재 `train_lora_classifier.py`가 읽는 `labeled_query_rows` JSONL shape로 export할 수 있다.
 - adaptation dataset의 canonical provenance (`locale`, `source_type`, `model_revision`)는
   free-form metadata key가 아니라 typed field로 유지한다.
+- export 시 JSONL/manifest와 함께 dataset summary JSON도 같이 기록한다.
 - `scripts/experiments/lora_classifier/query_adaptation_runner.py`는 이 exported dataset path를
   기존 `run_supervised_lora_baseline()` 호출까지 연결하고,
   준비 결과는 typed object로 반환한다.
+- 로컬 smoke 검증은 `runtime=auto_local`이 권장된다.
 - epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
   긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.
 

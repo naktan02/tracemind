@@ -92,6 +92,10 @@
 테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 `ps aux`를
 실행해 남아 있는 `pytest`, `uv run python`, 기타 stale 프로세스를 확인한다.
 
+GPU 의존 실행 전에는 실제 실행 환경에서 `nvidia-smi`와 해당 가상환경의
+`torch.cuda.is_available()`를 먼저 확인한다. sandbox에서 GPU가 보이지 않으면
+즉시 GPU 부재로 단정하지 말고, 필요 시 sandbox 밖에서 다시 확인한다.
+
 ## Coding Style & Naming Conventions
 
 - Python 3.11 기준

@@ -82,6 +82,18 @@ def test_prototype_strategy_supports_short_group_override() -> None:
     assert cfg.runner.score_top_k == 2
 
 
+def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_classifier",
+            overrides=["runtime=auto_local"],
+        )
+
+    assert cfg.runtime.name == "auto_local"
+    assert cfg.runtime.device == "auto"
+    assert cfg.runtime.local_files_only is True
+
+
 def test_threshold_sweep_supports_short_leaf_override() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(

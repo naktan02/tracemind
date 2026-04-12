@@ -14,6 +14,7 @@ from agent.src.services.training.query_adaptation_dataset_service import (
 )
 from scripts.experiments.lora_classifier.query_adaptation_io import (
     QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION,
+    QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION,
     build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_lora_dataset,
 )
@@ -99,9 +100,11 @@ def test_write_query_adaptation_lora_dataset_writes_jsonl_and_manifest(
 
     jsonl_path = outputs.jsonl_path
     manifest_path = outputs.manifest_path
+    summary_path = outputs.summary_path
 
     assert jsonl_path.exists()
     assert manifest_path.exists()
+    assert summary_path.exists()
 
     rows = load_labeled_query_rows(jsonl_path)
     assert [row["query_id"] for row in rows] == ["q1", "q2"]
@@ -117,3 +120,10 @@ def test_write_query_adaptation_lora_dataset_writes_jsonl_and_manifest(
         "manual_label": 1,
         "pseudo_label": 1,
     }
+
+    summary = json.loads(summary_path.read_text(encoding="utf-8"))
+    assert summary["schema_version"] == QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION
+    assert summary["row_count"] == 2
+    assert summary["locale_counts"] == {"ko-KR": 2}
+    assert summary["selection_stage_counts"] == {"accepted": 1}
+    assert summary["translated_text_present_counts"] == {"false": 1, "true": 1}
