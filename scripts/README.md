@@ -448,9 +448,9 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - adaptation dataset의 canonical provenance (`locale`, `source_type`, `model_revision`)는
   free-form metadata key가 아니라 typed field로 유지한다.
 - export 시 JSONL/manifest와 함께 dataset summary JSON도 같이 기록한다.
-- `scripts/experiments/lora_classifier/query_adaptation_runner.py`는 이 exported dataset path를
-  기존 `run_supervised_lora_baseline()` 호출까지 연결하고,
-  준비 결과는 typed object로 반환한다.
+- `scripts/experiments/lora_classifier/query_adaptation_runner.py`는
+  labeled row를 메모리에서 바로 `run_supervised_lora_baseline()`에 넘기고,
+  exported dataset path는 trace/audit 산출물로만 함께 남긴다.
 - `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
   family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의
   `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.

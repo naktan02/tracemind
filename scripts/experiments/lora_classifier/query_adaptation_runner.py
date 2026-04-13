@@ -11,9 +11,11 @@ from agent.src.services.training.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
 )
 from omegaconf import DictConfig, OmegaConf
+from scripts.labeled_query_rows import LabeledQueryRow
 
 from .query_adaptation_io import (
     QueryAdaptationLoraExportArtifacts,
+    build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_lora_dataset,
 )
 from .runner import run_supervised_lora_baseline
@@ -21,12 +23,14 @@ from .runner import run_supervised_lora_baseline
 
 @dataclass(slots=True)
 class PreparedQueryAdaptationSupervisedRun:
-    """query adaptation dataset을 기존 LoRA runner 입력으로 정규화한 결과."""
+    """query adaptation dataset을 baseline 실행 입력과 trace export로 정리한 결과."""
 
     cfg: DictConfig
     run_id: str
     export_dir: Path
     selection_example_count: int
+    train_rows: list[LabeledQueryRow]
+    eval_rows_by_name: dict[str, list[LabeledQueryRow]]
     train_artifacts: QueryAdaptationLoraExportArtifacts
     selection_set_name: str
     selection_artifacts: QueryAdaptationLoraExportArtifacts | None = None
@@ -68,7 +72,7 @@ def run_query_adaptation_supervised_baseline(
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
-    """agent-local adaptation dataset을 export한 뒤 기존 LoRA runner를 실행한다."""
+    """agent-local adaptation dataset으로 baseline을 실행하고 trace export를 남긴다."""
 
     prepared = prepare_query_adaptation_supervised_run(
         cfg=cfg,
@@ -79,7 +83,12 @@ def run_query_adaptation_supervised_baseline(
         selection_set_name=selection_set_name,
         generated_at=generated_at,
     )
-    run_outputs = run_supervised_lora_baseline(prepared.cfg)
+    run_outputs = run_supervised_lora_baseline(
+        prepared.cfg,
+        train_rows=prepared.train_rows,
+        eval_rows_by_name=prepared.eval_rows_by_name,
+        selection_set_name=prepared.selection_set_name,
+    )
     return {
         **prepared.export_outputs,
         **run_outputs,
@@ -96,7 +105,7 @@ def prepare_query_adaptation_supervised_run(
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> PreparedQueryAdaptationSupervisedRun:
-    """QueryAdaptationDataset를 기존 LoRA runner 입력 config/path로 정규화한다."""
+    """QueryAdaptationDataset를 baseline 실행 입력과 export path로 정규화한다."""
 
     effective_generated_at = generated_at or datetime.now(tz=timezone.utc)
     run_id = _resolve_query_adaptation_run_id(
@@ -112,13 +121,19 @@ def prepare_query_adaptation_supervised_run(
         annotation_source="query_adaptation_train",
         generated_at=effective_generated_at,
     )
+    train_rows = build_labeled_rows_from_query_adaptation_dataset(
+        train_dataset,
+        annotation_source="query_adaptation_train",
+    )
 
     eval_output_paths: dict[str, str] = {}
+    eval_rows_by_name: dict[str, list[LabeledQueryRow]] = {}
 
     effective_selection_dataset = selection_dataset or train_dataset
     selection_artifacts: QueryAdaptationLoraExportArtifacts | None = None
     if selection_dataset is None:
         selection_path = str(train_outputs.jsonl_path)
+        selection_rows = list(train_rows)
     else:
         selection_artifacts = write_query_adaptation_lora_dataset(
             dataset=selection_dataset,
@@ -127,7 +142,12 @@ def prepare_query_adaptation_supervised_run(
             generated_at=effective_generated_at,
         )
         selection_path = str(selection_artifacts.jsonl_path)
+        selection_rows = build_labeled_rows_from_query_adaptation_dataset(
+            selection_dataset,
+            annotation_source=f"query_adaptation_{selection_set_name}",
+        )
     eval_output_paths[selection_set_name] = selection_path
+    eval_rows_by_name[selection_set_name] = selection_rows
 
     effective_eval_datasets = {} if eval_datasets is None else dict(eval_datasets)
     eval_artifacts: dict[str, QueryAdaptationLoraExportArtifacts] = {}
@@ -142,6 +162,12 @@ def prepare_query_adaptation_supervised_run(
         )
         eval_output_paths[dataset_name] = str(eval_outputs.jsonl_path)
         eval_artifacts[dataset_name] = eval_outputs
+        eval_rows_by_name[dataset_name] = (
+            build_labeled_rows_from_query_adaptation_dataset(
+                dataset,
+                annotation_source=f"query_adaptation_{dataset_name}",
+            )
+        )
 
     prepared_cfg = _clone_lora_config_with_export_paths(
         cfg=cfg,
@@ -154,6 +180,8 @@ def prepare_query_adaptation_supervised_run(
         run_id=run_id,
         export_dir=export_dir,
         selection_example_count=effective_selection_dataset.count,
+        train_rows=train_rows,
+        eval_rows_by_name=eval_rows_by_name,
         train_artifacts=train_outputs,
         selection_set_name=selection_set_name,
         selection_artifacts=selection_artifacts,

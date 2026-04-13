@@ -64,7 +64,8 @@
 - adaptation dataset label 기본 정책은 `pseudo_label_only`이며 future manual override hook을 열어 두었다.
 - adaptation dataset을 기존 `train_lora_classifier` JSONL 입력 shape로 export하는 scripts bridge가 들어갔다.
 - adaptation dataset export는 JSONL/manifest와 함께 summary JSON도 남긴다.
-- adaptation dataset export 결과로 기존 `run_supervised_lora_baseline`을 호출하는 scripts 실행 helper가 들어갔다.
+- adaptation dataset은 baseline runner에 labeled row를 메모리에서 직접 넘기고,
+  export JSONL은 trace/audit 산출물로만 남긴다.
 - `runtime=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
 - query-buffer selection 결과를 family-agnostic summary/trace diagnostics shape로 정리하고,
   JSON/JSONL dump로 저장하는 helper가 들어갔다.
@@ -80,8 +81,8 @@
 
 ## Next Session Checklist
 
-1. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
-2. query buffer selection 결과를 baseline trainer 입력 dataset으로 직접 연결한다.
+1. baseline canonical 경로를 entrypoint/README 기준으로 최종 정리한다.
+2. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
 3. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
 
 ## Guardrails

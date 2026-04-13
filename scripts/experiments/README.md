@@ -30,7 +30,7 @@
   - `query_adaptation_multiview_io.py`는 필요 시 multiview dataset을 같은 JSONL shape로 export한다.
   - export는 `source_row.query_id`를 single source of truth로 쓰고, locale은 typed provenance에서 읽는다.
   - export는 JSONL/manifest와 함께 dataset summary JSON도 남긴다.
-  - `query_adaptation_runner.py`는 그 export 결과로 기존 supervised LoRA runner를 실행한다.
+  - `query_adaptation_runner.py`는 labeled row를 메모리에서 바로 baseline runner에 넘기고, export 산출물은 trace/audit 용도로 함께 남긴다.
 
 ## 공통 helper
 
