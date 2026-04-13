@@ -13,6 +13,7 @@ import pytest
         "scripts.experiments.prototype_strategy_experiment",
         "scripts.experiments.prototype_threshold_sweep",
         "scripts.experiments.train_softmax_classifier",
+        "scripts.experiments.train_lora_pseudo_label_classifier",
     ],
 )
 def test_experiment_entrypoints_import_without_symbol_errors(

@@ -1,0 +1,38 @@
+# @package _global_
+
+defaults:
+  - /dataset: ourafla
+  - /runtime: gpu_online
+  - /paper_backbone: mxbai_encoder
+  - /lora: default
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${dataset.train_jsonl}
+pseudo_label_jsonl: null
+pseudo_label_export_root: data/processed/lora_pseudo_label
+eval_sets:
+  validation: ${dataset.validation_jsonl}
+  test: ${dataset.test_labeled_jsonl}
+selection_set: validation
+seed: 42
+train_batch_size: 16
+eval_batch_size: 32
+epochs: 5
+learning_rate: 0.0002
+classifier_learning_rate: 0.001
+weight_decay: 0.01
+max_grad_norm: 1.0
+log_every_steps: 100
+output_dir: runs/train_lora_pseudo_label_classifier
+adapter_output_dir: data/processed/lora_adapters
+classifier_output_dir: data/processed/lora_classifier_heads
+trainer_version: ""
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

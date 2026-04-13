@@ -77,6 +77,9 @@
 - canonical supervised baseline entrypoint는 `scripts/experiments/train_lora_classifier.py`로,
   concrete helper는 `scripts/experiments/lora_classifier/runner.py`와
   `query_adaptation_runner.py` direct import 기준으로 정리했다.
+- `pseudo-label self-training` runner를 추가했고,
+  `train_lora_pseudo_label_classifier.py`는 seed labeled rows와 pseudo-labeled rows를 합쳐
+  같은 baseline runner로 self-training을 실행한다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -84,9 +87,9 @@
 
 ## Next Session Checklist
 
-1. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
+1. `R-Drop` objective를 baseline trainer 위에 추가한다.
 2. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
-3. 필요 시 query adaptation supervised run smoke를 다시 닫는다.
+3. 필요 시 pseudo-label self-training smoke를 다시 닫는다.
 
 ## Guardrails
 

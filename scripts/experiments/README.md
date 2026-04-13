@@ -24,10 +24,13 @@
   - 고정 임베딩 위 linear classifier baseline
 - `train_lora_classifier.py`
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
+- `train_lora_pseudo_label_classifier.py`
+  - seed labeled split과 pseudo-labeled rows를 합쳐 `pseudo-label self-training`을 실행하는 entrypoint
 - `lora_classifier/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runner.py`가 canonical supervised baseline runner다.
   - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
+  - `pseudo_label_runner.py`는 seed labeled rows와 pseudo-labeled rows를 합쳐 baseline runner에 넘긴다.
   - `query_adaptation_io.py`는 agent-local adaptation dataset을 현재 JSONL 입력 shape로 export한다.
   - `query_adaptation_multiview_io.py`는 필요 시 multiview dataset을 같은 JSONL shape로 export한다.
   - export는 `source_row.query_id`를 single source of truth로 쓰고, locale은 typed provenance에서 읽는다.
@@ -61,8 +64,9 @@
 
 1. `train_softmax_classifier.py`
 2. `train_lora_classifier.py`
-3. `lora_classifier/runner.py`
-4. 필요하면 `lora_classifier/query_adaptation_runner.py`
+3. `train_lora_pseudo_label_classifier.py`
+4. `lora_classifier/runner.py`
+5. 필요하면 `lora_classifier/query_adaptation_runner.py`, `lora_classifier/pseudo_label_runner.py`
 
 ## 주의할 점
 

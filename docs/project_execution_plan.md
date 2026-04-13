@@ -24,6 +24,8 @@
 - query-domain supervised baseline의 canonical entrypoint는 `scripts/experiments/train_lora_classifier.py`이고,
   scripts runner는 `scripts/experiments/lora_classifier/runner.py`, 학습 코어는 `agent/src/services/training/query_adaptation/`가 소유한다.
 - 첫 SSL 실험선은 `pseudo-label self-training`이다.
+- `pseudo-label self-training` entrypoint는 `scripts/experiments/train_lora_pseudo_label_classifier.py`이며,
+  seed labeled rows와 accepted pseudo-labeled rows를 합쳐 같은 baseline runner로 넘긴다.
 - `R-Drop`과 `MixText`는 같은 scaffold 위의 후속 비교축이다.
 - `TAPT`는 적응 앞단의 optional preadaptation phase다.
 - LoRA는 query-domain 적응과 이후 FL LoRA family translation에 유리하다.

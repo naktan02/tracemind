@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from datetime import datetime
 from pathlib import Path
 from typing import Any
@@ -29,6 +30,7 @@ def write_run_artifacts(
     history: list[dict[str, Any]],
     best_selection_report: dict[str, Any],
     results: dict[str, Any],
+    extra_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     output_dir = build_run_dir(
         cfg.output_dir,
@@ -80,6 +82,8 @@ def write_run_artifacts(
         "best_selection_report": best_selection_report,
         "history": history,
     }
+    if extra_manifest:
+        manifest.update(dict(extra_manifest))
     report = {
         "schema_version": "central_lora_classifier_eval.v1",
         "trainer_version": trainer_version,

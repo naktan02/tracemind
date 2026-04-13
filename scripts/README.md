@@ -427,11 +427,20 @@ uv run python scripts/experiments/train_lora_classifier.py \
   epochs=1
 ```
 
+pseudo-label self-training 실행:
+
+```bash
+uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
+  pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
+```
+
 canonical 경로:
 
 - CLI entrypoint: `scripts/experiments/train_lora_classifier.py`
 - scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
 - agent 학습 코어: `agent/src/services/training/query_adaptation/`
+- pseudo-label entrypoint: `scripts/experiments/train_lora_pseudo_label_classifier.py`
+- pseudo-label helper: `scripts/experiments/lora_classifier/pseudo_label_runner.py`
 
 주요 산출물:
 
@@ -459,6 +468,9 @@ canonical 경로:
 - `scripts/experiments/lora_classifier/query_adaptation_runner.py`는
   labeled row를 메모리에서 바로 `run_supervised_lora_baseline()`에 넘기고,
   exported dataset path는 trace/audit 산출물로만 함께 남긴다.
+- `scripts/experiments/lora_classifier/pseudo_label_runner.py`는
+  seed labeled rows와 pseudo-labeled rows를 합쳐 self-training용 combined train JSONL을 남기고,
+  실제 학습은 메모리 row를 baseline runner에 직접 넘긴다.
 - `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
   family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의
   `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.

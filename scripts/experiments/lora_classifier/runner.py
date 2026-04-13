@@ -30,6 +30,7 @@ def run_supervised_lora_baseline(
     train_rows: list[LabeledQueryRow] | None = None,
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
     selection_set_name: str | None = None,
+    extra_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     """LoRA baseline을 실행한다.
 
@@ -171,6 +172,7 @@ def run_supervised_lora_baseline(
         history=history,
         best_selection_report=best_selection_report,
         results=results,
+        extra_manifest=extra_manifest,
     )
     for key, value in outputs.items():
         print(f"{key}={value}")
