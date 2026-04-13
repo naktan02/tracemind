@@ -55,8 +55,10 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 3. `docs/contracts/query_buffer_v1.md`
 4. `docs/contracts/central_lora_classifier_trainer_contract.md`
 5. `scripts/experiments/train_lora_classifier.py`
-6. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-7. 필요 시 적응 단계 실험 스크립트/노트북
+6. `scripts/experiments/lora_classifier/runner.py`
+7. `scripts/experiments/lora_classifier/query_adaptation_runner.py`
+8. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
+9. 필요 시 적응 단계 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 

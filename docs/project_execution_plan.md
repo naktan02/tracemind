@@ -21,6 +21,8 @@
   validation/calibration split source로도 직접 사용한다.
 - query 적응의 현재 권장 순서는 `query accumulation -> threshold/policy selection -> LoRA + classifier adaptation`이다.
 - query-domain 적응의 canonical baseline은 `supervised LoRA + classifier`다.
+- query-domain supervised baseline의 canonical entrypoint는 `scripts/experiments/train_lora_classifier.py`이고,
+  scripts runner는 `scripts/experiments/lora_classifier/runner.py`, 학습 코어는 `agent/src/services/training/query_adaptation/`가 소유한다.
 - 첫 SSL 실험선은 `pseudo-label self-training`이다.
 - `R-Drop`과 `MixText`는 같은 scaffold 위의 후속 비교축이다.
 - `TAPT`는 적응 앞단의 optional preadaptation phase다.

@@ -74,6 +74,9 @@
 - multiview preparation은 augmentation recipe를 고정하지 않고 pluggable augmenter hook으로 연다.
 - supervised baseline 학습 코어를 `agent/src/services/training/query_adaptation/`로 옮기고,
   scripts는 entrypoint/artifact layer로 얇게 정리했다.
+- canonical supervised baseline entrypoint는 `scripts/experiments/train_lora_classifier.py`로,
+  concrete helper는 `scripts/experiments/lora_classifier/runner.py`와
+  `query_adaptation_runner.py` direct import 기준으로 정리했다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -81,9 +84,9 @@
 
 ## Next Session Checklist
 
-1. baseline canonical 경로를 entrypoint/README 기준으로 최종 정리한다.
-2. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
-3. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
+1. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
+2. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
+3. 필요 시 query adaptation supervised run smoke를 다시 닫는다.
 
 ## Guardrails
 

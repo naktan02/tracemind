@@ -427,6 +427,12 @@ uv run python scripts/experiments/train_lora_classifier.py \
   epochs=1
 ```
 
+canonical 경로:
+
+- CLI entrypoint: `scripts/experiments/train_lora_classifier.py`
+- scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
+- agent 학습 코어: `agent/src/services/training/query_adaptation/`
+
 주요 산출물:
 
 - `runs/train_lora_classifier/<run_id>/reports/report.json`
@@ -448,6 +454,8 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - adaptation dataset의 canonical provenance (`locale`, `source_type`, `model_revision`)는
   free-form metadata key가 아니라 typed field로 유지한다.
 - export 시 JSONL/manifest와 함께 dataset summary JSON도 같이 기록한다.
+- concrete helper는 `scripts.experiments.lora_classifier` package re-export가 아니라
+  각 모듈을 직접 import하는 것을 기준으로 본다.
 - `scripts/experiments/lora_classifier/query_adaptation_runner.py`는
   labeled row를 메모리에서 바로 `run_supervised_lora_baseline()`에 넘기고,
   exported dataset path는 trace/audit 산출물로만 함께 남긴다.

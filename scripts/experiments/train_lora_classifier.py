@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.lora_classifier import run_supervised_lora_baseline  # noqa: E402
+from scripts.experiments.lora_classifier.runner import run_supervised_lora_baseline
 
 
 @hydra.main(
