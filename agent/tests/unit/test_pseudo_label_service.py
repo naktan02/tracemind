@@ -101,39 +101,3 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
     assert candidate.evidence_ref == "evidence:q1"
     assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
     assert result.accepted_count == 1
-
-
-def test_selection_service_can_switch_to_fixmatch_weak_view_evidence() -> None:
-    service = PseudoLabelSelectionService()
-
-    result = service.select(
-        scored_events=(
-            ScoredEvent(
-                query_id="q1",
-                occurred_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-                translated_text=None,
-                embedding_model_id="tracemind-embed",
-                translation_model_id=None,
-                category_scores={"anxiety": 6.0, "depression": 0.0, "normal": -1.0},
-            ),
-        ),
-        training_task=_build_task(
-            acceptance_policy_name="top1_confidence_only",
-            evidence_backend_name="fixmatch_weak_view_evidence",
-            confidence_threshold=0.95,
-        ),
-    )
-
-    candidate = result.candidates[0]
-    evidence = result.evidences[0]
-
-    assert evidence.confidence_kind == "posterior_probability"
-    assert evidence.view_kind == "weak_view"
-    assert evidence.label_distribution is not None
-    assert sum(evidence.label_distribution.values()) == pytest.approx(1.0)
-    assert evidence.metadata["temperature"] == 1.0
-    assert candidate.accepted is True
-    assert candidate.confidence_kind == "posterior_probability"
-    assert candidate.sample_weight == pytest.approx(1.0)
-    assert candidate.metadata["evidence_backend_name"] == "fixmatch_weak_view_evidence"
-    assert result.accepted_count == 1

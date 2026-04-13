@@ -28,10 +28,10 @@
 
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
-| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `fixmatch_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
-| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend, ClassifierHeadFixMatchConsistencyTrainingBackend | `agent/src/services/training/training_backends/` |
+| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
+| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends/` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/input_backends/`, `agent/src/services/federation/training_example_service.py` |
-| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend, FixMatchWeakViewEvidenceBackend | `agent/src/services/training/evidence_backends/` |
+| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/evidence_backends/` |
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
@@ -53,12 +53,10 @@
 **현재:**
 - `prototype_pseudo_label_v1`
 - `prototype_top1_confidence_v1`
-- `fixmatch_v1`
 
 주의:
-- `fixmatch_v1`는 현재 시스템 runtime에서 쓰는 `head_only` adaptation profile이다.
-- query-domain 적응 단계의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 별도
-  중앙 trainer 레일에서 먼저 닫고, 그 뒤에 system translation 여부를 판단한다.
+- query-domain 적응 단계의 핵심 비교선은 별도 중앙 trainer 레일에서 먼저 닫고,
+  그 뒤에 system translation 여부를 판단한다.
 
 **구성 위치:**
 - shared canonical registry:
@@ -96,9 +94,8 @@ class SharedAdapterTrainingBackend(Protocol):
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload: ...
 ```
 
-**현재:** `DiagonalScaleHeuristicTrainingBackend`, `ClassifierHeadFixMatchConsistencyTrainingBackend`
+**현재:** `DiagonalScaleHeuristicTrainingBackend`
 - `DiagonalScaleHeuristicTrainingBackend`는 gradient 없이 confidence 가중 방향으로 delta를 계산한다.
-- `ClassifierHeadFixMatchConsistencyTrainingBackend`는 weak-view pseudo-label과 strong-view logits로 linear classifier head delta를 계산한다.
 
 주의:
 - 현재 runtime의 `SharedAdapterTrainingBackend`는 family별 shared state delta를 반환한다.
@@ -108,7 +105,6 @@ class SharedAdapterTrainingBackend(Protocol):
 **교체 시나리오:**
 - Gradient 기반 backend 추가: `DiagonalScaleGradientTrainingBackend`
 - 다른 adapter family용 backend 추가 (LoRA 등)
-- official FixMatch류 classifier/logit update backend 추가
 
 **교체 절차:**
 1. `training_backends/` 아래에 새 구현 파일을 추가한다
@@ -150,7 +146,7 @@ class TrainingExampleBackend(Protocol):
 **교체 시나리오:**
 - cached score 재사용 backend
 - feedback-only example backend
-- FixMatch류 weak/strong augmentation example backend
+- generic multiview augmentation example backend
 
 **현재 추가 구현:**
 - `weak_strong_pair`
@@ -182,16 +178,12 @@ class PseudoLabelEvidenceBackend(Protocol):
     ) -> PseudoLabelEvidence: ...
 ```
 
-**현재:** `PrototypeSimilarityEvidenceBackend`, `FixMatchWeakViewEvidenceBackend`
+**현재:** `PrototypeSimilarityEvidenceBackend`
 - `ScoredEvent.category_scores`를 top1/top2/margin 기반 evidence로 정규화한다.
 - 현재 baseline에서는 `confidence_kind=prototype_similarity`를 사용한다.
-- `FixMatchWeakViewEvidenceBackend`는 weak-view score를 posterior-like distribution으로
-  정규화한다. `classifier_head_logits` scorer와 결합되면 실제 classifier logits를,
-  prototype scorer와 결합되면 existing score softmax를 사용한다.
 
 **교체 시나리오:**
 - classifier posterior evidence backend
-- FixMatch weak-view evidence backend
 - teacher-student agreement evidence backend
 
 **교체 절차:**
@@ -423,7 +415,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
 ### 아직 계약 확장이 필요한 교체
 
 - `LoRA`처럼 state/update payload가 달라지는 family
-- `FixMatch`처럼 example generation과 training backend가 함께 바뀌는 방식
+- multiview objective처럼 example generation과 training backend가 함께 바뀌는 방식
 - `PabLO`처럼 learned scorer artifact를 fit/store/load해야 하는 방식
 - 실제 동형암호/secure aggregation runtime
 

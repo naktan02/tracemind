@@ -151,7 +151,7 @@ uv run python <script>.py --cfg job
 - `prototype_input_jsonl`: prototype bootstrap/comparison artifact 생성 입력
 - `query_dev_jsonl`: 나중에 추가할 실제 query 도메인용 소량 labeled dev set
 - `query_calibration_jsonl`: threshold/calibration 용 labeled query set
-- `unlabeled_query_pool_jsonl`: SSL/FixMatch류에 넣을 unlabeled 일반 query pool
+- `unlabeled_query_pool_jsonl`: 향후 query-domain SSL 적응 후보에 넣을 unlabeled 일반 query pool
 
 현재 `ourafla`는 labeled split과 prototype 입력만 채워져 있고,
 query-domain 자산은 아직 `null` placeholder로 둔다. 실제 query 세트가 준비되면
@@ -410,7 +410,8 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 
 이 레일은 첫 seed baseline이 아니라 query-domain 적응 단계용 scaffold다.
 초기 `fixed embedding + classifier` seed를 먼저 닫고, query가 충분히 쌓인 뒤에만
-같은 scaffold 위에 `supervised adaptation`, `FixMatch`, `FreeMatch`, `PabLO`를 올린다.
+같은 scaffold 위에 `supervised adaptation`, `pseudo-label self-training`,
+`R-Drop`, `MixText`를 올리고, 필요 시 `TAPT`를 앞단 preadaptation phase로 둔다.
 
 실행 예시:
 
@@ -455,10 +456,6 @@ uv run python scripts/experiments/train_lora_classifier.py \
   `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.
 - weak/strong augmentation recipe는 이 단계에서 고정하지 않고,
   agent의 `QueryAdaptationMultiviewService`에 pluggable augmenter로 주입한다.
-- `scripts/conf/experiments/train_lora_fixmatch.yaml`은
-  query-domain `FixMatch-LoRA` 실험의 source-of-truth config다.
-- `scripts/experiments/lora_classifier/ssl_data.py`는
-  `labeled / weak unlabeled / strong unlabeled` 3-branch batch loader를 제공한다.
 - 로컬 smoke 검증은 `runtime=auto_local`이 권장된다.
 - epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
   긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.
@@ -480,10 +477,8 @@ uv run python scripts/experiments/run_federated_simulation.py
 
 - 현재 Hydra 기본 preset은 `prototype_pseudo_label_v1`다.
 - 현재 `run_federated_simulation`은 시스템 FL 트랙용 entrypoint다.
-- 현재 v1 권장 시스템 baseline은 classifier-first이므로, classifier 실험에서는
-  `training_algorithm_profile=fixmatch_v1` 또는 classifier-head 관련 override를
-  명시적으로 주는 편이 맞다.
-- 단, query-domain 적응의 핵심 비교선인 `central LoRA FixMatch/FreeMatch/PabLO`는 이 entrypoint가 아니라 별도 중앙 trainer 레일에서 진행한다.
+- 현재 v1 권장 시스템 baseline은 `prototype_pseudo_label_v1` 기반 adapter-first다.
+- 단, query-domain 적응의 핵심 비교선은 이 entrypoint가 아니라 별도 중앙 trainer 레일에서 진행한다.
 
 라운드와 client 수를 바꾸려면:
 
@@ -547,8 +542,7 @@ uv run python scripts/experiments/run_federated_simulation.py \
   `threshold_accepted`, `selected_by_cap`, `selection_stage`가 저장된다.
 - 중앙은 update를 집계해 새 `model_revision + prototype_version` pair를 발행한다.
 - prototype 재빌드는 `prototype_builder` 설정을 그대로 따른다.
-- 현재 default smoke는 diagonal scale preset이지만,
-  classifier-head + `fixmatch_v1` simulation path도 지원한다.
+- 현재 default smoke는 diagonal scale preset이다.
 - `FreeMatch`, `PabLO`는 아직 direct system-FL preset이 없으므로 classifier-first 확장으로
   추가할 대상이다.
 - staged 구조에서는 먼저 `fixed embedding + classifier` seed를 닫고, 그 다음 query-domain LoRA 적응과 시스템 translation 여부를 판단한다.

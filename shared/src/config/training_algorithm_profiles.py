@@ -7,13 +7,9 @@ from dataclasses import dataclass
 from types import MappingProxyType
 
 from shared.src.config.training_default_values import DEFAULT_TRAINING_OBJECTIVE_MAPPING
-from shared.src.config.classifier_head_defaults import (
-    DEFAULT_CLASSIFIER_HEAD_FIXMATCH_TRAINING_BACKEND_CONFIG,
-)
 
 TrainingAlgorithmScalar = str | int | float | bool
 
-FIXMATCH_V1_PROFILE_NAME = "fixmatch_v1"
 PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME = "prototype_pseudo_label_v1"
 PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME = "prototype_top1_confidence_v1"
 
@@ -53,23 +49,6 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_OBJECTIVE_MAPPING = _freeze_mapping(
     }
 )
 
-FIXMATCH_V1_OBJECTIVE_MAPPING = _freeze_mapping(
-    {
-        "algorithm_profile_name": FIXMATCH_V1_PROFILE_NAME,
-        "training_backend_name": "classifier_head_fixmatch_consistency",
-        "confidence_threshold": 0.95,
-        "margin_threshold": 0.0,
-        "example_generation_backend_name": "weak_strong_pair",
-        "evidence_backend_name": "fixmatch_weak_view_evidence",
-        "scorer_backend_name": "classifier_head_logits",
-        "acceptance_policy_name": "top1_confidence_only",
-        "privacy_guard_name": "classifier_head_clip_only",
-        **dict(
-            DEFAULT_CLASSIFIER_HEAD_FIXMATCH_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
-        ),
-    }
-)
-
 PROTOTYPE_PSEUDO_LABEL_V1_PROFILE = TrainingAlgorithmProfile(
     profile_name=PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME,
     objective_mapping=PROTOTYPE_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING,
@@ -88,17 +67,7 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE = TrainingAlgorithmProfile(
     ),
 )
 
-FIXMATCH_V1_PROFILE = TrainingAlgorithmProfile(
-    profile_name=FIXMATCH_V1_PROFILE_NAME,
-    objective_mapping=FIXMATCH_V1_OBJECTIVE_MAPPING,
-    description=(
-        "Weak/strong multiview + classifier-head logits + top1 confidence "
-        "gating을 사용하는 FixMatch-style consistency 조합."
-    ),
-)
-
 _TRAINING_ALGORITHM_PROFILE_REGISTRY: dict[str, TrainingAlgorithmProfile] = {
-    FIXMATCH_V1_PROFILE_NAME: FIXMATCH_V1_PROFILE,
     PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME: PROTOTYPE_PSEUDO_LABEL_V1_PROFILE,
     PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME: (
         PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE
@@ -136,9 +105,6 @@ def expand_training_objective_mapping(
 
 
 __all__ = [
-    "FIXMATCH_V1_OBJECTIVE_MAPPING",
-    "FIXMATCH_V1_PROFILE",
-    "FIXMATCH_V1_PROFILE_NAME",
     "PROTOTYPE_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING",
     "PROTOTYPE_PSEUDO_LABEL_V1_PROFILE",
     "PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME",

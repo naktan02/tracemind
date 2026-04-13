@@ -422,9 +422,9 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
     assert result.rounds[0].update_count > 0
 
 
-def test_evaluate_rows_uses_evidence_backend_for_acceptance_ratio() -> None:
+def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None:
     rows = [_row("q1", "panic panic", "anxiety")]
-    adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
+    adapter = _StaticEmbeddingAdapter({"panic panic": [0.6, 0.4]})
     adapter_state = VectorAdapterState.identity(
         model_id="hash_debug",
         model_revision="main",
@@ -440,13 +440,13 @@ def test_evaluate_rows_uses_evidence_backend_for_acceptance_ratio() -> None:
         prototype_pack=_pack_payload(),
         model_id="hash_debug",
         scoring_service=ScoringService(),
-        confidence_threshold=0.8,
+        confidence_threshold=0.9,
         margin_threshold=0.0,
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
                 "training_backend_name": "diagonal_scale_heuristic",
                 "example_generation_backend_name": "prototype_rescore",
-                "evidence_backend_name": "fixmatch_weak_view_evidence",
+                "evidence_backend_name": "prototype_similarity_evidence",
                 "scorer_backend_name": "prototype_similarity",
                 "score_policy_name": "max_cosine",
                 "acceptance_policy_name": "top1_confidence_only",
@@ -538,150 +538,3 @@ def test_build_training_examples_supports_multiview_row_fields_when_present() ->
     assert examples[0].strong_embedding == pytest.approx(
         [0.9701425001453318, 0.24253562503633294]
     )
-
-
-def test_run_simulation_supports_classifier_head_fixmatch_path(tmp_path) -> None:
-    train_rows = [
-        _row("a1", "panic panic", "anxiety"),
-        _row("a2", "panic panic", "anxiety"),
-        _row("a3", "panic panic", "anxiety"),
-        _row("d1", "sad sad", "depression"),
-        _row("d2", "sad sad", "depression"),
-        _row("d3", "sad sad", "depression"),
-        _row("n1", "calm calm", "normal"),
-        _row("n2", "calm calm", "normal"),
-        _row("n3", "calm calm", "normal"),
-        _row("s1", "die die", "suicidal"),
-        _row("s2", "die die", "suicidal"),
-        _row("s3", "die die", "suicidal"),
-    ]
-    validation_rows = [
-        _row("va", "panic panic", "anxiety"),
-        _row("vd", "sad sad", "depression"),
-        _row("vn", "calm calm", "normal"),
-        _row("vs", "die die", "suicidal"),
-    ]
-    for row in (*train_rows, *validation_rows):
-        row["weak_text"] = str(row["text"])
-        row["strong_text"] = str(row["text"])
-
-    result = run_simulation(
-        train_rows=train_rows,
-        validation_rows=validation_rows,
-        output_dir=tmp_path / "simulation_fixmatch",
-        client_count=4,
-        rounds=1,
-        bootstrap_ratio=1 / 3,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="head_only",
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head",
-            aggregation_backend_name="fedavg",
-        ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
-        training_task_config=FederatedTrainingTaskConfig(
-            local_epochs=1,
-            batch_size=16,
-            learning_rate=1e-2,
-            max_steps=1,
-            min_required_examples=1,
-            gradient_clip_norm=1.0,
-            objective_config=TrainingObjectiveConfig.from_mapping(
-                {
-                    "algorithm_profile_name": "fixmatch_v1",
-                    "training_backend_name": "classifier_head_fixmatch_consistency",
-                    "confidence_threshold": 0.95,
-                    "margin_threshold": 0.0,
-                    "example_generation_backend_name": "weak_strong_pair",
-                    "evidence_backend_name": "fixmatch_weak_view_evidence",
-                    "scorer_backend_name": "classifier_head_logits",
-                    "acceptance_policy_name": "top1_confidence_only",
-                    "privacy_guard_name": "classifier_head_clip_only",
-                    "training_backend.consistency_loss_weight": 1.0,
-                    "training_backend.step_scale_multiplier": 1.0,
-                    "training_backend.bias_learning_rate_multiplier": 1.0,
-                }
-            ),
-            selection_policy=TrainingSelectionPolicy(max_examples=8),
-        ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.95,
-            margin_threshold=0.0,
-            scorer_backend_name="classifier_head_logits",
-            score_policy_name=None,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-    )
-
-    assert result.rounds
-    assert result.rounds[0].update_count > 0
-
-
-def test_run_simulation_rejects_classifier_head_with_multi_prototype_builder(
-    tmp_path,
-) -> None:
-    train_rows = [
-        _row("a1", "panic panic", "anxiety"),
-        _row("a2", "panic panic", "anxiety"),
-        _row("n1", "calm calm", "normal"),
-        _row("n2", "calm calm", "normal"),
-        _row("a3", "panic panic", "anxiety"),
-        _row("n3", "calm calm", "normal"),
-    ]
-    validation_rows = [
-        _row("va1", "panic panic", "anxiety"),
-        _row("vn1", "calm calm", "normal"),
-    ]
-    for row in (*train_rows, *validation_rows):
-        row["weak_text"] = str(row["text"])
-        row["strong_text"] = str(row["text"])
-
-    with pytest.raises(ValueError, match="prototype_builder=single"):
-        run_simulation(
-            train_rows=train_rows,
-            validation_rows=validation_rows,
-            output_dir=tmp_path / "simulation_fixmatch_kmeans",
-            client_count=2,
-            rounds=1,
-            bootstrap_ratio=0.5,
-            seed=7,
-            embedding_spec=EmbeddingAdapterSpec(
-                backend="hash_debug",
-                model_id="hash_debug",
-                revision="sim",
-                hash_dim=32,
-            ),
-            model_id="tracemind-embed-sim",
-            training_scope="head_only",
-            round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="classifier_head",
-                aggregation_backend_name="fedavg",
-            ),
-            prototype_build_strategy=KMeansPrototypeBuildStrategy(candidate_ks=(2,)),
-            shard_policy=_default_shard_policy(),
-            training_task_config=_default_training_task_config(
-                confidence_threshold=0.95,
-                margin_threshold=0.0,
-                max_examples=8,
-                gradient_clip_norm=1.0,
-                scorer_backend_name="classifier_head_logits",
-                score_policy_name=None,
-            ),
-            validation_config=_default_validation_config(
-                confidence_threshold=0.95,
-                margin_threshold=0.0,
-                scorer_backend_name="classifier_head_logits",
-                score_policy_name=None,
-            ),
-            prototype_rebuild_config=_default_prototype_rebuild_config(),
-            diagnostics_config=_default_diagnostics_config(),
-        )

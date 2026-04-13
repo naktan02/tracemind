@@ -17,7 +17,6 @@ from hydra import compose, initialize_config_module
         "experiments/run_federated_simulation",
         "experiments/train_softmax_classifier",
         "experiments/train_lora_classifier",
-        "experiments/train_lora_fixmatch",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -87,18 +86,6 @@ def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_classifier",
-            overrides=["runtime=auto_local"],
-        )
-
-    assert cfg.runtime.name == "auto_local"
-    assert cfg.runtime.device == "auto"
-    assert cfg.runtime.local_files_only is True
-
-
-def test_train_lora_fixmatch_supports_auto_local_runtime_override() -> None:
-    with initialize_config_module(version_base=None, config_module="scripts.conf"):
-        cfg = compose(
-            config_name="experiments/train_lora_fixmatch",
             overrides=["runtime=auto_local"],
         )
 
@@ -228,22 +215,6 @@ def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() 
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.lora.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
-
-
-def test_train_lora_fixmatch_defaults_to_gpu_online_and_fixmatch_recipe() -> None:
-    with initialize_config_module(version_base=None, config_module="scripts.conf"):
-        cfg = compose(config_name="experiments/train_lora_fixmatch")
-
-    assert cfg.dataset.name == "ourafla"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.paper_backbone.name == "mxbai_encoder"
-    assert cfg.lora.target_modules == "all-linear"
-    assert cfg.fixmatch.confidence_threshold == 0.95
-    assert cfg.fixmatch.unlabeled_batch_size_multiplier == 7
-    assert cfg.fixmatch.weak_view_name == "identity"
-    assert cfg.fixmatch.strong_augmentation_name == "text_safe_noise_v1"
-    assert cfg.unlabeled_train_jsonl is None
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:

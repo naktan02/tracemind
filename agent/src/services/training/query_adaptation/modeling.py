@@ -1,4 +1,4 @@
-"""LoRA classifier 실험용 모델 빌더."""
+"""Query adaptation supervised baseline용 LoRA 모델 빌더."""
 
 from __future__ import annotations
 
@@ -8,6 +8,8 @@ from torch import nn
 
 
 def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any]:
+    """실험 extra가 설치돼 있을 때만 transformer/peft stack을 연다."""
+
     try:
         from peft import LoraConfig, TaskType, get_peft_model
         from transformers import AutoModel, AutoTokenizer
@@ -20,6 +22,8 @@ def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any]:
 
 
 class LoraTextClassifier(nn.Module):
+    """Frozen backbone + LoRA + classifier head 묶음."""
+
     def __init__(
         self,
         *,
@@ -48,6 +52,8 @@ class LoraTextClassifier(nn.Module):
 
 
 def count_parameters(model: nn.Module) -> dict[str, int]:
+    """총 파라미터와 학습 가능한 파라미터 수를 반환한다."""
+
     total = 0
     trainable = 0
     for parameter in model.parameters():
@@ -70,6 +76,8 @@ def build_model(
     categories: list[str],
     device: str,
 ) -> tuple[LoraTextClassifier, Any, dict[str, Any]]:
+    """Hydra config 기준으로 baseline LoRA classifier를 조립한다."""
+
     AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model = (
         require_transformer_stack()
     )
@@ -129,3 +137,11 @@ def build_model(
         "parameter_counts": count_parameters(model),
     }
     return model, tokenizer, summary
+
+
+__all__ = [
+    "LoraTextClassifier",
+    "build_model",
+    "count_parameters",
+    "require_transformer_stack",
+]

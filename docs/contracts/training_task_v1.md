@@ -124,21 +124,22 @@ family는 서로 다른 선택이다.
   "model_id": "tracemind-embed",
   "model_revision": "tm_embed_2026_03_29_001",
   "task_type": "pseudo_label_self_training",
-  "training_scope": "head_only",
+  "training_scope": "adapter_only",
   "local_epochs": 1,
   "batch_size": 16,
   "learning_rate": 0.0001,
   "max_steps": 50,
   "objective_config": {
-    "algorithm_profile_name": "fixmatch_v1",
-    "training_backend_name": "classifier_head_fixmatch_consistency",
-    "confidence_threshold": 0.95,
-    "margin_threshold": 0.0,
-    "example_generation_backend_name": "weak_strong_pair",
-    "evidence_backend_name": "fixmatch_weak_view_evidence",
-    "scorer_backend_name": "classifier_head_logits",
-    "acceptance_policy_name": "top1_confidence_only",
-    "privacy_guard_name": "classifier_head_clip_only"
+    "algorithm_profile_name": "prototype_pseudo_label_v1",
+    "training_backend_name": "diagonal_scale_heuristic",
+    "confidence_threshold": 0.6,
+    "margin_threshold": 0.02,
+    "example_generation_backend_name": "prototype_rescore",
+    "evidence_backend_name": "prototype_similarity_evidence",
+    "scorer_backend_name": "prototype_similarity",
+    "score_policy_name": "max_cosine",
+    "acceptance_policy_name": "top1_margin_threshold",
+    "privacy_guard_name": "diagonal_scale_clip_only"
   },
   "selection_policy": {
     "max_examples": 128,
@@ -158,8 +159,8 @@ server round runtime이 내부적으로 어떤 aggregation backend를 쓰는지�
 예를 들어 현재 server-owned round runtime 기본 aggregation backend는 `fedavg`지만,
 이 값은 `TrainingTaskPayload.secure_aggregation` 필드와 같은 의미가 아니다.
 
-위 JSON은 시스템/FL runtime의 `head_only + classifier_head` 계열 예시다.
-논문 트랙의 `central LoRA FixMatch/FreeMatch/PabLO` 비교는 별도 중앙 trainer
+위 JSON은 시스템/FL runtime의 `adapter_only + prototype_pseudo_label_v1` 예시다.
+논문 트랙의 중앙 LoRA 적응 비교는 별도 중앙 trainer
 config를 사용하며, 이 예시를 그대로 재현 기준으로 삼지 않는다.
 
 ---

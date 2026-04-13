@@ -9,8 +9,10 @@ from typing import Any
 
 import torch
 
+from agent.src.services.training.query_adaptation.modeling import (
+    LoraTextClassifier,
+)
 from scripts.run_artifacts import build_run_dir
-from .modeling import LoraTextClassifier
 
 
 def write_run_artifacts(

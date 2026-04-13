@@ -20,8 +20,10 @@
 - 라벨된 데이터셋은 prototype build 전용이 아니라 supervised classifier seed와
   validation/calibration split source로도 직접 사용한다.
 - query 적응의 현재 권장 순서는 `query accumulation -> threshold/policy selection -> LoRA + classifier adaptation`이다.
-- `FixMatch`, `FreeMatch`, `PabLO`, `SAT`는 이 적응 단계에서 같은 scaffold 위에 올린다.
-- `UPET`, `LiST`는 메인 FixMatch family와 분리된 보조 비교축이다.
+- query-domain 적응의 canonical baseline은 `supervised LoRA + classifier`다.
+- 첫 SSL 실험선은 `pseudo-label self-training`이다.
+- `R-Drop`과 `MixText`는 같은 scaffold 위의 후속 비교축이다.
+- `TAPT`는 적응 앞단의 optional preadaptation phase다.
 - LoRA는 query-domain 적응과 이후 FL LoRA family translation에 유리하다.
 - `v1` 시스템은 여전히 `same global representation + different local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
@@ -99,9 +101,9 @@ Reddit Labeled Data
 1. 초기 seed의 목적은 표현을 함부로 움직이지 않고 안정적인 classifier 기준선을 만드는 것이다.
 2. 메인 라벨링은 classifier posterior가 담당하고, prototype은 메인 판정기가 아니다.
 3. query-domain 적응은 query가 충분히 쌓인 뒤에만 연다.
-4. `FixMatch`, `FreeMatch`, `PabLO`, `SAT`는 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙 위에서 비교한다.
-5. `UPET`, `LiST`는 동일한 적응 scaffold를 공유하되 메인 FixMatch family 표와는 분리해 읽는다.
-6. raw query text는 LoRA 재학습과 weak/strong augmentation을 위해 로컬에 남겨야 한다.
+4. baseline 이후에는 `pseudo-label self-training`, `R-Drop`, `MixText`를 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙 위에서 비교한다.
+5. `TAPT`는 backbone을 target query 분포로 먼저 적응시키는 별도 preadaptation 단계다.
+6. raw query text는 LoRA 재학습과 future query adaptation에 필요하므로 로컬에 남겨야 한다.
 
 ### 3-3. 시스템 FL 레일
 
@@ -159,7 +161,7 @@ Raw Event / Local Signal
 1. 중앙집중형 `fixed embedding + classifier` seed baseline을 canonical하게 닫는다.
 2. query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 설계한다.
    - local source of truth: `docs/contracts/query_buffer_v1.md`
-3. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `FixMatch -> FreeMatch -> PabLO`를 핵심 알고리즘 변경 최소화 기준으로 닫는다.
+3. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `supervised -> pseudo-label -> R-Drop -> MixText`를 핵심 objective 변경 최소화 기준으로 닫는다.
 4. 이후에야 시스템 FL translation 기준선을 선택한다.
 5. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
 6. 아직 두 번째 real aggregation backend는 없다.
@@ -183,7 +185,7 @@ Raw Event / Local Signal
 
 ### Phase 3. 중앙집중형 적응 비교
 
-- `LoRA + classifier` 적응 위에서 `FixMatch -> FreeMatch -> PabLO`를 비교한다.
+- `LoRA + classifier` 적응 위에서 `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
 
 ### Phase 4. 시스템 FL baseline
 
@@ -209,8 +211,8 @@ Raw Event / Local Signal
 2. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp, model_revision)를 남길지 정한다.
 3. threshold/policy selection과 소량 수동 라벨 개입 지점을 설계한다.
 4. 그다음 `LoRA + classifier` 적응용 supervised baseline을 연다.
-5. 같은 query-domain 적응 scaffold에서 `FixMatch`, `FreeMatch`, `PabLO`를 비교한다.
-6. 필요하면 `UPET`, `LiST`, `SAT`를 보조 비교축으로 추가한다.
+5. 같은 query-domain 적응 scaffold에서 `pseudo-label self-training`, `R-Drop`, `MixText`를 비교한다.
+6. 필요하면 `TAPT`를 preadaptation 축으로 추가한다.
 7. 적응 winner를 고른 뒤에 시스템용 `FL supervised classifier` baseline으로 넘어간다.
 8. 그 winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
 9. 그 다음에야 live agent path와 richer FL family를 닫는다.
@@ -226,7 +228,7 @@ Raw Event / Local Signal
 ### query-domain 적응
 
 1. query 버퍼와 threshold/policy selection 규칙이 문서로 명확하다.
-2. 적응 단계에서 supervised / FixMatch / FreeMatch / PabLO 비교가 가능하다.
+2. 적응 단계에서 supervised / pseudo-label self-training / R-Drop / MixText 비교가 가능하다.
 3. raw query text retention과 pseudo-label 사용 범위가 명확하다.
 
 ### 시스템 FL

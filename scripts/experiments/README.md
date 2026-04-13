@@ -25,11 +25,9 @@
 - `train_lora_classifier.py`
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` scaffold entrypoint
 - `lora_classifier/`
-  - query-domain LoRA scaffold의 data/modeling/training/artifact helper
-  - `scripts/conf/experiments/train_lora_fixmatch.yaml`은 `FixMatch-LoRA` 실험의 Hydra source-of-truth config다.
+  - query-domain LoRA scaffold의 export/artifact helper
   - `query_adaptation_io.py`는 agent-local adaptation dataset을 현재 JSONL 입력 shape로 export한다.
-  - `query_adaptation_multiview_io.py`는 weak/strong view가 준비된 multiview dataset을 같은 JSONL shape로 export한다.
-  - `ssl_data.py`는 labeled + weak unlabeled + strong unlabeled 3-branch batch loader를 만든다.
+  - `query_adaptation_multiview_io.py`는 필요 시 multiview dataset을 같은 JSONL shape로 export한다.
   - export는 `source_row.query_id`를 single source of truth로 쓰고, locale은 typed provenance에서 읽는다.
   - export는 JSONL/manifest와 함께 dataset summary JSON도 남긴다.
   - `query_adaptation_runner.py`는 그 export 결과로 기존 supervised LoRA runner를 실행한다.

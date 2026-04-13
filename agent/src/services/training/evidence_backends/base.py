@@ -13,7 +13,6 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 
 ANY_ADAPTER_KIND = "*"
 PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME = "prototype_similarity_evidence"
-FIXMATCH_WEAK_VIEW_EVIDENCE_BACKEND_NAME = "fixmatch_weak_view_evidence"
 
 
 class PseudoLabelEvidenceBackend(Protocol):
@@ -38,7 +37,6 @@ PseudoLabelEvidenceBackendFactory = Callable[
 
 __all__ = [
     "ANY_ADAPTER_KIND",
-    "FIXMATCH_WEAK_VIEW_EVIDENCE_BACKEND_NAME",
     "PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME",
     "PseudoLabelEvidenceBackend",
     "PseudoLabelEvidenceBackendFactory",

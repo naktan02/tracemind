@@ -7,13 +7,20 @@ from pathlib import Path
 from typing import Any
 
 from agent.src.infrastructure.runtime import resolve_runtime_device
+from agent.src.services.training.query_adaptation.data import (
+    build_dataloader,
+    build_label_index,
+)
+from agent.src.services.training.query_adaptation.modeling import build_model
+from agent.src.services.training.query_adaptation.training import (
+    evaluate_classifier,
+    set_seed,
+    train_classifier,
+)
 from scripts.classification_report import render_confusion_table, render_per_category_table
 from scripts.labeled_query_rows import load_labeled_query_rows
 
 from .artifacts import write_run_artifacts
-from .data import build_dataloader, build_label_index
-from .modeling import build_model
-from .training import evaluate_classifier, set_seed, train_classifier
 
 
 def run_supervised_lora_baseline(cfg) -> dict[str, str]:

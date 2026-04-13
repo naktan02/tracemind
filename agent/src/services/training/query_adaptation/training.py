@@ -1,4 +1,4 @@
-"""LoRA classifier 실험용 학습/평가 유틸리티."""
+"""Query adaptation supervised baseline용 학습/평가 유틸리티."""
 
 from __future__ import annotations
 
@@ -15,15 +15,17 @@ from scripts.classification_report import (
     safe_divide,
     summarize_per_category,
 )
+
 from .modeling import LoraTextClassifier
 
 
 def set_seed(seed: int) -> None:
+    """python/torch random seed를 맞춘다."""
+
     random.seed(seed)
     torch.manual_seed(seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(seed)
-
 
 
 def evaluate_classifier(
@@ -33,6 +35,8 @@ def evaluate_classifier(
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
+    """분류기 평가 지표를 계산한다."""
+
     model.eval()
     criterion = nn.CrossEntropyLoss()
     actual_labels: list[str] = []
@@ -113,6 +117,8 @@ def build_optimizer(
     classifier_learning_rate: float,
     weight_decay: float,
 ) -> torch.optim.Optimizer:
+    """LoRA 파라미터와 classifier 파라미터를 분리해 optimizer를 만든다."""
+
     classifier_params = []
     lora_params = []
     for name, parameter in model.named_parameters():
@@ -153,6 +159,8 @@ def train_classifier(
     max_grad_norm: float,
     log_every_steps: int,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
+    """Supervised LoRA + classifier baseline을 학습한다."""
+
     optimizer = build_optimizer(
         model=model,
         learning_rate=learning_rate,
@@ -227,3 +235,11 @@ def train_classifier(
 
     model.load_state_dict(best_state_dict)
     return model, history, best_selection_report
+
+
+__all__ = [
+    "build_optimizer",
+    "evaluate_classifier",
+    "set_seed",
+    "train_classifier",
+]

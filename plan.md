@@ -40,16 +40,17 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
    - 적응 단계: `query accumulation -> threshold/policy selection -> LoRA + classifier`
    - 시스템 트랙: 적응 winner를 `FL/runtime` 제약에 맞게 translation
 4. 첫 비교축은 `fixed embedding + classifier` vs `LoRA + classifier`다.
-5. `FixMatch`, `FreeMatch`, `PabLO`, `SAT`는 query-domain 적응 단계에서 같은 scaffold 위에 올린다.
-6. `UPET`, `LiST`는 메인 FixMatch family와 분리된 보조 비교축으로 둔다.
-7. 시스템 트랙의 v1 baseline은 여전히
+5. query-domain 적응의 메인 baseline은 `supervised LoRA + classifier`다.
+6. 첫 SSL 실험선은 `pseudo-label self-training`, 그 다음은 `R-Drop`, `MixText` 순으로 둔다.
+7. `TAPT`는 분류 objective와 분리된 optional preadaptation phase로 둔다.
+8. 시스템 트랙의 v1 baseline은 여전히
    `embedding -> global classifier -> local interpretation`으로 둔다.
-8. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
+9. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
    validation/calibration split source로도 직접 사용한다.
-9. query 적응을 위해 원문 query, confidence, predicted label 같은 로컬 버퍼를 유지한다.
-10. diagonal scale adapter와 prototype scoring은 비교 실험 및 확장 축으로 유지한다.
-11. single prototype baseline은 허용하고, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
-12. full encoder FL은 upper-bound 또는 마지막 확장 옵션으로 둔다.
+10. query 적응을 위해 원문 query, confidence, predicted label 같은 로컬 버퍼를 유지한다.
+11. diagonal scale adapter와 prototype scoring은 비교 실험 및 확장 축으로 유지한다.
+12. single prototype baseline은 허용하고, multi-prototype runtime은 필요성이 확인될 때 다시 연다.
+13. full encoder FL은 upper-bound 또는 마지막 확장 옵션으로 둔다.
 
 ## 4. 구조 원칙
 

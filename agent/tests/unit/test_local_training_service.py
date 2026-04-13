@@ -24,7 +24,6 @@ from agent.src.services.training.training_backends import (
     register_shared_adapter_training_backend,
 )
 from shared.src.contracts.adapter_contracts import (
-    ClassifierHeadDelta,
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
     register_shared_adapter_update_payload_type,
@@ -258,94 +257,6 @@ def test_local_training_service_skips_update_when_examples_are_insufficient(
     assert result.selection_result.accepted_count == 1
     assert result.update_envelope is None
     assert result.update_payload is None
-
-
-def test_local_training_service_can_build_classifier_head_fixmatch_update(
-    tmp_path: Path,
-) -> None:
-    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
-    service = LocalTrainingService(repository=repository)
-    manifest = ModelManifest(
-        schema_version="model_manifest.v1",
-        model_id="tracemind-embed",
-        model_revision="rev_head_000",
-        published_at=datetime(2026, 4, 10, tzinfo=timezone.utc),
-        artifact_kind="shared_adapter_state",
-        artifact_ref="/tmp/rev_head_000.json",
-        prototype_version="proto_head_000",
-        training_scope="head_only",
-        training_enabled=True,
-        compatible_task_types=("pseudo_label_self_training",),
-    )
-    training_task = TrainingTask(
-        schema_version="training_task.v1",
-        task_id="task_fixmatch",
-        round_id="round_fixmatch",
-        model_id="tracemind-embed",
-        model_revision="rev_head_000",
-        task_type="pseudo_label_self_training",
-        training_scope="head_only",
-        local_epochs=1,
-        batch_size=8,
-        learning_rate=1e-1,
-        max_steps=1,
-        objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "classifier_head_fixmatch_consistency",
-                "confidence_threshold": 0.95,
-                "margin_threshold": 0.0,
-                "example_generation_backend_name": "weak_strong_pair",
-                "evidence_backend_name": "fixmatch_weak_view_evidence",
-                "scorer_backend_name": "classifier_head_logits",
-                "acceptance_policy_name": "top1_confidence_only",
-                "privacy_guard_name": "classifier_head_clip_only",
-            }
-        ),
-        selection_policy=TrainingSelectionPolicy(max_examples=4),
-        gradient_clip_norm=10.0,
-    )
-    weak_event = ScoredEvent(
-        query_id="q_fixmatch",
-        occurred_at=datetime(2026, 4, 10, tzinfo=timezone.utc),
-        translated_text="panic weak",
-        embedding_model_id="tracemind-embed",
-        translation_model_id=None,
-        category_scores={"anxiety": 8.0, "normal": -1.0},
-    )
-    strong_event = ScoredEvent(
-        query_id="q_fixmatch",
-        occurred_at=datetime(2026, 4, 10, tzinfo=timezone.utc),
-        translated_text="panic strong",
-        embedding_model_id="tracemind-embed",
-        translation_model_id=None,
-        category_scores={"anxiety": 6.0, "normal": -2.0},
-    )
-    example = EmbeddedTrainingExample(
-        scored_event=weak_event,
-        embedding=[1.0, 0.0],
-        view_kind="weak_strong_pair",
-        weak_scored_event=weak_event,
-        weak_embedding=[1.0, 0.0],
-        strong_scored_event=strong_event,
-        strong_embedding=[1.0, 0.0],
-    )
-
-    result = service.run(
-        LocalTrainingRequest(
-            training_examples=(example,),
-            training_task=training_task,
-            model_manifest=manifest,
-        )
-    )
-
-    assert result.selection_result.accepted_count == 1
-    assert result.update_envelope is not None
-    assert isinstance(result.update_payload, ClassifierHeadDelta)
-    assert result.update_payload.adapter_kind == "classifier_head"
-    assert result.update_envelope.payload_format == "classifier_head_update"
-    assert result.update_payload.label_counts == {"anxiety": 1}
-    assert result.update_payload.l2_norm() > 0.0
-
 
 def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scales_delta(
     tmp_path: Path,

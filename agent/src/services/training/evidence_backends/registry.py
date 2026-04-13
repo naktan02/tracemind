@@ -6,12 +6,10 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import (
-    FIXMATCH_WEAK_VIEW_EVIDENCE_BACKEND_NAME,
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     PseudoLabelEvidenceBackend,
     PseudoLabelEvidenceBackendFactory,
 )
-from .fixmatch import FixMatchWeakViewEvidenceBackend
 from .prototype_similarity import PrototypeSimilarityEvidenceBackend
 
 _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY: dict[
@@ -64,10 +62,6 @@ def resolve_pseudo_label_evidence_backend(
 register_pseudo_label_evidence_backend(
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     factory=lambda _objective_config: PrototypeSimilarityEvidenceBackend(),
-)
-register_pseudo_label_evidence_backend(
-    FIXMATCH_WEAK_VIEW_EVIDENCE_BACKEND_NAME,
-    factory=FixMatchWeakViewEvidenceBackend.from_objective_config,
 )
 
 

@@ -21,7 +21,7 @@
 
 ### Phase 3. 중앙집중형 적응 비교
 
-- `LoRA + classifier` 적응 위에서 `FixMatch -> FreeMatch -> PabLO`를 비교한다.
+- `LoRA + classifier` 적응 위에서 `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
 
 ### Phase 4. 시스템 FL baseline
 
@@ -71,10 +71,8 @@
 - single-view query adaptation dataset에서 weak/strong source row를 만드는
   multiview preparation service와 JSONL export helper가 들어갔다.
 - multiview preparation은 augmentation recipe를 고정하지 않고 pluggable augmenter hook으로 연다.
-- `scripts/conf/experiments/train_lora_fixmatch.yaml`이
-  query-domain `FixMatch-LoRA` 실험의 config source of truth로 추가됐다.
-- `scripts/experiments/lora_classifier/ssl_data.py`가
-  `labeled / weak unlabeled / strong unlabeled` 3-branch batch loader를 제공한다.
+- supervised baseline 학습 코어를 `agent/src/services/training/query_adaptation/`로 옮기고,
+  scripts는 entrypoint/artifact layer로 얇게 정리했다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -82,8 +80,8 @@
 
 ## Next Session Checklist
 
-1. `FixMatchTextAugmenterV1`을 붙여 weak/strong recipe를 실제로 만든다.
-2. trainer step 안에 `weak -> pseudo-label -> threshold gate -> strong consistency`를 구현한다.
+1. `pseudo-label self-training` objective를 baseline trainer 위에 추가한다.
+2. query buffer selection 결과를 baseline trainer 입력 dataset으로 직접 연결한다.
 3. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
 
 ## Guardrails

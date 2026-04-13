@@ -1,4 +1,4 @@
-"""LoRA classifier 실험용 데이터 준비 유틸리티."""
+"""Query adaptation supervised baseline용 데이터 준비 유틸리티."""
 
 from __future__ import annotations
 
@@ -11,6 +11,8 @@ from scripts.labeled_query_rows import LabeledQueryRow
 
 
 class TextLabelDataset(Dataset[dict[str, Any]]):
+    """라벨된 query row를 tokenizer 입력 배치로 노출한다."""
+
     def __init__(
         self,
         *,
@@ -39,6 +41,8 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
 def build_label_index(
     rows: list[LabeledQueryRow],
 ) -> tuple[list[str], dict[str, int]]:
+    """학습 row에서 canonical label index를 만든다."""
+
     categories = sorted({str(row["mapped_label_4"]) for row in rows})
     return categories, {category: index for index, category in enumerate(categories)}
 
@@ -53,6 +57,8 @@ def build_dataloader(
     task_prefix: str,
     shuffle: bool,
 ) -> DataLoader[dict[str, torch.Tensor]]:
+    """Labeled row를 baseline trainer 입력 DataLoader로 변환한다."""
+
     dataset = TextLabelDataset(
         rows=rows,
         label_to_index=label_to_index,
@@ -78,3 +84,10 @@ def build_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
     )
+
+
+__all__ = [
+    "TextLabelDataset",
+    "build_dataloader",
+    "build_label_index",
+]

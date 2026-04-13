@@ -48,7 +48,7 @@ Query Buffer (raw text)
 -> Frozen Backbone
 -> LoRA Modules
 -> Classifier Head
--> Pseudo-label / SSL Rule
+-> Adaptation Objective
 -> Central Evaluation
 ```
 
@@ -57,8 +57,8 @@ Query Buffer (raw text)
 1. backbone 본체 가중치는 고정한다.
 2. trainable parameter는 LoRA module과 classifier head로 제한한다.
 3. 같은 비교표 안에서는 backbone, tokenizer, label schema, LoRA spec을 고정한다.
-4. 방법론 비교에서는 pseudo-label/consistency rule만 바꾼다.
-5. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 weak/strong augmentation을 닫을 수 없다.
+4. 방법론 비교에서는 adaptation objective만 바꾼다.
+5. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
 
 ## 적응 비교축
 
@@ -67,23 +67,13 @@ Query Buffer (raw text)
 같은 LoRA adaptation scaffold 위에서 아래를 우선 비교한다.
 
 1. `supervised adaptation`
-2. `FixMatch`
-3. `FreeMatch`
-4. `PabLO`
+2. `pseudo-label self-training`
+3. `R-Drop`
+4. `MixText`
 
 옵션:
 
-- `SAT`는 weak/strong self-training 보조 비교축으로 추가 가능하다.
-
-### 보조 비교 family
-
-아래는 메인 FixMatch family와 분리된 PEFT/self-training 계열로 다룬다.
-
-1. `UPET`
-2. `LiST`
-
-이 둘은 같은 표에 기계적으로 섞기보다,
-`PEFT self-training family`로 따로 읽는 것이 더 정직하다.
+- `TAPT`는 classifier objective 앞단의 optional preadaptation phase로 추가 가능하다.
 
 ## 고정해야 할 입력 조건
 
@@ -95,7 +85,7 @@ Query Buffer (raw text)
 4. LoRA rank / alpha / dropout
 5. classifier head 형태
 6. query selection rule
-7. weak/strong augmentation recipe
+7. adaptation objective 세부 하이퍼파라미터
 
 이 중 하나라도 바뀌면 방법론 비교가 아니라 scaffold 비교가 된다.
 
@@ -109,7 +99,7 @@ Query Buffer (raw text)
 4. LoRA adapter checkpoint
 5. classifier head checkpoint
 6. label schema snapshot
-7. threshold / augmentation config snapshot
+7. threshold / objective config snapshot
 8. validation / test / query-eval report
 9. acceptance ratio, confidence, calibration 관련 요약
 
@@ -131,13 +121,15 @@ Query Buffer (raw text)
 즉, 이 문서는 query-domain 적응에서 `LoRA + classifier`가 실제로 도움이 되는지 검증하고,
 시스템 트랙은 그 winner를 `어떤 shared family로 배포/집계할지`를 다시 설계한다.
 
-## full 비교 위치
+## phase 분리
 
-`full`은 기본 scaffold가 아니라 query-domain 적응의 upper-bound 비교축으로 둔다.
+`TAPT`는 분류 objective와 다른 phase로 다룬다.
 
 예:
 
-- `FixMatch-LoRA` vs `FixMatch-full`
-- `FreeMatch-LoRA` vs `FreeMatch-full`
+- `TAPT -> supervised LoRA`
+- `TAPT -> pseudo-label self-training`
+- `TAPT -> MixText`
 
-이 비교는 가능하지만, 메인 적응 비교표보다 뒤에 두는 편이 좋다.
+즉 `TAPT`는 메인 adaptation objective 자체라기보다,
+target query 분포에 backbone을 먼저 맞추는 앞단 preadaptation 단계다.
