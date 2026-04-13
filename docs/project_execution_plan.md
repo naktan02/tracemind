@@ -24,7 +24,10 @@
 - query-domain supervised baseline의 canonical entrypoint는 `scripts/experiments/train_lora_classifier.py`이고,
   scripts runner는 `scripts/experiments/lora_classifier/runner.py`, 학습 코어는 `agent/src/services/training/query_adaptation/`가 소유한다.
 - 첫 SSL 실험선은 `pseudo-label self-training`이다.
-- `pseudo-label self-training` entrypoint는 `scripts/experiments/train_lora_pseudo_label_classifier.py`이며,
+- 첫 진입 bootstrap entrypoint는 `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`이며,
+  `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙인 뒤
+  `LoRA + classifier` student를 학습한다.
+- 이후 같은-family loop는 `scripts/experiments/train_lora_pseudo_label_classifier.py`로 이어지고,
   seed labeled rows와 accepted pseudo-labeled rows를 합쳐 같은 baseline runner로 넘긴다.
 - `R-Drop`과 `MixText`는 같은 scaffold 위의 후속 비교축이다.
 - `TAPT`는 적응 앞단의 optional preadaptation phase다.
@@ -105,9 +108,11 @@ Reddit Labeled Data
 1. 초기 seed의 목적은 표현을 함부로 움직이지 않고 안정적인 classifier 기준선을 만드는 것이다.
 2. 메인 라벨링은 classifier posterior가 담당하고, prototype은 메인 판정기가 아니다.
 3. query-domain 적응은 query가 충분히 쌓인 뒤에만 연다.
-4. baseline 이후에는 `pseudo-label self-training`, `R-Drop`, `MixText`를 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙 위에서 비교한다.
-5. `TAPT`는 backbone을 target query 분포로 먼저 적응시키는 별도 preadaptation 단계다.
-6. raw query text는 LoRA 재학습과 future query adaptation에 필요하므로 로컬에 남겨야 한다.
+4. 첫 pseudo-label bootstrap은 `fixed classifier teacher -> LoRA student`로 두고,
+   그 이후 loop에서만 `LoRA + classifier` same-family self-training을 연다.
+5. baseline 이후에는 `pseudo-label self-training`, `R-Drop`, `MixText`를 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙 위에서 비교한다.
+6. `TAPT`는 backbone을 target query 분포로 먼저 적응시키는 별도 preadaptation 단계다.
+7. raw query text는 LoRA 재학습과 future query adaptation에 필요하므로 로컬에 남겨야 한다.
 
 ### 3-3. 시스템 FL 레일
 

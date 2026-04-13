@@ -2,16 +2,41 @@
 
 defaults:
   - /dataset: ourafla
+  - /embedding: mxbai
   - /runtime: gpu_online
   - /paper_backbone: mxbai_encoder
   - /lora: default
   - /lora_run_preset: default
-  - /lora_train_source: dataset_train
+  - /bootstrap_teacher_source: dataset_default
+  - /training_algorithm_profile: prototype_pseudo_label_v1
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
 
-train_jsonl: ${lora_train_source.train_jsonl}
+bootstrap_version: ""
+teacher_train_jsonl: ${bootstrap_teacher_source.teacher_train_jsonl}
+teacher_unlabeled_jsonl: ${bootstrap_teacher_source.teacher_unlabeled_jsonl}
+teacher_embed_chunk_size: 1024
+teacher_train_batch_size: 256
+teacher_eval_batch_size: 256
+teacher_epochs: 12
+teacher_learning_rate: 0.001
+teacher_weight_decay: 0.0001
+teacher_output_dir: runs/train_classifier
+teacher_model_output_dir: data/processed/classifier_heads
+teacher_classifier_version: ""
+
+bootstrap_split:
+  enabled: false
+  unlabeled_ratio: 0.2
+  seed: ${seed}
+
+pseudo_label_confidence_threshold: ${training_algorithm_profile.confidence_threshold}
+pseudo_label_margin_threshold: ${training_algorithm_profile.margin_threshold}
+pseudo_label_acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
+bootstrap_export_root: data/processed/lora_bootstrap_classifier_teacher
+
+train_jsonl: ${teacher_train_jsonl}
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/processed/lora_pseudo_label
 eval_sets:

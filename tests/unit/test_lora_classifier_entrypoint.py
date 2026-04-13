@@ -21,6 +21,20 @@ def test_train_lora_pseudo_label_classifier_entrypoint_imports_direct_runner() -
     assert entrypoint.run_pseudo_label_self_training is runner.run_pseudo_label_self_training
 
 
+def test_train_lora_bootstrap_classifier_teacher_entrypoint_imports_direct_runner() -> None:
+    entrypoint = importlib.import_module(
+        "scripts.experiments.train_lora_bootstrap_classifier_teacher"
+    )
+    runner = importlib.import_module(
+        "scripts.experiments.lora_classifier.bootstrap_runner"
+    )
+
+    assert (
+        entrypoint.run_fixed_classifier_teacher_lora_student_bootstrap
+        is runner.run_fixed_classifier_teacher_lora_student_bootstrap
+    )
+
+
 def test_lora_classifier_package_keeps_concrete_helpers_out_of_package_surface() -> None:
     package = importlib.import_module("scripts.experiments.lora_classifier")
 

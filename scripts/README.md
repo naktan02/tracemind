@@ -427,11 +427,103 @@ uv run python scripts/experiments/train_lora_classifier.py \
   epochs=1
 ```
 
+step 로그를 더 자주 보고 싶다면 직접 override를 주거나,
+`lora_run_preset=smoke_verbose_e1`를 선택한다.
+
+```bash
+uv run python scripts/experiments/train_lora_classifier.py \
+  runtime=gpu_local \
+  lora_run_preset=smoke_verbose_e1
+```
+
+현재 LoRA runner 로그는 `log_every_steps` 간격으로 `running_train_loss`만 출력한다.
+즉 진행률, 전체 step, ETA는 아직 기본 로그에 포함하지 않는다. 대략적인 진행량은
+`학습 row 수 / train_batch_size`로 epoch당 총 step 수를 계산해서 해석한다.
+
 pseudo-label self-training 실행:
 
 ```bash
 uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
+  lora_run_preset=smoke_verbose_e1 \
   pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
+```
+
+첫 진입 bootstrap 실행:
+
+```bash
+uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
+  lora_run_preset=smoke_verbose_e1 \
+  teacher_unlabeled_jsonl=/abs/path/to/unlabeled_pool.jsonl
+```
+
+중요:
+
+- `train_lora_bootstrap_classifier_teacher.py`의 기본 `teacher_unlabeled_jsonl`은 `null`이다.
+- 즉 아래 둘 중 하나를 반드시 해야 한다.
+  - `teacher_unlabeled_jsonl=...`를 직접 넘긴다.
+  - `bootstrap_split.enabled=true`로 켜고 train split 일부를 hidden unlabeled pool로 자동 분리한다.
+- 경로 override를 직접 길게 넘길 수도 있지만, 지금은 아래처럼 preset group 선택으로 줄일 수 있다.
+- 재사용 split은 `bootstrap_teacher_source=<preset>`과 `lora_train_source=<preset>`으로 고른다.
+- student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
+
+bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
+
+```bash
+uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
+  runtime=gpu_local \
+  bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14 \
+  lora_run_preset=smoke_verbose_e1 \
+  bootstrap_version=bootstrap_teacher_split30_2026_04_14_rerun \
+  teacher_classifier_version=fixed_teacher_split30_2026_04_14_rerun \
+  trainer_version=lora_student_bootstrap_split30_2026_04_14_rerun
+```
+
+같은 split 기준 supervised LoRA baseline 비교:
+
+```bash
+uv run python scripts/experiments/train_lora_classifier.py \
+  runtime=gpu_local \
+  lora_train_source=bootstrap_teacher_split30_2026_04_14 \
+  lora_run_preset=smoke_verbose_e1 \
+  trainer_version=supervised_seed_split30_2026_04_14_rerun
+```
+
+현재 제공하는 preset:
+
+- `bootstrap_teacher_source=dataset_default`
+  - dataset alias가 가리키는 기본 teacher 입력 사용
+- `bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14`
+  - 이미 만든 split30 bootstrap 산출물 재사용
+- `lora_train_source=dataset_train`
+  - dataset alias의 기본 train split 사용
+- `lora_train_source=bootstrap_teacher_split30_2026_04_14`
+  - split30 teacher seed train 재사용
+- `lora_run_preset=default`
+  - `train_batch_size=16`, `eval_batch_size=32`, `epochs=5`, `log_every_steps=100`
+- `lora_run_preset=smoke_verbose_e1`
+  - `train_batch_size=16`, `eval_batch_size=32`, `epochs=1`, `log_every_steps=20`
+
+hidden unlabeled split을 지금 바로 자동 생성하려면:
+
+```bash
+uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
+  runtime=gpu_local \
+  lora_run_preset=smoke_verbose_e1 \
+  bootstrap_split.enabled=true \
+  bootstrap_split.unlabeled_ratio=0.3 \
+  bootstrap_version=bootstrap_teacher_split30_2026_04_14
+```
+
+bootstrap runner에서도 student LoRA 단계 로그를 더 자주 보려면
+같은 `lora_run_preset=smoke_verbose_e1`를 쓰면 된다.
+
+```bash
+uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
+  runtime=gpu_local \
+  lora_run_preset=smoke_verbose_e1 \
+  bootstrap_split.enabled=true \
+  bootstrap_split.unlabeled_ratio=0.3 \
+  epochs=1
 ```
 
 canonical 경로:
@@ -439,6 +531,8 @@ canonical 경로:
 - CLI entrypoint: `scripts/experiments/train_lora_classifier.py`
 - scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
 - agent 학습 코어: `agent/src/services/training/query_adaptation/`
+- teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
+- teacher bootstrap helper: `scripts/experiments/lora_classifier/bootstrap_runner.py`
 - pseudo-label entrypoint: `scripts/experiments/train_lora_pseudo_label_classifier.py`
 - pseudo-label helper: `scripts/experiments/lora_classifier/pseudo_label_runner.py`
 
@@ -468,6 +562,9 @@ canonical 경로:
 - `scripts/experiments/lora_classifier/query_adaptation_runner.py`는
   labeled row를 메모리에서 바로 `run_supervised_lora_baseline()`에 넘기고,
   exported dataset path는 trace/audit 산출물로만 함께 남긴다.
+- 첫 bootstrap은 `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙이고,
+  그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
+- `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.
 - `scripts/experiments/lora_classifier/pseudo_label_runner.py`는
   seed labeled rows와 pseudo-labeled rows를 합쳐 self-training용 combined train JSONL을 남기고,
   실제 학습은 메모리 row를 baseline runner에 직접 넘긴다.

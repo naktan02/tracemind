@@ -1,0 +1,280 @@
+from __future__ import annotations
+
+import json
+from datetime import datetime, timezone
+from pathlib import Path
+from types import SimpleNamespace
+
+from omegaconf import OmegaConf
+
+from scripts.experiments.lora_classifier.bootstrap_runner import (
+    run_fixed_classifier_teacher_lora_student_bootstrap,
+)
+from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
+
+
+def _build_cfg() -> object:
+    return OmegaConf.create(
+        {
+            "bootstrap_version": "bootstrap_v1",
+            "teacher_train_jsonl": "",
+            "teacher_unlabeled_jsonl": None,
+            "teacher_embed_chunk_size": 8,
+            "teacher_train_batch_size": 4,
+            "teacher_eval_batch_size": 4,
+            "teacher_epochs": 2,
+            "teacher_learning_rate": 0.001,
+            "teacher_weight_decay": 0.0001,
+            "teacher_output_dir": "runs/train_classifier",
+            "teacher_model_output_dir": "data/processed/classifier_heads",
+            "teacher_classifier_version": "",
+            "bootstrap_split": {
+                "enabled": False,
+                "unlabeled_ratio": 0.5,
+                "seed": 42,
+            },
+            "embedding": {"spec": {"_target_": "builtins.dict"}},
+            "eval_sets": {
+                "validation": "data/processed/splits/ourafla_train_split.v1.validation.jsonl",
+                "test": "data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl",
+            },
+            "selection_set": "validation",
+            "pseudo_label_confidence_threshold": 0.8,
+            "pseudo_label_margin_threshold": 0.05,
+            "pseudo_label_acceptance_policy_name": "top1_margin_threshold",
+            "bootstrap_export_root": "",
+            "pseudo_label_export_root": "",
+            "runtime": {"device": "cpu"},
+            "train_jsonl": "",
+            "train_batch_size": 16,
+            "eval_batch_size": 32,
+            "epochs": 5,
+            "learning_rate": 0.0002,
+            "classifier_learning_rate": 0.001,
+            "weight_decay": 0.01,
+            "max_grad_norm": 1.0,
+            "log_every_steps": 10,
+            "output_dir": "runs/train_lora_pseudo_label_classifier",
+            "adapter_output_dir": "data/processed/lora_adapters",
+            "classifier_output_dir": "data/processed/lora_classifier_heads",
+            "trainer_version": "student_v1",
+            "seed": 42,
+        }
+    )
+
+
+def _row(query_id: str, label: str, text: str) -> LabeledQueryRow:
+    return LabeledQueryRow(
+        query_id=query_id,
+        text=text,
+        raw_label_scheme="manual_label",
+        raw_label=label,
+        mapped_label_4=label,
+        locale="ko-KR",
+        annotation_source="seed_train",
+        approved_by="annotator",
+        created_at="2026-04-14T00:00:00+00:00",
+    )
+
+
+def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    cfg = _build_cfg()
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner.instantiate",
+        lambda _spec: SimpleNamespace(
+            backend="transformers_mxbai",
+            model_id="mixedbread-ai/mxbai-embed-large-v1",
+            revision="main",
+            task_prefix="",
+            device="cpu",
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "train_fixed_embedding_classifier",
+        lambda **_kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "write_fixed_classifier_artifacts",
+        lambda **_kwargs: {
+            "output_dir": "runs/fake_teacher",
+            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
+            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
+            "report_json": "runs/fake_teacher/reports/report.json",
+        },
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "predict_fixed_classifier_rows",
+        lambda **_kwargs: [
+            SimpleNamespace(
+                query_id="u1",
+                predicted_label="depression",
+                confidence=0.91,
+                margin=0.22,
+                runner_up_label="suicidal",
+                runner_up_score=0.69,
+                raw_scores={
+                    "anxiety": 0.02,
+                    "depression": 0.91,
+                    "normal": 0.01,
+                    "suicidal": 0.69,
+                },
+            ),
+            SimpleNamespace(
+                query_id="u2",
+                predicted_label="anxiety",
+                confidence=0.62,
+                margin=0.01,
+                runner_up_label="normal",
+                runner_up_score=0.61,
+                raw_scores={
+                    "anxiety": 0.62,
+                    "depression": 0.10,
+                    "normal": 0.61,
+                    "suicidal": 0.05,
+                },
+            ),
+        ],
+    )
+
+    def _fake_student_runner(
+        *,
+        cfg,
+        seed_train_rows,
+        pseudo_label_rows,
+        export_root,
+        generated_at,
+    ) -> dict[str, str]:
+        captured["cfg"] = cfg
+        captured["seed_train_rows"] = list(seed_train_rows)
+        captured["pseudo_label_rows"] = list(pseudo_label_rows)
+        captured["export_root"] = export_root
+        captured["generated_at"] = generated_at
+        return {
+            "output_dir": "runs/fake_student",
+            "report_json": "runs/fake_student/reports/report.json",
+        }
+
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "run_pseudo_label_self_training",
+        _fake_student_runner,
+    )
+
+    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+        cfg=cfg,
+        teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
+        teacher_unlabeled_rows=[
+            _row("u1", "depression", "우울해"),
+            _row("u2", "anxiety", "긴장돼"),
+        ],
+        export_root=tmp_path,
+        generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert outputs["output_dir"] == "runs/fake_student"
+    assert Path(outputs["prediction_trace_jsonl"]).exists()
+    assert Path(outputs["prediction_summary_json"]).exists()
+    assert Path(outputs["bootstrap_summary"]).exists()
+    assert len(captured["seed_train_rows"]) == 1
+    assert len(captured["pseudo_label_rows"]) == 1
+    assert captured["pseudo_label_rows"][0]["query_id"] == "u1"
+    assert captured["pseudo_label_rows"][0]["raw_label_scheme"] == "pseudo_label"
+
+    summary = json.loads(Path(outputs["prediction_summary_json"]).read_text())
+    assert summary["accepted_count"] == 1
+    assert summary["accepted_hidden_label_accuracy"] == 1.0
+
+
+def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    cfg = _build_cfg()
+    cfg.teacher_train_jsonl = str(tmp_path / "full_train.jsonl")
+    cfg.bootstrap_split.enabled = True
+    cfg.bootstrap_split.unlabeled_ratio = 0.5
+
+    dump_labeled_query_rows(
+        Path(cfg.teacher_train_jsonl),
+        [
+            _row("q1", "anxiety", "a1"),
+            _row("q2", "anxiety", "a2"),
+            _row("q3", "depression", "d1"),
+            _row("q4", "depression", "d2"),
+        ],
+    )
+
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner.instantiate",
+        lambda _spec: SimpleNamespace(
+            backend="transformers_mxbai",
+            model_id="mixedbread-ai/mxbai-embed-large-v1",
+            revision="main",
+            task_prefix="",
+            device="cpu",
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "train_fixed_embedding_classifier",
+        lambda **_kwargs: object(),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "write_fixed_classifier_artifacts",
+        lambda **_kwargs: {
+            "output_dir": "runs/fake_teacher",
+            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
+            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
+            "report_json": "runs/fake_teacher/reports/report.json",
+        },
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "predict_fixed_classifier_rows",
+        lambda **kwargs: [
+            SimpleNamespace(
+                query_id=row["query_id"],
+                predicted_label=row["mapped_label_4"],
+                confidence=0.95,
+                margin=0.4,
+                runner_up_label="normal",
+                runner_up_score=0.1,
+                raw_scores={
+                    "anxiety": 0.95 if row["mapped_label_4"] == "anxiety" else 0.1,
+                    "depression": (
+                        0.95 if row["mapped_label_4"] == "depression" else 0.1
+                    ),
+                    "normal": 0.1,
+                    "suicidal": 0.05,
+                },
+            )
+            for row in kwargs["rows"]
+        ],
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "run_pseudo_label_self_training",
+        lambda **_kwargs: {
+            "output_dir": "runs/fake_student",
+            "report_json": "runs/fake_student/reports/report.json",
+        },
+    )
+
+    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+        cfg=cfg,
+        export_root=tmp_path / "exports",
+        generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
+    )
+
+    assert Path(outputs["teacher_seed_jsonl"]).exists()
+    assert Path(outputs["teacher_unlabeled_jsonl"]).exists()
+    assert Path(outputs["teacher_split_manifest"]).exists()

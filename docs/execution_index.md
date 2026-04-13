@@ -55,12 +55,14 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 3. `docs/contracts/query_buffer_v1.md`
 4. `docs/contracts/central_lora_classifier_trainer_contract.md`
 5. `scripts/experiments/train_lora_classifier.py`
-6. `scripts/experiments/train_lora_pseudo_label_classifier.py`
-7. `scripts/experiments/lora_classifier/runner.py`
-8. `scripts/experiments/lora_classifier/query_adaptation_runner.py`
-9. `scripts/experiments/lora_classifier/pseudo_label_runner.py`
-10. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/experiments/train_lora_pseudo_label_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-11. 필요 시 적응 단계 실험 스크립트/노트북
+6. `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
+7. `scripts/experiments/train_lora_pseudo_label_classifier.py`
+8. `scripts/experiments/lora_classifier/runner.py`
+9. `scripts/experiments/lora_classifier/bootstrap_runner.py`
+10. `scripts/experiments/lora_classifier/query_adaptation_runner.py`
+11. `scripts/experiments/lora_classifier/pseudo_label_runner.py`
+12. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/experiments/train_lora_bootstrap_classifier_teacher.yaml`, `scripts/conf/experiments/train_lora_pseudo_label_classifier.yaml`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
+13. 필요 시 적응 단계 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 

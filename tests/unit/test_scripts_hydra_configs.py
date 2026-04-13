@@ -18,6 +18,7 @@ from hydra import compose, initialize_config_module
         "experiments/train_softmax_classifier",
         "experiments/train_lora_classifier",
         "experiments/train_lora_pseudo_label_classifier",
+        "experiments/train_lora_bootstrap_classifier_teacher",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -95,6 +96,23 @@ def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
     assert cfg.runtime.local_files_only is True
 
 
+def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_classifier",
+            overrides=[
+                "lora_train_source=bootstrap_teacher_split30_2026_04_14",
+                "lora_run_preset=smoke_verbose_e1",
+            ],
+        )
+
+    assert cfg.lora_train_source.name == "bootstrap_teacher_split30_2026_04_14"
+    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
+    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.epochs == 1
+    assert cfg.log_every_steps == 20
+
+
 def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
@@ -105,6 +123,53 @@ def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override
     assert cfg.runtime.name == "auto_local"
     assert cfg.runtime.device == "auto"
     assert cfg.runtime.local_files_only is True
+
+
+def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_pseudo_label_classifier",
+            overrides=[
+                "lora_train_source=bootstrap_teacher_split30_2026_04_14",
+                "lora_run_preset=smoke_verbose_e1",
+            ],
+        )
+
+    assert cfg.lora_train_source.name == "bootstrap_teacher_split30_2026_04_14"
+    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
+    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.epochs == 1
+    assert cfg.log_every_steps == 20
+
+
+def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_bootstrap_classifier_teacher",
+            overrides=["runtime=auto_local"],
+        )
+
+    assert cfg.runtime.name == "auto_local"
+    assert cfg.runtime.device == "auto"
+    assert cfg.runtime.local_files_only is True
+
+
+def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_bootstrap_classifier_teacher",
+            overrides=[
+                "bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14",
+                "lora_run_preset=smoke_verbose_e1",
+            ],
+        )
+
+    assert cfg.bootstrap_teacher_source.name == "bootstrap_teacher_split30_2026_04_14"
+    assert cfg.teacher_train_jsonl.endswith("teacher_seed_train.jsonl")
+    assert cfg.teacher_unlabeled_jsonl.endswith("teacher_unlabeled_pool.jsonl")
+    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.epochs == 1
+    assert cfg.log_every_steps == 20
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -242,6 +307,23 @@ def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lor
     assert cfg.lora.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.pseudo_label_jsonl is None
+
+
+def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_bootstrap_classifier_teacher"
+        )
+
+    assert cfg.dataset.name == "ourafla"
+    assert cfg.embedding.backend == "transformers_mxbai"
+    assert cfg.runtime.name == "gpu_online"
+    assert cfg.runtime.device == "cuda"
+    assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
+    assert cfg.lora.target_modules == "all-linear"
+    assert cfg.pseudo_label_confidence_threshold == 0.6
+    assert cfg.pseudo_label_margin_threshold == 0.02
+    assert cfg.bootstrap_split.enabled is False
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:

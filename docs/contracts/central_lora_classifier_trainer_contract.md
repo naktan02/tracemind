@@ -75,6 +75,13 @@ Query Buffer (raw text)
 
 - `TAPT`는 classifier objective 앞단의 optional preadaptation phase로 추가 가능하다.
 
+주의:
+
+- 첫 pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
+  pseudo-label을 붙이고, `LoRA + classifier` student가 이를 학습하는 bootstrap으로
+  시작할 수 있다.
+- 그 이후 반복 loop에서만 `LoRA + classifier` same-family self-training을 연다.
+
 ## 고정해야 할 입력 조건
 
 한 실험군 안에서는 아래를 바꾸지 않는다.

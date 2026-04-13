@@ -1,0 +1,3 @@
+name: dataset_default
+teacher_train_jsonl: ${dataset.train_jsonl}
+teacher_unlabeled_jsonl: ${dataset.unlabeled_query_pool_jsonl}
