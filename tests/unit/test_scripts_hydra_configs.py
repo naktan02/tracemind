@@ -111,9 +111,14 @@ def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() 
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
+    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
 
 
-def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override() -> None:
+def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override() -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_pseudo_label_classifier",
@@ -125,7 +130,10 @@ def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override
     assert cfg.runtime.local_files_only is True
 
 
-def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides() -> None:
+def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
+) -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_pseudo_label_classifier",
@@ -140,9 +148,16 @@ def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
+    assert cfg.include_seed_train_rows is False
+    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
 
 
-def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override() -> None:
+def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override(  # noqa: E501
+) -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_bootstrap_classifier_teacher",
@@ -154,7 +169,10 @@ def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_ove
     assert cfg.runtime.local_files_only is True
 
 
-def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_overrides() -> None:
+def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_overrides(  # noqa: E501
+) -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_bootstrap_classifier_teacher",
@@ -170,6 +188,14 @@ def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
+    assert (
+        cfg.teacher_reuse_manifest_path
+        == "data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json"
+    )
+    assert cfg.student_include_seed_train_rows is False
+    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -188,19 +214,13 @@ def test_threshold_sweep_supports_short_leaf_override() -> None:
     assert cfg.runner.score_policy_name == "topk_mean_cosine"
     assert cfg.runner.score_top_k == 2
     assert len(cfg.threshold_policies) == 3
-    assert (
-        cfg.threshold_policies[0]._target_
-        == (
-            "scripts.experiments.prototype_strategy.threshold_policies."
-            "FixMatchFixedConfidencePolicy"
-        )
+    assert cfg.threshold_policies[0]._target_ == (
+        "scripts.experiments.prototype_strategy.threshold_policies."
+        "FixMatchFixedConfidencePolicy"
     )
-    assert (
-        cfg.threshold_policies[2]._target_
-        == (
-            "scripts.experiments.prototype_strategy.threshold_policies."
-            "ClasswiseStaticConfidencePolicy"
-        )
+    assert cfg.threshold_policies[2]._target_ == (
+        "scripts.experiments.prototype_strategy.threshold_policies."
+        "ClasswiseStaticConfidencePolicy"
     )
 
 
@@ -281,7 +301,6 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 
-
 def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(config_name="experiments/train_lora_classifier")
@@ -295,7 +314,10 @@ def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() 
     assert cfg.selection_set == "validation"
 
 
-def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:
+def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold(  # noqa: E501
+) -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(config_name="experiments/train_lora_pseudo_label_classifier")
 
@@ -309,11 +331,12 @@ def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lor
     assert cfg.pseudo_label_jsonl is None
 
 
-def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student() -> None:
+def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student(  # noqa: E501
+) -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
-        cfg = compose(
-            config_name="experiments/train_lora_bootstrap_classifier_teacher"
-        )
+        cfg = compose(config_name="experiments/train_lora_bootstrap_classifier_teacher")
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.embedding.backend == "transformers_mxbai"

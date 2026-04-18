@@ -12,6 +12,12 @@ from scripts.experiments.lora_classifier.bootstrap_runner import (
 )
 from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
+VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
+TEST_JSONL = (
+    "data/processed/labeled_query_sets/"
+    "ourafla_mental_health_text_classification_test.v1.jsonl"
+)
+
 
 def _build_cfg() -> object:
     return OmegaConf.create(
@@ -19,6 +25,7 @@ def _build_cfg() -> object:
             "bootstrap_version": "bootstrap_v1",
             "teacher_train_jsonl": "",
             "teacher_unlabeled_jsonl": None,
+            "teacher_reuse_manifest_path": "",
             "teacher_embed_chunk_size": 8,
             "teacher_train_batch_size": 4,
             "teacher_eval_batch_size": 4,
@@ -35,8 +42,8 @@ def _build_cfg() -> object:
             },
             "embedding": {"spec": {"_target_": "builtins.dict"}},
             "eval_sets": {
-                "validation": "data/processed/splits/ourafla_train_split.v1.validation.jsonl",
-                "test": "data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl",
+                "validation": VALIDATION_JSONL,
+                "test": TEST_JSONL,
             },
             "selection_set": "validation",
             "pseudo_label_confidence_threshold": 0.8,
@@ -44,6 +51,15 @@ def _build_cfg() -> object:
             "pseudo_label_acceptance_policy_name": "top1_margin_threshold",
             "bootstrap_export_root": "",
             "pseudo_label_export_root": "",
+            "student_include_seed_train_rows": False,
+            "fixed_categories": [
+                "anxiety",
+                "depression",
+                "normal",
+                "suicidal",
+            ],
+            "initial_adapter_dir": "",
+            "initial_classifier_path": "",
             "runtime": {"device": "cpu"},
             "train_jsonl": "",
             "train_batch_size": 16,
@@ -97,7 +113,9 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.bootstrap_runner."
         "train_fixed_embedding_classifier",
-        lambda **_kwargs: object(),
+        lambda **_kwargs: SimpleNamespace(
+            categories=["anxiety", "depression", "normal", "suicidal"]
+        ),
     )
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.bootstrap_runner."
@@ -149,14 +167,18 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         cfg,
         seed_train_rows,
         pseudo_label_rows,
+        include_seed_train_rows,
         export_root,
         generated_at,
+        categories_override,
     ) -> dict[str, str]:
         captured["cfg"] = cfg
         captured["seed_train_rows"] = list(seed_train_rows)
         captured["pseudo_label_rows"] = list(pseudo_label_rows)
+        captured["include_seed_train_rows"] = include_seed_train_rows
         captured["export_root"] = export_root
         captured["generated_at"] = generated_at
+        captured["categories_override"] = categories_override
         return {
             "output_dir": "runs/fake_student",
             "report_json": "runs/fake_student/reports/report.json",
@@ -185,6 +207,13 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     assert Path(outputs["bootstrap_summary"]).exists()
     assert len(captured["seed_train_rows"]) == 1
     assert len(captured["pseudo_label_rows"]) == 1
+    assert captured["include_seed_train_rows"] is False
+    assert tuple(captured["categories_override"]) == (
+        "anxiety",
+        "depression",
+        "normal",
+        "suicidal",
+    )
     assert captured["pseudo_label_rows"][0]["query_id"] == "u1"
     assert captured["pseudo_label_rows"][0]["raw_label_scheme"] == "pseudo_label"
 
@@ -225,7 +254,9 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.bootstrap_runner."
         "train_fixed_embedding_classifier",
-        lambda **_kwargs: object(),
+        lambda **_kwargs: SimpleNamespace(
+            categories=["anxiety", "depression", "normal", "suicidal"]
+        ),
     )
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.bootstrap_runner."
@@ -278,3 +309,78 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
     assert Path(outputs["teacher_seed_jsonl"]).exists()
     assert Path(outputs["teacher_unlabeled_jsonl"]).exists()
     assert Path(outputs["teacher_split_manifest"]).exists()
+
+
+def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    cfg = _build_cfg()
+    cfg.teacher_reuse_manifest_path = (
+        "data/processed/classifier_heads/canonical.manifest.json"
+    )
+    captured: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "load_fixed_classifier_artifacts",
+        lambda **_kwargs: (
+            SimpleNamespace(categories=["anxiety", "depression", "normal", "suicidal"]),
+            {
+                "model_path": "data/processed/classifier_heads/canonical.pt",
+                "manifest": "data/processed/classifier_heads/canonical.manifest.json",
+                "report_json": "runs/train_classifier/canonical/reports/report.json",
+            },
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "predict_fixed_classifier_rows",
+        lambda **_kwargs: [
+            SimpleNamespace(
+                query_id="u1",
+                predicted_label="depression",
+                confidence=0.91,
+                margin=0.22,
+                runner_up_label="suicidal",
+                runner_up_score=0.69,
+                raw_scores={
+                    "anxiety": 0.02,
+                    "depression": 0.91,
+                    "normal": 0.01,
+                    "suicidal": 0.69,
+                },
+            )
+        ],
+    )
+
+    def _fake_student_runner(**kwargs) -> dict[str, str]:
+        captured["kwargs"] = kwargs
+        return {
+            "output_dir": "runs/fake_student",
+            "report_json": "runs/fake_student/reports/report.json",
+        }
+
+    monkeypatch.setattr(
+        "scripts.experiments.lora_classifier.bootstrap_runner."
+        "run_pseudo_label_self_training",
+        _fake_student_runner,
+    )
+
+    outputs = run_fixed_classifier_teacher_lora_student_bootstrap(
+        cfg=cfg,
+        teacher_seed_rows=[_row("s1", "anxiety", "불안해")],
+        teacher_unlabeled_rows=[_row("u1", "depression", "우울해")],
+        export_root=tmp_path,
+        generated_at=datetime(2026, 4, 14, 1, 0, tzinfo=timezone.utc),
+    )
+
+    kwargs = captured["kwargs"]
+    assert outputs["reused_teacher_manifest"] == cfg.teacher_reuse_manifest_path
+    assert kwargs["include_seed_train_rows"] is False
+    assert tuple(kwargs["categories_override"]) == (
+        "anxiety",
+        "depression",
+        "normal",
+        "suicidal",
+    )

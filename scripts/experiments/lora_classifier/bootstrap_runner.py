@@ -19,6 +19,7 @@ from agent.src.services.training.acceptance_policies import (
 from scripts.datasets.lib.split import split_rows
 from scripts.experiments.fixed_classifier.runner import (
     FixedClassifierPrediction,
+    load_fixed_classifier_artifacts,
     predict_fixed_classifier_rows,
     train_fixed_embedding_classifier,
     write_fixed_classifier_artifacts,
@@ -84,37 +85,54 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
     eval_rows_by_name = {
         name: load_labeled_query_rows(path) for name, path in eval_set_map.items()
     }
-    embedding_spec = instantiate(cfg.embedding.spec)
-    teacher_classifier_version = str(
-        getattr(cfg, "teacher_classifier_version", "") or ""
-    ).strip() or f"{run_id}_teacher"
+    teacher_reuse_manifest_path = str(
+        getattr(cfg, "teacher_reuse_manifest_path", "") or ""
+    ).strip()
+    if teacher_reuse_manifest_path:
+        trained_teacher, teacher_outputs = load_fixed_classifier_artifacts(
+            manifest_path=teacher_reuse_manifest_path,
+            device=str(cfg.runtime.device),
+            batch_size=int(cfg.teacher_eval_batch_size),
+            cache_dir=str(getattr(cfg.embedding, "cache_dir", "") or "") or None,
+            local_files_only=bool(getattr(cfg.runtime, "local_files_only", False)),
+        )
+        teacher_outputs = {
+            **teacher_outputs,
+            "reused_teacher_manifest": teacher_reuse_manifest_path,
+        }
+    else:
+        embedding_spec = instantiate(cfg.embedding.spec)
+        teacher_classifier_version = (
+            str(getattr(cfg, "teacher_classifier_version", "") or "").strip()
+            or f"{run_id}_teacher"
+        )
 
-    trained_teacher = train_fixed_embedding_classifier(
-        train_rows=effective_teacher_seed_rows,
-        eval_rows_by_name=eval_rows_by_name,
-        selection_set_name=str(cfg.selection_set),
-        embedding_spec=embedding_spec,
-        embed_chunk_size=int(cfg.teacher_embed_chunk_size),
-        train_batch_size=int(cfg.teacher_train_batch_size),
-        eval_batch_size=int(cfg.teacher_eval_batch_size),
-        epochs=int(cfg.teacher_epochs),
-        learning_rate=float(cfg.teacher_learning_rate),
-        weight_decay=float(cfg.teacher_weight_decay),
-    )
-    teacher_outputs = write_fixed_classifier_artifacts(
-        classifier_version=teacher_classifier_version,
-        created_at=effective_generated_at,
-        train_jsonl_ref=teacher_seed_jsonl_ref,
-        eval_set_map={name: str(path) for name, path in eval_set_map.items()},
-        selection_set_name=str(cfg.selection_set),
-        output_dir_root=str(cfg.teacher_output_dir),
-        model_output_dir=str(cfg.teacher_model_output_dir),
-        epochs=int(cfg.teacher_epochs),
-        train_batch_size=int(cfg.teacher_train_batch_size),
-        learning_rate=float(cfg.teacher_learning_rate),
-        weight_decay=float(cfg.teacher_weight_decay),
-        trained=trained_teacher,
-    )
+        trained_teacher = train_fixed_embedding_classifier(
+            train_rows=effective_teacher_seed_rows,
+            eval_rows_by_name=eval_rows_by_name,
+            selection_set_name=str(cfg.selection_set),
+            embedding_spec=embedding_spec,
+            embed_chunk_size=int(cfg.teacher_embed_chunk_size),
+            train_batch_size=int(cfg.teacher_train_batch_size),
+            eval_batch_size=int(cfg.teacher_eval_batch_size),
+            epochs=int(cfg.teacher_epochs),
+            learning_rate=float(cfg.teacher_learning_rate),
+            weight_decay=float(cfg.teacher_weight_decay),
+        )
+        teacher_outputs = write_fixed_classifier_artifacts(
+            classifier_version=teacher_classifier_version,
+            created_at=effective_generated_at,
+            train_jsonl_ref=teacher_seed_jsonl_ref,
+            eval_set_map={name: str(path) for name, path in eval_set_map.items()},
+            selection_set_name=str(cfg.selection_set),
+            output_dir_root=str(cfg.teacher_output_dir),
+            model_output_dir=str(cfg.teacher_model_output_dir),
+            epochs=int(cfg.teacher_epochs),
+            train_batch_size=int(cfg.teacher_train_batch_size),
+            learning_rate=float(cfg.teacher_learning_rate),
+            weight_decay=float(cfg.teacher_weight_decay),
+            trained=trained_teacher,
+        )
 
     predictions = predict_fixed_classifier_rows(
         trained=trained_teacher,
@@ -158,8 +176,12 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
         cfg=student_cfg,
         seed_train_rows=effective_teacher_seed_rows,
         pseudo_label_rows=pseudo_label_rows,
+        include_seed_train_rows=bool(
+            getattr(cfg, "student_include_seed_train_rows", False)
+        ),
         export_root=str(cfg.pseudo_label_export_root),
         generated_at=effective_generated_at,
+        categories_override=tuple(trained_teacher.categories),
     )
 
     bootstrap_summary_path = export_dir / "bootstrap.summary.json"
@@ -303,9 +325,7 @@ def _build_teacher_pseudo_label_rows(
     if len(rows) != len(predictions):
         raise ValueError("rows and predictions must have the same length.")
 
-    acceptance_policy = build_pseudo_label_acceptance_policy(
-        acceptance_policy_name
-    )
+    acceptance_policy = build_pseudo_label_acceptance_policy(acceptance_policy_name)
     accepted_rows: list[LabeledQueryRow] = []
     trace_rows: list[dict[str, Any]] = []
     accepted_label_counts: Counter[str] = Counter()

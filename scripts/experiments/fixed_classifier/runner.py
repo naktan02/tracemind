@@ -7,7 +7,7 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import Any, cast
 
 import torch
 from hydra.utils import instantiate
@@ -28,6 +28,7 @@ from scripts.classification_report import (
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 from scripts.run_artifacts import build_run_dir
 from shared.src.domain.services import EmbeddingAdapter
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 @dataclass(slots=True)
@@ -415,9 +416,7 @@ def predict_fixed_classifier_rows(
                         query_id=str(row["query_id"]),
                         predicted_label=trained.categories[top1_index],
                         confidence=float(top_value_row[0].item()),
-                        margin=float(
-                            (top_value_row[0] - top_value_row[1]).item()
-                        ),
+                        margin=float((top_value_row[0] - top_value_row[1]).item()),
                         runner_up_label=trained.categories[top2_index],
                         runner_up_score=float(top_value_row[1].item()),
                         raw_scores=raw_scores,
@@ -509,6 +508,70 @@ def write_fixed_classifier_artifacts(
     }
 
 
+def load_fixed_classifier_artifacts(
+    *,
+    manifest_path: str | Path,
+    device: str,
+    batch_size: int,
+    cache_dir: str | None = None,
+    local_files_only: bool = False,
+) -> tuple[TrainedFixedClassifier, dict[str, str]]:
+    """저장된 fixed classifier artifact를 teacher/reference로 다시 연다."""
+
+    resolved_manifest_path = Path(str(manifest_path))
+    manifest = json.loads(resolved_manifest_path.read_text(encoding="utf-8"))
+    model_path = Path(str(manifest["model_path"]))
+    serialized = cast(
+        dict[str, Any],
+        torch.load(model_path, map_location="cpu"),
+    )
+    categories = [str(category) for category in serialized["categories"]]
+    state_dict = cast(dict[str, torch.Tensor], serialized["classifier_state_dict"])
+    hidden_size = int(serialized.get("hidden_size", state_dict["weight"].shape[1]))
+    training_device = resolve_runtime_device(device)
+    model = nn.Linear(hidden_size, len(categories)).to(training_device)
+    model.load_state_dict(state_dict)
+    model.eval()
+
+    embedding_spec = EmbeddingAdapterSpec(
+        backend=str(manifest["embedding_backend"]),
+        model_id=str(manifest["embedding_model_id"]),
+        revision=str(manifest["embedding_model_revision"]),
+        device=training_device,
+        batch_size=batch_size,
+        cache_dir=cache_dir,
+        task_prefix=str(manifest.get("task_prefix", "")),
+        local_files_only=local_files_only,
+    )
+    adapter = EmbeddingAdapterFactory.create(embedding_spec)
+    classifier_version = str(manifest["classifier_version"])
+    report_path = (
+        Path("runs/train_classifier") / classifier_version / "reports" / "report.json"
+    )
+    outputs = {
+        "model_path": str(model_path),
+        "manifest": str(resolved_manifest_path),
+        "report_json": str(report_path),
+    }
+    if report_path.exists():
+        outputs["output_dir"] = str(report_path.parent.parent)
+
+    return (
+        TrainedFixedClassifier(
+            model=model,
+            adapter=adapter,
+            embedding_spec=embedding_spec,
+            categories=categories,
+            label_to_index={label: index for index, label in enumerate(categories)},
+            training_device=training_device,
+            history=[],
+            best_selection_report=dict(manifest.get("best_selection_report", {})),
+            eval_results={},
+        ),
+        outputs,
+    )
+
+
 def run_fixed_embedding_classifier(
     *,
     cfg: DictConfig,
@@ -583,6 +646,7 @@ __all__ = [
     "embed_rows",
     "evaluate_classifier",
     "labels_to_tensor",
+    "load_fixed_classifier_artifacts",
     "predict_fixed_classifier_rows",
     "run_fixed_embedding_classifier",
     "train_classifier_head",

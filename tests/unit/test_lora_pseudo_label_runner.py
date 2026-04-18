@@ -19,6 +19,12 @@ from scripts.experiments.lora_classifier.pseudo_label_runner import (
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
+VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
+TEST_JSONL = (
+    "data/processed/labeled_query_sets/"
+    "ourafla_mental_health_text_classification_test.v1.jsonl"
+)
+
 
 def _build_cfg() -> object:
     return OmegaConf.create(
@@ -28,9 +34,16 @@ def _build_cfg() -> object:
             "train_jsonl": "",
             "pseudo_label_jsonl": None,
             "pseudo_label_export_root": "",
+            "include_seed_train_rows": False,
+            "fixed_categories": [
+                "anxiety",
+                "depression",
+                "normal",
+                "suicidal",
+            ],
             "eval_sets": {
-                "validation": "data/processed/splits/ourafla_train_split.v1.validation.jsonl",
-                "test": "data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl",
+                "validation": VALIDATION_JSONL,
+                "test": TEST_JSONL,
             },
             "selection_set": "validation",
         }
@@ -82,7 +95,7 @@ def _build_pseudo_label_dataset() -> QueryAdaptationDataset:
     )
 
 
-def test_prepare_pseudo_label_self_training_run_combines_seed_and_pseudo_rows(
+def test_prepare_pseudo_label_self_training_run_excludes_seed_rows_by_default(
     tmp_path: Path,
 ) -> None:
     prepared = prepare_pseudo_label_self_training_run(
@@ -94,18 +107,36 @@ def test_prepare_pseudo_label_self_training_run_combines_seed_and_pseudo_rows(
     )
 
     assert prepared.export_dir == tmp_path / "pseudo_label_run_v1"
-    assert prepared.seed_train_count == 1
+    assert prepared.seed_train_count == 0
     assert prepared.pseudo_label_count == 1
-    assert prepared.combined_train_count == 2
-    assert prepared.combined_train_rows[0]["query_id"] == "seed_q1"
-    assert prepared.combined_train_rows[1]["query_id"] == "pl_q1"
+    assert prepared.combined_train_count == 1
+    assert prepared.combined_train_rows[0]["query_id"] == "pl_q1"
     assert prepared.cfg.train_jsonl.endswith("combined_train.jsonl")
     assert prepared.pseudo_label_artifacts.jsonl_path.exists()
     assert prepared.pseudo_label_artifacts.manifest_path.exists()
     assert prepared.pseudo_label_artifacts.summary_path.exists()
     assert prepared.combined_train_artifacts.jsonl_path.exists()
     rows = load_labeled_query_rows(prepared.combined_train_artifacts.jsonl_path)
-    assert [row["query_id"] for row in rows] == ["seed_q1", "pl_q1"]
+    assert [row["query_id"] for row in rows] == ["pl_q1"]
+
+
+def test_prepare_pseudo_label_self_training_run_can_opt_in_seed_replay(
+    tmp_path: Path,
+) -> None:
+    prepared = prepare_pseudo_label_self_training_run(
+        cfg=_build_cfg(),
+        seed_train_rows=_build_seed_rows(),
+        pseudo_label_dataset=_build_pseudo_label_dataset(),
+        include_seed_train_rows=True,
+        export_root=tmp_path,
+        generated_at=datetime(2026, 4, 12, 13, 0, tzinfo=timezone.utc),
+    )
+
+    assert prepared.seed_train_count == 1
+    assert prepared.pseudo_label_count == 1
+    assert prepared.combined_train_count == 2
+    assert prepared.combined_train_rows[0]["query_id"] == "seed_q1"
+    assert prepared.combined_train_rows[1]["query_id"] == "pl_q1"
 
 
 def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows(
@@ -121,10 +152,12 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
         eval_rows_by_name=None,
         selection_set_name=None,
         extra_manifest=None,
+        categories_override=None,
     ) -> dict[str, str]:
         captured["cfg"] = cfg
         captured["train_rows"] = train_rows
         captured["extra_manifest"] = extra_manifest
+        captured["categories_override"] = categories_override
         return {
             "output_dir": "runs/fake_pseudo",
             "report_json": "runs/fake_pseudo/report.json",
@@ -146,10 +179,13 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
 
     train_rows = captured["train_rows"]
     extra_manifest = captured["extra_manifest"]
-    assert len(train_rows) == 2
-    assert train_rows[1]["raw_label_scheme"] == "pseudo_label"
+    assert len(train_rows) == 1
+    assert train_rows[0]["raw_label_scheme"] == "pseudo_label"
     assert extra_manifest["pseudo_label_row_count"] == 1
-    assert extra_manifest["combined_train_row_count"] == 2
+    assert extra_manifest["seed_train_row_count"] == 0
+    assert extra_manifest["include_seed_train_rows"] is False
+    assert extra_manifest["combined_train_row_count"] == 1
+    assert captured["categories_override"] is None
     assert outputs["output_dir"] == "runs/fake_pseudo"
     assert Path(outputs["pseudo_label_jsonl"]).exists()
     assert Path(outputs["combined_train_jsonl"]).exists()

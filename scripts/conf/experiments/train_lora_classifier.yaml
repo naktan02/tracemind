@@ -12,6 +12,9 @@ defaults:
   - _self_
 
 train_jsonl: ${lora_train_source.train_jsonl}
+fixed_categories: ${dataset.prototype_expected_categories}
+initial_adapter_dir: ""
+initial_classifier_path: ""
 eval_sets:
   validation: ${dataset.validation_jsonl}
   test: ${dataset.test_labeled_jsonl}

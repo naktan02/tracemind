@@ -47,9 +47,9 @@
 
 관련 경로:
 
-- `data/processed/classifier_heads/clf_2026_03_28_172617.pt`
-- `data/processed/classifier_heads/clf_2026_03_28_172617.manifest.json`
-- 평가 리포트 canonical root: `runs/train_classifier/<classifier_version>/reports/report.json`
+- `data/processed/classifier_heads/clf_2026_04_11_143138.pt`
+- `data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json`
+- `runs/train_classifier/clf_2026_04_11_143138/reports/report.json`
 
 설정 요약:
 
@@ -61,15 +61,16 @@
 
 결과:
 
-- validation accuracy: `0.789155`
+- validation accuracy: `0.787744`
 - test accuracy: `0.734879`
 
 해석:
 
-- 현재 저장소에 남아 있는 static baseline 중 가장 높은 정확도다.
-- 현재 v1 계획의 classifier-first 연구선에서 가장 직접적인 supervised seed 기준선이다.
-- 이후 query-domain 적응 단계의 LoRA scaffold에서 FixMatch -> FreeMatch -> PabLO를 올릴 때
-  가장 먼저 비교할 reference baseline이다.
+- 현재 canonical seed artifact는 traceability를 위해 `clf_2026_04_11_143138`으로 고정한다.
+- train split은 `ourafla_train_split.v1.train.jsonl`, selection은 `validation`이다.
+- 이후 중앙 continual adaptation 비교는 이 seed classifier artifact를 initial checkpoint/teacher reference로 재사용한다.
+- historical run `clf_2026_03_28_172617`은 유사한 설정의 earlier artifact로 남아 있지만,
+  현재 canonical reference는 아니다.
 
 ---
 

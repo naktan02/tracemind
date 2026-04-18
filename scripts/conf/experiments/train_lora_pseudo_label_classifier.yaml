@@ -14,6 +14,10 @@ defaults:
 train_jsonl: ${lora_train_source.train_jsonl}
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/processed/lora_pseudo_label
+include_seed_train_rows: false
+fixed_categories: ${dataset.prototype_expected_categories}
+initial_adapter_dir: ""
+initial_classifier_path: ""
 eval_sets:
   validation: ${dataset.validation_jsonl}
   test: ${dataset.test_labeled_jsonl}

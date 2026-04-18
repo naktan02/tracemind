@@ -7,18 +7,18 @@ from typing import Any
 from torch import nn
 
 
-def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any]:
+def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
     """실험 extra가 설치돼 있을 때만 transformer/peft stack을 연다."""
 
     try:
-        from peft import LoraConfig, TaskType, get_peft_model
+        from peft import LoraConfig, PeftModel, TaskType, get_peft_model
         from transformers import AutoModel, AutoTokenizer
     except ImportError as exc:  # pragma: no cover - optional dependency gate
         raise RuntimeError(
             "train_lora_classifier requires the experiments extra with "
             "transformers and peft installed. Example: uv sync --extra experiments"
         ) from exc
-    return AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model
+    return AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel
 
 
 class LoraTextClassifier(nn.Module):
@@ -78,7 +78,7 @@ def build_model(
 ) -> tuple[LoraTextClassifier, Any, dict[str, Any]]:
     """Hydra config 기준으로 baseline LoRA classifier를 조립한다."""
 
-    AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model = (
+    AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel = (
         require_transformer_stack()
     )
 
@@ -92,7 +92,12 @@ def build_model(
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
 
-    backbone = AutoModel.from_pretrained(
+    initial_adapter_dir = str(getattr(cfg, "initial_adapter_dir", "") or "").strip()
+    initial_classifier_path = str(
+        getattr(cfg, "initial_classifier_path", "") or ""
+    ).strip()
+
+    backbone_base = AutoModel.from_pretrained(
         str(cfg.paper_backbone.model_id),
         revision=str(cfg.paper_backbone.revision),
         cache_dir=str(cfg.paper_backbone.cache_dir),
@@ -100,16 +105,23 @@ def build_model(
         trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
     )
 
-    lora_config = LoraConfig(
-        r=int(cfg.lora.rank),
-        lora_alpha=int(cfg.lora.alpha),
-        lora_dropout=float(cfg.lora.dropout),
-        target_modules=_resolve_target_modules(cfg.lora.target_modules),
-        bias=str(cfg.lora.bias),
-        use_rslora=bool(cfg.lora.use_rslora),
-        task_type=TaskType.FEATURE_EXTRACTION,
-    )
-    backbone = get_peft_model(backbone, lora_config)
+    if initial_adapter_dir:
+        backbone = PeftModel.from_pretrained(
+            backbone_base,
+            initial_adapter_dir,
+            is_trainable=True,
+        )
+    else:
+        lora_config = LoraConfig(
+            r=int(cfg.lora.rank),
+            lora_alpha=int(cfg.lora.alpha),
+            lora_dropout=float(cfg.lora.dropout),
+            target_modules=_resolve_target_modules(cfg.lora.target_modules),
+            bias=str(cfg.lora.bias),
+            use_rslora=bool(cfg.lora.use_rslora),
+            task_type=TaskType.FEATURE_EXTRACTION,
+        )
+        backbone = get_peft_model(backbone_base, lora_config)
     hidden_size = int(backbone.config.hidden_size)
     model = LoraTextClassifier(
         backbone=backbone,
@@ -117,6 +129,19 @@ def build_model(
         num_labels=len(categories),
         classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
     ).to(device)
+    if initial_classifier_path:
+        import torch
+
+        classifier_bundle = torch.load(initial_classifier_path, map_location="cpu")
+        checkpoint_categories = [
+            str(category) for category in classifier_bundle["categories"]
+        ]
+        if checkpoint_categories != categories:
+            raise ValueError(
+                "initial classifier categories do not match current categories: "
+                f"{checkpoint_categories} != {categories}"
+            )
+        model.classifier.load_state_dict(classifier_bundle["classifier_state_dict"])
 
     summary = {
         "backbone_model_id": str(cfg.paper_backbone.model_id),
@@ -133,6 +158,10 @@ def build_model(
             "bias": str(cfg.lora.bias),
             "target_modules": _resolve_target_modules(cfg.lora.target_modules),
             "use_rslora": bool(cfg.lora.use_rslora),
+        },
+        "initial_checkpoint": {
+            "adapter_dir": initial_adapter_dir or None,
+            "classifier_path": initial_classifier_path or None,
         },
         "parameter_counts": count_parameters(model),
     }

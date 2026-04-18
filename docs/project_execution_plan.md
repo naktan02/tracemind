@@ -15,6 +15,10 @@
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
 - `PrototypePack`은 유지하지만, 우선은 bootstrap/comparison artifact로 본다.
 - 초기 seed baseline은 `central + fixed embedding + classifier`다.
+- canonical seed artifact는 `clf_2026_04_11_143138`으로 고정한다.
+  - model: `data/processed/classifier_heads/clf_2026_04_11_143138.pt`
+  - manifest: `data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json`
+  - report: `runs/train_classifier/clf_2026_04_11_143138/reports/report.json`
 - query-domain 적응 단계에서만 `LoRA + classifier`를 연다.
 - 시스템 트랙의 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 라벨된 데이터셋은 prototype build 전용이 아니라 supervised classifier seed와
@@ -168,18 +172,18 @@ Raw Event / Local Signal
 12. 서버는 `adapter_family`, `aggregation_backend`를 server-owned config axis로 고른다.
 13. secure aggregation 메타데이터는 typed contract로 승격했다.
 14. fixed-embedding + linear classifier supervised seed baseline은 이미 실행 가능하다.
+15. canonical seed artifact는 `clf_2026_04_11_143138`으로 확정했다.
 
 아직 남은 핵심:
 
-1. 중앙집중형 `fixed embedding + classifier` seed baseline을 canonical하게 닫는다.
-2. query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 설계한다.
+1. query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 설계한다.
    - local source of truth: `docs/contracts/query_buffer_v1.md`
-3. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `supervised -> pseudo-label -> R-Drop -> MixText`를 같은 continual adaptation 규약 아래에서 닫는다.
-4. 이후에야 시스템 FL translation 기준선을 선택한다.
-5. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
-6. 아직 두 번째 real aggregation backend는 없다.
-7. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
-8. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
+2. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `supervised -> pseudo-label -> R-Drop -> MixText`를 같은 continual adaptation 규약 아래에서 닫는다.
+3. 이후에야 시스템 FL translation 기준선을 선택한다.
+4. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
+5. 아직 두 번째 real aggregation backend는 없다.
+6. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
+7. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
 
 ## 6. Phase 요약
 
@@ -190,6 +194,7 @@ Raw Event / Local Signal
 ### Phase 1. 중앙집중형 seed baseline
 
 - `central fixed embedding + classifier`를 canonical seed로 닫는다.
+- canonical seed artifact: `clf_2026_04_11_143138`
 
 ### Phase 2. query 적응 준비
 
@@ -222,16 +227,15 @@ Raw Event / Local Signal
 
 가장 자연스러운 다음 작업은 아래 순서다.
 
-1. 중앙집중형 `fixed embedding + classifier` seed baseline을 canonical하게 확정한다.
-2. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp, model_revision)를 남길지 정한다.
-3. threshold/policy selection과 소량 수동 라벨 개입 지점을 설계한다.
-4. 그다음 `LoRA + classifier` 적응용 supervised baseline을 연다.
-5. 같은 query-domain 적응 scaffold에서 `pseudo-label self-training`, `R-Drop`, `MixText`를 같은 continual adaptation 규약으로 비교한다.
-6. 필요하면 `TAPT`를 preadaptation 축으로 추가한다.
-7. `FedMatch`, `FedLGMatch`, `(FL)^2`는 중앙 비교가 아니라 FL stage 논문군으로 남긴다.
-8. 적응 winner를 고른 뒤에 시스템용 `FL supervised classifier` baseline으로 넘어간다.
-9. 그 winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
-10. 그 다음에야 live agent path와 richer FL family를 닫는다.
+1. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp, model_revision)를 남길지 정한다.
+2. threshold/policy selection과 소량 수동 라벨 개입 지점을 설계한다.
+3. 그다음 `LoRA + classifier` 적응용 supervised baseline을 연다.
+4. 같은 query-domain 적응 scaffold에서 `pseudo-label self-training`, `R-Drop`, `MixText`를 같은 continual adaptation 규약으로 비교한다.
+5. 필요하면 `TAPT`를 preadaptation 축으로 추가한다.
+6. `FedMatch`, `FedLGMatch`, `(FL)^2`는 중앙 비교가 아니라 FL stage 논문군으로 남긴다.
+7. 적응 winner를 고른 뒤에 시스템용 `FL supervised classifier` baseline으로 넘어간다.
+8. 그 winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
+9. 그 다음에야 live agent path와 richer FL family를 닫는다.
 
 ## 8. 검증 기준
 
@@ -240,6 +244,7 @@ Raw Event / Local Signal
 1. `fixed embedding + classifier` seed baseline이 재현 가능하게 닫혀 있다.
 2. 클래스별 confusion과 confidence 분포가 남아 있다.
 3. prototype은 메인 라벨러가 아니라 comparison/reference artifact로만 쓰인다.
+4. canonical seed artifact는 `clf_2026_04_11_143138`으로 고정한다.
 
 ### query-domain 적응
 

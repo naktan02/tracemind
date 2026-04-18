@@ -4,16 +4,17 @@ from __future__ import annotations
 
 import json
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from omegaconf import DictConfig, OmegaConf
+
 from agent.src.services.training.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
 )
-from omegaconf import DictConfig, OmegaConf
 from scripts.labeled_query_rows import (
     LabeledQueryRow,
     dump_labeled_query_rows,
@@ -55,12 +56,8 @@ class PreparedPseudoLabelSelfTrainingRun:
     def export_outputs(self) -> dict[str, str]:
         return {
             "combined_train_jsonl": str(self.combined_train_artifacts.jsonl_path),
-            "combined_train_manifest": str(
-                self.combined_train_artifacts.manifest_path
-            ),
-            "combined_train_summary": str(
-                self.combined_train_artifacts.summary_path
-            ),
+            "combined_train_manifest": str(self.combined_train_artifacts.manifest_path),
+            "combined_train_summary": str(self.combined_train_artifacts.summary_path),
             "pseudo_label_jsonl": str(self.pseudo_label_artifacts.jsonl_path),
             "pseudo_label_manifest": str(self.pseudo_label_artifacts.manifest_path),
             "pseudo_label_summary": str(self.pseudo_label_artifacts.summary_path),
@@ -74,13 +71,10 @@ class PreparedPseudoLabelSelfTrainingRun:
             "pseudo_label_summary": str(self.pseudo_label_artifacts.summary_path),
             "pseudo_label_row_count": self.pseudo_label_count,
             "seed_train_row_count": self.seed_train_count,
+            "include_seed_train_rows": self.seed_train_count > 0,
             "combined_train_jsonl": str(self.combined_train_artifacts.jsonl_path),
-            "combined_train_manifest": str(
-                self.combined_train_artifacts.manifest_path
-            ),
-            "combined_train_summary": str(
-                self.combined_train_artifacts.summary_path
-            ),
+            "combined_train_manifest": str(self.combined_train_artifacts.manifest_path),
+            "combined_train_summary": str(self.combined_train_artifacts.summary_path),
             "combined_train_row_count": self.combined_train_count,
         }
 
@@ -92,10 +86,16 @@ def run_pseudo_label_self_training(
     pseudo_label_rows: Sequence[LabeledQueryRow] | None = None,
     pseudo_label_dataset: QueryAdaptationDataset | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
+    include_seed_train_rows: bool | None = None,
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
+    categories_override: Sequence[str] | None = None,
 ) -> dict[str, str]:
-    """Seed labeled rows와 pseudo-labeled rows를 합쳐 self-training을 실행한다."""
+    """Pseudo-labeled rows를 중심으로 self-training을 실행한다.
+
+    canonical 경로는 새 accepted row만 사용한다. seed replay는 ablation/helper로만
+    opt-in 한다.
+    """
 
     prepared = prepare_pseudo_label_self_training_run(
         cfg=cfg,
@@ -103,6 +103,7 @@ def run_pseudo_label_self_training(
         pseudo_label_rows=pseudo_label_rows,
         pseudo_label_dataset=pseudo_label_dataset,
         seed_train_rows=seed_train_rows,
+        include_seed_train_rows=include_seed_train_rows,
         export_root=export_root,
         generated_at=generated_at,
     )
@@ -110,6 +111,11 @@ def run_pseudo_label_self_training(
         prepared.cfg,
         train_rows=prepared.combined_train_rows,
         extra_manifest=prepared.manifest_overrides,
+        categories_override=(
+            None
+            if categories_override is None
+            else [str(category) for category in categories_override]
+        ),
     )
     return {
         **prepared.export_outputs,
@@ -124,6 +130,7 @@ def prepare_pseudo_label_self_training_run(
     pseudo_label_rows: Sequence[LabeledQueryRow] | None = None,
     pseudo_label_dataset: QueryAdaptationDataset | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
+    include_seed_train_rows: bool | None = None,
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
 ) -> PreparedPseudoLabelSelfTrainingRun:
@@ -139,11 +146,19 @@ def prepare_pseudo_label_self_training_run(
     export_dir = resolved_export_root / run_id
     export_dir.mkdir(parents=True, exist_ok=True)
 
-    effective_seed_train_rows = (
-        load_labeled_query_rows(Path(str(cfg.train_jsonl)))
-        if seed_train_rows is None
-        else list(seed_train_rows)
+    effective_include_seed_rows = (
+        bool(getattr(cfg, "include_seed_train_rows", True))
+        if include_seed_train_rows is None
+        else bool(include_seed_train_rows)
     )
+    if effective_include_seed_rows:
+        effective_seed_train_rows = (
+            load_labeled_query_rows(Path(str(cfg.train_jsonl)))
+            if seed_train_rows is None
+            else list(seed_train_rows)
+        )
+    else:
+        effective_seed_train_rows = []
     effective_pseudo_label_rows = _resolve_pseudo_label_rows(
         cfg=cfg,
         pseudo_label_jsonl=pseudo_label_jsonl,
@@ -298,9 +313,7 @@ def _write_labeled_row_export(
         "approved_by_counts": dict(
             sorted(
                 Counter(
-                    "none"
-                    if row["approved_by"] is None
-                    else str(row["approved_by"])
+                    "none" if row["approved_by"] is None else str(row["approved_by"])
                     for row in rows
                 ).items()
             )
@@ -335,8 +348,7 @@ def _ensure_unique_query_ids(
     duplicates = sorted(query_id for query_id, count in counts.items() if count > 1)
     if duplicates:
         raise ValueError(
-            f"{item_name} must not contain duplicate query_id values: "
-            f"{duplicates[:5]}."
+            f"{item_name} must not contain duplicate query_id values: {duplicates[:5]}."
         )
 
 

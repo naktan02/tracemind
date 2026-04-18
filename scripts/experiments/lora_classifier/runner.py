@@ -18,7 +18,10 @@ from agent.src.services.training.query_adaptation.training import (
     set_seed,
     train_classifier,
 )
-from scripts.classification_report import render_confusion_table, render_per_category_table
+from scripts.classification_report import (
+    render_confusion_table,
+    render_per_category_table,
+)
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from .artifacts import write_run_artifacts
@@ -31,6 +34,7 @@ def run_supervised_lora_baseline(
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
     selection_set_name: str | None = None,
     extra_manifest: Mapping[str, Any] | None = None,
+    categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
     """LoRA baseline을 실행한다.
 
@@ -58,7 +62,37 @@ def run_supervised_lora_baseline(
         if train_rows is None
         else list(train_rows)
     )
-    categories, label_to_index = build_label_index(effective_train_rows)
+    effective_categories_override = categories_override
+    if effective_categories_override is None:
+        raw_fixed_categories = getattr(cfg, "fixed_categories", None)
+        if raw_fixed_categories is not None:
+            effective_categories_override = [
+                str(category) for category in raw_fixed_categories
+            ]
+
+    if effective_categories_override is None:
+        categories, label_to_index = build_label_index(effective_train_rows)
+    else:
+        categories = list(
+            dict.fromkeys(str(category) for category in effective_categories_override)
+        )
+        if not categories:
+            raise ValueError("categories_override must not be empty.")
+        label_to_index = {
+            str(category): index for index, category in enumerate(categories)
+        }
+        unknown_labels = sorted(
+            {
+                str(row["mapped_label_4"])
+                for row in effective_train_rows
+                if str(row["mapped_label_4"]) not in label_to_index
+            }
+        )
+        if unknown_labels:
+            raise ValueError(
+                "Train rows include labels outside categories_override: "
+                f"{unknown_labels}"
+            )
     training_device = resolve_runtime_device(str(cfg.runtime.device))
     created_at = datetime.now(timezone.utc)
     trainer_version = cfg.trainer_version or created_at.strftime(

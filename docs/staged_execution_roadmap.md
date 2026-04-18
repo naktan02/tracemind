@@ -52,7 +52,8 @@
 
 ## Current Checkpoint
 
-- `Phase 1` 방향은 `central fixed embedding + classifier` seed로 확정했다.
+- `Phase 1` 방향은 `central fixed embedding + classifier` seed로 확정했고,
+  canonical artifact는 `clf_2026_04_11_143138`으로 고정했다.
 - query-domain 적응은 바로 학습하지 않고, 먼저 `query buffer` 로컬 저장과 selection 준비를 닫는다.
 - `QueryBuffer`는 `agent` 소유 local state이고, source of truth는 `docs/contracts/query_buffer_v1.md`다.
 - `agent`에는 `QueryBufferRepository`와 inference append 경로가 들어갔다.
@@ -95,9 +96,9 @@
 
 ## Next Session Checklist
 
-1. `R-Drop` objective를 baseline trainer 위에 추가한다.
-2. lifecycle purge를 어느 runtime cadence에서 실행할지 wiring한다.
-3. 필요 시 bootstrap teacher-student smoke를 다시 닫는다.
+1. same initial checkpoint reuse를 기준으로 central continual adaptation 비교 규약을 잠근다.
+2. 현재 offline union helper와 canonical continual protocol 사이의 차이를 정리한다.
+3. `R-Drop` objective를 baseline trainer 위에 추가한다.
 
 ## Guardrails
 
