@@ -566,8 +566,10 @@ canonical 경로:
   그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
 - `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.
 - `scripts/experiments/lora_classifier/pseudo_label_runner.py`는
-  seed labeled rows와 pseudo-labeled rows를 합쳐 self-training용 combined train JSONL을 남기고,
-  실제 학습은 메모리 row를 baseline runner에 직접 넘긴다.
+  현재 offline union retraining helper로서 seed labeled rows와 pseudo-labeled rows를 합쳐
+  self-training용 combined train JSONL을 남기고, 실제 학습은 메모리 row를 baseline runner에 직접 넘긴다.
+- 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 본다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`는 이 중앙 규약으로 흡수하지 않고, 이후 FL stage 비교선으로 남긴다.
 - `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
   family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의
   `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.

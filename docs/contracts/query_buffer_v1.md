@@ -134,6 +134,14 @@ v1 기본 방향:
 즉 v1은 pseudo-label only를 기본으로 두고,
 manual label은 이후 같은 dataset shape 위에 override로 얹는 방향이다.
 
+주의:
+
+- 여기서 `pseudo_label_only`는 accepted query-derived adaptation dataset의
+  label source를 뜻한다.
+- 이 값은 중앙 학습에서 initial seed labeled rows를 full replay할지 여부를
+  직접 의미하지 않는다.
+- 현재 central canonical protocol은 `seed checkpoint 1회 생성 -> 이후 newly accepted query-derived rows only continual adaptation`으로 본다.
+
 ## 8. v1 구현 순서
 
 1. `agent` 로컬 저장소에 query buffer record 저장 경로 추가

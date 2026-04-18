@@ -21,7 +21,9 @@
 
 ### Phase 3. 중앙집중형 적응 비교
 
-- `LoRA + classifier` 적응 위에서 `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
+- 같은 초기 seed checkpoint와 accepted query-derived rows를 기준으로
+  `LoRA + classifier` continual adaptation 위에서
+  `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
 
 ### Phase 4. 시스템 FL baseline
 
@@ -81,9 +83,11 @@
   `train_lora_bootstrap_classifier_teacher.py`를 추가했고,
   `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙인 뒤
   `LoRA + classifier` student를 학습한다.
-- `pseudo-label self-training` runner를 추가했고,
-  `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family loop에서
-  seed labeled rows와 pseudo-labeled rows를 합쳐 같은 baseline runner로 self-training을 실행한다.
+- `pseudo-label self-training` runner를 추가했다.
+- 현재 helper는 첫 bootstrap 이후 같은-family loop에서
+  seed labeled rows와 pseudo-labeled rows를 합쳐 실행하는 offline 경로를 가진다.
+- 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 정리한다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`는 central 단계가 아니라 FL 단계 비교선으로 미룬다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가

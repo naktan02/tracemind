@@ -4,7 +4,7 @@
 
 이 문서는 TraceMind 작업의 짧은 진입점이다.
 현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
-현재 작업 순서는 `central fixed+classifier seed -> query 적응 LoRA+classifier -> 시스템용 FL translation`으로 본다.
+현재 작업 순서는 `central fixed+classifier seed -> query continual adaptation LoRA+classifier -> 시스템용 FL translation`으로 본다.
 
 Codex CLI와 VS Code Codex extension을 사용할 때는
 `docs/ai_context_manifest.yaml`을 함께 읽어 task별 읽기 순서와
@@ -136,6 +136,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 2. 적응 단계 LoRA spec과 threshold/policy를 무엇으로 고정할지
 3. `lora` family FL 활성화
 4. pseudo-label을 정식 학습 신호로 승격
+   - central canonical 비교는 seed 1회 이후 new accepted query-derived rows only continual adaptation을 기준으로 본다.
 5. 서버로 보내는 update 메타데이터 확대
 6. private adapter/head를 언제 열지
 7. secure aggregation, DP, HE 도입 시점

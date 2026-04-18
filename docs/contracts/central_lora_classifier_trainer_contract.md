@@ -45,6 +45,8 @@ query-domain 적응 단계의 기본 scaffold는 아래로 고정한다.
 
 ```text
 Query Buffer (raw text)
+-> Accepted Query-derived Rows
+-> Seed or Previous Adaptation Checkpoint
 -> Frozen Backbone
 -> LoRA Modules
 -> Classifier Head
@@ -56,9 +58,12 @@ Query Buffer (raw text)
 
 1. backbone 본체 가중치는 고정한다.
 2. trainable parameter는 LoRA module과 classifier head로 제한한다.
-3. 같은 비교표 안에서는 backbone, tokenizer, label schema, LoRA spec을 고정한다.
-4. 방법론 비교에서는 adaptation objective만 바꾼다.
-5. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
+3. 중앙 canonical protocol에서는 initial seed labeled split으로 checkpoint를 한 번 만든 뒤,
+   이후 비교는 same checkpoint에서 출발해 new accepted query-derived rows only로 계속 적응한다.
+4. 같은 비교표 안에서는 backbone, tokenizer, label schema, LoRA spec, initial checkpoint를 고정한다.
+5. 방법론 비교에서는 adaptation objective만 바꾼다.
+6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
+7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
 
 ## 적응 비교축
 
@@ -80,7 +85,10 @@ Query Buffer (raw text)
 - 첫 pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
   pseudo-label을 붙이고, `LoRA + classifier` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
-- 그 이후 반복 loop에서만 `LoRA + classifier` same-family self-training을 연다.
+- 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
+  newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
+  central query-domain 비교 family에는 넣지 않고, FL stage 비교선으로 둔다.
 
 ## 고정해야 할 입력 조건
 
@@ -91,8 +99,10 @@ Query Buffer (raw text)
 3. LoRA target modules
 4. LoRA rank / alpha / dropout
 5. classifier head 형태
-6. query selection rule
-7. adaptation objective 세부 하이퍼파라미터
+6. initial seed checkpoint
+7. query selection rule
+8. adaptation cadence / update budget
+9. adaptation objective 세부 하이퍼파라미터
 
 이 중 하나라도 바뀌면 방법론 비교가 아니라 scaffold 비교가 된다.
 
@@ -101,14 +111,16 @@ Query Buffer (raw text)
 각 run은 최소 아래 산출물을 남긴다.
 
 1. seed baseline reference
-2. backbone reference
-3. LoRA config snapshot
-4. LoRA adapter checkpoint
-5. classifier head checkpoint
-6. label schema snapshot
-7. threshold / objective config snapshot
-8. validation / test / query-eval report
-9. acceptance ratio, confidence, calibration 관련 요약
+2. initial seed checkpoint reference
+3. backbone reference
+4. LoRA config snapshot
+5. LoRA adapter checkpoint
+6. classifier head checkpoint
+7. label schema snapshot
+8. accepted query-derived row manifest
+9. threshold / objective config snapshot
+10. validation / test / query-eval report
+11. acceptance ratio, confidence, calibration 관련 요약
 
 중요:
 
@@ -127,6 +139,22 @@ Query Buffer (raw text)
 
 즉, 이 문서는 query-domain 적응에서 `LoRA + classifier`가 실제로 도움이 되는지 검증하고,
 시스템 트랙은 그 winner를 `어떤 shared family로 배포/집계할지`를 다시 설계한다.
+
+## central continual protocol note
+
+이 문서의 canonical 비교는 `offline union retraining`이 아니라
+`seed checkpoint 1회 생성 -> 이후 newly accepted query-derived rows only continual adaptation`
+으로 본다.
+
+즉 accepted query가 들어올 때마다 아래 질문을 같은 규약 아래 비교한다.
+
+1. supervised-style update가 가장 낫나
+2. pseudo-label self-training이 가장 낫나
+3. R-Drop 같은 regularized objective가 가장 낫나
+4. 필요 시 MixText/TAPT가 incremental adaptation에서도 이점을 주나
+
+seed full replay 또는 small anchor replay는 drift/forgetting 분석을 위한 ablation로는 가능하지만,
+canonical central table의 기본 규약으로 두지 않는다.
 
 ## phase 분리
 
