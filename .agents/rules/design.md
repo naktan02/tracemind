@@ -95,6 +95,23 @@ description: Use when a project needs a reusable engineering style that prioriti
 
 - 좋은 구조는 테스트, dump, compose, lint, 실행 결과로 검증 가능해야 한다.
 
+20. 임시 단일 구현 후 재리팩토링 금지
+   - “같은 family의 후속 알고리즘이 예상되면 첫 구현부터 family-level 확장면을 먼저 만든다.”
+
+21. 외부 알고리즘 port 시 source traceability 유지
+   - “논문/외부 repo 알고리즘을 가져올 때는 핵심 수식, 하이퍼파라미터 이름, 단계 구조를 원본과 최대한 1:1로 유지하고, 달라진 부분은 명시적으로 기록한다.”
+
+22. 무의식적 근사 금지
+   - “원본 알고리즘의 전제조건이 빠져 있으면 조용히 proxy 동작으로 대체하지 말고, 빠진 전제와 현재 근사
+      수준을 먼저 드러낸다.”
+
+23. family runner 우선
+   - “runner/helper는 알고리즘별 일회성 파일보다 family 공통 runner + algorithm-specific adapter 구조를 우선한다. 단, 후속 알고리즘이 없을 때만 one-off를 허용한다.”
+   
+24. 실험 의미와 코드 완료를 분리
+   - “코드가 돌아간다와 실험 비교선으로 충분히 닫혔다를 같은 완료로 취급하지 않는다. 입력 생성,
+      provenance, diagnostics까지 있어야 실험 완료로 본다.”
+
 ## 패턴 선택 기준
 
 패턴 자체를 목적처럼 쓰지 않는다. 아래 기준은 출발점일 뿐이며, 필요하면 조합해서 쓴다.

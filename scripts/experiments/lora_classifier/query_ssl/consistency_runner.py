@@ -1,0 +1,176 @@
+"""Query SSL consistency family runner."""
+
+from __future__ import annotations
+
+from collections.abc import Callable, Mapping
+from dataclasses import dataclass
+from typing import Any
+
+from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
+    FixMatchConfig,
+)
+from agent.src.services.training.query_adaptation.data import (
+    build_multiview_dataloader,
+)
+from agent.src.services.training.query_adaptation.training import (
+    train_fixmatch_classifier,
+)
+from scripts.labeled_query_rows import LabeledQueryRow
+
+from ..artifacts import write_run_artifacts
+from .common import (
+    QuerySslRunContext,
+    build_query_ssl_method_manifest,
+    evaluate_query_ssl_run_context,
+    prepare_query_ssl_run_context,
+)
+
+
+@dataclass(frozen=True, slots=True)
+class ConsistencyMethodAdapter:
+    """Consistency family algorithm-specific wiring."""
+
+    algorithm_name: str
+    trainer_version_prefix: str
+    require_multiview: bool
+    build_unlabeled_loader: Callable[[QuerySslRunContext], Any]
+    train: Callable[
+        [QuerySslRunContext, Any],
+        tuple[Any, list[dict[str, Any]], dict[str, Any]],
+    ]
+
+
+def run_consistency_query_ssl_lora_baseline(
+    cfg,
+    *,
+    adapter: ConsistencyMethodAdapter,
+    train_rows: list[LabeledQueryRow] | None = None,
+    unlabeled_rows: list[LabeledQueryRow] | None = None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
+    selection_set_name: str | None = None,
+    extra_manifest: Mapping[str, Any] | None = None,
+    categories_override: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, str]:
+    """Consistency family query SSL baseline을 공통 scaffolding으로 실행한다."""
+
+    context = prepare_query_ssl_run_context(
+        cfg=cfg,
+        train_rows=train_rows,
+        unlabeled_rows=unlabeled_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        categories_override=categories_override,
+        trainer_version_prefix=adapter.trainer_version_prefix,
+        require_multiview=adapter.require_multiview,
+        algorithm_name=adapter.algorithm_name,
+    )
+    unlabeled_loader = adapter.build_unlabeled_loader(context)
+    model, history, best_selection_report = adapter.train(context, unlabeled_loader)
+    results = evaluate_query_ssl_run_context(
+        model=model,
+        eval_loaders=context.eval_loaders,
+        categories=context.categories,
+        device=context.training_device,
+    )
+
+    effective_extra_manifest: dict[str, Any] = {
+        "unlabeled_jsonl": None
+        if getattr(cfg, "unlabeled_jsonl", None) is None
+        else str(cfg.unlabeled_jsonl),
+        "unlabeled_row_count": len(context.effective_unlabeled_rows),
+        "query_ssl_method": build_query_ssl_method_manifest(cfg),
+    }
+    if extra_manifest is not None:
+        effective_extra_manifest.update(dict(extra_manifest))
+
+    outputs = write_run_artifacts(
+        cfg=cfg,
+        trainer_version=context.trainer_version,
+        created_at=context.created_at,
+        model=model,
+        tokenizer=context.tokenizer,
+        categories=context.categories,
+        eval_set_map=context.eval_set_map,
+        training_device=context.training_device,
+        backbone_summary=context.backbone_summary,
+        history=history,
+        best_selection_report=best_selection_report,
+        results=results,
+        extra_manifest=effective_extra_manifest,
+    )
+    for key, value in outputs.items():
+        print(f"{key}={value}")
+    return outputs
+
+
+def run_fixmatch_lora_baseline(
+    cfg,
+    *,
+    train_rows: list[LabeledQueryRow] | None = None,
+    unlabeled_rows: list[LabeledQueryRow] | None = None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
+    selection_set_name: str | None = None,
+    extra_manifest: Mapping[str, Any] | None = None,
+    categories_override: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, str]:
+    """USB FixMatch core를 consistency family runner 위에서 실행한다."""
+
+    return run_consistency_query_ssl_lora_baseline(
+        cfg=cfg,
+        adapter=_build_fixmatch_adapter(cfg),
+        train_rows=train_rows,
+        unlabeled_rows=unlabeled_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        extra_manifest=extra_manifest,
+        categories_override=categories_override,
+    )
+
+
+def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
+    fixmatch_config = FixMatchConfig(
+        temperature=float(cfg.query_ssl_method.temperature),
+        p_cutoff=float(cfg.query_ssl_method.p_cutoff),
+        hard_label=bool(cfg.query_ssl_method.hard_label),
+        lambda_u=float(cfg.query_ssl_method.lambda_u),
+    )
+
+    def _build_unlabeled_loader(context: QuerySslRunContext):
+        return build_multiview_dataloader(
+            rows=context.effective_unlabeled_rows,
+            tokenizer=context.tokenizer,
+            batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
+            max_length=int(cfg.paper_backbone.max_length),
+            task_prefix=str(cfg.paper_backbone.task_prefix),
+            shuffle=True,
+        )
+
+    def _train(
+        context: QuerySslRunContext,
+        unlabeled_loader,
+    ) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
+        return train_fixmatch_classifier(
+            model=context.model,
+            train_loader=context.train_loader,
+            unlabeled_loader=unlabeled_loader,
+            selection_loader=context.selection_loader,
+            categories=context.categories,
+            device=context.training_device,
+            epochs=int(cfg.epochs),
+            learning_rate=float(cfg.learning_rate),
+            classifier_learning_rate=float(cfg.classifier_learning_rate),
+            weight_decay=float(cfg.weight_decay),
+            max_grad_norm=float(cfg.max_grad_norm),
+            log_every_steps=int(cfg.log_every_steps),
+            fixmatch_config=fixmatch_config,
+        )
+
+    return ConsistencyMethodAdapter(
+        algorithm_name="FixMatch",
+        trainer_version_prefix="lora_fixmatch",
+        require_multiview=bool(
+            getattr(cfg.query_ssl_method, "require_multiview", True)
+        ),
+        build_unlabeled_loader=_build_unlabeled_loader,
+        train=_train,
+    )

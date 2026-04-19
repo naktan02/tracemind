@@ -30,7 +30,7 @@ def test_train_lora_pseudo_label_classifier_entrypoint_imports_direct_runner() -
 def test_train_lora_fixmatch_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module("scripts.experiments.train_lora_fixmatch")
     runner = importlib.import_module(
-        "scripts.experiments.lora_classifier.fixmatch_runner"
+        "scripts.experiments.lora_classifier.query_ssl.consistency_runner"
     )
 
     assert entrypoint.run_fixmatch_lora_baseline is runner.run_fixmatch_lora_baseline

@@ -560,7 +560,7 @@ canonical 경로:
 - CLI entrypoint: `scripts/experiments/train_lora_classifier.py`
 - scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
 - FixMatch entrypoint: `scripts/experiments/train_lora_fixmatch.py`
-- FixMatch runner: `scripts/experiments/lora_classifier/fixmatch_runner.py`
+- Query SSL consistency runner: `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - agent 학습 코어: `agent/src/services/training/query_adaptation/`
 - USB FixMatch core mapping: `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
 - teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
@@ -598,6 +598,8 @@ canonical 경로:
   그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
 - `train_lora_fixmatch.py`는 USB `fixmatch.py::train_step`의 수식 코어를 가져오되,
   USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind epoch trainer adapter로 둔다.
+- scripts 쪽 실행 껍데기는 `query_ssl/common.py`와 `query_ssl/consistency_runner.py`로 나눠
+  family 공통 scaffolding과 알고리즘별 wiring을 분리한다.
 - 현재 `FixMatch`는 `weak_text` / `strong_text`가 채워진 unlabeled JSONL을 요구한다.
   자동 identity fallback은 두지 않는다.
 - `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.

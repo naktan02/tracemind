@@ -31,6 +31,8 @@
 - 첫 USB faithful consistency baseline entrypoint는 `scripts/experiments/train_lora_fixmatch.py`다.
 - `FixMatch` core는 `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`에 두고,
   trainer loop adapter는 `agent/src/services/training/query_adaptation/training.py`가 소유한다.
+- scripts 실행 껍데기는 `scripts/experiments/lora_classifier/query_ssl/common.py`와
+  `query_ssl/consistency_runner.py`로 나눠 consistency family 공통 scaffolding을 재사용한다.
 - 첫 진입 bootstrap entrypoint는 `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`이며,
   `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙인 뒤
   `LoRA + classifier` student를 학습한다.

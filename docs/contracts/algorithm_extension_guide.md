@@ -21,6 +21,10 @@
 - 이 가이드는 현재 시스템/FL runtime에 wiring된 전략 축을 중심으로 설명한다.
 - query-domain 적응 단계의 `central LoRA classifier` 비교선은 별도 중앙 trainer를
   사용하며, 그 구현이 자동으로 이 registry 축 안에 들어와야 한다는 뜻은 아니다.
+- 후속 알고리즘이 같은 family로 이어질 가능성이 높다면, 첫 구현부터 family-level
+  공통 surface를 먼저 둔다.
+- 단일 알고리즘 전용 임시 파일을 먼저 만들고 다음 패치에서 다시 일반화하는 흐름은
+  가능한 한 피한다.
 
 ---
 
@@ -36,7 +40,7 @@
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Query SSL Selection Algorithm | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/query_adaptation/ssl/`, `scripts/conf/pseudo_label_algorithm/` |
-| Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
+| Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
@@ -319,6 +323,9 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - agent 코어:
   - `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
   - `agent/src/services/training/query_adaptation/training.py`
+- scripts family runner:
+  - `scripts/experiments/lora_classifier/query_ssl/common.py`
+  - `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - scripts preset:
   - `scripts/conf/query_ssl_method/*.yaml`
   - `scripts/conf/query_ssl_train_source/*.yaml`
@@ -328,6 +335,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 2. trainer loop adapter는 `query_adaptation/training.py`에서 연결한다
 3. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
 4. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
+5. 같은 family runner 안에서는 algorithm-specific wiring만 추가하고, eval/artifact 껍데기는 재사용한다
 
 주의:
 - `FixMatch`는 selection rule이 아니라 adaptation objective다.

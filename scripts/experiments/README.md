@@ -40,7 +40,8 @@
 - `lora_classifier/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runner.py`가 canonical supervised baseline runner다.
-  - `fixmatch_runner.py`가 USB FixMatch baseline runner다.
+  - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
+  - `query_ssl/consistency_runner.py`가 USB FixMatch를 포함한 consistency family runner다.
   - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
   - `pseudo_label_runner.py`는 현재 offline union retraining helper를 제공한다.
   - `bootstrap_runner.py`의 teacher pseudo-label selection은
@@ -86,7 +87,7 @@
 4. `train_lora_bootstrap_classifier_teacher.py`
 5. `train_lora_pseudo_label_classifier.py`
 6. `lora_classifier/runner.py`
-7. 필요하면 `lora_classifier/fixmatch_runner.py`, `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
+7. 필요하면 `lora_classifier/query_ssl/consistency_runner.py`, `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
 
 ## 주의할 점
 

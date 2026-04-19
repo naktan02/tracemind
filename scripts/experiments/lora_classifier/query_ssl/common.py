@@ -1,26 +1,22 @@
-"""USB FixMatch core를 쓰는 LoRA query adaptation runner."""
+"""Query SSL family runner 공통 scaffolding."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
 from agent.src.infrastructure.runtime import resolve_runtime_device
-from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
-    FixMatchConfig,
-)
 from agent.src.services.training.query_adaptation.data import (
     build_dataloader,
     build_label_index,
-    build_multiview_dataloader,
 )
 from agent.src.services.training.query_adaptation.modeling import build_model
 from agent.src.services.training.query_adaptation.training import (
     evaluate_classifier,
     set_seed,
-    train_fixmatch_classifier,
 )
 from scripts.classification_report import (
     render_confusion_table,
@@ -28,20 +24,77 @@ from scripts.classification_report import (
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
-from .artifacts import write_run_artifacts
+
+@dataclass(slots=True)
+class QuerySslRunContext:
+    """Query SSL family runner가 공유하는 실행 컨텍스트."""
+
+    cfg: Any
+    effective_selection_set: str
+    eval_set_map: dict[str, Path]
+    effective_train_rows: list[LabeledQueryRow]
+    effective_unlabeled_rows: list[LabeledQueryRow]
+    categories: list[str]
+    label_to_index: dict[str, int]
+    training_device: str
+    created_at: datetime
+    trainer_version: str
+    model: Any
+    tokenizer: Any
+    backbone_summary: dict[str, Any]
+    train_loader: Any
+    eval_loaders: dict[str, Any]
+    selection_loader: Any
 
 
-def run_fixmatch_lora_baseline(
+def build_query_ssl_method_manifest(cfg) -> dict[str, object]:
+    """Query SSL method config를 artifact manifest에 남길 canonical shape."""
+
+    return {
+        "preset_name": str(cfg.query_ssl_method.name),
+        "algorithm_name": str(cfg.query_ssl_method.algorithm_name),
+        "temperature": float(cfg.query_ssl_method.temperature),
+        "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
+        "hard_label": bool(cfg.query_ssl_method.hard_label),
+        "lambda_u": float(cfg.query_ssl_method.lambda_u),
+        "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
+        "require_multiview": bool(cfg.query_ssl_method.require_multiview),
+    }
+
+
+def validate_multiview_rows(
+    rows: Sequence[LabeledQueryRow],
+    *,
+    algorithm_name: str,
+) -> None:
+    """weak/strong pair가 필요한 consistency SSL 입력을 검증한다."""
+
+    missing_query_ids = [
+        str(row["query_id"])
+        for row in rows
+        if row.get("weak_text") is None or row.get("strong_text") is None
+    ]
+    if missing_query_ids:
+        raise ValueError(
+            f"{algorithm_name} requires each unlabeled row to include both "
+            "weak_text and strong_text. Missing examples: "
+            f"{missing_query_ids[:5]}."
+        )
+
+
+def prepare_query_ssl_run_context(
     cfg,
     *,
-    train_rows: list[LabeledQueryRow] | None = None,
-    unlabeled_rows: list[LabeledQueryRow] | None = None,
-    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
-    selection_set_name: str | None = None,
-    extra_manifest: Mapping[str, Any] | None = None,
-    categories_override: list[str] | tuple[str, ...] | None = None,
-) -> dict[str, str]:
-    """USB FixMatch core를 LoRA query adaptation scaffold에서 실행한다."""
+    train_rows: list[LabeledQueryRow] | None,
+    unlabeled_rows: list[LabeledQueryRow] | None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None,
+    selection_set_name: str | None,
+    categories_override: list[str] | tuple[str, ...] | None,
+    trainer_version_prefix: str,
+    require_multiview: bool,
+    algorithm_name: str,
+) -> QuerySslRunContext:
+    """Query SSL family runner 공통 입력 정규화와 labeled/eval 준비를 수행한다."""
 
     effective_selection_set = str(selection_set_name or cfg.selection_set)
     eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
@@ -74,10 +127,12 @@ def run_fixmatch_lora_baseline(
     else:
         effective_unlabeled_rows = list(unlabeled_rows)
     if not effective_unlabeled_rows:
-        raise ValueError("FixMatch unlabeled_rows must not be empty.")
-
-    if bool(getattr(cfg.query_ssl_method, "require_multiview", True)):
-        _validate_multiview_rows(effective_unlabeled_rows)
+        raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
+    if require_multiview:
+        validate_multiview_rows(
+            effective_unlabeled_rows,
+            algorithm_name=algorithm_name,
+        )
 
     effective_categories_override = categories_override
     if effective_categories_override is None:
@@ -114,7 +169,7 @@ def run_fixmatch_lora_baseline(
     training_device = resolve_runtime_device(str(cfg.runtime.device))
     created_at = datetime.now(timezone.utc)
     trainer_version = cfg.trainer_version or created_at.strftime(
-        "lora_fixmatch_%Y_%m_%d_%H%M%S"
+        f"{trainer_version_prefix}_%Y_%m_%d_%H%M%S"
     )
 
     model, tokenizer, backbone_summary = build_model(
@@ -138,16 +193,8 @@ def run_fixmatch_lora_baseline(
         task_prefix=str(cfg.paper_backbone.task_prefix),
         shuffle=True,
     )
-    unlabeled_loader = build_multiview_dataloader(
-        rows=effective_unlabeled_rows,
-        tokenizer=tokenizer,
-        batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
-        max_length=int(cfg.paper_backbone.max_length),
-        task_prefix=str(cfg.paper_backbone.task_prefix),
-        shuffle=True,
-    )
 
-    eval_loaders = {}
+    eval_loaders: dict[str, Any] = {}
     eval_row_map = (
         None
         if eval_rows_by_name is None
@@ -174,28 +221,34 @@ def run_fixmatch_lora_baseline(
         )
         print(f"tokenized_eval_set={dataset_name} rows={len(rows)}", flush=True)
 
-    selection_loader = eval_loaders[effective_selection_set]
-    fixmatch_config = FixMatchConfig(
-        temperature=float(cfg.query_ssl_method.temperature),
-        p_cutoff=float(cfg.query_ssl_method.p_cutoff),
-        hard_label=bool(cfg.query_ssl_method.hard_label),
-        lambda_u=float(cfg.query_ssl_method.lambda_u),
-    )
-    model, history, best_selection_report = train_fixmatch_classifier(
-        model=model,
-        train_loader=train_loader,
-        unlabeled_loader=unlabeled_loader,
-        selection_loader=selection_loader,
+    return QuerySslRunContext(
+        cfg=cfg,
+        effective_selection_set=effective_selection_set,
+        eval_set_map=eval_set_map,
+        effective_train_rows=effective_train_rows,
+        effective_unlabeled_rows=effective_unlabeled_rows,
         categories=categories,
-        device=training_device,
-        epochs=int(cfg.epochs),
-        learning_rate=float(cfg.learning_rate),
-        classifier_learning_rate=float(cfg.classifier_learning_rate),
-        weight_decay=float(cfg.weight_decay),
-        max_grad_norm=float(cfg.max_grad_norm),
-        log_every_steps=int(cfg.log_every_steps),
-        fixmatch_config=fixmatch_config,
+        label_to_index=label_to_index,
+        training_device=training_device,
+        created_at=created_at,
+        trainer_version=trainer_version,
+        model=model,
+        tokenizer=tokenizer,
+        backbone_summary=backbone_summary,
+        train_loader=train_loader,
+        eval_loaders=eval_loaders,
+        selection_loader=eval_loaders[effective_selection_set],
     )
+
+
+def evaluate_query_ssl_run_context(
+    *,
+    model: Any,
+    eval_loaders: Mapping[str, Any],
+    categories: list[str],
+    device: str,
+) -> dict[str, Any]:
+    """학습이 끝난 Query SSL 모델을 모든 eval set에서 평가한다."""
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
@@ -203,7 +256,7 @@ def run_fixmatch_lora_baseline(
             model=model,
             dataloader=dataloader,
             categories=categories,
-            device=training_device,
+            device=device,
         )
         results[dataset_name] = report
         print(
@@ -226,64 +279,4 @@ def run_fixmatch_lora_baseline(
             )
         )
         print()
-
-    effective_extra_manifest: dict[str, Any] = {
-        "unlabeled_jsonl": None
-        if getattr(cfg, "unlabeled_jsonl", None) is None
-        else str(cfg.unlabeled_jsonl),
-        "unlabeled_row_count": len(effective_unlabeled_rows),
-        "query_ssl_method": build_query_ssl_method_manifest(cfg),
-    }
-    if extra_manifest is not None:
-        effective_extra_manifest.update(dict(extra_manifest))
-
-    outputs = write_run_artifacts(
-        cfg=cfg,
-        trainer_version=trainer_version,
-        created_at=created_at,
-        model=model,
-        tokenizer=tokenizer,
-        categories=categories,
-        eval_set_map=eval_set_map,
-        training_device=training_device,
-        backbone_summary=backbone_summary,
-        history=history,
-        best_selection_report=best_selection_report,
-        results=results,
-        extra_manifest=effective_extra_manifest,
-    )
-    for key, value in outputs.items():
-        print(f"{key}={value}")
-    return outputs
-
-
-def build_query_ssl_method_manifest(cfg) -> dict[str, object]:
-    """FixMatch method config를 artifact manifest에 남길 공통 shape."""
-
-    return {
-        "preset_name": str(cfg.query_ssl_method.name),
-        "algorithm_name": str(cfg.query_ssl_method.algorithm_name),
-        "temperature": float(cfg.query_ssl_method.temperature),
-        "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
-        "hard_label": bool(cfg.query_ssl_method.hard_label),
-        "lambda_u": float(cfg.query_ssl_method.lambda_u),
-        "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
-        "require_multiview": bool(cfg.query_ssl_method.require_multiview),
-    }
-
-
-def _validate_multiview_rows(rows: Sequence[LabeledQueryRow]) -> None:
-    missing_query_ids = [
-        str(row["query_id"])
-        for row in rows
-        if row.get("weak_text") is None or row.get("strong_text") is None
-    ]
-    if missing_query_ids:
-        raise ValueError(
-            "FixMatch requires each unlabeled row to include both weak_text and "
-            "strong_text. Missing examples: "
-            f"{missing_query_ids[:5]}."
-        )
-
-
-__all__ = ["build_query_ssl_method_manifest", "run_fixmatch_lora_baseline"]
+    return results
