@@ -92,6 +92,27 @@
 6. `lora_classifier/runner.py`
 7. 필요하면 `lora_classifier/query_ssl/consistency_runner.py`, `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
 
+## warm-start 재실행 요약
+
+중앙 비교를 다시 돌릴 때는 아래 순서를 기준으로 본다.
+
+1. `train_lora_classifier.py`
+   - labeled seed subset으로 supervised LoRA seed manifest를 먼저 만든다.
+2. `train_lora_bootstrap_classifier_teacher.py`
+   - 기존 fixed classifier teacher로 pseudo-label을 붙이되,
+     student는 `query_adaptation_initial_checkpoint=required`와
+     `query_adaptation_initial_checkpoint.manifest_path=<supervised_lora_manifest>`로
+     같은 initial checkpoint에서 warm-start한다.
+3. `train_lora_fixmatch.py`
+   - 같은 supervised LoRA seed manifest에서 warm-start하고,
+     `query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1`로
+     strict USB형 `text + aug_0 + aug_1` input을 생성한다.
+   - `query_ssl_method.supervised_loss_weight=0.0`을 주면
+     local labeled loss를 끄는 `unlabeled-only` ablation을 돌릴 수 있다.
+
+현재 바로 복사해서 쓸 명령은 `scripts/README.md`의
+`현재 warm-start 재실행 레시피` 절에 정리해 둔다.
+
 ## 주의할 점
 
 - 이 디렉터리의 helper는 실험용 canonical shape를 만들 수는 있지만,

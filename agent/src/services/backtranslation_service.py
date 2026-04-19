@@ -32,6 +32,7 @@ class NllbBacktranslationService:
     device: str = "auto"
     batch_size: int = 8
     max_new_tokens: int = 256
+    torch_dtype: str = "auto"
     cache_dir: str | None = None
     local_files_only: bool = False
 
@@ -81,6 +82,7 @@ class NllbBacktranslationService:
                 device=self.device,
                 batch_size=self.batch_size,
                 max_new_tokens=self.max_new_tokens,
+                torch_dtype=self.torch_dtype,
                 cache_dir=self.cache_dir,
                 local_files_only=self.local_files_only,
             )
@@ -94,6 +96,7 @@ class NllbBacktranslationService:
                 device=self.device,
                 batch_size=self.batch_size,
                 max_new_tokens=self.max_new_tokens,
+                torch_dtype=self.torch_dtype,
                 cache_dir=self.cache_dir,
                 local_files_only=self.local_files_only,
             )

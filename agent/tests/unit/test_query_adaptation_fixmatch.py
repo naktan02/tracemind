@@ -45,9 +45,9 @@ def test_build_fixmatch_pseudo_label_keeps_usb_temperature_behavior() -> None:
 def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
     model = _SequentialLogitModel(
         outputs=[
-            torch.tensor([[4.0, 0.0], [0.0, 4.0]], dtype=torch.float32),
             torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32),
             torch.tensor([[6.0, 0.0], [0.8, 0.0]], dtype=torch.float32),
+            torch.tensor([[4.0, 0.0], [0.0, 4.0]], dtype=torch.float32),
         ]
     )
     labeled_batch = {
@@ -71,6 +71,7 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
             p_cutoff=0.95,
             hard_label=True,
             lambda_u=1.0,
+            supervised_loss_weight=1.0,
         ),
     )
 
@@ -95,3 +96,45 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
         output.total_loss,
         expected_sup_loss + expected_unsup_loss,
     )
+
+
+def test_compute_fixmatch_step_supports_unlabeled_only_ablation() -> None:
+    model = _SequentialLogitModel(
+        outputs=[
+            torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32),
+            torch.tensor([[6.0, 0.0], [0.8, 0.0]], dtype=torch.float32),
+        ]
+    )
+    unlabeled_batch = {
+        "weak_input_ids": torch.ones((2, 2), dtype=torch.long),
+        "weak_attention_mask": torch.ones((2, 2), dtype=torch.long),
+        "strong_input_ids": torch.ones((2, 2), dtype=torch.long),
+        "strong_attention_mask": torch.ones((2, 2), dtype=torch.long),
+    }
+
+    output = compute_fixmatch_step(
+        model=model,  # type: ignore[arg-type]
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        config=FixMatchConfig(
+            temperature=0.5,
+            p_cutoff=0.95,
+            hard_label=True,
+            lambda_u=1.0,
+            supervised_loss_weight=0.0,
+        ),
+    )
+
+    weak_probs = torch.softmax(torch.tensor([[6.0, 0.0], [0.8, 0.0]]), dim=-1)
+    expected_mask = torch.tensor([1.0, 0.0], dtype=torch.float32)
+    strong_losses = nn.functional.cross_entropy(
+        torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32),
+        torch.argmax(weak_probs, dim=-1),
+        reduction="none",
+    )
+    expected_unsup_loss = (strong_losses * expected_mask).mean()
+
+    assert torch.allclose(output.mask, expected_mask)
+    assert torch.isclose(output.sup_loss, torch.tensor(0.0))
+    assert torch.isclose(output.unsup_loss, expected_unsup_loss)
+    assert torch.isclose(output.total_loss, expected_unsup_loss)

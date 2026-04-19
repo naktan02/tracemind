@@ -6,4 +6,5 @@ target_lang: eng_Latn
 device: auto
 batch_size: 8
 max_new_tokens: 256
+torch_dtype: auto
 cache_dir: null

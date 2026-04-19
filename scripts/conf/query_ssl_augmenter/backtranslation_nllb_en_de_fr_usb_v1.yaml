@@ -10,4 +10,5 @@ device: ${runtime.device}
 local_files_only: ${runtime.local_files_only}
 batch_size: 8
 max_new_tokens: 256
+torch_dtype: auto
 cache_dir: data/processed/query_ssl_augmentations

@@ -25,6 +25,7 @@ def _cfg(cache_dir: str) -> object:
                 "local_files_only": True,
                 "batch_size": 8,
                 "max_new_tokens": 256,
+                "torch_dtype": "auto",
                 "cache_dir": cache_dir,
             },
         }

@@ -508,6 +508,78 @@ uv run python scripts/experiments/train_lora_classifier.py \
   trainer_version=supervised_seed_split30_2026_04_14_rerun
 ```
 
+복사해서 바로 쓰는 현재 warm-start 재실행 레시피:
+
+- labeled subset:
+  `data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl`
+- unlabeled subset:
+  `data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/unlabeled_pool_stratified_1024.jsonl`
+- supervised seed manifest:
+  `data/processed/lora_classifier_heads/stage3_supervised_seed4096_2026_04_20.manifest.json`
+
+실행 전에는 stale process와 GPU를 먼저 확인한다.
+
+```bash
+ps aux | rg 'train_lora_classifier|train_lora_bootstrap_classifier_teacher|train_lora_fixmatch'
+nvidia-smi
+./.venv/bin/python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")'
+```
+
+1. supervised seed LoRA baseline
+
+```bash
+uv run python scripts/experiments/train_lora_classifier.py \
+  runtime=gpu_online \
+  train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
+  lora_run_preset=default \
+  trainer_version=stage3_supervised_seed4096_2026_04_20
+```
+
+2. pseudo-label baseline
+   - teacher는 기존 canonical fixed classifier seed를 그대로 재사용한다.
+   - student는 위 supervised LoRA seed manifest에서 warm-start한다.
+
+```bash
+uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
+  runtime=gpu_online \
+  teacher_train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
+  teacher_unlabeled_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/unlabeled_pool_stratified_1024.jsonl \
+  pseudo_label_algorithm=fixed_confidence_095 \
+  query_adaptation_initial_checkpoint=required \
+  query_adaptation_initial_checkpoint.manifest_path=data/processed/lora_classifier_heads/stage3_supervised_seed4096_2026_04_20.manifest.json \
+  lora_run_preset=default \
+  bootstrap_version=stage3_pseudolabel_seed4096_unl1024_2026_04_20 \
+  trainer_version=stage3_pseudolabel_seed4096_unl1024_2026_04_20
+```
+
+3. FixMatch baseline
+   - 같은 supervised LoRA seed manifest에서 warm-start한다.
+   - strict USB형 `text + aug_0 + aug_1` backtranslation cache를 생성한 뒤 학습한다.
+   - GPU headroom을 위해 학습 batch를 낮춘 보수적 실행값을 기본으로 둔다.
+   - 이미 만든 augmentation cache를 다시 쓰려면 `query_ssl_augmenter.batch_size=32`를 유지한다.
+
+```bash
+uv run python scripts/experiments/train_lora_fixmatch.py \
+  runtime=gpu_online \
+  train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
+  unlabeled_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/unlabeled_pool_stratified_1024.jsonl \
+  query_adaptation_initial_checkpoint=required \
+  query_adaptation_initial_checkpoint.manifest_path=data/processed/lora_classifier_heads/stage3_supervised_seed4096_2026_04_20.manifest.json \
+  query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1 \
+  query_ssl_augmenter.batch_size=32 \
+  lora_run_preset=default \
+  train_batch_size=8 \
+  eval_batch_size=16 \
+  log_every_steps=20 \
+  trainer_version=stage3_fixmatch_seed4096_unl1024_2026_04_20_b8
+```
+
+리포트 경로:
+
+- supervised: `runs/train_lora_classifier/stage3_supervised_seed4096_2026_04_20/reports/report.json`
+- pseudo-label: `runs/train_lora_pseudo_label_classifier/stage3_pseudolabel_seed4096_unl1024_2026_04_20/reports/report.json`
+- FixMatch: `runs/train_lora_fixmatch/stage3_fixmatch_seed4096_unl1024_2026_04_20_b8/reports/report.json`
+
 현재 제공하는 preset:
 
 - `bootstrap_teacher_source=dataset_default`
@@ -535,8 +607,9 @@ uv run python scripts/experiments/train_lora_classifier.py \
   - `confidence_threshold=0.95`, `margin_threshold=0.0`
 - `query_ssl_method=fixmatch_usb_v1`
   - USB FixMatch core baseline
-  - `temperature=0.5`, `p_cutoff=0.95`, `hard_label=true`, `lambda_u=1.0`
+  - `temperature=0.5`, `p_cutoff=0.95`, `hard_label=true`, `lambda_u=1.0`, `supervised_loss_weight=1.0`
   - 현재 USB semilearn 경로와 동일하게 pseudo label target 생성에서는 `temperature`가 실제로 쓰이지 않는다
+  - `query_ssl_method.supervised_loss_weight=0.0`으로 override하면 warm-start checkpoint 위 `unlabeled-only` ablation을 돌릴 수 있다
 - `query_adaptation_initial_checkpoint=none`
   - supervised LoRA seed baseline용 fresh-start
 - `query_adaptation_initial_checkpoint=canonical_fixed_classifier_seed`
@@ -547,6 +620,7 @@ uv run python scripts/experiments/train_lora_classifier.py \
   - strict USB형 NLP input baseline
   - `weak=text`, `strong=random(aug_0, aug_1)`
   - `aug_0`, `aug_1`는 `EN->DE->EN`, `EN->FR->EN` backtranslation으로 자동 생성 후 cache한다
+  - 기본 `torch_dtype=auto`이며, CUDA에서는 `float16`, CPU에서는 `float32`로 해석한다
 - `query_ssl_augmenter=precomputed_usb_candidates_v1`
   - 이미 `aug_0`, `aug_1`가 들어 있는 JSONL을 그대로 소비한다
 

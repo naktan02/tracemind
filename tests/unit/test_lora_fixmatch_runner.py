@@ -29,6 +29,7 @@ def _build_cfg() -> object:
                 "p_cutoff": 0.95,
                 "hard_label": True,
                 "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
                 "unlabeled_batch_size": 4,
                 "require_multiview": True,
             },
@@ -191,6 +192,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
     assert captured["history"] == [{"epoch": 1, "train_loss": 0.1}]
     assert captured["fixmatch_config"].p_cutoff == 0.95
     assert captured["fixmatch_config"].hard_label is True
+    assert captured["fixmatch_config"].supervised_loss_weight == 1.0
     assert captured["extra_manifest"]["unlabeled_row_count"] == 1
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
@@ -198,6 +200,10 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
     )
     assert (
         captured["extra_manifest"]["query_ssl_method"]["algorithm_name"] == "fixmatch"
+    )
+    assert (
+        captured["extra_manifest"]["query_ssl_method"]["supervised_loss_weight"]
+        == 1.0
     )
     assert (
         captured["extra_manifest"]["query_ssl_augmenter"]["preset_name"]

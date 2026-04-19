@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from types import SimpleNamespace
+
 import torch
 
 from agent.src.infrastructure.model_adapters.translation.nllb import (
@@ -31,6 +33,7 @@ class _FakeTokenizer:
 class _FakeModel:
     def __init__(self) -> None:
         self.generate_calls: list[dict[str, object]] = []
+        self.generation_config = SimpleNamespace(max_length=200)
 
     def to(self, _device: str):
         return self
@@ -56,10 +59,12 @@ class _FakeAutoTokenizer:
 
 class _FakeAutoModelForSeq2SeqLM:
     call_count = 0
+    last_kwargs = None
 
     @classmethod
     def from_pretrained(cls, *_args, **_kwargs):
         cls.call_count += 1
+        cls.last_kwargs = dict(_kwargs)
         return _FakeModel()
 
 
@@ -88,6 +93,8 @@ def test_nllb_translation_adapter_translates_and_reuses_cached_bundle(
 
     assert outputs == ["decoded::0", "decoded::1"]
     assert cached_model.generate_calls[0]["forced_bos_token_id"] == 17
+    assert cached_model.generate_calls[0]["generation_config"].max_length is None
+    assert _FakeAutoModelForSeq2SeqLM.last_kwargs["torch_dtype"] == torch.float32
     assert _FakeAutoTokenizer.call_count == 1
     assert _FakeAutoModelForSeq2SeqLM.call_count == 1
 
@@ -106,3 +113,29 @@ def test_nllb_translation_adapter_translates_and_reuses_cached_bundle(
     assert second_outputs == ["decoded::0"]
     assert _FakeAutoTokenizer.call_count == 1
     assert _FakeAutoModelForSeq2SeqLM.call_count == 1
+
+
+def test_nllb_translation_adapter_uses_float16_for_cuda_auto_dtype(
+    monkeypatch,
+) -> None:
+    monkeypatch.setattr(
+        "agent.src.infrastructure.model_adapters.translation.nllb."
+        "_require_transformer_seq2seq_stack",
+        lambda: (_FakeAutoModelForSeq2SeqLM, _FakeAutoTokenizer),
+    )
+    NllbTranslationAdapter._MODEL_CACHE.clear()
+
+    adapter = NllbTranslationAdapter(
+        model_id="facebook/nllb-200-distilled-600M",
+        revision="main",
+        source_lang="eng_Latn",
+        target_lang="fra_Latn",
+        device="cuda",
+        batch_size=2,
+        local_files_only=True,
+    )
+
+    adapter._load_bundle()
+
+    assert adapter.resolved_torch_dtype() == "float16"
+    assert _FakeAutoModelForSeq2SeqLM.last_kwargs["torch_dtype"] == torch.float16

@@ -453,12 +453,14 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
     assert cfg.query_ssl_method.temperature == 0.5
     assert cfg.query_ssl_method.p_cutoff == 0.95
     assert cfg.query_ssl_method.lambda_u == 1.0
+    assert cfg.query_ssl_method.supervised_loss_weight == 1.0
     assert cfg.query_ssl_augmenter.name == "backtranslation_nllb_en_de_fr_usb_v1"
     assert cfg.query_ssl_augmenter.source_lang == "eng_Latn"
     assert list(cfg.query_ssl_augmenter.pivot_languages) == [
         "deu_Latn",
         "fra_Latn",
     ]
+    assert cfg.query_ssl_augmenter.torch_dtype == "auto"
     assert cfg.unlabeled_jsonl == cfg.query_ssl_train_source.unlabeled_jsonl
 
 

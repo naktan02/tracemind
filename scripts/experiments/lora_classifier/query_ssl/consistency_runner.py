@@ -160,6 +160,7 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
         p_cutoff=float(cfg.query_ssl_method.p_cutoff),
         hard_label=bool(cfg.query_ssl_method.hard_label),
         lambda_u=float(cfg.query_ssl_method.lambda_u),
+        supervised_loss_weight=float(cfg.query_ssl_method.supervised_loss_weight),
     )
 
     def _prepare_unlabeled_rows(

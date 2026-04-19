@@ -60,6 +60,7 @@ def build_query_ssl_method_manifest(cfg) -> dict[str, object]:
         "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
         "hard_label": bool(cfg.query_ssl_method.hard_label),
         "lambda_u": float(cfg.query_ssl_method.lambda_u),
+        "supervised_loss_weight": float(cfg.query_ssl_method.supervised_loss_weight),
         "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
         "require_multiview": bool(cfg.query_ssl_method.require_multiview),
     }

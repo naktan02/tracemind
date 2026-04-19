@@ -287,10 +287,16 @@ def train_fixmatch_classifier(
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """USB FixMatch core를 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
-    if len(train_loader) == 0:
-        raise ValueError("FixMatch labeled train_loader must not be empty.")
     if len(unlabeled_loader) == 0:
         raise ValueError("FixMatch unlabeled_loader must not be empty.")
+    labeled_updates_enabled = (
+        fixmatch_config.supervised_loss_weight > 0 and len(train_loader) > 0
+    )
+    if fixmatch_config.supervised_loss_weight > 0 and len(train_loader) == 0:
+        raise ValueError(
+            "FixMatch labeled train_loader must not be empty when "
+            "supervised_loss_weight > 0."
+        )
 
     optimizer = build_optimizer(
         model=model,
@@ -311,22 +317,30 @@ def train_fixmatch_classifier(
         step_util_ratio_sum = 0.0
         step_count = 0
 
-        labeled_iterator = iter(train_loader)
+        labeled_iterator = None if not labeled_updates_enabled else iter(train_loader)
         unlabeled_iterator = iter(unlabeled_loader)
-        epoch_steps = max(len(train_loader), len(unlabeled_loader))
+        epoch_steps = (
+            max(len(train_loader), len(unlabeled_loader))
+            if labeled_updates_enabled
+            else len(unlabeled_loader)
+        )
 
         for step_index in range(1, epoch_steps + 1):
-            labeled_batch, labeled_iterator = _next_batch(
-                loader=train_loader,
-                iterator=labeled_iterator,
-            )
+            if labeled_updates_enabled:
+                assert labeled_iterator is not None
+                labeled_batch, labeled_iterator = _next_batch(
+                    loader=train_loader,
+                    iterator=labeled_iterator,
+                )
+                labeled_batch = _move_tensor_batch_to_device(
+                    batch=labeled_batch,
+                    device=device,
+                )
+            else:
+                labeled_batch = None
             unlabeled_batch, unlabeled_iterator = _next_batch(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
-            )
-            labeled_batch = _move_tensor_batch_to_device(
-                batch=labeled_batch,
-                device=device,
             )
             unlabeled_batch = _move_tensor_batch_to_device(
                 batch=unlabeled_batch,

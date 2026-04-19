@@ -89,6 +89,8 @@ def build_query_ssl_augmenter_manifest(cfg) -> dict[str, object]:
         manifest["batch_size"] = int(augmenter_cfg.batch_size)
     if hasattr(augmenter_cfg, "max_new_tokens"):
         manifest["max_new_tokens"] = int(augmenter_cfg.max_new_tokens)
+    if hasattr(augmenter_cfg, "torch_dtype"):
+        manifest["torch_dtype"] = str(augmenter_cfg.torch_dtype)
     if hasattr(augmenter_cfg, "cache_dir"):
         cache_dir = str(augmenter_cfg.cache_dir).strip()
         manifest["cache_dir"] = cache_dir or None
@@ -137,6 +139,12 @@ def prepare_fixmatch_unlabeled_rows(
     ):
         cached_rows = load_labeled_query_rows(cache_artifacts.jsonl_path)
         _validate_usb_candidate_rows(cached_rows, algorithm_name="FixMatch")
+        print(
+            "query_ssl_augmenter=cache_hit "
+            f"rows={len(cached_rows)} "
+            f"prepared_jsonl={cache_artifacts.jsonl_path}",
+            flush=True,
+        )
         return PreparedQuerySslUnlabeledRows(
             rows=cached_rows,
             mode="cache_hit",
@@ -146,6 +154,15 @@ def prepare_fixmatch_unlabeled_rows(
             summary_path=cache_artifacts.summary_path,
         )
 
+    print(
+        "query_ssl_augmenter=generate_strict_usb_candidates "
+        f"rows={len(effective_rows)} "
+        f"batch_size={int(cfg.query_ssl_augmenter.batch_size)} "
+        f"model_id={str(cfg.query_ssl_augmenter.model_id)} "
+        f"torch_dtype={str(getattr(cfg.query_ssl_augmenter, 'torch_dtype', 'auto'))} "
+        f"pivots={list(cfg.query_ssl_augmenter.pivot_languages)}",
+        flush=True,
+    )
     backtranslation_service = _build_nllb_backtranslation_service(cfg)
     candidate_pairs = backtranslation_service.build_candidate_pairs(
         texts=[str(row["text"]) for row in effective_rows]
@@ -168,6 +185,11 @@ def prepare_fixmatch_unlabeled_rows(
     _validate_usb_candidate_rows(prepared_rows, algorithm_name="FixMatch")
 
     if cache_artifacts is None:
+        print(
+            "query_ssl_augmenter=generated_in_memory "
+            f"rows={len(prepared_rows)}",
+            flush=True,
+        )
         return PreparedQuerySslUnlabeledRows(
             rows=prepared_rows,
             mode="generated_in_memory",
@@ -179,6 +201,12 @@ def prepare_fixmatch_unlabeled_rows(
         rows=prepared_rows,
         source_jsonl=source_jsonl,
         query_ssl_augmenter_manifest=build_query_ssl_augmenter_manifest(cfg),
+    )
+    print(
+        "query_ssl_augmenter=generated_and_cached "
+        f"rows={len(prepared_rows)} "
+        f"prepared_jsonl={cache_artifacts.jsonl_path}",
+        flush=True,
     )
     return PreparedQuerySslUnlabeledRows(
         rows=prepared_rows,
@@ -228,6 +256,7 @@ def _build_nllb_backtranslation_service(cfg) -> NllbBacktranslationService:
         device=str(cfg.query_ssl_augmenter.device),
         batch_size=int(cfg.query_ssl_augmenter.batch_size),
         max_new_tokens=int(cfg.query_ssl_augmenter.max_new_tokens),
+        torch_dtype=str(getattr(cfg.query_ssl_augmenter, "torch_dtype", "auto")),
         cache_dir=str(cfg.query_ssl_augmenter.cache_dir),
         local_files_only=bool(cfg.query_ssl_augmenter.local_files_only),
     )
