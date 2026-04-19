@@ -21,6 +21,7 @@ from scripts.labeled_query_rows import (
     load_labeled_query_rows,
 )
 
+from .pseudo_label_algorithm_config import build_pseudo_label_algorithm_manifest
 from .query_adaptation_io import build_labeled_rows_from_query_adaptation_dataset
 from .runner import run_supervised_lora_baseline
 
@@ -65,7 +66,7 @@ class PreparedPseudoLabelSelfTrainingRun:
 
     @property
     def manifest_overrides(self) -> dict[str, Any]:
-        return {
+        manifest = {
             "pseudo_label_jsonl": str(self.pseudo_label_artifacts.jsonl_path),
             "pseudo_label_manifest": str(self.pseudo_label_artifacts.manifest_path),
             "pseudo_label_summary": str(self.pseudo_label_artifacts.summary_path),
@@ -77,6 +78,14 @@ class PreparedPseudoLabelSelfTrainingRun:
             "combined_train_summary": str(self.combined_train_artifacts.summary_path),
             "combined_train_row_count": self.combined_train_count,
         }
+        pseudo_label_algorithm_manifest = build_pseudo_label_algorithm_manifest(
+            self.cfg
+        )
+        if pseudo_label_algorithm_manifest is not None:
+            manifest["pseudo_label_algorithm"] = (
+                pseudo_label_algorithm_manifest
+            )
+        return manifest
 
 
 def run_pseudo_label_self_training(

@@ -8,7 +8,7 @@ defaults:
   - /lora: default
   - /lora_run_preset: default
   - /bootstrap_teacher_source: dataset_default
-  - /training_algorithm_profile: prototype_pseudo_label_v1
+  - /pseudo_label_algorithm: margin_threshold_v1
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
@@ -32,9 +32,6 @@ bootstrap_split:
   unlabeled_ratio: 0.2
   seed: ${seed}
 
-pseudo_label_confidence_threshold: ${training_algorithm_profile.confidence_threshold}
-pseudo_label_margin_threshold: ${training_algorithm_profile.margin_threshold}
-pseudo_label_acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
 bootstrap_export_root: data/processed/lora_bootstrap_classifier_teacher
 
 train_jsonl: ${teacher_train_jsonl}

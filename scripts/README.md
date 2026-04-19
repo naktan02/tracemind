@@ -445,6 +445,7 @@ pseudo-label self-training 실행:
 ```bash
 uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
   lora_run_preset=smoke_verbose_e1 \
+  pseudo_label_algorithm=margin_threshold_v1 \
   pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
 ```
 
@@ -465,6 +466,7 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 - 경로 override를 직접 길게 넘길 수도 있지만, 지금은 아래처럼 preset group 선택으로 줄일 수 있다.
 - 재사용 split은 `bootstrap_teacher_source=<preset>`과 `lora_train_source=<preset>`으로 고른다.
 - student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
+- teacher bootstrap selection rule과 이후 self-training provenance preset은 `pseudo_label_algorithm=<preset>`으로 고른다.
 
 bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 
@@ -472,6 +474,7 @@ bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
   runtime=gpu_local \
   bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14 \
+  pseudo_label_algorithm=fixed_confidence_095 \
   lora_run_preset=smoke_verbose_e1 \
   bootstrap_version=bootstrap_teacher_split30_2026_04_14_rerun \
   teacher_classifier_version=fixed_teacher_split30_2026_04_14_rerun \
@@ -502,6 +505,12 @@ uv run python scripts/experiments/train_lora_classifier.py \
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=5`, `log_every_steps=100`
 - `lora_run_preset=smoke_verbose_e1`
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=1`, `log_every_steps=20`
+- `pseudo_label_algorithm=margin_threshold_v1`
+  - 현재 bootstrap baseline
+  - `confidence_threshold=0.6`, `margin_threshold=0.02`
+- `pseudo_label_algorithm=fixed_confidence_095`
+  - confidence-only 비교선
+  - `confidence_threshold=0.95`, `margin_threshold=0.0`
 
 hidden unlabeled split을 지금 바로 자동 생성하려면:
 

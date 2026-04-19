@@ -4,12 +4,17 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from agent.src.services.training.query_adaptation.ssl.base import (
+    QuerySslAlgorithmConfig,
+)
+from agent.src.services.training.query_adaptation.ssl.registry import (
+    build_query_ssl_algorithm,
+)
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
 from .base import AcceptanceDecision
-from .helpers import build_acceptance_decision
 
 
 @dataclass(slots=True)
@@ -26,11 +31,11 @@ class Top1MarginThresholdAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        return build_acceptance_decision(
+        return build_query_ssl_algorithm(self.policy_name).evaluate(
             evidence=evidence,
-            accepted=(
-                evidence.top1_score >= confidence_threshold
-                and evidence.margin >= margin_threshold
+            config=QuerySslAlgorithmConfig(
+                confidence_threshold=confidence_threshold,
+                margin_threshold=margin_threshold,
             ),
         )
 
@@ -49,10 +54,12 @@ class Top1ConfidenceOnlyAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        del margin_threshold
-        return build_acceptance_decision(
+        return build_query_ssl_algorithm(self.policy_name).evaluate(
             evidence=evidence,
-            accepted=evidence.top1_score >= confidence_threshold,
+            config=QuerySslAlgorithmConfig(
+                confidence_threshold=confidence_threshold,
+                margin_threshold=margin_threshold,
+            ),
         )
 
 

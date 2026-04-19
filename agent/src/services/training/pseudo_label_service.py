@@ -4,13 +4,21 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
 
-from agent.src.services.training.acceptance_policies import (
+from agent.src.services.training.acceptance_policies.base import (
     PseudoLabelAcceptancePolicy,
+)
+from agent.src.services.training.acceptance_policies.top1 import (
     Top1MarginThresholdAcceptancePolicy,
-    build_pseudo_label_acceptance_policy,
 )
 from agent.src.services.training.evidence_service import (
     PseudoLabelEvidenceService,
+)
+from agent.src.services.training.query_adaptation.ssl.base import (
+    QuerySslAlgorithm,
+    QuerySslAlgorithmConfig,
+)
+from agent.src.services.training.query_adaptation.ssl.registry import (
+    build_query_ssl_algorithm,
 )
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
@@ -26,6 +34,10 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 )
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
+)
+
+from .query_adaptation.ssl.algorithms.margin_threshold import (
+    MarginThresholdQuerySslAlgorithm,
 )
 
 
@@ -66,12 +78,20 @@ class PseudoLabelSelectionService:
     default_policy: PseudoLabelAcceptancePolicy = field(
         default_factory=Top1MarginThresholdAcceptancePolicy
     )
+    default_algorithm: QuerySslAlgorithm = field(
+        default_factory=MarginThresholdQuerySslAlgorithm
+    )
 
     def __post_init__(self) -> None:
         if self.default_acceptance_policy_name != self.default_policy.policy_name:
             raise ValueError(
                 "Default pseudo-label acceptance policy does not match the "
                 "configured default objective profile."
+            )
+        if self.default_acceptance_policy_name != self.default_algorithm.algorithm_name:
+            raise ValueError(
+                "Default query SSL algorithm does not match the configured "
+                "default objective profile."
             )
         if (
             self.default_profile.evidence_backend_name
@@ -125,17 +145,20 @@ class PseudoLabelSelectionService:
             if training_task.objective_config.margin_threshold is not None
             else self.default_margin_threshold
         )
-        acceptance_policy = self._resolve_policy(training_task=training_task)
+        ssl_algorithm = self._resolve_algorithm(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
         evidence_list = tuple(evidences)
+        algorithm_config = QuerySslAlgorithmConfig(
+            confidence_threshold=confidence_threshold,
+            margin_threshold=margin_threshold,
+        )
 
         initial_candidates = [
             self._build_candidate(
                 evidence=evidence,
                 training_task=training_task,
-                confidence_threshold=confidence_threshold,
-                margin_threshold=margin_threshold,
-                acceptance_policy=acceptance_policy,
+                algorithm_config=algorithm_config,
+                ssl_algorithm=ssl_algorithm,
             )
             for evidence in evidence_list
         ]
@@ -212,14 +235,12 @@ class PseudoLabelSelectionService:
         *,
         evidence: PseudoLabelEvidence,
         training_task: TrainingTask,
-        confidence_threshold: float,
-        margin_threshold: float,
-        acceptance_policy: PseudoLabelAcceptancePolicy,
+        algorithm_config: QuerySslAlgorithmConfig,
+        ssl_algorithm: QuerySslAlgorithm,
     ) -> PseudoLabelCandidate:
-        decision = acceptance_policy.evaluate(
+        decision = ssl_algorithm.evaluate(
             evidence=evidence,
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
+            config=algorithm_config,
         )
 
         return PseudoLabelCandidate(
@@ -239,9 +260,9 @@ class PseudoLabelSelectionService:
             task_id=training_task.task_id,
             round_id=training_task.round_id,
             metadata={
-                "confidence_threshold": confidence_threshold,
-                "margin_threshold": margin_threshold,
-                "acceptance_policy_name": acceptance_policy.policy_name,
+                "confidence_threshold": algorithm_config.confidence_threshold,
+                "margin_threshold": algorithm_config.margin_threshold,
+                "acceptance_policy_name": ssl_algorithm.algorithm_name,
                 "evidence_backend_name": self._resolve_evidence_backend_name(
                     evidence=evidence,
                     training_task=training_task,
@@ -251,18 +272,18 @@ class PseudoLabelSelectionService:
             },
         )
 
-    def _resolve_policy(
+    def _resolve_algorithm(
         self,
         *,
         training_task: TrainingTask,
-    ) -> PseudoLabelAcceptancePolicy:
-        policy_name = (
+    ) -> QuerySslAlgorithm:
+        algorithm_name = (
             training_task.objective_config.acceptance_policy_name
             or self.default_acceptance_policy_name
         )
-        if policy_name == self.default_policy.policy_name:
-            return self.default_policy
-        return build_pseudo_label_acceptance_policy(policy_name)
+        if algorithm_name == self.default_algorithm.algorithm_name:
+            return self.default_algorithm
+        return build_query_ssl_algorithm(algorithm_name)
 
     def _resolve_evidence_backend_name(
         self,

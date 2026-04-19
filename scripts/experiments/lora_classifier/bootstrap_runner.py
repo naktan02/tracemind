@@ -13,8 +13,8 @@ from typing import Any
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from agent.src.services.training.acceptance_policies import (
-    build_pseudo_label_acceptance_policy,
+from agent.src.services.training.query_adaptation.ssl.registry import (
+    build_query_ssl_algorithm,
 )
 from scripts.datasets.lib.split import split_rows
 from scripts.experiments.fixed_classifier.runner import (
@@ -30,6 +30,7 @@ from scripts.labeled_query_rows import (
     load_labeled_query_rows,
 )
 
+from .pseudo_label_algorithm_config import resolve_pseudo_label_algorithm
 from .pseudo_label_runner import run_pseudo_label_self_training
 
 TEACHER_PREDICTION_TRACE_SCHEMA_VERSION = "fixed_classifier_teacher_trace.v1"
@@ -140,13 +141,12 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
         embed_chunk_size=int(cfg.teacher_embed_chunk_size),
         eval_batch_size=int(cfg.teacher_eval_batch_size),
     )
+    resolved_pseudo_label_algorithm = resolve_pseudo_label_algorithm(cfg)
     pseudo_label_rows, prediction_trace_rows, prediction_summary = (
         _build_teacher_pseudo_label_rows(
             rows=effective_teacher_unlabeled_rows,
             predictions=predictions,
-            confidence_threshold=float(cfg.pseudo_label_confidence_threshold),
-            margin_threshold=float(cfg.pseudo_label_margin_threshold),
-            acceptance_policy_name=str(cfg.pseudo_label_acceptance_policy_name),
+            pseudo_label_algorithm=resolved_pseudo_label_algorithm,
             generated_at=effective_generated_at,
             run_id=run_id,
         )
@@ -316,16 +316,16 @@ def _build_teacher_pseudo_label_rows(
     *,
     rows: Sequence[LabeledQueryRow],
     predictions: Sequence[FixedClassifierPrediction],
-    confidence_threshold: float,
-    margin_threshold: float,
-    acceptance_policy_name: str,
+    pseudo_label_algorithm,
     generated_at: datetime,
     run_id: str,
 ) -> tuple[list[LabeledQueryRow], list[dict[str, Any]], dict[str, Any]]:
     if len(rows) != len(predictions):
         raise ValueError("rows and predictions must have the same length.")
 
-    acceptance_policy = build_pseudo_label_acceptance_policy(acceptance_policy_name)
+    algorithm = build_query_ssl_algorithm(
+        pseudo_label_algorithm.acceptance_policy_name
+    )
     accepted_rows: list[LabeledQueryRow] = []
     trace_rows: list[dict[str, Any]] = []
     accepted_label_counts: Counter[str] = Counter()
@@ -335,19 +335,14 @@ def _build_teacher_pseudo_label_rows(
 
     for row, prediction in zip(rows, predictions, strict=True):
         hidden_label = str(row["mapped_label_4"])
-        accepted = (
-            prediction.confidence >= confidence_threshold
-            and prediction.margin >= margin_threshold
-        )
-        decision = acceptance_policy.evaluate(
+        decision = algorithm.evaluate(
             evidence=_build_teacher_evidence(
                 row=row,
                 prediction=prediction,
                 generated_at=generated_at,
                 run_id=run_id,
             ),
-            confidence_threshold=confidence_threshold,
-            margin_threshold=margin_threshold,
+            config=pseudo_label_algorithm.config,
         )
         hidden_label_counts[hidden_label] += 1
         if decision.accepted:
@@ -383,7 +378,7 @@ def _build_teacher_pseudo_label_rows(
                     else float(prediction.runner_up_score),
                     6,
                 ),
-                "threshold_accepted": accepted,
+                "threshold_accepted": decision.accepted,
                 "final_accepted": decision.accepted,
                 "is_prediction_correct": prediction.predicted_label == hidden_label,
                 "category_scores": {
@@ -402,9 +397,9 @@ def _build_teacher_pseudo_label_rows(
             len(accepted_rows) / len(rows) if rows else 0.0,
             6,
         ),
-        "confidence_threshold": confidence_threshold,
-        "margin_threshold": margin_threshold,
-        "acceptance_policy_name": acceptance_policy_name,
+        "pseudo_label_algorithm": (
+            pseudo_label_algorithm.to_manifest_entry()
+        ),
         "accepted_label_counts": dict(sorted(accepted_label_counts.items())),
         "hidden_label_counts": dict(sorted(hidden_label_counts.items())),
         "accepted_hidden_label_counts": dict(

@@ -154,6 +154,23 @@ def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset
     assert cfg.initial_classifier_path == ""
 
 
+def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_override() -> (  # noqa: E501
+    None
+):
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_pseudo_label_classifier",
+            overrides=["pseudo_label_algorithm=fixed_confidence_095"],
+        )
+
+    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
+    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
+    assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
+    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+        "top1_confidence_only"
+    )
+
+
 def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override(  # noqa: E501
 ) -> (
     None
@@ -196,6 +213,23 @@ def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
+
+
+def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm_override() -> (  # noqa: E501
+    None
+):
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_bootstrap_classifier_teacher",
+            overrides=["pseudo_label_algorithm=fixed_confidence_095"],
+        )
+
+    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
+    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
+    assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
+    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+        "top1_confidence_only"
+    )
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -328,6 +362,7 @@ def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lor
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.lora.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
+    assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
     assert cfg.pseudo_label_jsonl is None
 
 
@@ -344,8 +379,12 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
     assert cfg.runtime.device == "cuda"
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.lora.target_modules == "all-linear"
-    assert cfg.pseudo_label_confidence_threshold == 0.6
-    assert cfg.pseudo_label_margin_threshold == 0.02
+    assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
+    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.6
+    assert cfg.pseudo_label_algorithm.margin_threshold == 0.02
+    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+        "top1_margin_threshold"
+    )
     assert cfg.bootstrap_split.enabled is False
 
 

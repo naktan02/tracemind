@@ -1,0 +1,4 @@
+name: margin_threshold_v1
+confidence_threshold: 0.6
+margin_threshold: 0.02
+acceptance_policy_name: top1_margin_threshold

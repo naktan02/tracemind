@@ -35,6 +35,12 @@ def _build_cfg() -> object:
             "pseudo_label_jsonl": None,
             "pseudo_label_export_root": "",
             "include_seed_train_rows": False,
+            "pseudo_label_algorithm": {
+                "name": "margin_threshold_v1",
+                "confidence_threshold": 0.6,
+                "margin_threshold": 0.02,
+                "acceptance_policy_name": "top1_margin_threshold",
+            },
             "fixed_categories": [
                 "anxiety",
                 "depression",
@@ -185,6 +191,10 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
     assert extra_manifest["seed_train_row_count"] == 0
     assert extra_manifest["include_seed_train_rows"] is False
     assert extra_manifest["combined_train_row_count"] == 1
+    assert extra_manifest["pseudo_label_algorithm"]["preset_name"] == (
+        "margin_threshold_v1"
+    )
+    assert extra_manifest["pseudo_label_algorithm"]["margin_threshold"] == 0.02
     assert captured["categories_override"] is None
     assert outputs["output_dir"] == "runs/fake_pseudo"
     assert Path(outputs["pseudo_label_jsonl"]).exists()

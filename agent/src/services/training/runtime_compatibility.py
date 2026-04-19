@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.src.services.inference.scoring_backends import build_scoring_backend
-from agent.src.services.training.acceptance_policies import (
+from agent.src.services.training.acceptance_policies.base import (
     PseudoLabelAcceptancePolicy,
+)
+from agent.src.services.training.acceptance_policies.registry import (
     build_pseudo_label_acceptance_policy,
 )
 from agent.src.services.training.evidence_backends import (

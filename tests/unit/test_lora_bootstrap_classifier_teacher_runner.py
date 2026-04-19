@@ -46,9 +46,12 @@ def _build_cfg() -> object:
                 "test": TEST_JSONL,
             },
             "selection_set": "validation",
-            "pseudo_label_confidence_threshold": 0.8,
-            "pseudo_label_margin_threshold": 0.05,
-            "pseudo_label_acceptance_policy_name": "top1_margin_threshold",
+            "pseudo_label_algorithm": {
+                "name": "margin_threshold_test",
+                "confidence_threshold": 0.8,
+                "margin_threshold": 0.05,
+                "acceptance_policy_name": "top1_margin_threshold",
+            },
             "bootstrap_export_root": "",
             "pseudo_label_export_root": "",
             "student_include_seed_train_rows": False,
@@ -220,6 +223,11 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     summary = json.loads(Path(outputs["prediction_summary_json"]).read_text())
     assert summary["accepted_count"] == 1
     assert summary["accepted_hidden_label_accuracy"] == 1.0
+    assert summary["pseudo_label_algorithm"]["preset_name"] == "margin_threshold_test"
+    assert (
+        summary["pseudo_label_algorithm"]["acceptance_policy_name"]
+        == "top1_margin_threshold"
+    )
 
 
 def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
