@@ -1,0 +1,1 @@
+"""Query adaptation algorithm implementations."""

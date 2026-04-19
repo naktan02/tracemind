@@ -1,4 +1,4 @@
-"""Query adaptation supervised baseline용 데이터 준비 유틸리티."""
+"""Query adaptation supervised / FixMatch baseline용 데이터 준비 유틸리티."""
 
 from __future__ import annotations
 
@@ -35,6 +35,41 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
         return {
             "text": text,
             "label": self._label_to_index[str(row["mapped_label_4"])],
+        }
+
+
+class TextMultiviewDataset(Dataset[dict[str, Any]]):
+    """weak/strong text view가 있는 unlabeled row를 배치용으로 노출한다."""
+
+    def __init__(
+        self,
+        *,
+        rows: list[LabeledQueryRow],
+        task_prefix: str,
+    ) -> None:
+        self._rows = rows
+        self._task_prefix = task_prefix
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> dict[str, Any]:
+        row = self._rows[index]
+        weak_text = row.get("weak_text")
+        strong_text = row.get("strong_text")
+        if weak_text is None or strong_text is None:
+            raise ValueError(
+                "FixMatch unlabeled rows require both weak_text and strong_text."
+            )
+        weak_text = str(weak_text)
+        strong_text = str(strong_text)
+        if self._task_prefix:
+            weak_text = f"{self._task_prefix}{weak_text}"
+            strong_text = f"{self._task_prefix}{strong_text}"
+        return {
+            "query_id": str(row["query_id"]),
+            "weak_text": weak_text,
+            "strong_text": strong_text,
         }
 
 
@@ -86,8 +121,59 @@ def build_dataloader(
     )
 
 
+def build_multiview_dataloader(
+    *,
+    rows: list[LabeledQueryRow],
+    tokenizer: Any,
+    batch_size: int,
+    max_length: int,
+    task_prefix: str,
+    shuffle: bool,
+) -> DataLoader[dict[str, Any]]:
+    """weak/strong unlabeled row를 FixMatch 입력 DataLoader로 변환한다."""
+
+    dataset = TextMultiviewDataset(
+        rows=rows,
+        task_prefix=task_prefix,
+    )
+
+    def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
+        weak_texts = [str(item["weak_text"]) for item in batch]
+        strong_texts = [str(item["strong_text"]) for item in batch]
+        weak_encoded = tokenizer(
+            weak_texts,
+            padding=True,
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+        )
+        strong_encoded = tokenizer(
+            strong_texts,
+            padding=True,
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+        )
+        return {
+            "query_ids": [str(item["query_id"]) for item in batch],
+            "weak_input_ids": weak_encoded["input_ids"],
+            "weak_attention_mask": weak_encoded["attention_mask"],
+            "strong_input_ids": strong_encoded["input_ids"],
+            "strong_attention_mask": strong_encoded["attention_mask"],
+        }
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=collate,
+    )
+
+
 __all__ = [
+    "TextMultiviewDataset",
     "TextLabelDataset",
     "build_dataloader",
     "build_label_index",
+    "build_multiview_dataloader",
 ]

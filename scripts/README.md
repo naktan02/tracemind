@@ -411,7 +411,7 @@ uv run python scripts/experiments/train_softmax_classifier.py \
 이 레일은 첫 seed baseline이 아니라 query-domain 적응 단계용 scaffold다.
 초기 `fixed embedding + classifier` seed를 먼저 닫고, query가 충분히 쌓인 뒤에만
 같은 scaffold 위에 `supervised adaptation`, `pseudo-label self-training`,
-`R-Drop`, `MixText`를 올리고, 필요 시 `TAPT`를 앞단 preadaptation phase로 둔다.
+`FixMatch`, `R-Drop`, `MixText`를 올리고, 필요 시 `TAPT`를 앞단 preadaptation phase로 둔다.
 
 실행 예시:
 
@@ -449,6 +449,15 @@ uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
   pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
 ```
 
+USB FixMatch 실행:
+
+```bash
+uv run python scripts/experiments/train_lora_fixmatch.py \
+  runtime=gpu_local \
+  query_ssl_train_source=bootstrap_teacher_split30_2026_04_14 \
+  lora_run_preset=smoke_verbose_e1
+```
+
 첫 진입 bootstrap 실행:
 
 ```bash
@@ -467,6 +476,8 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 - 재사용 split은 `bootstrap_teacher_source=<preset>`과 `lora_train_source=<preset>`으로 고른다.
 - student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
 - teacher bootstrap selection rule과 이후 self-training provenance preset은 `pseudo_label_algorithm=<preset>`으로 고른다.
+- FixMatch consistency baseline의 unlabeled source는 `query_ssl_train_source=<preset>`으로 고른다.
+- FixMatch method hyperparameter source of truth는 `query_ssl_method=<preset>`이다.
 
 bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 
@@ -501,6 +512,11 @@ uv run python scripts/experiments/train_lora_classifier.py \
   - dataset alias의 기본 train split 사용
 - `lora_train_source=bootstrap_teacher_split30_2026_04_14`
   - split30 teacher seed train 재사용
+- `query_ssl_train_source=dataset_default`
+  - dataset alias의 labeled train + unlabeled query pool 경로 사용
+  - 현재 `ourafla`처럼 `dataset.unlabeled_query_pool_jsonl=null`인 alias에서는 직접 override가 필요하다
+- `query_ssl_train_source=bootstrap_teacher_split30_2026_04_14`
+  - split30 labeled train / hidden unlabeled pool 재사용
 - `lora_run_preset=default`
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=5`, `log_every_steps=100`
 - `lora_run_preset=smoke_verbose_e1`
@@ -511,6 +527,10 @@ uv run python scripts/experiments/train_lora_classifier.py \
 - `pseudo_label_algorithm=fixed_confidence_095`
   - confidence-only 비교선
   - `confidence_threshold=0.95`, `margin_threshold=0.0`
+- `query_ssl_method=fixmatch_usb_v1`
+  - USB FixMatch core baseline
+  - `temperature=0.5`, `p_cutoff=0.95`, `hard_label=true`, `lambda_u=1.0`
+  - 현재 USB semilearn 경로와 동일하게 pseudo label target 생성에서는 `temperature`가 실제로 쓰이지 않는다
 
 hidden unlabeled split을 지금 바로 자동 생성하려면:
 
@@ -539,7 +559,10 @@ canonical 경로:
 
 - CLI entrypoint: `scripts/experiments/train_lora_classifier.py`
 - scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
+- FixMatch entrypoint: `scripts/experiments/train_lora_fixmatch.py`
+- FixMatch runner: `scripts/experiments/lora_classifier/fixmatch_runner.py`
 - agent 학습 코어: `agent/src/services/training/query_adaptation/`
+- USB FixMatch core mapping: `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
 - teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
 - teacher bootstrap helper: `scripts/experiments/lora_classifier/bootstrap_runner.py`
 - pseudo-label entrypoint: `scripts/experiments/train_lora_pseudo_label_classifier.py`
@@ -573,6 +596,10 @@ canonical 경로:
   exported dataset path는 trace/audit 산출물로만 함께 남긴다.
 - 첫 bootstrap은 `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙이고,
   그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
+- `train_lora_fixmatch.py`는 USB `fixmatch.py::train_step`의 수식 코어를 가져오되,
+  USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind epoch trainer adapter로 둔다.
+- 현재 `FixMatch`는 `weak_text` / `strong_text`가 채워진 unlabeled JSONL을 요구한다.
+  자동 identity fallback은 두지 않는다.
 - `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.
 - `scripts/experiments/lora_classifier/pseudo_label_runner.py`는
   현재 offline union retraining helper로서 seed labeled rows와 pseudo-labeled rows를 합쳐
@@ -581,7 +608,8 @@ canonical 경로:
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 이 중앙 규약으로 흡수하지 않고, 이후 FL stage 비교선으로 남긴다.
 - `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
   family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의
-  `weak_text` / `strong_text` 필드가 채워진 JSONL로 export한다.
+  `weak_text` / `strong_text` 필드가 채워진 JSONL로 export하고,
+  그 산출물을 `train_lora_fixmatch.py` 입력으로 바로 사용할 수 있다.
 - weak/strong augmentation recipe는 이 단계에서 고정하지 않고,
   agent의 `QueryAdaptationMultiviewService`에 pluggable augmenter로 주입한다.
 - 로컬 smoke 검증은 `runtime=auto_local`이 권장된다.

@@ -74,6 +74,9 @@
 - `training/query_adaptation/ssl/algorithms/`
   - query-domain adaptation 실험에서 재사용하는 pseudo-label selection 알고리즘 구현
   - 현재 agent selection과 bootstrap teacher pseudo-labeling이 같은 코어를 공유한다
+- `training/query_adaptation/algorithms/fixmatch.py`
+  - USB `FixMatch` 수식 코어를 query adaptation trainer에 옮긴 구현
+  - weak view pseudo-label/mask, strong view consistency CE를 같은 파일에서 닫는다
 - `training/query_adaptation_dataset_service.py`
   - accepted pseudo-label candidate를 raw-text adaptation dataset으로 조립
   - `query_id`는 `source_row.query_id`를 single source of truth로 두고,

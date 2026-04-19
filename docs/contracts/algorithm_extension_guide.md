@@ -35,6 +35,8 @@
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
+| Query SSL Selection Algorithm | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/query_adaptation/ssl/`, `scripts/conf/pseudo_label_algorithm/` |
+| Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
@@ -68,6 +70,8 @@
 - 새 논문 방법을 넣을 때 먼저 공통 backend 축을 구현한다.
 - 그 다음 해당 논문 이름의 algorithm profile을 추가해 기본 조합을 묶는다.
 - 실험에서는 profile을 고르고, 필요할 때 개별 축만 override한다.
+- 단, 중앙 query-domain 적응 실험처럼 runtime broad preset보다 더 좁은 비교축이 필요하면
+  `scripts/conf/pseudo_label_algorithm/`처럼 별도 Hydra group을 두는 편이 낫다.
 
 ---
 
@@ -274,6 +278,63 @@ class PseudoLabelAcceptancePolicy(Protocol):
 2. `register_pseudo_label_acceptance_policy()`로 thin registry wiring에 등록
 3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택
 
+주의:
+- central query-domain 실험에서는 compatibility field로만 남을 수 있다.
+- 현재 bootstrap / pseudo-label self-training 실험의 selection 코어는
+  `agent/src/services/training/query_adaptation/ssl/`이 소유한다.
+
+---
+
+### 7-1. Query SSL Selection Algorithm (agent/scripts)
+
+**역할:** 중앙 query adaptation 실험에서 pseudo-label evidence를 어떤 알고리즘으로
+해석할지 결정한다.
+
+**현재 구현:**
+- `top1_margin_threshold`
+- `top1_confidence_only`
+
+**구성 위치:**
+- agent 코어:
+  - `agent/src/services/training/query_adaptation/ssl/`
+- scripts preset:
+  - `scripts/conf/pseudo_label_algorithm/*.yaml`
+
+**교체 절차:**
+1. `query_adaptation/ssl/algorithms/` 아래에 알고리즘 구현을 추가한다
+2. `ssl/registry.py`에 얇게 등록한다
+3. scripts에서는 `pseudo_label_algorithm=<preset>`으로 선택한다
+4. 필요하면 runtime compatibility를 위해 기존 `acceptance_policy_name`에 매핑한다
+
+---
+
+### 7-2. Query SSL Adaptation Objective (agent/scripts)
+
+**역할:** 중앙 query adaptation trainer에서 `LoRA + classifier` adaptation objective 자체를 바꾼다.
+
+**현재 구현:**
+- `fixmatch`
+
+**구성 위치:**
+- agent 코어:
+  - `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
+  - `agent/src/services/training/query_adaptation/training.py`
+- scripts preset:
+  - `scripts/conf/query_ssl_method/*.yaml`
+  - `scripts/conf/query_ssl_train_source/*.yaml`
+
+**교체 절차:**
+1. `query_adaptation/algorithms/` 아래에 objective core를 구현한다
+2. trainer loop adapter는 `query_adaptation/training.py`에서 연결한다
+3. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
+4. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
+
+주의:
+- `FixMatch`는 selection rule이 아니라 adaptation objective다.
+- 즉 기존 `query_adaptation/ssl/` selection 코어와 같은 축으로 넣지 않는다.
+- USB `fixmatch.py::train_step`의 수식 코어는 `algorithms/fixmatch.py`에 두고,
+  USB `AlgorithmBase`가 맡던 loop/iterator/hook orchestration만 TraceMind trainer adapter로 둔다.
+
 ---
 
 ### 8. Scoring Policy (agent)
@@ -397,6 +458,12 @@ class RoundUpdateAcceptancePolicy(Protocol):
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).
 
 **미래 후보:** LoRA adapter, projection head, prefix tuning.
+
+구조 원칙:
+- aggregation backend, privacy guard, secure aggregation runtime도 같은 철학으로 본다.
+- 즉 `계약 -> protocol/base -> 구현체 파일 -> 얇은 wiring -> singular config source`
+  순서를 유지하고, trust policy / encryption scheme / aggregation rule을 한 클래스에
+  섞지 않는다.
 
 ---
 

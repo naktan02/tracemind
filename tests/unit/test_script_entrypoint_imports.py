@@ -14,6 +14,7 @@ import pytest
         "scripts.experiments.prototype_threshold_sweep",
         "scripts.experiments.run_federated_simulation",
         "scripts.experiments.train_softmax_classifier",
+        "scripts.experiments.train_lora_fixmatch",
         "scripts.experiments.train_lora_pseudo_label_classifier",
         "scripts.experiments.train_lora_bootstrap_classifier_teacher",
     ],

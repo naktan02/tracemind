@@ -24,6 +24,9 @@
   - 고정 임베딩 위 linear classifier baseline
 - `train_lora_classifier.py`
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
+- `train_lora_fixmatch.py`
+  - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint
+  - method/source source of truth는 `query_ssl_method`, `query_ssl_train_source` Hydra group이다.
 - `train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
     `LoRA + classifier` student를 학습하는 bootstrap entrypoint
@@ -37,6 +40,7 @@
 - `lora_classifier/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runner.py`가 canonical supervised baseline runner다.
+  - `fixmatch_runner.py`가 USB FixMatch baseline runner다.
   - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
   - `pseudo_label_runner.py`는 현재 offline union retraining helper를 제공한다.
   - `bootstrap_runner.py`의 teacher pseudo-label selection은
@@ -78,10 +82,11 @@
 
 1. `train_softmax_classifier.py`
 2. `train_lora_classifier.py`
-3. `train_lora_bootstrap_classifier_teacher.py`
-4. `train_lora_pseudo_label_classifier.py`
-5. `lora_classifier/runner.py`
-6. 필요하면 `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
+3. `train_lora_fixmatch.py`
+4. `train_lora_bootstrap_classifier_teacher.py`
+5. `train_lora_pseudo_label_classifier.py`
+6. `lora_classifier/runner.py`
+7. 필요하면 `lora_classifier/fixmatch_runner.py`, `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
 
 ## 주의할 점
 

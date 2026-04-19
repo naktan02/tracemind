@@ -111,6 +111,16 @@ Embedding
 - 실험에서는 위 축을 하나씩 직접 override할 수도 있고, `algorithm profile`로 묶어 한 번에 바꿀 수도 있다.
 - acceptance는 `policy`와 `threshold`가 분리돼 있다.
 - privacy는 현재 `clip only`와 `noop`만 runtime 구현이 있다.
+- query-domain 중앙 `LoRA + classifier` 비교 레일은 위 active runtime knob와 별도다.
+  bootstrap / pseudo-label self-training 실험의 selection rule source of truth는
+  `scripts/conf/pseudo_label_algorithm/`이고, 구현 코어는
+  `agent/src/services/training/query_adaptation/ssl/`이 소유한다.
+- 중앙 query-domain consistency objective는 또 다른 별도 축이다.
+  현재 `FixMatch`의 method/source source of truth는
+  `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`이고,
+  USB core mapping은 `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`가 소유한다.
+- 현재 central 실험에서 `acceptance_policy_name` 계약은 compatibility field로 유지하지만,
+  구현 source of truth는 `query_adaptation/ssl`로 이동했다.
 
 관련 파일:
 
@@ -123,6 +133,11 @@ Embedding
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
 - [agent/src/services/inference/scoring_policies.py](../agent/src/services/inference/scoring_policies.py)
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
+- [agent/src/services/training/query_adaptation/ssl/registry.py](../agent/src/services/training/query_adaptation/ssl/registry.py)
+- [scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
+- [agent/src/services/training/query_adaptation/algorithms/fixmatch.py](../agent/src/services/training/query_adaptation/algorithms/fixmatch.py)
+- [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
+- [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
 - [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
 
 ## 2. main_server round/runtime 전략 축
@@ -141,6 +156,9 @@ Embedding
 - `update acceptance`는 교체 지점은 있지만 registry나 public config key보다 코드 주입 형태에 가깝다.
 - `classifier_head` family bootstrap은 현재 category별 centroid 하나를 classifier weight로 바꾸므로
   `prototype_builder=single`일 때만 안전하다.
+- aggregation도 SSL selection과 같은 구조 철학으로 본다.
+  즉 `protocol/base -> 구현체 파일 -> 얇은 wiring -> config source of truth`를 유지하되,
+  소유 경계는 `main_server`가 가진다.
 
 관련 파일:
 
@@ -185,6 +203,9 @@ Embedding
 - 하지만 실제 secure aggregation, HE, DP runtime은 아직 붙지 않았다.
 - 따라서 이 축은 “지금 당장 전략 비교가 가능한 active runtime knob”가 아니라
   “future runtime을 위한 typed contract”로 읽어야 한다.
+- 나중에 secure aggregation / encryption runtime을 붙일 때도 같은 구조 철학을 권장한다.
+  즉 계약은 `shared`, runtime 구현은 `agent`/`main_server`, 조합은 얇은 config 또는
+  DI에서 선택하고, key 관리/암호화 포맷/네트워크 전송 판단은 한 클래스에 섞지 않는다.
 
 관련 파일:
 

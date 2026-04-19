@@ -73,8 +73,9 @@ Query Buffer (raw text)
 
 1. `supervised adaptation`
 2. `pseudo-label self-training`
-3. `R-Drop`
-4. `MixText`
+3. `FixMatch`
+4. `R-Drop`
+5. `MixText`
 
 옵션:
 
@@ -85,6 +86,9 @@ Query Buffer (raw text)
 - 첫 pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
   pseudo-label을 붙이고, `LoRA + classifier` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
+- `FixMatch`는 USB core를 기준으로 weak view에서 pseudo-label/mask를 만들고,
+  strong view에 consistency CE를 적용하는 별도 비교축으로 둔다.
+- 따라서 `FixMatch` 입력은 `weak_text` / `strong_text`가 준비된 unlabeled row를 요구한다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
@@ -150,8 +154,9 @@ Query Buffer (raw text)
 
 1. supervised-style update가 가장 낫나
 2. pseudo-label self-training이 가장 낫나
-3. R-Drop 같은 regularized objective가 가장 낫나
-4. 필요 시 MixText/TAPT가 incremental adaptation에서도 이점을 주나
+3. USB FixMatch consistency objective가 가장 낫나
+4. R-Drop 같은 regularized objective가 가장 낫나
+5. 필요 시 MixText/TAPT가 incremental adaptation에서도 이점을 주나
 
 seed full replay 또는 small anchor replay는 drift/forgetting 분석을 위한 ablation로는 가능하지만,
 canonical central table의 기본 규약으로 두지 않는다.
@@ -164,6 +169,7 @@ canonical central table의 기본 규약으로 두지 않는다.
 
 - `TAPT -> supervised LoRA`
 - `TAPT -> pseudo-label self-training`
+- `TAPT -> FixMatch`
 - `TAPT -> MixText`
 
 즉 `TAPT`는 메인 adaptation objective 자체라기보다,
