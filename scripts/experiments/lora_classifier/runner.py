@@ -25,6 +25,7 @@ from scripts.classification_report import (
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from .artifacts import write_run_artifacts
+from .initial_checkpoint import resolve_query_adaptation_initial_checkpoint
 
 
 def run_supervised_lora_baseline(
@@ -98,9 +99,11 @@ def run_supervised_lora_baseline(
     trainer_version = cfg.trainer_version or created_at.strftime(
         "lora_clf_%Y_%m_%d_%H%M%S"
     )
+    resolved_initial_checkpoint = resolve_query_adaptation_initial_checkpoint(cfg)
+    effective_cfg = resolved_initial_checkpoint.cfg
 
     model, tokenizer, backbone_summary = build_model(
-        cfg=cfg,
+        cfg=effective_cfg,
         categories=categories,
         device=training_device,
     )
@@ -115,9 +118,9 @@ def run_supervised_lora_baseline(
         rows=effective_train_rows,
         label_to_index=label_to_index,
         tokenizer=tokenizer,
-        batch_size=int(cfg.train_batch_size),
-        max_length=int(cfg.paper_backbone.max_length),
-        task_prefix=str(cfg.paper_backbone.task_prefix),
+        batch_size=int(effective_cfg.train_batch_size),
+        max_length=int(effective_cfg.paper_backbone.max_length),
+        task_prefix=str(effective_cfg.paper_backbone.task_prefix),
         shuffle=True,
     )
 
@@ -141,9 +144,9 @@ def run_supervised_lora_baseline(
             rows=rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
-            batch_size=int(cfg.eval_batch_size),
-            max_length=int(cfg.paper_backbone.max_length),
-            task_prefix=str(cfg.paper_backbone.task_prefix),
+            batch_size=int(effective_cfg.eval_batch_size),
+            max_length=int(effective_cfg.paper_backbone.max_length),
+            task_prefix=str(effective_cfg.paper_backbone.task_prefix),
             shuffle=False,
         )
         print(f"tokenized_eval_set={dataset_name} rows={len(rows)}", flush=True)
@@ -155,12 +158,12 @@ def run_supervised_lora_baseline(
         selection_loader=selection_loader,
         categories=categories,
         device=training_device,
-        epochs=int(cfg.epochs),
-        learning_rate=float(cfg.learning_rate),
-        classifier_learning_rate=float(cfg.classifier_learning_rate),
-        weight_decay=float(cfg.weight_decay),
-        max_grad_norm=float(cfg.max_grad_norm),
-        log_every_steps=int(cfg.log_every_steps),
+        epochs=int(effective_cfg.epochs),
+        learning_rate=float(effective_cfg.learning_rate),
+        classifier_learning_rate=float(effective_cfg.classifier_learning_rate),
+        weight_decay=float(effective_cfg.weight_decay),
+        max_grad_norm=float(effective_cfg.max_grad_norm),
+        log_every_steps=int(effective_cfg.log_every_steps),
     )
 
     results: dict[str, Any] = {}
@@ -193,8 +196,12 @@ def run_supervised_lora_baseline(
         )
         print()
 
+    effective_extra_manifest = dict(resolved_initial_checkpoint.extra_manifest)
+    if extra_manifest:
+        effective_extra_manifest.update(dict(extra_manifest))
+
     outputs = write_run_artifacts(
-        cfg=cfg,
+        cfg=effective_cfg,
         trainer_version=trainer_version,
         created_at=created_at,
         model=model,
@@ -206,7 +213,7 @@ def run_supervised_lora_baseline(
         history=history,
         best_selection_report=best_selection_report,
         results=results,
-        extra_manifest=extra_manifest,
+        extra_manifest=effective_extra_manifest,
     )
     for key, value in outputs.items():
         print(f"{key}={value}")

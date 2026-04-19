@@ -117,9 +117,12 @@ Embedding
   `agent/src/services/training/query_adaptation/ssl/`이 소유한다.
 - 중앙 query-domain consistency objective는 또 다른 별도 축이다.
   현재 `FixMatch`의 method/source source of truth는
-  `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`이고,
+  `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`,
+  `scripts/conf/query_ssl_augmenter/`이고,
   USB core mapping은 `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`가 소유한다.
-  scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화한다.
+  scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
+  strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
+  실제 backtranslation 메커니즘은 `agent/src/services/backtranslation_service.py`를 재사용한다.
 - 현재 central 실험에서 `acceptance_policy_name` 계약은 compatibility field로 유지하지만,
   구현 source of truth는 `query_adaptation/ssl`로 이동했다.
 

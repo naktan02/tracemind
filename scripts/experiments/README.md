@@ -26,22 +26,25 @@
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
 - `train_lora_fixmatch.py`
   - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint
-  - method/source source of truth는 `query_ssl_method`, `query_ssl_train_source` Hydra group이다.
+  - method/source/augmentation/initial checkpoint source of truth는 `query_ssl_method`, `query_ssl_train_source`, `query_ssl_augmenter`, `query_adaptation_initial_checkpoint` Hydra group이다.
 - `train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
     `LoRA + classifier` student를 학습하는 bootstrap entrypoint
   - selection rule source of truth는 `scripts/conf/pseudo_label_algorithm/*.yaml`이다.
+  - student initial checkpoint source of truth는 `scripts/conf/query_adaptation_initial_checkpoint/*.yaml`이다.
 - `train_lora_pseudo_label_classifier.py`
   - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint
   - 현재 helper는 offline union retraining 경로를 포함하지만,
     central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 본다.
   - 실험 표면에서는 bootstrap과 같은 `pseudo_label_algorithm` Hydra group을 공유하고,
     산출물 manifest에 해당 preset을 provenance로 남긴다.
+  - warm-start provenance는 `query_adaptation_initial_checkpoint` 축으로 함께 남긴다.
 - `lora_classifier/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runner.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
   - `query_ssl/consistency_runner.py`가 USB FixMatch를 포함한 consistency family runner다.
+  - `query_ssl/augmentation.py`가 strict USB NLP `text + aug_0 + aug_1` preparation/cache를 담당한다.
   - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
   - `pseudo_label_runner.py`는 현재 offline union retraining helper를 제공한다.
   - `bootstrap_runner.py`의 teacher pseudo-label selection은

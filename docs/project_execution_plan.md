@@ -33,13 +33,22 @@
   trainer loop adapter는 `agent/src/services/training/query_adaptation/training.py`가 소유한다.
 - scripts 실행 껍데기는 `scripts/experiments/lora_classifier/query_ssl/common.py`와
   `query_ssl/consistency_runner.py`로 나눠 consistency family 공통 scaffolding을 재사용한다.
+- NLP strict USB input preparation은 `query_ssl_augmenter` 축으로 분리한다.
+  즉 `weak=text`, `strong=random(aug_0, aug_1)`를 canonical로 두고,
+  `aug_0`, `aug_1` 생성은 agent의 backtranslation service가 담당하고,
+  scripts는 cache/orchestration만 맡는다.
 - 첫 진입 bootstrap entrypoint는 `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`이며,
   `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙인 뒤
   `LoRA + classifier` student를 학습한다.
+- 적응 실험 config의 initial checkpoint source of truth는
+  `scripts/conf/query_adaptation_initial_checkpoint/*.yaml`이다.
+- 현재 first-stage bootstrap/adaptation 기본값은 canonical fixed classifier seed manifest를 읽어
+  classifier head를 warm-start하고, explicit LoRA manifest가 있으면 adapter+classifier를 함께 재사용한다.
 - 중앙 query-domain 비교의 canonical 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`이다.
 - 즉 초기 seed labeled split은 최초 checkpoint를 만드는 데만 쓰고, 이후 같은-family loop에서는 full seed replay를 canonical로 두지 않는다.
 - seed full replay 또는 small anchor replay는 필요 시 별도 ablation로만 다룬다.
 - `FixMatch`, `R-Drop`, `MixText`는 같은 scaffold 위의 후속 비교축이다.
+- `FixMatch`의 현재 strict NLP baseline은 `EN->DE->EN`, `EN->FR->EN` backtranslation을 기본 augmenter로 둔다.
 - `TAPT`는 적응 앞단의 optional preadaptation phase다.
 - LoRA는 query-domain 적응과 이후 FL LoRA family translation에 유리하다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 central query-domain 비교선이 아니라, 이후 FL stage에서 비교할 논문군으로 둔다.

@@ -7,14 +7,15 @@ defaults:
   - /lora: default
   - /lora_run_preset: default
   - /lora_train_source: dataset_train
+  - /query_adaptation_initial_checkpoint: none
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
 
 train_jsonl: ${lora_train_source.train_jsonl}
 fixed_categories: ${dataset.prototype_expected_categories}
-initial_adapter_dir: ""
-initial_classifier_path: ""
+initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
+initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
 eval_sets:
   validation: ${dataset.validation_jsonl}
   test: ${dataset.test_labeled_jsonl}

@@ -24,6 +24,8 @@ from scripts.classification_report import (
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
+from ..initial_checkpoint import resolve_query_adaptation_initial_checkpoint
+
 
 @dataclass(slots=True)
 class QuerySslRunContext:
@@ -42,6 +44,7 @@ class QuerySslRunContext:
     model: Any
     tokenizer: Any
     backbone_summary: dict[str, Any]
+    initial_checkpoint_manifest: dict[str, Any]
     train_loader: Any
     eval_loaders: dict[str, Any]
     selection_loader: Any
@@ -91,7 +94,6 @@ def prepare_query_ssl_run_context(
     selection_set_name: str | None,
     categories_override: list[str] | tuple[str, ...] | None,
     trainer_version_prefix: str,
-    require_multiview: bool,
     algorithm_name: str,
 ) -> QuerySslRunContext:
     """Query SSL family runner 공통 입력 정규화와 labeled/eval 준비를 수행한다."""
@@ -128,11 +130,6 @@ def prepare_query_ssl_run_context(
         effective_unlabeled_rows = list(unlabeled_rows)
     if not effective_unlabeled_rows:
         raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
-    if require_multiview:
-        validate_multiview_rows(
-            effective_unlabeled_rows,
-            algorithm_name=algorithm_name,
-        )
 
     effective_categories_override = categories_override
     if effective_categories_override is None:
@@ -171,9 +168,11 @@ def prepare_query_ssl_run_context(
     trainer_version = cfg.trainer_version or created_at.strftime(
         f"{trainer_version_prefix}_%Y_%m_%d_%H%M%S"
     )
+    resolved_initial_checkpoint = resolve_query_adaptation_initial_checkpoint(cfg)
+    effective_cfg = resolved_initial_checkpoint.cfg
 
     model, tokenizer, backbone_summary = build_model(
-        cfg=cfg,
+        cfg=effective_cfg,
         categories=categories,
         device=training_device,
     )
@@ -188,9 +187,9 @@ def prepare_query_ssl_run_context(
         rows=effective_train_rows,
         label_to_index=label_to_index,
         tokenizer=tokenizer,
-        batch_size=int(cfg.train_batch_size),
-        max_length=int(cfg.paper_backbone.max_length),
-        task_prefix=str(cfg.paper_backbone.task_prefix),
+        batch_size=int(effective_cfg.train_batch_size),
+        max_length=int(effective_cfg.paper_backbone.max_length),
+        task_prefix=str(effective_cfg.paper_backbone.task_prefix),
         shuffle=True,
     )
 
@@ -214,15 +213,15 @@ def prepare_query_ssl_run_context(
             rows=rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
-            batch_size=int(cfg.eval_batch_size),
-            max_length=int(cfg.paper_backbone.max_length),
-            task_prefix=str(cfg.paper_backbone.task_prefix),
+            batch_size=int(effective_cfg.eval_batch_size),
+            max_length=int(effective_cfg.paper_backbone.max_length),
+            task_prefix=str(effective_cfg.paper_backbone.task_prefix),
             shuffle=False,
         )
         print(f"tokenized_eval_set={dataset_name} rows={len(rows)}", flush=True)
 
     return QuerySslRunContext(
-        cfg=cfg,
+        cfg=effective_cfg,
         effective_selection_set=effective_selection_set,
         eval_set_map=eval_set_map,
         effective_train_rows=effective_train_rows,
@@ -235,6 +234,7 @@ def prepare_query_ssl_run_context(
         model=model,
         tokenizer=tokenizer,
         backbone_summary=backbone_summary,
+        initial_checkpoint_manifest=resolved_initial_checkpoint.extra_manifest,
         train_loader=train_loader,
         eval_loaders=eval_loaders,
         selection_loader=eval_loaders[effective_selection_set],

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from pathlib import Path
 from typing import Any
 
 from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
@@ -15,9 +16,14 @@ from agent.src.services.training.query_adaptation.data import (
 from agent.src.services.training.query_adaptation.training import (
     train_fixmatch_classifier,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from ..artifacts import write_run_artifacts
+from .augmentation import (
+    PreparedQuerySslUnlabeledRows,
+    build_query_ssl_augmenter_manifest,
+    prepare_fixmatch_unlabeled_rows,
+)
 from .common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
@@ -32,7 +38,10 @@ class ConsistencyMethodAdapter:
 
     algorithm_name: str
     trainer_version_prefix: str
-    require_multiview: bool
+    prepare_unlabeled_rows: Callable[
+        [list[LabeledQueryRow], str | Path | None],
+        PreparedQuerySslUnlabeledRows,
+    ]
     build_unlabeled_loader: Callable[[QuerySslRunContext], Any]
     train: Callable[
         [QuerySslRunContext, Any],
@@ -53,15 +62,27 @@ def run_consistency_query_ssl_lora_baseline(
 ) -> dict[str, str]:
     """Consistency family query SSL baseline을 공통 scaffolding으로 실행한다."""
 
+    if unlabeled_rows is None:
+        if getattr(cfg, "unlabeled_jsonl", None) is None:
+            raise ValueError(
+                "unlabeled_jsonl is required unless unlabeled_rows is provided."
+            )
+        raw_unlabeled_rows = load_labeled_query_rows(Path(str(cfg.unlabeled_jsonl)))
+    else:
+        raw_unlabeled_rows = list(unlabeled_rows)
+    prepared_unlabeled_rows = adapter.prepare_unlabeled_rows(
+        raw_unlabeled_rows,
+        getattr(cfg, "unlabeled_jsonl", None),
+    )
+
     context = prepare_query_ssl_run_context(
         cfg=cfg,
         train_rows=train_rows,
-        unlabeled_rows=unlabeled_rows,
+        unlabeled_rows=prepared_unlabeled_rows.rows,
         eval_rows_by_name=eval_rows_by_name,
         selection_set_name=selection_set_name,
         categories_override=categories_override,
         trainer_version_prefix=adapter.trainer_version_prefix,
-        require_multiview=adapter.require_multiview,
         algorithm_name=adapter.algorithm_name,
     )
     unlabeled_loader = adapter.build_unlabeled_loader(context)
@@ -80,6 +101,12 @@ def run_consistency_query_ssl_lora_baseline(
         "unlabeled_row_count": len(context.effective_unlabeled_rows),
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
     }
+    effective_extra_manifest.update(context.initial_checkpoint_manifest)
+    if getattr(cfg, "query_ssl_augmenter", None) is not None:
+        effective_extra_manifest["query_ssl_augmenter"] = (
+            build_query_ssl_augmenter_manifest(cfg)
+        )
+    effective_extra_manifest.update(prepared_unlabeled_rows.build_run_manifest())
     if extra_manifest is not None:
         effective_extra_manifest.update(dict(extra_manifest))
 
@@ -135,6 +162,16 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
         lambda_u=float(cfg.query_ssl_method.lambda_u),
     )
 
+    def _prepare_unlabeled_rows(
+        rows: list[LabeledQueryRow],
+        source_jsonl: str | Path | None,
+    ) -> PreparedQuerySslUnlabeledRows:
+        return prepare_fixmatch_unlabeled_rows(
+            cfg,
+            rows=rows,
+            source_jsonl=source_jsonl,
+        )
+
     def _build_unlabeled_loader(context: QuerySslRunContext):
         return build_multiview_dataloader(
             rows=context.effective_unlabeled_rows,
@@ -168,9 +205,7 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
     return ConsistencyMethodAdapter(
         algorithm_name="FixMatch",
         trainer_version_prefix="lora_fixmatch",
-        require_multiview=bool(
-            getattr(cfg.query_ssl_method, "require_multiview", True)
-        ),
+        prepare_unlabeled_rows=_prepare_unlabeled_rows,
         build_unlabeled_loader=_build_unlabeled_loader,
         train=_train,
     )

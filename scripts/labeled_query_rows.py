@@ -21,6 +21,10 @@ class LabeledQueryRow(TypedDict):
     annotation_source: str
     approved_by: str | None
     created_at: str
+    aug_0: NotRequired[str]
+    aug_1: NotRequired[str]
+    aug_0_pivot_lang: NotRequired[str]
+    aug_1_pivot_lang: NotRequired[str]
     weak_text: NotRequired[str]
     strong_text: NotRequired[str]
     weak_translated_text: NotRequired[str]

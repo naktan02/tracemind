@@ -41,6 +41,7 @@
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Query SSL Selection Algorithm | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/query_adaptation/ssl/`, `scripts/conf/pseudo_label_algorithm/` |
 | Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
+| Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
@@ -215,6 +216,33 @@ class PseudoLabelEvidenceBackend(Protocol):
 2. `register_scoring_backend()`로 등록
 3. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
 4. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
+
+---
+
+### Query SSL Augmenter (agent/scripts)
+
+**역할:** consistency family가 소비할 unlabeled text view를 canonical shape로 준비한다.
+
+현재 strict USB NLP baseline에서는 아래를 고정한다.
+
+- weak view: `text`
+- strong view: `aug_0`, `aug_1` 중 랜덤 1개
+- canonical unlabeled row shape: `text + aug_0 + aug_1`
+
+현재 구현:
+- `nllb_backtranslation`
+  - scripts preparation/cache가 agent의 일반 backtranslation service를 호출해 `aug_0`, `aug_1`를 생성한다
+- `precomputed_usb_candidates`
+  - 이미 `aug_0`, `aug_1`가 있는 JSONL을 그대로 소비한다
+
+source of truth:
+- Hydra group: `scripts/conf/query_ssl_augmenter/*.yaml`
+- reusable core: `agent/src/services/backtranslation_service.py`
+- scripts preparation/cache: `scripts/experiments/lora_classifier/query_ssl/augmentation.py`
+
+주의:
+- `query_ssl_method`와 `query_ssl_augmenter`는 분리한다.
+- objective가 같아도 input generation/caching 정책은 별도 축으로 본다.
 
 ---
 

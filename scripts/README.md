@@ -446,6 +446,7 @@ pseudo-label self-training 실행:
 uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
   lora_run_preset=smoke_verbose_e1 \
   pseudo_label_algorithm=margin_threshold_v1 \
+  query_adaptation_initial_checkpoint.manifest_path=/abs/path/to/initial_lora_seed.manifest.json \
   pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
 ```
 
@@ -455,6 +456,7 @@ USB FixMatch 실행:
 uv run python scripts/experiments/train_lora_fixmatch.py \
   runtime=gpu_local \
   query_ssl_train_source=bootstrap_teacher_split30_2026_04_14 \
+  query_adaptation_initial_checkpoint.manifest_path=/abs/path/to/initial_lora_seed.manifest.json \
   lora_run_preset=smoke_verbose_e1
 ```
 
@@ -476,8 +478,12 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 - 재사용 split은 `bootstrap_teacher_source=<preset>`과 `lora_train_source=<preset>`으로 고른다.
 - student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
 - teacher bootstrap selection rule과 이후 self-training provenance preset은 `pseudo_label_algorithm=<preset>`으로 고른다.
+- 적응 단계 initial checkpoint source of truth는 `query_adaptation_initial_checkpoint=<preset>`이다.
+- LoRA manifest를 넘기면 adapter+classifier를 함께 warm-start하고,
+  fixed classifier manifest를 넘기면 classifier head만 warm-start한다.
 - FixMatch consistency baseline의 unlabeled source는 `query_ssl_train_source=<preset>`으로 고른다.
 - FixMatch method hyperparameter source of truth는 `query_ssl_method=<preset>`이다.
+- FixMatch NLP strong view 생성/caching source of truth는 `query_ssl_augmenter=<preset>`이다.
 
 bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 
@@ -531,6 +537,18 @@ uv run python scripts/experiments/train_lora_classifier.py \
   - USB FixMatch core baseline
   - `temperature=0.5`, `p_cutoff=0.95`, `hard_label=true`, `lambda_u=1.0`
   - 현재 USB semilearn 경로와 동일하게 pseudo label target 생성에서는 `temperature`가 실제로 쓰이지 않는다
+- `query_adaptation_initial_checkpoint=none`
+  - supervised LoRA seed baseline용 fresh-start
+- `query_adaptation_initial_checkpoint=canonical_fixed_classifier_seed`
+  - canonical fixed classifier seed manifest를 읽어 classifier head 초기값을 재사용한다
+- `query_adaptation_initial_checkpoint=required`
+  - warm-start artifact를 명시적으로 넘겨야 하는 strict preset
+- `query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1`
+  - strict USB형 NLP input baseline
+  - `weak=text`, `strong=random(aug_0, aug_1)`
+  - `aug_0`, `aug_1`는 `EN->DE->EN`, `EN->FR->EN` backtranslation으로 자동 생성 후 cache한다
+- `query_ssl_augmenter=precomputed_usb_candidates_v1`
+  - 이미 `aug_0`, `aug_1`가 들어 있는 JSONL을 그대로 소비한다
 
 hidden unlabeled split을 지금 바로 자동 생성하려면:
 
@@ -600,13 +618,15 @@ canonical 경로:
   USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind epoch trainer adapter로 둔다.
 - scripts 쪽 실행 껍데기는 `query_ssl/common.py`와 `query_ssl/consistency_runner.py`로 나눠
   family 공통 scaffolding과 알고리즘별 wiring을 분리한다.
-- 현재 `FixMatch`는 `weak_text` / `strong_text`가 채워진 unlabeled JSONL을 요구한다.
-  자동 identity fallback은 두지 않는다.
+- 현재 `FixMatch`는 `text + aug_0 + aug_1` canonical unlabeled shape를 쓰고,
+  `query_ssl_augmenter`가 strict USB형 strong candidate를 먼저 준비한다.
 - `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.
 - `scripts/experiments/lora_classifier/pseudo_label_runner.py`는
   현재 offline union retraining helper로서 seed labeled rows와 pseudo-labeled rows를 합쳐
   self-training용 combined train JSONL을 남기고, 실제 학습은 메모리 row를 baseline runner에 직접 넘긴다.
 - 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 본다.
+- 따라서 pseudo-label / FixMatch / 후속 방법론은 가능한 한 같은
+  `query_adaptation_initial_checkpoint`에서 출발하도록 맞춘다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 이 중앙 규약으로 흡수하지 않고, 이후 FL stage 비교선으로 남긴다.
 - `scripts/experiments/lora_classifier/query_adaptation_multiview_io.py`는
   family-agnostic multiview dataset을 기존 `labeled_query_rows` shape의

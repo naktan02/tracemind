@@ -64,6 +64,7 @@ Query Buffer (raw text)
 5. 방법론 비교에서는 adaptation objective만 바꾼다.
 6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
 7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
+8. scripts 실험 표면에서는 `query_adaptation_initial_checkpoint` Hydra group을 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
 
 ## 적응 비교축
 
@@ -86,9 +87,13 @@ Query Buffer (raw text)
 - 첫 pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
   pseudo-label을 붙이고, `LoRA + classifier` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
+- first-stage bootstrap/adaptation에서 LoRA seed artifact가 아직 없으면 canonical fixed classifier seed manifest로 classifier head를 warm-start할 수 있다.
 - `FixMatch`는 USB core를 기준으로 weak view에서 pseudo-label/mask를 만들고,
   strong view에 consistency CE를 적용하는 별도 비교축으로 둔다.
-- 따라서 `FixMatch` 입력은 `weak_text` / `strong_text`가 준비된 unlabeled row를 요구한다.
+- NLP strict USB baseline에서는 `FixMatch` unlabeled input을
+  `text + aug_0 + aug_1` canonical shape로 둔다.
+  즉 weak는 `text`, strong은 `aug_0` 또는 `aug_1` 중 랜덤 1개를 사용한다.
+  `aug_0`, `aug_1` 생성/caching은 `query_ssl_augmenter` 축이 담당한다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from typing import Any
 
 import torch
@@ -39,7 +40,7 @@ class TextLabelDataset(Dataset[dict[str, Any]]):
 
 
 class TextMultiviewDataset(Dataset[dict[str, Any]]):
-    """weak/strong text view가 있는 unlabeled row를 배치용으로 노출한다."""
+    """strict USB aug candidate 또는 legacy weak/strong row를 배치용으로 노출한다."""
 
     def __init__(
         self,
@@ -55,14 +56,21 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
 
     def __getitem__(self, index: int) -> dict[str, Any]:
         row = self._rows[index]
-        weak_text = row.get("weak_text")
-        strong_text = row.get("strong_text")
-        if weak_text is None or strong_text is None:
-            raise ValueError(
-                "FixMatch unlabeled rows require both weak_text and strong_text."
-            )
-        weak_text = str(weak_text)
-        strong_text = str(strong_text)
+        aug_0 = row.get("aug_0")
+        aug_1 = row.get("aug_1")
+        if aug_0 is not None and aug_1 is not None:
+            weak_text = str(row["text"])
+            strong_text = str(random.choice((aug_0, aug_1)))
+        else:
+            weak_text = row.get("weak_text")
+            strong_text = row.get("strong_text")
+            if weak_text is None or strong_text is None:
+                raise ValueError(
+                    "FixMatch unlabeled rows require either strict USB "
+                    "text/aug_0/aug_1 fields or legacy weak_text/strong_text."
+                )
+            weak_text = str(weak_text)
+            strong_text = str(strong_text)
         if self._task_prefix:
             weak_text = f"{self._task_prefix}{weak_text}"
             strong_text = f"{self._task_prefix}{strong_text}"

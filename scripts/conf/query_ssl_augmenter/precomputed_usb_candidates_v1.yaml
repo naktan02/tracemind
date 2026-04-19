@@ -1,0 +1,3 @@
+name: precomputed_usb_candidates_v1
+augmenter_type: precomputed_usb_candidates
+cache_dir: data/processed/query_ssl_augmentations

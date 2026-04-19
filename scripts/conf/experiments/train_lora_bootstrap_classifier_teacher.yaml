@@ -9,6 +9,7 @@ defaults:
   - /lora_run_preset: default
   - /bootstrap_teacher_source: dataset_default
   - /pseudo_label_algorithm: margin_threshold_v1
+  - /query_adaptation_initial_checkpoint: canonical_fixed_classifier_seed
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
@@ -39,8 +40,8 @@ pseudo_label_jsonl: null
 pseudo_label_export_root: data/processed/lora_pseudo_label
 student_include_seed_train_rows: false
 fixed_categories: ${dataset.prototype_expected_categories}
-initial_adapter_dir: ""
-initial_classifier_path: ""
+initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
+initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
 eval_sets:
   validation: ${dataset.validation_jsonl}
   test: ${dataset.test_labeled_jsonl}

@@ -32,6 +32,19 @@ def _build_cfg() -> object:
                 "unlabeled_batch_size": 4,
                 "require_multiview": True,
             },
+            "query_ssl_augmenter": {
+                "name": "backtranslation_nllb_en_de_fr_usb_v1",
+                "augmenter_type": "nllb_backtranslation",
+                "source_lang": "eng_Latn",
+                "pivot_languages": ["deu_Latn", "fra_Latn"],
+                "model_id": "facebook/nllb-200-distilled-600M",
+                "revision": "main",
+                "device": "cpu",
+                "local_files_only": True,
+                "batch_size": 8,
+                "max_new_tokens": 256,
+                "cache_dir": "",
+            },
             "fixed_categories": [
                 "anxiety",
                 "depression",
@@ -77,7 +90,7 @@ def _labeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def _multiview_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
+def _usb_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     return LabeledQueryRow(
         query_id=query_id,
         text=text,
@@ -88,8 +101,10 @@ def _multiview_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQue
         annotation_source="query_unlabeled",
         approved_by=None,
         created_at="2026-04-19T00:00:00+00:00",
-        weak_text=f"weak::{text}",
-        strong_text=f"strong::{text}",
+        aug_0=f"de::{text}",
+        aug_1=f"fr::{text}",
+        aug_0_pivot_lang="deu_Latn",
+        aug_1_pivot_lang="fra_Latn",
     )
 
 
@@ -165,7 +180,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
     outputs = run_fixmatch_lora_baseline(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
-        unlabeled_rows=[_multiview_unlabeled_row("u1", "depression", "우울해요")],
+        unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
         eval_rows_by_name={
             "validation": [_labeled_row("v1", "anxiety", "검증")],
             "test": [_labeled_row("t1", "depression", "테스트")],
@@ -184,10 +199,27 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
     assert (
         captured["extra_manifest"]["query_ssl_method"]["algorithm_name"] == "fixmatch"
     )
+    assert (
+        captured["extra_manifest"]["query_ssl_augmenter"]["preset_name"]
+        == "backtranslation_nllb_en_de_fr_usb_v1"
+    )
+    assert (
+        captured["extra_manifest"]["query_ssl_augmenter_preparation"]["mode"]
+        == "precomputed_usb_candidates"
+    )
 
 
-def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_multiview() -> None:
+def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
+    None
+):
     cfg = _build_cfg()
+    cfg.query_ssl_augmenter = OmegaConf.create(
+        {
+            "name": "precomputed_usb_candidates_v1",
+            "augmenter_type": "precomputed_usb_candidates",
+            "cache_dir": "",
+        }
+    )
 
     unlabeled_rows = [_labeled_row("u1", "depression", "우울해요")]
 
@@ -202,6 +234,9 @@ def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_multiview() -
             },
         )
     except ValueError as exc:
-        assert "weak_text and strong_text" in str(exc)
+        assert "aug_0 and aug_1" in str(exc)
     else:  # pragma: no cover - defensive
-        raise AssertionError("FixMatch runner should require multiview unlabeled rows.")
+        raise AssertionError(
+            "FixMatch runner should require strict USB aug candidates when "
+            "precomputed-only augmentation is selected."
+        )

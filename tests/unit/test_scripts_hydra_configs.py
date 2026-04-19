@@ -113,6 +113,7 @@ def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() 
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
 
@@ -160,6 +161,9 @@ def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == (
+        "canonical_fixed_classifier_seed"
+    )
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
 
@@ -178,6 +182,17 @@ def test_train_lora_fixmatch_supports_query_ssl_method_override() -> None:
     assert cfg.query_ssl_method.p_cutoff == 0.9
     assert cfg.query_ssl_method.unlabeled_batch_size == 8
     assert cfg.query_ssl_method.hard_label is True
+
+
+def test_train_lora_fixmatch_supports_query_ssl_augmenter_override() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/train_lora_fixmatch",
+            overrides=["query_ssl_augmenter=precomputed_usb_candidates_v1"],
+        )
+
+    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
 
 
 def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
@@ -200,6 +215,9 @@ def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset
     assert cfg.log_every_steps == 20
     assert cfg.include_seed_train_rows is False
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == (
+        "canonical_fixed_classifier_seed"
+    )
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
 
@@ -261,6 +279,9 @@ def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_
     )
     assert cfg.student_include_seed_train_rows is False
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == (
+        "canonical_fixed_classifier_seed"
+    )
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
 
@@ -432,6 +453,12 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
     assert cfg.query_ssl_method.temperature == 0.5
     assert cfg.query_ssl_method.p_cutoff == 0.95
     assert cfg.query_ssl_method.lambda_u == 1.0
+    assert cfg.query_ssl_augmenter.name == "backtranslation_nllb_en_de_fr_usb_v1"
+    assert cfg.query_ssl_augmenter.source_lang == "eng_Latn"
+    assert list(cfg.query_ssl_augmenter.pivot_languages) == [
+        "deu_Latn",
+        "fra_Latn",
+    ]
     assert cfg.unlabeled_jsonl == cfg.query_ssl_train_source.unlabeled_jsonl
 
 
