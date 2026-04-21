@@ -10,7 +10,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from agent.src.services.training.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
@@ -43,6 +43,7 @@ class PreparedPseudoLabelSelfTrainingRun:
     """Pseudo-label self-training 실행 전 정규화 결과."""
 
     cfg: DictConfig
+    train_jsonl_ref: str
     run_id: str
     export_dir: Path
     seed_train_count: int
@@ -96,6 +97,8 @@ def run_pseudo_label_self_training(
     pseudo_label_dataset: QueryAdaptationDataset | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
     include_seed_train_rows: bool | None = None,
+    train_jsonl_ref: str | Path | None = None,
+    trainer_version_override: str | None = None,
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
     categories_override: Sequence[str] | None = None,
@@ -113,12 +116,16 @@ def run_pseudo_label_self_training(
         pseudo_label_dataset=pseudo_label_dataset,
         seed_train_rows=seed_train_rows,
         include_seed_train_rows=include_seed_train_rows,
+        train_jsonl_ref=train_jsonl_ref,
+        trainer_version_override=trainer_version_override,
         export_root=export_root,
         generated_at=generated_at,
     )
     run_outputs = run_supervised_lora_baseline(
         prepared.cfg,
         train_rows=prepared.combined_train_rows,
+        train_jsonl_ref=prepared.train_jsonl_ref,
+        trainer_version_override=prepared.run_id,
         extra_manifest=prepared.manifest_overrides,
         categories_override=(
             None
@@ -140,13 +147,19 @@ def prepare_pseudo_label_self_training_run(
     pseudo_label_dataset: QueryAdaptationDataset | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
     include_seed_train_rows: bool | None = None,
+    train_jsonl_ref: str | Path | None = None,
+    trainer_version_override: str | None = None,
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
 ) -> PreparedPseudoLabelSelfTrainingRun:
     """Pseudo-label self-training 입력을 baseline runner 형식으로 정규화한다."""
 
     effective_generated_at = generated_at or datetime.now(tz=timezone.utc)
-    run_id = _resolve_run_id(cfg=cfg, generated_at=effective_generated_at)
+    run_id = _resolve_run_id(
+        cfg=cfg,
+        generated_at=effective_generated_at,
+        trainer_version_override=trainer_version_override,
+    )
     resolved_export_root = (
         Path(str(cfg.pseudo_label_export_root))
         if export_root is None
@@ -162,7 +175,15 @@ def prepare_pseudo_label_self_training_run(
     )
     if effective_include_seed_rows:
         effective_seed_train_rows = (
-            load_labeled_query_rows(Path(str(cfg.train_jsonl)))
+            load_labeled_query_rows(
+                Path(
+                    str(
+                        cfg.train_jsonl
+                        if train_jsonl_ref is None
+                        else train_jsonl_ref
+                    )
+                )
+            )
             if seed_train_rows is None
             else list(seed_train_rows)
         )
@@ -214,12 +235,9 @@ def prepare_pseudo_label_self_training_run(
         generated_at=effective_generated_at,
     )
 
-    prepared_cfg = _clone_cfg_with_combined_train_path(
-        cfg=cfg,
-        combined_train_jsonl=str(combined_train_artifacts.jsonl_path),
-    )
     return PreparedPseudoLabelSelfTrainingRun(
-        cfg=prepared_cfg,
+        cfg=cfg,
+        train_jsonl_ref=str(combined_train_artifacts.jsonl_path),
         run_id=run_id,
         export_dir=export_dir,
         seed_train_count=len(effective_seed_train_rows),
@@ -269,21 +287,14 @@ def _resolve_run_id(
     *,
     cfg: DictConfig,
     generated_at: datetime,
+    trainer_version_override: str | None = None,
 ) -> str:
+    if trainer_version_override:
+        return str(trainer_version_override).strip()
     trainer_version = str(getattr(cfg, "trainer_version", "") or "").strip()
     if trainer_version:
         return trainer_version
     return generated_at.strftime("lora_pseudo_label_%Y_%m_%d_%H%M%S")
-
-
-def _clone_cfg_with_combined_train_path(
-    *,
-    cfg: DictConfig,
-    combined_train_jsonl: str,
-) -> DictConfig:
-    cloned_cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=False))
-    cloned_cfg.train_jsonl = combined_train_jsonl
-    return cloned_cfg
 
 
 def _write_labeled_row_export(

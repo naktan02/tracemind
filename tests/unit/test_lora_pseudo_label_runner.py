@@ -117,7 +117,7 @@ def test_prepare_pseudo_label_self_training_run_excludes_seed_rows_by_default(
     assert prepared.pseudo_label_count == 1
     assert prepared.combined_train_count == 1
     assert prepared.combined_train_rows[0]["query_id"] == "pl_q1"
-    assert prepared.cfg.train_jsonl.endswith("combined_train.jsonl")
+    assert prepared.train_jsonl_ref.endswith("combined_train.jsonl")
     assert prepared.pseudo_label_artifacts.jsonl_path.exists()
     assert prepared.pseudo_label_artifacts.manifest_path.exists()
     assert prepared.pseudo_label_artifacts.summary_path.exists()
@@ -157,11 +157,16 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
         train_rows,
         eval_rows_by_name=None,
         selection_set_name=None,
+        train_jsonl_ref=None,
+        eval_set_refs=None,
+        trainer_version_override=None,
         extra_manifest=None,
         categories_override=None,
     ) -> dict[str, str]:
         captured["cfg"] = cfg
         captured["train_rows"] = train_rows
+        captured["train_jsonl_ref"] = train_jsonl_ref
+        captured["trainer_version_override"] = trainer_version_override
         captured["extra_manifest"] = extra_manifest
         captured["categories_override"] = categories_override
         return {
@@ -195,6 +200,8 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
         "margin_threshold_v1"
     )
     assert extra_manifest["pseudo_label_algorithm"]["margin_threshold"] == 0.02
+    assert captured["train_jsonl_ref"].endswith("combined_train.jsonl")
+    assert captured["trainer_version_override"] == "pseudo_label_run_v1"
     assert captured["categories_override"] is None
     assert outputs["output_dir"] == "runs/fake_pseudo"
     assert Path(outputs["pseudo_label_jsonl"]).exists()

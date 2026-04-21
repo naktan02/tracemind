@@ -11,7 +11,7 @@ from pathlib import Path
 from typing import Any
 
 from hydra.utils import instantiate
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from agent.src.services.training.query_adaptation.ssl.registry import (
     build_query_ssl_algorithm,
@@ -162,24 +162,12 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
     _write_jsonl(prediction_trace_path, prediction_trace_rows)
     _write_json(prediction_summary_path, prediction_summary)
 
-    student_cfg = _clone_cfg(
+    student_outputs = _run_student_lora_bootstrap(
         cfg=cfg,
-        overrides={
-            "train_jsonl": teacher_seed_jsonl_ref,
-            "trainer_version": (
-                str(getattr(cfg, "trainer_version", "") or "").strip()
-                or f"{run_id}_student"
-            ),
-        },
-    )
-    student_outputs = run_pseudo_label_self_training(
-        cfg=student_cfg,
+        run_id=run_id,
+        teacher_seed_jsonl_ref=teacher_seed_jsonl_ref,
         seed_train_rows=effective_teacher_seed_rows,
         pseudo_label_rows=pseudo_label_rows,
-        include_seed_train_rows=bool(
-            getattr(cfg, "student_include_seed_train_rows", False)
-        ),
-        export_root=str(cfg.pseudo_label_export_root),
         generated_at=effective_generated_at,
         categories_override=tuple(trained_teacher.categories),
     )
@@ -467,15 +455,36 @@ def _resolve_run_id(
     return generated_at.strftime("lora_bootstrap_%Y_%m_%d_%H%M%S")
 
 
-def _clone_cfg(
+def _run_student_lora_bootstrap(
     *,
     cfg: DictConfig,
-    overrides: Mapping[str, object],
-) -> DictConfig:
-    cloned = OmegaConf.create(OmegaConf.to_container(cfg, resolve=False))
-    for key, value in overrides.items():
-        setattr(cloned, key, value)
-    return cloned
+    run_id: str,
+    teacher_seed_jsonl_ref: str,
+    seed_train_rows: Sequence[LabeledQueryRow],
+    pseudo_label_rows: Sequence[LabeledQueryRow],
+    generated_at: datetime,
+    categories_override: Sequence[str],
+) -> dict[str, str]:
+    return run_pseudo_label_self_training(
+        cfg=cfg,
+        seed_train_rows=seed_train_rows,
+        pseudo_label_rows=pseudo_label_rows,
+        include_seed_train_rows=bool(
+            getattr(cfg, "student_include_seed_train_rows", False)
+        ),
+        train_jsonl_ref=teacher_seed_jsonl_ref,
+        trainer_version_override=_resolve_student_trainer_version(cfg, run_id),
+        export_root=str(cfg.pseudo_label_export_root),
+        generated_at=generated_at,
+        categories_override=categories_override,
+    )
+
+
+def _resolve_student_trainer_version(cfg: DictConfig, run_id: str) -> str:
+    trainer_version = str(getattr(cfg, "trainer_version", "") or "").strip()
+    if trainer_version:
+        return trainer_version
+    return f"{run_id}_student"
 
 
 def _write_json(path: Path, payload: Mapping[str, object]) -> None:

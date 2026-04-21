@@ -171,6 +171,8 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         seed_train_rows,
         pseudo_label_rows,
         include_seed_train_rows,
+        train_jsonl_ref,
+        trainer_version_override,
         export_root,
         generated_at,
         categories_override,
@@ -179,6 +181,8 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         captured["seed_train_rows"] = list(seed_train_rows)
         captured["pseudo_label_rows"] = list(pseudo_label_rows)
         captured["include_seed_train_rows"] = include_seed_train_rows
+        captured["train_jsonl_ref"] = train_jsonl_ref
+        captured["trainer_version_override"] = trainer_version_override
         captured["export_root"] = export_root
         captured["generated_at"] = generated_at
         captured["categories_override"] = categories_override
@@ -211,6 +215,9 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     assert len(captured["seed_train_rows"]) == 1
     assert len(captured["pseudo_label_rows"]) == 1
     assert captured["include_seed_train_rows"] is False
+    assert captured["cfg"] is cfg
+    assert captured["train_jsonl_ref"] == "in_memory/teacher_seed_rows.jsonl"
+    assert captured["trainer_version_override"] == "student_v1"
     assert tuple(captured["categories_override"]) == (
         "anxiety",
         "depression",
@@ -385,7 +392,10 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
 
     kwargs = captured["kwargs"]
     assert outputs["reused_teacher_manifest"] == cfg.teacher_reuse_manifest_path
+    assert kwargs["cfg"] is cfg
     assert kwargs["include_seed_train_rows"] is False
+    assert kwargs["train_jsonl_ref"] == "in_memory/teacher_seed_rows.jsonl"
+    assert kwargs["trainer_version_override"] == "student_v1"
     assert tuple(kwargs["categories_override"]) == (
         "anxiety",
         "depression",

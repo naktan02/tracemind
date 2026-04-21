@@ -111,7 +111,7 @@ def run_consistency_query_ssl_lora_baseline(
         effective_extra_manifest.update(dict(extra_manifest))
 
     outputs = write_run_artifacts(
-        cfg=cfg,
+        cfg=context.cfg,
         trainer_version=context.trainer_version,
         created_at=context.created_at,
         model=model,

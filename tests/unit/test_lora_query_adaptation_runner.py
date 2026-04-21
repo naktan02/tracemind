@@ -81,7 +81,6 @@ def test_prepare_query_adaptation_supervised_run_exports_train_and_selection(
         generated_at=datetime(2026, 4, 12, 13, 0, tzinfo=timezone.utc),
     )
 
-    prepared_cfg = prepared.cfg
     export_dir = prepared.export_dir
     train_jsonl = prepared.train_artifacts.jsonl_path
 
@@ -91,9 +90,9 @@ def test_prepare_query_adaptation_supervised_run_exports_train_and_selection(
     assert prepared.train_artifacts.summary_path.exists()
     assert prepared.train_rows[0]["query_id"] == "q1"
     assert prepared.eval_rows_by_name["selection"][0]["mapped_label_4"] == "anxiety"
-    assert str(prepared_cfg.train_jsonl) == str(train_jsonl)
-    assert str(prepared_cfg.selection_set) == "selection"
-    assert str(prepared_cfg.eval_sets["selection"]) == str(train_jsonl)
+    assert prepared.train_jsonl_ref == str(train_jsonl)
+    assert prepared.selection_set_name == "selection"
+    assert prepared.eval_set_refs["selection"] == str(train_jsonl)
 
     rows = load_labeled_query_rows(train_jsonl)
     assert len(rows) == 1
@@ -124,11 +123,15 @@ def test_run_query_adaptation_supervised_baseline_calls_existing_runner(
         train_rows,
         eval_rows_by_name,
         selection_set_name,
+        train_jsonl_ref=None,
+        eval_set_refs=None,
     ) -> dict[str, str]:
         captured["cfg"] = cfg
         captured["train_rows"] = train_rows
         captured["eval_rows_by_name"] = eval_rows_by_name
         captured["selection_set_name"] = selection_set_name
+        captured["train_jsonl_ref"] = train_jsonl_ref
+        captured["eval_set_refs"] = eval_set_refs
         return {
             "output_dir": "runs/fake",
             "report_json": "runs/fake/report.json",
@@ -148,16 +151,16 @@ def test_run_query_adaptation_supervised_baseline_calls_existing_runner(
         generated_at=datetime(2026, 4, 12, 13, 0, tzinfo=timezone.utc),
     )
 
-    prepared_cfg = captured["cfg"]
     train_rows = captured["train_rows"]
     eval_rows_by_name = captured["eval_rows_by_name"]
     selection_set_name = captured["selection_set_name"]
-    assert str(prepared_cfg.train_jsonl).endswith("train.jsonl")
-    assert str(prepared_cfg.selection_set) == "selection"
+    train_jsonl_ref = captured["train_jsonl_ref"]
+    eval_set_refs = captured["eval_set_refs"]
+    assert str(train_jsonl_ref).endswith("train.jsonl")
     assert selection_set_name == "selection"
     assert train_rows[0]["query_id"] == "q1"
     assert eval_rows_by_name["selection"][0]["query_id"] == "q2"
-    assert str(prepared_cfg.eval_sets["selection"]).endswith("selection.jsonl")
+    assert str(eval_set_refs["selection"]).endswith("selection.jsonl")
     assert outputs["output_dir"] == "runs/fake"
     assert Path(outputs["train_jsonl"]).exists()
     assert Path(outputs["selection_jsonl"]).exists()

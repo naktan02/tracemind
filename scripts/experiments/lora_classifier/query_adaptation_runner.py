@@ -7,10 +7,11 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
 
+from omegaconf import DictConfig
+
 from agent.src.services.training.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
 )
-from omegaconf import DictConfig, OmegaConf
 from scripts.labeled_query_rows import LabeledQueryRow
 
 from .query_adaptation_io import (
@@ -26,6 +27,8 @@ class PreparedQueryAdaptationSupervisedRun:
     """query adaptation dataset을 baseline 실행 입력과 trace export로 정리한 결과."""
 
     cfg: DictConfig
+    train_jsonl_ref: str
+    eval_set_refs: dict[str, str]
     run_id: str
     export_dir: Path
     selection_example_count: int
@@ -88,6 +91,8 @@ def run_query_adaptation_supervised_baseline(
         train_rows=prepared.train_rows,
         eval_rows_by_name=prepared.eval_rows_by_name,
         selection_set_name=prepared.selection_set_name,
+        train_jsonl_ref=prepared.train_jsonl_ref,
+        eval_set_refs=prepared.eval_set_refs,
     )
     return {
         **prepared.export_outputs,
@@ -169,14 +174,10 @@ def prepare_query_adaptation_supervised_run(
             )
         )
 
-    prepared_cfg = _clone_lora_config_with_export_paths(
-        cfg=cfg,
-        train_jsonl=str(train_outputs.jsonl_path),
-        eval_set_map=eval_output_paths,
-        selection_set_name=selection_set_name,
-    )
     return PreparedQueryAdaptationSupervisedRun(
-        cfg=prepared_cfg,
+        cfg=cfg,
+        train_jsonl_ref=str(train_outputs.jsonl_path),
+        eval_set_refs=dict(eval_output_paths),
         run_id=run_id,
         export_dir=export_dir,
         selection_example_count=effective_selection_dataset.count,
@@ -198,20 +199,6 @@ def _resolve_query_adaptation_run_id(
     if trainer_version:
         return trainer_version
     return generated_at.strftime("query_adapt_lora_%Y_%m_%d_%H%M%S")
-
-
-def _clone_lora_config_with_export_paths(
-    *,
-    cfg: DictConfig,
-    train_jsonl: str,
-    eval_set_map: Mapping[str, str],
-    selection_set_name: str,
-) -> DictConfig:
-    cloned_cfg = OmegaConf.create(OmegaConf.to_container(cfg, resolve=False))
-    cloned_cfg.train_jsonl = train_jsonl
-    cloned_cfg.eval_sets = dict(eval_set_map)
-    cloned_cfg.selection_set = selection_set_name
-    return cloned_cfg
 
 
 __all__ = [

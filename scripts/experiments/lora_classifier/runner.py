@@ -3,29 +3,17 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-from agent.src.infrastructure.runtime import resolve_runtime_device
-from agent.src.services.training.query_adaptation.data import (
-    build_dataloader,
-    build_label_index,
-)
-from agent.src.services.training.query_adaptation.modeling import build_model
-from agent.src.services.training.query_adaptation.training import (
-    evaluate_classifier,
-    set_seed,
-    train_classifier,
-)
-from scripts.classification_report import (
-    render_confusion_table,
-    render_per_category_table,
-)
-from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from agent.src.services.training.query_adaptation.training import train_classifier
+from scripts.labeled_query_rows import LabeledQueryRow
 
 from .artifacts import write_run_artifacts
-from .initial_checkpoint import resolve_query_adaptation_initial_checkpoint
+from .common import (
+    evaluate_supervised_lora_run_context,
+    prepare_supervised_lora_run_context,
+)
 
 
 def run_supervised_lora_baseline(
@@ -34,6 +22,9 @@ def run_supervised_lora_baseline(
     train_rows: list[LabeledQueryRow] | None = None,
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
     selection_set_name: str | None = None,
+    train_jsonl_ref: str | Path | None = None,
+    eval_set_refs: Mapping[str, str | Path] | None = None,
+    trainer_version_override: str | None = None,
     extra_manifest: Mapping[str, Any] | None = None,
     categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
@@ -43,173 +34,51 @@ def run_supervised_lora_baseline(
     조립된 labeled row가 있으면 override로 받아 JSONL bridge 없이 바로 학습한다.
     """
 
-    effective_selection_set = str(selection_set_name or cfg.selection_set)
-    eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
-    if eval_rows_by_name is not None:
-        for dataset_name in eval_rows_by_name:
-            eval_set_map.setdefault(
-                dataset_name, Path(f"in_memory/{dataset_name}.jsonl")
-            )
-    if effective_selection_set not in (
-        eval_set_map if eval_rows_by_name is None else eval_rows_by_name
-    ):
-        raise ValueError(
-            f"selection_set '{effective_selection_set}' is not included in eval_sets."
-        )
-
-    set_seed(int(cfg.seed))
-    effective_train_rows = (
-        load_labeled_query_rows(Path(cfg.train_jsonl))
-        if train_rows is None
-        else list(train_rows)
+    context = prepare_supervised_lora_run_context(
+        cfg,
+        train_rows=train_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        categories_override=categories_override,
+        train_jsonl_ref=train_jsonl_ref,
+        eval_set_refs=eval_set_refs,
+        trainer_version_override=trainer_version_override,
     )
-    effective_categories_override = categories_override
-    if effective_categories_override is None:
-        raw_fixed_categories = getattr(cfg, "fixed_categories", None)
-        if raw_fixed_categories is not None:
-            effective_categories_override = [
-                str(category) for category in raw_fixed_categories
-            ]
-
-    if effective_categories_override is None:
-        categories, label_to_index = build_label_index(effective_train_rows)
-    else:
-        categories = list(
-            dict.fromkeys(str(category) for category in effective_categories_override)
-        )
-        if not categories:
-            raise ValueError("categories_override must not be empty.")
-        label_to_index = {
-            str(category): index for index, category in enumerate(categories)
-        }
-        unknown_labels = sorted(
-            {
-                str(row["mapped_label_4"])
-                for row in effective_train_rows
-                if str(row["mapped_label_4"]) not in label_to_index
-            }
-        )
-        if unknown_labels:
-            raise ValueError(
-                "Train rows include labels outside categories_override: "
-                f"{unknown_labels}"
-            )
-    training_device = resolve_runtime_device(str(cfg.runtime.device))
-    created_at = datetime.now(timezone.utc)
-    trainer_version = cfg.trainer_version or created_at.strftime(
-        "lora_clf_%Y_%m_%d_%H%M%S"
-    )
-    resolved_initial_checkpoint = resolve_query_adaptation_initial_checkpoint(cfg)
-    effective_cfg = resolved_initial_checkpoint.cfg
-
-    model, tokenizer, backbone_summary = build_model(
-        cfg=effective_cfg,
-        categories=categories,
-        device=training_device,
-    )
-    print(
-        "trainable_params="
-        f"{backbone_summary['parameter_counts']['trainable']} / "
-        f"{backbone_summary['parameter_counts']['total']}",
-        flush=True,
-    )
-
-    train_loader = build_dataloader(
-        rows=effective_train_rows,
-        label_to_index=label_to_index,
-        tokenizer=tokenizer,
-        batch_size=int(effective_cfg.train_batch_size),
-        max_length=int(effective_cfg.paper_backbone.max_length),
-        task_prefix=str(effective_cfg.paper_backbone.task_prefix),
-        shuffle=True,
-    )
-
-    eval_loaders = {}
-    eval_row_map = (
-        None
-        if eval_rows_by_name is None
-        else {name: list(rows) for name, rows in eval_rows_by_name.items()}
-    )
-    eval_dataset_names = (
-        eval_set_map.keys() if eval_row_map is None else eval_row_map.keys()
-    )
-    for dataset_name in eval_dataset_names:
-        path = eval_set_map[dataset_name]
-        rows = (
-            load_labeled_query_rows(path)
-            if eval_row_map is None
-            else eval_row_map[dataset_name]
-        )
-        eval_loaders[dataset_name] = build_dataloader(
-            rows=rows,
-            label_to_index=label_to_index,
-            tokenizer=tokenizer,
-            batch_size=int(effective_cfg.eval_batch_size),
-            max_length=int(effective_cfg.paper_backbone.max_length),
-            task_prefix=str(effective_cfg.paper_backbone.task_prefix),
-            shuffle=False,
-        )
-        print(f"tokenized_eval_set={dataset_name} rows={len(rows)}", flush=True)
-
-    selection_loader = eval_loaders[effective_selection_set]
     model, history, best_selection_report = train_classifier(
-        model=model,
-        train_loader=train_loader,
-        selection_loader=selection_loader,
-        categories=categories,
-        device=training_device,
-        epochs=int(effective_cfg.epochs),
-        learning_rate=float(effective_cfg.learning_rate),
-        classifier_learning_rate=float(effective_cfg.classifier_learning_rate),
-        weight_decay=float(effective_cfg.weight_decay),
-        max_grad_norm=float(effective_cfg.max_grad_norm),
-        log_every_steps=int(effective_cfg.log_every_steps),
+        model=context.model,
+        train_loader=context.train_loader,
+        selection_loader=context.selection_loader,
+        categories=context.categories,
+        device=context.training_device,
+        epochs=int(context.cfg.epochs),
+        learning_rate=float(context.cfg.learning_rate),
+        classifier_learning_rate=float(context.cfg.classifier_learning_rate),
+        weight_decay=float(context.cfg.weight_decay),
+        max_grad_norm=float(context.cfg.max_grad_norm),
+        log_every_steps=int(context.cfg.log_every_steps),
     )
 
-    results: dict[str, Any] = {}
-    for dataset_name, dataloader in eval_loaders.items():
-        report = evaluate_classifier(
-            model=model,
-            dataloader=dataloader,
-            categories=categories,
-            device=training_device,
-        )
-        results[dataset_name] = report
-        print(
-            f"[{dataset_name}] "
-            f"accuracy_top_1={report['accuracy_top_1']:.4f} "
-            f"rows={report['rows_total']} "
-            f"mean_true_prob={report['mean_true_label_probability']:.4f} "
-            f"mean_margin={report['mean_margin_top1_top2']:.4f}",
-            flush=True,
-        )
-        print(render_confusion_table(report["confusion_matrix"]))
-        print()
-        print(
-            render_per_category_table(
-                report["per_category"],
-                primary_metric_key="mean_true_label_probability",
-                top_1_metric_key="mean_top_1_probability",
-                primary_header="mean_true_prob",
-                top_1_header="mean_top1_prob",
-            )
-        )
-        print()
+    results = evaluate_supervised_lora_run_context(
+        model=model,
+        eval_loaders=context.eval_loaders,
+        categories=context.categories,
+        device=context.training_device,
+    )
 
-    effective_extra_manifest = dict(resolved_initial_checkpoint.extra_manifest)
+    effective_extra_manifest = dict(context.initial_checkpoint_manifest)
     if extra_manifest:
         effective_extra_manifest.update(dict(extra_manifest))
 
     outputs = write_run_artifacts(
-        cfg=effective_cfg,
-        trainer_version=trainer_version,
-        created_at=created_at,
+        cfg=context.cfg,
+        trainer_version=context.trainer_version,
+        created_at=context.created_at,
         model=model,
-        tokenizer=tokenizer,
-        categories=categories,
-        eval_set_map=eval_set_map,
-        training_device=training_device,
-        backbone_summary=backbone_summary,
+        tokenizer=context.tokenizer,
+        categories=context.categories,
+        eval_set_map=context.eval_set_map,
+        training_device=context.training_device,
+        backbone_summary=context.backbone_summary,
         history=history,
         best_selection_report=best_selection_report,
         results=results,
