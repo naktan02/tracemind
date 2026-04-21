@@ -5,12 +5,11 @@ from __future__ import annotations
 import copy
 import json
 from dataclasses import dataclass
-from datetime import datetime, timezone
+from datetime import datetime
 from pathlib import Path
 from typing import Any, cast
 
 import torch
-from hydra.utils import instantiate
 from omegaconf import DictConfig
 from torch import nn
 
@@ -25,10 +24,12 @@ from scripts.classification_report import (
     safe_divide,
     summarize_per_category,
 )
-from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.labeled_query_rows import LabeledQueryRow
 from scripts.run_artifacts import build_run_dir
 from shared.src.domain.services import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+from .common import prepare_fixed_classifier_run_context
 
 
 @dataclass(slots=True)
@@ -584,51 +585,39 @@ def run_fixed_embedding_classifier(
 ) -> dict[str, str]:
     """Hydra config 기준 fixed embedding classifier를 실행한다."""
 
-    eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
-    if cfg.selection_set not in eval_set_map:
-        raise ValueError(
-            f"selection_set '{cfg.selection_set}' is not included in eval_sets."
-        )
-
-    effective_train_rows = (
-        load_labeled_query_rows(Path(str(cfg.train_jsonl)))
-        if train_rows is None
-        else list(train_rows)
+    context = prepare_fixed_classifier_run_context(
+        cfg=cfg,
+        train_rows=train_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        train_jsonl_ref=train_jsonl_ref,
+        output_dir_root=output_dir_root,
+        model_output_dir=model_output_dir,
+        classifier_version=classifier_version,
     )
-    effective_eval_rows = (
-        {name: load_labeled_query_rows(path) for name, path in eval_set_map.items()}
-        if eval_rows_by_name is None
-        else {name: list(rows) for name, rows in eval_rows_by_name.items()}
-    )
-    created_at = datetime.now(timezone.utc)
-    effective_classifier_version = classifier_version or (
-        cfg.classifier_version or created_at.strftime("clf_%Y_%m_%d_%H%M%S")
-    )
-    embedding_spec = instantiate(cfg.embedding.spec)
     trained = train_fixed_embedding_classifier(
-        train_rows=effective_train_rows,
-        eval_rows_by_name=effective_eval_rows,
-        selection_set_name=str(cfg.selection_set),
-        embedding_spec=embedding_spec,
-        embed_chunk_size=int(cfg.embed_chunk_size),
-        train_batch_size=int(cfg.train_batch_size),
-        eval_batch_size=int(cfg.train_batch_size),
-        epochs=int(cfg.epochs),
-        learning_rate=float(cfg.learning_rate),
-        weight_decay=float(cfg.weight_decay),
+        train_rows=context.train_rows,
+        eval_rows_by_name=context.eval_rows_by_name,
+        selection_set_name=context.effective_selection_set,
+        embedding_spec=context.embedding_spec,
+        embed_chunk_size=int(context.cfg.embed_chunk_size),
+        train_batch_size=int(context.cfg.train_batch_size),
+        eval_batch_size=int(context.cfg.train_batch_size),
+        epochs=int(context.cfg.epochs),
+        learning_rate=float(context.cfg.learning_rate),
+        weight_decay=float(context.cfg.weight_decay),
     )
     outputs = write_fixed_classifier_artifacts(
-        classifier_version=effective_classifier_version,
-        created_at=created_at,
-        train_jsonl_ref=str(train_jsonl_ref or cfg.train_jsonl),
-        eval_set_map={name: str(path) for name, path in eval_set_map.items()},
-        selection_set_name=str(cfg.selection_set),
-        output_dir_root=str(output_dir_root or cfg.output_dir),
-        model_output_dir=str(model_output_dir or cfg.model_output_dir),
-        epochs=int(cfg.epochs),
-        train_batch_size=int(cfg.train_batch_size),
-        learning_rate=float(cfg.learning_rate),
-        weight_decay=float(cfg.weight_decay),
+        classifier_version=context.classifier_version,
+        created_at=context.created_at,
+        train_jsonl_ref=context.effective_train_jsonl_ref,
+        eval_set_map={name: str(path) for name, path in context.eval_set_map.items()},
+        selection_set_name=context.effective_selection_set,
+        output_dir_root=context.output_dir_root,
+        model_output_dir=context.model_output_dir,
+        epochs=int(context.cfg.epochs),
+        train_batch_size=int(context.cfg.train_batch_size),
+        learning_rate=float(context.cfg.learning_rate),
+        weight_decay=float(context.cfg.weight_decay),
         trained=trained,
     )
     print(f"output_dir={outputs['output_dir']}")
