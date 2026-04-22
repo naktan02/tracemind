@@ -1,21 +1,4 @@
-"""임베딩 모델 어댑터."""
+"""임베딩 모델 어댑터 패키지.
 
-from agent.src.infrastructure.model_adapters.embedding.base import EmbeddingAdapter
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-    EmbeddingAdapterSpec,
-)
-from agent.src.infrastructure.model_adapters.embedding.hash_debug import (
-    HashDebugEmbeddingAdapter,
-)
-from agent.src.infrastructure.model_adapters.embedding.mxbai import (
-    MxbaiEmbeddingAdapter,
-)
-
-__all__ = [
-    "EmbeddingAdapter",
-    "EmbeddingAdapterFactory",
-    "EmbeddingAdapterSpec",
-    "HashDebugEmbeddingAdapter",
-    "MxbaiEmbeddingAdapter",
-]
+repo 내부에서는 package-level export 대신 direct-file import를 기본으로 쓴다.
+"""

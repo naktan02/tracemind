@@ -1,9 +1,4 @@
-"""Agent prototype runtime package."""
+"""Agent prototype runtime package.
 
-from .runtime_service import PrototypeRuntimeService
-from .sync_service import PrototypeSyncService
-
-__all__ = [
-    "PrototypeRuntimeService",
-    "PrototypeSyncService",
-]
+repo 내부에서는 package-level export 대신 direct-file import를 기본으로 쓴다.
+"""
