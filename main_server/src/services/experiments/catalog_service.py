@@ -66,6 +66,11 @@ CENTRAL_ADAPTATION_RUNTIME_PATH = "scripts.central_adaptation"
 FEDERATED_SIMULATION_RUNTIME_PATH = "scripts.federated_simulation"
 AGENT_LIVE_STORED_EVENT_RUNTIME_PATH = "agent.live_stored_event"
 MAIN_SERVER_ROUND_RUNTIME_PATH = "main_server.round_runtime"
+PHASE2_METADATA_ONLY_BLOCKER = (
+    "Phase 2 compiler는 entrypoint와 Hydra preset selection만 지원한다. "
+    "이 항목은 metadata-only catalog surface이며, 후속 phase에서 전용 compile "
+    "규칙이 추가돼야 한다."
+)
 
 
 class ExperimentCatalogService:
@@ -149,7 +154,7 @@ class ExperimentCatalogService:
                     item_kind="hydra_preset",
                     family_name="prototype_pack",
                     preset_group="prototype_builder",
-                    method_resolver=lambda _path, raw: self._resolve_name(raw),
+                    core_method_resolver=lambda _path, raw: self._resolve_name(raw),
                     supported_runtime_paths=supported_runtime_paths,
                 ),
             ),
@@ -216,7 +221,7 @@ class ExperimentCatalogService:
                     relative_dir="scripts/conf/lora",
                     item_kind="hydra_preset",
                     family_name="peft_adapter",
-                    method_resolver=lambda _path, _raw: "lora",
+                    core_method_resolver=lambda _path, _raw: "lora",
                     preset_group="lora",
                     supported_runtime_paths=supported_runtime_paths,
                     metadata_keys=(
@@ -306,7 +311,7 @@ class ExperimentCatalogService:
                     relative_dir="scripts/conf/query_ssl_method",
                     item_kind="hydra_preset",
                     family_name="ssl_method",
-                    method_resolver=lambda _path, raw: self._string_or_none(
+                    core_method_resolver=lambda _path, raw: self._string_or_none(
                         raw.get("algorithm_name")
                     ),
                     preset_group="query_ssl_method",
@@ -431,7 +436,7 @@ class ExperimentCatalogService:
                     item_kind="hydra_preset",
                     family_name="prototype_pack",
                     preset_group="prototype_builder",
-                    method_resolver=lambda _path, raw: self._resolve_name(raw),
+                    core_method_resolver=lambda _path, raw: self._resolve_name(raw),
                     supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
                 ),
                 self._build_training_algorithm_profile_section(),
@@ -460,17 +465,19 @@ class ExperimentCatalogService:
             path = self._repo_root / relative_path
             raw = self._load_yaml_mapping(path)
             item_name = path.stem
+            source_of_truth = self._relative_repo_path(path)
             items.append(
                 CatalogItemPayload(
                     item_name=item_name,
                     display_name=item_name,
                     item_kind="experiment_entrypoint",
                     family_name=section_name,
-                    method_name=item_name,
                     core_method_name=item_name,
                     variant_profile_name=item_name,
-                    source_of_truth=self._relative_repo_path(path),
+                    source_of_truth=source_of_truth,
                     source_kind="hydra_job_config",
+                    compile_support="entrypoint",
+                    script_path=self._resolve_script_path(source_of_truth),
                     supported_runtime_paths=supported_runtime_paths,
                     default_groups=self._extract_default_groups(raw),
                     declared_fields=self._declared_fields(raw),
@@ -498,7 +505,7 @@ class ExperimentCatalogService:
         family_name: str,
         preset_group: str,
         supported_runtime_paths: tuple[str, ...],
-        method_resolver=None,
+        core_method_resolver=None,
         metadata_keys: tuple[str, ...] | None = None,
         tag_resolver=None,
     ) -> CatalogSectionPayload:
@@ -507,7 +514,9 @@ class ExperimentCatalogService:
             raw = self._load_yaml_mapping(path)
             item_name = self._resolve_name(raw, fallback=path.stem)
             core_method_name = (
-                None if method_resolver is None else method_resolver(path, raw)
+                None
+                if core_method_resolver is None
+                else core_method_resolver(path, raw)
             )
             items.append(
                 CatalogItemPayload(
@@ -515,12 +524,12 @@ class ExperimentCatalogService:
                     display_name=item_name,
                     item_kind=item_kind,
                     family_name=family_name,
-                    method_name=core_method_name,
                     core_method_name=core_method_name,
                     variant_profile_name=item_name,
                     preset_group=preset_group,
                     source_of_truth=self._relative_repo_path(path),
                     source_kind="hydra_config_group",
+                    compile_support="preset_selector",
                     supported_runtime_paths=supported_runtime_paths,
                     declared_fields=self._declared_fields(raw),
                     tags=() if tag_resolver is None else tag_resolver(path, raw),
@@ -572,12 +581,12 @@ class ExperimentCatalogService:
                     display_name=profile_name,
                     item_kind="training_algorithm_profile",
                     family_name=self._string_or_none(raw.get("adapter_family_name")),
-                    method_name=profile_name,
                     core_method_name=profile_name,
                     variant_profile_name=profile_name,
                     preset_group="training_algorithm_profile",
                     source_of_truth=self._relative_repo_path(path),
                     source_kind="hydra_config_group",
+                    compile_support="preset_selector",
                     supported_adapter_kinds=(
                         self._string_or_none(raw.get("adapter_family_name")) or "",
                     )
@@ -611,6 +620,8 @@ class ExperimentCatalogService:
                     "shared.src.config.adapter_family_metadata"
                 ),
                 source_kind="python_module",
+                compile_support="metadata_only",
+                compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                 supported_adapter_kinds=(metadata.adapter_kind,),
                 supported_runtime_paths=(
                     FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -650,15 +661,16 @@ class ExperimentCatalogService:
             )
             items.append(
                 CatalogItemPayload(
-                    item_name=backend_name,
+                    item_name=f"{adapter_kind}.{backend_name}",
                     display_name=backend_name,
                     item_kind="aggregation_backend",
                     family_name=adapter_kind,
-                    method_name=backend_name,
                     core_method_name=backend_name,
-                    variant_profile_name=backend_name,
+                    variant_profile_name=f"{adapter_kind}.{backend_name}",
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=(adapter_kind,),
                     supported_runtime_paths=(
                         FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -693,11 +705,12 @@ class ExperimentCatalogService:
                     display_name=backend_name,
                     item_kind="training_backend",
                     family_name=backend.adapter_kind,
-                    method_name=backend_name,
                     core_method_name=backend_name,
                     variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=(backend.adapter_kind,),
                     supported_runtime_paths=(
                         FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -739,11 +752,12 @@ class ExperimentCatalogService:
                     display_name=backend_name,
                     item_kind="example_generation_backend",
                     family_name="example_generation",
-                    method_name=backend_name,
                     core_method_name=backend_name,
                     variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=backend.supported_adapter_kinds,
                     supported_runtime_paths=tuple(runtime_paths),
                     tags=tags,
@@ -783,11 +797,12 @@ class ExperimentCatalogService:
                     display_name=backend_name,
                     item_kind="evidence_backend",
                     family_name="pseudo_label_evidence",
-                    method_name=backend_name,
                     core_method_name=backend_name,
                     variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=backend.supported_adapter_kinds,
                     supported_runtime_paths=(
                         FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -827,11 +842,12 @@ class ExperimentCatalogService:
                     display_name=backend_name,
                     item_kind="scoring_backend",
                     family_name="scoring",
-                    method_name=backend_name,
                     core_method_name=backend_name,
                     variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=backend.supported_adapter_kinds,
                     supported_runtime_paths=tuple(runtime_paths),
                     tags=tuple(tags),
@@ -863,11 +879,12 @@ class ExperimentCatalogService:
                     display_name=policy_name,
                     item_kind="acceptance_policy",
                     family_name="pseudo_label_acceptance",
-                    method_name=policy_name,
                     core_method_name=policy_name,
                     variant_profile_name=policy_name,
                     source_of_truth=self._source_of_truth_for_instance(policy),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=policy.supported_adapter_kinds,
                     supported_runtime_paths=(
                         FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -897,11 +914,12 @@ class ExperimentCatalogService:
                     display_name=guard_name,
                     item_kind="privacy_guard",
                     family_name="privacy_guard",
-                    method_name=guard_name,
                     core_method_name=guard_name,
                     variant_profile_name=guard_name,
                     source_of_truth=self._source_of_truth_for_instance(guard),
                     source_kind="python_registry",
+                    compile_support="metadata_only",
+                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
                     supported_adapter_kinds=guard.supported_adapter_kinds,
                     supported_runtime_paths=(
                         FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -1010,6 +1028,33 @@ class ExperimentCatalogService:
 
     def _source_of_truth_for_instance(self, instance: object) -> str:
         return self._source_of_truth_for_module(type(instance).__module__)
+
+    def _resolve_script_path(self, job_config_path: str) -> str:
+        if job_config_path.startswith("scripts/conf/experiments/"):
+            return job_config_path.replace(
+                "scripts/conf/experiments/",
+                "scripts/experiments/",
+            ).replace(
+                ".yaml", ".py"
+            )
+        if job_config_path.startswith("scripts/conf/prototypes/"):
+            return job_config_path.replace(
+                "scripts/conf/prototypes/",
+                "scripts/prototypes/",
+            ).replace(
+                ".yaml", ".py"
+            )
+        if job_config_path.startswith("scripts/conf/datasets/"):
+            return job_config_path.replace(
+                "scripts/conf/datasets/",
+                "scripts/datasets/",
+            ).replace(
+                ".yaml", ".py"
+            )
+        raise ValueError(
+            "Unsupported job config path for catalog script resolution: "
+            f"{job_config_path}."
+        )
 
     def _source_of_truth_for_module(self, module_name: str) -> str:
         spec = importlib.util.find_spec(module_name)

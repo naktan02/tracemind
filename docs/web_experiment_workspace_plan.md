@@ -213,7 +213,8 @@ agent/src/services/training/
 1. 웹 또는 CLI에서 현재 선택 가능한 축 목록을 자동으로 읽을 수 있다.
 2. `FixMatch`, `classifier_head`, `diagonal_scale`, `fedavg` 같은 기존 축이
    catalog에 명시된다.
-3. unsupported 조합이 metadata 수준에서 드러난다.
+3. unsupported 조합과 metadata-only surface가 `compile_support`,
+   `compile_blocker_reason`으로 드러난다.
 
 커밋 단위:
 
@@ -234,6 +235,8 @@ agent/src/services/training/
 4. `variant profile + override patch -> Hydra override` compile 규칙
 5. dry-run preview
 6. validation error와 compatibility check
+7. entrypoint `script_path`와 compileable selection surface를 catalog metadata로
+   직접 읽는다.
 
 제외:
 

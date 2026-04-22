@@ -3,10 +3,16 @@
 from __future__ import annotations
 
 from datetime import datetime
+from typing import Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 CatalogMetadataScalar = str | int | float | bool | None
+CatalogItemCompileSupport = Literal[
+    "entrypoint",
+    "preset_selector",
+    "metadata_only",
+]
 
 
 class CatalogItemPayload(BaseModel):
@@ -18,13 +24,15 @@ class CatalogItemPayload(BaseModel):
     display_name: str
     item_kind: str
     family_name: str | None = None
-    method_name: str | None = None
     core_method_name: str | None = None
     variant_profile_name: str | None = None
     preset_group: str | None = None
     description: str | None = None
     source_of_truth: str
     source_kind: str
+    compile_support: CatalogItemCompileSupport
+    compile_blocker_reason: str | None = None
+    script_path: str | None = None
     supported_adapter_kinds: tuple[str, ...] = ()
     supported_runtime_paths: tuple[str, ...] = ()
     accepted_payload_formats: tuple[str, ...] = ()
@@ -32,6 +40,38 @@ class CatalogItemPayload(BaseModel):
     declared_fields: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
     metadata: dict[str, CatalogMetadataScalar] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_compile_surface(self) -> CatalogItemPayload:
+        if self.compile_support == "entrypoint":
+            if self.script_path is None:
+                raise ValueError(
+                    "Entrypoint catalog item must declare script_path."
+                )
+            if self.preset_group is not None:
+                raise ValueError(
+                    "Entrypoint catalog item must not declare preset_group."
+                )
+            return self
+        if self.compile_support == "preset_selector":
+            if self.preset_group is None:
+                raise ValueError(
+                    "Preset-selector catalog item must declare preset_group."
+                )
+            if self.script_path is not None:
+                raise ValueError(
+                    "Preset-selector catalog item must not declare script_path."
+                )
+            return self
+        if self.compile_blocker_reason is None:
+            raise ValueError(
+                "Metadata-only catalog item must explain why it is not compileable."
+            )
+        if self.preset_group is not None or self.script_path is not None:
+            raise ValueError(
+                "Metadata-only catalog item must not declare preset_group/script_path."
+            )
+        return self
 
 
 class CatalogSectionPayload(BaseModel):

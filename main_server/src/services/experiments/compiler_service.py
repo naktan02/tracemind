@@ -17,6 +17,7 @@ from shared.src.contracts.workspace_manifest_contracts import (
     ResolvedWorkspaceSelectionPayload,
     WorkspaceConfigScalar,
     WorkspaceManifestPayload,
+    WorkspaceSelectionPayload,
 )
 
 
@@ -39,6 +40,16 @@ class ExperimentCompilerService:
             entrypoints_section.items,
             manifest.entrypoint_name,
         )
+        if entrypoint_item.compile_support != "entrypoint":
+            raise ValueError(
+                "Workspace entrypoint is not compileable: "
+                f"{manifest.entrypoint_name}."
+            )
+        if entrypoint_item.script_path is None:
+            raise ValueError(
+                "Catalog entrypoint is missing script_path: "
+                f"{manifest.entrypoint_name}."
+            )
 
         seen_slots: set[str] = set()
         selection_default_groups: list[str] = []
@@ -60,24 +71,32 @@ class ExperimentCompilerService:
             )
             _validate_selection_against_item(selection, item)
 
-            compiled_selector = None
-            compiled_overrides: list[str] = []
+            if item.compile_support != "preset_selector":
+                detail = item.compile_blocker_reason or (
+                    "선택한 catalog item은 아직 compile 규칙이 없다."
+                )
+                raise ValueError(
+                    "Workspace selection is not compileable yet: "
+                    f"{selection.section_name}/{selection.variant_profile_name}. "
+                    f"{detail}"
+                )
             if item.preset_group is None:
-                warnings.append(
-                    "Phase 2 compiler MVP skipped non-preset selection: "
-                    f"{selection.section_name}/{selection.variant_profile_name}"
+                raise ValueError(
+                    "Preset-selector catalog item is missing preset_group: "
+                    f"{selection.section_name}/{selection.variant_profile_name}."
                 )
-            else:
-                compiled_selector = (
-                    f"{item.preset_group}={item.variant_profile_name or item.item_name}"
+
+            compiled_selector = (
+                f"{item.preset_group}={item.variant_profile_name or item.item_name}"
+            )
+            compiled_overrides: list[str] = []
+            selection_default_groups.append(compiled_selector)
+            for key, value in selection.override_patch.items():
+                compiled_override = (
+                    f"{item.preset_group}.{key}={_format_hydra_value(value)}"
                 )
-                selection_default_groups.append(compiled_selector)
-                for key, value in selection.override_patch.items():
-                    compiled_override = (
-                        f"{item.preset_group}.{key}={_format_hydra_value(value)}"
-                    )
-                    compiled_overrides.append(compiled_override)
-                    hydra_overrides.append(compiled_override)
+                compiled_overrides.append(compiled_override)
+                hydra_overrides.append(compiled_override)
 
             resolved_selections.append(
                 ResolvedWorkspaceSelectionPayload(
@@ -98,7 +117,7 @@ class ExperimentCompilerService:
         for key, value in manifest.global_override_patch.items():
             hydra_overrides.append(f"{key}={_format_hydra_value(value)}")
 
-        script_path = _resolve_script_path(entrypoint_item.source_of_truth)
+        script_path = entrypoint_item.script_path
         command_args = (
             "uv",
             "run",
@@ -155,7 +174,7 @@ def _find_variant_item(
 
 
 def _validate_selection_against_item(
-    selection,
+    selection: WorkspaceSelectionPayload,
     item: CatalogItemPayload,
 ) -> None:
     if (
@@ -176,34 +195,6 @@ def _validate_selection_against_item(
             "Workspace selection core method mismatch: "
             f"expected={selection.core_method_name}, actual={item.core_method_name}."
         )
-
-
-def _resolve_script_path(job_config_path: str) -> str:
-    if job_config_path.startswith("scripts/conf/experiments/"):
-        return job_config_path.replace(
-            "scripts/conf/experiments/",
-            "scripts/experiments/",
-        ).replace(
-            ".yaml", ".py"
-        )
-    if job_config_path.startswith("scripts/conf/prototypes/"):
-        return job_config_path.replace(
-            "scripts/conf/prototypes/",
-            "scripts/prototypes/",
-        ).replace(
-            ".yaml", ".py"
-        )
-    if job_config_path.startswith("scripts/conf/datasets/"):
-        return job_config_path.replace(
-            "scripts/conf/datasets/",
-            "scripts/datasets/",
-        ).replace(
-            ".yaml", ".py"
-        )
-    raise ValueError(
-        "Unsupported job config path for command preview: "
-        f"{job_config_path}."
-    )
 
 
 def _format_hydra_value(value: WorkspaceConfigScalar) -> str:

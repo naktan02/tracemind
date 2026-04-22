@@ -147,22 +147,3 @@ def load_resolved_experiment_plan_payload(
     return ResolvedExperimentPlanPayload.model_validate_json(
         path.read_text(encoding="utf-8")
     )
-
-
-WorkspaceManifest = WorkspaceManifestPayload
-ResolvedExperimentPlan = ResolvedExperimentPlanPayload
-
-
-__all__ = [
-    "ResolvedExperimentPlan",
-    "ResolvedExperimentPlanPayload",
-    "ResolvedWorkspaceSelectionPayload",
-    "WorkspaceConfigScalar",
-    "WorkspaceManifest",
-    "WorkspaceManifestPayload",
-    "WorkspaceSelectionPayload",
-    "dump_resolved_experiment_plan_payload",
-    "dump_workspace_manifest_payload",
-    "load_resolved_experiment_plan_payload",
-    "load_workspace_manifest_payload",
-]

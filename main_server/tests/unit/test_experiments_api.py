@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
+import pytest
+from fastapi import HTTPException
+
 from main_server.src.api import experiments as experiments_api
 from main_server.src.api.main import app
 from main_server.src.services.experiments.catalog_service import (
@@ -29,8 +32,13 @@ def _find_section(catalog, *, track_name: str, section_name: str):
     )
 
 
-def _find_item(section, item_name: str):
-    return next(item for item in section.items if item.item_name == item_name)
+def _find_item(section, item_name: str, *, family_name: str | None = None):
+    return next(
+        item
+        for item in section.items
+        if item.item_name == item_name
+        and (family_name is None or item.family_name == family_name)
+    )
 
 
 def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
@@ -52,15 +60,34 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     fixmatch = _find_item(central_ssl_methods, "fixmatch_usb_v1")
     assert fixmatch.core_method_name == "fixmatch"
     assert fixmatch.variant_profile_name == "fixmatch_usb_v1"
+    assert fixmatch.compile_support == "preset_selector"
     assert fixmatch.metadata["require_multiview"] is True
+
+    central_entrypoints = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="entrypoints",
+    )
+    fixmatch_entrypoint = _find_item(central_entrypoints, "train_lora_fixmatch")
+    assert fixmatch_entrypoint.compile_support == "entrypoint"
+    assert (
+        fixmatch_entrypoint.script_path
+        == "scripts/experiments/train_lora_fixmatch.py"
+    )
 
     federated_aggregations = _find_section(
         payload,
         track_name="federated_runtime",
         section_name="aggregation_backends",
     )
-    fedavg = _find_item(federated_aggregations, "fedavg")
-    assert fedavg.family_name in {"classifier_head", "diagonal_scale"}
+    fedavg = _find_item(
+        federated_aggregations,
+        "classifier_head.fedavg",
+        family_name="classifier_head",
+    )
+    assert fedavg.core_method_name == "fedavg"
+    assert fedavg.compile_support == "metadata_only"
+    assert fedavg.compile_blocker_reason is not None
 
 
 def test_experiment_catalog_api_exposes_runtime_compatibility_metadata() -> None:
@@ -165,3 +192,31 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
         "training_algorithm_profile=prototype_pseudo_label_v1",
     )
     assert plan.hydra_overrides == ("training_task.local_epochs=2",)
+
+
+def test_experiment_compile_api_rejects_metadata_only_selection() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog_service = ExperimentCatalogService(repo_root=repo_root)
+    compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
+
+    with pytest.raises(HTTPException) as error:
+        experiments_api.compile_experiment_manifest(
+            WorkspaceManifestPayload(
+                manifest_id="manifest_invalid_aggregation",
+                track_name="federated_runtime",
+                entrypoint_name="run_federated_simulation",
+                selections=(
+                    WorkspaceSelectionPayload(
+                        slot_name="aggregation_backend",
+                        section_name="aggregation_backends",
+                        core_method_name="fedavg",
+                        variant_profile_name="classifier_head.fedavg",
+                        family_name="classifier_head",
+                    ),
+                ),
+            ),
+            service=compiler_service,
+        )
+
+    assert error.value.status_code == 400
+    assert "not compileable yet" in error.value.detail
