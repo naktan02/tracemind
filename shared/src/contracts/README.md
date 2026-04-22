@@ -56,6 +56,17 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `DecisionFeedbackSignalPayload`
   - pseudo-label, 사용자 피드백, 후속 결과 등 로컬 학습용 signal 단위 계약
 
+### `workspace_manifest_contracts.py`
+
+개발자용 web/CLI 실험공간이 읽는 canonical workspace/compile 계약을 정의한다.
+
+- `WorkspaceManifestPayload`
+  - track, entrypoint, block selection, global override patch를 담는다
+- `WorkspaceSelectionPayload`
+  - `core_method_name`, `variant_profile_name`, `override_patch`를 가진다
+- `ResolvedExperimentPlanPayload`
+  - workspace를 기존 Hydra/script 실행 표면으로 compile한 결과다
+
 ### `prototype_contracts.py`
 
 Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.

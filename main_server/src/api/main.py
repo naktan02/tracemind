@@ -11,6 +11,9 @@ from main_server.src.api.prototypes import router as prototypes_router
 from main_server.src.services.experiments.catalog_service import (
     ExperimentCatalogService,
 )
+from main_server.src.services.experiments.compiler_service import (
+    ExperimentCompilerService,
+)
 from main_server.src.services.prototypes.prototype_pack_service import (
     PrototypePackService,
 )
@@ -32,6 +35,7 @@ def create_app(
     round_runtime_config: ServerRoundRuntimeConfig | None = None,
     prototype_pack_service: PrototypePackService | None = None,
     experiment_catalog_service: ExperimentCatalogService | None = None,
+    experiment_compiler_service: ExperimentCompilerService | None = None,
 ) -> FastAPI:
     """Main server 앱을 생성하고 서버 소유 서비스를 app.state에 연결한다."""
     app = FastAPI(title="TraceMind Main Server", version="0.1.0")
@@ -44,8 +48,15 @@ def create_app(
         or build_round_lifecycle_service_from_config(effective_runtime_config)
     )
     app.state.prototype_pack_service = prototype_pack_service or PrototypePackService()
-    app.state.experiment_catalog_service = (
+    effective_experiment_catalog_service = (
         experiment_catalog_service or ExperimentCatalogService()
+    )
+    app.state.experiment_catalog_service = effective_experiment_catalog_service
+    app.state.experiment_compiler_service = (
+        experiment_compiler_service
+        or ExperimentCompilerService(
+            catalog_service=effective_experiment_catalog_service
+        )
     )
     app.include_router(health_router)
     app.include_router(experiments_router)

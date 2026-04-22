@@ -60,23 +60,41 @@
    - `seed`, `central_adaptation`, `federated_runtime`
 2. `Component Family`
    - `classifier_head`, `prototype_pack`, `peft_adapter`, `diagonal_scale`
-3. `Method Variant`
+3. `Core Method`
+   - 구현 레벨의 재사용 가능한 알고리즘 코어
+   - 예: `fixmatch`, `lora`, `fedavg`
+4. `Method Variant`
    - 예: `lora`, `dora`, `adalora`, `fixmatch`
-4. `Composition`
+5. `Variant Profile`
+   - 같은 core method를 concrete baseline/ablation으로 고정한 named preset
+   - 예: `fixmatch_usb_v1`, `prototype_pseudo_label_v1`
+6. `Override Patch`
+   - variant profile 위에 run-local로만 덧씌우는 파라미터 변경
+   - 예: `temperature=0.7`, `lora.rank=16`
+7. `Composition`
    - 예: `head_only`, `prototype_only`, `peft_only`, `peft_plus_head`,
      `prototype_plus_head`
-5. `Objective`
+8. `Objective`
    - 예: supervised, pseudo-label self-training, FixMatch, R-Drop
-6. `Aggregation Plan`
+9. `Aggregation Plan`
    - component별 집계 방식
-7. `Translation Operator`
+10. `Translation Operator`
    - 예: classifier warm-start, prototype bootstrap, PEFT fallback
-8. `Inference Plan`
+11. `Inference Plan`
    - 예: classifier logits, prototype similarity, hybrid fusion
-9. `Workspace Manifest`
+12. `Workspace Manifest`
    - UI 조합 결과를 저장하는 canonical 문서
-10. `Compatibility Rule`
+13. `Compatibility Rule`
     - 무엇이 어떤 track, family, runtime path와 함께 쓸 수 있는지 설명
+
+추가 규칙:
+
+1. `core method`는 가능한 한 코드 구현과 1:1 또는 1:few 관계를 가진다.
+2. `variant profile`은 Hydra preset이나 named metadata profile처럼
+   사람이 재사용하는 조합 이름이다.
+3. 같은 논문 family의 여러 버전은 새 core method를 늘리기보다
+   새 variant profile + override patch로 먼저 표현한다.
+4. 새로운 수식/로직/학습 경로가 실제로 생길 때만 core method를 늘린다.
 
 ## 5. 저장 전략
 
@@ -180,7 +198,8 @@ agent/src/services/training/
 
 1. 현재 registry/Hydra config 기반 전략 inventory 정리
 2. `seed`, `central_adaptation`, `federated_runtime` track 분리
-3. `family`, `method`, `preset`, `supported_runtime_paths` 같은 metadata 정의
+3. `family`, `core_method`, `variant_profile`, `preset`,
+   `supported_runtime_paths` 같은 metadata 정의
 4. read-only JSON 또는 API로 catalog 제공
 
 제외:
@@ -212,8 +231,9 @@ agent/src/services/training/
 1. `WorkspaceManifest`
 2. `ResolvedExperimentPlan`
 3. 기존 Hydra/script entrypoint로의 compile 로직
-4. dry-run preview
-5. validation error와 compatibility check
+4. `variant profile + override patch -> Hydra override` compile 규칙
+5. dry-run preview
+6. validation error와 compatibility check
 
 제외:
 
@@ -225,7 +245,8 @@ agent/src/services/training/
 
 1. workspace 입력에서 기존 실행 커맨드 또는 override plan이 나온다.
 2. 중앙 적응 비교선과 FL baseline이 각각 다른 compile 경로를 가진다.
-3. 잘못된 조합은 compile 단계에서 설명 가능한 오류로 실패한다.
+3. 같은 core method의 여러 variant profile이 manifest 수준에서 구분된다.
+4. 잘못된 조합은 compile 단계에서 설명 가능한 오류로 실패한다.
 
 커밋 단위:
 

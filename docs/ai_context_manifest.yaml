@@ -127,12 +127,13 @@ task_routes:
       - docs/execution_index.md
       - docs/project_execution_plan.md
       - docs/web_experiment_workspace_plan.md
+      - shared/src/contracts/workspace_manifest_contracts.py
       - docs/contracts/algorithm_extension_guide.md
       - docs/strategy_surface_map.md
     verify:
       - track separation stays explicit
       - UI does not become source of truth
-      - family, method, composition, aggregation boundaries stay explicit
+      - family, core method, variant profile, override patch boundaries stay explicit
 
 archive_paths:
   - docs/notes/**

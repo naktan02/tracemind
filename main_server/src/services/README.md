@@ -9,7 +9,7 @@
 - `prototypes/`
   - prototype pack/build-state publication과 rebuild runtime
 - `experiments/`
-  - 개발자용 read-only experiment catalog와 이후 workspace compiler 진입점
+  - 개발자용 read-only experiment catalog와 workspace compiler preview
 
 ## newcomer용 읽기 순서
 

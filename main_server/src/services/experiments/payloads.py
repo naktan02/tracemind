@@ -19,6 +19,8 @@ class CatalogItemPayload(BaseModel):
     item_kind: str
     family_name: str | None = None
     method_name: str | None = None
+    core_method_name: str | None = None
+    variant_profile_name: str | None = None
     preset_group: str | None = None
     description: str | None = None
     source_of_truth: str

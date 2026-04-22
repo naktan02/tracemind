@@ -467,6 +467,8 @@ class ExperimentCatalogService:
                     item_kind="experiment_entrypoint",
                     family_name=section_name,
                     method_name=item_name,
+                    core_method_name=item_name,
+                    variant_profile_name=item_name,
                     source_of_truth=self._relative_repo_path(path),
                     source_kind="hydra_job_config",
                     supported_runtime_paths=supported_runtime_paths,
@@ -503,15 +505,19 @@ class ExperimentCatalogService:
         items: list[CatalogItemPayload] = []
         for path in self._iter_yaml_files(relative_dir):
             raw = self._load_yaml_mapping(path)
+            item_name = self._resolve_name(raw, fallback=path.stem)
+            core_method_name = (
+                None if method_resolver is None else method_resolver(path, raw)
+            )
             items.append(
                 CatalogItemPayload(
-                    item_name=self._resolve_name(raw, fallback=path.stem),
-                    display_name=self._resolve_name(raw, fallback=path.stem),
+                    item_name=item_name,
+                    display_name=item_name,
                     item_kind=item_kind,
                     family_name=family_name,
-                    method_name=(
-                        None if method_resolver is None else method_resolver(path, raw)
-                    ),
+                    method_name=core_method_name,
+                    core_method_name=core_method_name,
+                    variant_profile_name=item_name,
                     preset_group=preset_group,
                     source_of_truth=self._relative_repo_path(path),
                     source_kind="hydra_config_group",
@@ -567,6 +573,8 @@ class ExperimentCatalogService:
                     item_kind="training_algorithm_profile",
                     family_name=self._string_or_none(raw.get("adapter_family_name")),
                     method_name=profile_name,
+                    core_method_name=profile_name,
+                    variant_profile_name=profile_name,
                     preset_group="training_algorithm_profile",
                     source_of_truth=self._relative_repo_path(path),
                     source_kind="hydra_config_group",
@@ -597,6 +605,8 @@ class ExperimentCatalogService:
                 display_name=metadata.family_name,
                 item_kind="adapter_family",
                 family_name=metadata.family_name,
+                core_method_name=metadata.family_name,
+                variant_profile_name=metadata.family_name,
                 source_of_truth=self._source_of_truth_for_module(
                     "shared.src.config.adapter_family_metadata"
                 ),
@@ -645,6 +655,8 @@ class ExperimentCatalogService:
                     item_kind="aggregation_backend",
                     family_name=adapter_kind,
                     method_name=backend_name,
+                    core_method_name=backend_name,
+                    variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
                     supported_adapter_kinds=(adapter_kind,),
@@ -682,6 +694,8 @@ class ExperimentCatalogService:
                     item_kind="training_backend",
                     family_name=backend.adapter_kind,
                     method_name=backend_name,
+                    core_method_name=backend_name,
+                    variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
                     supported_adapter_kinds=(backend.adapter_kind,),
@@ -726,6 +740,8 @@ class ExperimentCatalogService:
                     item_kind="example_generation_backend",
                     family_name="example_generation",
                     method_name=backend_name,
+                    core_method_name=backend_name,
+                    variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
                     supported_adapter_kinds=backend.supported_adapter_kinds,
@@ -768,6 +784,8 @@ class ExperimentCatalogService:
                     item_kind="evidence_backend",
                     family_name="pseudo_label_evidence",
                     method_name=backend_name,
+                    core_method_name=backend_name,
+                    variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
                     supported_adapter_kinds=backend.supported_adapter_kinds,
@@ -810,6 +828,8 @@ class ExperimentCatalogService:
                     item_kind="scoring_backend",
                     family_name="scoring",
                     method_name=backend_name,
+                    core_method_name=backend_name,
+                    variant_profile_name=backend_name,
                     source_of_truth=self._source_of_truth_for_instance(backend),
                     source_kind="python_registry",
                     supported_adapter_kinds=backend.supported_adapter_kinds,
@@ -844,6 +864,8 @@ class ExperimentCatalogService:
                     item_kind="acceptance_policy",
                     family_name="pseudo_label_acceptance",
                     method_name=policy_name,
+                    core_method_name=policy_name,
+                    variant_profile_name=policy_name,
                     source_of_truth=self._source_of_truth_for_instance(policy),
                     source_kind="python_registry",
                     supported_adapter_kinds=policy.supported_adapter_kinds,
@@ -876,6 +898,8 @@ class ExperimentCatalogService:
                     item_kind="privacy_guard",
                     family_name="privacy_guard",
                     method_name=guard_name,
+                    core_method_name=guard_name,
+                    variant_profile_name=guard_name,
                     source_of_truth=self._source_of_truth_for_instance(guard),
                     source_kind="python_registry",
                     supported_adapter_kinds=guard.supported_adapter_kinds,
