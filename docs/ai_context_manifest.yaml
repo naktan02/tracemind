@@ -42,6 +42,8 @@ active_entrypoints:
     use_for: strategy addition and replacement
   - path: docs/fl_runtime_implementation_checklist.md
     use_for: fl runtime implementation work
+  - path: docs/web_experiment_workspace_plan.md
+    use_for: developer-facing web experiment workspace phased execution plan
 
 task_routes:
   contract_change:
@@ -118,6 +120,19 @@ task_routes:
       - duplicate guidance is reduced
       - notes stay archive-only
       - source of truth remains code-adjacent
+
+  web_workspace:
+    read_order:
+      - AGENTS.md
+      - docs/execution_index.md
+      - docs/project_execution_plan.md
+      - docs/web_experiment_workspace_plan.md
+      - docs/contracts/algorithm_extension_guide.md
+      - docs/strategy_surface_map.md
+    verify:
+      - track separation stays explicit
+      - UI does not become source of truth
+      - family, method, composition, aggregation boundaries stay explicit
 
 archive_paths:
   - docs/notes/**

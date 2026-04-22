@@ -32,7 +32,9 @@ source-of-truth 우선순위를 먼저 확인한다.
    - 지금 실제로 바꿀 수 있는 전략 축과 metadata-only 축을 한눈에 확인
 10. `docs/contracts/query_buffer_v1.md`
    - query buffer와 threshold/policy selection의 local boundary
-11. 필요한 경우만 `docs/staged_execution_roadmap.md`
+11. `docs/web_experiment_workspace_plan.md`
+   - 개발자용 웹 실험공간의 단계별 실행 계획
+12. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
 
 ## AI Harness 빠른 경로
@@ -112,6 +114,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 | `docs/contracts/query_buffer_v1.md` | agent-owned local query retention, selection 입력, adaptation 준비 경계 |
 | `docs/contracts/strategy_addition_playbook.md` | 전략 추가 시 실제 작업 순서와 검증 순서 |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값 source, 실험 override 가능 여부, 구현 상태 |
+| `docs/web_experiment_workspace_plan.md` | 개발자용 웹 실험공간 트랙의 단계별 구현 계획 |
 | `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |
 | `docs/contracts/training_update_envelope_v1.md` | envelope 필드 설계 이유 |
 

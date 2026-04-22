@@ -1,0 +1,414 @@
+# Web Experiment Workspace Plan
+
+## 1. 목적
+
+이 문서는 `web` 브랜치에서 진행할 개발자용 웹 실험공간 작업의
+단계별 실행 계획을 정의한다.
+
+목표는 아래 세 가지다.
+
+1. 현재 TraceMind의 seed, 중앙 적응, FL 실험 축을 웹에서 조합 가능하게 만든다.
+2. UI가 source of truth가 되지 않게 유지하면서도 개발자가 새 방법론을
+   추가하고 수정하기 쉬운 구조를 만든다.
+3. classifier, prototype, PEFT adapter(예: LoRA, DoRA)와 그 조합,
+   aggregation, translation 경로를 장기적으로 수용 가능한 형태로 연다.
+
+중요:
+
+- 이 작업은 개발자용 실험 도구 트랙이다.
+- 현재 연구/시스템의 canonical 실행 순서
+  `seed -> 중앙 LoRA 적응 비교 -> 시스템 FL translation`
+  를 뒤집지 않는다.
+- 한 번의 패치에서 UI, 계약, runtime, 모든 알고리즘을 동시에 완성하려 들지 않는다.
+
+## 2. 비목표
+
+초기 단계에서 아래는 목표로 잡지 않는다.
+
+1. 모든 논문 방법론을 처음부터 웹에 다 노출
+2. 중앙 실험 trainer와 시스템 FL runtime을 한 번에 재설계
+3. multi-user production SaaS 수준의 운영 플랫폼 구현
+4. 모든 저장/실행을 DB 중심으로 먼저 재구축
+5. 현재 scripts/runtime을 즉시 폐기하고 웹만으로 대체
+
+## 3. 핵심 원칙
+
+1. UI는 source of truth가 아니다.
+   - 실제 전략 이름, 계약 의미, 실행 기본값은 코드/contract/Hydra config에 둔다.
+2. 단계별로 닫는다.
+   - 각 Phase는 독립적인 완료 기준과 커밋 단위를 가진다.
+3. 문제 축으로 나눈다.
+   - 방법론 이름보다 `component family`, `method`, `objective`,
+     `aggregation`, `translation`, `composition`을 먼저 분리한다.
+4. track를 섞지 않는다.
+   - `seed`, `central adaptation`, `federated runtime`은 다른 workspace lane으로 둔다.
+5. 복잡도에 따라 파일과 폴더를 선택한다.
+   - 작은 variant는 파일 하나로 두고,
+     runner/helper/config/artifact logic가 붙는 큰 family만 폴더로 승격한다.
+6. 추가 절차는 통일한다.
+   - 구현 추가, registry 등록, metadata 선언, preset 추가, 테스트 추가의
+     흐름을 최대한 같은 패턴으로 유지한다.
+7. 하이브리드는 나중에 연다.
+   - `prototype + classifier`, `peft + classifier` 같은 composition은
+     baseline track가 닫힌 뒤에 연다.
+
+## 4. 1급 개념
+
+웹 실험공간은 아래 개념을 직접 표현할 수 있어야 한다.
+
+1. `Track`
+   - `seed`, `central_adaptation`, `federated_runtime`
+2. `Component Family`
+   - `classifier_head`, `prototype_pack`, `peft_adapter`, `diagonal_scale`
+3. `Method Variant`
+   - 예: `lora`, `dora`, `adalora`, `fixmatch`
+4. `Composition`
+   - 예: `head_only`, `prototype_only`, `peft_only`, `peft_plus_head`,
+     `prototype_plus_head`
+5. `Objective`
+   - 예: supervised, pseudo-label self-training, FixMatch, R-Drop
+6. `Aggregation Plan`
+   - component별 집계 방식
+7. `Translation Operator`
+   - 예: classifier warm-start, prototype bootstrap, PEFT fallback
+8. `Inference Plan`
+   - 예: classifier logits, prototype similarity, hybrid fusion
+9. `Workspace Manifest`
+   - UI 조합 결과를 저장하는 canonical 문서
+10. `Compatibility Rule`
+    - 무엇이 어떤 track, family, runtime path와 함께 쓸 수 있는지 설명
+
+## 5. 저장 전략
+
+초기부터 무거운 저장소를 도입하지 않는다.
+
+### Phase 0-3
+
+- catalog, workspace preview, compile 결과는 파일 기반 또는 in-memory로 유지한다.
+- artifact는 기존처럼 파일 경로와 manifest를 그대로 재사용한다.
+
+### Phase 4 이후
+
+- 저장이 필요해지면 `SQLite`를 1차 선택지로 둔다.
+- 저장 대상은 workspace, run history, 상태 요약, artifact reference다.
+- 대용량 checkpoint와 실제 payload는 DB에 넣지 않는다.
+- 다중 사용자/원격 협업 요구가 생길 때만 Postgres 계열을 다시 검토한다.
+
+## 6. 디렉터리 전략
+
+초기 목표는 `예쁘게 보이는 구조`가 아니라
+`찾기 쉽고 수정 경로가 일관된 구조`다.
+
+권장 방향:
+
+1. `family` 기준으로 1차 분리
+2. `method`는 그 아래 배치
+3. 작은 variant는 파일 하나
+4. 보조 runner, report, config helper가 생기면 폴더로 승격
+5. UI 노출 정보는 폴더명이 아니라 metadata에서 읽게 구성
+
+예시 방향:
+
+```text
+web/
+  src/
+    workspace/
+    catalog/
+    runs/
+
+shared/src/contracts/
+  workspace_manifest_contracts.py
+  compatibility_contracts.py
+  model_bundle_contracts.py
+
+main_server/src/api/
+  experiments.py
+
+main_server/src/services/experiments/
+  catalog_service.py
+  compiler_service.py
+  run_service.py
+
+agent/src/services/training/
+  query_adaptation/
+  components/
+    peft_adapter/
+      methods/
+        lora.py
+        dora.py
+```
+
+위 예시는 목표 방향을 설명하는 것이며, 초기 Phase에서 모두 만들지 않는다.
+
+## 7. 단계별 계획
+
+### Phase 0. 계획 고정과 용어 정리
+
+목표:
+
+- web 작업의 범위와 용어를 active doc로 고정한다.
+
+포함:
+
+1. 이 계획 문서 작성
+2. active 진입점에서 이 문서를 찾을 수 있게 연결
+3. `track`, `component family`, `method`, `composition`, `translation` 용어 고정
+
+제외:
+
+1. UI 구현
+2. API 구현
+3. 계약 추가
+
+완료 기준:
+
+1. 다음 구현 패치가 이 문서의 Phase 번호를 기준으로 설명될 수 있다.
+2. 구현자가 어느 순서로 들어갈지 문서만 보고 이해할 수 있다.
+
+커밋 단위:
+
+- docs only
+
+### Phase 1. Read-only Experiment Catalog
+
+목표:
+
+- 현재 코드에 이미 있는 전략 축과 preset을 웹이 읽을 수 있는
+  machine-readable catalog로 노출한다.
+
+포함:
+
+1. 현재 registry/Hydra config 기반 전략 inventory 정리
+2. `seed`, `central_adaptation`, `federated_runtime` track 분리
+3. `family`, `method`, `preset`, `supported_runtime_paths` 같은 metadata 정의
+4. read-only JSON 또는 API로 catalog 제공
+
+제외:
+
+1. workspace 저장
+2. 실행
+3. 새로운 알고리즘 구현
+
+완료 기준:
+
+1. 웹 또는 CLI에서 현재 선택 가능한 축 목록을 자동으로 읽을 수 있다.
+2. `FixMatch`, `classifier_head`, `diagonal_scale`, `fedavg` 같은 기존 축이
+   catalog에 명시된다.
+3. unsupported 조합이 metadata 수준에서 드러난다.
+
+커밋 단위:
+
+- catalog/metadata only
+
+### Phase 2. Workspace Manifest와 Compiler MVP
+
+목표:
+
+- 사용자가 선택한 블록 조합을 기존 script/runtime이 이해하는 실행 계획으로
+  compile하는 계층을 만든다.
+
+포함:
+
+1. `WorkspaceManifest`
+2. `ResolvedExperimentPlan`
+3. 기존 Hydra/script entrypoint로의 compile 로직
+4. dry-run preview
+5. validation error와 compatibility check
+
+제외:
+
+1. 실제 실행
+2. DB 저장
+3. hybrid multi-component translation
+
+완료 기준:
+
+1. workspace 입력에서 기존 실행 커맨드 또는 override plan이 나온다.
+2. 중앙 적응 비교선과 FL baseline이 각각 다른 compile 경로를 가진다.
+3. 잘못된 조합은 compile 단계에서 설명 가능한 오류로 실패한다.
+
+커밋 단위:
+
+- manifest + compiler only
+
+### Phase 3. Web UI MVP
+
+목표:
+
+- 개발자가 브라우저에서 현재 실험 축을 보고 조합할 수 있는
+  read-only 실험공간 UI를 만든다.
+
+포함:
+
+1. palette
+2. track별 lane UI
+3. block 선택/해제
+4. compile preview
+5. compatibility 에러 표시
+
+제외:
+
+1. 실제 실행
+2. run history
+3. 다중 사용자 기능
+
+완료 기준:
+
+1. seed 또는 중앙 적응 baseline 하나를 UI에서 조합해 preview할 수 있다.
+2. FL baseline은 최소한 read-only 구성 preview가 가능하다.
+3. 사용자는 "현재 조합이 어떤 기존 script/config로 번역되는지" 볼 수 있다.
+
+커밋 단위:
+
+- web UI MVP only
+
+### Phase 4. 실행과 저장 MVP
+
+목표:
+
+- 승인된 좁은 범위의 실험만 실제로 실행하고 기록할 수 있게 한다.
+
+포함:
+
+1. local-only 실행 wrapper
+2. run status 추적
+3. workspace 저장/재열기
+4. artifact 링크 표시
+5. `SQLite` 기반의 run/workspace 메타데이터 저장
+
+초기 지원 범위:
+
+1. seed baseline
+2. 중앙 supervised LoRA baseline
+3. 중앙 pseudo-label self-training
+4. 중앙 FixMatch baseline
+
+제외:
+
+1. FL runtime의 모든 경로
+2. hybrid composition
+3. secure aggregation runtime
+
+완료 기준:
+
+1. UI에서 구성한 중앙 실험을 실제로 시작할 수 있다.
+2. run 상태와 artifact 경로를 다시 볼 수 있다.
+3. 저장된 workspace를 다시 열어 동일 preview를 확인할 수 있다.
+
+커밋 단위:
+
+- run launcher + local persistence only
+
+### Phase 5. FL Workspace Baseline
+
+목표:
+
+- 현재 존재하는 시스템 FL baseline을 웹에서 조합 가능하게 만든다.
+
+포함:
+
+1. agent 수
+2. dataset/shard policy
+3. `adapter_family`
+4. `aggregation_backend`
+5. `training_algorithm_profile`
+6. prototype builder
+7. validation/diagnostics 선택
+
+제외:
+
+1. multi-component hybrid aggregation
+2. secure aggregation runtime
+3. LoRA family FL translation 본 구현
+
+완료 기준:
+
+1. 현재 `run_federated_simulation` baseline을 웹에서 compile/run할 수 있다.
+2. `classifier_head`, `diagonal_scale`, `fedavg` 경로를 명시적으로 선택할 수 있다.
+3. FL workspace가 중앙 적응 workspace와 섞이지 않는다.
+
+커밋 단위:
+
+- FL baseline workspace only
+
+### Phase 6. Component Bundle과 Translation
+
+목표:
+
+- classifier, prototype, PEFT adapter를 묶어서 다루는 구조를 연다.
+
+포함:
+
+1. `ModelBundleManifest` 또는 동등한 묶음 계약
+2. component별 aggregation plan
+3. translation operator registry
+4. `prototype -> classifier bootstrap`
+5. `classifier -> prototype rebuild`
+6. `peft + classifier` bundle 표현
+
+제외:
+
+1. 모든 hybrid 논문 구현
+2. 모든 translation operator 구현
+
+완료 기준:
+
+1. 최소 한 개의 hybrid composition이 문서가 아니라 코드 계약으로 표현된다.
+2. component별 집계기가 다를 수 있는 구조가 열린다.
+3. classifier/prototype/PEFT 간 전환이 implicit가 아니라 명시적 operator로 드러난다.
+
+커밋 단위:
+
+- contract + one translation path + one hybrid path
+
+### Phase 7. 방법론 추가 경험 정리
+
+목표:
+
+- DoRA, FedMatch, FedRD 같은 방법론을 나중에 넣을 때
+  개발자가 헤매지 않도록 추가 절차와 구조를 통일한다.
+
+포함:
+
+1. family/method metadata template
+2. registry 추가 패턴 통일
+3. 새 방법 추가 플레이북 보강
+4. 필요 시 scaffold generator 또는 예제 템플릿
+
+완료 기준:
+
+1. 새 방법 추가 절차가 5단계 내로 설명된다.
+2. 작은 variant와 큰 family가 어떤 기준으로 파일/폴더를 쓰는지 명확하다.
+3. 한 예시 method를 템플릿처럼 따라 넣을 수 있다.
+
+커밋 단위:
+
+- developer ergonomics only
+
+## 8. Phase Gate
+
+다음 Phase로 넘어가기 전 아래를 확인한다.
+
+1. 이전 Phase 결과가 문서, 테스트, 실행 예시 중 최소 하나로 검증됐다.
+2. 새 Phase가 이전 Phase의 source of truth를 덮어쓰지 않는다.
+3. 커밋 범위가 하나의 concern으로 설명 가능하다.
+4. 사용자가 다음 단계 시작을 명시적으로 승인했다.
+
+## 9. 첫 실제 시작점
+
+구현 시작은 Phase 1부터 아래 순서로 잡는다.
+
+1. 현재 registry/Hydra group을 읽는 catalog schema 초안 작성
+2. `seed`, `central_adaptation`, `federated_runtime` track inventory 정리
+3. 각 항목에 `family`, `method`, `preset`, `supported_runtime_paths`,
+   `source_of_truth` metadata 부여
+4. read-only JSON/API 하나로 노출
+
+즉 첫 구현 커밋은 UI가 아니라 `catalog`가 된다.
+
+## 10. 커밋 원칙
+
+1. 한 커밋은 한 Phase 또는 한 concern만 다룬다.
+2. docs-only Phase와 runtime Phase를 섞지 않는다.
+3. contract 변경이 있으면 producer, consumer, 테스트, 문서를 같은 흐름에서 닫는다.
+4. 웹 UI와 backend compiler를 한 패치에 과도하게 섞지 않는다.
