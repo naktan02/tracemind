@@ -2,10 +2,15 @@
 
 from __future__ import annotations
 
+from shared.src.config.registry_catalog_metadata import (
+    RegistryCatalogEntry,
+    dedupe_registry_catalog_entries,
+)
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import (
+    ANY_ADAPTER_KIND,
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     PseudoLabelEvidenceBackend,
     PseudoLabelEvidenceBackendFactory,
@@ -13,19 +18,22 @@ from .base import (
 from .prototype_similarity import PrototypeSimilarityEvidenceBackend
 
 _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY: dict[
-    str, PseudoLabelEvidenceBackendFactory
+    str,
+    tuple[PseudoLabelEvidenceBackendFactory, RegistryCatalogEntry],
 ] = {}
 
 
 def register_pseudo_label_evidence_backend(
     *backend_names: str,
     factory: PseudoLabelEvidenceBackendFactory,
+    catalog_entry: RegistryCatalogEntry,
 ) -> None:
     """얇은 wiring registry에 evidence backend를 등록한다."""
 
+    registered_backend = (factory, catalog_entry)
     for backend_name in backend_names:
         _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY[backend_name.strip().lower()] = (
-            factory
+            registered_backend
         )
 
 
@@ -37,8 +45,9 @@ def build_pseudo_label_evidence_backend(
     """backend 이름과 objective config로 evidence backend를 조립한다."""
 
     normalized_name = backend_name.strip().lower()
-    factory = _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.get(normalized_name)
-    if factory is not None:
+    registered_backend = _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.get(normalized_name)
+    if registered_backend is not None:
+        factory, _catalog_entry = registered_backend
         return factory(objective_config)
     raise ValueError(f"Unsupported pseudo-label evidence backend: {backend_name}.")
 
@@ -47,6 +56,16 @@ def list_registered_pseudo_label_evidence_backend_names() -> tuple[str, ...]:
     """등록된 evidence backend 이름을 정렬된 tuple로 반환한다."""
 
     return tuple(sorted(_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY))
+
+
+def list_pseudo_label_evidence_backend_catalog_entries(
+) -> tuple[RegistryCatalogEntry, ...]:
+    """등록된 evidence backend catalog entry를 canonical item 기준으로 반환한다."""
+
+    return dedupe_registry_catalog_entries(
+        catalog_entry
+        for _factory, catalog_entry in _PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY.values()
+    )
 
 
 def resolve_pseudo_label_evidence_backend(
@@ -68,11 +87,20 @@ def resolve_pseudo_label_evidence_backend(
 register_pseudo_label_evidence_backend(
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     factory=lambda _objective_config: PrototypeSimilarityEvidenceBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+        display_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+        implementation_module=PrototypeSimilarityEvidenceBackend.__module__,
+        core_method_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
+        family_name="pseudo_label_evidence",
+        supported_adapter_kinds=(ANY_ADAPTER_KIND,),
+    ),
 )
 
 
 __all__ = [
     "build_pseudo_label_evidence_backend",
+    "list_pseudo_label_evidence_backend_catalog_entries",
     "list_registered_pseudo_label_evidence_backend_names",
     "register_pseudo_label_evidence_backend",
     "resolve_pseudo_label_evidence_backend",

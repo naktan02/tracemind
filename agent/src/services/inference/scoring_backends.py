@@ -11,6 +11,10 @@ from agent.src.services.inference.scoring_policies import (
     PrototypeScorePolicy,
     build_prototype_score_policy,
 )
+from shared.src.config.registry_catalog_metadata import (
+    RegistryCatalogEntry,
+    dedupe_registry_catalog_entries,
+)
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import ClassifierHeadState
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -96,17 +100,22 @@ class ClassifierHeadLogitsScoringBackend:
         return shared_state.compute_logits(embedding_vector)
 
 
-_SCORING_BACKEND_REGISTRY: dict[str, ScoringBackendFactory] = {}
+_SCORING_BACKEND_REGISTRY: dict[
+    str,
+    tuple[ScoringBackendFactory, RegistryCatalogEntry],
+] = {}
 
 
 def register_scoring_backend(
     *backend_names: str,
     factory: ScoringBackendFactory,
+    catalog_entry: RegistryCatalogEntry,
 ) -> None:
     """얇은 wiring registry에 scoring backend를 등록한다."""
 
+    registered_backend = (factory, catalog_entry)
     for backend_name in backend_names:
-        _SCORING_BACKEND_REGISTRY[backend_name.strip().lower()] = factory
+        _SCORING_BACKEND_REGISTRY[backend_name.strip().lower()] = registered_backend
 
 
 def build_scoring_backend(
@@ -118,8 +127,9 @@ def build_scoring_backend(
     """backend 이름과 objective config로 scoring backend를 조립한다."""
 
     normalized_name = backend_name.strip().lower()
-    factory = _SCORING_BACKEND_REGISTRY.get(normalized_name)
-    if factory is not None:
+    registered_backend = _SCORING_BACKEND_REGISTRY.get(normalized_name)
+    if registered_backend is not None:
+        factory, _catalog_entry = registered_backend
         return factory(objective_config, similarity_name)
     raise ValueError(f"Unsupported scoring backend: {backend_name}.")
 
@@ -128,6 +138,15 @@ def list_registered_scoring_backend_names() -> tuple[str, ...]:
     """등록된 scoring backend 이름을 정렬된 tuple로 반환한다."""
 
     return tuple(sorted(_SCORING_BACKEND_REGISTRY))
+
+
+def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
+    """등록된 scoring backend catalog entry를 canonical item 기준으로 반환한다."""
+
+    return dedupe_registry_catalog_entries(
+        catalog_entry
+        for _factory, catalog_entry in _SCORING_BACKEND_REGISTRY.values()
+    )
 
 
 def _build_prototype_similarity_backend(
@@ -195,10 +214,29 @@ def _coerce_prototype_vectors(
 register_scoring_backend(
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
     factory=_build_prototype_similarity_backend,
+    catalog_entry=RegistryCatalogEntry(
+        item_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
+        display_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
+        implementation_module=PrototypeSimilarityScoringBackend.__module__,
+        core_method_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
+        family_name="scoring",
+        supported_adapter_kinds=("*",),
+        metadata={"requires_shared_state": False},
+    ),
 )
 register_scoring_backend(
     CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     factory=_build_classifier_head_logits_backend,
+    catalog_entry=RegistryCatalogEntry(
+        item_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+        display_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+        implementation_module=ClassifierHeadLogitsScoringBackend.__module__,
+        core_method_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
+        family_name="scoring",
+        supported_adapter_kinds=("classifier_head",),
+        tags=("requires_shared_state",),
+        metadata={"requires_shared_state": True},
+    ),
 )
 
 
@@ -210,6 +248,7 @@ __all__ = [
     "ScoringBackend",
     "ScoringBackendFactory",
     "build_scoring_backend",
+    "list_scoring_backend_catalog_entries",
     "list_registered_scoring_backend_names",
     "register_scoring_backend",
 ]

@@ -201,6 +201,8 @@ agent/src/services/training/
 3. `family`, `core_method`, `variant_profile`, `preset`,
    `supported_runtime_paths` 같은 metadata 정의
 4. read-only JSON 또는 API로 catalog 제공
+5. registry-only metadata는 live backend 인스턴스 생성 대신 source-adjacent
+   catalog entry surface에서 읽는다
 
 제외:
 

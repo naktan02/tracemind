@@ -89,6 +89,32 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert fedavg.compile_support == "metadata_only"
     assert fedavg.compile_blocker_reason is not None
 
+    training_backends = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="training_backends",
+    )
+    diagonal_training = _find_item(
+        training_backends,
+        "diagonal_scale_heuristic",
+    )
+    assert (
+        diagonal_training.source_of_truth
+        == "agent/src/services/training/training_backends/diagonal_scale_heuristic.py"
+    )
+    assert diagonal_training.metadata["payload_format"] == "diagonal_scale_update"
+
+    example_backends = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="example_generation_backends",
+    )
+    weak_strong_example = _find_item(example_backends, "weak_strong_pair")
+    assert (
+        weak_strong_example.source_of_truth
+        == "agent/src/services/training/input_backends/weak_strong_pair.py"
+    )
+
 
 def test_experiment_catalog_api_exposes_runtime_compatibility_metadata() -> None:
     service = ExperimentCatalogService(repo_root=Path(__file__).resolve().parents[3])

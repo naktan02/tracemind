@@ -10,32 +10,26 @@ from pathlib import Path
 from omegaconf import OmegaConf
 
 from agent.src.services.inference.scoring_backends import (
-    build_scoring_backend,
-    list_registered_scoring_backend_names,
+    list_scoring_backend_catalog_entries,
 )
 from agent.src.services.training.acceptance_policies.registry import (
-    build_pseudo_label_acceptance_policy,
-    list_registered_pseudo_label_acceptance_policy_names,
+    list_pseudo_label_acceptance_policy_catalog_entries,
 )
 from agent.src.services.training.evidence_backends.registry import (
-    build_pseudo_label_evidence_backend,
-    list_registered_pseudo_label_evidence_backend_names,
+    list_pseudo_label_evidence_backend_catalog_entries,
 )
 from agent.src.services.training.input_backends.registry import (
-    build_training_example_backend,
-    list_registered_training_example_backend_names,
+    list_training_example_backend_catalog_entries,
 )
 from agent.src.services.training.privacy_guard_service import (
-    build_shared_adapter_privacy_guard,
-    list_registered_shared_adapter_privacy_guard_names,
+    list_shared_adapter_privacy_guard_catalog_entries,
 )
 from agent.src.services.training.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
     validate_local_training_runtime,
 )
 from agent.src.services.training.training_backends.registry import (
-    build_shared_adapter_training_backend,
-    list_registered_shared_adapter_training_backend_names,
+    list_shared_adapter_training_backend_catalog_entries,
 )
 from main_server.src.services.experiments.payloads import (
     CatalogItemPayload,
@@ -44,12 +38,12 @@ from main_server.src.services.experiments.payloads import (
     ExperimentCatalogPayload,
 )
 from main_server.src.services.rounds.aggregation_service import (
-    build_shared_adapter_aggregation_backend,
-    list_registered_shared_adapter_aggregation_backends,
+    list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from shared.src.config.adapter_family_metadata import (
     list_shared_adapter_family_metadata,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     build_default_secure_aggregation_config,
@@ -650,35 +644,17 @@ class ExperimentCatalogService:
         )
 
     def _build_aggregation_backend_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        for (
-            adapter_kind,
-            backend_name,
-        ) in list_registered_shared_adapter_aggregation_backends():
-            backend = build_shared_adapter_aggregation_backend(
-                adapter_kind=adapter_kind,
-                backend_name=backend_name,
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="aggregation_backend",
+                supported_runtime_paths=(
+                    FEDERATED_SIMULATION_RUNTIME_PATH,
+                    MAIN_SERVER_ROUND_RUNTIME_PATH,
+                ),
             )
-            items.append(
-                CatalogItemPayload(
-                    item_name=f"{adapter_kind}.{backend_name}",
-                    display_name=backend_name,
-                    item_kind="aggregation_backend",
-                    family_name=adapter_kind,
-                    core_method_name=backend_name,
-                    variant_profile_name=f"{adapter_kind}.{backend_name}",
-                    source_of_truth=self._source_of_truth_for_instance(backend),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=(adapter_kind,),
-                    supported_runtime_paths=(
-                        FEDERATED_SIMULATION_RUNTIME_PATH,
-                        MAIN_SERVER_ROUND_RUNTIME_PATH,
-                    ),
-                    metadata={"adapter_kind": adapter_kind},
-                )
-            )
+            for entry in list_shared_adapter_aggregation_backend_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="aggregation_backends",
             display_name="Aggregation Backends",
@@ -692,34 +668,17 @@ class ExperimentCatalogService:
         )
 
     def _build_training_backend_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        objective_config = DEFAULT_TRAINING_PROFILE.build_objective_config()
-        for backend_name in list_registered_shared_adapter_training_backend_names():
-            backend = build_shared_adapter_training_backend(
-                backend_name,
-                objective_config=objective_config,
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="training_backend",
+                supported_runtime_paths=(
+                    FEDERATED_SIMULATION_RUNTIME_PATH,
+                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+                ),
             )
-            items.append(
-                CatalogItemPayload(
-                    item_name=backend_name,
-                    display_name=backend_name,
-                    item_kind="training_backend",
-                    family_name=backend.adapter_kind,
-                    core_method_name=backend_name,
-                    variant_profile_name=backend_name,
-                    source_of_truth=self._source_of_truth_for_instance(backend),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=(backend.adapter_kind,),
-                    supported_runtime_paths=(
-                        FEDERATED_SIMULATION_RUNTIME_PATH,
-                        AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                    ),
-                    accepted_payload_formats=(backend.payload_format,),
-                    metadata={"payload_format": backend.payload_format},
-                )
-            )
+            for entry in list_shared_adapter_training_backend_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="training_backends",
             display_name="Training Backends",
@@ -733,41 +692,16 @@ class ExperimentCatalogService:
         )
 
     def _build_training_example_backend_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        objective_config = DEFAULT_TRAINING_PROFILE.build_objective_config()
-        for backend_name in list_registered_training_example_backend_names():
-            backend = build_training_example_backend(
-                backend_name,
-                objective_config=objective_config,
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="example_generation_backend",
+                supported_runtime_paths=self._resolve_example_generation_runtime_paths(
+                    entry
+                ),
             )
-            runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
-            if backend.supports_stored_event_rebuild:
-                runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
-            tags: tuple[str, ...] = ()
-            if backend.supports_stored_event_rebuild:
-                tags = ("supports_stored_event_rebuild",)
-            items.append(
-                CatalogItemPayload(
-                    item_name=backend_name,
-                    display_name=backend_name,
-                    item_kind="example_generation_backend",
-                    family_name="example_generation",
-                    core_method_name=backend_name,
-                    variant_profile_name=backend_name,
-                    source_of_truth=self._source_of_truth_for_instance(backend),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=backend.supported_adapter_kinds,
-                    supported_runtime_paths=tuple(runtime_paths),
-                    tags=tags,
-                    metadata={
-                        "supports_stored_event_rebuild": (
-                            backend.supports_stored_event_rebuild
-                        )
-                    },
-                )
-            )
+            for entry in list_training_example_backend_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="example_generation_backends",
             display_name="Example Generation Backends",
@@ -784,32 +718,17 @@ class ExperimentCatalogService:
         )
 
     def _build_evidence_backend_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        objective_config = DEFAULT_TRAINING_PROFILE.build_objective_config()
-        for backend_name in list_registered_pseudo_label_evidence_backend_names():
-            backend = build_pseudo_label_evidence_backend(
-                backend_name,
-                objective_config=objective_config,
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="evidence_backend",
+                supported_runtime_paths=(
+                    FEDERATED_SIMULATION_RUNTIME_PATH,
+                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+                ),
             )
-            items.append(
-                CatalogItemPayload(
-                    item_name=backend_name,
-                    display_name=backend_name,
-                    item_kind="evidence_backend",
-                    family_name="pseudo_label_evidence",
-                    core_method_name=backend_name,
-                    variant_profile_name=backend_name,
-                    source_of_truth=self._source_of_truth_for_instance(backend),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=backend.supported_adapter_kinds,
-                    supported_runtime_paths=(
-                        FEDERATED_SIMULATION_RUNTIME_PATH,
-                        AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                    ),
-                )
-            )
+            for entry in list_pseudo_label_evidence_backend_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="evidence_backends",
             display_name="Evidence Backends",
@@ -823,37 +742,16 @@ class ExperimentCatalogService:
         )
 
     def _build_scoring_backend_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        objective_config = DEFAULT_TRAINING_PROFILE.build_objective_config()
-        for backend_name in list_registered_scoring_backend_names():
-            backend = build_scoring_backend(
-                backend_name,
-                objective_config=objective_config,
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="scoring_backend",
+                supported_runtime_paths=self._resolve_scoring_backend_runtime_paths(
+                    entry
+                ),
             )
-            runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
-            tags: list[str] = []
-            if not backend.requires_shared_state:
-                runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
-            else:
-                tags.append("requires_shared_state")
-            items.append(
-                CatalogItemPayload(
-                    item_name=backend_name,
-                    display_name=backend_name,
-                    item_kind="scoring_backend",
-                    family_name="scoring",
-                    core_method_name=backend_name,
-                    variant_profile_name=backend_name,
-                    source_of_truth=self._source_of_truth_for_instance(backend),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=backend.supported_adapter_kinds,
-                    supported_runtime_paths=tuple(runtime_paths),
-                    tags=tuple(tags),
-                    metadata={"requires_shared_state": backend.requires_shared_state},
-                )
-            )
+            for entry in list_scoring_backend_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="scoring_backends",
             display_name="Scoring Backends",
@@ -870,28 +768,17 @@ class ExperimentCatalogService:
         )
 
     def _build_acceptance_policy_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        for policy_name in list_registered_pseudo_label_acceptance_policy_names():
-            policy = build_pseudo_label_acceptance_policy(policy_name)
-            items.append(
-                CatalogItemPayload(
-                    item_name=policy_name,
-                    display_name=policy_name,
-                    item_kind="acceptance_policy",
-                    family_name="pseudo_label_acceptance",
-                    core_method_name=policy_name,
-                    variant_profile_name=policy_name,
-                    source_of_truth=self._source_of_truth_for_instance(policy),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=policy.supported_adapter_kinds,
-                    supported_runtime_paths=(
-                        FEDERATED_SIMULATION_RUNTIME_PATH,
-                        AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                    ),
-                )
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="acceptance_policy",
+                supported_runtime_paths=(
+                    FEDERATED_SIMULATION_RUNTIME_PATH,
+                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+                ),
             )
+            for entry in list_pseudo_label_acceptance_policy_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="acceptance_policies",
             display_name="Acceptance Policies",
@@ -905,28 +792,17 @@ class ExperimentCatalogService:
         )
 
     def _build_privacy_guard_section(self) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        for guard_name in list_registered_shared_adapter_privacy_guard_names():
-            guard = build_shared_adapter_privacy_guard(guard_name)
-            items.append(
-                CatalogItemPayload(
-                    item_name=guard_name,
-                    display_name=guard_name,
-                    item_kind="privacy_guard",
-                    family_name="privacy_guard",
-                    core_method_name=guard_name,
-                    variant_profile_name=guard_name,
-                    source_of_truth=self._source_of_truth_for_instance(guard),
-                    source_kind="python_registry",
-                    compile_support="metadata_only",
-                    compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                    supported_adapter_kinds=guard.supported_adapter_kinds,
-                    supported_runtime_paths=(
-                        FEDERATED_SIMULATION_RUNTIME_PATH,
-                        AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                    ),
-                )
+        items = tuple(
+            self._build_registry_catalog_item(
+                entry=entry,
+                item_kind="privacy_guard",
+                supported_runtime_paths=(
+                    FEDERATED_SIMULATION_RUNTIME_PATH,
+                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+                ),
             )
+            for entry in list_shared_adapter_privacy_guard_catalog_entries()
+        )
         return CatalogSectionPayload(
             section_name="privacy_guards",
             display_name="Privacy Guards",
@@ -938,6 +814,51 @@ class ExperimentCatalogService:
             source_kind="python_registry",
             items=tuple(items),
         )
+
+    def _build_registry_catalog_item(
+        self,
+        *,
+        entry: RegistryCatalogEntry,
+        item_kind: str,
+        supported_runtime_paths: tuple[str, ...],
+    ) -> CatalogItemPayload:
+        return CatalogItemPayload(
+            item_name=entry.item_name,
+            display_name=entry.display_name,
+            item_kind=item_kind,
+            family_name=entry.family_name,
+            core_method_name=entry.core_method_name,
+            variant_profile_name=entry.item_name,
+            source_of_truth=self._source_of_truth_for_module(
+                entry.implementation_module
+            ),
+            source_kind="python_registry",
+            compile_support="metadata_only",
+            compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
+            supported_adapter_kinds=entry.supported_adapter_kinds,
+            supported_runtime_paths=supported_runtime_paths,
+            accepted_payload_formats=entry.accepted_payload_formats,
+            tags=entry.tags,
+            metadata=dict(entry.metadata),
+        )
+
+    def _resolve_example_generation_runtime_paths(
+        self,
+        entry: RegistryCatalogEntry,
+    ) -> tuple[str, ...]:
+        runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
+        if bool(entry.metadata.get("supports_stored_event_rebuild")):
+            runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
+        return tuple(runtime_paths)
+
+    def _resolve_scoring_backend_runtime_paths(
+        self,
+        entry: RegistryCatalogEntry,
+    ) -> tuple[str, ...]:
+        runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
+        if not bool(entry.metadata.get("requires_shared_state")):
+            runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
+        return tuple(runtime_paths)
 
     def _build_catalog_training_task(
         self,
@@ -1025,9 +946,6 @@ class ExperimentCatalogService:
     @staticmethod
     def _is_scalar_metadata_value(value: object) -> bool:
         return value is None or isinstance(value, (str, int, float, bool))
-
-    def _source_of_truth_for_instance(self, instance: object) -> str:
-        return self._source_of_truth_for_module(type(instance).__module__)
 
     def _resolve_script_path(self, job_config_path: str) -> str:
         if job_config_path.startswith("scripts/conf/experiments/"):
