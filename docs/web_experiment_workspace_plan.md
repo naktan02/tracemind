@@ -31,6 +31,54 @@
 4. 모든 저장/실행을 DB 중심으로 먼저 재구축
 5. 현재 scripts/runtime을 즉시 폐기하고 웹만으로 대체
 
+## 현재 상태
+
+기준 시점: `2026-04-23`
+
+이미 완료된 단계:
+
+1. `Phase 0`
+   - 계획 문서와 active 진입점을 고정했다.
+2. `Phase 1`
+   - read-only catalog API를 만들었고,
+     track/section/item metadata를 기계적으로 읽을 수 있게 했다.
+3. `Phase 2`
+   - `WorkspaceManifest`, `ResolvedExperimentPlan`, compile preview API를 만들었다.
+   - `core method`, `variant profile`, `override patch` 경계를 manifest에 올렸다.
+4. `Phase 2 follow-up cleanup`
+   - compiler가 metadata-only block을 조용히 skip하지 않게 막았다.
+   - catalog의 compile surface를 명시 계약으로 올렸다.
+   - registry-only metadata를 live backend 인스턴스 생성 대신
+     source-adjacent catalog entry surface에서 읽게 정리했다.
+   - consumer가 없는 package-level barrel export를 정리했다.
+
+현재 남은 단계 우선순위:
+
+1. `Phase 3`
+   - seed/central track 기준의 read-only web lane UI MVP
+2. `Phase 4`
+   - local-only 실행 wrapper와 workspace/run 저장
+3. `Phase 5`
+   - FL baseline workspace와 runtime compile/run
+4. `Phase 6`
+   - component bundle, translation operator, hybrid path
+5. `Phase 7`
+   - DoRA/FedMatch/FedRD류 추가 경험 정리
+
+현재 효율성 판단:
+
+1. 지금까지는 비효율적으로 커진 것이 아니라,
+   `하드코딩된 추측`, `unused barrel`, `catalog -> live instance coupling`을
+   줄이는 방향으로 정리됐다.
+2. UI 전에 catalog/manifest/compiler를 먼저 닫은 것은
+   이후 화면 변경이 runtime contract를 흔들지 않게 하려는 의도다.
+3. registry-only metadata를 source-adjacent surface로 옮긴 것도
+   새 backend 추가 시 catalog service까지 매번 뜯지 않게 하려는 정리다.
+4. 남아 있는 주의점은 FL block을 너무 빨리 runnable로 열면
+   Phase 5 범위가 Phase 3-4를 덮어쓰는 것이다.
+   따라서 다음 단계는 UI MVP를 좁게 시작하고,
+   FL 실행/저장은 뒤 Phase에서 여는 순서가 맞다.
+
 ## 3. 핵심 원칙
 
 1. UI는 source of truth가 아니다.
@@ -162,6 +210,8 @@ agent/src/services/training/
 
 ### Phase 0. 계획 고정과 용어 정리
 
+상태: 완료
+
 목표:
 
 - web 작업의 범위와 용어를 active doc로 고정한다.
@@ -188,6 +238,8 @@ agent/src/services/training/
 - docs only
 
 ### Phase 1. Read-only Experiment Catalog
+
+상태: 완료
 
 목표:
 
@@ -224,6 +276,8 @@ agent/src/services/training/
 
 ### Phase 2. Workspace Manifest와 Compiler MVP
 
+상태: 완료
+
 목표:
 
 - 사용자가 선택한 블록 조합을 기존 script/runtime이 이해하는 실행 계획으로
@@ -259,6 +313,8 @@ agent/src/services/training/
 
 ### Phase 3. Web UI MVP
 
+상태: 다음 시작점
+
 목표:
 
 - 개발자가 브라우저에서 현재 실험 축을 보고 조합할 수 있는
@@ -289,6 +345,8 @@ agent/src/services/training/
 - web UI MVP only
 
 ### Phase 4. 실행과 저장 MVP
+
+상태: 대기
 
 목표:
 
@@ -327,6 +385,8 @@ agent/src/services/training/
 
 ### Phase 5. FL Workspace Baseline
 
+상태: 대기
+
 목표:
 
 - 현재 존재하는 시스템 FL baseline을 웹에서 조합 가능하게 만든다.
@@ -359,6 +419,8 @@ agent/src/services/training/
 
 ### Phase 6. Component Bundle과 Translation
 
+상태: 대기
+
 목표:
 
 - classifier, prototype, PEFT adapter를 묶어서 다루는 구조를 연다.
@@ -388,6 +450,8 @@ agent/src/services/training/
 - contract + one translation path + one hybrid path
 
 ### Phase 7. 방법론 추가 경험 정리
+
+상태: 대기
 
 목표:
 
@@ -420,17 +484,18 @@ agent/src/services/training/
 3. 커밋 범위가 하나의 concern으로 설명 가능하다.
 4. 사용자가 다음 단계 시작을 명시적으로 승인했다.
 
-## 9. 첫 실제 시작점
+## 9. 현재 다음 시작점
 
-구현 시작은 Phase 1부터 아래 순서로 잡는다.
+다음 구현 시작은 `Phase 3`부터 아래 순서로 잡는다.
 
-1. 현재 registry/Hydra group을 읽는 catalog schema 초안 작성
-2. `seed`, `central_adaptation`, `federated_runtime` track inventory 정리
-3. 각 항목에 `family`, `method`, `preset`, `supported_runtime_paths`,
-   `source_of_truth` metadata 부여
-4. read-only JSON/API 하나로 노출
+1. seed/central track을 우선 대상으로 하는 lane UI 골격을 만든다.
+2. block palette는 현재 catalog API만 읽고,
+   UI가 별도 source of truth를 갖지 않게 유지한다.
+3. compile preview는 현재 `WorkspaceManifest -> compile` API를 그대로 재사용한다.
+4. federated track은 우선 read-only palette/preview까지만 연다.
+   - registry-only block의 runnable compile/run은 `Phase 5`에서 연다.
 
-즉 첫 구현 커밋은 UI가 아니라 `catalog`가 된다.
+즉 다음 구현 커밋은 runtime 확장보다 `web UI MVP`가 된다.
 
 ## 10. 커밋 원칙
 
