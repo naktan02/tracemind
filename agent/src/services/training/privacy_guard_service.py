@@ -171,6 +171,12 @@ def build_shared_adapter_privacy_guard(
     raise ValueError(f"Unsupported privacy guard: {guard_name}.")
 
 
+def list_registered_shared_adapter_privacy_guard_names() -> tuple[str, ...]:
+    """등록된 privacy guard 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_PRIVACY_GUARD_REGISTRY))
+
+
 register_shared_adapter_privacy_guard(
     "diagonal_scale_clip_only",
     factory=DiagonalScaleClipOnlyPrivacyGuard,
@@ -183,3 +189,15 @@ register_shared_adapter_privacy_guard(
     "noop",
     factory=NoOpSharedAdapterPrivacyGuard,
 )
+
+
+__all__ = [
+    "ClassifierHeadClipOnlyPrivacyGuard",
+    "DiagonalScaleClipOnlyPrivacyGuard",
+    "NoOpSharedAdapterPrivacyGuard",
+    "PrivacyProtectedUpdate",
+    "SharedAdapterPrivacyGuard",
+    "build_shared_adapter_privacy_guard",
+    "list_registered_shared_adapter_privacy_guard_names",
+    "register_shared_adapter_privacy_guard",
+]

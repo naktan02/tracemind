@@ -43,6 +43,12 @@ def build_pseudo_label_evidence_backend(
     raise ValueError(f"Unsupported pseudo-label evidence backend: {backend_name}.")
 
 
+def list_registered_pseudo_label_evidence_backend_names() -> tuple[str, ...]:
+    """등록된 evidence backend 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY))
+
+
 def resolve_pseudo_label_evidence_backend(
     *,
     objective_config: TrainingObjectiveConfig,
@@ -67,6 +73,7 @@ register_pseudo_label_evidence_backend(
 
 __all__ = [
     "build_pseudo_label_evidence_backend",
+    "list_registered_pseudo_label_evidence_backend_names",
     "register_pseudo_label_evidence_backend",
     "resolve_pseudo_label_evidence_backend",
 ]

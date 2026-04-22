@@ -32,6 +32,12 @@ def build_shared_adapter_training_backend(
     raise ValueError(f"Unsupported local training backend: {backend_name}.")
 
 
+def list_registered_shared_adapter_training_backend_names() -> tuple[str, ...]:
+    """등록된 로컬 training backend 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_TRAINING_BACKEND_REGISTRY))
+
+
 register_shared_adapter_training_backend(
     "diagonal_scale_heuristic",
     "synthetic_vector_adapter",
@@ -41,5 +47,6 @@ register_shared_adapter_training_backend(
 
 __all__ = [
     "build_shared_adapter_training_backend",
+    "list_registered_shared_adapter_training_backend_names",
     "register_shared_adapter_training_backend",
 ]

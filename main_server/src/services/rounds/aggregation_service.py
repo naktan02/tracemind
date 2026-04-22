@@ -334,6 +334,25 @@ def build_shared_adapter_aggregation_backend(
     )
 
 
+def list_registered_shared_adapter_aggregation_backends(
+    *,
+    adapter_kind: str | None = None,
+) -> tuple[tuple[str, str], ...]:
+    """등록된 aggregation backend 키를 정렬된 tuple로 반환한다."""
+
+    normalized_adapter_kind = None
+    if adapter_kind is not None:
+        normalized_adapter_kind = adapter_kind.strip().lower()
+    registered = sorted(_AGGREGATION_BACKEND_REGISTRY)
+    if normalized_adapter_kind is None:
+        return tuple(registered)
+    return tuple(
+        key
+        for key in registered
+        if key[0] == normalized_adapter_kind
+    )
+
+
 register_shared_adapter_aggregation_backend(
     DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
     "fedavg",
@@ -346,3 +365,17 @@ register_shared_adapter_aggregation_backend(
     "classifier_head_fedavg",
     factory=lambda overrides: ClassifierHeadFedAvgAggregationService(),
 )
+
+
+__all__ = [
+    "AggregationBackendFactory",
+    "AggregationConfig",
+    "AggregationResult",
+    "AggregationService",
+    "ClassifierHeadFedAvgAggregationService",
+    "DiagonalScaleAggregationService",
+    "SharedAdapterAggregationBackend",
+    "build_shared_adapter_aggregation_backend",
+    "list_registered_shared_adapter_aggregation_backends",
+    "register_shared_adapter_aggregation_backend",
+]

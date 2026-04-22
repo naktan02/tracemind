@@ -37,6 +37,12 @@ def build_pseudo_label_acceptance_policy(
     raise ValueError(f"Unsupported pseudo-label acceptance policy: {policy_name}.")
 
 
+def list_registered_pseudo_label_acceptance_policy_names() -> tuple[str, ...]:
+    """등록된 acceptance policy 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_ACCEPTANCE_POLICY_REGISTRY))
+
+
 register_pseudo_label_acceptance_policy(
     "top1_margin_threshold",
     factory=Top1MarginThresholdAcceptancePolicy,
@@ -50,5 +56,6 @@ register_pseudo_label_acceptance_policy(
 __all__ = [
     "AcceptancePolicyFactory",
     "build_pseudo_label_acceptance_policy",
+    "list_registered_pseudo_label_acceptance_policy_names",
     "register_pseudo_label_acceptance_policy",
 ]

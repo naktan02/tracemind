@@ -37,9 +37,21 @@ CLASSIFIER_HEAD_FAMILY_METADATA = SharedAdapterFamilyMetadata(
     ),
 )
 
+_SHARED_ADAPTER_FAMILY_METADATA_REGISTRY: tuple[SharedAdapterFamilyMetadata, ...] = (
+    DIAGONAL_SCALE_FAMILY_METADATA,
+    CLASSIFIER_HEAD_FAMILY_METADATA,
+)
+
+
+def list_shared_adapter_family_metadata() -> tuple[SharedAdapterFamilyMetadata, ...]:
+    """등록된 shared adapter family 메타데이터를 반환한다."""
+
+    return _SHARED_ADAPTER_FAMILY_METADATA_REGISTRY
+
 
 __all__ = [
     "CLASSIFIER_HEAD_FAMILY_METADATA",
     "DIAGONAL_SCALE_FAMILY_METADATA",
     "SharedAdapterFamilyMetadata",
+    "list_shared_adapter_family_metadata",
 ]

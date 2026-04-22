@@ -2,13 +2,12 @@
 
 from __future__ import annotations
 
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-
 from agent.src.services.training.training_backends import (
     SharedAdapterTrainingBackend,
     build_shared_adapter_training_backend,
 )
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import (
     ANY_ADAPTER_KIND,
@@ -45,6 +44,12 @@ def build_training_example_backend(
     if factory is not None:
         return factory(objective_config)
     raise ValueError(f"Unsupported training example backend: {backend_name}.")
+
+
+def list_registered_training_example_backend_names() -> tuple[str, ...]:
+    """등록된 training example backend 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_TRAINING_EXAMPLE_BACKEND_REGISTRY))
 
 
 def resolve_training_example_backend(
@@ -112,6 +117,7 @@ register_training_example_backend(
 
 __all__ = [
     "build_training_example_backend",
+    "list_registered_training_example_backend_names",
     "register_training_example_backend",
     "resolve_training_example_backend",
 ]

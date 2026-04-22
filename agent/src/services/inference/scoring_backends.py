@@ -11,8 +11,8 @@ from agent.src.services.inference.scoring_policies import (
     PrototypeScorePolicy,
     build_prototype_score_policy,
 )
-from shared.src.contracts.adapter_contracts import ClassifierHeadState
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.adapter_contracts import ClassifierHeadState
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
@@ -124,13 +124,18 @@ def build_scoring_backend(
     raise ValueError(f"Unsupported scoring backend: {backend_name}.")
 
 
+def list_registered_scoring_backend_names() -> tuple[str, ...]:
+    """등록된 scoring backend 이름을 정렬된 tuple로 반환한다."""
+
+    return tuple(sorted(_SCORING_BACKEND_REGISTRY))
+
+
 def _build_prototype_similarity_backend(
     objective_config: TrainingObjectiveConfig,
     similarity_name: str,
 ) -> ScoringBackend:
     policy_name = (
-        objective_config.score_policy_name
-        or DEFAULT_TRAINING_PROFILE.score_policy_name
+        objective_config.score_policy_name or DEFAULT_TRAINING_PROFILE.score_policy_name
     )
     policy = build_prototype_score_policy(
         policy_name,
@@ -195,3 +200,16 @@ register_scoring_backend(
     CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     factory=_build_classifier_head_logits_backend,
 )
+
+
+__all__ = [
+    "CLASSIFIER_HEAD_LOGITS_BACKEND_NAME",
+    "PROTOTYPE_SIMILARITY_BACKEND_NAME",
+    "ClassifierHeadLogitsScoringBackend",
+    "PrototypeSimilarityScoringBackend",
+    "ScoringBackend",
+    "ScoringBackendFactory",
+    "build_scoring_backend",
+    "list_registered_scoring_backend_names",
+    "register_scoring_backend",
+]
