@@ -94,12 +94,19 @@ class ExperimentCompilerService:
                     f"{selection.section_name}/{selection.variant_profile_name}."
                 )
 
-            compiled_selector = (
-                f"{item.preset_group}={item.variant_profile_name or item.item_name}"
+            selector_name = (
+                item.compiled_selector_name
+                or item.variant_profile_name
+                or item.item_name
             )
+            compiled_selector = f"{item.preset_group}={selector_name}"
             compiled_overrides: list[str] = []
             selection_default_groups.append(compiled_selector)
-            for key, value in selection.override_patch.items():
+            effective_override_patch = {
+                **item.default_override_patch,
+                **selection.override_patch,
+            }
+            for key, value in effective_override_patch.items():
                 compiled_override = (
                     f"{item.preset_group}.{key}={_format_hydra_value(value)}"
                 )

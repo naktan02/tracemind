@@ -77,6 +77,12 @@ export function CatalogSectionCard(props: {
                   <p className="item-card__description">{item.description}</p>
                 ) : null}
 
+                {item.tags.includes("generated_artifact") ? (
+                  <p className="hint-text">
+                    기존에 만들어 둔 결과물에서 자동으로 읽어온 항목입니다.
+                  </p>
+                ) : null}
+
                 {Object.keys(item.metadata).length > 0 ? (
                   <dl className="metadata-list metadata-list--compact">
                     {Object.entries(item.metadata)
@@ -117,6 +123,12 @@ export function CatalogSectionCard(props: {
                       이 preset은 빠르게 조정할 scalar 항목이 없습니다.
                     </p>
                   )}
+
+                  {Object.keys(item.default_override_patch).length > 0 ? (
+                    <p className="hint-text">
+                      이 항목을 고르면 기존 결과물 경로가 기본값으로 함께 연결됩니다.
+                    </p>
+                  ) : null}
 
                   <details className="advanced-panel advanced-panel--inline">
                     <summary>고급 JSON 패치</summary>

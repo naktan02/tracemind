@@ -22,6 +22,7 @@ export interface CatalogItemPayload {
   family_name: string | null;
   core_method_name: string | null;
   variant_profile_name: string | null;
+  compiled_selector_name: string | null;
   preset_group: string | null;
   description: string | null;
   source_of_truth: string;
@@ -35,6 +36,7 @@ export interface CatalogItemPayload {
   default_groups: string[];
   declared_fields: string[];
   override_fields: CatalogOverrideFieldPayload[];
+  default_override_patch: Record<string, string | number | boolean | null>;
   tags: string[];
   metadata: Record<string, unknown>;
 }

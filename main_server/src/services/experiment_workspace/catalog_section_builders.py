@@ -103,6 +103,7 @@ def build_config_group_section(
     metadata_keys: tuple[str, ...] | None = None,
     tag_resolver: CatalogTagResolver | None = None,
     metadata_resolver: CatalogMetadataResolver | None = None,
+    extra_items: tuple[CatalogItemPayload, ...] = (),
 ) -> CatalogSectionPayload:
     """Hydra config group 디렉터리를 preset section으로 직렬화한다."""
 
@@ -121,6 +122,7 @@ def build_config_group_section(
                 family_name=family_name,
                 core_method_name=core_method_name,
                 variant_profile_name=item_name,
+                compiled_selector_name=item_name,
                 preset_group=preset_group,
                 source_of_truth=relative_repo_path(path),
                 source_kind="hydra_config_group",
@@ -136,6 +138,7 @@ def build_config_group_section(
                 ),
             )
         )
+    items.extend(extra_items)
     return CatalogSectionPayload(
         section_name=section_name,
         display_name=display_name,

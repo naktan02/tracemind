@@ -127,6 +127,43 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         for field in confidence_only.override_fields
     )
 
+    generated_ssl_sources = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="query_ssl_train_sources",
+    )
+    generated_bootstrap_source = _find_item(
+        generated_ssl_sources,
+        "generated_query_ssl_train_source__bootstrap_teacher_split30_2026_04_14",
+    )
+    assert generated_bootstrap_source.compiled_selector_name == "dataset_default"
+    assert generated_bootstrap_source.default_override_patch == {
+        "train_jsonl": (
+            "data/processed/lora_bootstrap_classifier_teacher/"
+            "bootstrap_teacher_split30_2026_04_14/teacher_seed_train.jsonl"
+        ),
+        "unlabeled_jsonl": (
+            "data/processed/lora_bootstrap_classifier_teacher/"
+            "bootstrap_teacher_split30_2026_04_14/teacher_unlabeled_pool.jsonl"
+        ),
+    }
+
+    initial_checkpoints = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="initial_checkpoints",
+    )
+    generated_lora_checkpoint = _find_item(
+        initial_checkpoints,
+        "generated_initial_checkpoint__lora__stage3_supervised_seed4096_2026_04_20",
+    )
+    assert generated_lora_checkpoint.compiled_selector_name == "required"
+    assert (
+        generated_lora_checkpoint.default_override_patch["manifest_path"]
+        == "data/processed/lora_classifier_heads/"
+        "stage3_supervised_seed4096_2026_04_20.manifest.json"
+    )
+
     central_entrypoints = _find_section(
         payload,
         track_name="central_adaptation",
@@ -298,6 +335,69 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
     assert "query_ssl_method.temperature=0.7" in plan.hydra_overrides
     assert "lora.rank=16" in plan.hydra_overrides
     assert "train_batch_size=32" in plan.hydra_overrides
+
+
+def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog_service = ExperimentCatalogService(repo_root=repo_root)
+    compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
+
+    plan = experiments_api.compile_experiment_manifest(
+        WorkspaceManifestPayload(
+            manifest_id="manifest_fixmatch_generated",
+            track_name="central_adaptation",
+            entrypoint_name="train_lora_fixmatch",
+            selections=(
+                WorkspaceSelectionPayload(
+                    slot_name="ssl_method",
+                    section_name="query_ssl_methods",
+                    core_method_name="fixmatch",
+                    variant_profile_name="fixmatch_usb_v1",
+                    family_name="ssl_method",
+                ),
+                WorkspaceSelectionPayload(
+                    slot_name="train_source",
+                    section_name="query_ssl_train_sources",
+                    variant_profile_name=(
+                        "generated_query_ssl_train_source__"
+                        "bootstrap_teacher_split30_2026_04_14"
+                    ),
+                    family_name="train_source",
+                ),
+                WorkspaceSelectionPayload(
+                    slot_name="initial_checkpoint",
+                    section_name="initial_checkpoints",
+                    variant_profile_name=(
+                        "generated_initial_checkpoint__lora__"
+                        "stage3_supervised_seed4096_2026_04_20"
+                    ),
+                    family_name="initial_checkpoint",
+                ),
+            ),
+        ),
+        service=compiler_service,
+    )
+
+    assert "query_ssl_train_source=dataset_default" in plan.selection_default_groups
+    assert (
+        "query_ssl_train_source.train_jsonl="
+        "data/processed/lora_bootstrap_classifier_teacher/"
+        "bootstrap_teacher_split30_2026_04_14/teacher_seed_train.jsonl"
+    ) in plan.hydra_overrides
+    assert (
+        "query_ssl_train_source.unlabeled_jsonl="
+        "data/processed/lora_bootstrap_classifier_teacher/"
+        "bootstrap_teacher_split30_2026_04_14/teacher_unlabeled_pool.jsonl"
+    ) in plan.hydra_overrides
+    assert (
+        "query_adaptation_initial_checkpoint=required"
+        in plan.selection_default_groups
+    )
+    assert (
+        "query_adaptation_initial_checkpoint.manifest_path="
+        "data/processed/lora_classifier_heads/"
+        "stage3_supervised_seed4096_2026_04_20.manifest.json"
+    ) in plan.hydra_overrides
 
 
 def test_experiment_compile_api_rejects_fixmatch_when_dataset_lacks_unlabeled_pool(

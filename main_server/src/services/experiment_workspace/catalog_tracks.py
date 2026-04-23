@@ -27,6 +27,12 @@ from agent.src.services.training.execution.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
     validate_local_training_runtime,
 )
+from main_server.src.services.experiment_workspace.artifact_catalog_items import (
+    build_generated_bootstrap_teacher_source_items,
+    build_generated_initial_checkpoint_items,
+    build_generated_lora_train_source_items,
+    build_generated_query_ssl_train_source_items,
+)
 from main_server.src.services.experiment_workspace.catalog_build_context import (
     ExperimentCatalogBuildContext,
 )
@@ -97,6 +103,9 @@ class ConfigGroupSectionSpec:
     metadata_keys: tuple[str, ...] | None = None
     tag_resolver: CatalogTagResolver | None = None
     metadata_resolver: CatalogMetadataResolver | None = None
+    extra_items_builder: (
+        Callable[[ExperimentCatalogBuildContext], tuple[CatalogItemPayload, ...]] | None
+    ) = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -282,6 +291,10 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             family_name="train_source",
             preset_group="lora_train_source",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
+            extra_items_builder=lambda context: build_generated_lora_train_source_items(
+                repo_root=context.repo_root,
+                relative_repo_path=context.relative_repo_path,
+            ),
         ),
         ConfigGroupSectionSpec(
             section_name="query_ssl_train_sources",
@@ -295,6 +308,12 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             family_name="train_source",
             preset_group="query_ssl_train_source",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
+            extra_items_builder=lambda context: (
+                build_generated_query_ssl_train_source_items(
+                    repo_root=context.repo_root,
+                    relative_repo_path=context.relative_repo_path,
+                )
+            ),
         ),
         ConfigGroupSectionSpec(
             section_name="bootstrap_teacher_sources",
@@ -305,6 +324,12 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             family_name="bootstrap_teacher_source",
             preset_group="bootstrap_teacher_source",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
+            extra_items_builder=lambda context: (
+                build_generated_bootstrap_teacher_source_items(
+                    repo_root=context.repo_root,
+                    relative_repo_path=context.relative_repo_path,
+                )
+            ),
         ),
         ConfigGroupSectionSpec(
             section_name="pseudo_label_algorithms",
@@ -370,6 +395,12 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             family_name="initial_checkpoint",
             preset_group="query_adaptation_initial_checkpoint",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
+            extra_items_builder=lambda context: (
+                build_generated_initial_checkpoint_items(
+                    repo_root=context.repo_root,
+                    relative_repo_path=context.relative_repo_path,
+                )
+            ),
         ),
     ),
 )
@@ -561,6 +592,11 @@ def _build_section_payload(
             metadata_keys=spec.metadata_keys,
             tag_resolver=spec.tag_resolver,
             metadata_resolver=spec.metadata_resolver,
+            extra_items=(
+                ()
+                if spec.extra_items_builder is None
+                else spec.extra_items_builder(context)
+            ),
         )
     return spec.build_section(context)
 

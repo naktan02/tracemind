@@ -9,6 +9,7 @@ from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 from shared.src.contracts.workspace_manifest_contracts import (
     ResolvedExperimentPlanPayload,
+    WorkspaceConfigScalar,
     WorkspaceManifestPayload,
 )
 
@@ -77,6 +78,7 @@ class CatalogItemPayload(BaseModel):
     family_name: str | None = None
     core_method_name: str | None = None
     variant_profile_name: str | None = None
+    compiled_selector_name: str | None = None
     preset_group: str | None = None
     description: str | None = None
     source_of_truth: str
@@ -90,6 +92,9 @@ class CatalogItemPayload(BaseModel):
     default_groups: tuple[str, ...] = ()
     declared_fields: tuple[str, ...] = ()
     override_fields: tuple[CatalogOverrideFieldPayload, ...] = ()
+    default_override_patch: dict[str, WorkspaceConfigScalar] = Field(
+        default_factory=dict
+    )
     tags: tuple[str, ...] = ()
     metadata: dict[str, Any] = Field(default_factory=dict)
 
