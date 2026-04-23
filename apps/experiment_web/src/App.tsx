@@ -94,7 +94,9 @@ function App() {
     entrypointSection?.items[0] ??
     null;
   const nonEntrypointSections =
-    activeTrack?.sections.filter((section) => section.section_name !== "entrypoints") ??
+    activeTrack?.sections.filter(
+      (section) => section.section_name !== entrypointSection?.section_name,
+    ) ??
     [];
 
   const globalOverrideParse = parseOverrideObject(globalOverrideText);
@@ -408,6 +410,19 @@ function App() {
                         <p className="hint-text">
                           scalar value만 허용합니다. 예: {`{"temperature": 0.7}`}
                         </p>
+                        <p className="hint-text">
+                          Hydra 파일 본문을 수정하는 대신, 선택한 preset 위에
+                          override patch만 덧씌웁니다.
+                        </p>
+                        {selectedItem.declared_fields.length > 0 ? (
+                          <div className="field-chip-row">
+                            {selectedItem.declared_fields.map((fieldName) => (
+                              <span className="field-chip" key={fieldName}>
+                                {fieldName}
+                              </span>
+                            ))}
+                          </div>
+                        ) : null}
                       </div>
                     ) : null}
                   </article>
@@ -548,7 +563,14 @@ function ResultBlock(props: { title: string; lines: string[] }) {
 function getEntrypointSection(
   track: CatalogTrackPayload,
 ): CatalogSectionPayload | undefined {
-  return track.sections.find((section) => section.section_name === "entrypoints");
+  if (track.entrypoint_section_name) {
+    return track.sections.find(
+      (section) => section.section_name === track.entrypoint_section_name,
+    );
+  }
+  return track.sections.find(
+    (section) => section.item_kind === "experiment_entrypoint",
+  );
 }
 
 function buildManifestId(trackName: string) {
@@ -595,7 +617,7 @@ function buildWorkspaceSelections(
 
     return [
       {
-        slot_name: section.section_name,
+        slot_name: section.default_slot_name ?? section.section_name,
         section_name: section.section_name,
         variant_profile_name: item.variant_profile_name ?? item.item_name,
         core_method_name: item.core_method_name ?? null,

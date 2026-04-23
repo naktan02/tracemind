@@ -339,6 +339,8 @@ agent/src/services/training/
 5. compatibility 에러 표시
 6. `apps/experiment_web` scaffold
 7. Vite dev origin용 API CORS 보조
+8. catalog-declared `entrypoint_section_name`, `default_slot_name` 기반 UI surface
+9. entrypoint별 compile warning/readiness policy registry
 
 제외:
 
@@ -353,6 +355,8 @@ agent/src/services/training/
 3. 사용자는 "현재 조합이 어떤 기존 script/config로 번역되는지" 볼 수 있다.
 4. UI shell이 `apps/experiment_web`에 격리되고,
    source of truth는 backend/code-adjacent layer에 남는다.
+5. UI state와 compiler core가 section 이름/entrypoint 이름 magic string에
+   직접 묶이지 않는다.
 
 커밋 단위:
 

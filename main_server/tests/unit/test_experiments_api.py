@@ -51,6 +51,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         "central_adaptation",
         "federated_runtime",
     ]
+    assert payload.tracks[1].entrypoint_section_name == "entrypoints"
 
     central_ssl_methods = _find_section(
         payload,
@@ -68,6 +69,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         track_name="central_adaptation",
         section_name="dataset_presets",
     )
+    assert dataset_presets.default_slot_name == "dataset_presets"
     ourafla = _find_item(dataset_presets, "ourafla")
     assert ourafla.metadata["readiness"]["central_fixmatch_ready"] is False
     assert ourafla.metadata["sources"]["train"]["kind"] == "huggingface"
@@ -80,6 +82,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         track_name="central_adaptation",
         section_name="entrypoints",
     )
+    assert central_entrypoints.selection_mode == "single_required"
     fixmatch_entrypoint = _find_item(central_entrypoints, "train_lora_fixmatch")
     assert fixmatch_entrypoint.compile_support == "entrypoint"
     assert (

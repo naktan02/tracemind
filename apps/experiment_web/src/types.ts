@@ -2,6 +2,10 @@ export type CatalogItemCompileSupport =
   | "entrypoint"
   | "preset_selector"
   | "metadata_only";
+export type CatalogSectionSelectionMode =
+  | "single_required"
+  | "single_optional"
+  | "multi_optional";
 
 export interface CatalogItemPayload {
   item_name: string;
@@ -33,6 +37,8 @@ export interface CatalogSectionPayload {
   description?: string | null;
   source_of_truth: string;
   source_kind: string;
+  selection_mode: CatalogSectionSelectionMode;
+  default_slot_name?: string | null;
   items: CatalogItemPayload[];
 }
 
@@ -40,6 +46,7 @@ export interface CatalogTrackPayload {
   track_name: string;
   display_name: string;
   description?: string | null;
+  entrypoint_section_name?: string | null;
   supported_runtime_paths: string[];
   sections: CatalogSectionPayload[];
 }

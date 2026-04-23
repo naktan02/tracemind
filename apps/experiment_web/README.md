@@ -9,6 +9,11 @@
 3. override patch 입력
 4. compile preview / error / warning 표시
 
+중요:
+
+- 이 앱은 Hydra 파일 본문을 직접 수정하지 않는다.
+- 선택한 preset 위에 run-local override patch만 덧씌워 preview/run surface를 만든다.
+
 아직 포함하지 않는 것:
 
 1. 실제 실행

@@ -12,6 +12,11 @@ CatalogItemCompileSupport = Literal[
     "preset_selector",
     "metadata_only",
 ]
+CatalogSectionSelectionMode = Literal[
+    "single_required",
+    "single_optional",
+    "multi_optional",
+]
 
 
 class CatalogItemPayload(BaseModel):
@@ -84,7 +89,15 @@ class CatalogSectionPayload(BaseModel):
     description: str | None = None
     source_of_truth: str
     source_kind: str
+    selection_mode: CatalogSectionSelectionMode = "single_optional"
+    default_slot_name: str | None = None
     items: tuple[CatalogItemPayload, ...] = ()
+
+    @model_validator(mode="after")
+    def _normalize_selection_surface(self) -> CatalogSectionPayload:
+        if self.default_slot_name is None and self.item_kind != "experiment_entrypoint":
+            self.default_slot_name = self.section_name
+        return self
 
 
 class CatalogTrackPayload(BaseModel):
@@ -95,8 +108,33 @@ class CatalogTrackPayload(BaseModel):
     track_name: str
     display_name: str
     description: str | None = None
+    entrypoint_section_name: str | None = None
     supported_runtime_paths: tuple[str, ...] = ()
     sections: tuple[CatalogSectionPayload, ...] = ()
+
+    @model_validator(mode="after")
+    def _validate_entrypoint_section_name(self) -> CatalogTrackPayload:
+        if self.entrypoint_section_name is None:
+            return self
+        matching_section = next(
+            (
+                section
+                for section in self.sections
+                if section.section_name == self.entrypoint_section_name
+            ),
+            None,
+        )
+        if matching_section is None:
+            raise ValueError(
+                "CatalogTrackPayload.entrypoint_section_name must point to an "
+                "existing section."
+            )
+        if matching_section.item_kind != "experiment_entrypoint":
+            raise ValueError(
+                "CatalogTrackPayload.entrypoint_section_name must point to an "
+                "experiment_entrypoint section."
+            )
+        return self
 
 
 class ExperimentCatalogPayload(BaseModel):

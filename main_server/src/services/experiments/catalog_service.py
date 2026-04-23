@@ -92,6 +92,7 @@ class ExperimentCatalogService:
             track_name="seed",
             display_name="Seed",
             description=("classifier/prototype seed 자산을 만드는 baseline track."),
+            entrypoint_section_name="entrypoints",
             supported_runtime_paths=supported_runtime_paths,
             sections=(
                 self._build_entrypoint_section(
@@ -161,6 +162,7 @@ class ExperimentCatalogService:
             track_name="central_adaptation",
             display_name="Central Adaptation",
             description="중앙 LoRA/supervised/SSL 비교선을 조합하는 track.",
+            entrypoint_section_name="entrypoints",
             supported_runtime_paths=supported_runtime_paths,
             sections=(
                 self._build_entrypoint_section(
@@ -360,6 +362,7 @@ class ExperimentCatalogService:
             track_name="federated_runtime",
             display_name="Federated Runtime",
             description="현재 시스템 FL baseline과 round runtime 조합 inventory.",
+            entrypoint_section_name="entrypoints",
             supported_runtime_paths=supported_runtime_paths,
             sections=(
                 self._build_entrypoint_section(
@@ -489,6 +492,7 @@ class ExperimentCatalogService:
             description=description,
             source_of_truth="scripts/conf",
             source_kind="hydra_job_config",
+            selection_mode="single_required",
             items=tuple(items),
         )
 
