@@ -79,6 +79,10 @@ export interface ExperimentWorkspaceController {
   handleRelaunchWorkspace: (workspaceId: string) => Promise<void>;
   handleTrackChange: (track: CatalogTrackPayload) => void;
   handleEntrypointChange: (item: CatalogItemPayload) => void;
+  handleCentralMethodChange: (params: {
+    entrypointName: string;
+    selectedItemsBySection: Record<string, string>;
+  }) => void;
   handleSectionItemToggle: (sectionName: string, itemName: string) => void;
   handleResetLane: () => void;
   handleSectionOverrideTextChange: (
@@ -375,6 +379,35 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     clearPreviewState();
   }
 
+  function handleCentralMethodChange(params: {
+    entrypointName: string;
+    selectedItemsBySection: Record<string, string>;
+  }) {
+    if (!catalogState.activeTrack) {
+      return;
+    }
+    const entrypointSection = getEntrypointSection(catalogState.activeTrack);
+    const entrypointItem =
+      entrypointSection?.items.find(
+        (item) => item.item_name === params.entrypointName,
+      ) ?? null;
+    if (!entrypointItem) {
+      return;
+    }
+    catalogState.handleEntrypointChange(entrypointItem);
+    draftState.resetDraft(catalogState.activeTrack, entrypointItem.item_name);
+    draftState.replaceSelectedItems(
+      catalogState.activeTrack.track_name,
+      Object.fromEntries(
+        Object.entries(params.selectedItemsBySection).map(([key, value]) => [
+          key,
+          value,
+        ]),
+      ),
+    );
+    clearPreviewState();
+  }
+
   function handleSectionItemToggle(sectionName: string, itemName: string) {
     draftState.handleSectionItemToggle(sectionName, itemName);
     clearPreviewState();
@@ -468,6 +501,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     handleRelaunchWorkspace,
     handleTrackChange,
     handleEntrypointChange,
+    handleCentralMethodChange,
     handleSectionItemToggle,
     handleResetLane,
     handleSectionOverrideTextChange,

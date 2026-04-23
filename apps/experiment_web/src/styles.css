@@ -419,6 +419,7 @@ a:hover {
 .saved-workspace-list,
 .run-list,
 .item-grid,
+.item-list,
 .result-stack,
 .selection-summary-grid {
   display: grid;
@@ -454,6 +455,10 @@ a:hover {
   background: transparent;
   color: inherit;
   text-align: left;
+}
+
+.item-card__button--list {
+  padding: 12px 14px;
 }
 
 .entrypoint-card strong,
@@ -571,12 +576,31 @@ pre {
   gap: 12px;
 }
 
+.item-card__title-block {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
 .item-card__meta {
   display: flex;
   flex-wrap: wrap;
   gap: 8px 14px;
   margin-top: 8px;
   font-size: 0.85rem;
+}
+
+.item-card__list-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+  margin-top: 10px;
+  font-size: 0.82rem;
+  color: #607086;
+}
+
+.item-card--list .support-badge {
+  flex: 0 0 auto;
 }
 
 .item-card__description {
@@ -616,6 +640,16 @@ pre {
 .support-badge--metadata_only {
   background: #fff5e8;
   color: #b36b00;
+}
+
+.status-inline--running {
+  display: inline-flex;
+  align-items: center;
+  padding: 5px 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2458c8;
+  font-weight: 700;
 }
 
 .metadata-list {

@@ -1,5 +1,15 @@
 import type { CatalogSectionPayload } from "../types";
 
+export interface CentralMethodOption {
+  methodId: string;
+  displayName: string;
+  description: string;
+  entrypointName: string;
+  selectedItemsBySection: Record<string, string>;
+}
+
+export type WorkspaceSectionPresentation = "cards" | "list";
+
 const CENTRAL_ADAPTATION_COMMON_SECTION_NAMES = [
   "dataset_presets",
   "runtime_presets",
@@ -47,6 +57,61 @@ const ENTRYPOINT_VISIBLE_SECTION_NAMES: Record<string, string[] | null> = {
   run_federated_simulation: null,
 };
 
+const ENTRYPOINT_SECTION_ORDER: Record<string, string[] | null> = {
+  train_softmax_classifier: [
+    "dataset_presets",
+    "embedding_presets",
+    "runtime_presets",
+  ],
+  seed_prototypes: [
+    "dataset_presets",
+    "embedding_presets",
+    "prototype_builders",
+    "runtime_presets",
+  ],
+  train_lora_classifier: [
+    "lora_train_sources",
+    "dataset_presets",
+    "initial_checkpoints",
+    "paper_backbones",
+    "peft_methods",
+    "lora_run_presets",
+    "runtime_presets",
+  ],
+  train_lora_pseudo_label_classifier: [
+    "lora_train_sources",
+    "dataset_presets",
+    "initial_checkpoints",
+    "pseudo_label_algorithms",
+    "paper_backbones",
+    "peft_methods",
+    "lora_run_presets",
+    "runtime_presets",
+  ],
+  train_lora_fixmatch: [
+    "query_ssl_train_sources",
+    "dataset_presets",
+    "initial_checkpoints",
+    "query_ssl_methods",
+    "query_ssl_augmenters",
+    "paper_backbones",
+    "peft_methods",
+    "lora_run_presets",
+    "runtime_presets",
+  ],
+  train_lora_bootstrap_classifier_teacher: [
+    "bootstrap_teacher_sources",
+    "dataset_presets",
+    "initial_checkpoints",
+    "pseudo_label_algorithms",
+    "paper_backbones",
+    "peft_methods",
+    "lora_run_presets",
+    "runtime_presets",
+  ],
+  run_federated_simulation: null,
+};
+
 export function getVisibleWorkspaceSections(
   entrypointName: string | null,
   sections: CatalogSectionPayload[],
@@ -59,7 +124,92 @@ export function getVisibleWorkspaceSections(
     return sections;
   }
   const visibleSet = new Set(visibleSectionNames);
-  return sections.filter((section) => visibleSet.has(section.section_name));
+  const orderedSectionNames = ENTRYPOINT_SECTION_ORDER[entrypointName];
+  const visibleSections = sections.filter((section) =>
+    visibleSet.has(section.section_name),
+  );
+  if (orderedSectionNames === null || orderedSectionNames === undefined) {
+    return visibleSections;
+  }
+  const orderedIndex = new Map(
+    orderedSectionNames.map((sectionName, index) => [sectionName, index]),
+  );
+  return [...visibleSections].sort(
+    (left, right) =>
+      (orderedIndex.get(left.section_name) ?? Number.MAX_SAFE_INTEGER) -
+      (orderedIndex.get(right.section_name) ?? Number.MAX_SAFE_INTEGER),
+  );
+}
+
+const CENTRAL_METHOD_OPTIONS: CentralMethodOption[] = [
+  {
+    methodId: "gold_supervised",
+    displayName: "Gold",
+    description: "gold labeled seed train으로만 지도 적응합니다.",
+    entrypointName: "train_lora_classifier",
+    selectedItemsBySection: {},
+  },
+  {
+    methodId: "margin_pseudo_label",
+    displayName: "Margin",
+    description: "margin 기준으로 의사라벨을 채택해 적응합니다.",
+    entrypointName: "train_lora_pseudo_label_classifier",
+    selectedItemsBySection: {
+      pseudo_label_algorithms: "margin_threshold_v1",
+    },
+  },
+  {
+    methodId: "confidence_pseudo_label",
+    displayName: "Confidence",
+    description: "confidence 기준으로 의사라벨을 채택해 적응합니다.",
+    entrypointName: "train_lora_pseudo_label_classifier",
+    selectedItemsBySection: {
+      pseudo_label_algorithms: "fixed_confidence_095",
+    },
+  },
+  {
+    methodId: "fixmatch",
+    displayName: "FixMatch",
+    description: "weak/strong multiview consistency로 적응합니다.",
+    entrypointName: "train_lora_fixmatch",
+    selectedItemsBySection: {},
+  },
+  {
+    methodId: "teacher_bootstrap",
+    displayName: "교사 부트스트랩",
+    description: "teacher가 unlabeled pool을 라벨링하고 student 적응으로 잇습니다.",
+    entrypointName: "train_lora_bootstrap_classifier_teacher",
+    selectedItemsBySection: {},
+  },
+];
+
+export function getCentralMethodOptions(): CentralMethodOption[] {
+  return CENTRAL_METHOD_OPTIONS;
+}
+
+export function resolveSelectedCentralMethod(params: {
+  entrypointName: string | null;
+  selectedItemNameBySection: Record<string, string | null>;
+}): CentralMethodOption | null {
+  const { entrypointName, selectedItemNameBySection } = params;
+  if (!entrypointName) {
+    return null;
+  }
+  for (const option of CENTRAL_METHOD_OPTIONS) {
+    if (option.entrypointName !== entrypointName) {
+      continue;
+    }
+    const matches = Object.entries(option.selectedItemsBySection).every(
+      ([sectionName, itemName]) =>
+        selectedItemNameBySection[sectionName] === itemName,
+    );
+    if (matches) {
+      return option;
+    }
+  }
+  return CENTRAL_METHOD_OPTIONS.find(
+    (option) => option.entrypointName === entrypointName,
+  ) ?? null;
 }
 
 export function getSectionDisplayCopy(
@@ -70,9 +220,16 @@ export function getSectionDisplayCopy(
   description: string | null;
 } {
   if (entrypointName === "train_lora_pseudo_label_classifier") {
+    if (section.section_name === "dataset_presets") {
+      return {
+        displayName: "평가 데이터",
+        description:
+          "이 실험에서 검증/테스트에 사용할 dataset alias를 고릅니다.",
+      };
+    }
     if (section.section_name === "lora_train_sources") {
       return {
-        displayName: "적응 데이터 소스",
+        displayName: "학생 데이터",
         description:
           "gold labeled seed 또는 재사용 split 같은 지도 데이터 소스를 고릅니다.",
       };
@@ -87,9 +244,16 @@ export function getSectionDisplayCopy(
   }
 
   if (entrypointName === "train_lora_fixmatch") {
+    if (section.section_name === "dataset_presets") {
+      return {
+        displayName: "평가 데이터",
+        description:
+          "이 실험에서 검증/테스트에 사용할 dataset alias를 고릅니다.",
+      };
+    }
     if (section.section_name === "query_ssl_train_sources") {
       return {
-        displayName: "적응 데이터 소스",
+        displayName: "학생 데이터",
         description:
           "labeled train과 unlabeled pool이 함께 준비된 SSL 입력 소스를 고릅니다.",
       };
@@ -104,9 +268,16 @@ export function getSectionDisplayCopy(
   }
 
   if (entrypointName === "train_lora_bootstrap_classifier_teacher") {
+    if (section.section_name === "dataset_presets") {
+      return {
+        displayName: "평가 데이터",
+        description:
+          "student 적응 결과를 검증/테스트할 dataset alias를 고릅니다.",
+      };
+    }
     if (section.section_name === "bootstrap_teacher_sources") {
       return {
-        displayName: "적응 데이터 소스",
+        displayName: "교사 데이터",
         description:
           "teacher seed train과 unlabeled pool을 어디서 가져올지 고릅니다.",
       };
@@ -121,13 +292,31 @@ export function getSectionDisplayCopy(
   }
 
   if (entrypointName === "train_lora_classifier") {
+    if (section.section_name === "dataset_presets") {
+      return {
+        displayName: "평가 데이터",
+        description:
+          "이 실험에서 검증/테스트에 사용할 dataset alias를 고릅니다.",
+      };
+    }
     if (section.section_name === "lora_train_sources") {
       return {
-        displayName: "적응 데이터 소스",
+        displayName: "학생 데이터",
         description:
           "gold labeled seed 또는 재사용 split을 사용한 지도 적응 입력입니다.",
       };
     }
+  }
+
+  if (
+    entrypointName?.startsWith("train_lora_") &&
+    section.section_name === "initial_checkpoints"
+  ) {
+    return {
+      displayName: "초기 체크포인트",
+      description:
+        "fresh start, 고정 분류기 seed, 기존 LoRA seed 중 어디서 시작할지 고릅니다.",
+    };
   }
 
   if (entrypointName === "seed_prototypes") {
@@ -144,6 +333,26 @@ export function getSectionDisplayCopy(
     displayName: section.display_name,
     description: section.description,
   };
+}
+
+export function getSectionPresentation(
+  section: CatalogSectionPayload,
+  entrypointName: string | null,
+): WorkspaceSectionPresentation {
+  if (!entrypointName?.startsWith("train_lora_")) {
+    return "cards";
+  }
+  const listStyleSections = new Set([
+    "dataset_presets",
+    "lora_train_sources",
+    "query_ssl_train_sources",
+    "bootstrap_teacher_sources",
+    "initial_checkpoints",
+    "pseudo_label_algorithms",
+    "query_ssl_methods",
+    "query_ssl_augmenters",
+  ]);
+  return listStyleSections.has(section.section_name) ? "list" : "cards";
 }
 
 export function getEntrypointGuide(entrypointName: string | null): string | null {
@@ -165,4 +374,3 @@ export function getEntrypointGuide(entrypointName: string | null): string | null
   };
   return entrypointName ? guides[entrypointName] ?? null : null;
 }
-

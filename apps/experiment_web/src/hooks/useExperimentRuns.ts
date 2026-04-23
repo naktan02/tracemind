@@ -53,7 +53,13 @@ export function useExperimentRuns(apiBaseUrl: string): ExperimentRunsState {
   }, [apiBaseUrl]);
 
   async function launchRun(request: LaunchExperimentRunRequestPayload) {
-    return launchExperimentRun(apiBaseUrl, request);
+    const launchedRun = await launchExperimentRun(apiBaseUrl, request);
+    setRuns((current) => [
+      launchedRun,
+      ...current.filter((run) => run.run_id !== launchedRun.run_id),
+    ]);
+    setRunsError(null);
+    return launchedRun;
   }
 
   return {

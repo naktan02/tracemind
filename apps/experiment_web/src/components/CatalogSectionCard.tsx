@@ -3,6 +3,7 @@ import {
   formatCompileSupport,
   formatMetadataValue,
 } from "../lib/formatters";
+import type { WorkspaceSectionPresentation } from "../lib/workspaceSections";
 import type {
   CatalogItemPayload,
   CatalogOverrideFieldPayload,
@@ -12,6 +13,7 @@ import type {
 
 export function CatalogSectionCard(props: {
   section: CatalogSectionPayload;
+  presentation?: WorkspaceSectionPresentation;
   selectedItemName: string | null;
   selectedOverrideText: string;
   selectedOverridePatch: Record<string, WorkspaceConfigScalar>;
@@ -24,6 +26,8 @@ export function CatalogSectionCard(props: {
   ) => void;
 }) {
   const { section } = props;
+  const presentation = props.presentation ?? "cards";
+  const isListPresentation = presentation === "list";
 
   return (
     <article className="section-card">
@@ -38,7 +42,7 @@ export function CatalogSectionCard(props: {
         </details>
       </div>
 
-      <div className="item-grid">
+      <div className={isListPresentation ? "item-list" : "item-grid"}>
         {section.items.map((item) => {
           const isPresetSelectable = item.compile_support === "preset_selector";
           const isSelected = props.selectedItemName === item.item_name;
@@ -46,18 +50,35 @@ export function CatalogSectionCard(props: {
           return (
             <article
               key={item.item_name}
-              className={isSelected ? "item-card item-card--selected" : "item-card"}
+              className={
+                isSelected
+                  ? `item-card item-card--selected ${
+                      isListPresentation ? "item-card--list" : ""
+                    }`
+                  : `item-card ${isListPresentation ? "item-card--list" : ""}`
+              }
             >
               <button
                 type="button"
-                className="item-card__button"
+                className={
+                  isListPresentation
+                    ? "item-card__button item-card__button--list"
+                    : "item-card__button"
+                }
                 onClick={() =>
                   isPresetSelectable ? props.onItemToggle(section, item) : undefined
                 }
                 disabled={!isPresetSelectable}
               >
                 <div className="item-card__topline">
-                  <strong>{item.display_name}</strong>
+                  <div className="item-card__title-block">
+                    <strong>{item.display_name}</strong>
+                    {isListPresentation ? (
+                      <span className="hint-text">
+                        {item.description ?? "이 항목을 선택합니다."}
+                      </span>
+                    ) : null}
+                  </div>
                   <span
                     className={`support-badge support-badge--${item.compile_support}`}
                   >
@@ -65,25 +86,39 @@ export function CatalogSectionCard(props: {
                   </span>
                 </div>
 
-                <div className="item-card__meta">
-                  {item.core_method_name ? (
-                    <span>핵심 방식: {item.core_method_name}</span>
-                  ) : null}
-                  {item.family_name ? <span>패밀리: {item.family_name}</span> : null}
-                  {item.preset_group ? <span>그룹: {item.preset_group}</span> : null}
-                </div>
+                {isListPresentation ? (
+                  <div className="item-card__list-meta">
+                    {item.tags.includes("generated_artifact") ? (
+                      <span>기존 생성 기록</span>
+                    ) : (
+                      <span>기본 preset</span>
+                    )}
+                    {item.default_override_patch &&
+                    Object.keys(item.default_override_patch).length > 0 ? (
+                      <span>기본 경로 자동 연결</span>
+                    ) : null}
+                  </div>
+                ) : (
+                  <div className="item-card__meta">
+                    {item.core_method_name ? (
+                      <span>핵심 방식: {item.core_method_name}</span>
+                    ) : null}
+                    {item.family_name ? <span>패밀리: {item.family_name}</span> : null}
+                    {item.preset_group ? <span>그룹: {item.preset_group}</span> : null}
+                  </div>
+                )}
 
-                {item.description ? (
+                {item.description && !isListPresentation ? (
                   <p className="item-card__description">{item.description}</p>
                 ) : null}
 
-                {item.tags.includes("generated_artifact") ? (
+                {item.tags.includes("generated_artifact") && !isListPresentation ? (
                   <p className="hint-text">
                     기존에 만들어 둔 결과물에서 자동으로 읽어온 항목입니다.
                   </p>
                 ) : null}
 
-                {Object.keys(item.metadata).length > 0 ? (
+                {Object.keys(item.metadata).length > 0 && !isListPresentation ? (
                   <dl className="metadata-list metadata-list--compact">
                     {Object.entries(item.metadata)
                       .slice(0, 3)

@@ -8,14 +8,19 @@ import {
 } from "../components/WorkspaceStepRail";
 import type { ExperimentWorkspaceController } from "../hooks/useExperimentWorkspaceController";
 import {
+  formatDateTime,
   formatEntrypointName,
+  formatRunStatus,
   formatTrackName,
 } from "../lib/formatters";
 import { EMPTY_OVERRIDE_JSON } from "../lib/overridePatch";
 import {
+  getCentralMethodOptions,
   getEntrypointGuide,
+  getSectionPresentation,
   getSectionDisplayCopy,
   getVisibleWorkspaceSections,
+  resolveSelectedCentralMethod,
 } from "../lib/workspaceSections";
 import {
   buildWorkspaceManifestPreview,
@@ -36,6 +41,9 @@ export function WorkspaceTrackPage(props: {
 
   const entrypointSection = getEntrypointSection(controller.activeTrack);
   const [activeStepId, setActiveStepId] = useState<string>(ENTRYPOINT_STEP_ID);
+  const isCentralAdaptation =
+    controller.activeTrack.track_name === "central_adaptation";
+  const centralMethodOptions = useMemo(() => getCentralMethodOptions(), []);
   const visibleSections = useMemo(
     () =>
       getVisibleWorkspaceSections(
@@ -59,6 +67,23 @@ export function WorkspaceTrackPage(props: {
     }
     setActiveStepId(ENTRYPOINT_STEP_ID);
   }, [activeStepId, visibleSections]);
+
+  const selectedCentralMethod = resolveSelectedCentralMethod({
+    entrypointName: controller.entrypointItem?.item_name ?? null,
+    selectedItemNameBySection: controller.selectedItemNameBySection,
+  });
+
+  const latestRun =
+    controller.runs.find(
+      (run) =>
+        run.track_name === controller.activeTrack?.track_name &&
+        (controller.currentWorkspaceId === null ||
+          run.workspace_id === controller.currentWorkspaceId),
+    ) ??
+    controller.runs.find(
+      (run) => run.track_name === controller.activeTrack?.track_name,
+    ) ??
+    null;
 
   const sectionSelections = useMemo(
     () =>
@@ -99,11 +124,13 @@ export function WorkspaceTrackPage(props: {
     return [
       {
         stepId: ENTRYPOINT_STEP_ID,
-        label: "실행 작업",
+        label: isCentralAdaptation ? "방법론" : "실행 작업",
         detail:
-          controller.entrypointItem?.display_name ??
-          controller.entrypointItem?.item_name ??
-          "먼저 선택",
+          isCentralAdaptation
+            ? selectedCentralMethod?.displayName ?? "먼저 선택"
+            : controller.entrypointItem?.display_name ??
+              controller.entrypointItem?.item_name ??
+              "먼저 선택",
         tone: controller.entrypointItem ? "complete" : "pending",
       },
       ...selectionSteps,
@@ -114,7 +141,13 @@ export function WorkspaceTrackPage(props: {
         tone: controller.compilePlan ? "complete" : "pending",
       },
     ];
-  }, [controller.compilePlan, controller.entrypointItem, sectionSelections]);
+  }, [
+    controller.compilePlan,
+    controller.entrypointItem,
+    isCentralAdaptation,
+    sectionSelections,
+    selectedCentralMethod,
+  ]);
 
   const currentStepIndex = steps.findIndex((step) => step.stepId === activeStepId);
   const previousStep = currentStepIndex > 0 ? steps[currentStepIndex - 1] : null;
@@ -239,7 +272,11 @@ export function WorkspaceTrackPage(props: {
               <div className="panel-header">
                 <div>
                   <p className="panel-kicker">1단계</p>
-                  <h2>이 탭에서 실행할 작업을 고르세요</h2>
+                  <h2>
+                    {isCentralAdaptation
+                      ? "비교할 방법론을 고르세요"
+                      : "이 탭에서 실행할 작업을 고르세요"}
+                  </h2>
                 </div>
                 <button
                   type="button"
@@ -251,27 +288,50 @@ export function WorkspaceTrackPage(props: {
               </div>
 
               <p className="step-intro">
-                먼저 어떤 실행 작업을 할지 정합니다. 이 선택이 이후 블록의 의미와
-                실행 명령을 결정합니다.
+                {isCentralAdaptation
+                  ? "Gold, Confidence, Margin, FixMatch 같은 중앙 적응 방법론을 먼저 고릅니다. 이 선택이 학생 데이터, 교사 데이터, 방법론 파라미터 블록을 결정합니다."
+                  : "먼저 어떤 실행 작업을 할지 정합니다. 이 선택이 이후 블록의 의미와 실행 명령을 결정합니다."}
               </p>
 
               <div className="entrypoint-list">
-                {entrypointSection?.items.map((item) => (
-                  <button
-                    key={item.item_name}
-                    type="button"
-                    className={
-                      controller.entrypointItem?.item_name === item.item_name
-                        ? "entrypoint-card entrypoint-card--active"
-                        : "entrypoint-card"
-                    }
-                    onClick={() => controller.handleEntrypointChange(item)}
-                  >
-                    <strong>{formatEntrypointName(item.item_name)}</strong>
-                    <span>{item.display_name}</span>
-                    <code>{item.script_path}</code>
-                  </button>
-                ))}
+                {isCentralAdaptation
+                  ? centralMethodOptions.map((option) => (
+                      <button
+                        key={option.methodId}
+                        type="button"
+                        className={
+                          selectedCentralMethod?.methodId === option.methodId
+                            ? "entrypoint-card entrypoint-card--active"
+                            : "entrypoint-card"
+                        }
+                        onClick={() =>
+                          controller.handleCentralMethodChange({
+                            entrypointName: option.entrypointName,
+                            selectedItemsBySection: option.selectedItemsBySection,
+                          })
+                        }
+                      >
+                        <strong>{option.displayName}</strong>
+                        <span>{option.description}</span>
+                        <code>{formatEntrypointName(option.entrypointName)}</code>
+                      </button>
+                    ))
+                  : entrypointSection?.items.map((item) => (
+                      <button
+                        key={item.item_name}
+                        type="button"
+                        className={
+                          controller.entrypointItem?.item_name === item.item_name
+                            ? "entrypoint-card entrypoint-card--active"
+                            : "entrypoint-card"
+                        }
+                        onClick={() => controller.handleEntrypointChange(item)}
+                      >
+                        <strong>{formatEntrypointName(item.item_name)}</strong>
+                        <span>{item.display_name}</span>
+                        <code>{item.script_path}</code>
+                      </button>
+                    ))}
               </div>
             </>
           ) : null}
@@ -303,6 +363,10 @@ export function WorkspaceTrackPage(props: {
                   display_name: activeSectionCopy?.displayName ?? activeSection.display_name,
                   description: activeSectionCopy?.description ?? activeSection.description,
                 }}
+                presentation={getSectionPresentation(
+                  activeSection,
+                  controller.entrypointItem?.item_name ?? null,
+                )}
                 selectedItemName={
                   controller.selectedItemNameBySection[activeSection.section_name] ??
                   null
@@ -370,8 +434,8 @@ export function WorkspaceTrackPage(props: {
                         key={section.section_name}
                       >
                         <span className="meta-label">{sectionCopy.displayName}</span>
-                      <strong>{selectedItem?.display_name}</strong>
-                      <span>{selectedItem?.source_of_truth}</span>
+                        <strong>{selectedItem?.display_name}</strong>
+                        <span>{selectedItem?.source_of_truth}</span>
                       </article>
                     );
                   })
@@ -462,15 +526,19 @@ export function WorkspaceTrackPage(props: {
               </div>
             </div>
 
-            <div className="draft-summary">
-              <div className="draft-summary__card">
-                <span className="meta-label">실행 작업</span>
-                <strong>
-                  {controller.entrypointItem
-                    ? formatEntrypointName(controller.entrypointItem.item_name)
-                    : "아직 선택 안 함"}
-                </strong>
-              </div>
+              <div className="draft-summary">
+                <div className="draft-summary__card">
+                  <span className="meta-label">
+                    {isCentralAdaptation ? "방법론" : "실행 작업"}
+                  </span>
+                  <strong>
+                    {isCentralAdaptation
+                      ? selectedCentralMethod?.displayName ?? "아직 선택 안 함"
+                      : controller.entrypointItem
+                        ? formatEntrypointName(controller.entrypointItem.item_name)
+                        : "아직 선택 안 함"}
+                  </strong>
+                </div>
               <div className="draft-summary__card">
                 <span className="meta-label">저장 상태</span>
                 <strong>{controller.currentWorkspaceId ?? "저장 전 초안"}</strong>
@@ -560,6 +628,13 @@ export function WorkspaceTrackPage(props: {
               </div>
             ) : null}
 
+            {controller.isRunLaunching ? (
+              <div className="message-block message-block--warning">
+                <h3>실행 요청을 보내는 중입니다</h3>
+                <p>백엔드가 새 run을 만들고 있습니다. 잠시 뒤 상태가 갱신됩니다.</p>
+              </div>
+            ) : null}
+
             {controller.localParseErrors.length > 0 ? (
               <div className="message-block message-block--error">
                 <h3>입력한 값에 문제가 있습니다</h3>
@@ -596,6 +671,42 @@ export function WorkspaceTrackPage(props: {
                 )}
               </div>
             ) : null}
+
+            <div className="message-block">
+              <h3>최근 실행 상태</h3>
+              {latestRun ? (
+                <>
+                  <p>
+                    {formatEntrypointName(latestRun.entrypoint_name)} /{" "}
+                    {formatRunStatus(latestRun.status)}
+                  </p>
+                  <p className="hint-text">run_id: {latestRun.run_id}</p>
+                  {latestRun.status === "running" ? (
+                    <p className="status-inline status-inline--running">
+                      현재 이 화면에서 실행 중입니다.
+                    </p>
+                  ) : null}
+                  <p className="hint-text">
+                    시작 시각: {formatDateTime(latestRun.started_at)}
+                  </p>
+                  {latestRun.finished_at ? (
+                    <p className="hint-text">
+                      종료 시각: {formatDateTime(latestRun.finished_at)}
+                    </p>
+                  ) : (
+                    <p className="hint-text">
+                      아직 종료되지 않았습니다. `기록/비교` 페이지에서도 같은
+                      상태를 볼 수 있습니다.
+                    </p>
+                  )}
+                </>
+              ) : (
+                <p className="hint-text">
+                  아직 실행 기록이 없습니다. `이 조합 실행`을 누르면 여기에 바로
+                  상태가 보입니다.
+                </p>
+              )}
+            </div>
           </section>
         </aside>
       </section>

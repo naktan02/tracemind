@@ -52,6 +52,10 @@ export interface WorkspaceDraftState {
     draft: HydratedWorkspaceDraft,
   ) => void;
   resetDraft: (track: CatalogTrackPayload | null, entrypointName: string | null) => void;
+  replaceSelectedItems: (
+    trackName: string | null,
+    nextSelectedItems: Record<string, string | null>,
+  ) => void;
   handleSectionItemToggle: (sectionName: string, itemName: string) => void;
   handleSectionOverrideTextChange: (
     trackName: string | null,
@@ -183,6 +187,18 @@ export function useWorkspaceDraft(params: {
     initializeDraft(track?.track_name ?? null, nextEntrypointName, sections);
   }
 
+  function replaceSelectedItems(
+    trackName: string | null,
+    nextSelectedItems: Record<string, string | null>,
+  ) {
+    if (trackName) {
+      forkCurrentWorkspaceDraft(trackName);
+    }
+    setSelectedItemNameBySection(nextSelectedItems);
+    setOverrideTextBySection({});
+    setGlobalOverrideText(EMPTY_OVERRIDE_JSON);
+  }
+
   function handleSectionItemToggle(sectionName: string, itemName: string) {
     if (activeTrack) {
       forkCurrentWorkspaceDraft(activeTrack.track_name);
@@ -258,6 +274,7 @@ export function useWorkspaceDraft(params: {
     applyHydratedWorkspace,
     applyHydratedWorkspaceClone,
     resetDraft,
+    replaceSelectedItems,
     handleSectionItemToggle,
     handleSectionOverrideTextChange,
     handleSectionOverrideFieldChange,
