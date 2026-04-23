@@ -4,6 +4,7 @@ import {
   createManifestId,
   buildWorkspaceManifest,
 } from "../lib/workspaceManifest";
+import { getVisibleWorkspaceSections } from "../lib/workspaceSections";
 import {
   EMPTY_OVERRIDE_JSON,
   buildSectionOverrideErrors,
@@ -118,7 +119,7 @@ export function useWorkspaceDraft(params: {
           manifestId,
           activeTrack.track_name,
           entrypointName,
-          sections,
+          getVisibleWorkspaceSections(entrypointName, sections),
           selectedItemNameBySection,
           sectionOverrideValueBySection,
           globalOverrideParse.value,

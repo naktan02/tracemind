@@ -9,10 +9,14 @@ import {
 import type { ExperimentWorkspaceController } from "../hooks/useExperimentWorkspaceController";
 import {
   formatEntrypointName,
-  formatSectionName,
   formatTrackName,
 } from "../lib/formatters";
 import { EMPTY_OVERRIDE_JSON } from "../lib/overridePatch";
+import {
+  getEntrypointGuide,
+  getSectionDisplayCopy,
+  getVisibleWorkspaceSections,
+} from "../lib/workspaceSections";
 import {
   buildWorkspaceManifestPreview,
   getEntrypointSection,
@@ -32,14 +36,33 @@ export function WorkspaceTrackPage(props: {
 
   const entrypointSection = getEntrypointSection(controller.activeTrack);
   const [activeStepId, setActiveStepId] = useState<string>(ENTRYPOINT_STEP_ID);
+  const visibleSections = useMemo(
+    () =>
+      getVisibleWorkspaceSections(
+        controller.entrypointItem?.item_name ?? null,
+        controller.nonEntrypointSections,
+      ),
+    [controller.entrypointItem, controller.nonEntrypointSections],
+  );
 
   useEffect(() => {
     setActiveStepId(ENTRYPOINT_STEP_ID);
   }, [controller.activeTrack.track_name]);
 
+  useEffect(() => {
+    if (
+      activeStepId === ENTRYPOINT_STEP_ID ||
+      activeStepId === REVIEW_STEP_ID ||
+      visibleSections.some((section) => section.section_name === activeStepId)
+    ) {
+      return;
+    }
+    setActiveStepId(ENTRYPOINT_STEP_ID);
+  }, [activeStepId, visibleSections]);
+
   const sectionSelections = useMemo(
     () =>
-      controller.nonEntrypointSections.map((section) => {
+      visibleSections.map((section) => {
         const selectedItem =
           section.items.find(
             (item) =>
@@ -51,7 +74,7 @@ export function WorkspaceTrackPage(props: {
           selectedItem,
         };
       }),
-    [controller.nonEntrypointSections, controller.selectedItemNameBySection],
+    [controller.selectedItemNameBySection, visibleSections],
   );
 
   const configuredSections = sectionSelections.filter(
@@ -102,9 +125,29 @@ export function WorkspaceTrackPage(props: {
   const activeSection =
     activeStepId === ENTRYPOINT_STEP_ID || activeStepId === REVIEW_STEP_ID
       ? null
-      : controller.nonEntrypointSections.find(
+      : visibleSections.find(
           (section) => section.section_name === activeStepId,
         ) ?? null;
+
+  const datasetSection = visibleSections.find(
+    (section) => section.section_name === "dataset_presets",
+  );
+  const selectedDatasetItem =
+    datasetSection?.items.find(
+      (item) =>
+        item.item_name ===
+        controller.selectedItemNameBySection[datasetSection.section_name],
+    ) ?? null;
+  const datasetAssetPaths = extractDatasetAssetPaths(selectedDatasetItem?.metadata);
+  const currentEntrypointGuide = getEntrypointGuide(
+    controller.entrypointItem?.item_name ?? null,
+  );
+  const activeSectionCopy = activeSection
+    ? getSectionDisplayCopy(
+        activeSection,
+        controller.entrypointItem?.item_name ?? null,
+      )
+    : null;
 
   const workspacePreview =
     controller.workspaceManifest ??
@@ -112,7 +155,7 @@ export function WorkspaceTrackPage(props: {
       controller.manifestId,
       controller.activeTrack.track_name,
       controller.entrypointItem?.item_name ?? null,
-      controller.nonEntrypointSections,
+      visibleSections,
       controller.selectedItemNameBySection,
       controller.sectionOverrideValueBySection,
       controller.globalOverrideParse.value,
@@ -148,6 +191,12 @@ export function WorkspaceTrackPage(props: {
               방법을 비교할지 정하고 저장합니다.
             </p>
           </article>
+          {currentEntrypointGuide ? (
+            <article className="workspace-guide-card">
+              <strong>현재 선택한 방법 설명</strong>
+              <p>{currentEntrypointGuide}</p>
+            </article>
+          ) : null}
           <article className="workspace-guide-card">
             <strong>기록은 어디서 보나</strong>
             <p>
@@ -169,7 +218,7 @@ export function WorkspaceTrackPage(props: {
 
           <div className="workflow-progress">
             <strong>
-              {configuredSections.length} / {controller.nonEntrypointSections.length}
+              {configuredSections.length} / {visibleSections.length}
             </strong>
             <span>현재 선택한 블록 수</span>
           </div>
@@ -232,7 +281,7 @@ export function WorkspaceTrackPage(props: {
               <div className="panel-header">
                 <div>
                   <p className="panel-kicker">블록 설정</p>
-                  <h2>{activeSection.display_name}</h2>
+                  <h2>{activeSectionCopy?.displayName ?? activeSection.display_name}</h2>
                 </div>
                 <button
                   type="button"
@@ -244,12 +293,16 @@ export function WorkspaceTrackPage(props: {
               </div>
 
               <p className="step-intro">
-                {activeSection.description ??
-                  `${formatSectionName(activeSection.section_name)} 블록의 preset과 run-local 값을 조정합니다.`}
+                {activeSectionCopy?.description ??
+                  `${activeSection.display_name} 블록의 preset과 run-local 값을 조정합니다.`}
               </p>
 
               <CatalogSectionCard
-                section={activeSection}
+                section={{
+                  ...activeSection,
+                  display_name: activeSectionCopy?.displayName ?? activeSection.display_name,
+                  description: activeSectionCopy?.description ?? activeSection.description,
+                }}
                 selectedItemName={
                   controller.selectedItemNameBySection[activeSection.section_name] ??
                   null
@@ -306,16 +359,22 @@ export function WorkspaceTrackPage(props: {
 
               <div className="selection-summary-grid">
                 {configuredSections.length > 0 ? (
-                  configuredSections.map(({ section, selectedItem }) => (
-                    <article
-                      className="selection-summary-card"
-                      key={section.section_name}
-                    >
-                      <span className="meta-label">{section.display_name}</span>
+                  configuredSections.map(({ section, selectedItem }) => {
+                    const sectionCopy = getSectionDisplayCopy(
+                      section,
+                      controller.entrypointItem?.item_name ?? null,
+                    );
+                    return (
+                      <article
+                        className="selection-summary-card"
+                        key={section.section_name}
+                      >
+                        <span className="meta-label">{sectionCopy.displayName}</span>
                       <strong>{selectedItem?.display_name}</strong>
                       <span>{selectedItem?.source_of_truth}</span>
-                    </article>
-                  ))
+                      </article>
+                    );
+                  })
                 ) : (
                   <div className="message-block">
                     <h3>아직 선택한 블록이 없습니다</h3>
@@ -331,6 +390,20 @@ export function WorkspaceTrackPage(props: {
                 <summary>고급 manifest 미리보기</summary>
                 <pre>{JSON.stringify(workspacePreview, null, 2)}</pre>
               </details>
+
+              {selectedDatasetItem ? (
+                <div className="selection-summary-grid">
+                  <article className="selection-summary-card">
+                    <span className="meta-label">평가 데이터</span>
+                    <strong>{selectedDatasetItem.display_name}</strong>
+                    <span>
+                      validation:{" "}
+                      {datasetAssetPaths.validation_jsonl ?? "설정 없음"}
+                    </span>
+                    <span>test: {datasetAssetPaths.test_jsonl ?? "설정 없음"}</span>
+                  </article>
+                </div>
+              ) : null}
 
               {controller.compilePlan ? (
                 <details className="advanced-panel" open>
@@ -410,17 +483,40 @@ export function WorkspaceTrackPage(props: {
 
             <div className="selection-chip-list">
               {configuredSections.length > 0 ? (
-                configuredSections.map(({ section, selectedItem }) => (
-                  <span className="selection-chip" key={section.section_name}>
-                    {section.display_name}: {selectedItem?.display_name}
-                  </span>
-                ))
+                configuredSections.map(({ section, selectedItem }) => {
+                  const sectionCopy = getSectionDisplayCopy(
+                    section,
+                    controller.entrypointItem?.item_name ?? null,
+                  );
+                  return (
+                    <span className="selection-chip" key={section.section_name}>
+                      {sectionCopy.displayName}: {selectedItem?.display_name}
+                    </span>
+                  );
+                })
               ) : (
                 <span className="status-inline status-inline--muted">
                   아직 선택된 블록이 없습니다.
                 </span>
               )}
             </div>
+
+            {selectedDatasetItem ? (
+              <div className="draft-summary">
+                <div className="draft-summary__card">
+                  <span className="meta-label">검증 데이터</span>
+                  <strong>
+                    {datasetAssetPaths.validation_jsonl ?? "dataset alias에 따름"}
+                  </strong>
+                </div>
+                <div className="draft-summary__card">
+                  <span className="meta-label">테스트 데이터</span>
+                  <strong>
+                    {datasetAssetPaths.test_jsonl ?? "dataset alias에 따름"}
+                  </strong>
+                </div>
+              </div>
+            ) : null}
 
             <div className="action-row">
               <button
@@ -505,4 +601,28 @@ export function WorkspaceTrackPage(props: {
       </section>
     </main>
   );
+}
+
+function extractDatasetAssetPaths(metadata: Record<string, unknown> | undefined): {
+  validation_jsonl: string | null;
+  test_jsonl: string | null;
+} {
+  const assetPaths = metadata?.asset_paths;
+  if (!assetPaths || typeof assetPaths !== "object") {
+    return {
+      validation_jsonl: null,
+      test_jsonl: null,
+    };
+  }
+  const assetPathRecord = assetPaths as Record<string, unknown>;
+  return {
+    validation_jsonl:
+      typeof assetPathRecord.validation_jsonl === "string"
+        ? assetPathRecord.validation_jsonl
+        : null,
+    test_jsonl:
+      typeof assetPathRecord.test_jsonl === "string"
+        ? assetPathRecord.test_jsonl
+        : null,
+  };
 }

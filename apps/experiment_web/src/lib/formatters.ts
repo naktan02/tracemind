@@ -73,12 +73,12 @@ export function formatTrackName(trackName: string): string {
 export function formatEntrypointName(entrypointName: string): string {
   const knownLabels: Record<string, string> = {
     train_softmax_classifier: "고정 분류기 학습",
-    seed_prototypes: "프로토타입 시드 생성",
-    train_lora_classifier: "지도 적응 실행",
+    seed_prototypes: "프로토타입 자산 생성",
+    train_lora_classifier: "Gold 지도 적응",
     train_lora_pseudo_label_classifier: "의사라벨 적응 실행",
     train_lora_fixmatch: "FixMatch 적응 실행",
     train_lora_bootstrap_classifier_teacher: "교사 부트스트랩 적응 실행",
-    run_federated_simulation: "연합 시뮬레이션 실행",
+    run_federated_simulation: "공통 FL 실행",
   };
   return knownLabels[entrypointName] ?? humanizeIdentifier(entrypointName);
 }
