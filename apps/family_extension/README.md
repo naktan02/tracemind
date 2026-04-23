@@ -2,7 +2,7 @@
 
 `apps/family_extension`는 TraceMind 가족용 확장 프로그램 MVP shell이다.
 
-현재 단계는 `Phase 5` 범위에 해당한다.
+현재 단계는 `Phase 6` 범위에 해당한다.
 
 포함하는 것:
 
@@ -13,12 +13,15 @@
 5. child view의 현재 상태 카드, 요약 문구, 행동 제안
 6. 연결 상태 배지와 기본 navigation
 7. generated contract type file
+8. parent PIN unlock API 연결
+9. 실패 횟수/잠금 상태 안내
+10. 세션 기반 parent route guard
 
 아직 포함하지 않는 것:
 
-1. parent PIN 검증 연결
-2. 실제 timeseries 그래프 렌더링
-3. low-data/offline UX 고도화
+1. 실제 timeseries 그래프 렌더링
+2. low-data/offline UX 고도화
+3. 실제 wellbeing 엔진 결과 적재
 
 ## 개발 실행
 

@@ -460,6 +460,13 @@ apps/family_extension/
 
 - unlock API와 연결 가능
 
+현재 상태:
+
+- 완료
+- `apps/family_extension/src/hooks/useParentUnlock.ts`가 `/api/v1/parent/unlock`을 호출한다
+- `apps/family_extension/src/pages/unlock/UnlockPage.tsx`가 남은 시도 횟수와 잠금 상태를 보여준다
+- `apps/family_extension/src/pages/parent/ParentPage.tsx`는 유효한 부모 세션이 없으면 보호 화면으로 남는다
+
 ### Phase 7. 부모용 상세 화면 MVP
 
 작업:

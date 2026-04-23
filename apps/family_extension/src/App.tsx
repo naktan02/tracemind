@@ -2,6 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 
 import { checkLocalProgramHealth } from "./api/wellbeing";
 import { getAgentApiBaseUrl } from "./api/client";
+import { useParentUnlock } from "./hooks/useParentUnlock";
 import { ChildPage } from "./pages/child/ChildPage";
 import { ParentPage } from "./pages/parent/ParentPage";
 import { UnlockPage } from "./pages/unlock/UnlockPage";
@@ -31,6 +32,12 @@ export default function App({ initialRoute }: AppProps) {
     "checking" | "connected" | "offline"
   >("checking");
   const [pin, setPin] = useState("");
+  const {
+    activeSessionExpiresAt,
+    hasActiveParentSession,
+    submitUnlock,
+    unlockState,
+  } = useParentUnlock();
 
   useEffect(() => {
     const onHashChange = () => {
@@ -63,6 +70,14 @@ export default function App({ initialRoute }: AppProps) {
   function moveTo(route: AppRoute) {
     setCurrentRoute(route);
     updateHash(route);
+  }
+
+  async function handleUnlockSubmit() {
+    const response = await submitUnlock(pin);
+    if (response?.granted) {
+      setPin("");
+      moveTo("/parent");
+    }
   }
 
   return (
@@ -120,7 +135,7 @@ export default function App({ initialRoute }: AppProps) {
             <p className="page-description">{routeMeta.description}</p>
           </div>
           <div className="badge-row">
-            <span className="badge">Phase 5 child view</span>
+            <span className="badge">Phase 6 parent unlock</span>
             <span className="badge subtle">wellbeing_signal consumer</span>
           </div>
         </header>
@@ -134,13 +149,17 @@ export default function App({ initialRoute }: AppProps) {
         {currentRoute === "/unlock" && (
           <UnlockPage
             pin={pin}
+            unlockState={unlockState}
             onPinChange={setPin}
+            onSubmitUnlock={handleUnlockSubmit}
             onMoveToChild={() => moveTo("/child")}
             onMoveToParent={() => moveTo("/parent")}
           />
         )}
         {currentRoute === "/parent" && (
           <ParentPage
+            activeSessionExpiresAt={activeSessionExpiresAt}
+            hasActiveParentSession={hasActiveParentSession}
             onMoveToChild={() => moveTo("/child")}
             onMoveToUnlock={() => moveTo("/unlock")}
           />
