@@ -9,9 +9,11 @@ from fastapi import HTTPException
 
 from main_server.src.api import experiments as experiments_api
 from main_server.src.api.main import app
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog_constants import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     FEDERATED_SIMULATION_RUNTIME_PATH,
+)
+from main_server.src.services.experiment_workspace.catalog_service import (
     ExperimentCatalogService,
 )
 from main_server.src.services.experiment_workspace.compiler_service import (
@@ -155,6 +157,17 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert (
         weak_strong_example.source_of_truth
         == "agent/src/services/training/backends/inputs/weak_strong_pair.py"
+    )
+
+    privacy_guards = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="privacy_guards",
+    )
+    dp_clip = _find_item(privacy_guards, "classifier_head_clip_only")
+    assert (
+        dp_clip.source_of_truth
+        == "agent/src/services/training/execution/privacy_guard_service.py"
     )
 
     federated_presets = _find_section(
