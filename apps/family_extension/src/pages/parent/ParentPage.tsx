@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { ParentWellbeingSummaryCard } from "../../components/ParentWellbeingSummaryCard";
+import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
 import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
@@ -82,6 +83,9 @@ export function ParentPage({
     <div className="page-stack">
       {summaryState.status === "loaded" && (
         <ParentWellbeingSummaryCard summary={summaryState.summary} />
+      )}
+      {summaryState.status === "loaded" && (
+        <WellbeingDataNotice summary={summaryState.summary} />
       )}
       {summaryState.status === "loading" && (
         <section className="hero-card parent-hero">

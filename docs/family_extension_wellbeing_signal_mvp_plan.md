@@ -500,6 +500,14 @@ apps/family_extension/
 
 - 로컬 프로그램이 꺼져 있어도 UX가 명확하다
 
+현재 상태:
+
+- 완료
+- `apps/family_extension/src/hooks/useLocalProgramHealth.ts`가 health polling을 수행한다
+- `apps/family_extension/src/components/ConnectionStateBanner.tsx`가 offline/checking 상태를 페이지 상단에 노출한다
+- `apps/family_extension/src/components/WellbeingDataNotice.tsx`가 low-data와 stale-data를 별도 안내로 분리한다
+- `apps/family_extension/src/lib/routes.ts`가 부모 세션이 없을 때 `/parent`를 `/unlock`으로 정규화한다
+
 ### Phase 9. 실제 엔진 연결
 
 작업:

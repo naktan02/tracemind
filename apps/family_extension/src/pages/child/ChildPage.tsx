@@ -1,21 +1,21 @@
+import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 
 type ChildPageProps = {
   onMoveToUnlock: () => void;
-  onMoveToParent: () => void;
 };
 
-export function ChildPage({
-  onMoveToUnlock,
-  onMoveToParent,
-}: ChildPageProps) {
+export function ChildPage({ onMoveToUnlock }: ChildPageProps) {
   const summaryState = useWellbeingSummary();
 
   return (
     <div className="page-stack">
       {summaryState.status === "loaded" && (
         <WellbeingSignalCard summary={summaryState.summary} />
+      )}
+      {summaryState.status === "loaded" && (
+        <WellbeingDataNotice summary={summaryState.summary} />
       )}
       {summaryState.status === "loading" && (
         <section className="hero-card child-hero">
@@ -86,9 +86,6 @@ export function ChildPage({
       <div className="button-row">
         <button className="primary-button" type="button" onClick={onMoveToUnlock}>
           부모용 PIN 화면 보기
-        </button>
-        <button className="ghost-button" type="button" onClick={onMoveToParent}>
-          부모 상세 shell 미리 보기
         </button>
       </div>
     </div>

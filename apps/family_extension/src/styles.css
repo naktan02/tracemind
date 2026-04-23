@@ -140,10 +140,39 @@ button:disabled {
   box-shadow: inset 3px 0 0 #2563eb, 0 20px 40px rgba(37, 99, 235, 0.08);
 }
 
+.route-link.locked {
+  opacity: 0.78;
+}
+
 .status-panel {
   display: flex;
   flex-direction: column;
   gap: 6px;
+}
+
+.status-banner {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: flex-start;
+  padding: 16px 18px;
+  border-radius: 18px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  background: rgba(255, 255, 255, 0.82);
+}
+
+.status-banner.neutral {
+  background: rgba(248, 250, 252, 0.92);
+}
+
+.status-banner.warning {
+  background: rgba(254, 243, 199, 0.9);
+  border-color: rgba(217, 119, 6, 0.22);
+}
+
+.status-banner.notice {
+  background: rgba(239, 246, 255, 0.84);
+  border-color: rgba(59, 130, 246, 0.18);
 }
 
 .status-text {
@@ -450,6 +479,7 @@ button:disabled {
     grid-template-columns: 1fr;
   }
 
+  .status-banner,
   .trend-card-header,
   .trend-footer {
     flex-direction: column;

@@ -1,12 +1,19 @@
 import { useEffect, useMemo, useState } from "react";
 
-import { checkLocalProgramHealth } from "./api/wellbeing";
+import { ConnectionStateBanner } from "./components/ConnectionStateBanner";
 import { getAgentApiBaseUrl } from "./api/client";
+import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
 import { useParentUnlock } from "./hooks/useParentUnlock";
 import { ChildPage } from "./pages/child/ChildPage";
 import { ParentPage } from "./pages/parent/ParentPage";
 import { UnlockPage } from "./pages/unlock/UnlockPage";
-import { AppRoute, ROUTE_META, normalizeRoute } from "./lib/routes";
+import {
+  AppRoute,
+  ROUTE_META,
+  isRouteLocked,
+  normalizeRoute,
+  resolveAccessibleRoute,
+} from "./lib/routes";
 
 type AppProps = {
   initialRoute?: string;
@@ -28,9 +35,7 @@ export default function App({ initialRoute }: AppProps) {
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
     normalizeRoute(getHashRoute(), fallbackRoute),
   );
-  const [healthState, setHealthState] = useState<
-    "checking" | "connected" | "offline"
-  >("checking");
+  const healthState = useLocalProgramHealth();
   const [pin, setPin] = useState("");
   const {
     activeSessionExpiresAt,
@@ -41,35 +46,25 @@ export default function App({ initialRoute }: AppProps) {
 
   useEffect(() => {
     const onHashChange = () => {
-      setCurrentRoute(normalizeRoute(getHashRoute(), fallbackRoute));
+      const nextRoute = resolveAccessibleRoute(
+        normalizeRoute(getHashRoute(), fallbackRoute),
+        { hasActiveParentSession },
+      );
+      setCurrentRoute(nextRoute);
+      updateHash(nextRoute);
     };
 
     updateHash(currentRoute);
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, [currentRoute, fallbackRoute]);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function loadHealth() {
-      const isConnected = await checkLocalProgramHealth();
-      if (!cancelled) {
-        setHealthState(isConnected ? "connected" : "offline");
-      }
-    }
-
-    void loadHealth();
-    return () => {
-      cancelled = true;
-    };
-  }, []);
+  }, [currentRoute, fallbackRoute, hasActiveParentSession]);
 
   const routeMeta = useMemo(() => ROUTE_META[currentRoute], [currentRoute]);
 
   function moveTo(route: AppRoute) {
-    setCurrentRoute(route);
-    updateHash(route);
+    const nextRoute = resolveAccessibleRoute(route, { hasActiveParentSession });
+    setCurrentRoute(nextRoute);
+    updateHash(nextRoute);
   }
 
   async function handleUnlockSubmit() {
@@ -95,17 +90,26 @@ export default function App({ initialRoute }: AppProps) {
         <nav className="route-nav" aria-label="family extension routes">
           {(
             Object.entries(ROUTE_META) as [AppRoute, (typeof ROUTE_META)[AppRoute]][]
-          ).map(([route, meta]) => (
-            <button
-              key={route}
-              className={route === currentRoute ? "route-link active" : "route-link"}
-              type="button"
-              onClick={() => moveTo(route)}
-            >
-              <span>{meta.label}</span>
-              <small>{route}</small>
-            </button>
-          ))}
+          ).map(([route, meta]) => {
+            const locked = isRouteLocked(route, { hasActiveParentSession });
+            return (
+              <button
+                key={route}
+                className={
+                  route === currentRoute
+                    ? "route-link active"
+                    : locked
+                      ? "route-link locked"
+                      : "route-link"
+                }
+                type="button"
+                onClick={() => moveTo(route)}
+              >
+                <span>{meta.label}</span>
+                <small>{locked ? `${route} · PIN 필요` : route}</small>
+              </button>
+            );
+          })}
         </nav>
 
         <div className="status-panel">
@@ -139,12 +143,10 @@ export default function App({ initialRoute }: AppProps) {
             <span className="badge subtle">wellbeing_signal consumer</span>
           </div>
         </header>
+        <ConnectionStateBanner healthState={healthState} />
 
         {currentRoute === "/child" && (
-          <ChildPage
-            onMoveToUnlock={() => moveTo("/unlock")}
-            onMoveToParent={() => moveTo("/parent")}
-          />
+          <ChildPage onMoveToUnlock={() => moveTo("/unlock")} />
         )}
         {currentRoute === "/unlock" && (
           <UnlockPage
