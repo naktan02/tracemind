@@ -7,23 +7,29 @@ from typing import TYPE_CHECKING
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
-from main_server.src.services.federation.assets.prototypes.prototype_rebuild_service import (
+from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildService,
 )
-from main_server.src.services.federation.rounds.adapter_family_service import (
+from main_server.src.services.federation.rounds.acceptance.models import (
+    RoundUpdateAcceptancePolicy,
+)
+from main_server.src.services.federation.rounds.acceptance.policies import (
+    StrictRoundUpdateAcceptancePolicy,
+)
+from main_server.src.services.federation.rounds.families.registry import (
     build_shared_adapter_round_family,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
-from main_server.src.services.federation.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.federation.rounds.round_manager_service import (
+    RoundManagerService,
+)
 from main_server.src.services.federation.rounds.runtime_compatibility import (
     validate_server_round_runtime_config,
 )
-from main_server.src.services.federation.rounds.runtime_config import ServerRoundRuntimeConfig
-from main_server.src.services.federation.rounds.update_acceptance_policy import (
-    RoundUpdateAcceptancePolicy,
-    StrictRoundUpdateAcceptancePolicy,
+from main_server.src.services.federation.rounds.runtime_config import (
+    ServerRoundRuntimeConfig,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 

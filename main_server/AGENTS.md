@@ -9,7 +9,7 @@ federated orchestration을 소유한다.
 
 1. `main_server/README.md`
 2. `main_server/src/services/README.md`
-3. `main_server/src/services/rounds/README.md`
+3. `main_server/src/services/federation/rounds/README.md`
 4. 관련 shared contract와 domain entity
 
 ## 변경 규칙

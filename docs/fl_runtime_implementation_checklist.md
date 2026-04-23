@@ -151,9 +151,9 @@ server runtime을 끝까지 닫을 수 없다.
 - [x] [round_manager_service.py](../main_server/src/services/federation/rounds/round_manager_service.py)
   - domain primitive로 유지
   - lifecycle orchestration의 하위 구성 요소로 사용
-- [x] [adapter_family_service.py](../main_server/src/services/federation/rounds/adapter_family_service.py)
+- [x] [families/registry.py](../main_server/src/services/federation/rounds/families/registry.py)
   - family-based aggregation 확장 지점으로 유지
-- [x] [aggregation_service.py](../main_server/src/services/federation/rounds/aggregation_service.py)
+- [x] [aggregation/registry.py](../main_server/src/services/federation/rounds/aggregation/registry.py)
   - aggregation backend 교체 지점으로 유지
 
 ### API로 닫을 것

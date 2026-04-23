@@ -15,8 +15,8 @@
 
 1. `round_lifecycle_service.py`
 2. `round_manager_service.py`
-3. `adapter_family_service.py`
-4. `aggregation_service.py`
+3. `families/registry.py`
+4. `aggregation/registry.py`
 
 ### API 경계와 canonical shape를 보고 싶을 때
 
@@ -42,17 +42,17 @@
   - training task 생성, aggregation 결과 publication
 - `round_lifecycle_service.py`
   - open/update/finalize orchestration
-- `adapter_family_service.py`
+- `families/`
   - adapter family별 state/update/payload 해석과 aggregation wiring
-- `aggregation_service.py`
+- `aggregation/`
   - concrete aggregation backend registry와 구현
-- `update_acceptance_policy.py`
+- `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 
 ## 새 전략 추가 시 어디를 보는가
 
-- aggregation backend 추가: `aggregation_service.py`
-- adapter family 추가: `adapter_family_service.py` + `shared/src/contracts/adapter_contracts.py`
+- aggregation backend 추가: `aggregation/`
+- adapter family 추가: `families/` + `shared/src/contracts/adapter_contracts.py`
 - server runtime 기본 축 변경: `runtime_config.py`
 
 새 family나 backend를 추가할 때는

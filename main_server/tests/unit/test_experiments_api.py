@@ -142,7 +142,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     )
     assert (
         diagonal_training.source_of_truth
-        == "agent/src/services/training/training_backends/diagonal_scale_heuristic.py"
+        == "agent/src/services/training/backends/training/diagonal_scale_heuristic.py"
     )
     assert diagonal_training.metadata["payload_format"] == "diagonal_scale_update"
 
@@ -154,7 +154,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     weak_strong_example = _find_item(example_backends, "weak_strong_pair")
     assert (
         weak_strong_example.source_of_truth
-        == "agent/src/services/training/input_backends/weak_strong_pair.py"
+        == "agent/src/services/training/backends/inputs/weak_strong_pair.py"
     )
 
     federated_presets = _find_section(

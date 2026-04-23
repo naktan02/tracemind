@@ -30,15 +30,26 @@ from main_server.src.services.federation.assets.prototypes import (
     ReferenceRebuildPrototypePublicationStrategy,
     StoredReferencePrototypeRebuildService,
 )
-from main_server.src.services.federation.rounds.adapter_family_service import (
-    SharedAdapterRoundFamily,
-    register_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.acceptance.policies import (
+    IdempotentRoundUpdateAcceptancePolicy,
+    StrictRoundUpdateAcceptancePolicy,
 )
-from main_server.src.services.federation.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.acceptance.trust_policies import (
+    SingleSubmissionPerAgentTrustPolicy,
+)
+from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationResult,
     SharedAdapterAggregationBackend,
+)
+from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     register_shared_adapter_aggregation_backend,
+)
+from main_server.src.services.federation.rounds.families.models import (
+    SharedAdapterRoundFamily,
+)
+from main_server.src.services.federation.rounds.families.registry import (
+    register_shared_adapter_round_family,
 )
 from main_server.src.services.federation.rounds.models import (
     RoundFinalizeRequest,
@@ -50,15 +61,14 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
     RoundValidationError,
 )
-from main_server.src.services.federation.rounds.round_manager_service import RoundManagerService
-from main_server.src.services.federation.rounds.runtime_config import ServerRoundRuntimeConfig
+from main_server.src.services.federation.rounds.round_manager_service import (
+    RoundManagerService,
+)
+from main_server.src.services.federation.rounds.runtime_config import (
+    ServerRoundRuntimeConfig,
+)
 from main_server.src.services.federation.rounds.runtime_factory import (
     build_round_manager_service_from_config,
-)
-from main_server.src.services.federation.rounds.update_acceptance_policy import (
-    IdempotentRoundUpdateAcceptancePolicy,
-    SingleSubmissionPerAgentTrustPolicy,
-    StrictRoundUpdateAcceptancePolicy,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE

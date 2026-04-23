@@ -50,10 +50,3 @@ class DiagonalScaleFedAvgAggregationConfig:
 DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG = (
     DiagonalScaleFedAvgAggregationConfig()
 )
-
-
-__all__ = [
-    "AggregationConfigScalar",
-    "DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG",
-    "DiagonalScaleFedAvgAggregationConfig",
-]

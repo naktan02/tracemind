@@ -7,10 +7,9 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from main_server.src.services.federation.rounds.diagonal_scale_defaults import (
-    AggregationConfigScalar,
-)
 from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+
+from .aggregation.diagonal_scale_defaults import AggregationConfigScalar
 
 ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"

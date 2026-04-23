@@ -21,15 +21,15 @@ from agent.src.services.training.backends.evidence.registry import (
 from agent.src.services.training.backends.inputs.registry import (
     list_training_example_backend_catalog_entries,
 )
+from agent.src.services.training.backends.training.registry import (
+    list_shared_adapter_training_backend_catalog_entries,
+)
 from agent.src.services.training.execution.privacy_guard_service import (
     list_shared_adapter_privacy_guard_catalog_entries,
 )
 from agent.src.services.training.execution.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
     validate_local_training_runtime,
-)
-from agent.src.services.training.backends.training.registry import (
-    list_shared_adapter_training_backend_catalog_entries,
 )
 from main_server.src.services.experiment_workspace.catalog_constants import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
@@ -59,7 +59,7 @@ from main_server.src.services.experiment_workspace.payloads import (
     CatalogTrackPayload,
     ExperimentCatalogPayload,
 )
-from main_server.src.services.federation.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from shared.src.config.adapter_family_metadata import (
@@ -598,7 +598,7 @@ class ExperimentCatalogService:
             display_name="Aggregation Backends",
             item_kind="aggregation_backend",
             description="adapter family별 서버 aggregation backend.",
-            source_module_name="main_server.src.services.federation.rounds.aggregation_service",
+            source_module_name="main_server.src.services.federation.rounds.aggregation.registry",
             entries=list_shared_adapter_aggregation_backend_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
             supported_runtime_paths=(

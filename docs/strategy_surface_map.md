@@ -169,9 +169,9 @@ Embedding
 관련 파일:
 
 - [main_server/src/services/federation/rounds/runtime_config.py](../main_server/src/services/federation/rounds/runtime_config.py)
-- [main_server/src/services/federation/rounds/aggregation_service.py](../main_server/src/services/federation/rounds/aggregation_service.py)
-- [main_server/src/services/federation/rounds/adapter_family_service.py](../main_server/src/services/federation/rounds/adapter_family_service.py)
-- [main_server/src/services/federation/rounds/update_acceptance_policy.py](../main_server/src/services/federation/rounds/update_acceptance_policy.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../main_server/src/services/federation/rounds/aggregation/registry.py)
+- [main_server/src/services/federation/rounds/families/registry.py](../main_server/src/services/federation/rounds/families/registry.py)
+- [main_server/src/services/federation/rounds/acceptance/policies.py](../main_server/src/services/federation/rounds/acceptance/policies.py)
 
 ## 3. 보호/암호화 관련 축
 

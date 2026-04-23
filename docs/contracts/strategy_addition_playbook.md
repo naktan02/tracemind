@@ -139,7 +139,7 @@
 
 보통 수정 파일:
 
-- [main_server/src/services/federation/rounds/aggregation_service.py](../../main_server/src/services/federation/rounds/aggregation_service.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
 - 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime_config.py](../../main_server/src/services/federation/rounds/runtime_config.py)
 
 작업 순서:
@@ -171,8 +171,8 @@
 - [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
 - [agent/src/services/training/execution/privacy_guard_service.py](../../agent/src/services/training/execution/privacy_guard_service.py)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
-- [main_server/src/services/federation/rounds/aggregation_service.py](../../main_server/src/services/federation/rounds/aggregation_service.py)
-- [main_server/src/services/federation/rounds/adapter_family_service.py](../../main_server/src/services/federation/rounds/adapter_family_service.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
+- [main_server/src/services/federation/rounds/families/registry.py](../../main_server/src/services/federation/rounds/families/registry.py)
 - [main_server/src/services/federation/rounds/mappers.py](../../main_server/src/services/federation/rounds/mappers.py)
 
 작업 순서:

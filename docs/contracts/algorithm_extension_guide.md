@@ -43,9 +43,9 @@
 | Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
-| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation_service.py` |
-| Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/update_acceptance_policy.py` |
-| Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/federation/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
+| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
+| Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
+| Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/federation/rounds/families/`, `shared/src/contracts/adapter_contracts.py` |
 
 ---
 
@@ -411,7 +411,7 @@ class PrototypeScorePolicy(Protocol):
 
 **Protocol:**
 ```python
-# main_server/src/services/federation/rounds/aggregation_service.py
+# main_server/src/services/federation/rounds/aggregation/registry.py
 class SharedAdapterAggregationBackend(Protocol):
     adapter_kind: str
 
@@ -435,7 +435,7 @@ class SharedAdapterAggregationBackend(Protocol):
 - 가중 FedAvg: example_count 대신 trust score로 가중
 
 **교체 절차:**
-1. `aggregation_service.py`에 새 클래스 추가 (Protocol 구현)
+1. `aggregation/` 아래에 새 backend 클래스와 registry wiring을 추가
 2. `register_shared_adapter_aggregation_backend()` 또는 family 조합 지점에 등록
 3. q-합의 등 trust 기반이라면 `TrainingUpdateEnvelope.agent_id`를 사전 단계에서 활용
 
@@ -450,7 +450,7 @@ aggregation 품질 판단에 활용 가능.
 
 **Protocol:**
 ```python
-# main_server/src/services/federation/rounds/update_acceptance_policy.py
+# main_server/src/services/federation/rounds/acceptance/policies.py
 class RoundUpdateAcceptancePolicy(Protocol):
     def evaluate(
         self,
@@ -471,7 +471,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
 - Trust score 기반 사전 필터: 신뢰도 임계값 미달 agent update 거부
 
 **교체 절차:**
-1. `update_acceptance_policy.py`에 network policy 또는 trust policy를 추가
+1. `acceptance/network_policies.py` 또는 `acceptance/trust_policies.py`에 정책을 추가
 2. `CompositeRoundUpdateAcceptancePolicy`에 조합해 `round_lifecycle_service.py`에서 주입
 3. trust 판단과 idempotency 판단을 같은 클래스에 섞지 않음
 
@@ -488,8 +488,8 @@ class RoundUpdateAcceptancePolicy(Protocol):
 | `shared/src/contracts/adapter_contracts.py` | 새 State/Update payload 클래스 추가 |
 | `shared/src/domain/entities/training/` | 새 도메인 객체 추가 |
 | `agent/src/services/training/backends/training/` | 새 family용 backend 추가 |
-| `main_server/src/services/federation/rounds/aggregation_service.py` | 새 family용 aggregation backend 추가 |
-| `main_server/src/services/federation/rounds/adapter_family_service.py` | 라우팅 등록 |
+| `main_server/src/services/federation/rounds/aggregation/` | 새 family용 aggregation backend 추가 |
+| `main_server/src/services/federation/rounds/families/` | 라우팅 등록 |
 | `main_server/src/services/federation/rounds/mappers.py` | 새 payload 변환 추가 |
 
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).

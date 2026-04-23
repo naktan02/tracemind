@@ -6,9 +6,19 @@ from dataclasses import dataclass, field, replace
 from uuid import uuid4
 
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.assets.prototypes.prototype_rebuild_service import (
+from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
+)
+from main_server.src.services.federation.rounds.acceptance.errors import (
+    RoundConflictError,
+    RoundValidationError,
+)
+from main_server.src.services.federation.rounds.acceptance.models import (
+    RoundUpdateAcceptancePolicy,
+)
+from main_server.src.services.federation.rounds.acceptance.policies import (
+    StrictRoundUpdateAcceptancePolicy,
 )
 from main_server.src.services.federation.rounds.models import (
     RoundFinalizeRequest,
@@ -21,12 +31,6 @@ from main_server.src.services.federation.rounds.models import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
-)
-from main_server.src.services.federation.rounds.update_acceptance_policy import (
-    RoundConflictError,
-    RoundUpdateAcceptancePolicy,
-    RoundValidationError,
-    StrictRoundUpdateAcceptancePolicy,
 )
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
