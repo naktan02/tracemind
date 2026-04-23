@@ -5,21 +5,22 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from main_server.src.infrastructure.repositories.prototype_build_state_repository import (
-    PrototypeBuildStateRepository,
+from main_server.src.infrastructure.repositories import (
+    prototype_build_state_repository as prototype_build_state_repository_module,
 )
-from main_server.src.services.prototypes.prototype_build_state_service import (
+from main_server.src.services.prototype_assets.prototype_build_state_service import (
     PrototypeBuildStateService,
 )
-
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
 )
 
 
 def test_publish_and_get_state(tmp_path: Path) -> None:
-    repository = PrototypeBuildStateRepository(
+    repository = (
+        prototype_build_state_repository_module.PrototypeBuildStateRepository(
         state_root=tmp_path / "prototype_build_states"
+        )
     )
     service = PrototypeBuildStateService(repository=repository)
     payload = PrototypeBuildStatePayload(

@@ -6,10 +6,11 @@
 
 - `rounds/`
   - FL round open/update/finalize, aggregation, runtime wiring
-- `prototypes/`
-  - prototype pack/build-state publication과 rebuild runtime
-- `experiments/`
-  - 개발자용 read-only experiment catalog와 workspace compiler preview
+- `prototype_assets/`
+  - prototype pack/build-state rebuild, publication, activation 같은
+    artifact lifecycle
+- `experiment_workspace/`
+  - 개발자용 experiment workspace catalog/compile/run/save backend
 
 ## newcomer용 읽기 순서
 
@@ -21,12 +22,14 @@
 
 ### 2. prototype rebuild/publication부터 보고 싶을 때
 
-1. `prototypes/prototype_rebuild_service.py`
-2. `prototypes/stored_input_rebuild_service.py`
-3. `prototypes/publication_strategies.py`
+1. `prototype_assets/prototype_rebuild_service.py`
+2. `prototype_assets/stored_input_rebuild_service.py`
+3. `prototype_assets/publication_strategies.py`
 
 ## 경계 원칙
 
 - round orchestration은 `rounds/`가 소유한다.
-- prototype pack/build-state 생성과 publication은 `prototypes/`가 소유한다.
+- prototype pack/build-state 생성과 publication은 `prototype_assets/`가 소유한다.
+- 개발자 실험 웹용 catalog/compile/workspace/run surface는
+  `experiment_workspace/`가 소유한다.
 - 공용 계약은 `shared/src/contracts/`를 기준으로 읽는다.

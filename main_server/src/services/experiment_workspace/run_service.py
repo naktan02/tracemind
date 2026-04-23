@@ -10,14 +10,14 @@ from main_server.src.infrastructure.repositories.experiment_run_repository impor
     ExperimentRunRepository,
     StoredExperimentRunRecord,
 )
-from main_server.src.services.experiments.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler_service import (
     ExperimentCompilerService,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     ExperimentRunPayload,
     LaunchExperimentRunRequestPayload,
 )
-from main_server.src.services.experiments.run_runtime_support import (
+from main_server.src.services.experiment_workspace.run_runtime_support import (
     LocalExperimentProcessHandle,
     ProcessLauncher,
     build_experiment_run_id,
@@ -27,7 +27,7 @@ from main_server.src.services.experiments.run_runtime_support import (
     launch_local_process,
     record_to_payload,
 )
-from main_server.src.services.experiments.workspace_service import (
+from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
 )
 from shared.src.contracts.workspace_manifest_contracts import (

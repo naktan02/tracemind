@@ -9,8 +9,8 @@ import httpx
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
-from agent.src.services.prototype.sync_service import PrototypeSyncService
+from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.prototypes.sync_service import PrototypeSyncService
 from shared.src.contracts.prototype_contracts import (
     CurrentPrototypePackResponse,
     PrototypePackActivationPointer,

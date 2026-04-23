@@ -13,7 +13,7 @@ from typing import Protocol, TextIO, cast
 from main_server.src.infrastructure.repositories.experiment_run_repository import (
     StoredExperimentRunRecord,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     ExperimentRunPayload,
     ExperimentRunStatus,
 )

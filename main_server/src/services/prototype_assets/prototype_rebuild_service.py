@@ -5,19 +5,19 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 
-from main_server.src.services.prototypes.models import (
+from main_server.src.services.prototype_assets.models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
     StoredReferencePrototypeRebuildRequest,
 )
-from main_server.src.services.prototypes.publication_strategies import (
+from main_server.src.services.prototype_assets.publication_strategies import (
     InMemoryPrototypePublicationStrategy,
     PrototypePublicationStrategy,
     ReferenceRebuildPrototypePublicationStrategy,
 )
-from main_server.src.services.prototypes.stored_input_rebuild_service import (
+from main_server.src.services.prototype_assets.stored_input_rebuild_service import (
     PrototypeRebuildInputRepositoryProtocol,
     StoredReferencePrototypeRebuildService,
 )

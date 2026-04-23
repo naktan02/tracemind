@@ -31,14 +31,14 @@ from agent.src.services.training.runtime_compatibility import (
 from agent.src.services.training.training_backends.registry import (
     list_shared_adapter_training_backend_catalog_entries,
 )
-from main_server.src.services.experiments.catalog_constants import (
+from main_server.src.services.experiment_workspace.catalog_constants import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     CENTRAL_ADAPTATION_RUNTIME_PATH,
     FEDERATED_SIMULATION_RUNTIME_PATH,
     MAIN_SERVER_ROUND_RUNTIME_PATH,
     SEED_RUNTIME_PATH,
 )
-from main_server.src.services.experiments.catalog_metadata import (
+from main_server.src.services.experiment_workspace.catalog_metadata import (
     build_dataset_preset_metadata,
     build_federated_run_preset_metadata,
     declared_fields,
@@ -47,13 +47,13 @@ from main_server.src.services.experiments.catalog_metadata import (
     resolve_catalog_item_name,
     string_or_none,
 )
-from main_server.src.services.experiments.catalog_section_builders import (
+from main_server.src.services.experiment_workspace.catalog_section_builders import (
     build_adapter_family_section,
     build_config_group_section,
     build_entrypoint_section,
     build_registry_section,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     CatalogItemPayload,
     CatalogSectionPayload,
     CatalogTrackPayload,

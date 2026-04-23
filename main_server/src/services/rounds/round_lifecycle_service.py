@@ -6,7 +6,7 @@ from dataclasses import dataclass, field, replace
 from uuid import uuid4
 
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.prototypes.prototype_rebuild_service import (
+from main_server.src.services.prototype_assets.prototype_rebuild_service import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )

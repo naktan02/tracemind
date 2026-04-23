@@ -22,12 +22,12 @@ from shared.src.config.adapter_family_metadata import (
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
+    ClassifierHeadState,
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
     VectorAdapterState,
-    ClassifierHeadState,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (

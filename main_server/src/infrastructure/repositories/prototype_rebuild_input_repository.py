@@ -9,7 +9,7 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from main_server.src.services.prototypes.models import (
+from main_server.src.services.prototype_assets.models import (
     PrototypeRebuildInputRecord,
     ReferencePrototypeSourceRow,
 )

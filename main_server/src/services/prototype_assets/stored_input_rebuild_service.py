@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
-from main_server.src.services.prototypes.models import (
+from main_server.src.services.prototype_assets.models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
@@ -43,7 +43,7 @@ class EmbeddingAdapterFactoryProtocol(Protocol):
 
 
 def _default_prototype_rebuild_service() -> ReferenceRowPrototypeRebuildServiceProtocol:
-    from main_server.src.services.prototypes.prototype_rebuild_service import (
+    from main_server.src.services.prototype_assets.prototype_rebuild_service import (
         PrototypeRebuildService,
     )
 

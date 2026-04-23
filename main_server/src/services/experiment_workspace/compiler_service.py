@@ -4,15 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from main_server.src.services.experiments.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog_service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiments.compile_policies import (
+from main_server.src.services.experiment_workspace.compile_policies import (
     DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY,
     ExperimentCompileContext,
     ExperimentCompilePolicyRegistry,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     CatalogItemPayload,
     CatalogSectionPayload,
     CatalogTrackPayload,

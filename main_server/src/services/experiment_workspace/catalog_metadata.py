@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable, Mapping
 from pathlib import Path
 
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     CatalogOverrideFieldPayload,
 )
 

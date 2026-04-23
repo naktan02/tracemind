@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from main_server.src.services.experiments.compile_policies import (
+from main_server.src.services.experiment_workspace.compile_policies import (
     ExperimentCompileContext,
     ExperimentCompilePolicyRegistry,
     NoOpExperimentCompilePolicy,

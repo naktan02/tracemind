@@ -200,7 +200,7 @@ shared/src/contracts/
 main_server/src/api/
   experiments.py
 
-main_server/src/services/experiments/
+main_server/src/services/experiment_workspace/
   catalog_service.py
   compiler_service.py
   run_service.py

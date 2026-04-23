@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from main_server.src.services.prototypes.prototype_pack_service import (
+from main_server.src.services.prototype_assets.prototype_pack_service import (
     PrototypePackService,
 )
 

@@ -8,7 +8,9 @@ from main_server.src.api.experiment_service_deps import (
     ExperimentCatalogServiceDep,
     ExperimentCompilerServiceDep,
 )
-from main_server.src.services.experiments.payloads import ExperimentCatalogPayload
+from main_server.src.services.experiment_workspace.payloads import (
+    ExperimentCatalogPayload,
+)
 from shared.src.contracts.workspace_manifest_contracts import (
     ResolvedExperimentPlanPayload,
     WorkspaceManifestPayload,

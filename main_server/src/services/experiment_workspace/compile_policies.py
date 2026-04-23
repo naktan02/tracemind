@@ -5,10 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from main_server.src.services.experiments.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog_service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiments.payloads import CatalogItemPayload
+from main_server.src.services.experiment_workspace.payloads import CatalogItemPayload
 from shared.src.contracts.workspace_manifest_contracts import (
     WorkspaceManifestPayload,
 )

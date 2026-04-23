@@ -8,10 +8,10 @@ from datetime import datetime, timezone
 from main_server.src.infrastructure.repositories import (
     experiment_workspace_repository,
 )
-from main_server.src.services.experiments.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler_service import (
     ExperimentCompilerService,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     SavedWorkspaceDetailPayload,
     SavedWorkspaceSummaryPayload,
 )

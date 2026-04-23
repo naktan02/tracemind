@@ -8,4 +8,4 @@ model revision 관리와 federated learning orchestration을 담당하는
 
 - `main_server/src/services/README.md`
 - round orchestration: `main_server/src/services/rounds/README.md`
-- prototype rebuild/publication: `main_server/src/services/prototypes/`
+- prototype rebuild/publication: `main_server/src/services/prototype_assets/`

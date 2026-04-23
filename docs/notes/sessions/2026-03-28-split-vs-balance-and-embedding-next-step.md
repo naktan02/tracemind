@@ -99,7 +99,7 @@ prototype_packs이 이해가 안가는데? 모델에 아직 넣지도 않은 상
 1. 계약 문서에서 `PrototypePack`은 FL 모델 파라미터가 아니고, 카테고리별 대표 벡터를 담는 배포용 semantic 기준 객체라고 정의되어 있다.
 2. `scripts/seed_prototypes.py`는 입력 JSONL을 `mapped_label_4` 기준으로 묶은 뒤, 각 category의 텍스트를 임베딩한다.
 3. 현재는 `hash_debug` backend를 사용했기 때문에 외부 모델 추론 없이도 텍스트에서 deterministic pseudo-embedding을 만든다.
-4. `shared/src/domain/services/prototype_pack_builder.py`는 카테고리별 임베딩 묶음의 평균을 내어 centroid를 만들고, 이것을 `PrototypePack`으로 감싼다.
+4. `shared/src/services/prototypes/prototype_pack_builder.py`는 카테고리별 임베딩 묶음의 평균을 내어 centroid를 만들고, 이것을 `PrototypePack`으로 감싼다.
 
 즉 현재 생성된 결과는:
 
@@ -128,7 +128,7 @@ split 비율은 현재 `validation_ratio = 0.1`이라서 90:10이다.
 2. stratified split 로직: `scripts/split_labeled_query_set.py`
 3. 현재 실행 결과 manifest: `data/processed/splits/ourafla_mental_health_text_classification.v1.manifest.json`
 4. prototype seeding 로직: `scripts/seed_prototypes.py`
-5. centroid 생성 로직: `shared/src/domain/services/prototype_pack_builder.py`
+5. centroid 생성 로직: `shared/src/services/prototypes/prototype_pack_builder.py`
 
 ## User
 

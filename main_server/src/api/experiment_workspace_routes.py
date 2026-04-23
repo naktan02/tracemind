@@ -7,7 +7,7 @@ from fastapi import APIRouter, HTTPException, status
 from main_server.src.api.experiment_service_deps import (
     ExperimentWorkspaceServiceDep,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     SavedWorkspaceDetailPayload,
     SavedWorkspaceSummaryPayload,
 )

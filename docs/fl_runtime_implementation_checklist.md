@@ -42,7 +42,7 @@
   - synthetic shard split
   - runtime core 조합 실험
   - evaluation / artifact dump
-- `main_server/src/services/prototypes/`
+- `main_server/src/services/prototype_assets/`
   - runtime rebuild/publication
   - canonical rebuild input repository 연계
 
@@ -249,14 +249,14 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [x] `main_server/src/services/prototypes/prototype_rebuild_service.py`
+- [x] `main_server/src/services/prototype_assets/prototype_rebuild_service.py`
   - 역할: canonical rebuild input으로 next prototype 생성
 - [x] `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py`
   - 역할: canonical bootstrap corpus 또는 base-embedding cache 관리
 
 ### 기존 코드와 연결할 것
 
-- [ ] [prototype_build_state_service.py](../main_server/src/services/prototypes/prototype_build_state_service.py)
+- [ ] [prototype_build_state_service.py](../main_server/src/services/prototype_assets/prototype_build_state_service.py)
   - 운영 경로에서 build state를 유지할지 여부 결정
 - [x] [scripts/prototypes/seeding.py](../scripts/prototypes/seeding.py)
   - production logic을 그대로 재사용할지, server service 전용 core로 분리할지 결정

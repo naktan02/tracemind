@@ -6,11 +6,11 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from main_server.src.services.prototypes.models import PrototypeRebuildResult
-from main_server.src.services.prototypes.prototype_build_state_service import (
+from main_server.src.services.prototype_assets.models import PrototypeRebuildResult
+from main_server.src.services.prototype_assets.prototype_build_state_service import (
     PrototypeBuildStateService,
 )
-from main_server.src.services.prototypes.prototype_pack_service import (
+from main_server.src.services.prototype_assets.prototype_pack_service import (
     PrototypePackService,
 )
 from shared.src.contracts.prototype_build_state_contracts import (

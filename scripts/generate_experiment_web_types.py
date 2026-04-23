@@ -9,7 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
-import main_server.src.services.experiments.payloads as experiment_payloads
+import main_server.src.services.experiment_workspace.payloads as experiment_payloads
 import shared.src.contracts.workspace_manifest_contracts as workspace_manifest_contracts
 
 ROOT = Path(__file__).resolve().parents[1]

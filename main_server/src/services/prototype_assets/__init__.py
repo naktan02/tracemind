@@ -1,4 +1,4 @@
-"""Main-server prototype publication services."""
+"""Main-server prototype asset lifecycle services."""
 
 from .models import (
     PrototypeRebuildInputRecord,

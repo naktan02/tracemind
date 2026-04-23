@@ -12,19 +12,19 @@ from main_server.src.api.experiments import router as experiments_router
 from main_server.src.api.fl_rounds import router as fl_rounds_router
 from main_server.src.api.health import router as health_router
 from main_server.src.api.prototypes import router as prototypes_router
-from main_server.src.services.experiments.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog_service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiments.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler_service import (
     ExperimentCompilerService,
 )
-from main_server.src.services.experiments.run_service import (
+from main_server.src.services.experiment_workspace.run_service import (
     ExperimentRunService,
 )
-from main_server.src.services.experiments.workspace_service import (
+from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
 )
-from main_server.src.services.prototypes.prototype_pack_service import (
+from main_server.src.services.prototype_assets.prototype_pack_service import (
     PrototypePackService,
 )
 from main_server.src.services.rounds.round_lifecycle_service import (

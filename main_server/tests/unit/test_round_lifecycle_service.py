@@ -21,7 +21,7 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.prototypes import (
+from main_server.src.services.prototype_assets import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,

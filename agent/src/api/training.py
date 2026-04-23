@@ -21,7 +21,7 @@ from agent.src.services.federation.training_example_service import (
     TrainingExampleService,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.prototype.runtime_service import PrototypeRuntimeService
+from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
 from agent.src.services.training.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
 )

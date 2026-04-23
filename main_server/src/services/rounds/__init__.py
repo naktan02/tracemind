@@ -56,7 +56,7 @@ if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
     )
-    from main_server.src.services.prototypes.prototype_rebuild_service import (
+    from main_server.src.services.prototype_assets.prototype_rebuild_service import (
         StoredReferencePrototypeRebuildService,
     )
     from shared.src.domain.services.clock import Clock

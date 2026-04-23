@@ -11,7 +11,7 @@ from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository,
     shared_adapter_state_repository,
 )
-from main_server.src.services.prototypes import (
+from main_server.src.services.prototype_assets import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,
@@ -216,7 +216,6 @@ def build_classifier_head_state_from_prototype_pack(
         raise ValueError(
             "Classifier-head initialization requires at least one centroid."
         )
-    embedding_dim = len(next(iter(centroids.values())))
     return ClassifierHeadState(
         schema_version="classifier_head_state.v1",
         adapter_kind="classifier_head",

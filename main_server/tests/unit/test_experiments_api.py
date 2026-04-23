@@ -9,12 +9,12 @@ from fastapi import HTTPException
 
 from main_server.src.api import experiments as experiments_api
 from main_server.src.api.main import app
-from main_server.src.services.experiments.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog_service import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     FEDERATED_SIMULATION_RUNTIME_PATH,
     ExperimentCatalogService,
 )
-from main_server.src.services.experiments.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler_service import (
     ExperimentCompilerService,
 )
 from shared.src.contracts.workspace_manifest_contracts import (

@@ -5,10 +5,10 @@ from __future__ import annotations
 from collections.abc import Callable, Iterable
 from pathlib import Path
 
-from main_server.src.services.experiments.catalog_constants import (
+from main_server.src.services.experiment_workspace.catalog_constants import (
     PHASE2_METADATA_ONLY_BLOCKER,
 )
-from main_server.src.services.experiments.catalog_metadata import (
+from main_server.src.services.experiment_workspace.catalog_metadata import (
     CatalogCoreMethodResolver,
     CatalogMetadataResolver,
     CatalogTagResolver,
@@ -18,7 +18,7 @@ from main_server.src.services.experiments.catalog_metadata import (
     extract_scalar_metadata,
     resolve_catalog_item_name,
 )
-from main_server.src.services.experiments.payloads import (
+from main_server.src.services.experiment_workspace.payloads import (
     CatalogItemPayload,
     CatalogSectionPayload,
 )

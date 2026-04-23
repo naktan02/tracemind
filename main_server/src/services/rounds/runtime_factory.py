@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
-from main_server.src.services.prototypes.prototype_rebuild_service import (
+from main_server.src.services.prototype_assets.prototype_rebuild_service import (
     StoredReferencePrototypeRebuildService,
 )
 from main_server.src.services.rounds.adapter_family_service import (
