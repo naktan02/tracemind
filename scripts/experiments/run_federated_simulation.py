@@ -85,7 +85,7 @@ def main(cfg: DictConfig) -> None:
         seed=int(cfg.seed),
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
-        training_scope=str(cfg.training_scope),
+        training_scope=str(cfg.training_algorithm_profile.training_scope),
         round_runtime_config=FederatedRoundRuntimeConfig(
             adapter_family_name=str(cfg.round_runtime.adapter_family_name),
             aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
