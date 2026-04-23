@@ -154,6 +154,32 @@ a:hover {
   margin-bottom: 18px;
 }
 
+.page-mode-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+  margin-bottom: 18px;
+}
+
+.mode-tab {
+  padding: 14px 16px;
+  border: 1px solid #d8e0eb;
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.84);
+  text-align: left;
+}
+
+.mode-tab strong {
+  display: block;
+}
+
+.mode-tab small {
+  display: block;
+  margin-top: 6px;
+  color: #607086;
+  line-height: 1.45;
+}
+
 .track-tabs {
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -196,6 +222,7 @@ a:hover {
 }
 
 .track-tab--active,
+.mode-tab--active,
 .entrypoint-card--active,
 .item-card--selected,
 .metric-pill--active,
@@ -203,6 +230,16 @@ a:hover {
   border-color: rgba(37, 95, 215, 0.45);
   background: linear-gradient(180deg, #f5f9ff 0%, #ecf3ff 100%);
   box-shadow: inset 0 0 0 1px rgba(37, 95, 215, 0.05);
+}
+
+.track-tab--active,
+.mode-tab--active,
+.entrypoint-card--active,
+.item-card--selected,
+.workflow-step--active {
+  box-shadow:
+    inset 4px 0 0 #255fd7,
+    inset 0 0 0 1px rgba(37, 95, 215, 0.05);
 }
 
 .workspace-dashboard {
@@ -213,6 +250,11 @@ a:hover {
 }
 
 .workspace-page {
+  display: grid;
+  gap: 18px;
+}
+
+.records-page {
   display: grid;
   gap: 18px;
 }
@@ -399,6 +441,21 @@ a:hover {
   text-align: left;
 }
 
+.item-card {
+  padding: 0;
+  overflow: hidden;
+}
+
+.item-card__button {
+  display: block;
+  width: 100%;
+  padding: 14px;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  text-align: left;
+}
+
 .entrypoint-card strong,
 .saved-workspace-card strong,
 .run-card strong,
@@ -502,6 +559,11 @@ pre {
   cursor: not-allowed;
 }
 
+.item-card__button:disabled {
+  opacity: 0.7;
+  cursor: not-allowed;
+}
+
 .item-card__topline {
   display: flex;
   align-items: flex-start;
@@ -520,6 +582,12 @@ pre {
 .item-card__description {
   margin: 10px 0 0;
   color: #43536a;
+}
+
+.item-card__editor {
+  padding: 0 14px 14px;
+  border-top: 1px solid #dbe5f2;
+  background: #f8fbff;
 }
 
 .item-card__blocker {
@@ -582,6 +650,10 @@ pre {
   border: 1px solid #d8e0eb;
   border-radius: 18px;
   background: #f8fafc;
+}
+
+.advanced-panel--inline {
+  margin-bottom: 0;
 }
 
 .override-editor label,
@@ -773,6 +845,7 @@ pre {
 
 .compare-row--active {
   background: #f6f9ff;
+  box-shadow: inset 4px 0 0 #255fd7;
 }
 
 .compare-workspace-cell {
@@ -899,6 +972,7 @@ th {
     flex-direction: column;
   }
 
+  .page-mode-switcher,
   .track-tabs,
   .draft-summary,
   .summary-rail {

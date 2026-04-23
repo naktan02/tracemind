@@ -1,11 +1,15 @@
+import { useState } from "react";
+
 import { CentralAdaptationWorkspacePage } from "./pages/CentralAdaptationWorkspacePage";
 import { FederatedRuntimeWorkspacePage } from "./pages/FederatedRuntimeWorkspacePage";
+import { WorkspaceRecordsPage } from "./pages/WorkspaceRecordsPage";
 import { SeedWorkspacePage } from "./pages/SeedWorkspacePage";
 import { useExperimentWorkspaceController } from "./hooks/useExperimentWorkspaceController";
 import { formatTrackName } from "./lib/formatters";
 
 function App() {
   const controller = useExperimentWorkspaceController();
+  const [viewMode, setViewMode] = useState<"builder" | "records">("builder");
 
   return (
     <div className="app-shell">
@@ -43,6 +47,29 @@ function App() {
         </div>
       </header>
 
+      <section className="page-mode-switcher" aria-label="실험 화면 모드">
+        <button
+          type="button"
+          className={
+            viewMode === "builder" ? "mode-tab mode-tab--active" : "mode-tab"
+          }
+          onClick={() => setViewMode("builder")}
+        >
+          <strong>조합 편집</strong>
+          <small>새 조합을 만들고 값을 수정합니다.</small>
+        </button>
+        <button
+          type="button"
+          className={
+            viewMode === "records" ? "mode-tab mode-tab--active" : "mode-tab"
+          }
+          onClick={() => setViewMode("records")}
+        >
+          <strong>기록/비교</strong>
+          <small>저장된 실험과 결과를 비교합니다.</small>
+        </button>
+      </section>
+
       {controller.isCatalogLoading ? (
         <main className="status-panel">
           <h2>실험 목록을 불러오는 중입니다</h2>
@@ -79,13 +106,17 @@ function App() {
         </section>
       ) : null}
 
-      {controller.activeTrack?.track_name === "seed" ? (
+      {viewMode === "records" ? <WorkspaceRecordsPage controller={controller} /> : null}
+
+      {viewMode === "builder" && controller.activeTrack?.track_name === "seed" ? (
         <SeedWorkspacePage controller={controller} />
       ) : null}
-      {controller.activeTrack?.track_name === "central_adaptation" ? (
+      {viewMode === "builder" &&
+      controller.activeTrack?.track_name === "central_adaptation" ? (
         <CentralAdaptationWorkspacePage controller={controller} />
       ) : null}
-      {controller.activeTrack?.track_name === "federated_runtime" ? (
+      {viewMode === "builder" &&
+      controller.activeTrack?.track_name === "federated_runtime" ? (
         <FederatedRuntimeWorkspacePage controller={controller} />
       ) : null}
     </div>

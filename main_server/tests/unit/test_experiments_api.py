@@ -71,6 +71,10 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert fixmatch.variant_profile_name == "fixmatch_usb_v1"
     assert fixmatch.compile_support == "preset_selector"
     assert fixmatch.metadata["require_multiview"] is True
+    assert all(
+        field.field_name != "algorithm_name"
+        for field in fixmatch.override_fields
+    )
 
     dataset_presets = _find_section(
         payload,
@@ -110,6 +114,17 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         and field.value_kind == "boolean"
         and field.default_value is False
         for field in default_lora.override_fields
+    )
+
+    pseudo_label_algorithms = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="pseudo_label_algorithms",
+    )
+    confidence_only = _find_item(pseudo_label_algorithms, "fixed_confidence_095")
+    assert all(
+        field.field_name != "algorithm_name"
+        for field in confidence_only.override_fields
     )
 
     central_entrypoints = _find_section(

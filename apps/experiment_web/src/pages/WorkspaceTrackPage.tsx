@@ -2,8 +2,6 @@ import { useEffect, useMemo, useState } from "react";
 
 import { CatalogSectionCard } from "../components/CatalogSectionCard";
 import { ResultBlock } from "../components/ResultBlock";
-import { RunHistoryPanel } from "../components/RunHistoryPanel";
-import { WorkspaceCompareBoard } from "../components/WorkspaceCompareBoard";
 import {
   WorkspaceStepRail,
   type WorkspaceStepItem,
@@ -122,77 +120,42 @@ export function WorkspaceTrackPage(props: {
 
   return (
     <main className="workspace-page">
-      <section className="workspace-overview">
-        <section className="panel overview-guide">
-          <div className="panel-header panel-header--compact">
-            <div>
-              <p className="panel-kicker">현재 탭 안내</p>
-              <h2>{controller.activeTrack.display_name}</h2>
-            </div>
+      <section className="panel overview-guide">
+        <div className="panel-header panel-header--compact">
+          <div>
+            <p className="panel-kicker">현재 탭 안내</p>
+            <h2>{controller.activeTrack.display_name}</h2>
           </div>
+        </div>
 
-          <p className="workflow-rail__description">
-            {controller.activeTrack.description}
-          </p>
+        <p className="workflow-rail__description">
+          {controller.activeTrack.description}
+        </p>
 
-          <div className="pill-row">
-            {controller.activeTrack.supported_runtime_paths.map((runtimePath) => (
-              <span className="pill" key={runtimePath}>
-                {runtimePath}
-              </span>
-            ))}
-          </div>
+        <div className="pill-row">
+          {controller.activeTrack.supported_runtime_paths.map((runtimePath) => (
+            <span className="pill" key={runtimePath}>
+              {runtimePath}
+            </span>
+          ))}
+        </div>
 
-          <div className="workspace-guide-list">
-            <article className="workspace-guide-card">
-              <strong>이 탭에서 하는 일</strong>
-              <p>
-                {formatTrackName(controller.activeTrack.track_name)} 단계에서 어떤
-                방법을 비교할지 정하고 저장합니다.
-              </p>
-            </article>
-            <article className="workspace-guide-card">
-              <strong>먼저 보면 좋은 곳</strong>
-              <p>
-                오른쪽 비교판에서 이미 저장된 실험을 보고, 그대로 재실행하거나
-                복제 후 수정하세요.
-              </p>
-            </article>
-            <article className="workspace-guide-card">
-              <strong>아래 단계 화면</strong>
-              <p>
-                왼쪽 단계 레일은 새 조합을 만드는 곳입니다. 실행 작업을 고른 뒤
-                블록별로 값을 채우고 마지막에 저장 또는 실행합니다.
-              </p>
-            </article>
-          </div>
-        </section>
-
-        <section className="panel compare-panel compare-panel--top">
-          <WorkspaceCompareBoard
-            currentWorkspaceId={controller.currentWorkspaceId}
-            savedWorkspaces={controller.savedWorkspaces}
-            runs={controller.runs}
-            rerunningWorkspaceId={controller.rerunningWorkspaceId}
-            deletingWorkspaceId={controller.deletingWorkspaceId}
-            onRefreshBoard={() => {
-              void controller.refreshSavedWorkspaces();
-              void controller.refreshRuns();
-            }}
-            onLoadWorkspace={(workspaceId) =>
-              void controller.handleLoadSavedWorkspace(workspaceId)
-            }
-            onCloneWorkspace={(workspaceId) =>
-              void controller.handleCloneWorkspace(workspaceId)
-            }
-            onRelaunchWorkspace={(workspaceId) =>
-              void controller.handleRelaunchWorkspace(workspaceId)
-            }
-            onDeleteWorkspace={(workspaceId) =>
-              void controller.handleDeleteWorkspace(workspaceId)
-            }
-          />
-        </section>
+        <div className="workspace-guide-list">
+          <article className="workspace-guide-card">
+            <strong>이 탭에서 하는 일</strong>
+            <p>
+              {formatTrackName(controller.activeTrack.track_name)} 단계에서 어떤
+              방법을 비교할지 정하고 저장합니다.
+            </p>
+          </article>
+          <article className="workspace-guide-card">
+            <strong>기록은 어디서 보나</strong>
+            <p>
+              맨 위의 `기록/비교` 페이지에서 이미 저장된 실험과 결과를 비교하고,
+              여기서는 새 조합 편집에만 집중합니다.
+            </p>
+          </article>
+        </div>
       </section>
 
       <section className="workspace-dashboard">
@@ -537,16 +500,6 @@ export function WorkspaceTrackPage(props: {
                 )}
               </div>
             ) : null}
-          </section>
-
-          <section className="panel">
-            <RunHistoryPanel
-              apiBaseUrl={controller.apiBaseUrl}
-              runs={controller.runs}
-              runsError={controller.runsError}
-              isRunsLoading={controller.isRunsLoading}
-              onRefresh={() => void controller.refreshRuns()}
-            />
           </section>
         </aside>
       </section>

@@ -61,6 +61,8 @@ def extract_override_fields(
         field_name = str(key)
         if field_name in {"defaults", "name", "algorithm_profile_name"}:
             continue
+        if field_name.endswith("_name"):
+            continue
         override_field = _build_override_field(field_name, value)
         if override_field is None:
             continue

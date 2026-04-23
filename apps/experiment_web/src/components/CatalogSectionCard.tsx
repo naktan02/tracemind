@@ -24,8 +24,6 @@ export function CatalogSectionCard(props: {
   ) => void;
 }) {
   const { section } = props;
-  const selectedItem =
-    section.items.find((item) => item.item_name === props.selectedItemName) ?? null;
 
   return (
     <article className="section-card">
@@ -46,102 +44,119 @@ export function CatalogSectionCard(props: {
           const isSelected = props.selectedItemName === item.item_name;
 
           return (
-            <button
+            <article
               key={item.item_name}
-              type="button"
               className={isSelected ? "item-card item-card--selected" : "item-card"}
-              onClick={() =>
-                isPresetSelectable ? props.onItemToggle(section, item) : undefined
-              }
-              disabled={!isPresetSelectable}
             >
-              <div className="item-card__topline">
-                <strong>{item.display_name}</strong>
-                <span
-                  className={`support-badge support-badge--${item.compile_support}`}
-                >
-                  {formatCompileSupport(item.compile_support)}
-                </span>
-              </div>
+              <button
+                type="button"
+                className="item-card__button"
+                onClick={() =>
+                  isPresetSelectable ? props.onItemToggle(section, item) : undefined
+                }
+                disabled={!isPresetSelectable}
+              >
+                <div className="item-card__topline">
+                  <strong>{item.display_name}</strong>
+                  <span
+                    className={`support-badge support-badge--${item.compile_support}`}
+                  >
+                    {formatCompileSupport(item.compile_support)}
+                  </span>
+                </div>
 
-              <div className="item-card__meta">
-                {item.core_method_name ? (
-                  <span>핵심 방식: {item.core_method_name}</span>
+                <div className="item-card__meta">
+                  {item.core_method_name ? (
+                    <span>핵심 방식: {item.core_method_name}</span>
+                  ) : null}
+                  {item.family_name ? <span>패밀리: {item.family_name}</span> : null}
+                  {item.preset_group ? <span>그룹: {item.preset_group}</span> : null}
+                </div>
+
+                {item.description ? (
+                  <p className="item-card__description">{item.description}</p>
                 ) : null}
-                {item.family_name ? <span>패밀리: {item.family_name}</span> : null}
-                {item.preset_group ? <span>그룹: {item.preset_group}</span> : null}
-              </div>
 
-              {item.description ? <p className="item-card__description">{item.description}</p> : null}
+                {Object.keys(item.metadata).length > 0 ? (
+                  <dl className="metadata-list metadata-list--compact">
+                    {Object.entries(item.metadata)
+                      .slice(0, 3)
+                      .map(([key, value]) => (
+                        <div key={key}>
+                          <dt>{key}</dt>
+                          <dd>{formatMetadataValue(value)}</dd>
+                        </div>
+                      ))}
+                  </dl>
+                ) : null}
 
-              {item.compile_blocker_reason ? (
-                <p className="item-card__blocker">{item.compile_blocker_reason}</p>
-              ) : null}
+                {item.compile_blocker_reason ? (
+                  <p className="item-card__blocker">{item.compile_blocker_reason}</p>
+                ) : null}
+              </button>
 
-              {Object.keys(item.metadata).length > 0 ? (
-                <dl className="metadata-list metadata-list--compact">
-                  {Object.entries(item.metadata)
-                    .slice(0, 3)
-                    .map(([key, value]) => (
-                      <div key={key}>
-                        <dt>{key}</dt>
-                        <dd>{formatMetadataValue(value)}</dd>
+              {isSelected ? (
+                <div className="item-card__editor">
+                  {item.override_fields.length > 0 ? (
+                    <div className="override-field-editor">
+                      <p className="override-editor__title">
+                        이 카드에서 바로 조정할 수 있는 항목
+                      </p>
+                      {item.override_fields.map((field) => (
+                        <OverrideFieldEditor
+                          key={field.field_name}
+                          sectionName={section.section_name}
+                          field={field}
+                          overridePatch={props.selectedOverridePatch}
+                          onChange={props.onOverrideFieldChange}
+                        />
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="hint-text">
+                      이 preset은 빠르게 조정할 scalar 항목이 없습니다.
+                    </p>
+                  )}
+
+                  <details className="advanced-panel advanced-panel--inline">
+                    <summary>고급 JSON 패치</summary>
+                    <label htmlFor={`override-${section.section_name}`}>
+                      세부 override
+                    </label>
+                    <textarea
+                      id={`override-${section.section_name}`}
+                      value={props.selectedOverrideText}
+                      onChange={(event) =>
+                        props.onOverrideTextChange(
+                          section.section_name,
+                          event.target.value,
+                        )
+                      }
+                      spellCheck={false}
+                    />
+                    <p className="hint-text">
+                      scalar value만 허용합니다. 예: {`{"temperature": 0.7}`}
+                    </p>
+                    <p className="hint-text">
+                      Hydra 파일 본문을 수정하는 대신, 선택한 preset 위에 override
+                      patch만 덧씌웁니다.
+                    </p>
+                    {item.declared_fields.length > 0 ? (
+                      <div className="field-chip-row">
+                        {item.declared_fields.map((fieldName) => (
+                          <span className="field-chip" key={fieldName}>
+                            {fieldName}
+                          </span>
+                        ))}
                       </div>
-                    ))}
-                </dl>
+                    ) : null}
+                  </details>
+                </div>
               ) : null}
-            </button>
+            </article>
           );
         })}
       </div>
-
-      {selectedItem ? (
-        <div className="override-editor">
-          {selectedItem.override_fields.length > 0 ? (
-            <div className="override-field-editor">
-              <p className="override-editor__title">
-                {section.display_name} 빠른 조정 항목
-              </p>
-              {selectedItem.override_fields.map((field) => (
-                <OverrideFieldEditor
-                  key={field.field_name}
-                  sectionName={section.section_name}
-                  field={field}
-                  overridePatch={props.selectedOverridePatch}
-                  onChange={props.onOverrideFieldChange}
-                />
-              ))}
-            </div>
-          ) : null}
-          <label htmlFor={`override-${section.section_name}`}>
-            고급 JSON 패치
-          </label>
-          <textarea
-            id={`override-${section.section_name}`}
-            value={props.selectedOverrideText}
-            onChange={(event) =>
-              props.onOverrideTextChange(section.section_name, event.target.value)
-            }
-            spellCheck={false}
-          />
-          <p className="hint-text">
-            scalar value만 허용합니다. 예: {`{"temperature": 0.7}`}
-          </p>
-          <p className="hint-text">
-            Hydra 파일 본문을 수정하는 대신, 선택한 preset 위에 override patch만
-            덧씌웁니다.
-          </p>
-          {selectedItem.declared_fields.length > 0 ? (
-            <div className="field-chip-row">
-              {selectedItem.declared_fields.map((fieldName) => (
-                <span className="field-chip" key={fieldName}>
-                  {fieldName}
-                </span>
-              ))}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
     </article>
   );
 }
