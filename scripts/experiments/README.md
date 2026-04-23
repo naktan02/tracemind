@@ -72,6 +72,16 @@
 
 ## 먼저 읽을 파일
 
+## `scripts/prototypes`와의 차이
+
+- `scripts/experiments/prototype_*`
+  - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
+- `scripts/prototypes/*`
+  - prototype pack을 실제로 seed/evaluate/pull/activate/report 하는
+    artifact workflow 레일
+
+즉 이름은 비슷하지만, 전자는 `비교/탐색`, 후자는 `artifact lifecycle`이 핵심이다.
+
 ### prototype 전략 실험을 보고 싶을 때
 
 1. `prototype_strategy_experiment.py`

@@ -3,6 +3,16 @@
 이 디렉터리는 prototype pack 생성, 평가, build-state 갱신 같은
 prototype artifact 작업 entrypoint를 모은다.
 
+중요:
+
+- 여기는 `prototype artifact lifecycle` 레일이다.
+- 즉 `seed / evaluate / pull / activate / report`처럼 이미 정해진
+  prototype pack을 만들고 검증하고 배포 상태를 다루는 workflow가 주된 역할이다.
+- `어떤 prototype 전략이 더 좋은지`를 비교하는 연구형 실험은
+  `scripts/experiments/prototype_*`가 맡는다.
+- 둘 다 prototype을 다루지만, 이 폴더는 `artifact 작업`, experiments는
+  `비교 실험`이라는 점이 경계다.
+
 ## 먼저 읽을 파일
 
 1. `seed_prototypes.py`

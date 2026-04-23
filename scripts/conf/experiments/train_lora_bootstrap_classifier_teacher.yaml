@@ -10,6 +10,7 @@ defaults:
   - /bootstrap_teacher_source: dataset_default
   - /pseudo_label_algorithm: margin_threshold_v1
   - /query_adaptation_initial_checkpoint: canonical_fixed_classifier_seed
+  - /lora_experiment: default
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
@@ -39,26 +40,7 @@ train_jsonl: ${teacher_train_jsonl}
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/processed/lora_pseudo_label
 student_include_seed_train_rows: false
-fixed_categories: ${dataset.prototype_expected_categories}
-initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
-initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
-eval_sets:
-  validation: ${dataset.validation_jsonl}
-  test: ${dataset.test_labeled_jsonl}
-selection_set: ${lora_run_preset.selection_set}
-seed: ${lora_run_preset.seed}
-train_batch_size: ${lora_run_preset.train_batch_size}
-eval_batch_size: ${lora_run_preset.eval_batch_size}
-epochs: ${lora_run_preset.epochs}
-learning_rate: ${lora_run_preset.learning_rate}
-classifier_learning_rate: ${lora_run_preset.classifier_learning_rate}
-weight_decay: ${lora_run_preset.weight_decay}
-max_grad_norm: ${lora_run_preset.max_grad_norm}
-log_every_steps: ${lora_run_preset.log_every_steps}
 output_dir: runs/train_lora_pseudo_label_classifier
-adapter_output_dir: data/processed/lora_adapters
-classifier_output_dir: data/processed/lora_classifier_heads
-trainer_version: ""
 
 hydra:
   run:
