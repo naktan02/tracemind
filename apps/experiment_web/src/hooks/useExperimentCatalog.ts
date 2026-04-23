@@ -2,7 +2,7 @@ import { useEffect, useState } from "react";
 
 import { loadExperimentCatalog } from "../api";
 import { asErrorMessage } from "../lib/formatters";
-import { getEntrypointSection } from "../lib/workspaceDraft";
+import { getEntrypointSection } from "../lib/workspaceManifest";
 import type {
   CatalogItemPayload,
   CatalogSectionPayload,

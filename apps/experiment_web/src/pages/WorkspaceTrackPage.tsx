@@ -2,11 +2,11 @@ import { CatalogSectionCard } from "../components/CatalogSectionCard";
 import { ResultBlock } from "../components/ResultBlock";
 import { RunHistoryPanel } from "../components/RunHistoryPanel";
 import { SavedWorkspacePanel } from "../components/SavedWorkspacePanel";
+import { EMPTY_OVERRIDE_JSON } from "../lib/overridePatch";
 import {
-  EMPTY_OVERRIDE_JSON,
   buildWorkspaceManifestPreview,
   getEntrypointSection,
-} from "../lib/workspaceDraft";
+} from "../lib/workspaceManifest";
 import type { ExperimentWorkspaceController } from "../hooks/useExperimentWorkspaceController";
 
 export function WorkspaceTrackPage(props: {

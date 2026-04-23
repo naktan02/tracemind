@@ -1,10 +1,11 @@
 import { compileExperimentWorkspace } from "../api";
 import { resolveApiBaseUrl } from "../api";
 import { asErrorMessage } from "../lib/formatters";
+import type { ObjectParseResult } from "../lib/overridePatch";
 import {
   getEntrypointSection,
-  hydrateWorkspaceDraftFromSavedWorkspace,
-} from "../lib/workspaceDraft";
+} from "../lib/workspaceManifest";
+import { hydrateWorkspaceDraftFromSavedWorkspace } from "../lib/workspaceHydrator";
 import { useState } from "react";
 import { useExperimentCatalog } from "./useExperimentCatalog";
 import { useExperimentRuns } from "./useExperimentRuns";
@@ -57,17 +58,12 @@ export interface ExperimentWorkspaceController {
   isWorkspaceSaving: boolean;
   isRunLaunching: boolean;
   actionNotice: ActionNotice | null;
-  sectionOverrideParseBySection: Record<
-    string,
-    ReturnType<typeof import("../lib/workspaceDraft").parseOverrideObject>
-  >;
+  sectionOverrideParseBySection: Record<string, ObjectParseResult>;
   sectionOverrideValueBySection: Record<
     string,
     Record<string, WorkspaceConfigScalar>
   >;
-  globalOverrideParse: ReturnType<
-    typeof import("../lib/workspaceDraft").parseOverrideObject
-  >;
+  globalOverrideParse: ObjectParseResult;
   localParseErrors: string[];
   workspaceManifest: WorkspaceManifestPayload | null;
   refreshSavedWorkspaces: () => Promise<void>;

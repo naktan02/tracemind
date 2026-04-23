@@ -1,16 +1,18 @@
 import { useEffect, useState } from "react";
 
 import {
+  createManifestId,
+  buildWorkspaceManifest,
+} from "../lib/workspaceManifest";
+import {
   EMPTY_OVERRIDE_JSON,
   buildSectionOverrideErrors,
   buildSectionOverrideParseBySection,
   buildSectionOverrideValueBySection,
-  buildWorkspaceManifest,
-  createManifestId,
   formatOverridePatch,
-  type HydratedWorkspaceDraft,
   parseOverrideObject,
-} from "../lib/workspaceDraft";
+} from "../lib/overridePatch";
+import type { HydratedWorkspaceDraft } from "../lib/workspaceHydrator";
 import type {
   CatalogOverrideFieldPayload,
   CatalogSectionPayload,
