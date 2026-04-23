@@ -11,7 +11,7 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from scripts.classification_report import (
+from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     safe_divide,
     summarize_per_category,

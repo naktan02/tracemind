@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from agent.src.services.training.query_adaptation.data import TextMultiviewDataset
-from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 def _row(query_id: str, text: str) -> LabeledQueryRow:
