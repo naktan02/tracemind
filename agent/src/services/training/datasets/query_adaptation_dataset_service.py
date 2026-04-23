@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass, field
 from typing import TypeVar
 
@@ -16,10 +15,12 @@ from agent.src.services.training.backends.inputs.models import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
-from shared.src.domain.entities.training.pseudo_label_candidate import (
-    PseudoLabelCandidate,
-)
 from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS,
+    PseudoLabelCandidate,
+    PseudoLabelSelectionContext,
+)
 
 _T = TypeVar("_T")
 _MetadataScalar = str | int | float | bool
@@ -53,6 +54,7 @@ class QueryAdaptationDatasetProvenance:
     translated_text_present: bool
     candidate_id: str
     evidence_ref: str | None = None
+    selection_context: PseudoLabelSelectionContext | None = None
     candidate_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
     query_buffer_metadata: dict[str, _MetadataScalar] = field(default_factory=dict)
 
@@ -224,9 +226,11 @@ def _build_dataset_provenance(
         evidence_ref=(
             None if candidate.evidence_ref is None else str(candidate.evidence_ref)
         ),
+        selection_context=_require_selection_context(candidate),
         candidate_metadata={
             str(key): _coerce_metadata_scalar(value)
             for key, value in candidate.metadata.items()
+            if str(key) not in SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS
         },
         query_buffer_metadata={
             str(key): _coerce_metadata_scalar(value)
@@ -248,6 +252,17 @@ def _index_unique(
             raise ValueError(f"Duplicate {item_name} key: {key}.")
         indexed[key] = item
     return indexed
+
+
+def _require_selection_context(
+    candidate: PseudoLabelCandidate,
+) -> PseudoLabelSelectionContext:
+    if candidate.selection_context is None:
+        raise ValueError(
+            "PseudoLabelCandidate.selection_context is required for dataset "
+            f"provenance: {candidate.candidate_id}."
+        )
+    return candidate.selection_context
 
 
 def _coerce_metadata_scalar(value: object) -> _MetadataScalar:

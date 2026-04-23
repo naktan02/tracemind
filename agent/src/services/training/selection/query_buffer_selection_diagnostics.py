@@ -15,6 +15,11 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS,
+    PseudoLabelCandidate,
+    PseudoLabelSelectionContext,
+)
 
 QUERY_BUFFER_SELECTION_TRACE_SCHEMA_VERSION = "query_buffer_selection_trace.v1"
 QUERY_BUFFER_SELECTION_SUMMARY_SCHEMA_VERSION = "query_buffer_selection_summary.v1"
@@ -261,30 +266,19 @@ class QueryBufferSelectionDiagnosticsService:
                 )
             evidence = evidence_by_query_id.get(query_id)
 
-            stage = str(candidate.metadata.get("selection_stage", "unknown"))
-            threshold_accepted = bool(
-                candidate.metadata.get("threshold_accepted", False)
+            selection_context = _require_selection_context(candidate)
+            stage = selection_context.selection_stage.value
+            threshold_accepted = selection_context.threshold_accepted
+            selected_by_cap = selection_context.selected_by_cap
+            final_accepted = selection_context.final_accepted
+            pre_cap_rank = selection_context.pre_cap_rank
+            confidence_threshold = selection_context.confidence_threshold
+            margin_threshold = selection_context.margin_threshold
+            max_examples = selection_context.max_examples
+            pseudo_label_algorithm_name = (
+                selection_context.pseudo_label_algorithm_name
             )
-            selected_by_cap = bool(candidate.metadata.get("selected_by_cap", False))
-            final_accepted = bool(candidate.metadata.get("final_accepted", False))
-            pre_cap_rank = _optional_int(candidate.metadata.get("pre_cap_rank"))
-            confidence_threshold = _optional_float(
-                candidate.metadata.get("confidence_threshold")
-            )
-            margin_threshold = _optional_float(
-                candidate.metadata.get("margin_threshold")
-            )
-            max_examples = _optional_int(candidate.metadata.get("max_examples"))
-            pseudo_label_algorithm_name = _optional_str(
-                candidate.metadata.get("pseudo_label_algorithm_name")
-            )
-            if pseudo_label_algorithm_name is None:
-                pseudo_label_algorithm_name = _optional_str(
-                    candidate.metadata.get("acceptance_policy_name")
-                )
-            evidence_backend_name = _optional_str(
-                candidate.metadata.get("evidence_backend_name")
-            )
+            evidence_backend_name = selection_context.evidence_backend_name
 
             trace_rows.append(
                 QueryBufferSelectionTraceRow(
@@ -356,6 +350,8 @@ class QueryBufferSelectionDiagnosticsService:
                     candidate_metadata={
                         str(key): _coerce_metadata_scalar(value)
                         for key, value in candidate.metadata.items()
+                        if str(key)
+                        not in SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS
                     },
                     query_buffer_metadata={
                         str(key): _coerce_metadata_scalar(value)
@@ -442,6 +438,17 @@ def _index_unique(
             raise ValueError(f"Duplicate {item_name} key: {key}.")
         indexed[key] = item
     return indexed
+
+
+def _require_selection_context(
+    candidate: PseudoLabelCandidate,
+) -> PseudoLabelSelectionContext:
+    if candidate.selection_context is None:
+        raise ValueError(
+            "PseudoLabelCandidate.selection_context is required for diagnostics: "
+            f"{candidate.candidate_id}."
+        )
+    return candidate.selection_context
 
 
 def _coerce_metadata_scalar(value: object) -> _MetadataScalar:

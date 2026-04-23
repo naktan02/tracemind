@@ -135,10 +135,12 @@ def _build_query_adaptation_summary(
         source_type_counts[provenance.source_type] += 1
         model_revision_counts[provenance.model_revision] += 1
         confidence_kind_counts[provenance.selection_confidence_kind] += 1
-        translated_text_present_counts[str(provenance.translated_text_present).lower()] += 1
-        selection_stage = provenance.candidate_metadata.get("selection_stage")
-        if isinstance(selection_stage, str) and selection_stage.strip():
-            selection_stage_counts[selection_stage] += 1
+        translated_text_present_counts[
+            str(provenance.translated_text_present).lower()
+        ] += 1
+        selection_context = provenance.selection_context
+        if selection_context is not None:
+            selection_stage_counts[selection_context.selection_stage.value] += 1
         confidence_values.append(float(example.confidence))
         margin_values.append(float(example.margin))
 
@@ -151,7 +153,9 @@ def _build_query_adaptation_summary(
             sorted(Counter(example.label for example in dataset.examples).items())
         ),
         "label_source_counts": dict(
-            sorted(Counter(example.label_source for example in dataset.examples).items())
+            sorted(
+                Counter(example.label_source for example in dataset.examples).items()
+            )
         ),
         "locale_counts": dict(sorted(locale_counts.items())),
         "source_type_counts": dict(sorted(source_type_counts.items())),

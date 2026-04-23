@@ -19,6 +19,10 @@ from scripts.experiments.lora_classifier.query_adaptation_io import (
     write_query_adaptation_lora_dataset,
 )
 from scripts.labeled_query_rows import load_labeled_query_rows
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelSelectionContext,
+    PseudoLabelSelectionStage,
+)
 
 
 def _build_dataset() -> QueryAdaptationDataset:
@@ -40,7 +44,12 @@ def _build_dataset() -> QueryAdaptationDataset:
                     selection_confidence_kind="prototype_similarity_top1",
                     translated_text_present=True,
                     candidate_id="round_1:q1",
-                    candidate_metadata={"selection_stage": "accepted"},
+                    selection_context=PseudoLabelSelectionContext(
+                        threshold_accepted=True,
+                        selected_by_cap=True,
+                        final_accepted=True,
+                        selection_stage=PseudoLabelSelectionStage.ACCEPTED,
+                    ),
                     query_buffer_metadata={"was_translated": True},
                 ),
                 label_source="pseudo_label",

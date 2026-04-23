@@ -122,14 +122,14 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
     assert dataset.source_rows[1].text == "요즘 너무 가라앉아요"
     assert dataset.source_rows[1].translated_text is None
     assert dataset.examples[0].provenance.locale == "ko-KR"
+    assert dataset.examples[0].provenance.selection_context is not None
     assert (
-        dataset.examples[0].provenance.candidate_metadata["selection_stage"]
+        dataset.examples[0].provenance.selection_context.selection_stage.value
         == "accepted"
     )
     assert (
-        dataset.examples[0].provenance.candidate_metadata[
-            "pseudo_label_algorithm_name"
-        ]
+        dataset.examples[0].provenance.selection_context
+        .pseudo_label_algorithm_name
         == "top1_confidence_only"
     )
     assert (

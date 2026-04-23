@@ -11,17 +11,17 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.inference.scoring_backends import register_scoring_backend
+from agent.src.services.training.backends.training.registry import (
+    register_shared_adapter_training_backend,
+)
 from agent.src.services.training.examples.service import (
     register_training_example_backend,
 )
-from agent.src.services.inference.scoring_backends import register_scoring_backend
 from agent.src.services.training.execution.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingRequest,
     LocalTrainingService,
-)
-from agent.src.services.training.backends.training.registry import (
-    register_shared_adapter_training_backend,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
@@ -184,12 +184,19 @@ def test_local_training_service_creates_update_from_top_candidates(
         == "shared_adapter_updates"
     )
     assert result.update_envelope.clipped is False
-    assert candidates["q1"].metadata["selection_stage"] == "accepted"
-    assert candidates["q2"].metadata["selection_stage"] == "dropped_by_cap"
-    assert candidates["q3"].metadata["selection_stage"] == "dropped_by_cap"
-    assert candidates["q4"].metadata["selection_stage"] == "threshold_rejected"
-    assert candidates["q2"].metadata["threshold_accepted"] is True
-    assert candidates["q4"].metadata["threshold_accepted"] is False
+    assert candidates["q1"].selection_context is not None
+    assert candidates["q2"].selection_context is not None
+    assert candidates["q3"].selection_context is not None
+    assert candidates["q4"].selection_context is not None
+    assert candidates["q1"].selection_context.selection_stage.value == "accepted"
+    assert candidates["q2"].selection_context.selection_stage.value == "dropped_by_cap"
+    assert candidates["q3"].selection_context.selection_stage.value == "dropped_by_cap"
+    assert (
+        candidates["q4"].selection_context.selection_stage.value
+        == "threshold_rejected"
+    )
+    assert candidates["q2"].selection_context.threshold_accepted is True
+    assert candidates["q4"].selection_context.threshold_accepted is False
 
 
 def test_local_training_service_applies_training_backend_extra_overrides(
@@ -330,7 +337,8 @@ def test_local_training_service_uses_acceptance_policy_from_task_config(
 
     candidate = result.selection_result.candidates[0]
     assert candidate.accepted is True
-    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+    assert candidate.selection_context is not None
+    assert candidate.selection_context.pseudo_label_algorithm_name == (
         "top1_confidence_only"
     )
     assert result.update_envelope is not None

@@ -18,6 +18,10 @@ from scripts.experiments.lora_classifier.pseudo_label_runner import (
     run_pseudo_label_self_training,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelSelectionContext,
+    PseudoLabelSelectionStage,
+)
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (
@@ -91,7 +95,12 @@ def _build_pseudo_label_dataset() -> QueryAdaptationDataset:
                     selection_confidence_kind="prototype_similarity_top1",
                     translated_text_present=False,
                     candidate_id="round_1:pl_q1",
-                    candidate_metadata={"selection_stage": "accepted"},
+                    selection_context=PseudoLabelSelectionContext(
+                        threshold_accepted=True,
+                        selected_by_cap=True,
+                        final_accepted=True,
+                        selection_stage=PseudoLabelSelectionStage.ACCEPTED,
+                    ),
                 ),
                 label_source="pseudo_label",
                 confidence=0.91,

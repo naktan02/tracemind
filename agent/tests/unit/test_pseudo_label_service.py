@@ -15,6 +15,9 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelSelectionStage,
+)
 
 
 def _build_task(
@@ -73,11 +76,15 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
     assert candidate.confidence_kind == "prototype_similarity"
     assert candidate.sample_weight == pytest.approx(0.62)
     assert candidate.margin == pytest.approx(0.01)
-    assert candidate.metadata["evidence_backend_name"] == (
+    assert candidate.selection_context is not None
+    assert candidate.selection_context.evidence_backend_name == (
         "prototype_similarity_evidence"
     )
-    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+    assert candidate.selection_context.pseudo_label_algorithm_name == (
         "top1_margin_threshold"
+    )
+    assert candidate.selection_context.selection_stage == (
+        PseudoLabelSelectionStage.THRESHOLD_REJECTED
     )
 
 
@@ -103,7 +110,8 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
     candidate = result.candidates[0]
     assert candidate.accepted is True
     assert candidate.evidence_ref == "evidence:q1"
-    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+    assert candidate.selection_context is not None
+    assert candidate.selection_context.pseudo_label_algorithm_name == (
         "top1_confidence_only"
     )
     assert result.accepted_count == 1

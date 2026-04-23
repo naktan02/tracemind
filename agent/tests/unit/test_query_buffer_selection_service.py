@@ -202,7 +202,8 @@ def test_query_buffer_selection_service_filters_candidates_with_policy() -> None
 
     assert accepted.source_event_ref == "q1"
     assert accepted.evidence_ref == "evidence:q1"
-    assert accepted.metadata["evidence_backend_name"] == (
+    assert accepted.selection_context is not None
+    assert accepted.selection_context.evidence_backend_name == (
         QUERY_BUFFER_PROJECTION_BACKEND_NAME
     )
     assert accepted.confidence_kind == "prototype_similarity_top1"
