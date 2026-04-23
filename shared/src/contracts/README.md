@@ -67,6 +67,19 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `ResolvedExperimentPlanPayload`
   - workspace를 기존 Hydra/script 실행 표면으로 compile한 결과다
 
+### `wellbeing_signal_contracts.py`
+
+가족용 확장 프로그램이 읽는 wellbeing signal 출력 계약을 정의한다.
+
+- `WellbeingSignalSummaryPayload`
+  - 아이용/부모용 현재 상태 카드 source of truth
+- `WellbeingSignalTimeseriesPayload`
+  - 부모용 전체 추이 그래프 source of truth
+- `ParentUnlockRequestPayload`
+  - 부모용 상세 화면 진입용 PIN 요청
+- `ParentUnlockResponsePayload`
+  - 부모용 상세 화면 접근 결과와 세션 메타데이터
+
 ### `prototype_contracts.py`
 
 Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.
