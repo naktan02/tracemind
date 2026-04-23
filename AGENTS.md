@@ -10,7 +10,7 @@
 2. `docs/execution_index.md`
    - 짧은 문서 지도
 3. 현재 작업 경로의 path-specific `AGENTS.md`
-   - `shared/`, `agent/`, `main_server/`, `scripts/`, `tests/`, `docs/`
+   - `shared/`, `agent/`, `main_server/`, `scripts/`, `tests/`, `docs/`, `apps/`
 4. 관련 code contract와 active docs
 
 ## Project Structure & Ownership
@@ -28,6 +28,9 @@
   - thin wrapper, sweep, report, visualization, exploratory-only logic만 둔다
 - `tests/`
   - cross-boundary integration/e2e 및 architecture 검증
+- `apps/`
+  - developer/product UI shell
+  - source of truth를 가지지 않고 `shared` contract와 `main_server` API를 소비한다
 - `infra/`
   - 배포/운영 manifest
 
@@ -36,6 +39,8 @@
 - 운영 후보 알고리즘 구현은 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
 - 공용 계산 규칙은 `shared`, agent-owned 로컬 실행은 `agent`,
   server-owned orchestration은 `main_server`에 둔다.
+- `apps`는 실행 조합 UI, 결과 표시, 사용자 상호작용 shell만 둔다.
+  계약 의미, 전략 이름, 실행 기본값을 UI가 소유하지 않는다.
 - 테스트 위치도 책임 경계를 따른다. 패키지별 테스트는 각 패키지 아래에 두고,
   경계를 넘는 검증만 repo 루트 `tests/`에 둔다.
 - 실행용 스크립트 설정은 `scripts/conf/`의 Hydra config group를 source of

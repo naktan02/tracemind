@@ -47,3 +47,6 @@ runs/
 .idea/
 .vscode/
 tmp/
+node_modules/
+dist/
+npm-debug.log*

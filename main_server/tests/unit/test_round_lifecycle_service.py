@@ -60,6 +60,7 @@ from main_server.src.services.rounds.update_acceptance_policy import (
     SingleSubmissionPerAgentTrustPolicy,
     StrictRoundUpdateAcceptancePolicy,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
@@ -220,6 +221,14 @@ register_shared_adapter_aggregation_backend(
     TEST_SHIFT_ADAPTER_KIND,
     TEST_SHIFT_BACKEND_NAME,
     factory=lambda _overrides: _TestShiftAggregationBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{TEST_SHIFT_ADAPTER_KIND}.{TEST_SHIFT_BACKEND_NAME}",
+        display_name=TEST_SHIFT_BACKEND_NAME,
+        implementation_module=__name__,
+        core_method_name=TEST_SHIFT_BACKEND_NAME,
+        family_name=TEST_SHIFT_ADAPTER_KIND,
+        supported_adapter_kinds=(TEST_SHIFT_ADAPTER_KIND,),
+    ),
 )
 register_shared_adapter_round_family(
     TEST_SHIFT_FAMILY_NAME,

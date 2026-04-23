@@ -7,8 +7,13 @@ from datetime import datetime
 from typing import Sequence
 
 import pytest
+from fastapi.middleware.cors import CORSMiddleware
 
-from main_server.src.api.main import create_app
+from main_server.src.api.main import (
+    DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS,
+    create_app,
+    load_experiment_web_allowed_origins_from_env,
+)
 from main_server.src.services.rounds import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
@@ -22,6 +27,7 @@ from main_server.src.services.rounds import (
     register_shared_adapter_aggregation_backend,
     register_shared_adapter_round_family,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
@@ -109,11 +115,27 @@ register_shared_adapter_aggregation_backend(
     TEST_ADAPTER_KIND,
     TEST_BACKEND_NAME,
     factory=lambda _overrides: _TestAggregationBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{TEST_ADAPTER_KIND}.{TEST_BACKEND_NAME}",
+        display_name=TEST_BACKEND_NAME,
+        implementation_module=__name__,
+        core_method_name=TEST_BACKEND_NAME,
+        family_name=TEST_ADAPTER_KIND,
+        supported_adapter_kinds=(TEST_ADAPTER_KIND,),
+    ),
 )
 register_shared_adapter_aggregation_backend(
     TEST_ADAPTER_KIND,
     TEST_MISMATCH_BACKEND_NAME,
     factory=lambda _overrides: _MismatchedAggregationBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{TEST_ADAPTER_KIND}.{TEST_MISMATCH_BACKEND_NAME}",
+        display_name=TEST_MISMATCH_BACKEND_NAME,
+        implementation_module=__name__,
+        core_method_name=TEST_MISMATCH_BACKEND_NAME,
+        family_name=TEST_ADAPTER_KIND,
+        supported_adapter_kinds=(TEST_ADAPTER_KIND,),
+    ),
 )
 register_shared_adapter_round_family(
     TEST_FAMILY_NAME,
@@ -170,6 +192,14 @@ def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
         service.round_manager_service.adapter_family.aggregation_backend.adapter_kind
         == TEST_ADAPTER_KIND
     )
+    cors_middleware = next(
+        middleware
+        for middleware in app.user_middleware
+        if middleware.cls is CORSMiddleware
+    )
+    assert cors_middleware.kwargs["allow_origins"] == list(
+        DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS
+    )
 
 
 def test_runtime_config_loader_reads_environment_mapping() -> None:
@@ -184,6 +214,21 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
     assert config.adapter_family_name == TEST_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
+
+
+def test_experiment_web_origin_loader_reads_environment_mapping() -> None:
+    origins = load_experiment_web_allowed_origins_from_env(
+        environ={
+            "EXPERIMENT_WEB_ALLOWED_ORIGINS": (
+                "http://localhost:5173, https://experiment.example.com "
+            )
+        }
+    )
+
+    assert origins == (
+        "http://localhost:5173",
+        "https://experiment.example.com",
+    )
 
 
 def test_main_server_app_uses_environment_runtime_config(

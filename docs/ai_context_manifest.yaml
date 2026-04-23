@@ -10,6 +10,7 @@ canonical_layers:
   - .codex/skills/*
 
 path_specific_instructions:
+  - apps/AGENTS.md
   - shared/AGENTS.md
   - agent/AGENTS.md
   - main_server/AGENTS.md
@@ -124,6 +125,7 @@ task_routes:
   web_workspace:
     read_order:
       - AGENTS.md
+      - apps/AGENTS.md
       - docs/execution_index.md
       - docs/project_execution_plan.md
       - docs/web_experiment_workspace_plan.md

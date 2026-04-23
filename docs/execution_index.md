@@ -36,7 +36,9 @@ source-of-truth 우선순위를 먼저 확인한다.
    - 개발자용 웹 실험공간의 단계별 실행 계획
 12. `shared/src/contracts/workspace_manifest_contracts.py`
    - Phase 2 workspace manifest와 compile preview canonical contract
-13. 필요한 경우만 `docs/staged_execution_roadmap.md`
+13. web 구현을 볼 때만 `apps/AGENTS.md`
+   - UI shell이 contract source of truth가 되지 않게 유지하는 규칙
+14. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
 
 ## AI Harness 빠른 경로

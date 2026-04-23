@@ -62,15 +62,13 @@
 
 현재 남은 단계 우선순위:
 
-1. `Phase 3`
-   - seed/central track 기준의 read-only web lane UI MVP
-2. `Phase 4`
+1. `Phase 4`
    - local-only 실행 wrapper와 workspace/run 저장
-3. `Phase 5`
+2. `Phase 5`
    - FL baseline workspace와 runtime compile/run
-4. `Phase 6`
+3. `Phase 6`
    - component bundle, translation operator, hybrid path
-5. `Phase 7`
+4. `Phase 7`
    - DoRA/FedMatch/FedRD류 추가 경험 정리
 
 현재 효율성 판단:
@@ -84,8 +82,8 @@
    새 backend 추가 시 catalog service까지 매번 뜯지 않게 하려는 정리다.
 4. 남아 있는 주의점은 FL block을 너무 빨리 runnable로 열면
    Phase 5 범위가 Phase 3-4를 덮어쓰는 것이다.
-   따라서 다음 단계는 UI MVP를 좁게 시작하고,
-   FL 실행/저장은 뒤 Phase에서 여는 순서가 맞다.
+   따라서 다음 단계는 local-only 실행/저장을 좁게 시작하고,
+   FL 실행 path는 뒤 Phase에서 여는 순서가 맞다.
 
 ## 3. 핵심 원칙
 
@@ -187,11 +185,12 @@
 예시 방향:
 
 ```text
-web/
-  src/
-    workspace/
-    catalog/
-    runs/
+apps/
+  experiment_web/
+    src/
+      workspace/
+      catalog/
+      runs/
 
 shared/src/contracts/
   workspace_manifest_contracts.py
@@ -324,7 +323,7 @@ agent/src/services/training/
 
 ### Phase 3. Web UI MVP
 
-상태: 다음 시작점
+상태: 완료
 
 목표:
 
@@ -338,6 +337,8 @@ agent/src/services/training/
 3. block 선택/해제
 4. compile preview
 5. compatibility 에러 표시
+6. `apps/experiment_web` scaffold
+7. Vite dev origin용 API CORS 보조
 
 제외:
 
@@ -350,6 +351,8 @@ agent/src/services/training/
 1. seed 또는 중앙 적응 baseline 하나를 UI에서 조합해 preview할 수 있다.
 2. FL baseline은 최소한 read-only 구성 preview가 가능하다.
 3. 사용자는 "현재 조합이 어떤 기존 script/config로 번역되는지" 볼 수 있다.
+4. UI shell이 `apps/experiment_web`에 격리되고,
+   source of truth는 backend/code-adjacent layer에 남는다.
 
 커밋 단위:
 
@@ -501,16 +504,15 @@ agent/src/services/training/
 
 ## 9. 현재 다음 시작점
 
-다음 구현 시작은 `Phase 3`부터 아래 순서로 잡는다.
+다음 구현 시작은 `Phase 4`부터 아래 순서로 잡는다.
 
-1. seed/central track을 우선 대상으로 하는 lane UI 골격을 만든다.
-2. block palette는 현재 catalog API만 읽고,
-   UI가 별도 source of truth를 갖지 않게 유지한다.
-3. compile preview는 현재 `WorkspaceManifest -> compile` API를 그대로 재사용한다.
-4. federated track은 우선 read-only palette/preview까지만 연다.
-   - registry-only block의 runnable compile/run은 `Phase 5`에서 연다.
+1. local-only run launcher 계약을 추가한다.
+2. workspace/run 메타데이터 저장을 붙인다.
+3. artifact 링크와 상태 요약을 UI에 다시 연결한다.
+4. 중앙 baseline 실행 범위를 먼저 좁게 연다.
+5. federated runnable path는 `Phase 5`에서 연다.
 
-즉 다음 구현 커밋은 runtime 확장보다 `web UI MVP`가 된다.
+즉 다음 구현 커밋은 `run launcher + local persistence`가 된다.
 
 ## 10. 커밋 원칙
 
