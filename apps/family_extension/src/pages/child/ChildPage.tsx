@@ -39,7 +39,8 @@ export function ChildPage({
             <p className="eyebrow">Child View</p>
             <h2>현재 상태를 아직 불러오지 못했어요</h2>
             <p className="section-copy">
-              로컬 프로그램이 켜져 있는지 확인한 뒤 다시 시도해 주세요.
+              로컬 프로그램이 꺼져 있거나, 브라우저에서 agent API 접근이 아직
+              허용되지 않았을 수 있습니다.
             </p>
           </div>
           <div className="hero-meter">

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+import os
+from collections.abc import Callable, Mapping
 
 from fastapi import FastAPI
+from fastapi.middleware.cors import CORSMiddleware
 
 from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
@@ -41,6 +43,24 @@ from agent.src.services.wellbeing.timeseries_service import (
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
+FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV = "FAMILY_EXTENSION_ALLOWED_ORIGINS"
+DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
+    "http://localhost:5174",
+    "http://127.0.0.1:5174",
+)
+
+
+def load_family_extension_allowed_origins_from_env(
+    environ: Mapping[str, str] | None = None,
+) -> tuple[str, ...]:
+    """family_extension dev server가 접근할 수 있는 origin 목록을 읽는다."""
+
+    effective_environ = os.environ if environ is None else environ
+    raw_value = effective_environ.get(FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV, "")
+    origins = tuple(
+        origin.strip() for origin in raw_value.split(",") if origin.strip()
+    )
+    return origins or DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
 
 
 def _default_round_client_factory(server_base_url: str) -> RoundClient:
@@ -67,9 +87,20 @@ def create_app(
     prototype_sync_service: PrototypeSyncService | None = None,
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
+    family_extension_allowed_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Agent API 앱을 생성하고 override 가능한 기본 의존성을 연결한다."""
     app = FastAPI(title="TraceMind Agent", version="0.1.0")
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=list(
+            family_extension_allowed_origins
+            or load_family_extension_allowed_origins_from_env()
+        ),
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     app.state.scored_event_repository = (
         scored_event_repository or ScoredEventRepository()

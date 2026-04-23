@@ -4,8 +4,15 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from fastapi.middleware.cors import CORSMiddleware
+
 from agent.src.api import wellbeing as wellbeing_api
-from agent.src.api.main import app
+from agent.src.api.main import (
+    DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS,
+    app,
+    create_app,
+    load_family_extension_allowed_origins_from_env,
+)
 from agent.src.services.wellbeing.auth_service import ParentAuthService
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
@@ -78,3 +85,32 @@ def test_wellbeing_router_is_registered_on_agent_app() -> None:
     assert "/api/v1/wellbeing/timeseries" in route_paths
     assert "/api/v1/parent/unlock" in route_paths
     assert "/api/v1/system/health" in route_paths
+
+
+def test_agent_app_uses_family_extension_default_origins() -> None:
+    local_app = create_app()
+
+    cors_middleware = next(
+        middleware
+        for middleware in local_app.user_middleware
+        if middleware.cls is CORSMiddleware
+    )
+
+    assert cors_middleware.kwargs["allow_origins"] == list(
+        DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
+    )
+
+
+def test_family_extension_origin_loader_reads_environment_mapping() -> None:
+    origins = load_family_extension_allowed_origins_from_env(
+        environ={
+            "FAMILY_EXTENSION_ALLOWED_ORIGINS": (
+                "http://localhost:5174, https://family.example.com "
+            )
+        }
+    )
+
+    assert origins == (
+        "http://localhost:5174",
+        "https://family.example.com",
+    )

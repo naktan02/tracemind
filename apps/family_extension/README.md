@@ -51,6 +51,18 @@ cd apps/family_extension
 VITE_AGENT_API_BASE_URL=http://127.0.0.1:9001 npm run dev
 ```
 
+기본 CORS 허용 origin은 아래 두 개다.
+
+- `http://localhost:5174`
+- `http://127.0.0.1:5174`
+
+다른 origin을 열려면 backend에서 아래 env를 사용한다.
+
+```bash
+FAMILY_EXTENSION_ALLOWED_ORIGINS=http://localhost:5174,https://family.example.com \
+uvicorn agent.src.api.main:app --reload --port 8001
+```
+
 ## 확장 entry
 
 - `index.html`
