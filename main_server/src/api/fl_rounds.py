@@ -6,14 +6,14 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from main_server.src.services.federation.rounds.mappers import (
+from main_server.src.services.federation.rounds.boundary.mappers import (
     round_finalize_request_from_payload,
     round_open_request_from_payload,
     round_record_to_payload,
     round_update_acceptance_to_payload,
     training_update_from_payload,
 )
-from main_server.src.services.federation.rounds.payloads import (
+from main_server.src.services.federation.rounds.boundary.payloads import (
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
     RoundRecordPayload,

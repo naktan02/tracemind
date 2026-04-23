@@ -20,7 +20,7 @@ from main_server.src.services.federation.rounds.acceptance.models import (
 from main_server.src.services.federation.rounds.acceptance.policies import (
     StrictRoundUpdateAcceptancePolicy,
 )
-from main_server.src.services.federation.rounds.models import (
+from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
     RoundPublicationSummary,

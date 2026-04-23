@@ -490,7 +490,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
 | `agent/src/services/training/backends/training/` | 새 family용 backend 추가 |
 | `main_server/src/services/federation/rounds/aggregation/` | 새 family용 aggregation backend 추가 |
 | `main_server/src/services/federation/rounds/families/` | 라우팅 등록 |
-| `main_server/src/services/federation/rounds/mappers.py` | 새 payload 변환 추가 |
+| `main_server/src/services/federation/rounds/boundary/mappers.py` | 새 payload 변환 추가 |
 
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).
 

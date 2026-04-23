@@ -11,13 +11,15 @@ from uuid import uuid4
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
+from main_server.src.services.federation.rounds.boundary.models import (
+    RoundOpenRequest,
+)
 from main_server.src.services.federation.rounds.families.diagonal_scale import (
     DiagonalScaleRoundFamily,
 )
 from main_server.src.services.federation.rounds.families.models import (
     SharedAdapterRoundFamily,
 )
-from main_server.src.services.federation.rounds.models import RoundOpenRequest
 from shared.src.config.training_defaults import (
     build_default_secure_aggregation_config,
     build_default_training_objective_config,

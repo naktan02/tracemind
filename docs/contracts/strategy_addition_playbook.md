@@ -22,7 +22,7 @@
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `agent` 또는 `main_server` |
-| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime_config.py` |
+| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
 판별 기준은 단순하다.
@@ -140,7 +140,7 @@
 보통 수정 파일:
 
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
-- 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime_config.py](../../main_server/src/services/federation/rounds/runtime_config.py)
+- 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 
 작업 순서:
 
@@ -173,7 +173,7 @@
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
 - [main_server/src/services/federation/rounds/families/registry.py](../../main_server/src/services/federation/rounds/families/registry.py)
-- [main_server/src/services/federation/rounds/mappers.py](../../main_server/src/services/federation/rounds/mappers.py)
+- [main_server/src/services/federation/rounds/boundary/mappers.py](../../main_server/src/services/federation/rounds/boundary/mappers.py)
 
 작업 순서:
 
@@ -197,7 +197,7 @@
 - local training 기본 전략:
   - [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 - server round runtime 기본 aggregation:
-  - [main_server/src/services/federation/rounds/runtime_config.py](../../main_server/src/services/federation/rounds/runtime_config.py)
+  - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:
   - `scripts/conf/experiments/` 아래 Hydra config group
 

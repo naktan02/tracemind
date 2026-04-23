@@ -18,7 +18,7 @@ from main_server.src.services.federation.rounds.acceptance.models import (
     UpdateAcceptanceAction,
     UpdateAcceptanceDecision,
 )
-from main_server.src.services.federation.rounds.models import RoundRecord
+from main_server.src.services.federation.rounds.boundary.models import RoundRecord
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 
 

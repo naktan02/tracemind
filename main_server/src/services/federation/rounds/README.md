@@ -20,24 +20,26 @@
 
 ### API 경계와 canonical shape를 보고 싶을 때
 
-1. `models.py`
-2. `payloads.py`
-3. `mappers.py`
+1. `boundary/models.py`
+2. `boundary/payloads.py`
+3. `boundary/mappers.py`
 
 ### runtime wiring 축을 보고 싶을 때
 
-1. `runtime_config.py`
-2. `runtime_factory.py`
-3. `runtime_compatibility.py`
+1. `runtime/config.py`
+2. `runtime/factory.py`
+3. `runtime/compatibility.py`
 
 ## 파일 역할 빠른 맵
 
-- `models.py`
+- `boundary/models.py`
   - round domain/canonical request 모델
-- `payloads.py`
+- `boundary/payloads.py`
   - API payload shape
-- `mappers.py`
+- `boundary/mappers.py`
   - payload를 canonical request로 정규화
+- `runtime/`
+  - server-owned runtime config, compatibility, factory wiring
 - `round_manager_service.py`
   - training task 생성, aggregation 결과 publication
 - `round_lifecycle_service.py`
@@ -53,7 +55,7 @@
 
 - aggregation backend 추가: `aggregation/`
 - adapter family 추가: `families/` + `shared/src/contracts/adapter_contracts.py`
-- server runtime 기본 축 변경: `runtime_config.py`
+- server runtime 기본 축 변경: `runtime/config.py`
 
 새 family나 backend를 추가할 때는
 `docs/contracts/algorithm_extension_guide.md`와

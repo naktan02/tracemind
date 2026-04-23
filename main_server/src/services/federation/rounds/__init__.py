@@ -46,6 +46,15 @@ from .aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
     register_shared_adapter_aggregation_backend,
 )
+from .boundary.models import (
+    RoundFinalizeRequest,
+    RoundOpenRequest,
+    RoundPublicationSummary,
+    RoundRecord,
+    RoundStatus,
+    RoundTaskConfig,
+    RoundUpdateAcceptance,
+)
 from .families.classifier_head import ClassifierHeadRoundFamily
 from .families.diagonal_scale import DiagonalScaleRoundFamily
 from .families.models import SharedAdapterRoundFamily
@@ -58,11 +67,11 @@ from .round_manager_service import (
     RoundManagerService,
     RoundPublication,
 )
-from .runtime_compatibility import (
+from .runtime.compatibility import (
     ServerRoundRuntimeCompatibility,
     validate_server_round_runtime_config,
 )
-from .runtime_config import (
+from .runtime.config import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
@@ -93,7 +102,7 @@ def build_round_manager_service_from_config(
     ) = None,
     clock: Clock | None = None,
 ) -> RoundManagerService:
-    from .runtime_factory import build_round_manager_service_from_config as _build
+    from .runtime.factory import build_round_manager_service_from_config as _build
 
     return _build(
         config,
@@ -114,7 +123,7 @@ def build_round_lifecycle_service_from_config(
     update_acceptance_policy: RoundUpdateAcceptancePolicy | None = None,
     clock: Clock | None = None,
 ) -> RoundLifecycleService:
-    from .runtime_factory import build_round_lifecycle_service_from_config as _build
+    from .runtime.factory import build_round_lifecycle_service_from_config as _build
 
     return _build(
         config,

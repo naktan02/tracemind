@@ -25,10 +25,10 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
-from main_server.src.services.federation.rounds.runtime_compatibility import (
+from main_server.src.services.federation.rounds.runtime.compatibility import (
     validate_server_round_runtime_config,
 )
-from main_server.src.services.federation.rounds.runtime_config import (
+from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock

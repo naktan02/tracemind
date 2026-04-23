@@ -12,7 +12,7 @@ from main_server.src.services.federation.rounds.acceptance.errors import (
 from main_server.src.services.federation.rounds.acceptance.helpers import (
     find_existing_agent_update,
 )
-from main_server.src.services.federation.rounds.models import RoundRecord
+from main_server.src.services.federation.rounds.boundary.models import RoundRecord
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 
 

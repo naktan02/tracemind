@@ -143,7 +143,7 @@ server runtime을 끝까지 닫을 수 없다.
   - 역할: round open / task publish / update accept / finalize / publish orchestration
 - [x] `main_server/src/infrastructure/repositories/round_repository.py`
   - 역할: active round 상태 저장
-- [x] `main_server/src/services/federation/rounds/models.py` 또는 동등 경로
+- [x] `main_server/src/services/federation/rounds/boundary/models.py` 또는 동등 경로
   - 역할: round status, participant summary, finalize input/output
 
 ### 기존 코드와 연결할 것

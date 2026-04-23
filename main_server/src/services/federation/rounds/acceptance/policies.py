@@ -20,7 +20,7 @@ from main_server.src.services.federation.rounds.acceptance.network_policies impo
 from main_server.src.services.federation.rounds.acceptance.trust_policies import (
     AllowAllRoundTrustPolicy,
 )
-from main_server.src.services.federation.rounds.models import RoundRecord
+from main_server.src.services.federation.rounds.boundary.models import RoundRecord
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 
 

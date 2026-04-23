@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 import pytest
 
 from agent.src.services.inference.scoring_service import ScoringService
-from main_server.src.services.federation.rounds.models import RoundTaskConfig
+from main_server.src.services.federation.rounds.boundary.models import (
+    RoundTaskConfig,
+)
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,

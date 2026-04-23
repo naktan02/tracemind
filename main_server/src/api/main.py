@@ -24,17 +24,17 @@ from main_server.src.services.experiment_workspace.run_service import (
 from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
 )
-from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
+from main_server.src.services.federation.assets.prototypes import (
     PrototypePackService,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
-from main_server.src.services.federation.rounds.runtime_config import (
+from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
 )
-from main_server.src.services.federation.rounds.runtime_factory import (
+from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_lifecycle_service_from_config,
 )
 

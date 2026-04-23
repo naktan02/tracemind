@@ -21,7 +21,7 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.rounds.models import (
+from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
