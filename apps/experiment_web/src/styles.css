@@ -97,6 +97,22 @@ a:hover {
   color: #5d6a7d;
 }
 
+.topbar-guide {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.topbar-guide span {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #eef4ff;
+  color: #2458c8;
+  font-size: 0.84rem;
+  font-weight: 600;
+}
+
 .topbar-meta {
   display: flex;
   flex-wrap: wrap;
@@ -176,6 +192,7 @@ a:hover {
   display: block;
   margin-top: 4px;
   color: #607086;
+  line-height: 1.45;
 }
 
 .track-tab--active,
@@ -195,8 +212,21 @@ a:hover {
   align-items: start;
 }
 
+.workspace-page {
+  display: grid;
+  gap: 18px;
+}
+
+.workspace-overview {
+  display: grid;
+  grid-template-columns: minmax(320px, 380px) minmax(0, 1fr);
+  gap: 18px;
+  align-items: start;
+}
+
 .panel {
   padding: 20px;
+  min-width: 0;
 }
 
 .panel-header {
@@ -223,6 +253,29 @@ a:hover {
 .saved-workspace-card__body span,
 .run-card__body span,
 .run-card__body code {
+  color: #5d6a7d;
+}
+
+.workspace-guide-list {
+  display: grid;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.workspace-guide-card {
+  padding: 14px;
+  border: 1px solid #d8e0eb;
+  border-radius: 18px;
+  background: #f8fafc;
+}
+
+.workspace-guide-card strong {
+  display: block;
+  margin-bottom: 6px;
+}
+
+.workspace-guide-card p {
+  margin: 0;
   color: #5d6a7d;
 }
 
@@ -309,6 +362,7 @@ a:hover {
 
 .workspace-main {
   min-height: 720px;
+  min-width: 0;
 }
 
 .summary-rail {
@@ -338,6 +392,7 @@ a:hover {
   border: 1px solid #d8e0eb;
   border-radius: 18px;
   background: #fff;
+  min-width: 0;
 }
 
 .entrypoint-card {
@@ -358,6 +413,7 @@ a:hover {
 pre {
   font-family: "IBM Plex Mono", "SFMono-Regular", monospace;
   font-size: 0.82rem;
+  overflow-wrap: anywhere;
 }
 
 .step-intro {
@@ -402,6 +458,17 @@ pre {
 .selection-summary-card span:last-child {
   color: #607086;
   word-break: break-all;
+}
+
+.section-tech-details {
+  max-width: 280px;
+}
+
+.section-tech-details summary {
+  cursor: pointer;
+  color: #537094;
+  font-size: 0.85rem;
+  font-weight: 700;
 }
 
 .section-card {
@@ -450,6 +517,11 @@ pre {
   font-size: 0.85rem;
 }
 
+.item-card__description {
+  margin: 10px 0 0;
+  color: #43536a;
+}
+
 .item-card__blocker {
   margin: 10px 0 0;
   color: #b53d35;
@@ -484,9 +556,14 @@ pre {
   margin: 12px 0 0;
 }
 
+.metadata-list--compact {
+  margin-top: 10px;
+}
+
 .metadata-list div {
   display: grid;
   gap: 2px;
+  min-width: 0;
 }
 
 .metadata-list dd {
@@ -594,11 +671,18 @@ pre {
   padding: 10px 14px;
   border-radius: 14px;
   border: 1px solid #d0d8e3;
+  min-width: 0;
 }
 
 .ghost-button {
   background: #ffffff;
   color: #23405e;
+}
+
+.ghost-button--danger {
+  color: #b53d35;
+  border-color: rgba(181, 61, 53, 0.24);
+  background: #fff8f7;
 }
 
 .primary-button {
@@ -659,6 +743,14 @@ pre {
   overflow: auto;
 }
 
+.compare-board__meta {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
 .compare-table {
   width: 100%;
   border-collapse: collapse;
@@ -686,6 +778,34 @@ pre {
 .compare-workspace-cell {
   display: grid;
   gap: 4px;
+  min-width: 220px;
+}
+
+.compare-group-list {
+  display: grid;
+  gap: 14px;
+}
+
+.compare-group {
+  padding: 16px;
+  border: 1px solid #d8e0eb;
+  border-radius: 18px;
+  background: #fbfcfe;
+}
+
+.compare-group__header {
+  display: flex;
+  justify-content: space-between;
+  gap: 14px;
+  align-items: flex-start;
+  margin-bottom: 12px;
+}
+
+.compare-method-cell,
+.compare-date-cell {
+  display: grid;
+  gap: 8px;
+  min-width: 180px;
 }
 
 .saved-workspace-card,
@@ -750,7 +870,19 @@ pre {
   gap: 8px;
 }
 
+code,
+strong,
+span,
+td,
+th {
+  overflow-wrap: anywhere;
+}
+
 @media (max-width: 1380px) {
+  .workspace-overview {
+    grid-template-columns: 1fr;
+  }
+
   .workspace-dashboard {
     grid-template-columns: minmax(250px, 290px) minmax(0, 1fr);
   }
@@ -758,7 +890,7 @@ pre {
   .summary-rail {
     grid-column: 1 / -1;
     position: static;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -775,6 +907,10 @@ pre {
 
   .workspace-dashboard {
     grid-template-columns: 1fr;
+  }
+
+  .compare-group__header {
+    flex-direction: column;
   }
 
   .override-field-row {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import {
+  deleteSavedExperimentWorkspace,
   getSavedExperimentWorkspace,
   listSavedExperimentWorkspaces,
   saveExperimentWorkspace,
@@ -17,11 +18,13 @@ export interface SavedWorkspacesState {
   savedWorkspacesError: string | null;
   isSavedWorkspacesLoading: boolean;
   loadingWorkspaceId: string | null;
+  deletingWorkspaceId: string | null;
   refreshSavedWorkspaces: () => Promise<void>;
   saveWorkspace: (
     manifest: WorkspaceManifestPayload,
   ) => Promise<SavedWorkspaceDetailPayload>;
   loadWorkspace: (workspaceId: string) => Promise<SavedWorkspaceDetailPayload>;
+  deleteWorkspace: (workspaceId: string) => Promise<SavedWorkspaceSummaryPayload>;
 }
 
 export function useSavedWorkspaces(
@@ -35,6 +38,9 @@ export function useSavedWorkspaces(
   );
   const [isSavedWorkspacesLoading, setIsSavedWorkspacesLoading] = useState(false);
   const [loadingWorkspaceId, setLoadingWorkspaceId] = useState<string | null>(null);
+  const [deletingWorkspaceId, setDeletingWorkspaceId] = useState<string | null>(
+    null,
+  );
 
   async function refreshSavedWorkspaces() {
     setIsSavedWorkspacesLoading(true);
@@ -66,13 +72,24 @@ export function useSavedWorkspaces(
     }
   }
 
+  async function deleteWorkspace(workspaceId: string) {
+    setDeletingWorkspaceId(workspaceId);
+    try {
+      return await deleteSavedExperimentWorkspace(apiBaseUrl, workspaceId);
+    } finally {
+      setDeletingWorkspaceId(null);
+    }
+  }
+
   return {
     savedWorkspaces,
     savedWorkspacesError,
     isSavedWorkspacesLoading,
     loadingWorkspaceId,
+    deletingWorkspaceId,
     refreshSavedWorkspaces,
     saveWorkspace,
     loadWorkspace,
+    deleteWorkspace,
   };
 }

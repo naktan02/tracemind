@@ -112,6 +112,19 @@ export async function getSavedExperimentWorkspace(
   );
 }
 
+export async function deleteSavedExperimentWorkspace(
+  baseUrl: string,
+  workspaceId: string,
+): Promise<SavedWorkspaceSummaryPayload> {
+  return requestJson<SavedWorkspaceSummaryPayload>(
+    baseUrl,
+    `/api/v1/experiments/workspaces/${encodeURIComponent(workspaceId)}`,
+    {
+      method: "DELETE",
+    },
+  );
+}
+
 export async function listExperimentRuns(
   baseUrl: string,
 ): Promise<ExperimentRunPayload[]> {

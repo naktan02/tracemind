@@ -1,8 +1,11 @@
 import { buildExperimentRunLogUrl } from "../api";
 import {
   formatDateTime,
+  formatEntrypointName,
   formatMetricKey,
   formatMetricValue,
+  formatRunStatus,
+  formatTrackName,
 } from "../lib/formatters";
 import type { ExperimentRunPayload } from "../types";
 
@@ -17,8 +20,8 @@ export function RunHistoryPanel(props: {
     <div className="subpanel subpanel--runs">
       <div className="subpanel__header">
         <div>
-          <p className="panel-kicker">Runtime</p>
-          <h3>Recent runs</h3>
+          <p className="panel-kicker">실행 기록</p>
+          <h3>최근 실행</h3>
         </div>
         <button
           type="button"
@@ -26,13 +29,13 @@ export function RunHistoryPanel(props: {
           onClick={props.onRefresh}
           disabled={props.isRunsLoading}
         >
-          {props.isRunsLoading ? "Refreshing..." : "Refresh"}
+          {props.isRunsLoading ? "새로고침 중..." : "새로고침"}
         </button>
       </div>
 
       {props.runsError ? (
         <div className="message-block message-block--error">
-          <h3>Run list error</h3>
+          <h3>실행 목록을 불러오지 못했습니다</h3>
           <p>{props.runsError}</p>
         </div>
       ) : null}
@@ -45,24 +48,25 @@ export function RunHistoryPanel(props: {
                 <div>
                   <strong>{run.run_id}</strong>
                   <p>
-                    {run.track_name} / {run.entrypoint_name}
+                    {formatTrackName(run.track_name)} /{" "}
+                    {formatEntrypointName(run.entrypoint_name)}
                   </p>
                 </div>
                 <span className={`run-status run-status--${run.status}`}>
-                  {run.status}
+                  {formatRunStatus(run.status)}
                 </span>
               </div>
               <div className="run-card__body">
-                <span>started: {formatDateTime(run.started_at)}</span>
+                <span>시작: {formatDateTime(run.started_at)}</span>
                 {run.finished_at ? (
-                  <span>finished: {formatDateTime(run.finished_at)}</span>
+                  <span>종료: {formatDateTime(run.finished_at)}</span>
                 ) : null}
                 {run.workspace_id ? (
-                  <code>workspace: {run.workspace_id}</code>
+                  <code>저장된 조합: {run.workspace_id}</code>
                 ) : (
-                  <span>workspace: unsaved draft launch</span>
+                  <span>저장 전 초안에서 바로 실행</span>
                 )}
-                <code>artifact: {run.artifact_root_path}</code>
+                <code>산출물 경로: {run.artifact_root_path}</code>
                 {run.error_message ? (
                   <p className="run-card__error">{run.error_message}</p>
                 ) : null}
@@ -87,7 +91,7 @@ export function RunHistoryPanel(props: {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  stdout log
+                  stdout 로그
                 </a>
                 <a
                   href={buildExperimentRunLogUrl(
@@ -98,13 +102,13 @@ export function RunHistoryPanel(props: {
                   target="_blank"
                   rel="noreferrer"
                 >
-                  stderr log
+                  stderr 로그
                 </a>
               </div>
             </article>
           ))
         ) : (
-          <p className="hint-text">아직 실행한 local run이 없습니다.</p>
+          <p className="hint-text">아직 실행한 실험이 없습니다.</p>
         )}
       </div>
     </div>

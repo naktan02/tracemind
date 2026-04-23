@@ -59,16 +59,19 @@
    - compiler가 `FixMatch`의 unlabeled dataset readiness를 compile 단계에서 검사한다.
    - `federated_run_preset.client_count`를 live roster가 아닌
      synthetic simulation participant count로 명시한다.
+6. `Phase 4 UI usability follow-up`
+   - 저장된 실험 compare board를 화면 상단으로 올렸다.
+   - workspace summary payload가 `selection_previews`를 노출한다.
+   - 저장된 실험에 `불러와 수정`, `복제 후 수정`, `그대로 재실행`, `삭제`를 제공한다.
+   - step workflow, run history, tab 설명 문구를 한국어 기준으로 정리했다.
 
 현재 남은 단계 우선순위:
 
-1. `Phase 4`
-   - local-only 실행 wrapper와 workspace/run 저장
-2. `Phase 5`
+1. `Phase 5`
    - FL baseline workspace와 runtime compile/run
-3. `Phase 6`
+2. `Phase 6`
    - component bundle, translation operator, hybrid path
-4. `Phase 7`
+3. `Phase 7`
    - DoRA/FedMatch/FedRD류 추가 경험 정리
 
 현재 효율성 판단:
@@ -84,6 +87,12 @@
    Phase 5 범위가 Phase 3-4를 덮어쓰는 것이다.
    따라서 다음 단계는 local-only 실행/저장을 좁게 시작하고,
    FL 실행 path는 뒤 Phase에서 여는 순서가 맞다.
+5. Phase 4 UI는 단순 catalog 나열보다
+   `저장된 실험 비교 -> 초안 편집 -> 저장/재실행` 흐름이 더 직관적이라는 점이
+   확인됐다.
+   - compare board는 상단에서 같은 기본 조합의 저장 실험을 비교한다.
+   - `LoRA 전용`처럼 보이는 문구는 `PEFT` 등 더 일반적인 축 표현을 우선한다.
+   - 저장된 실험은 그대로 재실행하거나, 복제 후 방법론/파라미터만 바꿔 새 row로 쌓는다.
 
 ## 3. 핵심 원칙
 
@@ -376,10 +385,15 @@ agent/src/services/training/
 1. local-only 실행 wrapper
 2. run status 추적
 3. workspace 저장/재열기
-4. artifact 링크 표시
-5. `SQLite` 기반의 run/workspace 메타데이터 저장
-6. dataset asset lane과 experiment workspace lane을 저장 계층에서 분리
-7. `apps/experiment_web`를 lane/page + hook/component 단위로 분리
+4. 저장된 실험 compare board
+   - `불러와 수정`
+   - `복제 후 수정`
+   - `그대로 재실행`
+   - `삭제`
+5. artifact 링크 표시
+6. `SQLite` 기반의 run/workspace 메타데이터 저장
+7. dataset asset lane과 experiment workspace lane을 저장 계층에서 분리
+8. `apps/experiment_web`를 lane/page + hook/component 단위로 분리
 
 초기 지원 범위:
 

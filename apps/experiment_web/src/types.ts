@@ -75,6 +75,16 @@ export interface SavedWorkspaceSummaryPayload {
   created_at: string;
   updated_at: string;
   latest_run_id: string | null;
+  selection_previews: SavedWorkspaceSelectionPreviewPayload[];
+}
+
+export interface SavedWorkspaceSelectionPreviewPayload {
+  slot_name: string;
+  section_name: string;
+  variant_profile_name: string;
+  core_method_name: string | null;
+  family_name: string | null;
+  override_keys: string[];
 }
 
 export interface SavedWorkspaceDetailPayload {
@@ -85,6 +95,7 @@ export interface SavedWorkspaceDetailPayload {
   created_at: string;
   updated_at: string;
   latest_run_id: string | null;
+  selection_previews: SavedWorkspaceSelectionPreviewPayload[];
   manifest: WorkspaceManifestPayload;
   resolved_plan: ResolvedExperimentPlanPayload | null;
 }

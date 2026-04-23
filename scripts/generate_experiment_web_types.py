@@ -57,6 +57,10 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
         experiment_payloads.SavedWorkspaceSummaryPayload,
     ),
     (
+        "SavedWorkspaceSelectionPreviewPayload",
+        experiment_payloads.SavedWorkspaceSelectionPreviewPayload,
+    ),
+    (
         "SavedWorkspaceDetailPayload",
         experiment_payloads.SavedWorkspaceDetailPayload,
     ),

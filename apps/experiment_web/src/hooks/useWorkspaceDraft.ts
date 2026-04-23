@@ -46,6 +46,10 @@ export interface WorkspaceDraftState {
   markSavedWorkspace: (workspaceId: string, manifestId: string) => void;
   forkCurrentWorkspaceDraft: (trackName: string) => void;
   applyHydratedWorkspace: (workspaceId: string, draft: HydratedWorkspaceDraft) => void;
+  applyHydratedWorkspaceClone: (
+    trackName: string,
+    draft: HydratedWorkspaceDraft,
+  ) => void;
   resetDraft: (track: CatalogTrackPayload | null, entrypointName: string | null) => void;
   handleSectionItemToggle: (sectionName: string, itemName: string) => void;
   handleSectionOverrideTextChange: (
@@ -160,6 +164,17 @@ export function useWorkspaceDraft(params: {
     setGlobalOverrideText(draft.globalOverrideText);
   }
 
+  function applyHydratedWorkspaceClone(
+    trackName: string,
+    draft: HydratedWorkspaceDraft,
+  ) {
+    setManifestId(createManifestId(trackName));
+    setCurrentWorkspaceId(null);
+    setSelectedItemNameBySection(draft.selectedItemNameBySection);
+    setOverrideTextBySection(draft.overrideTextBySection);
+    setGlobalOverrideText(draft.globalOverrideText);
+  }
+
   function resetDraft(
     track: CatalogTrackPayload | null,
     nextEntrypointName: string | null,
@@ -240,6 +255,7 @@ export function useWorkspaceDraft(params: {
     markSavedWorkspace,
     forkCurrentWorkspaceDraft,
     applyHydratedWorkspace,
+    applyHydratedWorkspaceClone,
     resetDraft,
     handleSectionItemToggle,
     handleSectionOverrideTextChange,

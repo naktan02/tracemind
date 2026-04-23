@@ -64,3 +64,22 @@ def get_saved_experiment_workspace(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=str(error),
         ) from error
+
+
+@router.delete(
+    "/workspaces/{workspace_id}",
+    response_model=SavedWorkspaceSummaryPayload,
+)
+def delete_saved_experiment_workspace(
+    workspace_id: str,
+    service: ExperimentWorkspaceServiceDep,
+) -> SavedWorkspaceSummaryPayload:
+    """저장된 workspace를 삭제한다."""
+
+    try:
+        return service.delete_workspace(workspace_id)
+    except ValueError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error

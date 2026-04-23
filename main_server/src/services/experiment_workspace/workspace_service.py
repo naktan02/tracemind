@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import shutil
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
@@ -13,10 +14,12 @@ from main_server.src.services.experiment_workspace.compiler_service import (
 )
 from main_server.src.services.experiment_workspace.payloads import (
     SavedWorkspaceDetailPayload,
+    SavedWorkspaceSelectionPreviewPayload,
     SavedWorkspaceSummaryPayload,
 )
 from shared.src.contracts.workspace_manifest_contracts import (
     WorkspaceManifestPayload,
+    WorkspaceSelectionPayload,
     dump_resolved_experiment_plan_payload,
     dump_workspace_manifest_payload,
     load_resolved_experiment_plan_payload,
@@ -84,6 +87,19 @@ class ExperimentWorkspaceService:
             raise ValueError(f"Unknown workspace: {workspace_id}.")
         return _build_workspace_detail_payload(record)
 
+    def delete_workspace(self, workspace_id: str) -> SavedWorkspaceSummaryPayload:
+        """saved workspace metadata와 저장 파일을 삭제한다."""
+
+        record = self.workspace_repository.get(workspace_id)
+        if record is None:
+            raise ValueError(f"Unknown workspace: {workspace_id}.")
+        summary = _build_workspace_summary_payload(record)
+        self.workspace_repository.delete(workspace_id)
+        workspace_dir = self.workspace_repository.workspace_dir(workspace_id)
+        if workspace_dir.exists():
+            shutil.rmtree(workspace_dir, ignore_errors=True)
+        return summary
+
     def attach_latest_run(
         self,
         workspace_id: str,
@@ -110,6 +126,7 @@ def build_experiment_workspace_id(*, created_at: datetime) -> str:
 def _build_workspace_summary_payload(
     record: StoredWorkspaceRecord,
 ) -> SavedWorkspaceSummaryPayload:
+    manifest = load_workspace_manifest_payload(record.manifest_path)
     return SavedWorkspaceSummaryPayload(
         workspace_id=record.workspace_id,
         manifest_id=record.manifest_id,
@@ -118,12 +135,14 @@ def _build_workspace_summary_payload(
         created_at=record.created_at,
         updated_at=record.updated_at,
         latest_run_id=record.latest_run_id,
+        selection_previews=_build_selection_previews(manifest.selections),
     )
 
 
 def _build_workspace_detail_payload(
     record: StoredWorkspaceRecord,
 ) -> SavedWorkspaceDetailPayload:
+    manifest = load_workspace_manifest_payload(record.manifest_path)
     return SavedWorkspaceDetailPayload(
         workspace_id=record.workspace_id,
         manifest_id=record.manifest_id,
@@ -132,10 +151,27 @@ def _build_workspace_detail_payload(
         created_at=record.created_at,
         updated_at=record.updated_at,
         latest_run_id=record.latest_run_id,
-        manifest=load_workspace_manifest_payload(record.manifest_path),
+        selection_previews=_build_selection_previews(manifest.selections),
+        manifest=manifest,
         resolved_plan=(
             None
             if record.resolved_plan_path is None
             else load_resolved_experiment_plan_payload(record.resolved_plan_path)
         ),
+    )
+
+
+def _build_selection_previews(
+    selections: tuple[WorkspaceSelectionPayload, ...],
+) -> tuple[SavedWorkspaceSelectionPreviewPayload, ...]:
+    return tuple(
+        SavedWorkspaceSelectionPreviewPayload(
+            slot_name=selection.slot_name,
+            section_name=selection.section_name,
+            variant_profile_name=selection.variant_profile_name,
+            core_method_name=selection.core_method_name,
+            family_name=selection.family_name,
+            override_keys=tuple(sorted(selection.override_patch.keys())),
+        )
+        for selection in selections
     )

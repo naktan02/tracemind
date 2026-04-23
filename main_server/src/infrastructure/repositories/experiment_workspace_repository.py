@@ -52,6 +52,11 @@ SET latest_run_id = ?, updated_at = ?
 WHERE workspace_id = ?;
 """
 
+_DELETE_WORKSPACE_SQL = """
+DELETE FROM experiment_workspaces
+WHERE workspace_id = ?;
+"""
+
 
 @dataclass(slots=True)
 class StoredExperimentWorkspaceRecord:
@@ -137,6 +142,10 @@ class ExperimentWorkspaceRepository:
                     workspace_id,
                 ),
             )
+
+    def delete(self, workspace_id: str) -> None:
+        with self._connect() as conn:
+            conn.execute(_DELETE_WORKSPACE_SQL, (workspace_id,))
 
     def _connect(self) -> sqlite3.Connection:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

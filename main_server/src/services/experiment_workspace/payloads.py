@@ -196,6 +196,19 @@ class ExperimentCatalogPayload(BaseModel):
     tracks: tuple[CatalogTrackPayload, ...]
 
 
+class SavedWorkspaceSelectionPreviewPayload(BaseModel):
+    """비교 표와 저장된 실험 카드에서 보여줄 선택 요약."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    slot_name: str
+    section_name: str
+    variant_profile_name: str
+    core_method_name: str | None = None
+    family_name: str | None = None
+    override_keys: tuple[str, ...] = ()
+
+
 class SavedWorkspaceSummaryPayload(BaseModel):
     """저장된 workspace 목록 요약."""
 
@@ -208,6 +221,7 @@ class SavedWorkspaceSummaryPayload(BaseModel):
     created_at: datetime
     updated_at: datetime
     latest_run_id: str | None = None
+    selection_previews: tuple[SavedWorkspaceSelectionPreviewPayload, ...] = ()
 
 
 class SavedWorkspaceDetailPayload(SavedWorkspaceSummaryPayload):

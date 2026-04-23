@@ -62,10 +62,13 @@ def test_experiment_workspace_service_saves_and_reloads_workspace(
 
     recent = service.list_workspaces()
     assert recent[0].workspace_id == saved.workspace_id
+    assert recent[0].selection_previews[0].section_name == "dataset_presets"
+    assert recent[0].selection_previews[0].variant_profile_name == "ourafla"
 
     loaded = service.get_workspace(saved.workspace_id)
     assert loaded.manifest == saved.manifest
     assert loaded.resolved_plan == saved.resolved_plan
+    assert loaded.selection_previews[0].family_name == "dataset"
 
     service.attach_latest_run(
         saved.workspace_id,
@@ -74,3 +77,8 @@ def test_experiment_workspace_service_saves_and_reloads_workspace(
     )
     refreshed = service.get_workspace(saved.workspace_id)
     assert refreshed.latest_run_id == "run_20260423_000000_000001"
+
+    deleted = service.delete_workspace(saved.workspace_id)
+    assert deleted.workspace_id == saved.workspace_id
+    assert deleted.selection_previews[0].variant_profile_name == "ourafla"
+    assert service.list_workspaces() == ()

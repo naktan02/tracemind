@@ -21,6 +21,7 @@ from main_server.src.api.experiment_run_routes import (
     router as experiment_run_router,
 )
 from main_server.src.api.experiment_workspace_routes import (
+    delete_saved_experiment_workspace,
     get_saved_experiment_workspace,
     list_saved_experiment_workspaces,
     save_experiment_workspace,
@@ -36,6 +37,7 @@ router.include_router(experiment_run_router)
 
 __all__ = [
     "compile_experiment_manifest",
+    "delete_saved_experiment_workspace",
     "get_experiment_catalog",
     "get_experiment_run",
     "get_experiment_run_log",

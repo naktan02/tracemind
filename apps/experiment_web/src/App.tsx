@@ -2,6 +2,7 @@ import { CentralAdaptationWorkspacePage } from "./pages/CentralAdaptationWorkspa
 import { FederatedRuntimeWorkspacePage } from "./pages/FederatedRuntimeWorkspacePage";
 import { SeedWorkspacePage } from "./pages/SeedWorkspacePage";
 import { useExperimentWorkspaceController } from "./hooks/useExperimentWorkspaceController";
+import { formatTrackName } from "./lib/formatters";
 
 function App() {
   const controller = useExperimentWorkspaceController();
@@ -10,12 +11,17 @@ function App() {
     <div className="app-shell">
       <header className="app-topbar">
         <div>
-          <p className="eyebrow">TraceMind Developer Workspace</p>
-          <h1>Experiment Workspace</h1>
+          <p className="eyebrow">TraceMind 개발자 실험 공간</p>
+          <h1>실험 조합 워크스페이스</h1>
           <p className="app-topbar__text">
-            lane별 preset을 조합하고, compile preview와 local run 결과를 같은
-            도구 안에서 비교합니다.
+            저장된 실험을 비교하고, 같은 조합에서 방법론이나 파라미터만 바꿔
+            다시 실행하는 개발자용 화면입니다.
           </p>
+          <div className="topbar-guide">
+            <span>1. 탭 선택</span>
+            <span>2. 저장된 실험 비교</span>
+            <span>3. 조합 수정 후 저장/실행</span>
+          </div>
         </div>
         <div className="topbar-meta">
           <div className="topbar-chip">
@@ -23,11 +29,15 @@ function App() {
             <strong>{controller.apiBaseUrl}</strong>
           </div>
           <div className="topbar-chip">
-            <span className="meta-label">Draft</span>
-            <strong>{controller.currentWorkspaceId ?? "unsaved"}</strong>
+            <span className="meta-label">현재 초안</span>
+            <strong>{controller.currentWorkspaceId ?? "저장 전 초안"}</strong>
           </div>
           <div className="topbar-chip">
-            <span className="meta-label">Runs</span>
+            <span className="meta-label">저장된 실험</span>
+            <strong>{controller.savedWorkspaces.length}</strong>
+          </div>
+          <div className="topbar-chip">
+            <span className="meta-label">최근 실행</span>
             <strong>{controller.runs.length}</strong>
           </div>
         </div>
@@ -35,21 +45,21 @@ function App() {
 
       {controller.isCatalogLoading ? (
         <main className="status-panel">
-          <h2>Loading catalog</h2>
-          <p>현재 experiment catalog와 compile surface를 읽는 중입니다.</p>
+          <h2>실험 목록을 불러오는 중입니다</h2>
+          <p>현재 조합 가능한 실험 축과 실행 surface를 읽고 있습니다.</p>
         </main>
       ) : null}
 
       {controller.catalogError ? (
         <main className="status-panel status-panel--error">
-          <h2>Catalog request failed</h2>
+          <h2>실험 목록을 불러오지 못했습니다</h2>
           <p>{controller.catalogError}</p>
         </main>
       ) : null}
 
       {controller.catalog ? (
         <section className="track-switcher">
-          <div className="track-tabs" role="tablist" aria-label="Experiment tracks">
+          <div className="track-tabs" role="tablist" aria-label="실험 탭">
             {controller.catalog.tracks.map((track) => (
               <button
                 key={track.track_name}
@@ -62,7 +72,7 @@ function App() {
                 onClick={() => controller.handleTrackChange(track)}
               >
                 <span>{track.display_name}</span>
-                <small>{track.track_name}</small>
+                <small>{track.description ?? formatTrackName(track.track_name)}</small>
               </button>
             ))}
           </div>

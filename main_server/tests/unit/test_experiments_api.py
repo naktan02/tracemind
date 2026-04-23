@@ -9,6 +9,9 @@ from fastapi import HTTPException
 
 from main_server.src.api import experiments as experiments_api
 from main_server.src.api.main import app
+from main_server.src.infrastructure.repositories import (
+    experiment_workspace_repository,
+)
 from main_server.src.services.experiment_workspace.catalog_constants import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -18,6 +21,9 @@ from main_server.src.services.experiment_workspace.catalog_service import (
 )
 from main_server.src.services.experiment_workspace.compiler_service import (
     ExperimentCompilerService,
+)
+from main_server.src.services.experiment_workspace.workspace_service import (
+    ExperimentWorkspaceService,
 )
 from shared.src.contracts.workspace_manifest_contracts import (
     WorkspaceManifestPayload,
@@ -357,6 +363,50 @@ def test_experiment_compile_api_warns_when_client_count_outgrows_label_dominant_
     )
 
     assert any("빈 shard" in warning for warning in plan.warnings)
+
+
+def test_saved_workspace_api_lists_selection_previews_and_supports_delete(
+    tmp_path: Path,
+) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    service = ExperimentWorkspaceService(
+        compiler_service=ExperimentCompilerService(
+            catalog_service=ExperimentCatalogService(repo_root=repo_root)
+        ),
+        workspace_repository=experiment_workspace_repository.ExperimentWorkspaceRepository(
+            experiments_root=tmp_path / "experiments"
+        ),
+    )
+
+    saved = experiments_api.save_experiment_workspace(
+        WorkspaceManifestPayload(
+            manifest_id="manifest_seed_compare",
+            track_name="seed",
+            entrypoint_name="train_softmax_classifier",
+            selections=(
+                WorkspaceSelectionPayload(
+                    slot_name="dataset_presets",
+                    section_name="dataset_presets",
+                    variant_profile_name="ourafla",
+                    family_name="dataset",
+                    override_patch={"train_jsonl": "custom.jsonl"},
+                ),
+            ),
+        ),
+        service=service,
+    )
+
+    listed = experiments_api.list_saved_experiment_workspaces(service=service)
+    assert listed[0].workspace_id == saved.workspace_id
+    assert listed[0].selection_previews[0].section_name == "dataset_presets"
+    assert listed[0].selection_previews[0].override_keys == ("train_jsonl",)
+
+    deleted = experiments_api.delete_saved_experiment_workspace(
+        saved.workspace_id,
+        service=service,
+    )
+    assert deleted.workspace_id == saved.workspace_id
+    assert experiments_api.list_saved_experiment_workspaces(service=service) == ()
 
 
 def test_experiment_compile_api_rejects_metadata_only_selection() -> None:

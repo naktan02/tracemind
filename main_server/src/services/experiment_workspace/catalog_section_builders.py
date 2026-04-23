@@ -225,7 +225,7 @@ def build_adapter_family_section(
     )
     return CatalogSectionPayload(
         section_name="adapter_families",
-        display_name="Adapter Families",
+        display_name="어댑터 패밀리",
         item_kind="adapter_family",
         description="server/agent가 공통으로 해석하는 shared adapter family.",
         source_of_truth=source_of_truth,

@@ -1,5 +1,8 @@
 import { OverrideFieldEditor } from "./OverrideFieldEditor";
-import { formatMetadataValue } from "../lib/formatters";
+import {
+  formatCompileSupport,
+  formatMetadataValue,
+} from "../lib/formatters";
 import type {
   CatalogItemPayload,
   CatalogOverrideFieldPayload,
@@ -31,7 +34,10 @@ export function CatalogSectionCard(props: {
           <h3>{section.display_name}</h3>
           <p>{section.description}</p>
         </div>
-        <span className="section-origin">{section.source_of_truth}</span>
+        <details className="section-tech-details">
+          <summary>기술 정보</summary>
+          <span className="section-origin">{section.source_of_truth}</span>
+        </details>
       </div>
 
       <div className="item-grid">
@@ -54,30 +60,34 @@ export function CatalogSectionCard(props: {
                 <span
                   className={`support-badge support-badge--${item.compile_support}`}
                 >
-                  {item.compile_support}
+                  {formatCompileSupport(item.compile_support)}
                 </span>
               </div>
 
               <div className="item-card__meta">
                 {item.core_method_name ? (
-                  <span>core: {item.core_method_name}</span>
+                  <span>핵심 방식: {item.core_method_name}</span>
                 ) : null}
-                {item.family_name ? <span>family: {item.family_name}</span> : null}
-                {item.preset_group ? <span>group: {item.preset_group}</span> : null}
+                {item.family_name ? <span>패밀리: {item.family_name}</span> : null}
+                {item.preset_group ? <span>그룹: {item.preset_group}</span> : null}
               </div>
+
+              {item.description ? <p className="item-card__description">{item.description}</p> : null}
 
               {item.compile_blocker_reason ? (
                 <p className="item-card__blocker">{item.compile_blocker_reason}</p>
               ) : null}
 
               {Object.keys(item.metadata).length > 0 ? (
-                <dl className="metadata-list">
-                  {Object.entries(item.metadata).map(([key, value]) => (
-                    <div key={key}>
-                      <dt>{key}</dt>
-                      <dd>{formatMetadataValue(value)}</dd>
-                    </div>
-                  ))}
+                <dl className="metadata-list metadata-list--compact">
+                  {Object.entries(item.metadata)
+                    .slice(0, 3)
+                    .map(([key, value]) => (
+                      <div key={key}>
+                        <dt>{key}</dt>
+                        <dd>{formatMetadataValue(value)}</dd>
+                      </div>
+                    ))}
                 </dl>
               ) : null}
             </button>
@@ -90,7 +100,7 @@ export function CatalogSectionCard(props: {
           {selectedItem.override_fields.length > 0 ? (
             <div className="override-field-editor">
               <p className="override-editor__title">
-                {section.display_name} typed override fields
+                {section.display_name} 빠른 조정 항목
               </p>
               {selectedItem.override_fields.map((field) => (
                 <OverrideFieldEditor
@@ -104,7 +114,7 @@ export function CatalogSectionCard(props: {
             </div>
           ) : null}
           <label htmlFor={`override-${section.section_name}`}>
-            Advanced JSON patch
+            고급 JSON 패치
           </label>
           <textarea
             id={`override-${section.section_name}`}

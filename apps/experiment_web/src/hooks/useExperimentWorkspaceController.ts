@@ -49,6 +49,7 @@ export interface ExperimentWorkspaceController {
   savedWorkspacesError: string | null;
   isSavedWorkspacesLoading: boolean;
   loadingWorkspaceId: string | null;
+  deletingWorkspaceId: string | null;
   runs: ExperimentRunPayload[];
   runsError: string | null;
   isRunsLoading: boolean;
@@ -72,6 +73,8 @@ export interface ExperimentWorkspaceController {
   handleCompilePreview: () => Promise<void>;
   handleSaveWorkspace: () => Promise<void>;
   handleLoadSavedWorkspace: (workspaceId: string) => Promise<void>;
+  handleCloneWorkspace: (workspaceId: string) => Promise<void>;
+  handleDeleteWorkspace: (workspaceId: string) => Promise<void>;
   handleLaunchRun: () => Promise<void>;
   handleRelaunchWorkspace: (workspaceId: string) => Promise<void>;
   handleTrackChange: (track: CatalogTrackPayload) => void;
@@ -121,7 +124,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
 
   async function handleCompilePreview() {
     if (!draftState.workspaceManifest) {
-      setCompileError("먼저 track과 entrypoint를 선택하세요.");
+      setCompileError("먼저 탭과 실행 작업을 선택하세요.");
       setCompilePlan(null);
       return;
     }
@@ -151,15 +154,15 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     if (!draftState.workspaceManifest) {
       setActionNotice({
         tone: "error",
-        title: "Workspace save failed",
-        message: "먼저 track과 entrypoint를 선택하세요.",
+        title: "저장에 실패했습니다",
+        message: "먼저 탭과 실행 작업을 선택하세요.",
       });
       return;
     }
     if (draftState.localParseErrors.length > 0) {
       setActionNotice({
         tone: "error",
-        title: "Workspace save failed",
+        title: "저장에 실패했습니다",
         message: draftState.localParseErrors[0],
       });
       return;
@@ -180,13 +183,13 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       await savedWorkspacesState.refreshSavedWorkspaces();
       setActionNotice({
         tone: "ok",
-        title: "Workspace saved",
+        title: "조합을 저장했습니다",
         message: `${savedWorkspace.workspace_id}로 저장했습니다.`,
       });
     } catch (error) {
       setActionNotice({
         tone: "error",
-        title: "Workspace save failed",
+        title: "저장에 실패했습니다",
         message: asErrorMessage(error),
       });
     } finally {
@@ -215,13 +218,73 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       setCompileError(null);
       setActionNotice({
         tone: "ok",
-        title: "Workspace loaded",
-        message: `${detail.workspace_id}를 현재 draft로 불러왔습니다.`,
+        title: "저장된 조합을 불러왔습니다",
+        message: `${detail.workspace_id}를 현재 편집 초안으로 불러왔습니다.`,
       });
     } catch (error) {
       setActionNotice({
         tone: "error",
-        title: "Workspace load failed",
+        title: "불러오기에 실패했습니다",
+        message: asErrorMessage(error),
+      });
+    }
+  }
+
+  async function handleCloneWorkspace(workspaceId: string) {
+    if (!catalogState.catalog) {
+      return;
+    }
+
+    setActionNotice(null);
+    try {
+      const detail = await savedWorkspacesState.loadWorkspace(workspaceId);
+      const hydrated = hydrateWorkspaceDraftFromSavedWorkspace(
+        detail,
+        catalogState.catalog,
+      );
+      catalogState.setInitialSelection(
+        hydrated.trackName,
+        hydrated.entrypointName,
+      );
+      draftState.applyHydratedWorkspaceClone(hydrated.trackName, hydrated);
+      setCompilePlan(hydrated.compilePlan);
+      setCompileError(null);
+      setActionNotice({
+        tone: "ok",
+        title: "복제용 초안을 만들었습니다",
+        message:
+          `${workspaceId}를 기반으로 새 초안을 만들었습니다. 방법론이나 ` +
+          "파라미터를 바꾼 뒤 새 이름으로 저장해 실행할 수 있습니다.",
+      });
+    } catch (error) {
+      setActionNotice({
+        tone: "error",
+        title: "복제용 초안 생성에 실패했습니다",
+        message: asErrorMessage(error),
+      });
+    }
+  }
+
+  async function handleDeleteWorkspace(workspaceId: string) {
+    setActionNotice(null);
+    try {
+      const deleted = await savedWorkspacesState.deleteWorkspace(workspaceId);
+      if (
+        draftState.currentWorkspaceId === workspaceId &&
+        catalogState.activeTrack !== null
+      ) {
+        draftState.forkCurrentWorkspaceDraft(catalogState.activeTrack.track_name);
+      }
+      await savedWorkspacesState.refreshSavedWorkspaces();
+      setActionNotice({
+        tone: "ok",
+        title: "저장된 조합을 삭제했습니다",
+        message: `${deleted.workspace_id}를 비교판과 저장 목록에서 제거했습니다.`,
+      });
+    } catch (error) {
+      setActionNotice({
+        tone: "error",
+        title: "삭제에 실패했습니다",
         message: asErrorMessage(error),
       });
     }
@@ -231,15 +294,15 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     if (!draftState.workspaceManifest) {
       setActionNotice({
         tone: "error",
-        title: "Run launch failed",
-        message: "먼저 track과 entrypoint를 선택하세요.",
+        title: "실행 시작에 실패했습니다",
+        message: "먼저 탭과 실행 작업을 선택하세요.",
       });
       return;
     }
     if (draftState.localParseErrors.length > 0) {
       setActionNotice({
         tone: "error",
-        title: "Run launch failed",
+        title: "실행 시작에 실패했습니다",
         message: draftState.localParseErrors[0],
       });
       return;
@@ -256,13 +319,13 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       await savedWorkspacesState.refreshSavedWorkspaces();
       setActionNotice({
         tone: "ok",
-        title: "Run launched",
+        title: "실행을 시작했습니다",
         message: `${launchedRun.run_id}를 시작했습니다.`,
       });
     } catch (error) {
       setActionNotice({
         tone: "error",
-        title: "Run launch failed",
+        title: "실행 시작에 실패했습니다",
         message: asErrorMessage(error),
       });
     } finally {
@@ -283,13 +346,13 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       await savedWorkspacesState.refreshSavedWorkspaces();
       setActionNotice({
         tone: "ok",
-        title: "Workspace rerun launched",
+        title: "저장된 조합을 다시 실행했습니다",
         message: `${workspaceId}를 다시 실행해 ${launchedRun.run_id}를 시작했습니다.`,
       });
     } catch (error) {
       setActionNotice({
         tone: "error",
-        title: "Workspace rerun failed",
+        title: "재실행에 실패했습니다",
         message: asErrorMessage(error),
       });
     } finally {
@@ -378,6 +441,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     savedWorkspacesError: savedWorkspacesState.savedWorkspacesError,
     isSavedWorkspacesLoading: savedWorkspacesState.isSavedWorkspacesLoading,
     loadingWorkspaceId: savedWorkspacesState.loadingWorkspaceId,
+    deletingWorkspaceId: savedWorkspacesState.deletingWorkspaceId,
     runs: runsState.runs,
     runsError: runsState.runsError,
     isRunsLoading: runsState.isRunsLoading,
@@ -398,6 +462,8 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     handleCompilePreview,
     handleSaveWorkspace,
     handleLoadSavedWorkspace,
+    handleCloneWorkspace,
+    handleDeleteWorkspace,
     handleLaunchRun,
     handleRelaunchWorkspace,
     handleTrackChange,
