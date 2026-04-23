@@ -20,6 +20,9 @@
   `seed -> 중앙 LoRA 적응 비교 -> 시스템 FL translation`
   를 뒤집지 않는다.
 - 한 번의 패치에서 UI, 계약, runtime, 모든 알고리즘을 동시에 완성하려 들지 않는다.
+- future `download/CSV/HF import`는 같은 실험 조합 lane에 섞지 않고,
+  별도 `dataset asset lane`으로 분리한다.
+  - MVP는 기존 dataset alias만 소비한다.
 
 ## 2. 비목표
 
@@ -51,6 +54,11 @@
    - registry-only metadata를 live backend 인스턴스 생성 대신
      source-adjacent catalog entry surface에서 읽게 정리했다.
    - consumer가 없는 package-level barrel export를 정리했다.
+5. `Phase 2.5 contract hardening`
+   - dataset preset catalog가 asset path, source provenance, readiness를 노출한다.
+   - compiler가 `FixMatch`의 unlabeled dataset readiness를 compile 단계에서 검사한다.
+   - `federated_run_preset.client_count`를 live roster가 아닌
+     synthetic simulation participant count로 명시한다.
 
 현재 남은 단계 우선순위:
 
@@ -99,6 +107,9 @@
 7. 하이브리드는 나중에 연다.
    - `prototype + classifier`, `peft + classifier` 같은 composition은
      baseline track가 닫힌 뒤에 연다.
+8. dataset import와 experiment composition을 분리한다.
+   - `download`, `CSV ingest`, `HF import`, path drop은 future dataset asset lane이 맡고,
+     workspace lane은 준비된 dataset alias와 asset reference를 소비한다.
 
 ## 4. 1급 개념
 
@@ -359,6 +370,7 @@ agent/src/services/training/
 3. workspace 저장/재열기
 4. artifact 링크 표시
 5. `SQLite` 기반의 run/workspace 메타데이터 저장
+6. dataset asset lane과 experiment workspace lane을 저장 계층에서 분리
 
 초기 지원 범위:
 
@@ -394,6 +406,8 @@ agent/src/services/training/
 포함:
 
 1. agent 수
+   - 여기서 agent 수는 live server에 등록된 실제 agent roster가 아니라
+     `run_federated_simulation`의 synthetic participant count를 뜻한다.
 2. dataset/shard policy
 3. `adapter_family`
 4. `aggregation_backend`
@@ -412,6 +426,7 @@ agent/src/services/training/
 1. 현재 `run_federated_simulation` baseline을 웹에서 compile/run할 수 있다.
 2. `classifier_head`, `diagonal_scale`, `fedavg` 경로를 명시적으로 선택할 수 있다.
 3. FL workspace가 중앙 적응 workspace와 섞이지 않는다.
+4. `client_count`와 future live roster 개념이 UI/contract에서 분리돼 보인다.
 
 커밋 단위:
 

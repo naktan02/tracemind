@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -113,6 +113,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=supported_runtime_paths,
+                    metadata_resolver=self._build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="embedding_presets",
@@ -186,6 +187,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=supported_runtime_paths,
+                    metadata_resolver=self._build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="runtime_presets",
@@ -381,6 +383,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
+                    metadata_resolver=self._build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="embedding_presets",
@@ -421,6 +424,7 @@ class ExperimentCatalogService:
                         "max_examples",
                         "min_required_examples",
                     ),
+                    metadata_resolver=self._build_federated_run_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="prototype_builders",
@@ -502,6 +506,11 @@ class ExperimentCatalogService:
         core_method_resolver=None,
         metadata_keys: tuple[str, ...] | None = None,
         tag_resolver=None,
+        metadata_resolver: Callable[
+            [Path, Mapping[str, object], tuple[str, ...] | None],
+            dict[str, object],
+        ]
+        | None = None,
     ) -> CatalogSectionPayload:
         items: list[CatalogItemPayload] = []
         for path in self._iter_yaml_files(relative_dir):
@@ -527,9 +536,13 @@ class ExperimentCatalogService:
                     supported_runtime_paths=supported_runtime_paths,
                     declared_fields=self._declared_fields(raw),
                     tags=() if tag_resolver is None else tag_resolver(path, raw),
-                    metadata=self._extract_scalar_metadata(
-                        raw,
-                        metadata_keys=metadata_keys,
+                    metadata=(
+                        self._extract_scalar_metadata(
+                            raw,
+                            metadata_keys=metadata_keys,
+                        )
+                        if metadata_resolver is None
+                        else metadata_resolver(path, raw, metadata_keys)
                     ),
                 )
             )
@@ -888,6 +901,29 @@ class ExperimentCatalogService:
         root = self._repo_root / relative_dir
         return tuple(sorted(root.glob("*.yaml")))
 
+    def load_config_group_item(
+        self,
+        *,
+        relative_dir: str,
+        item_name: str,
+    ) -> dict[str, object]:
+        """Hydra config group item 하나를 직접 읽는다."""
+
+        path = self._repo_root / relative_dir / f"{item_name}.yaml"
+        if not path.exists():
+            raise ValueError(
+                f"Unknown config group item: dir={relative_dir}, item={item_name}."
+            )
+        return self._load_yaml_mapping(path)
+
+    def load_relative_yaml_mapping(self, relative_path: str) -> dict[str, object]:
+        """repo root 기준 상대 경로 YAML mapping을 읽는다."""
+
+        path = self._repo_root / relative_path
+        if not path.exists():
+            raise ValueError(f"Unknown YAML path: {relative_path}.")
+        return self._load_yaml_mapping(path)
+
     def _load_yaml_mapping(self, path: Path) -> dict[str, object]:
         raw = OmegaConf.to_container(OmegaConf.load(path), resolve=False)
         if raw is None:
@@ -946,6 +982,92 @@ class ExperimentCatalogService:
     @staticmethod
     def _is_scalar_metadata_value(value: object) -> bool:
         return value is None or isinstance(value, (str, int, float, bool))
+
+    def _build_dataset_preset_metadata(
+        self,
+        _path: Path,
+        raw: Mapping[str, object],
+        _metadata_keys: tuple[str, ...] | None = None,
+    ) -> dict[str, object]:
+        asset_paths = {
+            "train_jsonl": self._string_or_none(raw.get("train_jsonl")),
+            "validation_jsonl": self._string_or_none(raw.get("validation_jsonl")),
+            "test_jsonl": self._string_or_none(raw.get("test_jsonl")),
+            "prototype_input_jsonl": self._string_or_none(
+                raw.get("prototype_input_jsonl")
+            ),
+            "query_dev_jsonl": self._string_or_none(raw.get("query_dev_jsonl")),
+            "query_calibration_jsonl": self._string_or_none(
+                raw.get("query_calibration_jsonl")
+            ),
+            "unlabeled_query_pool_jsonl": self._string_or_none(
+                raw.get("unlabeled_query_pool_jsonl")
+            ),
+        }
+        sources = raw.get("sources")
+        serialized_sources: dict[str, object] = {}
+        if isinstance(sources, Mapping):
+            for source_name, source_raw in sources.items():
+                if not isinstance(source_raw, Mapping):
+                    continue
+                serialized_sources[str(source_name)] = {
+                    "kind": self._string_or_none(source_raw.get("kind")),
+                    "dataset_id": self._string_or_none(source_raw.get("dataset_id")),
+                    "split": self._string_or_none(source_raw.get("split")),
+                    "data_file": self._string_or_none(source_raw.get("data_file")),
+                    "reference_urls": [
+                        str(url)
+                        for url in source_raw.get("reference_urls", [])
+                        if isinstance(url, str) and url.strip()
+                    ],
+                }
+        unlabeled_ready = bool(asset_paths["unlabeled_query_pool_jsonl"])
+        return {
+            "asset_paths": asset_paths,
+            "readiness": {
+                "seed_ready": bool(
+                    asset_paths["train_jsonl"]
+                    and asset_paths["validation_jsonl"]
+                    and asset_paths["test_jsonl"]
+                ),
+                "central_supervised_ready": bool(
+                    asset_paths["train_jsonl"]
+                    and asset_paths["validation_jsonl"]
+                    and asset_paths["test_jsonl"]
+                ),
+                "central_fixmatch_ready": bool(
+                    asset_paths["train_jsonl"]
+                    and asset_paths["validation_jsonl"]
+                    and asset_paths["test_jsonl"]
+                    and unlabeled_ready
+                ),
+                "federated_baseline_ready": bool(
+                    asset_paths["train_jsonl"] and asset_paths["validation_jsonl"]
+                ),
+            },
+            "query_asset_status": {
+                "query_dev_available": bool(asset_paths["query_dev_jsonl"]),
+                "query_calibration_available": bool(
+                    asset_paths["query_calibration_jsonl"]
+                ),
+                "unlabeled_query_pool_available": unlabeled_ready,
+            },
+            "sources": serialized_sources,
+        }
+
+    def _build_federated_run_preset_metadata(
+        self,
+        _path: Path,
+        raw: Mapping[str, object],
+        metadata_keys: tuple[str, ...] | None = None,
+    ) -> dict[str, object]:
+        metadata = self._extract_scalar_metadata(raw, metadata_keys=metadata_keys)
+        metadata["count_semantics"] = {
+            "client_count": "simulation_participants",
+            "live_agent_roster": "not_included",
+            "round_selected_agents": "not_included",
+        }
+        return metadata
 
     def _resolve_script_path(self, job_config_path: str) -> str:
         if job_config_path.startswith("scripts/conf/experiments/"):

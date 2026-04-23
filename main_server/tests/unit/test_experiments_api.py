@@ -63,6 +63,18 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert fixmatch.compile_support == "preset_selector"
     assert fixmatch.metadata["require_multiview"] is True
 
+    dataset_presets = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="dataset_presets",
+    )
+    ourafla = _find_item(dataset_presets, "ourafla")
+    assert ourafla.metadata["readiness"]["central_fixmatch_ready"] is False
+    assert ourafla.metadata["sources"]["train"]["kind"] == "huggingface"
+    assert (
+        ourafla.metadata["asset_paths"]["unlabeled_query_pool_jsonl"] is None
+    )
+
     central_entrypoints = _find_section(
         payload,
         track_name="central_adaptation",
@@ -113,6 +125,16 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert (
         weak_strong_example.source_of_truth
         == "agent/src/services/training/input_backends/weak_strong_pair.py"
+    )
+
+    federated_presets = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="federated_run_presets",
+    )
+    smoke = _find_item(federated_presets, "smoke")
+    assert smoke.metadata["count_semantics"]["client_count"] == (
+        "simulation_participants"
     )
 
 
@@ -173,6 +195,12 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
                     family_name="peft_adapter",
                     override_patch={"rank": 16},
                 ),
+                WorkspaceSelectionPayload(
+                    slot_name="train_source",
+                    section_name="query_ssl_train_sources",
+                    variant_profile_name="bootstrap_teacher_split30_2026_04_14",
+                    family_name="train_source",
+                ),
             ),
             global_override_patch={"train_batch_size": 32},
         ),
@@ -183,10 +211,40 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
     assert plan.selection_default_groups == (
         "query_ssl_method=fixmatch_usb_v1",
         "lora=default",
+        "query_ssl_train_source=bootstrap_teacher_split30_2026_04_14",
     )
     assert "query_ssl_method.temperature=0.7" in plan.hydra_overrides
     assert "lora.rank=16" in plan.hydra_overrides
     assert "train_batch_size=32" in plan.hydra_overrides
+
+
+def test_experiment_compile_api_rejects_fixmatch_when_dataset_lacks_unlabeled_pool(
+) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog_service = ExperimentCatalogService(repo_root=repo_root)
+    compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
+
+    with pytest.raises(HTTPException) as error:
+        experiments_api.compile_experiment_manifest(
+            WorkspaceManifestPayload(
+                manifest_id="manifest_fixmatch_missing_unlabeled",
+                track_name="central_adaptation",
+                entrypoint_name="train_lora_fixmatch",
+                selections=(
+                    WorkspaceSelectionPayload(
+                        slot_name="ssl_method",
+                        section_name="query_ssl_methods",
+                        core_method_name="fixmatch",
+                        variant_profile_name="fixmatch_usb_v1",
+                        family_name="ssl_method",
+                    ),
+                ),
+            ),
+            service=compiler_service,
+        )
+
+    assert error.value.status_code == 400
+    assert "unlabeled_query_pool_jsonl" in error.value.detail
 
 
 def test_experiment_compile_api_builds_federated_preview() -> None:
@@ -218,6 +276,26 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
         "training_algorithm_profile=prototype_pseudo_label_v1",
     )
     assert plan.hydra_overrides == ("training_task.local_epochs=2",)
+    assert any("simulation participant" in warning for warning in plan.warnings)
+
+
+def test_experiment_compile_api_warns_when_client_count_outgrows_label_dominant_shards(
+) -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog_service = ExperimentCatalogService(repo_root=repo_root)
+    compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
+
+    plan = experiments_api.compile_experiment_manifest(
+        WorkspaceManifestPayload(
+            manifest_id="manifest_federated_large_client_count",
+            track_name="federated_runtime",
+            entrypoint_name="run_federated_simulation",
+            global_override_patch={"federated_run_preset.client_count": 6},
+        ),
+        service=compiler_service,
+    )
+
+    assert any("빈 shard" in warning for warning in plan.warnings)
 
 
 def test_experiment_compile_api_rejects_metadata_only_selection() -> None:

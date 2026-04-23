@@ -3,11 +3,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
-CatalogMetadataScalar = str | int | float | bool | None
 CatalogItemCompileSupport = Literal[
     "entrypoint",
     "preset_selector",
@@ -39,7 +38,7 @@ class CatalogItemPayload(BaseModel):
     default_groups: tuple[str, ...] = ()
     declared_fields: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
-    metadata: dict[str, CatalogMetadataScalar] = Field(default_factory=dict)
+    metadata: dict[str, Any] = Field(default_factory=dict)
 
     @model_validator(mode="after")
     def _validate_compile_surface(self) -> CatalogItemPayload:
