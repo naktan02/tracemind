@@ -67,6 +67,54 @@ export interface ExperimentCatalogPayload {
   tracks: CatalogTrackPayload[];
 }
 
+export interface SavedWorkspaceSummaryPayload {
+  workspace_id: string;
+  manifest_id: string;
+  track_name: string;
+  entrypoint_name: string;
+  created_at: string;
+  updated_at: string;
+  latest_run_id: string | null;
+}
+
+export interface SavedWorkspaceDetailPayload {
+  workspace_id: string;
+  manifest_id: string;
+  track_name: string;
+  entrypoint_name: string;
+  created_at: string;
+  updated_at: string;
+  latest_run_id: string | null;
+  manifest: WorkspaceManifestPayload;
+  resolved_plan: ResolvedExperimentPlanPayload | null;
+}
+
+export interface LaunchExperimentRunRequestPayload {
+  manifest: WorkspaceManifestPayload;
+  workspace_id: string | null;
+}
+
+export type ExperimentRunStatus = "running" | "succeeded" | "failed" | "interrupted";
+
+export interface ExperimentRunPayload {
+  run_id: string;
+  workspace_id: string | null;
+  manifest_id: string;
+  track_name: string;
+  entrypoint_name: string;
+  status: "running" | "succeeded" | "failed" | "interrupted";
+  created_at: string;
+  started_at: string;
+  finished_at: string | null;
+  script_path: string;
+  command_args: string[];
+  artifact_root_path: string;
+  stdout_log_path: string;
+  stderr_log_path: string;
+  exit_code: number | null;
+  error_message: string | null;
+}
+
 export interface WorkspaceSelectionPayload {
   slot_name: string;
   section_name: string;

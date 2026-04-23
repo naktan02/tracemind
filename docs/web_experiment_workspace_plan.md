@@ -365,7 +365,7 @@ agent/src/services/training/
 
 ### Phase 4. 실행과 저장 MVP
 
-상태: 대기
+상태: 완료
 
 목표:
 
@@ -379,6 +379,7 @@ agent/src/services/training/
 4. artifact 링크 표시
 5. `SQLite` 기반의 run/workspace 메타데이터 저장
 6. dataset asset lane과 experiment workspace lane을 저장 계층에서 분리
+7. `apps/experiment_web`를 lane/page + hook/component 단위로 분리
 
 초기 지원 범위:
 

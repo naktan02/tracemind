@@ -53,6 +53,26 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
         experiment_payloads.ExperimentCatalogPayload,
     ),
     (
+        "SavedWorkspaceSummaryPayload",
+        experiment_payloads.SavedWorkspaceSummaryPayload,
+    ),
+    (
+        "SavedWorkspaceDetailPayload",
+        experiment_payloads.SavedWorkspaceDetailPayload,
+    ),
+    (
+        "LaunchExperimentRunRequestPayload",
+        experiment_payloads.LaunchExperimentRunRequestPayload,
+    ),
+    (
+        "ExperimentRunStatus",
+        experiment_payloads.ExperimentRunStatus,
+    ),
+    (
+        "ExperimentRunPayload",
+        experiment_payloads.ExperimentRunPayload,
+    ),
+    (
         "WorkspaceSelectionPayload",
         workspace_manifest_contracts.WorkspaceSelectionPayload,
     ),

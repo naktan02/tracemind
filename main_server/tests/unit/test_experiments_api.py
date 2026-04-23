@@ -196,6 +196,11 @@ def test_experiments_router_is_registered_on_main_app() -> None:
 
     assert "/api/v1/experiments/catalog" in route_paths
     assert "/api/v1/experiments/compile" in route_paths
+    assert "/api/v1/experiments/workspaces" in route_paths
+    assert "/api/v1/experiments/workspaces/{workspace_id}" in route_paths
+    assert "/api/v1/experiments/runs" in route_paths
+    assert "/api/v1/experiments/runs/{run_id}" in route_paths
+    assert "/api/v1/experiments/runs/{run_id}/logs/{stream_name}" in route_paths
 
 
 def test_experiment_compile_api_builds_central_adaptation_preview() -> None:

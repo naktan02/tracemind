@@ -18,6 +18,12 @@ from main_server.src.services.experiments.catalog_service import (
 from main_server.src.services.experiments.compiler_service import (
     ExperimentCompilerService,
 )
+from main_server.src.services.experiments.run_service import (
+    ExperimentRunService,
+)
+from main_server.src.services.experiments.workspace_service import (
+    ExperimentWorkspaceService,
+)
 from main_server.src.services.prototypes.prototype_pack_service import (
     PrototypePackService,
 )
@@ -59,6 +65,8 @@ def create_app(
     prototype_pack_service: PrototypePackService | None = None,
     experiment_catalog_service: ExperimentCatalogService | None = None,
     experiment_compiler_service: ExperimentCompilerService | None = None,
+    experiment_workspace_service: ExperimentWorkspaceService | None = None,
+    experiment_run_service: ExperimentRunService | None = None,
     experiment_web_allowed_origins: tuple[str, ...] | None = None,
 ) -> FastAPI:
     """Main server 앱을 생성하고 서버 소유 서비스를 app.state에 연결한다."""
@@ -90,6 +98,20 @@ def create_app(
         experiment_compiler_service
         or ExperimentCompilerService(
             catalog_service=effective_experiment_catalog_service
+        )
+    )
+    effective_experiment_workspace_service = (
+        experiment_workspace_service
+        or ExperimentWorkspaceService(
+            compiler_service=app.state.experiment_compiler_service
+        )
+    )
+    app.state.experiment_workspace_service = effective_experiment_workspace_service
+    app.state.experiment_run_service = (
+        experiment_run_service
+        or ExperimentRunService(
+            compiler_service=app.state.experiment_compiler_service,
+            workspace_service=effective_experiment_workspace_service,
         )
     )
     app.include_router(health_router)

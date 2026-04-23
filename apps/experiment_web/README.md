@@ -1,13 +1,16 @@
 # Experiment Web
 
-`apps/experiment_web`는 TraceMind 개발자용 read-only experiment workspace UI다.
+`apps/experiment_web`는 TraceMind 개발자용 experiment workspace UI다.
 
-현재 Phase 3 범위:
+현재 Phase 4 범위:
 
 1. experiment catalog 읽기
-2. track/entrypoint/block selection
+2. lane page 단위 track/entrypoint/block selection
 3. typed override field + advanced JSON patch 입력
 4. compile preview / error / warning 표시
+5. workspace 저장 / 재열기
+6. local run launch
+7. recent run status / stdout / stderr / artifact path 표시
 
 중요:
 
@@ -18,9 +21,9 @@
 
 아직 포함하지 않는 것:
 
-1. 실제 실행
-2. run history
-3. workspace 저장
+1. FL runtime 실행 전체
+2. hybrid multi-component composition
+3. multi-user/shared queue
 
 ## 개발 실행
 

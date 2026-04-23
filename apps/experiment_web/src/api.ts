@@ -1,6 +1,10 @@
 import type {
+  ExperimentRunPayload,
   ExperimentCatalogPayload,
+  LaunchExperimentRunRequestPayload,
   ResolvedExperimentPlanPayload,
+  SavedWorkspaceDetailPayload,
+  SavedWorkspaceSummaryPayload,
   WorkspaceManifestPayload,
 } from "./types";
 
@@ -66,5 +70,81 @@ export async function compileExperimentWorkspace(
       method: "POST",
       body: JSON.stringify(manifest),
     },
+  );
+}
+
+export async function listSavedExperimentWorkspaces(
+  baseUrl: string,
+): Promise<SavedWorkspaceSummaryPayload[]> {
+  return requestJson<SavedWorkspaceSummaryPayload[]>(
+    baseUrl,
+    "/api/v1/experiments/workspaces",
+    {
+      method: "GET",
+    },
+  );
+}
+
+export async function saveExperimentWorkspace(
+  baseUrl: string,
+  manifest: WorkspaceManifestPayload,
+): Promise<SavedWorkspaceDetailPayload> {
+  return requestJson<SavedWorkspaceDetailPayload>(
+    baseUrl,
+    "/api/v1/experiments/workspaces",
+    {
+      method: "POST",
+      body: JSON.stringify(manifest),
+    },
+  );
+}
+
+export async function getSavedExperimentWorkspace(
+  baseUrl: string,
+  workspaceId: string,
+): Promise<SavedWorkspaceDetailPayload> {
+  return requestJson<SavedWorkspaceDetailPayload>(
+    baseUrl,
+    `/api/v1/experiments/workspaces/${encodeURIComponent(workspaceId)}`,
+    {
+      method: "GET",
+    },
+  );
+}
+
+export async function listExperimentRuns(
+  baseUrl: string,
+): Promise<ExperimentRunPayload[]> {
+  return requestJson<ExperimentRunPayload[]>(
+    baseUrl,
+    "/api/v1/experiments/runs",
+    {
+      method: "GET",
+    },
+  );
+}
+
+export async function launchExperimentRun(
+  baseUrl: string,
+  request: LaunchExperimentRunRequestPayload,
+): Promise<ExperimentRunPayload> {
+  return requestJson<ExperimentRunPayload>(
+    baseUrl,
+    "/api/v1/experiments/runs",
+    {
+      method: "POST",
+      body: JSON.stringify(request),
+    },
+  );
+}
+
+export function buildExperimentRunLogUrl(
+  baseUrl: string,
+  runId: string,
+  streamName: "stdout" | "stderr",
+): string {
+  return (
+    `${baseUrl}/api/v1/experiments/runs/${encodeURIComponent(runId)}/logs/` +
+    encodeURIComponent(streamName)
   );
 }
