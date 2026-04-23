@@ -23,6 +23,7 @@ from agent.src.services.training.local_training_service import (
 from agent.src.services.training.training_backends import (
     register_shared_adapter_training_backend,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
@@ -36,6 +37,24 @@ from shared.src.contracts.training_contracts import (
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.services.clock import FixedClock
+
+
+def _registry_catalog_entry(
+    *,
+    item_name: str,
+    family_name: str,
+    supported_adapter_kinds: tuple[str, ...] = ("*",),
+    accepted_payload_formats: tuple[str, ...] = (),
+) -> RegistryCatalogEntry:
+    return RegistryCatalogEntry(
+        item_name=item_name,
+        display_name=item_name,
+        implementation_module=__name__,
+        core_method_name=item_name,
+        family_name=family_name,
+        supported_adapter_kinds=supported_adapter_kinds,
+        accepted_payload_formats=accepted_payload_formats,
+    )
 
 
 def _build_manifest() -> ModelManifest:
@@ -58,6 +77,7 @@ def _build_task(
     min_required_examples: int = 1,
     gradient_clip_norm: float | None = 0.05,
     acceptance_policy_name: str | None = None,
+    pseudo_label_algorithm_name: str | None = None,
     privacy_guard_name: str | None = "diagonal_scale_clip_only",
     scorer_backend_name: str | None = None,
     loss: str = "diagonal_scale_heuristic",
@@ -81,6 +101,7 @@ def _build_task(
             margin_threshold=0.02,
             scorer_backend_name=scorer_backend_name,
             acceptance_policy_name=acceptance_policy_name,
+            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
             privacy_guard_name=privacy_guard_name,
             extras={} if extras is None else extras,
         ),
@@ -299,14 +320,19 @@ def test_local_training_service_uses_acceptance_policy_from_task_config(
                     embedding=[1.0, 0.0],
                 ),
             ),
-            training_task=_build_task(acceptance_policy_name="top1_confidence_only"),
+            training_task=_build_task(
+                acceptance_policy_name="top1_confidence_only",
+                pseudo_label_algorithm_name="top1_confidence_only",
+            ),
             model_manifest=_build_manifest(),
         )
     )
 
     candidate = result.selection_result.candidates[0]
     assert candidate.accepted is True
-    assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
+    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+        "top1_confidence_only"
+    )
     assert result.update_envelope is not None
 
 
@@ -493,6 +519,12 @@ def test_local_training_service_can_use_registered_non_diagonal_backend(
     register_shared_adapter_training_backend(
         "test_shift_backend",
         factory=lambda _objective_config: TestShiftBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="test_shift_backend",
+            family_name="training_backend",
+            supported_adapter_kinds=("test_shift",),
+            accepted_payload_formats=("test_shift_update",),
+        ),
     )
 
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -572,6 +604,12 @@ def test_local_training_service_rejects_incompatible_privacy_guard(
     register_shared_adapter_training_backend(
         "test_shift_backend_incompatible_guard",
         factory=lambda _objective_config: TestShiftBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="test_shift_backend_incompatible_guard",
+            family_name="training_backend",
+            supported_adapter_kinds=("test_shift",),
+            accepted_payload_formats=("test_shift_update_incompatible_guard",),
+        ),
     )
 
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
@@ -652,11 +690,22 @@ def test_local_training_service_rejects_incompatible_scoring_backend(
     register_shared_adapter_training_backend(
         "test_shift_backend_incompatible_scorer",
         factory=lambda _objective_config: TestShiftBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="test_shift_backend_incompatible_scorer",
+            family_name="training_backend",
+            supported_adapter_kinds=("test_shift",),
+            accepted_payload_formats=("test_shift_update_incompatible_scorer",),
+        ),
     )
     register_scoring_backend(
         "diagonal_only_test_scorer",
         factory=lambda _objective_config, _similarity_name: (
             DiagonalOnlyScoringBackend()
+        ),
+        catalog_entry=_registry_catalog_entry(
+            item_name="diagonal_only_test_scorer",
+            family_name="scoring_backend",
+            supported_adapter_kinds=("diagonal_scale",),
         ),
     )
 
@@ -743,10 +792,21 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
     register_shared_adapter_training_backend(
         "test_shift_backend_incompatible_examples",
         factory=lambda _objective_config: TestShiftBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="test_shift_backend_incompatible_examples",
+            family_name="training_backend",
+            supported_adapter_kinds=("test_shift",),
+            accepted_payload_formats=("test_shift_update_incompatible_examples",),
+        ),
     )
     register_training_example_backend(
         "diagonal_only_training_examples",
         factory=lambda _objective_config: DiagonalOnlyTrainingExampleBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="diagonal_only_training_examples",
+            family_name="example_generation",
+            supported_adapter_kinds=("diagonal_scale",),
+        ),
     )
 
     repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")

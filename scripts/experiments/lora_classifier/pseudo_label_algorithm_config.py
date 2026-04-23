@@ -15,13 +15,13 @@ class ResolvedPseudoLabelAlgorithm:
     """실험 config에서 해석한 pseudo-label selection preset."""
 
     preset_name: str
-    acceptance_policy_name: str
+    algorithm_name: str
     config: QuerySslAlgorithmConfig
 
     def to_manifest_entry(self) -> dict[str, Any]:
         return {
             "preset_name": self.preset_name,
-            "acceptance_policy_name": self.acceptance_policy_name,
+            "algorithm_name": self.algorithm_name,
             "confidence_threshold": self.config.confidence_threshold,
             "margin_threshold": self.config.margin_threshold,
         }
@@ -34,36 +34,40 @@ def resolve_pseudo_label_algorithm(
 
     raw_group = getattr(cfg, "pseudo_label_algorithm", None)
     if raw_group is not None:
-        acceptance_policy_name = str(
-            getattr(raw_group, "acceptance_policy_name", "") or ""
+        algorithm_name = str(
+            getattr(raw_group, "algorithm_name", "")
+            or getattr(raw_group, "acceptance_policy_name", "")
+            or ""
         ).strip()
-        if not acceptance_policy_name:
+        if not algorithm_name:
             raise ValueError(
-                "pseudo_label_algorithm.acceptance_policy_name must not be empty."
+                "pseudo_label_algorithm.algorithm_name must not be empty."
             )
         preset_name = str(
-            getattr(raw_group, "name", "") or acceptance_policy_name
+            getattr(raw_group, "name", "") or algorithm_name
         ).strip()
         return ResolvedPseudoLabelAlgorithm(
             preset_name=preset_name,
-            acceptance_policy_name=acceptance_policy_name,
+            algorithm_name=algorithm_name,
             config=QuerySslAlgorithmConfig(
                 confidence_threshold=float(raw_group.confidence_threshold),
                 margin_threshold=float(raw_group.margin_threshold),
             ),
         )
 
-    acceptance_policy_name = str(
-        getattr(cfg, "pseudo_label_acceptance_policy_name", "") or ""
+    algorithm_name = str(
+        getattr(cfg, "pseudo_label_algorithm_name", "")
+        or getattr(cfg, "pseudo_label_acceptance_policy_name", "")
+        or ""
     ).strip()
-    if not acceptance_policy_name:
+    if not algorithm_name:
         raise ValueError(
             "Missing pseudo_label_algorithm config. "
             "Provide pseudo_label_algorithm.<...> fields."
         )
     return ResolvedPseudoLabelAlgorithm(
-        preset_name=acceptance_policy_name,
-        acceptance_policy_name=acceptance_policy_name,
+        preset_name=algorithm_name,
+        algorithm_name=algorithm_name,
         config=QuerySslAlgorithmConfig(
             confidence_threshold=float(cfg.pseudo_label_confidence_threshold),
             margin_threshold=float(cfg.pseudo_label_margin_threshold),

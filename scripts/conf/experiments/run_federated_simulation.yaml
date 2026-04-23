@@ -47,6 +47,7 @@ training_task:
     scorer_backend_name: ${training_algorithm_profile.scorer_backend_name}
     score_policy_name: ${training_algorithm_profile.score_policy_name}
     score_top_k: ${training_algorithm_profile.score_top_k}
+    pseudo_label_algorithm_name: ${training_algorithm_profile.pseudo_label_algorithm_name}
     acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
     privacy_guard_name: ${training_algorithm_profile.privacy_guard_name}
     training_backend.consistency_loss_weight: ${training_algorithm_profile.training_backend_consistency_loss_weight}

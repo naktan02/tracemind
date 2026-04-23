@@ -357,7 +357,7 @@ class ExperimentCatalogService:
                     display_name="Pseudo-label Algorithms",
                     description=(
                         "중앙 pseudo-label adaptation에서 쓰는 "
-                        "acceptance preset."
+                        "selection algorithm preset."
                     ),
                     relative_dir="scripts/conf/pseudo_label_algorithm",
                     item_kind="hydra_preset",
@@ -367,7 +367,7 @@ class ExperimentCatalogService:
                     metadata_keys=(
                         "confidence_threshold",
                         "margin_threshold",
-                        "acceptance_policy_name",
+                        "algorithm_name",
                     ),
                 ),
                 self._build_config_group_section(

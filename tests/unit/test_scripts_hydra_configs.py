@@ -234,7 +234,7 @@ def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_over
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_confidence_only"
     )
 
@@ -298,7 +298,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_confidence_only"
     )
 
@@ -480,7 +480,7 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
     assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.6
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.02
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_margin_threshold"
     )
     assert cfg.bootstrap_split.enabled is False

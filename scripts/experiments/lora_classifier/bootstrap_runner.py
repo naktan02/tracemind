@@ -312,7 +312,7 @@ def _build_teacher_pseudo_label_rows(
         raise ValueError("rows and predictions must have the same length.")
 
     algorithm = build_query_ssl_algorithm(
-        pseudo_label_algorithm.acceptance_policy_name
+        pseudo_label_algorithm.algorithm_name
     )
     accepted_rows: list[LabeledQueryRow] = []
     trace_rows: list[dict[str, Any]] = []

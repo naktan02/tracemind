@@ -61,6 +61,13 @@ class TrainingDefaultsProfile:
         )
 
     @property
+    def pseudo_label_algorithm_name(self) -> str:
+        return self._require_str(
+            self.objective_mapping,
+            "pseudo_label_algorithm_name",
+        )
+
+    @property
     def training_backend_name(self) -> str:
         return self._require_str(
             self.objective_mapping,

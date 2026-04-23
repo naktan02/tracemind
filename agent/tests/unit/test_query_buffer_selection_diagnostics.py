@@ -46,7 +46,7 @@ def _build_task(
             loss="diagonal_scale_heuristic",
             confidence_threshold=confidence_threshold,
             margin_threshold=0.02,
-            acceptance_policy_name="top1_confidence_only",
+            pseudo_label_algorithm_name="top1_confidence_only",
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=max_examples),
     )
@@ -134,6 +134,9 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     assert summary.confidence_threshold_counts == {"0.7": 3}
     assert summary.max_examples_counts == {"1": 3}
     assert summary.evidence_backend_name_counts == {"query_buffer_projection": 3}
+    assert summary.pseudo_label_algorithm_name_counts == {
+        "top1_confidence_only": 3
+    }
     assert summary.confidence_stats.count == 3
     assert summary.confidence_stats.maximum == pytest.approx(0.95)
 
@@ -148,6 +151,9 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     assert trace_by_query_id["q1"].threshold_accepted is True
     assert trace_by_query_id["q1"].evidence_backend_name == (
         "query_buffer_projection"
+    )
+    assert trace_by_query_id["q1"].pseudo_label_algorithm_name == (
+        "top1_confidence_only"
     )
     assert trace_by_query_id["q1"].raw_scores == {
         "anxiety": 0.95,

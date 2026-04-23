@@ -39,7 +39,7 @@ def _build_cfg() -> object:
                 "name": "margin_threshold_v1",
                 "confidence_threshold": 0.6,
                 "margin_threshold": 0.02,
-                "acceptance_policy_name": "top1_margin_threshold",
+                "algorithm_name": "top1_margin_threshold",
             },
             "fixed_categories": [
                 "anxiety",
@@ -198,6 +198,9 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
     assert extra_manifest["combined_train_row_count"] == 1
     assert extra_manifest["pseudo_label_algorithm"]["preset_name"] == (
         "margin_threshold_v1"
+    )
+    assert extra_manifest["pseudo_label_algorithm"]["algorithm_name"] == (
+        "top1_margin_threshold"
     )
     assert extra_manifest["pseudo_label_algorithm"]["margin_threshold"] == 0.02
     assert captured["train_jsonl_ref"].endswith("combined_train.jsonl")

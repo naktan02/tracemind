@@ -28,7 +28,7 @@ from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
 def _build_task(
     *,
-    acceptance_policy_name: str | None = "top1_confidence_only",
+    pseudo_label_algorithm_name: str | None = "top1_confidence_only",
     confidence_threshold: float = 0.8,
     margin_threshold: float = 0.02,
 ) -> TrainingTask:
@@ -48,7 +48,7 @@ def _build_task(
             loss="diagonal_scale_heuristic",
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
-            acceptance_policy_name=acceptance_policy_name,
+            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )

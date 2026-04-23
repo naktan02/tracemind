@@ -19,7 +19,7 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 
 def _build_task(
     *,
-    acceptance_policy_name: str | None = None,
+    pseudo_label_algorithm_name: str | None = None,
     evidence_backend_name: str | None = None,
     confidence_threshold: float = 0.6,
 ) -> TrainingTask:
@@ -40,7 +40,7 @@ def _build_task(
             confidence_threshold=confidence_threshold,
             margin_threshold=0.02,
             evidence_backend_name=evidence_backend_name,
-            acceptance_policy_name=acceptance_policy_name,
+            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )
@@ -73,8 +73,12 @@ def test_selection_service_keeps_top1_margin_threshold_as_default() -> None:
     assert candidate.confidence_kind == "prototype_similarity"
     assert candidate.sample_weight == pytest.approx(0.62)
     assert candidate.margin == pytest.approx(0.01)
-    assert candidate.metadata["evidence_backend_name"] == "prototype_similarity_evidence"
-    assert candidate.metadata["acceptance_policy_name"] == "top1_margin_threshold"
+    assert candidate.metadata["evidence_backend_name"] == (
+        "prototype_similarity_evidence"
+    )
+    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+        "top1_margin_threshold"
+    )
 
 
 def test_selection_service_can_switch_policy_from_training_task() -> None:
@@ -92,12 +96,14 @@ def test_selection_service_can_switch_policy_from_training_task() -> None:
             ),
         ),
         training_task=_build_task(
-            acceptance_policy_name="top1_confidence_only"
+            pseudo_label_algorithm_name="top1_confidence_only"
         ),
     )
 
     candidate = result.candidates[0]
     assert candidate.accepted is True
     assert candidate.evidence_ref == "evidence:q1"
-    assert candidate.metadata["acceptance_policy_name"] == "top1_confidence_only"
+    assert candidate.metadata["pseudo_label_algorithm_name"] == (
+        "top1_confidence_only"
+    )
     assert result.accepted_count == 1

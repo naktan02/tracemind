@@ -94,6 +94,7 @@ Embedding
 | Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
 | Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
 | Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.objective.score_policy_name`, `score_top_k` | 활성 runtime |
+| Pseudo-label Selection Algorithm | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.pseudo_label_algorithm_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.pseudo_label_algorithm_name`, central 실험의 `pseudo_label_algorithm=<preset>` | 활성 runtime/central selection |
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
 | Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
@@ -102,7 +103,7 @@ Embedding
 
 - 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
-- pseudo-label selection은 `example generation -> evidence backend -> acceptance policy`로 분리돼 있다.
+- pseudo-label selection은 `example generation -> evidence backend -> selection algorithm -> acceptance policy`로 분리돼 있다.
 - `weak_strong_pair` backend는 generic multiview input backend로 유지한다.
 - classifier posterior는 공통 evidence로 읽고, final decision은 local interpretation이 계속 맡는다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.
@@ -123,8 +124,9 @@ Embedding
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
   strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
   실제 backtranslation 메커니즘은 `agent/src/services/backtranslation_service.py`를 재사용한다.
-- 현재 central 실험에서 `acceptance_policy_name` 계약은 compatibility field로 유지하지만,
-  구현 source of truth는 `query_adaptation/ssl`로 이동했다.
+- 현재 central 실험에서 selection source of truth는
+  `pseudo_label_algorithm_name` / `scripts/conf/pseudo_label_algorithm/`이고,
+  `acceptance_policy_name`은 runtime compatibility용 compatibility field로 유지된다.
 
 관련 파일:
 
@@ -298,6 +300,7 @@ entrypoint:
 - `training_task.objective.scorer_backend_name`
 - `training_task.objective.score_policy_name`
 - `training_task.objective.score_top_k`
+- `training_task.objective.pseudo_label_algorithm_name`
 - `training_task.objective.acceptance_policy_name`
 - `training_task.objective.privacy_guard_name`
 - `training_task.selection_policy.max_examples`

@@ -88,7 +88,10 @@ class PseudoLabelSelectionService:
                 "Default pseudo-label acceptance policy does not match the "
                 "configured default objective profile."
             )
-        if self.default_acceptance_policy_name != self.default_algorithm.algorithm_name:
+        if (
+            self.default_pseudo_label_algorithm_name
+            != self.default_algorithm.algorithm_name
+        ):
             raise ValueError(
                 "Default query SSL algorithm does not match the configured "
                 "default objective profile."
@@ -113,6 +116,10 @@ class PseudoLabelSelectionService:
     @property
     def default_acceptance_policy_name(self) -> str:
         return self.default_profile.acceptance_policy_name
+
+    @property
+    def default_pseudo_label_algorithm_name(self) -> str:
+        return self.default_profile.pseudo_label_algorithm_name
 
     def select(
         self,
@@ -262,7 +269,7 @@ class PseudoLabelSelectionService:
             metadata={
                 "confidence_threshold": algorithm_config.confidence_threshold,
                 "margin_threshold": algorithm_config.margin_threshold,
-                "acceptance_policy_name": ssl_algorithm.algorithm_name,
+                "pseudo_label_algorithm_name": ssl_algorithm.algorithm_name,
                 "evidence_backend_name": self._resolve_evidence_backend_name(
                     evidence=evidence,
                     training_task=training_task,
@@ -278,8 +285,8 @@ class PseudoLabelSelectionService:
         training_task: TrainingTask,
     ) -> QuerySslAlgorithm:
         algorithm_name = (
-            training_task.objective_config.acceptance_policy_name
-            or self.default_acceptance_policy_name
+            training_task.objective_config.pseudo_label_algorithm_name
+            or self.default_pseudo_label_algorithm_name
         )
         if algorithm_name == self.default_algorithm.algorithm_name:
             return self.default_algorithm

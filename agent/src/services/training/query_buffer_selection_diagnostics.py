@@ -74,7 +74,7 @@ class QueryBufferSelectionTraceRow:
     max_examples: int | None
     task_id: str | None
     round_id: str | None
-    acceptance_policy_name: str | None
+    pseudo_label_algorithm_name: str | None
     evidence_backend_name: str | None
     evidence_view_kind: str
     evidence_ref: str | None
@@ -118,7 +118,7 @@ class QueryBufferSelectionTraceRow:
             "max_examples": self.max_examples,
             "task_id": self.task_id,
             "round_id": self.round_id,
-            "acceptance_policy_name": self.acceptance_policy_name,
+            "pseudo_label_algorithm_name": self.pseudo_label_algorithm_name,
             "evidence_backend_name": self.evidence_backend_name,
             "evidence_view_kind": self.evidence_view_kind,
             "evidence_ref": self.evidence_ref,
@@ -154,7 +154,7 @@ class QueryBufferSelectionSummary:
     confidence_kind_counts: dict[str, int]
     evidence_backend_name_counts: dict[str, int]
     evidence_view_kind_counts: dict[str, int]
-    acceptance_policy_name_counts: dict[str, int]
+    pseudo_label_algorithm_name_counts: dict[str, int]
     confidence_threshold_counts: dict[str, int]
     margin_threshold_counts: dict[str, int]
     max_examples_counts: dict[str, int]
@@ -186,8 +186,8 @@ class QueryBufferSelectionSummary:
             "evidence_view_kind_counts": dict(
                 sorted(self.evidence_view_kind_counts.items())
             ),
-            "acceptance_policy_name_counts": dict(
-                sorted(self.acceptance_policy_name_counts.items())
+            "pseudo_label_algorithm_name_counts": dict(
+                sorted(self.pseudo_label_algorithm_name_counts.items())
             ),
             "confidence_threshold_counts": dict(
                 sorted(self.confidence_threshold_counts.items())
@@ -242,7 +242,7 @@ class QueryBufferSelectionDiagnosticsService:
         confidence_kind_counts: Counter[str] = Counter()
         evidence_backend_name_counts: Counter[str] = Counter()
         evidence_view_kind_counts: Counter[str] = Counter()
-        acceptance_policy_name_counts: Counter[str] = Counter()
+        pseudo_label_algorithm_name_counts: Counter[str] = Counter()
         confidence_threshold_counts: Counter[str] = Counter()
         margin_threshold_counts: Counter[str] = Counter()
         max_examples_counts: Counter[str] = Counter()
@@ -275,9 +275,13 @@ class QueryBufferSelectionDiagnosticsService:
                 candidate.metadata.get("margin_threshold")
             )
             max_examples = _optional_int(candidate.metadata.get("max_examples"))
-            acceptance_policy_name = _optional_str(
-                candidate.metadata.get("acceptance_policy_name")
+            pseudo_label_algorithm_name = _optional_str(
+                candidate.metadata.get("pseudo_label_algorithm_name")
             )
+            if pseudo_label_algorithm_name is None:
+                pseudo_label_algorithm_name = _optional_str(
+                    candidate.metadata.get("acceptance_policy_name")
+                )
             evidence_backend_name = _optional_str(
                 candidate.metadata.get("evidence_backend_name")
             )
@@ -325,7 +329,7 @@ class QueryBufferSelectionDiagnosticsService:
                     round_id=(
                         None if candidate.round_id is None else str(candidate.round_id)
                     ),
-                    acceptance_policy_name=acceptance_policy_name,
+                    pseudo_label_algorithm_name=pseudo_label_algorithm_name,
                     evidence_backend_name=evidence_backend_name,
                     evidence_view_kind=(
                         "unknown" if evidence is None else evidence.view_kind
@@ -380,10 +384,10 @@ class QueryBufferSelectionDiagnosticsService:
             evidence_view_kind_counts[
                 "unknown" if evidence is None else evidence.view_kind
             ] += 1
-            acceptance_policy_name_counts[
+            pseudo_label_algorithm_name_counts[
                 "unknown"
-                if acceptance_policy_name is None
-                else acceptance_policy_name
+                if pseudo_label_algorithm_name is None
+                else pseudo_label_algorithm_name
             ] += 1
             confidence_threshold_counts[
                 _stringify_count_key(confidence_threshold)
@@ -410,7 +414,9 @@ class QueryBufferSelectionDiagnosticsService:
                 confidence_kind_counts=dict(confidence_kind_counts),
                 evidence_backend_name_counts=dict(evidence_backend_name_counts),
                 evidence_view_kind_counts=dict(evidence_view_kind_counts),
-                acceptance_policy_name_counts=dict(acceptance_policy_name_counts),
+                pseudo_label_algorithm_name_counts=dict(
+                    pseudo_label_algorithm_name_counts
+                ),
                 confidence_threshold_counts=dict(confidence_threshold_counts),
                 margin_threshold_counts=dict(margin_threshold_counts),
                 max_examples_counts=dict(max_examples_counts),

@@ -42,7 +42,7 @@ def _build_task() -> TrainingTask:
             loss="diagonal_scale_heuristic",
             confidence_threshold=0.75,
             margin_threshold=0.02,
-            acceptance_policy_name="top1_confidence_only",
+            pseudo_label_algorithm_name="top1_confidence_only",
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=4),
     )

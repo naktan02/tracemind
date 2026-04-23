@@ -95,7 +95,9 @@ class TrainingObjectiveConfigPayload(BaseModel):
     - `scorer_backend_name`: category score 계산 backend 식별자
     - `score_policy_name`: 다중 prototype score 집계 정책 식별자
     - `score_top_k`: top-k 계열 score 정책이 사용할 k 값
-    - `acceptance_policy_name`: pseudo-label acceptance 정책 식별자
+    - `pseudo_label_algorithm_name`: pseudo-label 후보를 평가하는
+      selection 알고리즘 식별자
+    - `acceptance_policy_name`: runtime compatibility가 검증할 acceptance 정책 식별자
     - `privacy_guard_name`: 로컬 update 보호 계층 식별자
     - `extras`: family별 추가 하이퍼파라미터 확장 슬롯
     """
@@ -150,6 +152,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
         ge=1,
         description="Top-k score 집계 정책이 사용할 k 값.",
     )
+    pseudo_label_algorithm_name: str | None = Field(
+        default=None,
+        description="Pseudo-label 후보를 평가하는 selection 알고리즘 식별자.",
+    )
     acceptance_policy_name: str | None = Field(
         default=None,
         description="Pseudo-label acceptance 정책 식별자.",
@@ -180,6 +186,17 @@ class TrainingObjectiveConfigPayload(BaseModel):
             "training_backend_name",
             source.get("loss", DEFAULT_TRAINING_BACKEND_NAME),
         )
+        pseudo_label_algorithm_name = _optional_str(
+            source.get("pseudo_label_algorithm_name")
+        )
+        if pseudo_label_algorithm_name is None:
+            # compatibility:
+            # 과거 objective mapping은 acceptance 정책 이름을 selection 알고리즘
+            # 식별자로도 재사용했다. canonical contract는 분리하되,
+            # mapping 정규화 경로에서만 얇게 이어받는다.
+            pseudo_label_algorithm_name = _optional_str(
+                source.get("acceptance_policy_name")
+            )
         return cls(
             training_backend_name=str(backend_name),
             algorithm_profile_name=_optional_str(source.get("algorithm_profile_name")),
@@ -193,6 +210,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
             scorer_backend_name=_optional_str(source.get("scorer_backend_name")),
             score_policy_name=_optional_str(source.get("score_policy_name")),
             score_top_k=_optional_positive_int(source.get("score_top_k")),
+            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
             acceptance_policy_name=_optional_str(
                 source.get("acceptance_policy_name")
             ),
@@ -213,6 +231,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
                     "scorer_backend_name",
                     "score_policy_name",
                     "score_top_k",
+                    "pseudo_label_algorithm_name",
                     "acceptance_policy_name",
                     "privacy_guard_name",
                 }
@@ -244,6 +263,10 @@ class TrainingObjectiveConfigPayload(BaseModel):
             result["score_policy_name"] = self.score_policy_name
         if self.score_top_k is not None:
             result["score_top_k"] = self.score_top_k
+        if self.pseudo_label_algorithm_name is not None:
+            result["pseudo_label_algorithm_name"] = (
+                self.pseudo_label_algorithm_name
+            )
         if self.acceptance_policy_name is not None:
             result["acceptance_policy_name"] = self.acceptance_policy_name
         if self.privacy_guard_name is not None:

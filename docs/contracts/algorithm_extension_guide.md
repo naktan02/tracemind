@@ -308,7 +308,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 **교체 절차:**
 1. `training/acceptance_policies/` 아래에 새 Policy 구현 파일을 추가한다
 2. `register_pseudo_label_acceptance_policy()`로 thin registry wiring에 등록
-3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택
+3. `TrainingObjectiveConfigPayload.acceptance_policy_name`으로 선택한다
 
 주의:
 - central query-domain 실험에서는 compatibility field로만 남을 수 있다.
@@ -335,8 +335,9 @@ class PseudoLabelAcceptancePolicy(Protocol):
 **교체 절차:**
 1. `query_adaptation/ssl/algorithms/` 아래에 알고리즘 구현을 추가한다
 2. `ssl/registry.py`에 얇게 등록한다
-3. scripts에서는 `pseudo_label_algorithm=<preset>`으로 선택한다
-4. 필요하면 runtime compatibility를 위해 기존 `acceptance_policy_name`에 매핑한다
+3. `TrainingObjectiveConfigPayload.pseudo_label_algorithm_name`으로 선택한다
+4. scripts에서는 `pseudo_label_algorithm=<preset>`으로 preset을 고른다
+5. acceptance runtime 검증이 필요하면 별도 `acceptance_policy_name`을 함께 둔다
 
 ---
 

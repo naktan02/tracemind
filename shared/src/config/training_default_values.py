@@ -47,6 +47,7 @@ PSEUDO_LABEL_SELF_TRAINING_V1_OBJECTIVE_MAPPING = _freeze_mapping(
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",
+        "pseudo_label_algorithm_name": "top1_margin_threshold",
         "privacy_guard_name": "diagonal_scale_clip_only",
         **dict(
             DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
