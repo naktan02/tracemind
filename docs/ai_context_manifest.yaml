@@ -43,6 +43,8 @@ active_entrypoints:
     use_for: strategy addition and replacement
   - path: docs/fl_runtime_implementation_checklist.md
     use_for: fl runtime implementation work
+  - path: docs/family_extension_wellbeing_signal_mvp_plan.md
+    use_for: child/parent chrome extension MVP planning and local wellbeing signal API
 
 task_routes:
   contract_change:
@@ -119,6 +121,18 @@ task_routes:
       - duplicate guidance is reduced
       - notes stay archive-only
       - source of truth remains code-adjacent
+
+  family_extension_mvp:
+    read_order:
+      - AGENTS.md
+      - docs/AGENTS.md
+      - docs/execution_index.md
+      - docs/family_extension_wellbeing_signal_mvp_plan.md
+      - shared/src/contracts/README.md
+    verify:
+      - external UI only sees overall wellbeing signal
+      - child and parent surfaces stay separated
+      - local program stays the source of truth for computed outputs
 
 archive_paths:
   - docs/notes/**

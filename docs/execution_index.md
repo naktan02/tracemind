@@ -38,6 +38,8 @@ source-of-truth 우선순위를 먼저 확인한다.
    - UI shell이 contract source of truth가 되지 않게 유지하는 규칙
 13. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
+14. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
+   - 아이용/부모용 확장 화면과 로컬 프로그램 API의 단계별 계획
 
 ## AI Harness 빠른 경로
 
@@ -116,6 +118,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 | `docs/contracts/query_buffer_v1.md` | agent-owned local query retention, selection 입력, adaptation 준비 경계 |
 | `docs/contracts/strategy_addition_playbook.md` | 전략 추가 시 실제 작업 순서와 검증 순서 |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값 source, 실험 override 가능 여부, 구현 상태 |
+| `docs/family_extension_wellbeing_signal_mvp_plan.md` | 아이용/부모용 확장과 wellbeing signal 출력 계약 기반 MVP 계획 |
 | `shared/src/contracts/workspace_manifest_contracts.py` | workspace manifest, core method/variant profile/override patch, compile preview 계약 |
 | `docs/contracts/shared_adapter_contracts_v1.md` | adapter payload 구조와 수학적 의미 |
 | `docs/contracts/training_update_envelope_v1.md` | envelope 필드 설계 이유 |
