@@ -1,28 +1,15 @@
-import { useEffect, useState } from "react";
-
-import {
-  compileExperimentWorkspace,
-  getSavedExperimentWorkspace,
-  launchExperimentRun,
-  listExperimentRuns,
-  listSavedExperimentWorkspaces,
-  loadExperimentCatalog,
-  resolveApiBaseUrl,
-  saveExperimentWorkspace,
-} from "../api";
+import { compileExperimentWorkspace } from "../api";
+import { resolveApiBaseUrl } from "../api";
 import { asErrorMessage } from "../lib/formatters";
 import {
-  EMPTY_OVERRIDE_JSON,
-  buildSectionOverrideErrors,
-  buildSectionOverrideParseBySection,
-  buildSectionOverrideValueBySection,
-  buildWorkspaceManifest,
-  createManifestId,
-  formatOverridePatch,
   getEntrypointSection,
   hydrateWorkspaceDraftFromSavedWorkspace,
-  parseOverrideObject,
 } from "../lib/workspaceDraft";
+import { useState } from "react";
+import { useExperimentCatalog } from "./useExperimentCatalog";
+import { useExperimentRuns } from "./useExperimentRuns";
+import { useSavedWorkspaces } from "./useSavedWorkspaces";
+import { useWorkspaceDraft } from "./useWorkspaceDraft";
 import type {
   CatalogItemPayload,
   CatalogOverrideFieldPayload,
@@ -72,13 +59,15 @@ export interface ExperimentWorkspaceController {
   actionNotice: ActionNotice | null;
   sectionOverrideParseBySection: Record<
     string,
-    ReturnType<typeof parseOverrideObject>
+    ReturnType<typeof import("../lib/workspaceDraft").parseOverrideObject>
   >;
   sectionOverrideValueBySection: Record<
     string,
     Record<string, WorkspaceConfigScalar>
   >;
-  globalOverrideParse: ReturnType<typeof parseOverrideObject>;
+  globalOverrideParse: ReturnType<
+    typeof import("../lib/workspaceDraft").parseOverrideObject
+  >;
   localParseErrors: string[];
   workspaceManifest: WorkspaceManifestPayload | null;
   refreshSavedWorkspaces: () => Promise<void>;
@@ -105,37 +94,14 @@ export interface ExperimentWorkspaceController {
 
 export function useExperimentWorkspaceController(): ExperimentWorkspaceController {
   const apiBaseUrl = resolveApiBaseUrl();
-  const [catalog, setCatalog] = useState<ExperimentCatalogPayload | null>(null);
-  const [catalogError, setCatalogError] = useState<string | null>(null);
-  const [isCatalogLoading, setIsCatalogLoading] = useState(true);
-
-  const [manifestId, setManifestId] = useState<string | null>(null);
-  const [currentWorkspaceId, setCurrentWorkspaceId] = useState<string | null>(null);
-  const [selectedTrackName, setSelectedTrackName] = useState<string | null>(null);
-  const [selectedEntrypointName, setSelectedEntrypointName] = useState<string | null>(
-    null,
-  );
-  const [selectedItemNameBySection, setSelectedItemNameBySection] = useState<
-    Record<string, string | null>
-  >({});
-  const [overrideTextBySection, setOverrideTextBySection] = useState<
-    Record<string, string>
-  >({});
-  const [globalOverrideText, setGlobalOverrideText] =
-    useState<string>(EMPTY_OVERRIDE_JSON);
-
-  const [savedWorkspaces, setSavedWorkspaces] = useState<
-    SavedWorkspaceSummaryPayload[]
-  >([]);
-  const [savedWorkspacesError, setSavedWorkspacesError] = useState<string | null>(
-    null,
-  );
-  const [isSavedWorkspacesLoading, setIsSavedWorkspacesLoading] = useState(false);
-  const [loadingWorkspaceId, setLoadingWorkspaceId] = useState<string | null>(null);
-
-  const [runs, setRuns] = useState<ExperimentRunPayload[]>([]);
-  const [runsError, setRunsError] = useState<string | null>(null);
-  const [isRunsLoading, setIsRunsLoading] = useState(false);
+  const catalogState = useExperimentCatalog(apiBaseUrl);
+  const draftState = useWorkspaceDraft({
+    activeTrack: catalogState.activeTrack,
+    entrypointName: catalogState.entrypointItem?.item_name ?? null,
+    sections: catalogState.nonEntrypointSections,
+  });
+  const savedWorkspacesState = useSavedWorkspaces(apiBaseUrl);
+  const runsState = useExperimentRuns(apiBaseUrl);
 
   const [compilePlan, setCompilePlan] = useState<ResolvedExperimentPlanPayload | null>(
     null,
@@ -146,151 +112,20 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
   const [isRunLaunching, setIsRunLaunching] = useState(false);
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
 
-  async function refreshSavedWorkspaces() {
-    setIsSavedWorkspacesLoading(true);
-    try {
-      const payload = await listSavedExperimentWorkspaces(apiBaseUrl);
-      setSavedWorkspaces(payload);
-      setSavedWorkspacesError(null);
-    } catch (error) {
-      setSavedWorkspacesError(asErrorMessage(error));
-    } finally {
-      setIsSavedWorkspacesLoading(false);
-    }
-  }
-
-  async function refreshRuns(options?: { silent?: boolean }) {
-    if (!options?.silent) {
-      setIsRunsLoading(true);
-    }
-    try {
-      const payload = await listExperimentRuns(apiBaseUrl);
-      setRuns(payload);
-      setRunsError(null);
-    } catch (error) {
-      setRunsError(asErrorMessage(error));
-    } finally {
-      if (!options?.silent) {
-        setIsRunsLoading(false);
-      }
-    }
-  }
-
-  useEffect(() => {
-    let cancelled = false;
-
-    async function bootstrap() {
-      setIsCatalogLoading(true);
-      setCatalogError(null);
-
-      try {
-        const payload = await loadExperimentCatalog(apiBaseUrl);
-        if (cancelled) {
-          return;
-        }
-        setCatalog(payload);
-        const firstTrack = payload.tracks[0] ?? null;
-        const firstEntrypoint = firstTrack
-          ? getEntrypointSection(firstTrack)?.items[0] ?? null
-          : null;
-        setSelectedTrackName(firstTrack?.track_name ?? null);
-        setSelectedEntrypointName(firstEntrypoint?.item_name ?? null);
-        setManifestId(
-          firstTrack ? createManifestId(firstTrack.track_name) : null,
-        );
-        setCurrentWorkspaceId(null);
-      } catch (error) {
-        if (cancelled) {
-          return;
-        }
-        setCatalogError(asErrorMessage(error));
-      } finally {
-        if (!cancelled) {
-          setIsCatalogLoading(false);
-        }
-      }
-    }
-
-    void bootstrap();
-    return () => {
-      cancelled = true;
-    };
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    void refreshSavedWorkspaces();
-    void refreshRuns();
-  }, [apiBaseUrl]);
-
-  useEffect(() => {
-    const intervalId = window.setInterval(() => {
-      void refreshRuns({ silent: true });
-    }, 4000);
-    return () => {
-      window.clearInterval(intervalId);
-    };
-  }, [apiBaseUrl]);
-
-  const activeTrack =
-    catalog?.tracks.find((track) => track.track_name === selectedTrackName) ?? null;
-  const entrypointSection = activeTrack ? getEntrypointSection(activeTrack) : null;
-  const entrypointItem =
-    entrypointSection?.items.find((item) => item.item_name === selectedEntrypointName) ??
-    entrypointSection?.items[0] ??
-    null;
-  const nonEntrypointSections =
-    activeTrack?.sections.filter(
-      (section) => section.section_name !== entrypointSection?.section_name,
-    ) ?? [];
-
-  const sectionOverrideParseBySection = buildSectionOverrideParseBySection(
-    nonEntrypointSections,
-    overrideTextBySection,
-  );
-  const sectionOverrideValueBySection = buildSectionOverrideValueBySection(
-    sectionOverrideParseBySection,
-  );
-  const globalOverrideParse = parseOverrideObject(globalOverrideText);
-  const sectionOverrideErrors = buildSectionOverrideErrors(
-    nonEntrypointSections,
-    selectedItemNameBySection,
-    sectionOverrideParseBySection,
-  );
-  const localParseErrors = [
-    globalOverrideParse.error
-      ? `global_override_patch: ${globalOverrideParse.error}`
-      : null,
-    ...sectionOverrideErrors,
-  ].filter(Boolean) as string[];
-  const workspaceManifest =
-    activeTrack && entrypointItem && manifestId
-      ? buildWorkspaceManifest(
-          manifestId,
-          activeTrack.track_name,
-          entrypointItem.item_name,
-          nonEntrypointSections,
-          selectedItemNameBySection,
-          sectionOverrideValueBySection,
-          globalOverrideParse.value,
-        )
-      : null;
-
-  function forkCurrentWorkspaceDraft(trackName: string) {
-    if (currentWorkspaceId === null) {
-      return;
-    }
-    setCurrentWorkspaceId(null);
-    setManifestId(createManifestId(trackName));
+  function clearPreviewState() {
+    setCompilePlan(null);
+    setCompileError(null);
+    setActionNotice(null);
   }
 
   async function handleCompilePreview() {
-    if (!workspaceManifest) {
+    if (!draftState.workspaceManifest) {
       setCompileError("먼저 track과 entrypoint를 선택하세요.");
       setCompilePlan(null);
       return;
     }
-    if (localParseErrors.length > 0) {
-      setCompileError(localParseErrors[0]);
+    if (draftState.localParseErrors.length > 0) {
+      setCompileError(draftState.localParseErrors[0]);
       setCompilePlan(null);
       return;
     }
@@ -298,7 +133,10 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     setIsCompiling(true);
     setCompileError(null);
     try {
-      const plan = await compileExperimentWorkspace(apiBaseUrl, workspaceManifest);
+      const plan = await compileExperimentWorkspace(
+        apiBaseUrl,
+        draftState.workspaceManifest,
+      );
       setCompilePlan(plan);
     } catch (error) {
       setCompilePlan(null);
@@ -309,7 +147,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
   }
 
   async function handleSaveWorkspace() {
-    if (!workspaceManifest) {
+    if (!draftState.workspaceManifest) {
       setActionNotice({
         tone: "error",
         title: "Workspace save failed",
@@ -317,11 +155,11 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       });
       return;
     }
-    if (localParseErrors.length > 0) {
+    if (draftState.localParseErrors.length > 0) {
       setActionNotice({
         tone: "error",
         title: "Workspace save failed",
-        message: localParseErrors[0],
+        message: draftState.localParseErrors[0],
       });
       return;
     }
@@ -329,15 +167,16 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     setIsWorkspaceSaving(true);
     setActionNotice(null);
     try {
-      const savedWorkspace = await saveExperimentWorkspace(
-        apiBaseUrl,
-        workspaceManifest,
+      const savedWorkspace = await savedWorkspacesState.saveWorkspace(
+        draftState.workspaceManifest,
       );
-      setCurrentWorkspaceId(savedWorkspace.workspace_id);
-      setManifestId(savedWorkspace.manifest.manifest_id);
+      draftState.markSavedWorkspace(
+        savedWorkspace.workspace_id,
+        savedWorkspace.manifest.manifest_id,
+      );
       setCompilePlan(savedWorkspace.resolved_plan);
       setCompileError(null);
-      await refreshSavedWorkspaces();
+      await savedWorkspacesState.refreshSavedWorkspaces();
       setActionNotice({
         tone: "ok",
         title: "Workspace saved",
@@ -355,22 +194,22 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
   }
 
   async function handleLoadSavedWorkspace(workspaceId: string) {
-    if (!catalog) {
+    if (!catalogState.catalog) {
       return;
     }
 
-    setLoadingWorkspaceId(workspaceId);
     setActionNotice(null);
     try {
-      const detail = await getSavedExperimentWorkspace(apiBaseUrl, workspaceId);
-      const hydrated = hydrateWorkspaceDraftFromSavedWorkspace(detail, catalog);
-      setManifestId(hydrated.manifestId);
-      setCurrentWorkspaceId(detail.workspace_id);
-      setSelectedTrackName(hydrated.trackName);
-      setSelectedEntrypointName(hydrated.entrypointName);
-      setSelectedItemNameBySection(hydrated.selectedItemNameBySection);
-      setOverrideTextBySection(hydrated.overrideTextBySection);
-      setGlobalOverrideText(hydrated.globalOverrideText);
+      const detail = await savedWorkspacesState.loadWorkspace(workspaceId);
+      const hydrated = hydrateWorkspaceDraftFromSavedWorkspace(
+        detail,
+        catalogState.catalog,
+      );
+      catalogState.setInitialSelection(
+        hydrated.trackName,
+        hydrated.entrypointName,
+      );
+      draftState.applyHydratedWorkspace(detail.workspace_id, hydrated);
       setCompilePlan(hydrated.compilePlan);
       setCompileError(null);
       setActionNotice({
@@ -384,13 +223,11 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
         title: "Workspace load failed",
         message: asErrorMessage(error),
       });
-    } finally {
-      setLoadingWorkspaceId(null);
     }
   }
 
   async function handleLaunchRun() {
-    if (!workspaceManifest) {
+    if (!draftState.workspaceManifest) {
       setActionNotice({
         tone: "error",
         title: "Run launch failed",
@@ -398,11 +235,11 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
       });
       return;
     }
-    if (localParseErrors.length > 0) {
+    if (draftState.localParseErrors.length > 0) {
       setActionNotice({
         tone: "error",
         title: "Run launch failed",
-        message: localParseErrors[0],
+        message: draftState.localParseErrors[0],
       });
       return;
     }
@@ -410,12 +247,12 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     setIsRunLaunching(true);
     setActionNotice(null);
     try {
-      const launchedRun = await launchExperimentRun(apiBaseUrl, {
-        manifest: workspaceManifest,
-        workspace_id: currentWorkspaceId,
+      const launchedRun = await runsState.launchRun({
+        manifest: draftState.workspaceManifest,
+        workspace_id: draftState.currentWorkspaceId,
       });
-      await refreshRuns();
-      await refreshSavedWorkspaces();
+      await runsState.refreshRuns();
+      await savedWorkspacesState.refreshSavedWorkspaces();
       setActionNotice({
         tone: "ok",
         title: "Run launched",
@@ -433,71 +270,43 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
   }
 
   function handleTrackChange(track: CatalogTrackPayload) {
+    catalogState.handleTrackChange(track);
     const nextEntrypoint = getEntrypointSection(track)?.items[0] ?? null;
-    setSelectedTrackName(track.track_name);
-    setSelectedEntrypointName(nextEntrypoint?.item_name ?? null);
-    setManifestId(createManifestId(track.track_name));
-    setCurrentWorkspaceId(null);
-    setSelectedItemNameBySection({});
-    setOverrideTextBySection({});
-    setGlobalOverrideText(EMPTY_OVERRIDE_JSON);
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    draftState.resetDraft(track, nextEntrypoint?.item_name ?? null);
+    clearPreviewState();
   }
 
   function handleEntrypointChange(item: CatalogItemPayload) {
-    if (activeTrack) {
-      forkCurrentWorkspaceDraft(activeTrack.track_name);
+    if (catalogState.activeTrack) {
+      draftState.forkCurrentWorkspaceDraft(catalogState.activeTrack.track_name);
     }
-    setSelectedEntrypointName(item.item_name);
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    catalogState.handleEntrypointChange(item);
+    clearPreviewState();
   }
 
   function handleSectionItemToggle(sectionName: string, itemName: string) {
-    if (activeTrack) {
-      forkCurrentWorkspaceDraft(activeTrack.track_name);
-    }
-    const nextValue =
-      selectedItemNameBySection[sectionName] === itemName ? null : itemName;
-    setSelectedItemNameBySection((current) => ({
-      ...current,
-      [sectionName]: nextValue,
-    }));
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    draftState.handleSectionItemToggle(sectionName, itemName);
+    clearPreviewState();
   }
 
   function handleResetLane() {
-    if (!activeTrack) {
-      return;
+    const firstEntrypoint = catalogState.activeTrack
+      ? getEntrypointSection(catalogState.activeTrack)?.items[0] ?? null
+      : null;
+    if (firstEntrypoint) {
+      catalogState.handleEntrypointChange(firstEntrypoint);
     }
-    const firstEntrypoint = getEntrypointSection(activeTrack)?.items[0] ?? null;
-    setManifestId(createManifestId(activeTrack.track_name));
-    setCurrentWorkspaceId(null);
-    setSelectedEntrypointName(firstEntrypoint?.item_name ?? null);
-    setSelectedItemNameBySection({});
-    setOverrideTextBySection({});
-    setGlobalOverrideText(EMPTY_OVERRIDE_JSON);
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    draftState.resetDraft(catalogState.activeTrack, firstEntrypoint?.item_name ?? null);
+    clearPreviewState();
   }
 
   function handleSectionOverrideTextChange(sectionName: string, nextText: string) {
-    if (activeTrack) {
-      forkCurrentWorkspaceDraft(activeTrack.track_name);
-    }
-    setOverrideTextBySection((current) => ({
-      ...current,
-      [sectionName]: nextText,
-    }));
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    draftState.handleSectionOverrideTextChange(
+      catalogState.activeTrack?.track_name ?? null,
+      sectionName,
+      nextText,
+    );
+    clearPreviewState();
   }
 
   function handleSectionOverrideFieldChange(
@@ -505,63 +314,58 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     field: CatalogOverrideFieldPayload,
     nextValue: string | number | boolean | undefined,
   ) {
-    const currentPatch = sectionOverrideParseBySection[sectionName]?.value ?? {};
-    const nextPatch = {
-      ...currentPatch,
-    };
-    if (nextValue === undefined || nextValue === field.default_value) {
-      delete nextPatch[field.field_name];
-    } else {
-      nextPatch[field.field_name] = nextValue;
-    }
-    handleSectionOverrideTextChange(sectionName, formatOverridePatch(nextPatch));
+    draftState.handleSectionOverrideFieldChange(
+      catalogState.activeTrack?.track_name ?? null,
+      sectionName,
+      field,
+      nextValue,
+    );
+    clearPreviewState();
   }
 
   function handleGlobalOverrideTextChange(nextText: string) {
-    if (activeTrack) {
-      forkCurrentWorkspaceDraft(activeTrack.track_name);
-    }
-    setGlobalOverrideText(nextText);
-    setCompilePlan(null);
-    setCompileError(null);
-    setActionNotice(null);
+    draftState.handleGlobalOverrideTextChange(
+      catalogState.activeTrack?.track_name ?? null,
+      nextText,
+    );
+    clearPreviewState();
   }
 
   return {
     apiBaseUrl,
-    catalog,
-    catalogError,
-    isCatalogLoading,
-    manifestId,
-    currentWorkspaceId,
-    selectedTrackName,
-    selectedEntrypointName,
-    activeTrack,
-    entrypointItem,
-    nonEntrypointSections,
-    selectedItemNameBySection,
-    overrideTextBySection,
-    globalOverrideText,
-    savedWorkspaces,
-    savedWorkspacesError,
-    isSavedWorkspacesLoading,
-    loadingWorkspaceId,
-    runs,
-    runsError,
-    isRunsLoading,
+    catalog: catalogState.catalog,
+    catalogError: catalogState.catalogError,
+    isCatalogLoading: catalogState.isCatalogLoading,
+    manifestId: draftState.manifestId,
+    currentWorkspaceId: draftState.currentWorkspaceId,
+    selectedTrackName: catalogState.selectedTrackName,
+    selectedEntrypointName: catalogState.selectedEntrypointName,
+    activeTrack: catalogState.activeTrack,
+    entrypointItem: catalogState.entrypointItem,
+    nonEntrypointSections: catalogState.nonEntrypointSections,
+    selectedItemNameBySection: draftState.selectedItemNameBySection,
+    overrideTextBySection: draftState.overrideTextBySection,
+    globalOverrideText: draftState.globalOverrideText,
+    savedWorkspaces: savedWorkspacesState.savedWorkspaces,
+    savedWorkspacesError: savedWorkspacesState.savedWorkspacesError,
+    isSavedWorkspacesLoading: savedWorkspacesState.isSavedWorkspacesLoading,
+    loadingWorkspaceId: savedWorkspacesState.loadingWorkspaceId,
+    runs: runsState.runs,
+    runsError: runsState.runsError,
+    isRunsLoading: runsState.isRunsLoading,
     compilePlan,
     compileError,
     isCompiling,
     isWorkspaceSaving,
     isRunLaunching,
     actionNotice,
-    sectionOverrideParseBySection,
-    sectionOverrideValueBySection,
-    globalOverrideParse,
-    localParseErrors,
-    workspaceManifest,
-    refreshSavedWorkspaces,
-    refreshRuns,
+    sectionOverrideParseBySection: draftState.sectionOverrideParseBySection,
+    sectionOverrideValueBySection: draftState.sectionOverrideValueBySection,
+    globalOverrideParse: draftState.globalOverrideParse,
+    localParseErrors: draftState.localParseErrors,
+    workspaceManifest: draftState.workspaceManifest,
+    refreshSavedWorkspaces: savedWorkspacesState.refreshSavedWorkspaces,
+    refreshRuns: runsState.refreshRuns,
     handleCompilePreview,
     handleSaveWorkspace,
     handleLoadSavedWorkspace,

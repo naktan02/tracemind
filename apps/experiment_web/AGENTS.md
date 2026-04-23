@@ -28,5 +28,6 @@
 - `React + TypeScript + Vite`를 기준으로 유지한다.
 - 앱 내부 상태는 최대한 명시적으로 두고, runtime 계약을 재발명하지 않는다.
 - `App.tsx`는 shell에 가깝게 두고 lane별 page/component/hook으로 분리한다.
+- hook는 공통 폴더에 무조건 모으지 말고 `catalog`, `draft`, `saved workspaces`, `runs`처럼 변경 이유 기준으로 분리한다.
 - 복잡한 styling framework를 먼저 넣기보다 Phase 목적에 맞는 얇은 CSS를 우선한다.
 - `src/types.ts`는 backend payload에서 생성되는 파일로 유지하고 수동 수정하지 않는다.
