@@ -94,6 +94,18 @@ export interface LaunchExperimentRunRequestPayload {
   workspace_id: string | null;
 }
 
+export interface ExperimentRunMetricPayload {
+  metric_key: string;
+  value: number;
+}
+
+export interface ExperimentRunResultSummaryPayload {
+  schema_version: string;
+  source_kind: string;
+  source_paths: string[];
+  metrics: ExperimentRunMetricPayload[];
+}
+
 export type ExperimentRunStatus = "running" | "succeeded" | "failed" | "interrupted";
 
 export interface ExperimentRunPayload {
@@ -113,6 +125,8 @@ export interface ExperimentRunPayload {
   stderr_log_path: string;
   exit_code: number | null;
   error_message: string | null;
+  reported_outputs: Record<string, string>;
+  result_summary: ExperimentRunResultSummaryPayload | null;
 }
 
 export interface WorkspaceSelectionPayload {

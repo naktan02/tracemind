@@ -5,12 +5,18 @@
 현재 Phase 4 범위:
 
 1. experiment catalog 읽기
-2. lane page 단위 track/entrypoint/block selection
+2. lane page 단위 step workflow
+   - entrypoint
+   - preset sections
+   - review & run
 3. typed override field + advanced JSON patch 입력
 4. compile preview / error / warning 표시
 5. workspace 저장 / 재열기
 6. local run launch
 7. recent run status / stdout / stderr / artifact path 표시
+8. saved workspace별 latest run compare board
+   - multi-select metric columns
+   - 특정 workspace만 재실행
 
 중요:
 

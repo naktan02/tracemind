@@ -8,14 +8,10 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol, TextIO, cast
+from typing import Protocol, TextIO
 
 from main_server.src.infrastructure.repositories.experiment_run_repository import (
     StoredExperimentRunRecord,
-)
-from main_server.src.services.experiment_workspace.payloads import (
-    ExperimentRunPayload,
-    ExperimentRunStatus,
 )
 
 
@@ -180,27 +176,4 @@ def build_finished_run_record(
         error_message=(
             None if exit_code == 0 else f"Process exited with code {exit_code}."
         ),
-    )
-
-
-def record_to_payload(record: StoredExperimentRunRecord) -> ExperimentRunPayload:
-    """저장소 record를 API payload로 변환한다."""
-
-    return ExperimentRunPayload(
-        run_id=record.run_id,
-        workspace_id=record.workspace_id,
-        manifest_id=record.manifest_id,
-        track_name=record.track_name,
-        entrypoint_name=record.entrypoint_name,
-        status=cast(ExperimentRunStatus, record.status),
-        created_at=record.created_at,
-        started_at=record.started_at,
-        finished_at=record.finished_at,
-        script_path=record.script_path,
-        command_args=record.command_args,
-        artifact_root_path=str(record.artifact_root_path),
-        stdout_log_path=str(record.stdout_log_path),
-        stderr_log_path=str(record.stderr_log_path),
-        exit_code=record.exit_code,
-        error_message=record.error_message,
     )

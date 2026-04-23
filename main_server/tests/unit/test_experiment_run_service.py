@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -47,6 +48,8 @@ class _FakeProcess:
 @dataclass
 class _LaunchCapture:
     process: _FakeProcess
+    stdout_text: str = "stdout\n"
+    stderr_text: str = "stderr\n"
     command_args: tuple[str, ...] | None = None
     cwd: Path | None = None
     stdout_log_path: Path | None = None
@@ -63,8 +66,8 @@ class _LaunchCapture:
         self.cwd = cwd
         self.stdout_log_path = stdout_log_path
         self.stderr_log_path = stderr_log_path
-        stdout_log_path.write_text("stdout\n", encoding="utf-8")
-        stderr_log_path.write_text("stderr\n", encoding="utf-8")
+        stdout_log_path.write_text(self.stdout_text, encoding="utf-8")
+        stderr_log_path.write_text(self.stderr_text, encoding="utf-8")
         return LocalExperimentProcessHandle(process=self.process)
 
 
@@ -83,7 +86,66 @@ def test_experiment_run_service_launches_local_run_and_refreshes_status(
         ),
     )
     process = _FakeProcess()
-    capture = _LaunchCapture(process=process)
+    report_path = tmp_path / "fixed_classifier_report.json"
+    report_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "classifier_head_eval.v1",
+                "manifest": {
+                    "best_selection_report": {
+                        "accuracy_top_1": 0.9,
+                        "rows_total": 10,
+                        "per_category": {
+                            "anxiety": {
+                                "support": 5,
+                                "precision": 0.8,
+                                "recall": 0.75,
+                                "f1": 0.774194,
+                            },
+                            "depression": {
+                                "support": 5,
+                                "precision": 1.0,
+                                "recall": 0.95,
+                                "f1": 0.974359,
+                            },
+                        },
+                    }
+                },
+                "results": {
+                    "validation": {
+                        "accuracy_top_1": 0.8,
+                        "loss": 0.4,
+                        "rows_total": 20,
+                        "mean_true_label_probability": 0.71,
+                        "mean_top_1_probability": 0.82,
+                        "mean_margin_top1_top2": 0.22,
+                        "per_category": {
+                            "anxiety": {
+                                "support": 10,
+                                "precision": 0.7,
+                                "recall": 0.6,
+                                "f1": 0.646154,
+                            },
+                            "depression": {
+                                "support": 10,
+                                "precision": 0.9,
+                                "recall": 1.0,
+                                "f1": 0.947368,
+                            },
+                        },
+                    }
+                },
+            },
+            indent=2,
+            ensure_ascii=True,
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    capture = _LaunchCapture(
+        process=process,
+        stdout_text=f"report_json={report_path}\noutput_dir=runs/train_classifier/demo\n",
+    )
     service = ExperimentRunService(
         compiler_service=compiler_service,
         workspace_service=workspace_service,
@@ -113,6 +175,17 @@ def test_experiment_run_service_launches_local_run_and_refreshes_status(
     assert capture.stderr_log_path == Path(launched.stderr_log_path)
     assert Path(launched.stdout_log_path).exists()
     assert Path(launched.stderr_log_path).exists()
+    assert launched.reported_outputs["report_json"] == str(report_path)
+    assert launched.result_summary is not None
+    metric_values = {
+        metric.metric_key: metric.value
+        for metric in launched.result_summary.metrics
+    }
+    assert metric_values["validation.accuracy_top_1"] == pytest.approx(0.8)
+    assert metric_values["validation.macro_f1"] == pytest.approx(
+        (0.646154 + 0.947368) / 2
+    )
+    assert metric_values["selection.accuracy_top_1"] == pytest.approx(0.9)
     assert (
         workspace_service.get_workspace(saved_workspace.workspace_id).latest_run_id
         == launched.run_id
@@ -124,6 +197,7 @@ def test_experiment_run_service_launches_local_run_and_refreshes_status(
     assert refreshed.finished_at is not None
     assert refreshed.exit_code == 0
     assert refreshed.error_message is None
+    assert refreshed.result_summary is not None
 
 
 def test_experiment_run_service_rejects_workspace_manifest_mismatch(

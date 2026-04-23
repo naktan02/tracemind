@@ -7,33 +7,28 @@ function App() {
   const controller = useExperimentWorkspaceController();
 
   return (
-    <div className="page-shell">
-      <header className="hero">
-        <div className="hero-copy">
+    <div className="app-shell">
+      <header className="app-topbar">
+        <div>
           <p className="eyebrow">TraceMind Developer Workspace</p>
-          <h1>Experiment lanes into local runs</h1>
-          <p className="hero-text">
-            Track, entrypoint, preset, readiness, compile result, workspace save,
-            local run launch, log path, artifact root까지 한 화면에서 확인하는
-            Phase 4 MVP입니다.
+          <h1>Experiment Workspace</h1>
+          <p className="app-topbar__text">
+            lane별 preset을 조합하고, compile preview와 local run 결과를 같은
+            도구 안에서 비교합니다.
           </p>
         </div>
-        <div className="hero-meta">
-          <div className="meta-card">
-            <span className="meta-label">API Base</span>
-            <span className="meta-value">{controller.apiBaseUrl}</span>
+        <div className="topbar-meta">
+          <div className="topbar-chip">
+            <span className="meta-label">API</span>
+            <strong>{controller.apiBaseUrl}</strong>
           </div>
-          <div className="meta-card">
+          <div className="topbar-chip">
             <span className="meta-label">Draft</span>
-            <span className="meta-value">
-              {controller.currentWorkspaceId
-                ? controller.currentWorkspaceId
-                : "unsaved workspace draft"}
-            </span>
+            <strong>{controller.currentWorkspaceId ?? "unsaved"}</strong>
           </div>
-          <div className="meta-card">
-            <span className="meta-label">Run History</span>
-            <span className="meta-value">{controller.runs.length} recent runs</span>
+          <div className="topbar-chip">
+            <span className="meta-label">Runs</span>
+            <strong>{controller.runs.length}</strong>
           </div>
         </div>
       </header>
@@ -53,13 +48,7 @@ function App() {
       ) : null}
 
       {controller.catalog ? (
-        <section className="panel panel--track-tabs">
-          <div className="panel-header panel-header--compact">
-            <div>
-              <p className="panel-kicker">Tracks</p>
-              <h2>Lane Pages</h2>
-            </div>
-          </div>
+        <section className="track-switcher">
           <div className="track-tabs" role="tablist" aria-label="Experiment tracks">
             {controller.catalog.tracks.map((track) => (
               <button

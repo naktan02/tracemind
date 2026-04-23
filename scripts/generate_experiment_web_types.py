@@ -65,6 +65,14 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
         experiment_payloads.LaunchExperimentRunRequestPayload,
     ),
     (
+        "ExperimentRunMetricPayload",
+        experiment_payloads.ExperimentRunMetricPayload,
+    ),
+    (
+        "ExperimentRunResultSummaryPayload",
+        experiment_payloads.ExperimentRunResultSummaryPayload,
+    ),
+    (
         "ExperimentRunStatus",
         experiment_payloads.ExperimentRunStatus,
     ),

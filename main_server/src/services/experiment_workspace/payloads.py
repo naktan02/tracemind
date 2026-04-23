@@ -36,6 +36,26 @@ ExperimentRunStatus = Literal[
 ]
 
 
+class ExperimentRunMetricPayload(BaseModel):
+    """실험 결과 비교 표에 노출할 scalar metric."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    metric_key: str
+    value: float
+
+
+class ExperimentRunResultSummaryPayload(BaseModel):
+    """run artifact에서 추출한 결과 요약."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: str = "experiment_run_result_summary.v1"
+    source_kind: str
+    source_paths: tuple[str, ...] = ()
+    metrics: tuple[ExperimentRunMetricPayload, ...] = ()
+
+
 class CatalogOverrideFieldPayload(BaseModel):
     """Preset 위에 덧씌울 수 있는 typed scalar override field."""
 
@@ -227,3 +247,5 @@ class ExperimentRunPayload(BaseModel):
     stderr_log_path: str
     exit_code: int | None = None
     error_message: str | None = None
+    reported_outputs: dict[str, str] = Field(default_factory=dict)
+    result_summary: ExperimentRunResultSummaryPayload | None = None

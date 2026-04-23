@@ -30,3 +30,17 @@ export function asErrorMessage(error: unknown): string {
   }
   return String(error);
 }
+
+export function formatMetricKey(metricKey: string): string {
+  return metricKey.split("_").join(" ");
+}
+
+export function formatMetricValue(value: number): string {
+  if (Number.isInteger(value)) {
+    return String(value);
+  }
+  if (Math.abs(value) >= 1) {
+    return value.toFixed(3);
+  }
+  return value.toFixed(4);
+}

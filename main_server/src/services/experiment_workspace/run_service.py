@@ -17,6 +17,10 @@ from main_server.src.services.experiment_workspace.payloads import (
     ExperimentRunPayload,
     LaunchExperimentRunRequestPayload,
 )
+from main_server.src.services.experiment_workspace.run_result_summary import (
+    build_experiment_run_result_summary,
+    extract_reported_outputs,
+)
 from main_server.src.services.experiment_workspace.run_runtime_support import (
     LocalExperimentProcessHandle,
     ProcessLauncher,
@@ -25,7 +29,6 @@ from main_server.src.services.experiment_workspace.run_runtime_support import (
     build_finished_run_record,
     build_running_run_record,
     launch_local_process,
-    record_to_payload,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
@@ -131,7 +134,7 @@ class ExperimentRunService:
                 run_id=run_id,
                 updated_at=now,
             )
-        return record_to_payload(record)
+        return self._record_to_payload(record)
 
     def list_runs(self, *, limit: int = 20) -> tuple[ExperimentRunPayload, ...]:
         """최근 run 목록을 반환한다."""
@@ -164,14 +167,14 @@ class ExperimentRunService:
         record: StoredExperimentRunRecord,
     ) -> ExperimentRunPayload:
         if record.status != "running":
-            return record_to_payload(record)
+            return self._record_to_payload(record)
         active_process = self._active_processes.get(record.run_id)
         if active_process is None:
-            return record_to_payload(record)
+            return self._record_to_payload(record)
 
         exit_code = active_process.poll()
         if exit_code is None:
-            return record_to_payload(record)
+            return self._record_to_payload(record)
 
         finished_at = datetime.now(tz=timezone.utc)
         updated_record = build_finished_run_record(
@@ -182,4 +185,34 @@ class ExperimentRunService:
         self.run_repository.save(updated_record)
         active_process.close()
         self._active_processes.pop(record.run_id, None)
-        return record_to_payload(updated_record)
+        return self._record_to_payload(updated_record)
+
+    def _record_to_payload(
+        self,
+        record: StoredExperimentRunRecord,
+    ) -> ExperimentRunPayload:
+        reported_outputs = extract_reported_outputs(record.stdout_log_path)
+        result_summary = build_experiment_run_result_summary(
+            reported_outputs=reported_outputs,
+            repo_root=self.repo_root,
+        )
+        return ExperimentRunPayload(
+            run_id=record.run_id,
+            workspace_id=record.workspace_id,
+            manifest_id=record.manifest_id,
+            track_name=record.track_name,
+            entrypoint_name=record.entrypoint_name,
+            status=record.status,
+            created_at=record.created_at,
+            started_at=record.started_at,
+            finished_at=record.finished_at,
+            script_path=record.script_path,
+            command_args=record.command_args,
+            artifact_root_path=str(record.artifact_root_path),
+            stdout_log_path=str(record.stdout_log_path),
+            stderr_log_path=str(record.stderr_log_path),
+            exit_code=record.exit_code,
+            error_message=record.error_message,
+            reported_outputs=reported_outputs,
+            result_summary=result_summary,
+        )

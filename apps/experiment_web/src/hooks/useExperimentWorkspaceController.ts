@@ -57,6 +57,7 @@ export interface ExperimentWorkspaceController {
   isCompiling: boolean;
   isWorkspaceSaving: boolean;
   isRunLaunching: boolean;
+  rerunningWorkspaceId: string | null;
   actionNotice: ActionNotice | null;
   sectionOverrideParseBySection: Record<string, ObjectParseResult>;
   sectionOverrideValueBySection: Record<
@@ -72,6 +73,7 @@ export interface ExperimentWorkspaceController {
   handleSaveWorkspace: () => Promise<void>;
   handleLoadSavedWorkspace: (workspaceId: string) => Promise<void>;
   handleLaunchRun: () => Promise<void>;
+  handleRelaunchWorkspace: (workspaceId: string) => Promise<void>;
   handleTrackChange: (track: CatalogTrackPayload) => void;
   handleEntrypointChange: (item: CatalogItemPayload) => void;
   handleSectionItemToggle: (sectionName: string, itemName: string) => void;
@@ -106,6 +108,9 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
   const [isCompiling, setIsCompiling] = useState(false);
   const [isWorkspaceSaving, setIsWorkspaceSaving] = useState(false);
   const [isRunLaunching, setIsRunLaunching] = useState(false);
+  const [rerunningWorkspaceId, setRerunningWorkspaceId] = useState<string | null>(
+    null,
+  );
   const [actionNotice, setActionNotice] = useState<ActionNotice | null>(null);
 
   function clearPreviewState() {
@@ -265,6 +270,33 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     }
   }
 
+  async function handleRelaunchWorkspace(workspaceId: string) {
+    setRerunningWorkspaceId(workspaceId);
+    setActionNotice(null);
+    try {
+      const detail = await savedWorkspacesState.loadWorkspace(workspaceId);
+      const launchedRun = await runsState.launchRun({
+        manifest: detail.manifest,
+        workspace_id: detail.workspace_id,
+      });
+      await runsState.refreshRuns();
+      await savedWorkspacesState.refreshSavedWorkspaces();
+      setActionNotice({
+        tone: "ok",
+        title: "Workspace rerun launched",
+        message: `${workspaceId}를 다시 실행해 ${launchedRun.run_id}를 시작했습니다.`,
+      });
+    } catch (error) {
+      setActionNotice({
+        tone: "error",
+        title: "Workspace rerun failed",
+        message: asErrorMessage(error),
+      });
+    } finally {
+      setRerunningWorkspaceId(null);
+    }
+  }
+
   function handleTrackChange(track: CatalogTrackPayload) {
     catalogState.handleTrackChange(track);
     const nextEntrypoint = getEntrypointSection(track)?.items[0] ?? null;
@@ -354,6 +386,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     isCompiling,
     isWorkspaceSaving,
     isRunLaunching,
+    rerunningWorkspaceId,
     actionNotice,
     sectionOverrideParseBySection: draftState.sectionOverrideParseBySection,
     sectionOverrideValueBySection: draftState.sectionOverrideValueBySection,
@@ -366,6 +399,7 @@ export function useExperimentWorkspaceController(): ExperimentWorkspaceControlle
     handleSaveWorkspace,
     handleLoadSavedWorkspace,
     handleLaunchRun,
+    handleRelaunchWorkspace,
     handleTrackChange,
     handleEntrypointChange,
     handleSectionItemToggle,

@@ -1,5 +1,9 @@
 import { buildExperimentRunLogUrl } from "../api";
-import { formatDateTime } from "../lib/formatters";
+import {
+  formatDateTime,
+  formatMetricKey,
+  formatMetricValue,
+} from "../lib/formatters";
 import type { ExperimentRunPayload } from "../types";
 
 export function RunHistoryPanel(props: {
@@ -63,6 +67,16 @@ export function RunHistoryPanel(props: {
                   <p className="run-card__error">{run.error_message}</p>
                 ) : null}
               </div>
+              {run.result_summary && run.result_summary.metrics.length > 0 ? (
+                <div className="run-metric-row">
+                  {run.result_summary.metrics.slice(0, 3).map((metric) => (
+                    <span className="run-metric-chip" key={metric.metric_key}>
+                      {formatMetricKey(metric.metric_key)}{" "}
+                      {formatMetricValue(metric.value)}
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <div className="run-link-row">
                 <a
                   href={buildExperimentRunLogUrl(
