@@ -9,11 +9,11 @@ import pytest
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     build_query_buffer_record,
 )
-from agent.src.services.training.query_adaptation_dataset_service import (
+from agent.src.services.training.datasets.query_adaptation_dataset_service import (
     QueryAdaptationDatasetConfig,
     QueryAdaptationDatasetService,
 )
-from agent.src.services.training.query_buffer_selection_service import (
+from agent.src.services.training.selection.query_buffer_selection_service import (
     QueryBufferSelectionService,
 )
 from shared.src.contracts.training_contracts import (

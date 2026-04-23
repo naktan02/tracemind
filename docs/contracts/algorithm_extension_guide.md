@@ -33,19 +33,19 @@
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
 | Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
-| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/training_backends/` |
-| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/input_backends/`, `agent/src/services/federation/training_example_service.py` |
-| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/evidence_backends/` |
+| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/backends/training/` |
+| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
+| Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/backends/evidence/` |
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
-| Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/privacy_guard_service.py` |
+| Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Query SSL Selection Algorithm | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/query_adaptation/ssl/`, `scripts/conf/pseudo_label_algorithm/` |
 | Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
-| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/rounds/aggregation_service.py` |
-| Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/rounds/update_acceptance_policy.py` |
-| Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
+| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation_service.py` |
+| Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/update_acceptance_policy.py` |
+| Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/federation/rounds/adapter_family_service.py`, `shared/src/contracts/adapter_contracts.py` |
 
 ---
 
@@ -86,7 +86,7 @@
 
 **Protocol:**
 ```python
-# agent/src/services/training/training_backends/base.py
+# agent/src/services/training/backends/training/base.py
 class SharedAdapterTrainingBackend(Protocol):
     backend_name: str
     payload_format: str
@@ -132,7 +132,7 @@ class SharedAdapterTrainingBackend(Protocol):
 
 **Protocol:**
 ```python
-# agent/src/services/training/input_backends/base.py
+# agent/src/services/training/backends/inputs/base.py
 class TrainingExampleBackend(Protocol):
     backend_name: str
 
@@ -176,7 +176,7 @@ class TrainingExampleBackend(Protocol):
 
 **Protocol:**
 ```python
-# agent/src/services/training/evidence_backends/base.py
+# agent/src/services/training/backends/evidence/base.py
 class PseudoLabelEvidenceBackend(Protocol):
     backend_name: str
 
@@ -252,7 +252,7 @@ source of truth:
 
 **Protocol:**
 ```python
-# agent/src/services/training/privacy_guard_service.py
+# agent/src/services/training/execution/privacy_guard_service.py
 class SharedAdapterPrivacyGuard(Protocol):
     guard_name: str
 
@@ -411,7 +411,7 @@ class PrototypeScorePolicy(Protocol):
 
 **Protocol:**
 ```python
-# main_server/src/services/rounds/aggregation_service.py
+# main_server/src/services/federation/rounds/aggregation_service.py
 class SharedAdapterAggregationBackend(Protocol):
     adapter_kind: str
 
@@ -450,7 +450,7 @@ aggregation 품질 판단에 활용 가능.
 
 **Protocol:**
 ```python
-# main_server/src/services/rounds/update_acceptance_policy.py
+# main_server/src/services/federation/rounds/update_acceptance_policy.py
 class RoundUpdateAcceptancePolicy(Protocol):
     def evaluate(
         self,
@@ -487,10 +487,10 @@ class RoundUpdateAcceptancePolicy(Protocol):
 |---|---|
 | `shared/src/contracts/adapter_contracts.py` | 새 State/Update payload 클래스 추가 |
 | `shared/src/domain/entities/training/` | 새 도메인 객체 추가 |
-| `agent/src/services/training/training_backends/` | 새 family용 backend 추가 |
-| `main_server/src/services/rounds/aggregation_service.py` | 새 family용 aggregation backend 추가 |
-| `main_server/src/services/rounds/adapter_family_service.py` | 라우팅 등록 |
-| `main_server/src/services/rounds/mappers.py` | 새 payload 변환 추가 |
+| `agent/src/services/training/backends/training/` | 새 family용 backend 추가 |
+| `main_server/src/services/federation/rounds/aggregation_service.py` | 새 family용 aggregation backend 추가 |
+| `main_server/src/services/federation/rounds/adapter_family_service.py` | 라우팅 등록 |
+| `main_server/src/services/federation/rounds/mappers.py` | 새 payload 변환 추가 |
 
 **현재 concrete:** `diagonal_scale` (임베딩 차원별 scale 보정).
 

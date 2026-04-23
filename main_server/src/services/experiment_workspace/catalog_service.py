@@ -15,20 +15,20 @@ from agent.src.services.inference.scoring_backends import (
 from agent.src.services.training.acceptance_policies.registry import (
     list_pseudo_label_acceptance_policy_catalog_entries,
 )
-from agent.src.services.training.evidence_backends.registry import (
+from agent.src.services.training.backends.evidence.registry import (
     list_pseudo_label_evidence_backend_catalog_entries,
 )
-from agent.src.services.training.input_backends.registry import (
+from agent.src.services.training.backends.inputs.registry import (
     list_training_example_backend_catalog_entries,
 )
-from agent.src.services.training.privacy_guard_service import (
+from agent.src.services.training.execution.privacy_guard_service import (
     list_shared_adapter_privacy_guard_catalog_entries,
 )
-from agent.src.services.training.runtime_compatibility import (
+from agent.src.services.training.execution.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
     validate_local_training_runtime,
 )
-from agent.src.services.training.training_backends.registry import (
+from agent.src.services.training.backends.training.registry import (
     list_shared_adapter_training_backend_catalog_entries,
 )
 from main_server.src.services.experiment_workspace.catalog_constants import (
@@ -59,7 +59,7 @@ from main_server.src.services.experiment_workspace.payloads import (
     CatalogTrackPayload,
     ExperimentCatalogPayload,
 )
-from main_server.src.services.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.aggregation_service import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from shared.src.config.adapter_family_metadata import (
@@ -598,7 +598,7 @@ class ExperimentCatalogService:
             display_name="Aggregation Backends",
             item_kind="aggregation_backend",
             description="adapter family별 서버 aggregation backend.",
-            source_module_name="main_server.src.services.rounds.aggregation_service",
+            source_module_name="main_server.src.services.federation.rounds.aggregation_service",
             entries=list_shared_adapter_aggregation_backend_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
             supported_runtime_paths=(
@@ -614,7 +614,7 @@ class ExperimentCatalogService:
             item_kind="training_backend",
             description="로컬 accepted example을 update payload로 바꾸는 backend.",
             source_module_name=(
-                "agent.src.services.training.training_backends.registry"
+                "agent.src.services.training.backends.training.registry"
             ),
             entries=list_shared_adapter_training_backend_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
@@ -633,7 +633,7 @@ class ExperimentCatalogService:
                 "source row 또는 stored event를 학습 예시로 "
                 "재구성하는 backend."
             ),
-            source_module_name="agent.src.services.training.input_backends.registry",
+            source_module_name="agent.src.services.training.backends.inputs.registry",
             entries=list_training_example_backend_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
             runtime_path_resolver=self._resolve_example_generation_runtime_paths,
@@ -646,7 +646,7 @@ class ExperimentCatalogService:
             item_kind="evidence_backend",
             description="ScoredEvent를 pseudo-label evidence로 정규화하는 backend.",
             source_module_name=(
-                "agent.src.services.training.evidence_backends.registry"
+                "agent.src.services.training.backends.evidence.registry"
             ),
             entries=list_pseudo_label_evidence_backend_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
@@ -694,7 +694,7 @@ class ExperimentCatalogService:
             display_name="Privacy Guards",
             item_kind="privacy_guard",
             description="local update 보호 계층 registry.",
-            source_module_name="agent.src.services.training.privacy_guard_service",
+            source_module_name="agent.src.services.training.execution.privacy_guard_service/",
             entries=list_shared_adapter_privacy_guard_catalog_entries(),
             source_of_truth_for_module=self._source_of_truth_for_module,
             supported_runtime_paths=(

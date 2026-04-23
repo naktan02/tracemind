@@ -13,7 +13,7 @@ from main_server.src.api.main import app
 from main_server.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from main_server.src.services.prototype_assets.prototype_pack_service import (
+from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
     PrototypePackService,
 )
 from shared.src.contracts.prototype_contracts import (

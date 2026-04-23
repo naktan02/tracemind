@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import cast
 
-from agent.src.services.training.query_adaptation_multiview_service import (
+from agent.src.services.training.datasets.query_adaptation_multiview_service import (
     QueryAdaptationMultiviewDataset,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows

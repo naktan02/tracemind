@@ -9,7 +9,7 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
     QueryBufferRepository,
 )
-from agent.src.services.training.query_buffer_lifecycle_service import (
+from agent.src.services.training.selection.query_buffer_lifecycle_service import (
     QueryBufferLifecycleConfig,
     QueryBufferLifecycleService,
 )

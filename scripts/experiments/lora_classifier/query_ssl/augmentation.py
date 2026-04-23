@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.services.backtranslation_service import (
+from agent.src.services.language.backtranslation_service import (
     NllbBacktranslationService,
 )
 from scripts.labeled_query_rows import (

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agent.src.services.training.pseudo_label_service import (
+from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionService,
 )
 from shared.src.contracts.training_contracts import (

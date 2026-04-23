@@ -6,12 +6,12 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from pathlib import Path
 
-from main_server.src.services.rounds.mappers import (
+from main_server.src.services.federation.rounds.mappers import (
     round_record_from_payload,
     round_record_to_payload,
 )
-from main_server.src.services.rounds.models import RoundRecord
-from main_server.src.services.rounds.payloads import (
+from main_server.src.services.federation.rounds.models import RoundRecord
+from main_server.src.services.federation.rounds.payloads import (
     ActiveRoundPointerPayload,
     dump_active_round_pointer_payload,
     dump_round_record_payload,

@@ -99,7 +99,7 @@ LoRA나 transformer 실험을 GPU로 돌리기 전에 아래를 먼저 확인한
 
 ```bash
 nvidia-smi
-./.venv/bin/python - <<'PY'
+..venv/bin/python - <<'PY'
 import torch
 print(torch.cuda.is_available(), torch.cuda.device_count())
 PY
@@ -522,7 +522,7 @@ uv run python scripts/experiments/train_lora_classifier.py \
 ```bash
 ps aux | rg 'train_lora_classifier|train_lora_bootstrap_classifier_teacher|train_lora_fixmatch'
 nvidia-smi
-./.venv/bin/python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")'
+..venv/bin/python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")'
 ```
 
 1. supervised seed LoRA baseline

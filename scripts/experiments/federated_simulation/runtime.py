@@ -11,7 +11,7 @@ from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository,
     shared_adapter_state_repository,
 )
-from main_server.src.services.prototype_assets import (
+from main_server.src.services.federation.assets.prototypes import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,
@@ -21,8 +21,10 @@ from main_server.src.services.prototype_assets import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )
-from main_server.src.services.rounds import build_shared_adapter_round_family
-from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.federation.rounds import build_shared_adapter_round_family
+from main_server.src.services.federation.rounds.round_manager_service import (
+    RoundManagerService,
+)
 from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadState,

@@ -8,7 +8,7 @@ from pathlib import Path
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
-from main_server.src.services.prototype_assets.prototype_build_state_service import (
+from main_server.src.services.federation.assets.prototypes.prototype_build_state_service import (
     PrototypeBuildStateService,
 )
 from shared.src.contracts.prototype_build_state_contracts import (

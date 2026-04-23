@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from main_server.src.services.rounds.models import RoundOpenRequest
+from main_server.src.services.federation.rounds.models import RoundOpenRequest
 from shared.src.contracts.model_contracts import ModelManifest
 
 from .models import FederatedTrainingTaskConfig

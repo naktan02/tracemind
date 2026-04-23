@@ -14,18 +14,18 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.rounds.mappers import (
+from main_server.src.services.federation.rounds.mappers import (
     model_manifest_to_payload,
     training_update_to_payload,
 )
-from main_server.src.services.rounds.payloads import (
+from main_server.src.services.federation.rounds.payloads import (
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
 )
-from main_server.src.services.rounds.round_lifecycle_service import (
+from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
-from main_server.src.services.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.federation.rounds.round_manager_service import RoundManagerService
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,

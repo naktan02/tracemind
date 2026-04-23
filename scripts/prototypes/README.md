@@ -60,11 +60,11 @@ python -m scripts.prototypes.seed_prototypes \
 ## newcomer 메모
 
 - embedding backend를 더 추가하고 싶으면
-  [agent/src/infrastructure/model_adapters/embedding/factory.py](../../agent/src/infrastructure/model_adapters/embedding/factory.py)를
+  [agent/src/infrastructure/model_adapters/embedding/factory.py](....agent/src/infrastructure/model_adapters/embedding/factory.py)를
   먼저 본다.
 - prototype pack의 translation 관련 필드 의미는
-  [docs/contracts/prototype_pack_v1.md](../../docs/contracts/prototype_pack_v1.md)를
+  [docs/contracts/prototype_pack_v1.md](....docs/contracts/prototype_pack_v1.md)를
   같이 보는 편이 빠르다.
 - 현재 전략 축 전체 상태는
-  [docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)에
+  [docs/strategy_surface_map.md](....docs/strategy_surface_map.md)에
   요약돼 있다.

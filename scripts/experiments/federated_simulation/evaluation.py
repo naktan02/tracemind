@@ -2,19 +2,19 @@
 
 from __future__ import annotations
 
-from agent.src.services.federation.training_example_service import (
+from agent.src.services.training.examples.service import (
     TrainingExampleBuildRequest,
     TrainingExampleService,
     TrainingExampleSource,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.input_backends.base import (
+from agent.src.services.training.backends.inputs.base import (
     WEAK_STRONG_PAIR_BACKEND_NAME,
 )
-from agent.src.services.training.pseudo_label_service import (
+from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionService,
 )
-from agent.src.services.training.training_example_models import (
+from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
 from scripts.labeled_query_rows import LabeledQueryRow

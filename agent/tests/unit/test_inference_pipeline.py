@@ -17,7 +17,7 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
 from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
 )
-from agent.src.services.preprocess_service import PreprocessService
+from agent.src.services.language.preprocess_service import PreprocessService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
 

@@ -9,7 +9,7 @@ from pathlib import Path
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
-from main_server.src.services.prototype_assets.prototype_rebuild_service import (
+from main_server.src.services.federation.assets.prototypes.prototype_rebuild_service import (
     PrototypeRebuildService,
     ReferenceRebuildPrototypePublicationStrategy,
 )

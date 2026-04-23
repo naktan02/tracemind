@@ -14,7 +14,7 @@ from main_server.src.api.main import (
     create_app,
     load_experiment_web_allowed_origins_from_env,
 )
-from main_server.src.services.rounds import (
+from main_server.src.services.federation.rounds import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,

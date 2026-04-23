@@ -11,18 +11,20 @@ from pydantic import BaseModel, ConfigDict, Field
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
-from agent.src.services.federation import StoredEventTrainingExampleBuildRequest
-from agent.src.services.federation.round_client import RoundClient
-from agent.src.services.federation.runtime_service import (
+from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
     FederationRuntimeService,
 )
-from agent.src.services.federation.training_example_service import (
+from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.backends.inputs.models import (
+    StoredEventTrainingExampleBuildRequest,
+)
+from agent.src.services.training.examples.service import (
     TrainingExampleService,
 )
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.training.runtime_compatibility import (
+from agent.src.services.training.execution.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
 )
 from shared.src.contracts.training_contracts import TrainingTaskPayload

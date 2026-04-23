@@ -130,10 +130,10 @@ Embedding
 
 관련 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](../agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/input_backends/__init__.py](../agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](../agent/src/services/federation/training_example_service.py)
-- [agent/src/services/training/evidence_backends/__init__.py](../agent/src/services/training/evidence_backends/__init__.py)
+- [agent/src/services/training/backends/training/__init__.py](../agent/src/services/training/backends/training/__init__.py)
+- [agent/src/services/training/backends/inputs/__init__.py](../agent/src/services/training/backends/inputs/__init__.py)
+- [agent/src/services/training/examples/service.py](../agent/src/services/training/examples/service.py)
+- [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
 - [shared/src/config/training_algorithm_profiles.py](../shared/src/config/training_algorithm_profiles.py)
 - [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
@@ -144,14 +144,14 @@ Embedding
 - [agent/src/services/training/query_adaptation/algorithms/fixmatch.py](../agent/src/services/training/query_adaptation/algorithms/fixmatch.py)
 - [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
 - [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
-- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
 
 ## 2. main_server round/runtime 전략 축
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
-| Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
-| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
+| Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/federation/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
+| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/federation/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
 | Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `scripts/conf/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
@@ -168,10 +168,10 @@ Embedding
 
 관련 파일:
 
-- [main_server/src/services/rounds/runtime_config.py](../main_server/src/services/rounds/runtime_config.py)
-- [main_server/src/services/rounds/aggregation_service.py](../main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](../main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/update_acceptance_policy.py](../main_server/src/services/rounds/update_acceptance_policy.py)
+- [main_server/src/services/federation/rounds/runtime_config.py](../main_server/src/services/federation/rounds/runtime_config.py)
+- [main_server/src/services/federation/rounds/aggregation_service.py](../main_server/src/services/federation/rounds/aggregation_service.py)
+- [main_server/src/services/federation/rounds/adapter_family_service.py](../main_server/src/services/federation/rounds/adapter_family_service.py)
+- [main_server/src/services/federation/rounds/update_acceptance_policy.py](../main_server/src/services/federation/rounds/update_acceptance_policy.py)
 
 ## 3. 보호/암호화 관련 축
 
@@ -189,7 +189,7 @@ Embedding
 
 관련 파일:
 
-- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
 - [docs/contracts/training_update_envelope_v1.md](contracts/training_update_envelope_v1.md)
 
 ### 3-2. typed contract는 있으나 runtime은 아직 없는 것
@@ -336,5 +336,5 @@ python -m scripts.experiments.run_federated_simulation \
 1. 이 문서에서 축이 `활성 runtime`인지 `typed metadata only`인지 먼저 본다.
 2. `선택 위치`가 `TrainingObjectiveConfig`면 task override로 바꿔볼 수 있다.
 3. `기본값`이 `shared/src/config/training_defaults.py`면 local training 공용 fallback이다.
-4. `기본값`이 `main_server/src/services/rounds/runtime_config.py`면 server-owned round runtime fallback이다.
+4. `기본값`이 `main_server/src/services/federation/rounds/runtime_config.py`면 server-owned round runtime fallback이다.
 5. `public Hydra leaf 없음`이라고 적혀 있으면, 코드에는 교체 지점이 있어도 CLI에서 바로 안 바뀐다.

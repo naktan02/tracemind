@@ -22,7 +22,7 @@
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `agent` 또는 `main_server` |
-| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/rounds/runtime_config.py` |
+| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime_config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
 판별 기준은 단순하다.
@@ -67,8 +67,8 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 
 작업 순서:
@@ -96,9 +96,9 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/input_backends/__init__.py](../../agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](../../agent/src/services/federation/training_example_service.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- [agent/src/services/training/backends/inputs/__init__.py](../../agent/src/services/training/backends/inputs/__init__.py)
+- [agent/src/services/training/examples/service.py](../../agent/src/services/training/examples/service.py)
+- 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 
 작업 순서:
 
@@ -139,8 +139,8 @@
 
 보통 수정 파일:
 
-- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
-- 기본 backend를 바꿀 때만 [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
+- [main_server/src/services/federation/rounds/aggregation_service.py](../../main_server/src/services/federation/rounds/aggregation_service.py)
+- 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime_config.py](../../main_server/src/services/federation/rounds/runtime_config.py)
 
 작업 순서:
 
@@ -168,12 +168,12 @@
 
 - [shared/src/contracts/adapter_contracts.py](../../shared/src/contracts/adapter_contracts.py)
 - [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
-- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/privacy_guard_service.py](../../agent/src/services/training/privacy_guard_service.py)
-- [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
-- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](../../main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/mappers.py](../../main_server/src/services/rounds/mappers.py)
+- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../../agent/src/services/training/execution/privacy_guard_service.py)
+- [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
+- [main_server/src/services/federation/rounds/aggregation_service.py](../../main_server/src/services/federation/rounds/aggregation_service.py)
+- [main_server/src/services/federation/rounds/adapter_family_service.py](../../main_server/src/services/federation/rounds/adapter_family_service.py)
+- [main_server/src/services/federation/rounds/mappers.py](../../main_server/src/services/federation/rounds/mappers.py)
 
 작업 순서:
 
@@ -197,7 +197,7 @@
 - local training 기본 전략:
   - [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 - server round runtime 기본 aggregation:
-  - [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
+  - [main_server/src/services/federation/rounds/runtime_config.py](../../main_server/src/services/federation/rounds/runtime_config.py)
 - experiment preset:
   - `scripts/conf/experiments/` 아래 Hydra config group
 

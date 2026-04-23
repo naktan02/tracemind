@@ -7,8 +7,8 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, ConfigDict
 
-from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.prototypes.sync_service import PrototypeSyncService
+from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 from shared.src.contracts.prototype_contracts import (
     PrototypePackActivationPointer,
     PrototypePackPayload,

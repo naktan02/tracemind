@@ -27,12 +27,12 @@
   - pseudo-label selection
   - local update 생성
   - training backend / privacy guard 교체 지점
-- `agent/src/services/federation/training_example_service.py`
+- `agent/src/services/training/examples/service.py`
   - runtime training example preparation
   - example-generation backend 교체 지점
 - `agent/src/services/inference/`
   - scorer backend / score policy 교체 지점
-- `main_server/src/services/rounds/`
+- `main_server/src/services/federation/rounds/`
   - round lifecycle
   - update acceptance policy
   - adapter-family 기준 aggregation
@@ -42,7 +42,7 @@
   - synthetic shard split
   - runtime core 조합 실험
   - evaluation / artifact dump
-- `main_server/src/services/prototype_assets/`
+- `main_server/src/services/federation/assets/prototypes/`
   - runtime rebuild/publication
   - canonical rebuild input repository 연계
 
@@ -139,21 +139,21 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [x] `main_server/src/services/rounds/round_lifecycle_service.py`
+- [x] `main_server/src/services/federation/rounds/round_lifecycle_service.py`
   - 역할: round open / task publish / update accept / finalize / publish orchestration
 - [x] `main_server/src/infrastructure/repositories/round_repository.py`
   - 역할: active round 상태 저장
-- [x] `main_server/src/services/rounds/models.py` 또는 동등 경로
+- [x] `main_server/src/services/federation/rounds/models.py` 또는 동등 경로
   - 역할: round status, participant summary, finalize input/output
 
 ### 기존 코드와 연결할 것
 
-- [x] [round_manager_service.py](../main_server/src/services/rounds/round_manager_service.py)
+- [x] [round_manager_service.py](../main_server/src/services/federation/rounds/round_manager_service.py)
   - domain primitive로 유지
   - lifecycle orchestration의 하위 구성 요소로 사용
-- [x] [adapter_family_service.py](../main_server/src/services/rounds/adapter_family_service.py)
+- [x] [adapter_family_service.py](../main_server/src/services/federation/rounds/adapter_family_service.py)
   - family-based aggregation 확장 지점으로 유지
-- [x] [aggregation_service.py](../main_server/src/services/rounds/aggregation_service.py)
+- [x] [aggregation_service.py](../main_server/src/services/federation/rounds/aggregation_service.py)
   - aggregation backend 교체 지점으로 유지
 
 ### API로 닫을 것
@@ -193,16 +193,16 @@ server runtime을 끝까지 닫을 수 없다.
   - 역할: current round/task fetch, update upload
 - [x] `agent/src/services/federation/runtime_service.py`
   - 역할: active pair/task 기준 local training orchestration
-- [x] `agent/src/services/federation/training_example_service.py`
+- [x] `agent/src/services/training/examples/service.py`
   - 역할: local event/scored event를 `EmbeddedTrainingExample`으로 변환
 
 ### 기존 코드와 연결할 것
 
-- [x] [local_training_service.py](../agent/src/services/training/local_training_service.py)
+- [x] [local_training_service.py](../agent/src/services/training/execution/local_training_service.py)
   - selection + update generation 코어로 유지
-- [x] [pseudo_label_service.py](../agent/src/services/training/pseudo_label_service.py)
+- [x] [pseudo_label_service.py](../agent/src/services/training/selection/pseudo_label_service.py)
   - acceptance policy 교체 지점으로 유지
-- [x] [training_backends/__init__.py](../agent/src/services/training/training_backends/__init__.py)
+- [x] [training_backends/__init__.py](../agent/src/services/training/backends/training/__init__.py)
   - backend 교체 지점으로 유지
 
 ### API로 닫을 것
@@ -217,7 +217,7 @@ server runtime을 끝까지 닫을 수 없다.
 ### simulation에서 agent runtime으로 내릴 것
 
 - [x] `scripts/experiments/federated_simulation/simulation.py`의 training example preparation helper
-  - `agent/src/services/federation/training_example_service.py`로 이동 완료
+  - `agent/src/services/training/examples/service.py`로 이동 완료
 - [ ] `scripts/experiments/federated_simulation/simulation.py`의 local runtime orchestration helper
   - runtime 코어 일부는 `FederationRuntimeService`로 이동했지만, simulation loop 자체는 아직 scripts에 남아 있음
 
@@ -249,18 +249,18 @@ server runtime을 끝까지 닫을 수 없다.
 
 ### 새로 만들 것
 
-- [x] `main_server/src/services/prototype_assets/prototype_rebuild_service.py`
+- [x] `main_server/src/services/federation/assets/prototypes/prototype_rebuild_service.py`
   - 역할: canonical rebuild input으로 next prototype 생성
 - [x] `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py`
   - 역할: canonical bootstrap corpus 또는 base-embedding cache 관리
 
 ### 기존 코드와 연결할 것
 
-- [ ] [prototype_build_state_service.py](../main_server/src/services/prototype_assets/prototype_build_state_service.py)
+- [ ] [prototype_build_state_service.py](../main_server/src/services/federation/assets/prototypes/prototype_build_state_service.py)
   - 운영 경로에서 build state를 유지할지 여부 결정
 - [x] [scripts/prototypes/seeding.py](../scripts/prototypes/seeding.py)
   - production logic을 그대로 재사용할지, server service 전용 core로 분리할지 결정
-- [x] [round_lifecycle_service.py](../main_server/src/services/rounds/round_lifecycle_service.py)
+- [x] [round_lifecycle_service.py](../main_server/src/services/federation/rounds/round_lifecycle_service.py)
   - next pair publication 직후 rebuild 호출 흐름과 연결
 - [x] `scripts/experiments/prototype_strategy`의 single/kmeans
   - shared canonical builder를 재사용

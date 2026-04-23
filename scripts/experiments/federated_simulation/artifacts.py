@@ -6,10 +6,10 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from agent.src.services.training.pseudo_label_service import (
+from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
-from agent.src.services.training.training_example_models import (
+from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
 from scripts.experiments.federated_simulation.models import (

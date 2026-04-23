@@ -14,7 +14,7 @@ from agent.src.api.main import app
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
-from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 
 

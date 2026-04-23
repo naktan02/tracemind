@@ -76,16 +76,16 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 
 1. `agent/src/services/README.md`
 2. `agent/src/services/inference/pipeline_service.py`
-3. `agent/src/services/federation/training_example_service.py`
-4. `agent/src/services/training/local_training_service.py`
-5. `agent/src/services/federation/runtime_service.py`
+3. `agent/src/services/training/examples/service.py`
+4. `agent/src/services/training/execution/local_training_service.py`
+5. `agent/src/services/federation/rounds/runtime_service.py`
 
 ### main_server FL round orchestration
 
 1. `main_server/src/services/README.md`
-2. `main_server/src/services/rounds/README.md`
-3. `main_server/src/services/rounds/round_lifecycle_service.py`
-4. `main_server/src/services/rounds/round_manager_service.py`
+2. `main_server/src/services/federation/rounds/README.md`
+3. `main_server/src/services/federation/rounds/round_lifecycle_service.py`
+4. `main_server/src/services/federation/rounds/round_manager_service.py`
 
 ### 실험 entrypoint
 

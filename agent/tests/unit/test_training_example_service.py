@@ -10,18 +10,20 @@ import pytest
 from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
-from agent.src.services.federation import (
-    PrototypeRescoringTrainingExampleBackend,
+from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
-    TrainingExampleService,
     TrainingExampleSource,
+)
+from agent.src.services.training.backends.training.registry import (
+    register_shared_adapter_training_backend,
+)
+from agent.src.services.training.examples.service import (
+    PrototypeRescoringTrainingExampleBackend,
+    TrainingExampleService,
     WeakStrongPairTrainingExampleBackend,
     register_training_example_backend,
-)
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.training_backends.registry import (
-    register_shared_adapter_training_backend,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE

@@ -11,16 +11,16 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.federation.training_example_service import (
+from agent.src.services.training.examples.service import (
     register_training_example_backend,
 )
 from agent.src.services.inference.scoring_backends import register_scoring_backend
-from agent.src.services.training.local_training_service import (
+from agent.src.services.training.execution.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from agent.src.services.training.training_backends.registry import (
+from agent.src.services.training.backends.training.registry import (
     register_shared_adapter_training_backend,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry

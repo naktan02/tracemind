@@ -19,10 +19,10 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
-from agent.src.services.embedding_service import EmbeddingService
+from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.preprocess_service import PreprocessService
-from agent.src.services.translation_service import TranslationService
+from agent.src.services.language.preprocess_service import PreprocessService
+from agent.src.services.language.translation_service import TranslationService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
 

@@ -16,11 +16,13 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
-from agent.src.services.federation.round_client import RoundClient
-from agent.src.services.federation.runtime_service import FederationRuntimeService
+from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.services.federation.rounds.runtime_service import (
+    FederationRuntimeService,
+)
 from agent.src.services.inference.pipeline_service import InferencePipelineService
-from agent.src.services.prototypes.runtime_service import PrototypeRuntimeService
-from agent.src.services.prototypes.sync_service import PrototypeSyncService
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]

@@ -6,7 +6,7 @@ import json
 from dataclasses import dataclass
 from pathlib import Path
 
-from agent.src.services.training.query_buffer_selection_diagnostics import (
+from agent.src.services.training.selection.query_buffer_selection_diagnostics import (
     QueryBufferSelectionDiagnostics,
 )
 

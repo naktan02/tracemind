@@ -9,7 +9,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from agent.src.services.training.query_adaptation_dataset_service import (
+from agent.src.services.training.datasets.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
 )
 from scripts.labeled_query_rows import LabeledQueryRow

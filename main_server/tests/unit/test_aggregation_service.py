@@ -6,12 +6,12 @@ from datetime import datetime, timezone
 
 import pytest
 
-from main_server.src.services.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.aggregation_service import (
     ClassifierHeadFedAvgAggregationService,
     DiagonalScaleAggregationService,
     build_shared_adapter_aggregation_backend,
 )
-from main_server.src.services.rounds.diagonal_scale_defaults import (
+from main_server.src.services.federation.rounds.diagonal_scale_defaults import (
     DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG,
 )
 from shared.src.contracts.adapter_contracts import (

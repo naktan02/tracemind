@@ -5,10 +5,10 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 
-from agent.src.services.training.input_backends.models import (
+from agent.src.services.training.backends.inputs.models import (
     TrainingExampleSource,
 )
-from agent.src.services.training.query_adaptation_dataset_service import (
+from agent.src.services.training.datasets.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,

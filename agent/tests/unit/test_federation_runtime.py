@@ -8,15 +8,15 @@ from unittest.mock import MagicMock
 
 import httpx
 
-from agent.src.services.federation.round_client import RoundClient
-from agent.src.services.federation.runtime_service import (
+from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.services.federation.rounds.runtime_service import (
     FederationRunStatus,
     FederationRuntimeService,
 )
-from agent.src.services.training.local_training_service import (
+from agent.src.services.training.execution.local_training_service import (
     LocalTrainingResult,
 )
-from agent.src.services.training.pseudo_label_service import PseudoLabelSelectionResult
+from agent.src.services.training.selection.pseudo_label_service import PseudoLabelSelectionResult
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfigPayload,

@@ -21,7 +21,7 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.prototype_assets import (
+from main_server.src.services.federation.assets.prototypes import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,
@@ -30,32 +30,32 @@ from main_server.src.services.prototype_assets import (
     ReferenceRebuildPrototypePublicationStrategy,
     StoredReferencePrototypeRebuildService,
 )
-from main_server.src.services.rounds.adapter_family_service import (
+from main_server.src.services.federation.rounds.adapter_family_service import (
     SharedAdapterRoundFamily,
     register_shared_adapter_round_family,
 )
-from main_server.src.services.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.aggregation_service import (
     AggregationResult,
     SharedAdapterAggregationBackend,
     build_shared_adapter_aggregation_backend,
     register_shared_adapter_aggregation_backend,
 )
-from main_server.src.services.rounds.models import (
+from main_server.src.services.federation.rounds.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
     RoundStatus,
 )
-from main_server.src.services.rounds.round_lifecycle_service import (
+from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundConflictError,
     RoundLifecycleService,
     RoundValidationError,
 )
-from main_server.src.services.rounds.round_manager_service import RoundManagerService
-from main_server.src.services.rounds.runtime_config import ServerRoundRuntimeConfig
-from main_server.src.services.rounds.runtime_factory import (
+from main_server.src.services.federation.rounds.round_manager_service import RoundManagerService
+from main_server.src.services.federation.rounds.runtime_config import ServerRoundRuntimeConfig
+from main_server.src.services.federation.rounds.runtime_factory import (
     build_round_manager_service_from_config,
 )
-from main_server.src.services.rounds.update_acceptance_policy import (
+from main_server.src.services.federation.rounds.update_acceptance_policy import (
     IdempotentRoundUpdateAcceptancePolicy,
     SingleSubmissionPerAgentTrustPolicy,
     StrictRoundUpdateAcceptancePolicy,
