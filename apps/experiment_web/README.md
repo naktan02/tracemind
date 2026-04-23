@@ -6,13 +6,13 @@
 
 1. experiment catalog 읽기
 2. track/entrypoint/block selection
-3. override patch 입력
+3. typed override field + advanced JSON patch 입력
 4. compile preview / error / warning 표시
 
 중요:
 
 - 이 앱은 Hydra 파일 본문을 직접 수정하지 않는다.
-- 선택한 preset 위에 run-local override patch만 덧씌워 preview/run surface를 만든다.
+- catalog가 노출한 typed field와 run-local override patch만 덧씌워 preview/run surface를 만든다.
 
 아직 포함하지 않는 것:
 

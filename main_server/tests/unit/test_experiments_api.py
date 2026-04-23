@@ -76,6 +76,33 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert (
         ourafla.metadata["asset_paths"]["unlabeled_query_pool_jsonl"] is None
     )
+    assert any(
+        field.field_name == "train_jsonl" and field.value_kind == "string"
+        for field in ourafla.override_fields
+    )
+    assert all(
+        not field.field_name.startswith("sources")
+        for field in ourafla.override_fields
+    )
+
+    peft_methods = _find_section(
+        payload,
+        track_name="central_adaptation",
+        section_name="peft_methods",
+    )
+    default_lora = _find_item(peft_methods, "default")
+    assert any(
+        field.field_name == "rank"
+        and field.value_kind == "integer"
+        and field.default_value == 8
+        for field in default_lora.override_fields
+    )
+    assert any(
+        field.field_name == "use_rslora"
+        and field.value_kind == "boolean"
+        and field.default_value is False
+        for field in default_lora.override_fields
+    )
 
     central_entrypoints = _find_section(
         payload,

@@ -6,6 +6,17 @@ export type CatalogSectionSelectionMode =
   | "single_required"
   | "single_optional"
   | "multi_optional";
+export type CatalogOverrideFieldValueKind =
+  | "string"
+  | "integer"
+  | "number"
+  | "boolean";
+
+export interface CatalogOverrideFieldPayload {
+  field_name: string;
+  value_kind: CatalogOverrideFieldValueKind;
+  default_value: string | number | boolean;
+}
 
 export interface CatalogItemPayload {
   item_name: string;
@@ -26,6 +37,7 @@ export interface CatalogItemPayload {
   accepted_payload_formats: string[];
   default_groups: string[];
   declared_fields: string[];
+  override_fields: CatalogOverrideFieldPayload[];
   tags: string[];
   metadata: Record<string, unknown>;
 }

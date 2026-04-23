@@ -33,6 +33,7 @@ from agent.src.services.training.training_backends.registry import (
 )
 from main_server.src.services.experiments.payloads import (
     CatalogItemPayload,
+    CatalogOverrideFieldPayload,
     CatalogSectionPayload,
     CatalogTrackPayload,
     ExperimentCatalogPayload,
@@ -482,6 +483,7 @@ class ExperimentCatalogService:
                     supported_runtime_paths=supported_runtime_paths,
                     default_groups=self._extract_default_groups(raw),
                     declared_fields=self._declared_fields(raw),
+                    override_fields=self._extract_override_fields(raw),
                     metadata=self._extract_scalar_metadata(raw),
                 )
             )
@@ -539,6 +541,7 @@ class ExperimentCatalogService:
                     compile_support="preset_selector",
                     supported_runtime_paths=supported_runtime_paths,
                     declared_fields=self._declared_fields(raw),
+                    override_fields=self._extract_override_fields(raw),
                     tags=() if tag_resolver is None else tag_resolver(path, raw),
                     metadata=(
                         self._extract_scalar_metadata(
@@ -605,6 +608,7 @@ class ExperimentCatalogService:
                     else (),
                     supported_runtime_paths=tuple(runtime_paths),
                     declared_fields=self._declared_fields(raw),
+                    override_fields=self._extract_override_fields(raw),
                     metadata=self._extract_scalar_metadata(raw),
                 )
             )
@@ -965,6 +969,54 @@ class ExperimentCatalogService:
 
     def _declared_fields(self, raw: Mapping[str, object]) -> tuple[str, ...]:
         return tuple(sorted(str(key) for key in raw if str(key) != "defaults"))
+
+    def _extract_override_fields(
+        self,
+        raw: Mapping[str, object],
+    ) -> tuple[CatalogOverrideFieldPayload, ...]:
+        override_fields: list[CatalogOverrideFieldPayload] = []
+        for key, value in raw.items():
+            field_name = str(key)
+            if field_name in {"defaults", "name", "algorithm_profile_name"}:
+                continue
+            override_field = self._build_override_field(field_name, value)
+            if override_field is None:
+                continue
+            override_fields.append(override_field)
+        return tuple(
+            sorted(override_fields, key=lambda field: field.field_name)
+        )
+
+    @staticmethod
+    def _build_override_field(
+        field_name: str,
+        value: object,
+    ) -> CatalogOverrideFieldPayload | None:
+        if isinstance(value, bool):
+            return CatalogOverrideFieldPayload(
+                field_name=field_name,
+                value_kind="boolean",
+                default_value=value,
+            )
+        if isinstance(value, int):
+            return CatalogOverrideFieldPayload(
+                field_name=field_name,
+                value_kind="integer",
+                default_value=value,
+            )
+        if isinstance(value, float):
+            return CatalogOverrideFieldPayload(
+                field_name=field_name,
+                value_kind="number",
+                default_value=value,
+            )
+        if isinstance(value, str):
+            return CatalogOverrideFieldPayload(
+                field_name=field_name,
+                value_kind="string",
+                default_value=value,
+            )
+        return None
 
     def _extract_scalar_metadata(
         self,

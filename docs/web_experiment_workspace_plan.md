@@ -341,6 +341,7 @@ agent/src/services/training/
 7. Vite dev origin용 API CORS 보조
 8. catalog-declared `entrypoint_section_name`, `default_slot_name` 기반 UI surface
 9. entrypoint별 compile warning/readiness policy registry
+10. catalog-declared scalar field 기반 typed override editor
 
 제외:
 

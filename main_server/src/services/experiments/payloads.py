@@ -12,11 +12,27 @@ CatalogItemCompileSupport = Literal[
     "preset_selector",
     "metadata_only",
 ]
+CatalogOverrideFieldValueKind = Literal[
+    "string",
+    "integer",
+    "number",
+    "boolean",
+]
 CatalogSectionSelectionMode = Literal[
     "single_required",
     "single_optional",
     "multi_optional",
 ]
+
+
+class CatalogOverrideFieldPayload(BaseModel):
+    """Preset 위에 덧씌울 수 있는 typed scalar override field."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    field_name: str
+    value_kind: CatalogOverrideFieldValueKind
+    default_value: str | int | float | bool
 
 
 class CatalogItemPayload(BaseModel):
@@ -42,6 +58,7 @@ class CatalogItemPayload(BaseModel):
     accepted_payload_formats: tuple[str, ...] = ()
     default_groups: tuple[str, ...] = ()
     declared_fields: tuple[str, ...] = ()
+    override_fields: tuple[CatalogOverrideFieldPayload, ...] = ()
     tags: tuple[str, ...] = ()
     metadata: dict[str, Any] = Field(default_factory=dict)
 

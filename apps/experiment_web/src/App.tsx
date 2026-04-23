@@ -7,6 +7,7 @@ import {
 } from "./api";
 import type {
   CatalogItemPayload,
+  CatalogOverrideFieldPayload,
   CatalogSectionPayload,
   CatalogTrackPayload,
   ExperimentCatalogPayload,
@@ -99,11 +100,18 @@ function App() {
     ) ??
     [];
 
+  const sectionOverrideParseBySection = buildSectionOverrideParseBySection(
+    nonEntrypointSections,
+    overrideTextBySection,
+  );
+  const sectionOverrideValueBySection = buildSectionOverrideValueBySection(
+    sectionOverrideParseBySection,
+  );
   const globalOverrideParse = parseOverrideObject(globalOverrideText);
   const sectionOverrideErrors = buildSectionOverrideErrors(
     nonEntrypointSections,
     selectedItemNameBySection,
-    overrideTextBySection,
+    sectionOverrideParseBySection,
   );
   const localParseErrors = [
     globalOverrideParse.error
@@ -127,7 +135,7 @@ function App() {
     const selections = buildWorkspaceSelections(
       nonEntrypointSections,
       selectedItemNameBySection,
-      overrideTextBySection,
+      sectionOverrideValueBySection,
     );
     const manifest: WorkspaceManifestPayload = {
       schema_version: "workspace_manifest.v1",
@@ -196,6 +204,36 @@ function App() {
     setGlobalOverrideText(EMPTY_OVERRIDE_JSON);
     setCompilePlan(null);
     setCompileError(null);
+  }
+
+  function handleSectionOverrideTextChange(sectionName: string, nextText: string) {
+    setOverrideTextBySection((current) => ({
+      ...current,
+      [sectionName]: nextText,
+    }));
+    setCompilePlan(null);
+    setCompileError(null);
+  }
+
+  function handleSectionOverrideFieldChange(
+    sectionName: string,
+    field: CatalogOverrideFieldPayload,
+    nextValue: string | number | boolean | undefined,
+  ) {
+    const currentPatch =
+      sectionOverrideParseBySection[sectionName]?.value ?? {};
+    const nextPatch = {
+      ...currentPatch,
+    };
+    if (nextValue === undefined || nextValue === field.default_value) {
+      delete nextPatch[field.field_name];
+    } else {
+      nextPatch[field.field_name] = nextValue;
+    }
+    handleSectionOverrideTextChange(
+      sectionName,
+      formatOverridePatch(nextPatch),
+    );
   }
 
   return (
@@ -316,6 +354,8 @@ function App() {
                   null;
                 const selectedOverrideText =
                   overrideTextBySection[section.section_name] ?? EMPTY_OVERRIDE_JSON;
+                const selectedOverridePatch =
+                  sectionOverrideParseBySection[section.section_name]?.value ?? {};
 
                 return (
                   <article className="section-card" key={section.section_name}>
@@ -393,17 +433,33 @@ function App() {
 
                     {selectedItem ? (
                       <div className="override-editor">
+                        {selectedItem.override_fields.length > 0 ? (
+                          <div className="override-field-editor">
+                            <p className="override-editor__title">
+                              {section.display_name} typed override fields
+                            </p>
+                            {selectedItem.override_fields.map((field) => (
+                              <OverrideFieldEditor
+                                key={field.field_name}
+                                sectionName={section.section_name}
+                                field={field}
+                                overridePatch={selectedOverridePatch}
+                                onChange={handleSectionOverrideFieldChange}
+                              />
+                            ))}
+                          </div>
+                        ) : null}
                         <label htmlFor={`override-${section.section_name}`}>
-                          {section.display_name} override patch
+                          Advanced JSON patch
                         </label>
                         <textarea
                           id={`override-${section.section_name}`}
                           value={selectedOverrideText}
                           onChange={(event) =>
-                            setOverrideTextBySection((current) => ({
-                              ...current,
-                              [section.section_name]: event.target.value,
-                            }))
+                            handleSectionOverrideTextChange(
+                              section.section_name,
+                              event.target.value,
+                            )
                           }
                           spellCheck={false}
                         />
@@ -470,7 +526,7 @@ function App() {
                     entrypointItem?.item_name ?? null,
                     nonEntrypointSections,
                     selectedItemNameBySection,
-                    overrideTextBySection,
+                    sectionOverrideValueBySection,
                     globalOverrideParse.value,
                   ),
                   null,
@@ -560,6 +616,93 @@ function ResultBlock(props: { title: string; lines: string[] }) {
   );
 }
 
+function OverrideFieldEditor(props: {
+  sectionName: string;
+  field: CatalogOverrideFieldPayload;
+  overridePatch: Record<string, WorkspaceConfigScalar>;
+  onChange: (
+    sectionName: string,
+    field: CatalogOverrideFieldPayload,
+    nextValue: string | number | boolean | undefined,
+  ) => void;
+}) {
+  const { field, overridePatch, sectionName, onChange } = props;
+  const isOverridden = Object.prototype.hasOwnProperty.call(
+    overridePatch,
+    field.field_name,
+  );
+  const effectiveValue =
+    overridePatch[field.field_name] ?? field.default_value;
+
+  return (
+    <div className="override-field-row">
+      <div className="override-field-meta">
+        <label htmlFor={`${sectionName}-${field.field_name}`}>
+          {field.field_name}
+        </label>
+        <span>default: {formatScalarValue(field.default_value)}</span>
+      </div>
+
+      {field.value_kind === "boolean" ? (
+        <select
+          id={`${sectionName}-${field.field_name}`}
+          value={String(effectiveValue)}
+          onChange={(event) =>
+            onChange(
+              sectionName,
+              field,
+              event.target.value === "true",
+            )
+          }
+        >
+          <option value="true">true</option>
+          <option value="false">false</option>
+        </select>
+      ) : field.value_kind === "integer" || field.value_kind === "number" ? (
+        <input
+          id={`${sectionName}-${field.field_name}`}
+          type="number"
+          step={field.value_kind === "integer" ? "1" : "any"}
+          value={String(effectiveValue)}
+          onChange={(event) => {
+            const nextRaw = event.target.value;
+            if (!nextRaw) {
+              onChange(sectionName, field, undefined);
+              return;
+            }
+            const nextValue =
+              field.value_kind === "integer"
+                ? Number.parseInt(nextRaw, 10)
+                : Number(nextRaw);
+            if (Number.isNaN(nextValue)) {
+              return;
+            }
+            onChange(sectionName, field, nextValue);
+          }}
+        />
+      ) : (
+        <input
+          id={`${sectionName}-${field.field_name}`}
+          type="text"
+          value={String(effectiveValue)}
+          onChange={(event) =>
+            onChange(sectionName, field, event.target.value)
+          }
+        />
+      )}
+
+      <button
+        type="button"
+        className="ghost-button ghost-button--small"
+        disabled={!isOverridden}
+        onClick={() => onChange(sectionName, field, undefined)}
+      >
+        Reset
+      </button>
+    </div>
+  );
+}
+
 function getEntrypointSection(
   track: CatalogTrackPayload,
 ): CatalogSectionPayload | undefined {
@@ -582,7 +725,7 @@ function buildWorkspaceManifestPreview(
   entrypointName: string | null,
   sections: CatalogSectionPayload[],
   selectedItemNameBySection: Record<string, string | null>,
-  overrideTextBySection: Record<string, string>,
+  overridePatchBySection: Record<string, Record<string, WorkspaceConfigScalar>>,
   globalOverridePatch: Record<string, WorkspaceConfigScalar>,
 ) {
   return {
@@ -593,7 +736,7 @@ function buildWorkspaceManifestPreview(
     selections: buildWorkspaceSelections(
       sections,
       selectedItemNameBySection,
-      overrideTextBySection,
+      overridePatchBySection,
     ),
     global_override_patch: globalOverridePatch,
     notes: null,
@@ -603,7 +746,7 @@ function buildWorkspaceManifestPreview(
 function buildWorkspaceSelections(
   sections: CatalogSectionPayload[],
   selectedItemNameBySection: Record<string, string | null>,
-  overrideTextBySection: Record<string, string>,
+  overridePatchBySection: Record<string, Record<string, WorkspaceConfigScalar>>,
 ): WorkspaceSelectionPayload[] {
   return sections.flatMap((section) => {
     const selectedItemName = selectedItemNameBySection[section.section_name];
@@ -622,18 +765,40 @@ function buildWorkspaceSelections(
         variant_profile_name: item.variant_profile_name ?? item.item_name,
         core_method_name: item.core_method_name ?? null,
         family_name: item.family_name ?? null,
-        override_patch: parseOverrideObject(
-          overrideTextBySection[section.section_name] ?? EMPTY_OVERRIDE_JSON,
-        ).value,
+        override_patch: overridePatchBySection[section.section_name] ?? {},
       },
     ];
   });
 }
 
+function buildSectionOverrideParseBySection(
+  sections: CatalogSectionPayload[],
+  overrideTextBySection: Record<string, string>,
+): Record<string, ObjectParseResult> {
+  const parseBySection: Record<string, ObjectParseResult> = {};
+  for (const section of sections) {
+    parseBySection[section.section_name] = parseOverrideObject(
+      overrideTextBySection[section.section_name] ?? EMPTY_OVERRIDE_JSON,
+    );
+  }
+  return parseBySection;
+}
+
+function buildSectionOverrideValueBySection(
+  overrideParseBySection: Record<string, ObjectParseResult>,
+): Record<string, Record<string, WorkspaceConfigScalar>> {
+  return Object.fromEntries(
+    Object.entries(overrideParseBySection).map(([sectionName, parseResult]) => [
+      sectionName,
+      parseResult.value,
+    ]),
+  );
+}
+
 function buildSectionOverrideErrors(
   sections: CatalogSectionPayload[],
   selectedItemNameBySection: Record<string, string | null>,
-  overrideTextBySection: Record<string, string>,
+  overrideParseBySection: Record<string, ObjectParseResult>,
 ): string[] {
   const errors: string[] = [];
 
@@ -641,15 +806,23 @@ function buildSectionOverrideErrors(
     if (!selectedItemNameBySection[section.section_name]) {
       continue;
     }
-    const parseResult = parseOverrideObject(
-      overrideTextBySection[section.section_name] ?? EMPTY_OVERRIDE_JSON,
-    );
+    const parseResult =
+      overrideParseBySection[section.section_name] ?? parseOverrideObject("{}");
     if (parseResult.error) {
       errors.push(`${section.display_name}: ${parseResult.error}`);
     }
   }
 
   return errors;
+}
+
+function formatOverridePatch(
+  patch: Record<string, WorkspaceConfigScalar>,
+): string {
+  const normalized = Object.fromEntries(
+    Object.entries(patch).sort(([left], [right]) => left.localeCompare(right)),
+  );
+  return JSON.stringify(normalized, null, 2);
 }
 
 function parseOverrideObject(input: string): ObjectParseResult {
@@ -707,6 +880,10 @@ function formatMetadataValue(value: unknown): string {
     return String(value);
   }
   return JSON.stringify(value);
+}
+
+function formatScalarValue(value: string | number | boolean): string {
+  return String(value);
 }
 
 function asErrorMessage(error: unknown): string {
