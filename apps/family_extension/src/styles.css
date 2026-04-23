@@ -246,6 +246,16 @@ button:disabled {
     linear-gradient(135deg, rgba(239, 246, 255, 0.92), rgba(255, 255, 255, 0.88));
 }
 
+.hero-card.gate-hero {
+  background:
+    linear-gradient(135deg, rgba(240, 253, 250, 0.92), rgba(255, 255, 255, 0.88));
+}
+
+.hero-card.setup-hero {
+  background:
+    linear-gradient(135deg, rgba(255, 251, 235, 0.94), rgba(255, 255, 255, 0.88));
+}
+
 .hero-card.parent-hero {
   background:
     linear-gradient(135deg, rgba(243, 232, 255, 0.92), rgba(255, 255, 255, 0.88));
@@ -302,6 +312,13 @@ button:disabled {
 
 .surface-card {
   padding: 18px;
+}
+
+.role-card,
+.setup-card {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
 }
 
 .trend-card {

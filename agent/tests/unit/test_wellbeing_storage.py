@@ -5,9 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.infrastructure.repositories.parent_auth_repository import (
-    ParentAuthRepository,
-    ParentAuthState,
+from agent.src.infrastructure.repositories.family_access_repository import (
+    FamilyAccessRepository,
+    FamilyAccessState,
 )
 from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
     WellbeingSettingsRecord,
@@ -16,9 +16,10 @@ from agent.src.infrastructure.repositories.wellbeing_settings_repository import 
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
-from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import WellbeingTimeseriesService
+from shared.src.contracts.family_access_contracts import FamilyAccessRole
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
@@ -68,10 +69,11 @@ def test_wellbeing_snapshot_repository_round_trips_latest_and_since(
     ) == (latest,)
 
 
-def test_parent_auth_repository_round_trips_state(tmp_path: Path) -> None:
-    repository = ParentAuthRepository(db_path=tmp_path / "wellbeing.db")
-    state = ParentAuthState(
-        pin_hash="hash_1234",
+def test_family_access_repository_round_trips_state(tmp_path: Path) -> None:
+    repository = FamilyAccessRepository(db_path=tmp_path / "wellbeing.db")
+    state = FamilyAccessState(
+        role=FamilyAccessRole.PARENT,
+        pin_hash="hash_parent_1234",
         failed_attempt_count=2,
         locked_until=datetime(2026, 4, 24, 10, 30, tzinfo=timezone.utc),
         updated_at=datetime(2026, 4, 24, 10, 20, tzinfo=timezone.utc),
@@ -79,7 +81,7 @@ def test_parent_auth_repository_round_trips_state(tmp_path: Path) -> None:
 
     repository.save_state(state)
 
-    assert repository.load_state() == state
+    assert repository.load_state(FamilyAccessRole.PARENT) == state
 
 
 def test_wellbeing_settings_repository_load_or_default_then_persist(
@@ -92,6 +94,9 @@ def test_wellbeing_settings_repository_load_or_default_then_persist(
 
     updated_settings = WellbeingSettingsRecord(
         default_timeseries_range=WellbeingSignalRange.LAST_30_DAYS,
+        child_session_minutes=8,
+        child_lock_minutes=2,
+        child_max_attempts=4,
         parent_session_minutes=20,
         parent_lock_minutes=15,
         parent_max_attempts=7,
@@ -121,33 +126,37 @@ def test_wellbeing_services_prefer_repository_data(tmp_path: Path) -> None:
     assert timeseries.points[0].signal_score == 58.0
 
 
-def test_parent_auth_service_persists_failed_attempts_in_repository(
+def test_family_access_service_persists_failed_attempts_in_repository(
     tmp_path: Path,
 ) -> None:
     db_path = tmp_path / "wellbeing.db"
-    auth_repository = ParentAuthRepository(db_path=db_path)
+    auth_repository = FamilyAccessRepository(db_path=db_path)
     settings_repository = WellbeingSettingsRepository(db_path=db_path)
     settings_repository.save_settings(
         WellbeingSettingsRecord(
+            child_max_attempts=3,
+            child_lock_minutes=1,
             parent_max_attempts=3,
             parent_lock_minutes=1,
             parent_session_minutes=10,
         )
     )
-    service = ParentAuthService(
-        pin_code="1234",
+    service = FamilyAccessService(
         repository=auth_repository,
         settings_repository=settings_repository,
     )
+    service.create_initial_setup(child_pin="1111", parent_pin="1234")
 
-    first_failure = service.unlock(pin="9999")
-    second_failure = service.unlock(pin="9999")
+    first_failure = service.unlock(role=FamilyAccessRole.PARENT, pin="9999")
+    second_failure = service.unlock(role=FamilyAccessRole.PARENT, pin="9999")
 
     assert first_failure.granted is False
     assert second_failure.remaining_attempts == 1
-    assert auth_repository.load_state() is not None
-    assert auth_repository.load_state().failed_attempt_count == 2
+    assert auth_repository.load_state(FamilyAccessRole.PARENT) is not None
+    assert (
+        auth_repository.load_state(FamilyAccessRole.PARENT).failed_attempt_count == 2
+    )
 
-    locked_response = service.unlock(pin="9999")
+    locked_response = service.unlock(role=FamilyAccessRole.PARENT, pin="9999")
     assert locked_response.remaining_attempts == 0
     assert locked_response.locked_until is not None

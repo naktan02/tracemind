@@ -3,10 +3,10 @@ import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
 
 type ChildPageProps = {
-  onMoveToUnlock: () => void;
+  onMoveToParentUnlock: () => void;
 };
 
-export function ChildPage({ onMoveToUnlock }: ChildPageProps) {
+export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
   const summaryState = useWellbeingSummary();
 
   return (
@@ -84,8 +84,12 @@ export function ChildPage({ onMoveToUnlock }: ChildPageProps) {
       )}
 
       <div className="button-row">
-        <button className="primary-button" type="button" onClick={onMoveToUnlock}>
-          부모용 PIN 화면 보기
+        <button
+          className="primary-button"
+          type="button"
+          onClick={onMoveToParentUnlock}
+        >
+          부모용 화면으로 전환
         </button>
       </div>
     </div>

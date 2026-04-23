@@ -8,13 +8,14 @@ from collections.abc import Callable, Mapping
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent.src.api.family_access import router as family_access_router
 from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
 from agent.src.api.wellbeing import router as wellbeing_router
-from agent.src.infrastructure.repositories.parent_auth_repository import (
-    ParentAuthRepository,
+from agent.src.infrastructure.repositories.family_access_repository import (
+    FamilyAccessRepository,
 )
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
@@ -36,6 +37,7 @@ from agent.src.services.federation.rounds.runtime_service import (
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
 )
@@ -84,7 +86,7 @@ def create_app(
     scored_event_repository: ScoredEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
     wellbeing_snapshot_repository: WellbeingSnapshotRepository | None = None,
-    parent_auth_repository: ParentAuthRepository | None = None,
+    family_access_repository: FamilyAccessRepository | None = None,
     wellbeing_settings_repository: WellbeingSettingsRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
@@ -114,8 +116,8 @@ def create_app(
     app.state.wellbeing_snapshot_repository = (
         wellbeing_snapshot_repository or WellbeingSnapshotRepository()
     )
-    app.state.parent_auth_repository = (
-        parent_auth_repository or ParentAuthRepository()
+    app.state.family_access_repository = (
+        family_access_repository or FamilyAccessRepository()
     )
     app.state.wellbeing_settings_repository = (
         wellbeing_settings_repository or WellbeingSettingsRepository()
@@ -136,9 +138,12 @@ def create_app(
         repository=app.state.wellbeing_snapshot_repository,
         projection_service=app.state.wellbeing_projection_service,
     )
-    app.state.parent_auth_service = ParentAuthService(
-        repository=app.state.parent_auth_repository,
+    app.state.family_access_service = FamilyAccessService(
+        repository=app.state.family_access_repository,
         settings_repository=app.state.wellbeing_settings_repository,
+    )
+    app.state.parent_auth_service = ParentAuthService(
+        family_access_service=app.state.family_access_service,
     )
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory
@@ -151,6 +156,7 @@ def create_app(
         app.state.pipeline_service = pipeline_service
 
     app.include_router(health_router)
+    app.include_router(family_access_router)
     app.include_router(ingest_router)
     app.include_router(sync_router)
     app.include_router(training_router)

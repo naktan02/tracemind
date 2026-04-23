@@ -61,11 +61,13 @@
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
-1. `wellbeing/summary_service.py`
-2. `wellbeing/timeseries_service.py`
-3. `wellbeing/projection_service.py`
-4. `wellbeing/auth_service.py`
-5. `agent/src/api/wellbeing.py`
+1. `wellbeing/family_access_service.py`
+2. `wellbeing/summary_service.py`
+3. `wellbeing/timeseries_service.py`
+4. `wellbeing/projection_service.py`
+5. `wellbeing/auth_service.py`
+6. `agent/src/api/family_access.py`
+7. `agent/src/api/wellbeing.py`
 
 ## 파일 역할 빠른 맵
 

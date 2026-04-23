@@ -1,16 +1,25 @@
 type PinPadProps = {
+  inputId?: string;
+  helpText?: string;
+  label: string;
   value: string;
   onChange: (nextValue: string) => void;
 };
 
-export function PinPad({ value, onChange }: PinPadProps) {
+export function PinPad({
+  inputId = "pin-input",
+  helpText = "4~6자리 숫자를 입력하면 로컬 프로그램이 접근 가능 여부를 확인합니다.",
+  label,
+  value,
+  onChange,
+}: PinPadProps) {
   return (
     <div className="pin-shell">
-      <label className="pin-label" htmlFor="parent-pin">
-        부모용 PIN
+      <label className="pin-label" htmlFor={inputId}>
+        {label}
       </label>
       <input
-        id="parent-pin"
+        id={inputId}
         className="pin-input"
         inputMode="numeric"
         maxLength={6}
@@ -22,10 +31,7 @@ export function PinPad({ value, onChange }: PinPadProps) {
           onChange(event.target.value.replace(/[^0-9]/g, "").slice(0, 6))
         }
       />
-      <p className="pin-help">
-        4~6자리 숫자를 입력하면 로컬 프로그램이 부모용 접근 가능 여부를
-        확인합니다.
-      </p>
+      <p className="pin-help">{helpText}</p>
     </div>
   );
 }

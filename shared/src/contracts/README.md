@@ -80,6 +80,19 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `ParentUnlockResponsePayload`
   - 부모용 상세 화면 접근 결과와 세션 메타데이터
 
+### `family_access_contracts.py`
+
+가족용 확장 프로그램의 app-level setup/auth 경계를 정의한다.
+
+- `FamilySetupStatusPayload`
+  - 최초 setup 완료 여부와 현재 로컬 access mode
+- `FamilySetupRequestPayload`
+  - child/parent PIN 최초 설정 요청
+- `FamilyUnlockRequestPayload`
+  - role별 잠금 해제 요청
+- `FamilyUnlockResponsePayload`
+  - role별 세션 메타데이터와 남은 시도 횟수
+
 ### `prototype_contracts.py`
 
 Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.

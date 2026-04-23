@@ -9,75 +9,21 @@ import { formatComputedAtLabel } from "../../lib/formatters";
 
 type ParentPageProps = {
   activeSessionExpiresAt: string | null;
-  hasActiveParentSession: boolean;
-  onMoveToChild: () => void;
-  onMoveToUnlock: () => void;
+  onMoveToChildUnlock: () => void;
+  onMoveToGate: () => void;
 };
 
 export function ParentPage({
   activeSessionExpiresAt,
-  hasActiveParentSession,
-  onMoveToChild,
-  onMoveToUnlock,
+  onMoveToChildUnlock,
+  onMoveToGate,
 }: ParentPageProps) {
   const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
-  const summaryState = useWellbeingSummary({ enabled: hasActiveParentSession });
+  const summaryState = useWellbeingSummary({ enabled: true });
   const timeseriesState = useWellbeingTimeseries({
-    enabled: hasActiveParentSession,
+    enabled: true,
     requestedRange: selectedRange,
   });
-
-  if (!hasActiveParentSession) {
-    return (
-      <div className="page-stack">
-        <section className="hero-card parent-hero">
-          <div>
-            <p className="eyebrow">Protected Parent Detail</p>
-            <h2>부모용 상세 화면은 아직 잠겨 있습니다</h2>
-            <p className="section-copy">
-              이 화면은 PIN 검증을 통과한 세션에서만 열립니다. 먼저 부모용 PIN
-              화면에서 인증을 완료해 주세요.
-            </p>
-          </div>
-          <div className="hero-meter hero-meter-wide">
-            <span className="hero-meter-label">access state</span>
-            <strong>잠금 상태</strong>
-          </div>
-        </section>
-
-        <section className="card-grid">
-          <article className="surface-card">
-            <p className="card-label">왜 막아두는가</p>
-            <ul className="bullet-list">
-              <li>부모용 화면은 아이용보다 더 많은 설명과 추이를 보여줍니다.</li>
-              <li>확장 프로그램 안에서도 권한 경계를 먼저 분명히 유지합니다.</li>
-            </ul>
-          </article>
-          <article className="surface-card">
-            <p className="card-label">이 화면에서 보호하는 정보</p>
-            <ul className="bullet-list">
-              <li>현재 상태 카드</li>
-              <li>7d / 14d / 30d 추이 그래프</li>
-              <li>권장 행동과 데이터 부족 표시</li>
-            </ul>
-          </article>
-        </section>
-
-        <div className="button-row">
-          <button
-            className="primary-button"
-            type="button"
-            onClick={onMoveToUnlock}
-          >
-            부모용 PIN 화면으로
-          </button>
-          <button className="ghost-button" type="button" onClick={onMoveToChild}>
-            아이용 화면 보기
-          </button>
-        </div>
-      </div>
-    );
-  }
 
   return (
     <div className="page-stack">
@@ -180,11 +126,15 @@ export function ParentPage({
       )}
 
       <div className="button-row">
-        <button className="ghost-button" type="button" onClick={onMoveToUnlock}>
-          PIN 화면으로 돌아가기
+        <button className="ghost-button" type="button" onClick={onMoveToGate}>
+          선택 화면으로 돌아가기
         </button>
-        <button className="ghost-button" type="button" onClick={onMoveToChild}>
-          아이용 화면 보기
+        <button
+          className="ghost-button"
+          type="button"
+          onClick={onMoveToChildUnlock}
+        >
+          아이용 화면으로 전환
         </button>
       </div>
     </div>

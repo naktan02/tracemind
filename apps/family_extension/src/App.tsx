@@ -2,10 +2,12 @@ import { useEffect, useMemo, useState } from "react";
 
 import { ConnectionStateBanner } from "./components/ConnectionStateBanner";
 import { getAgentApiBaseUrl } from "./api/client";
+import { useFamilyAccess } from "./hooks/useFamilyAccess";
 import { useLocalProgramHealth } from "./hooks/useLocalProgramHealth";
-import { useParentUnlock } from "./hooks/useParentUnlock";
+import { GatePage } from "./pages/gate/GatePage";
 import { ChildPage } from "./pages/child/ChildPage";
 import { ParentPage } from "./pages/parent/ParentPage";
+import { SetupPage } from "./pages/setup/SetupPage";
 import { UnlockPage } from "./pages/unlock/UnlockPage";
 import {
   AppRoute,
@@ -31,26 +33,37 @@ function updateHash(route: AppRoute) {
 }
 
 export default function App({ initialRoute }: AppProps) {
-  const fallbackRoute = normalizeRoute(initialRoute, "/child");
+  const fallbackRoute = normalizeRoute(initialRoute, "/gate");
   const [currentRoute, setCurrentRoute] = useState<AppRoute>(() =>
     normalizeRoute(getHashRoute(), fallbackRoute),
   );
   const healthState = useLocalProgramHealth();
-  const [pin, setPin] = useState("");
   const {
-    activeSessionExpiresAt,
-    clearParentSession,
-    hasActiveParentSession,
-    submitUnlock,
-    unlockState,
-  } = useParentUnlock();
+    activeRole,
+    activeSession,
+    clearRoleSession,
+    getUnlockState,
+    reloadSetupStatus,
+    setupStatusState,
+    setupSubmissionState,
+    submitRoleUnlock,
+    submitSetup,
+  } = useFamilyAccess();
+  const [childUnlockPin, setChildUnlockPin] = useState("");
+  const [parentUnlockPin, setParentUnlockPin] = useState("");
+  const isSetupResolved = setupStatusState.phase === "loaded";
+  const isSetupComplete = setupStatusState.status?.is_setup_complete ?? false;
 
   useEffect(() => {
     const onHashChange = () => {
       const nextRoute = resolveAccessibleRoute(
         normalizeRoute(getHashRoute(), fallbackRoute),
-        { hasActiveParentSession },
+        { activeRole, isSetupComplete },
       );
+      if (!isSetupResolved) {
+        setCurrentRoute(normalizeRoute(getHashRoute(), fallbackRoute));
+        return;
+      }
       setCurrentRoute(nextRoute);
       updateHash(nextRoute);
     };
@@ -58,41 +71,75 @@ export default function App({ initialRoute }: AppProps) {
     updateHash(currentRoute);
     window.addEventListener("hashchange", onHashChange);
     return () => window.removeEventListener("hashchange", onHashChange);
-  }, [currentRoute, fallbackRoute, hasActiveParentSession]);
+  }, [activeRole, currentRoute, fallbackRoute, isSetupComplete, isSetupResolved]);
 
   const routeMeta = useMemo(() => ROUTE_META[currentRoute], [currentRoute]);
   const visibleRoutes = useMemo<AppRoute[]>(
-    () => (hasActiveParentSession ? ["/child", "/parent"] : ["/child", "/unlock"]),
-    [hasActiveParentSession],
+    () => {
+      if (!isSetupResolved) {
+        return [];
+      }
+      if (!isSetupComplete) {
+        return ["/setup"];
+      }
+      if (activeRole === null) {
+        return ["/gate"];
+      }
+      return activeRole === "child" ? ["/child"] : ["/parent"];
+    },
+    [activeRole, isSetupComplete, isSetupResolved],
   );
 
   useEffect(() => {
-    if (currentRoute === "/parent" && !hasActiveParentSession) {
-      setCurrentRoute("/unlock");
-      updateHash("/unlock");
+    if (!isSetupResolved) {
+      return;
     }
-  }, [currentRoute, hasActiveParentSession]);
+    const nextRoute = resolveAccessibleRoute(currentRoute, {
+      activeRole,
+      isSetupComplete,
+    });
+    if (nextRoute !== currentRoute) {
+      setCurrentRoute(nextRoute);
+      updateHash(nextRoute);
+    }
+  }, [activeRole, currentRoute, isSetupComplete, isSetupResolved]);
 
   function moveTo(route: AppRoute) {
-    const nextHasActiveParentSession =
-      currentRoute === "/parent" && route !== "/parent"
-        ? false
-        : hasActiveParentSession;
-    if (!nextHasActiveParentSession && currentRoute === "/parent") {
-      clearParentSession();
+    const isLeavingProtectedRoute =
+      (currentRoute === "/child" && route !== "/child") ||
+      (currentRoute === "/parent" && route !== "/parent");
+    if (isLeavingProtectedRoute) {
+      clearRoleSession();
     }
     const nextRoute = resolveAccessibleRoute(route, {
-      hasActiveParentSession: nextHasActiveParentSession,
+      activeRole: isLeavingProtectedRoute ? null : activeRole,
+      isSetupComplete,
     });
     setCurrentRoute(nextRoute);
     updateHash(nextRoute);
   }
 
-  async function handleUnlockSubmit() {
-    const response = await submitUnlock(pin);
+  async function handleRoleUnlockSubmit(role: "child" | "parent") {
+    const pin = role === "child" ? childUnlockPin : parentUnlockPin;
+    const response = await submitRoleUnlock(role, pin);
     if (response?.granted) {
-      setPin("");
-      moveTo("/parent");
+      if (role === "child") {
+        setChildUnlockPin("");
+        setCurrentRoute("/child");
+        updateHash("/child");
+        return;
+      }
+      setParentUnlockPin("");
+      setCurrentRoute("/parent");
+      updateHash("/parent");
+    }
+  }
+
+  async function handleSetupSubmit(childPin: string, parentPin: string) {
+    const response = await submitSetup(childPin, parentPin);
+    if (response?.is_setup_complete) {
+      setCurrentRoute("/gate");
+      updateHash("/gate");
     }
   }
 
@@ -103,15 +150,15 @@ export default function App({ initialRoute }: AppProps) {
           <p className="brand-eyebrow">TraceMind Family</p>
           <h1>Family Extension</h1>
           <p className="brand-copy">
-            child popup은 이제 wellbeing summary를 읽고, parent detail은 다음
-            단계에서 같은 output contract를 이어받습니다.
+            이 확장 프로그램은 이 PC의 로컬 agent만 사용합니다. setup이 끝나면
+            child와 parent는 각각 잠금 해제를 거쳐 role별 화면으로 들어갑니다.
           </p>
         </div>
 
         <nav className="route-nav" aria-label="family extension routes">
           {(visibleRoutes as AppRoute[]).map((route) => {
             const meta = ROUTE_META[route];
-            const locked = isRouteLocked(route, { hasActiveParentSession });
+            const locked = isRouteLocked(route, { activeRole, isSetupComplete });
             return (
               <button
                 key={route}
@@ -159,31 +206,93 @@ export default function App({ initialRoute }: AppProps) {
             <p className="page-description">{routeMeta.description}</p>
           </div>
           <div className="badge-row">
-            <span className="badge">Phase 9 runtime projection</span>
-            <span className="badge subtle">wellbeing_signal consumer</span>
+            <span className="badge">Phase 10 app-level gate</span>
+            <span className="badge subtle">local-only family access</span>
           </div>
         </header>
         <ConnectionStateBanner healthState={healthState} />
 
-        {currentRoute === "/child" && (
-          <ChildPage onMoveToUnlock={() => moveTo("/unlock")} />
+        {setupStatusState.phase === "loading" && (
+          <section className="hero-card gate-hero">
+            <div>
+              <p className="eyebrow">Family Access</p>
+              <h2>초기 설정 상태를 확인하는 중</h2>
+              <p className="section-copy">
+                이 PC의 로컬 agent가 이미 초기 설정을 마쳤는지 확인하고
+                있습니다.
+              </p>
+            </div>
+            <div className="hero-meter">
+              <span className="hero-meter-label">setup status</span>
+              <strong>확인 중...</strong>
+            </div>
+          </section>
         )}
-        {currentRoute === "/unlock" && (
-          <UnlockPage
-            pin={pin}
-            unlockState={unlockState}
-            onPinChange={setPin}
-            onSubmitUnlock={handleUnlockSubmit}
-            onMoveToChild={() => moveTo("/child")}
-            onMoveToParent={() => moveTo("/parent")}
+        {setupStatusState.phase === "error" && (
+          <section className="hero-card gate-hero">
+            <div>
+              <p className="eyebrow">Family Access</p>
+              <h2>초기 설정 상태를 아직 확인하지 못했습니다</h2>
+              <p className="section-copy">{setupStatusState.errorMessage}</p>
+            </div>
+            <div className="button-row">
+              <button
+                className="primary-button"
+                type="button"
+                onClick={() => void reloadSetupStatus()}
+              >
+                다시 시도
+              </button>
+            </div>
+          </section>
+        )}
+
+        {setupStatusState.phase === "loaded" && currentRoute === "/setup" && (
+          <SetupPage
+            errorMessage={setupSubmissionState.errorMessage}
+            isSubmitting={setupSubmissionState.phase === "submitting"}
+            onSubmitSetup={handleSetupSubmit}
           />
         )}
-        {currentRoute === "/parent" && (
+        {setupStatusState.phase === "loaded" && currentRoute === "/gate" && (
+          <GatePage
+            onMoveToChildUnlock={() => moveTo("/child/unlock")}
+            onMoveToParentUnlock={() => moveTo("/parent/unlock")}
+          />
+        )}
+        {setupStatusState.phase === "loaded" && currentRoute === "/child" && (
+          <ChildPage onMoveToParentUnlock={() => moveTo("/parent/unlock")} />
+        )}
+        {setupStatusState.phase === "loaded" && currentRoute === "/child/unlock" && (
+          <UnlockPage
+            pin={childUnlockPin}
+            pinLabel="아이용 PIN"
+            role="child"
+            unlockState={getUnlockState("child")}
+            onPinChange={setChildUnlockPin}
+            onSubmitUnlock={() => void handleRoleUnlockSubmit("child")}
+            onMoveToGate={() => moveTo("/gate")}
+            onMoveToRoleSurface={() => moveTo("/child")}
+          />
+        )}
+        {setupStatusState.phase === "loaded" &&
+          currentRoute === "/parent/unlock" && (
+          <UnlockPage
+            pin={parentUnlockPin}
+            pinLabel="부모용 PIN"
+            role="parent"
+            unlockState={getUnlockState("parent")}
+            onPinChange={setParentUnlockPin}
+            onSubmitUnlock={() => void handleRoleUnlockSubmit("parent")}
+            onMoveToGate={() => moveTo("/gate")}
+            onMoveToRoleSurface={() => moveTo("/parent")}
+          />
+          )}
+        {setupStatusState.phase === "loaded" && currentRoute === "/parent" && (
           <ParentPage
-            activeSessionExpiresAt={activeSessionExpiresAt}
-            hasActiveParentSession={hasActiveParentSession}
-            onMoveToChild={() => moveTo("/child")}
-            onMoveToUnlock={() => moveTo("/unlock")}
+            activeSessionExpiresAt={activeSession?.sessionExpiresAt ?? null}
+            onMoveToChildUnlock={() => moveTo("/child/unlock")}
+            onMoveToGate={() => moveTo("/gate")}
           />
         )}
       </main>

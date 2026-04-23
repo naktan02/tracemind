@@ -1,23 +1,28 @@
 import { PinPad } from "../../components/PinPad";
+import type { FamilyAccessRole } from "../../contracts/generated";
 import { formatComputedAtLabel } from "../../lib/formatters";
-import type { ParentUnlockState } from "../../hooks/useParentUnlock";
+import type { FamilyUnlockState } from "../../hooks/useFamilyAccess";
 
 type UnlockPageProps = {
   pin: string;
-  unlockState: ParentUnlockState;
+  pinLabel: string;
+  role: FamilyAccessRole;
+  unlockState: FamilyUnlockState;
   onPinChange: (nextValue: string) => void;
   onSubmitUnlock: () => void;
-  onMoveToChild: () => void;
-  onMoveToParent: () => void;
+  onMoveToGate: () => void;
+  onMoveToRoleSurface: () => void;
 };
 
 export function UnlockPage({
   pin,
+  pinLabel,
+  role,
   unlockState,
   onPinChange,
   onSubmitUnlock,
-  onMoveToChild,
-  onMoveToParent,
+  onMoveToGate,
+  onMoveToRoleSurface,
 }: UnlockPageProps) {
   const isSubmitting = unlockState.phase === "submitting";
   const isGranted = unlockState.phase === "granted";
@@ -28,11 +33,10 @@ export function UnlockPage({
       <section className="hero-card unlock-hero">
         <div>
           <p className="eyebrow">Protected Entry</p>
-          <h2>부모용 PIN 검증</h2>
+          <h2>{pinLabel} 검증</h2>
           <p className="section-copy">
-            이 화면은 child surface와 parent surface 사이 권한 경계를 분리하는
-            실제 진입 화면입니다. PIN 검증 결과와 잠금 상태를 여기서 먼저
-            확인합니다.
+            role별 protected surface로 들어가기 전 PIN 검증을 먼저 수행합니다.
+            현재 검증 결과와 잠금 상태도 이 화면에서 같이 확인합니다.
           </p>
         </div>
         <div className="hero-meter">
@@ -49,7 +53,13 @@ export function UnlockPage({
       </section>
 
       <section className="surface-card">
-        <PinPad value={pin} onChange={onPinChange} />
+        <PinPad
+          helpText={`이 PIN을 통과하면 ${role === "child" ? "아이용" : "부모용"} 화면으로 들어갑니다.`}
+          inputId={`${role}-pin`}
+          label={pinLabel}
+          value={pin}
+          onChange={onPinChange}
+        />
         <div className="button-row">
           <button
             className="primary-button"
@@ -63,9 +73,9 @@ export function UnlockPage({
             <button
               className="ghost-button"
               type="button"
-              onClick={onMoveToParent}
+              onClick={onMoveToRoleSurface}
             >
-              부모 상세로 이동
+              {role === "child" ? "아이용 화면으로 이동" : "부모 상세로 이동"}
             </button>
           )}
         </div>
@@ -76,7 +86,7 @@ export function UnlockPage({
           <p className="card-label">검증 결과</p>
           {unlockState.phase === "idle" && (
             <p className="section-copy">
-              4~6자리 PIN을 입력하면 부모 상세 화면 진입 가능 여부를 확인합니다.
+              4~6자리 PIN을 입력하면 해당 role 화면 진입 가능 여부를 확인합니다.
             </p>
           )}
           {unlockState.phase === "submitting" && (
@@ -87,7 +97,7 @@ export function UnlockPage({
           {unlockState.phase === "granted" &&
             unlockState.response?.session_expires_at != null && (
               <p className="section-copy">
-                부모 세션이 열렸습니다.{" "}
+                {role === "child" ? "아이용" : "부모용"} 세션이 열렸습니다.{" "}
                 {formatComputedAtLabel(unlockState.response.session_expires_at)}까지
                 같은 세션을 사용할 수 있습니다.
               </p>
@@ -113,24 +123,24 @@ export function UnlockPage({
         <article className="surface-card">
           <p className="card-label">이 단계에서 확보한 것</p>
           <ul className="bullet-list">
-            <li>실제 unlock API 연결</li>
+            <li>role별 unlock API 연결</li>
             <li>실패 횟수와 잠금 상태 해석</li>
-            <li>부모 세션 응답 기반 route guard 준비</li>
+            <li>role session 기반 route guard</li>
           </ul>
         </article>
       </section>
 
       <div className="button-row">
-        <button className="ghost-button" type="button" onClick={onMoveToChild}>
-          아이용 화면으로
+        <button className="ghost-button" type="button" onClick={onMoveToGate}>
+          선택 화면으로
         </button>
         <button
           className="ghost-button"
           disabled={!isGranted}
           type="button"
-          onClick={onMoveToParent}
+          onClick={onMoveToRoleSurface}
         >
-          부모 상세로 이동
+          {role === "child" ? "아이용 화면으로 이동" : "부모 상세로 이동"}
         </button>
       </div>
     </div>
