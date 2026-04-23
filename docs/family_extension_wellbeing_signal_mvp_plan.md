@@ -441,6 +441,13 @@ apps/family_extension/
 
 - summary mock으로 child view 완성
 
+현재 상태:
+
+- 완료
+- `apps/family_extension/src/pages/child/ChildPage.tsx`가 `/api/v1/wellbeing/summary`를 읽는다
+- `apps/family_extension/src/components/WellbeingSignalCard.tsx`가 현재 상태 카드를 렌더링한다
+- 프런트 타입은 `apps/family_extension/src/contracts/generated.ts`로 생성한다
+
 ### Phase 6. 부모용 잠금 화면
 
 작업:

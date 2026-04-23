@@ -243,6 +243,29 @@ button {
   gap: 16px;
 }
 
+.pill-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.info-pill {
+  display: inline-flex;
+  align-items: center;
+  min-height: 34px;
+  padding: 0 12px;
+  border-radius: 999px;
+  background: #f8fafc;
+  color: #334155;
+  font-weight: 700;
+}
+
+.info-pill.strong {
+  background: #eff6ff;
+  color: #1d4ed8;
+}
+
 .surface-card {
   padding: 18px;
 }

@@ -24,5 +24,7 @@
 
 - `React + TypeScript + Vite`를 기준으로 유지한다.
 - shell 단계에서는 route, manifest, API client 경계를 먼저 세운다.
+- shared contract를 프런트에서 수기로 다시 정의하지 않는다.
+- contract type이 필요하면 generated file 경계를 우선 검토한다.
 - heavy styling framework보다 얇은 CSS와 명시적 layout을 우선한다.
 - 앱 안에서 inference/training 로직을 추가하지 않는다.

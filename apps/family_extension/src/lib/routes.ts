@@ -13,9 +13,9 @@ export const ROUTE_META: Record<AppRoute, AppRouteMeta> = {
   "/child": {
     label: "아이용 화면",
     eyebrow: "Child View",
-    title: "아이용 wellbeing shell",
+    title: "아이용 wellbeing summary",
     description:
-      "아이에게 보여줄 요약 상태 화면이 올라갈 자리입니다. 현재 단계에서는 route shell만 먼저 엽니다.",
+      "아이에게 보여줄 현재 상태, 짧은 요약, 행동 제안을 wellbeing summary 한 건으로 보여줍니다.",
   },
   "/unlock": {
     label: "부모 잠금 화면",

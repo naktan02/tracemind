@@ -72,8 +72,8 @@ export default function App({ initialRoute }: AppProps) {
           <p className="brand-eyebrow">TraceMind Family</p>
           <h1>Family Extension</h1>
           <p className="brand-copy">
-            child popup과 parent detail이 같은 output contract를 소비하도록 여는
-            shell 단계입니다.
+            child popup은 이제 wellbeing summary를 읽고, parent detail은 다음
+            단계에서 같은 output contract를 이어받습니다.
           </p>
         </div>
 
@@ -120,7 +120,7 @@ export default function App({ initialRoute }: AppProps) {
             <p className="page-description">{routeMeta.description}</p>
           </div>
           <div className="badge-row">
-            <span className="badge">Phase 4 shell</span>
+            <span className="badge">Phase 5 child view</span>
             <span className="badge subtle">wellbeing_signal consumer</span>
           </div>
         </header>

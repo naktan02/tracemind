@@ -1,3 +1,6 @@
+import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
+import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
+
 type ChildPageProps = {
   onMoveToUnlock: () => void;
   onMoveToParent: () => void;
@@ -7,34 +10,57 @@ export function ChildPage({
   onMoveToUnlock,
   onMoveToParent,
 }: ChildPageProps) {
+  const summaryState = useWellbeingSummary();
+
   return (
     <div className="page-stack">
-      <section className="hero-card child-hero">
-        <div>
-          <p className="eyebrow">Popup Entry</p>
-          <h2>아이용 상태 화면 shell</h2>
-          <p className="section-copy">
-            다음 단계에서 현재 상태, 짧은 설명, 행동 제안이 이 화면에 연결됩니다.
-            지금은 아이용 flow와 부모용 보호 화면 진입 경계를 먼저 고정합니다.
-          </p>
-        </div>
-        <div className="hero-meter">
-          <span className="hero-meter-label">future wellbeing signal</span>
-          <strong>--</strong>
-        </div>
-      </section>
+      {summaryState.status === "loaded" && (
+        <WellbeingSignalCard summary={summaryState.summary} />
+      )}
+      {summaryState.status === "loading" && (
+        <section className="hero-card child-hero">
+          <div>
+            <p className="eyebrow">Child View</p>
+            <h2>현재 상태를 불러오는 중</h2>
+            <p className="section-copy">
+              아이용 화면은 wellbeing summary 한 건만 먼저 읽습니다. 그래프나 상세
+              이유는 아직 보여주지 않습니다.
+            </p>
+          </div>
+          <div className="hero-meter">
+            <span className="hero-meter-label">wellbeing signal</span>
+            <strong>...</strong>
+          </div>
+        </section>
+      )}
+      {summaryState.status === "error" && (
+        <section className="hero-card child-hero">
+          <div>
+            <p className="eyebrow">Child View</p>
+            <h2>현재 상태를 아직 불러오지 못했어요</h2>
+            <p className="section-copy">
+              로컬 프로그램이 켜져 있는지 확인한 뒤 다시 시도해 주세요.
+            </p>
+          </div>
+          <div className="hero-meter">
+            <span className="hero-meter-label">연결 상태</span>
+            <strong>{summaryState.errorMessage}</strong>
+          </div>
+        </section>
+      )}
 
       <section className="card-grid">
         <article className="surface-card">
-          <p className="card-label">아이에게 보이는 정보</p>
+          <p className="card-label">아이에게 지금 보이는 정보</p>
           <ul className="bullet-list">
             <li>현재 상태 한 줄</li>
+            <li>짧은 요약 문구</li>
             <li>짧은 행동 제안 1개</li>
             <li>마지막 업데이트 시각</li>
           </ul>
         </article>
         <article className="surface-card">
-          <p className="card-label">이 단계에서 하지 않는 것</p>
+          <p className="card-label">이 단계에서 여전히 하지 않는 것</p>
           <ul className="bullet-list">
             <li>카테고리별 점수 공개</li>
             <li>복잡한 상세 이유 노출</li>
@@ -42,6 +68,19 @@ export function ChildPage({
           </ul>
         </article>
       </section>
+
+      {summaryState.status === "loaded" && (
+        <section className="card-grid">
+          <article className="surface-card">
+            <p className="card-label">오늘 한 줄 요약</p>
+            <p className="section-copy">{summaryState.summary.summary}</p>
+          </article>
+          <article className="surface-card">
+            <p className="card-label">지금 해보면 좋은 것</p>
+            <p className="section-copy">{summaryState.summary.action_tip}</p>
+          </article>
+        </section>
+      )}
 
       <div className="button-row">
         <button className="primary-button" type="button" onClick={onMoveToUnlock}>
