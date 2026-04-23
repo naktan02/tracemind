@@ -214,8 +214,9 @@ class PseudoLabelEvidenceBackend(Protocol):
 **교체 절차:**
 1. `scoring_backends.py`에 새 backend 추가
 2. `register_scoring_backend()`로 등록
-3. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
-4. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
+3. query buffer/projection에 남길 `confidence_kind`를 backend가 직접 선언
+4. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
+5. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
 
 ---
 

@@ -9,6 +9,8 @@ from agent.src.services.inference.scoring_backends import (
     PrototypeSimilarityScoringBackend,
     ScoringBackend,
     build_scoring_backend,
+    resolve_scoring_backend_name,
+    resolve_scoring_confidence_kind,
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -53,3 +55,15 @@ class ScoringService:
             prototypes,
             shared_state=self.shared_state,
         )
+
+    @property
+    def backend_name(self) -> str:
+        """현재 backend canonical name."""
+
+        return resolve_scoring_backend_name(self.backend)
+
+    @property
+    def confidence_kind(self) -> str:
+        """query buffer에 남길 confidence kind."""
+
+        return resolve_scoring_confidence_kind(self.backend)

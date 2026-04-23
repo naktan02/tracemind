@@ -203,6 +203,19 @@ def test_experiment_catalog_api_exposes_runtime_compatibility_metadata() -> None
     weak_strong = _find_item(example_backends, "weak_strong_pair")
     assert weak_strong.supported_runtime_paths == (FEDERATED_SIMULATION_RUNTIME_PATH,)
 
+    scoring_backends = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="scoring_backends",
+    )
+    prototype_similarity = _find_item(
+        scoring_backends,
+        "prototype_similarity",
+    )
+    assert prototype_similarity.metadata["confidence_kind"] == (
+        "prototype_similarity_top1"
+    )
+
 
 def test_experiments_router_is_registered_on_main_app() -> None:
     route_paths = {route.path for route in app.routes}

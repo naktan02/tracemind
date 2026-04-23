@@ -105,13 +105,11 @@ class InferencePipelineService:
                 event=event,
                 scored_event=scored_event,
                 model_revision=self.model_revision,
-                confidence_kind=_infer_confidence_kind(self.scoring_service),
+                confidence_kind=self.scoring_service.confidence_kind,
                 metadata={
                     "embedding_model_id": self.embedding_model_id,
                     "translation_model_id": translation_model_id,
-                    "scorer_backend_name": _get_scoring_backend_name(
-                        self.scoring_service
-                    ),
+                    "scorer_backend_name": self.scoring_service.backend_name,
                     "was_translated": needs_translation,
                 },
             )
@@ -138,22 +136,11 @@ def _get_translation_model_id(service: TranslationService) -> str | None:
     model_id = getattr(adapter, "model_id", None)
     return model_id if isinstance(model_id, str) else None
 
-
-def _get_scoring_backend_name(service: ScoringService) -> str:
-    backend_name = getattr(service.backend, "backend_name", None)
-    return backend_name if isinstance(backend_name, str) else "unknown"
-
-
-def _infer_confidence_kind(service: ScoringService) -> str:
-    backend_name = _get_scoring_backend_name(service)
-    if backend_name == "classifier_head_logits":
-        return "classifier_head_logit_top1"
-    if backend_name == "prototype_similarity":
-        return "prototype_similarity_top1"
-    return f"{backend_name}_top1"
-
-
-def make_query_event(text: str, locale: str = "ko", source_type: str = "manual") -> QueryEvent:
+def make_query_event(
+    text: str,
+    locale: str = "ko",
+    source_type: str = "manual",
+) -> QueryEvent:
     """테스트 또는 API에서 QueryEvent를 편하게 만드는 팩토리."""
     return QueryEvent(
         query_id=str(uuid.uuid4()),

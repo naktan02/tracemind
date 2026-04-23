@@ -11,11 +11,13 @@ import pytest
 
 from agent.src.services.inference.scoring_backends import (
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
+    PROTOTYPE_SIMILARITY_CONFIDENCE_KIND,
     PrototypeSimilarityScoringBackend,
     register_scoring_backend,
 )
 from agent.src.services.inference.scoring_policies import TopKMeanCosineScorePolicy
 from agent.src.services.inference.scoring_service import ScoringService
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
@@ -124,15 +126,17 @@ def test_prototype_similarity_backend_keeps_fixed_implementation_name() -> None:
     backend = PrototypeSimilarityScoringBackend()
 
     assert backend.backend_name == PROTOTYPE_SIMILARITY_BACKEND_NAME
+    assert backend.confidence_kind == PROTOTYPE_SIMILARITY_CONFIDENCE_KIND
 
 
 def test_score_service_can_switch_registered_scoring_backend() -> None:
     @dataclass(slots=True)
     class _ConstantScoringBackend:
         backend_name: str = "constant_test_backend"
+        confidence_kind: str = "constant_test_backend_top1"
 
-        def score(self, embedding, prototypes):
-            del embedding
+        def score(self, embedding, prototypes, shared_state=None):
+            del embedding, shared_state
             return {
                 category: float(index + 1)
                 for index, category in enumerate(sorted(prototypes))
@@ -141,6 +145,15 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
     register_scoring_backend(
         "constant_test_backend",
         factory=lambda _objective_config, _similarity_name: _ConstantScoringBackend(),
+        catalog_entry=RegistryCatalogEntry(
+            item_name="constant_test_backend",
+            display_name="constant_test_backend",
+            implementation_module=__name__,
+            core_method_name="constant_test_backend",
+            family_name="scoring",
+            supported_adapter_kinds=("*",),
+            metadata={"confidence_kind": "constant_test_backend_top1"},
+        ),
     )
     service = ScoringService.from_objective_config(
         TrainingObjectiveConfig(
@@ -157,3 +170,4 @@ def test_score_service_can_switch_registered_scoring_backend() -> None:
     )
 
     assert scores == {"alert": 1.0, "safe": 2.0}
+    assert service.confidence_kind == "constant_test_backend_top1"

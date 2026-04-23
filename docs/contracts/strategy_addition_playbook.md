@@ -125,8 +125,9 @@
 
 1. scorer backend를 추가할지, 기존 backend 안의 policy만 추가할지 먼저 나눈다.
 2. backend면 `register_scoring_backend(...)`, policy면 `register_prototype_score_policy(...)`에 등록한다.
-3. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
-4. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
+3. backend면 `confidence_kind`를 같이 선언해 pipeline/query buffer가 이름 분기 없이 읽게 한다.
+4. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
+5. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
 
 우선 볼 테스트:
 

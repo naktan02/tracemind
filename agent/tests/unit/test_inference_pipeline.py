@@ -20,7 +20,6 @@ from agent.src.services.inference.pipeline_service import (
 from agent.src.services.language.preprocess_service import PreprocessService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
-
 # ---------------------------------------------------------- #
 # 픽스처                                                        #
 # ---------------------------------------------------------- #
@@ -131,8 +130,8 @@ def _make_pipeline(
 
     scoring_service = MagicMock()
     scoring_service.score.return_value = {"anxiety": 0.85, "depression": 0.25}
-    scoring_service.backend = MagicMock()
-    scoring_service.backend.backend_name = "prototype_similarity"
+    scoring_service.backend_name = "prototype_similarity"
+    scoring_service.confidence_kind = "prototype_similarity_top1"
 
     prototype_provider = MagicMock()
     prototype_provider.get_active_prototypes.return_value = {
@@ -260,7 +259,9 @@ def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:
 # ---------------------------------------------------------- #
 
 
-def test_repo_saves_and_restores_base_embedding(tmp_repo: ScoredEventRepository) -> None:
+def test_repo_saves_and_restores_base_embedding(
+    tmp_repo: ScoredEventRepository,
+) -> None:
     """base_embedding을 함께 저장하면 get_recent_stored로 복원된다."""
     event = _make_scored_event()
     embedding = [0.1, 0.2, 0.3]

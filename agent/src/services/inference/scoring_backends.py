@@ -22,12 +22,15 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 
 PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
 CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
+PROTOTYPE_SIMILARITY_CONFIDENCE_KIND = "prototype_similarity_top1"
+CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND = "classifier_head_logit_top1"
 
 
 class ScoringBackend(Protocol):
     """category score dict를 계산하는 backend 인터페이스."""
 
     backend_name: str
+    confidence_kind: str
     supported_adapter_kinds: tuple[str, ...]
     requires_shared_state: bool
 
@@ -50,6 +53,7 @@ class PrototypeSimilarityScoringBackend:
     similarity_name: str = "cosine"
     policy: PrototypeScorePolicy = field(default_factory=MaxCosineScorePolicy)
     backend_name: str = PROTOTYPE_SIMILARITY_BACKEND_NAME
+    confidence_kind: str = PROTOTYPE_SIMILARITY_CONFIDENCE_KIND
     supported_adapter_kinds: tuple[str, ...] = ("*",)
     requires_shared_state: bool = False
 
@@ -81,6 +85,7 @@ class ClassifierHeadLogitsScoringBackend:
     """공통 classifier head state로 category logits를 계산한다."""
 
     backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
+    confidence_kind: str = CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND
     supported_adapter_kinds: tuple[str, ...] = ("classifier_head",)
     requires_shared_state: bool = True
 
@@ -147,6 +152,25 @@ def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
         catalog_entry
         for _factory, catalog_entry in _SCORING_BACKEND_REGISTRY.values()
     )
+
+
+def resolve_scoring_backend_name(backend: ScoringBackend) -> str:
+    """backend instance에서 canonical backend name을 읽는다."""
+
+    backend_name = getattr(backend, "backend_name", None)
+    return backend_name if isinstance(backend_name, str) else "unknown"
+
+
+def resolve_scoring_confidence_kind(backend: ScoringBackend) -> str:
+    """backend instance에서 query buffer confidence kind를 읽는다."""
+
+    confidence_kind = getattr(backend, "confidence_kind", None)
+    if isinstance(confidence_kind, str) and confidence_kind.strip():
+        return confidence_kind
+    backend_name = resolve_scoring_backend_name(backend)
+    if backend_name == "unknown":
+        return "unknown"
+    return f"{backend_name}_top1"
 
 
 def _build_prototype_similarity_backend(
@@ -221,7 +245,10 @@ register_scoring_backend(
         core_method_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
         family_name="scoring",
         supported_adapter_kinds=("*",),
-        metadata={"requires_shared_state": False},
+        metadata={
+            "requires_shared_state": False,
+            "confidence_kind": PROTOTYPE_SIMILARITY_CONFIDENCE_KIND,
+        },
     ),
 )
 register_scoring_backend(
@@ -235,14 +262,19 @@ register_scoring_backend(
         family_name="scoring",
         supported_adapter_kinds=("classifier_head",),
         tags=("requires_shared_state",),
-        metadata={"requires_shared_state": True},
+        metadata={
+            "requires_shared_state": True,
+            "confidence_kind": CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND,
+        },
     ),
 )
 
 
 __all__ = [
     "CLASSIFIER_HEAD_LOGITS_BACKEND_NAME",
+    "CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND",
     "PROTOTYPE_SIMILARITY_BACKEND_NAME",
+    "PROTOTYPE_SIMILARITY_CONFIDENCE_KIND",
     "ClassifierHeadLogitsScoringBackend",
     "PrototypeSimilarityScoringBackend",
     "ScoringBackend",
@@ -251,4 +283,6 @@ __all__ = [
     "list_scoring_backend_catalog_entries",
     "list_registered_scoring_backend_names",
     "register_scoring_backend",
+    "resolve_scoring_backend_name",
+    "resolve_scoring_confidence_kind",
 ]
