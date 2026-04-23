@@ -21,9 +21,13 @@ from agent.src.services.training.pseudo_label_service import (
 from agent.src.services.training.runtime_compatibility import (
     validate_local_training_runtime,
 )
-from agent.src.services.training.training_backends import (
-    DiagonalScaleHeuristicTrainingBackend,
+from agent.src.services.training.training_backends.base import (
     SharedAdapterTrainingBackend,
+)
+from agent.src.services.training.training_backends.diagonal_scale_heuristic import (
+    DiagonalScaleHeuristicTrainingBackend,
+)
+from agent.src.services.training.training_backends.registry import (
     build_shared_adapter_training_backend,
 )
 from agent.src.services.training.training_example_models import (

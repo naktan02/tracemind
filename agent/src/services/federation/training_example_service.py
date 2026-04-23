@@ -4,16 +4,24 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from agent.src.services.training.input_backends import (
-    PrototypeRescoringTrainingExampleBackend,
-    StoredEventTrainingExampleBuildRequest,
+from agent.src.services.training.input_backends.base import (
     TrainingExampleBackend,
+)
+from agent.src.services.training.input_backends.models import (
+    StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
-    WeakStrongPairTrainingExampleBackend,
+)
+from agent.src.services.training.input_backends.prototype_rescore import (
+    PrototypeRescoringTrainingExampleBackend,
+)
+from agent.src.services.training.input_backends.registry import (
     build_training_example_backend,
     register_training_example_backend,
     resolve_training_example_backend,
+)
+from agent.src.services.training.input_backends.weak_strong_pair import (
+    WeakStrongPairTrainingExampleBackend,
 )
 from agent.src.services.training.training_example_models import (
     EmbeddedTrainingExample,

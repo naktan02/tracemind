@@ -1,5 +1,7 @@
 """Prototype strategy experiment package."""
 
+# ruff: noqa: F401
+
 from scripts.experiments.prototype_strategy.models import (
     EvaluationMetrics,
     ExperimentSummary,
@@ -29,27 +31,3 @@ from scripts.experiments.prototype_strategy.strategies import (
     build_strategies,
     build_strategy,
 )
-
-__all__ = [
-    "DbscanPrototypeStrategy",
-    "ConfiguredPrototypeIndexScorer",
-    "EvaluationMetrics",
-    "ExperimentSummary",
-    "KMeansPrototypeStrategy",
-    "MaxCosinePrototypeIndexScorer",
-    "ProjectionArtifact",
-    "PrototypeExperimentRunner",
-    "PrototypeIndex",
-    "PrototypeIndexScorer",
-    "PrototypeScoringConfig",
-    "PrototypeVector",
-    "SinglePrototypeStrategy",
-    "StrategyEvaluationReport",
-    "StrategySelectionPolicy",
-    "build_prototype_index_scorer",
-    "build_requested_strategies",
-    "build_requested_strategy",
-    "build_strategies",
-    "build_strategy",
-    "render_validation_summary",
-]

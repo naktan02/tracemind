@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from agent.src.services.training.training_backends import (
+from agent.src.services.training.training_backends.base import (
     SharedAdapterTrainingBackend,
+)
+from agent.src.services.training.training_backends.registry import (
     build_shared_adapter_training_backend,
 )
 from shared.src.config.registry_catalog_metadata import (

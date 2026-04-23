@@ -1,5 +1,5 @@
 """공용 value object 모음."""
 
-from .embedding_adapter_spec import EmbeddingAdapterSpec
+# ruff: noqa: F401
 
-__all__ = ["EmbeddingAdapterSpec"]
+from .embedding_adapter_spec import EmbeddingAdapterSpec

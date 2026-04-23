@@ -4,9 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from agent.src.services.training.evidence_backends import (
-    PrototypeSimilarityEvidenceBackend,
+from agent.src.services.training.evidence_backends.base import (
     PseudoLabelEvidenceBackend,
+)
+from agent.src.services.training.evidence_backends.prototype_similarity import (
+    PrototypeSimilarityEvidenceBackend,
+)
+from agent.src.services.training.evidence_backends.registry import (
     build_pseudo_label_evidence_backend,
 )
 from shared.src.config.training_defaults import (

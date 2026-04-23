@@ -8,7 +8,7 @@ from agent.src.services.federation.training_example_service import (
     TrainingExampleSource,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.input_backends import (
+from agent.src.services.training.input_backends.base import (
     WEAK_STRONG_PAIR_BACKEND_NAME,
 )
 from agent.src.services.training.pseudo_label_service import (

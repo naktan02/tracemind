@@ -11,18 +11,20 @@ from agent.src.services.training.acceptance_policies.base import (
 from agent.src.services.training.acceptance_policies.registry import (
     build_pseudo_label_acceptance_policy,
 )
-from agent.src.services.training.evidence_backends import (
+from agent.src.services.training.evidence_backends.registry import (
     resolve_pseudo_label_evidence_backend,
 )
-from agent.src.services.training.input_backends import (
+from agent.src.services.training.input_backends.registry import (
     resolve_training_example_backend,
 )
 from agent.src.services.training.privacy_guard_service import (
     SharedAdapterPrivacyGuard,
     build_shared_adapter_privacy_guard,
 )
-from agent.src.services.training.training_backends import (
+from agent.src.services.training.training_backends.base import (
     SharedAdapterTrainingBackend,
+)
+from agent.src.services.training.training_backends.registry import (
     build_shared_adapter_training_backend,
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE

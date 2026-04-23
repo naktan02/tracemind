@@ -20,7 +20,7 @@ from agent.src.services.training.local_training_service import (
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from agent.src.services.training.training_backends import (
+from agent.src.services.training.training_backends.registry import (
     register_shared_adapter_training_backend,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
