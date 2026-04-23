@@ -1,0 +1,62 @@
+# Family Extension
+
+`apps/family_extension`는 TraceMind 가족용 확장 프로그램 MVP shell이다.
+
+현재 단계는 `Phase 4` 범위에 해당한다.
+
+포함하는 것:
+
+1. popup용 child shell entry
+2. parent detail용 별도 entry
+3. `/child`, `/unlock`, `/parent` route shell
+4. 로컬 프로그램 wellbeing API를 호출할 준비가 된 client layer
+5. 연결 상태 배지와 기본 navigation
+
+아직 포함하지 않는 것:
+
+1. 실제 child summary 렌더링
+2. parent PIN 검증 연결
+3. 실제 timeseries 그래프 렌더링
+4. low-data/offline UX 고도화
+
+## 개발 실행
+
+1. agent API 실행
+
+```bash
+uvicorn agent.src.api.main:app --reload --port 8001
+```
+
+2. frontend 의존성 설치
+
+```bash
+cd apps/family_extension
+npm install
+```
+
+3. dev server 실행
+
+```bash
+cd apps/family_extension
+npm run dev
+```
+
+기본 agent API target은 `http://127.0.0.1:8001`이다.
+
+다른 주소를 쓰려면:
+
+```bash
+cd apps/family_extension
+VITE_AGENT_API_BASE_URL=http://127.0.0.1:9001 npm run dev
+```
+
+## 확장 entry
+
+- `index.html`
+  - popup entry
+  - 기본 route는 `/child`
+- `parent.html`
+  - 부모용 상세 entry
+  - 기본 route는 `/parent`
+
+Chrome extension manifest는 `public/manifest.json`을 source로 사용한다.

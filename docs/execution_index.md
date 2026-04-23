@@ -40,6 +40,8 @@ source-of-truth 우선순위를 먼저 확인한다.
    - Phase 이름과 검증 포인트 빠른 확인
 14. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
    - 아이용/부모용 확장 화면과 로컬 프로그램 API의 단계별 계획
+15. 가족용 확장 UI 구현을 볼 때만 `apps/family_extension/AGENTS.md`
+   - popup shell, 부모 상세 entry, wellbeing output consumer 규칙
 
 ## AI Harness 빠른 경로
 

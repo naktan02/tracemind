@@ -11,6 +11,7 @@ canonical_layers:
 
 path_specific_instructions:
   - apps/AGENTS.md
+  - apps/family_extension/AGENTS.md
   - shared/AGENTS.md
   - agent/AGENTS.md
   - main_server/AGENTS.md
@@ -128,6 +129,8 @@ task_routes:
       - docs/AGENTS.md
       - docs/execution_index.md
       - docs/family_extension_wellbeing_signal_mvp_plan.md
+      - apps/AGENTS.md
+      - apps/family_extension/AGENTS.md
       - shared/src/contracts/README.md
     verify:
       - external UI only sees overall wellbeing signal

@@ -420,6 +420,14 @@ apps/family_extension/
 - 확장 로드 가능
 - 라우트 전환 가능
 
+현재 상태:
+
+- 완료
+- popup entry는 `apps/family_extension/index.html`
+- 부모 상세 entry는 `apps/family_extension/parent.html`
+- manifest source는 `apps/family_extension/public/manifest.json`
+- 공통 route shell은 `apps/family_extension/src/App.tsx`
+
 ### Phase 5. 아이용 화면 MVP
 
 작업:
