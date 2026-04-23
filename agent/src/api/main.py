@@ -10,6 +10,7 @@ from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
+from agent.src.api.wellbeing import router as wellbeing_router
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
 )
@@ -23,6 +24,11 @@ from agent.src.services.federation.rounds.runtime_service import (
     FederationRuntimeService,
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
+from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
+from agent.src.services.wellbeing.timeseries_service import (
+    WellbeingTimeseriesService,
+)
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -63,6 +69,9 @@ def create_app(
         prototype_runtime_service or PrototypeRuntimeService()
     )
     app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
+    app.state.wellbeing_summary_service = WellbeingSummaryService()
+    app.state.wellbeing_timeseries_service = WellbeingTimeseriesService()
+    app.state.parent_auth_service = ParentAuthService()
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory
     )
@@ -77,6 +86,7 @@ def create_app(
     app.include_router(ingest_router)
     app.include_router(sync_router)
     app.include_router(training_router)
+    app.include_router(wellbeing_router)
     return app
 
 

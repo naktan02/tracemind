@@ -187,21 +187,21 @@ point 필드:
 
 MVP에서 필요한 API는 아래 네 개다.
 
-### `GET /v1/wellbeing/summary`
+### `GET /api/v1/wellbeing/summary`
 
 - 현재 wellbeing signal 한 건 반환
 - 아이용/부모용 공통
 
-### `GET /v1/wellbeing/timeseries?range=7d|14d|30d`
+### `GET /api/v1/wellbeing/timeseries?range=7d|14d|30d`
 
 - 부모용 상세 그래프용
 
-### `POST /v1/parent/unlock`
+### `POST /api/v1/parent/unlock`
 
 - PIN 검증
 - 부모용 세션 발급
 
-### `GET /v1/system/health`
+### `GET /api/v1/system/health`
 
 - 확장 프로그램이 로컬 프로그램 연결 여부를 확인하는 용도
 

@@ -26,6 +26,8 @@
   - prototype artifact 동기화/로컬 runtime helper
 - `language/`
   - preprocess, translation, backtranslation helper
+- `wellbeing/`
+  - 가족용 확장 프로그램이 읽는 전체 상태/추이/잠금용 local output service
 
 ## 먼저 읽을 파일
 
@@ -56,6 +58,13 @@
 1. `federation/rounds/round_client.py`
 2. `federation/rounds/runtime_service.py`
 3. `training/execution/local_training_service.py`
+
+### 4. 가족용 확장 출력 surface를 보고 싶을 때
+
+1. `wellbeing/summary_service.py`
+2. `wellbeing/timeseries_service.py`
+3. `wellbeing/auth_service.py`
+4. `agent/src/api/wellbeing.py`
 
 ## 파일 역할 빠른 맵
 
