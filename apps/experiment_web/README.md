@@ -15,7 +15,7 @@
 6. local run launch
 7. recent run status / stdout / stderr / artifact path 표시
 8. 기존에 생성된 split/checkpoint artifact를 source picker에 자동 노출
-8. 상단 saved workspace compare board
+9. 상단 saved workspace compare board
    - multi-select metric columns
    - 같은 기본 조합끼리 결과 비교
    - `불러와 수정`

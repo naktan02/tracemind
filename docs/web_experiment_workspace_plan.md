@@ -64,6 +64,11 @@
    - workspace summary payload가 `selection_previews`를 노출한다.
    - 저장된 실험에 `불러와 수정`, `복제 후 수정`, `그대로 재실행`, `삭제`를 제공한다.
    - step workflow, run history, tab 설명 문구를 한국어 기준으로 정리했다.
+7. `Phase 4 source picker follow-up`
+   - 중앙 적응에서 entrypoint에 맞는 block만 보이도록 줄였다.
+   - `의사라벨`, `FixMatch`, `Gold 지도 적응`이 같은 비교 위치에서 보이게 정리했다.
+   - `data/processed/**` 아래 기존 split/checkpoint artifact를
+     `적응 데이터 소스`, `교사 데이터 소스`, `초기 체크포인트` 선택지로 노출한다.
 
 현재 남은 단계 우선순위:
 
@@ -93,6 +98,10 @@
    - compare board는 상단에서 같은 기본 조합의 저장 실험을 비교한다.
    - `LoRA 전용`처럼 보이는 문구는 `PEFT` 등 더 일반적인 축 표현을 우선한다.
    - 저장된 실험은 그대로 재실행하거나, 복제 후 방법론/파라미터만 바꿔 새 row로 쌓는다.
+   - 중앙 적응에서는 모든 block을 한꺼번에 펼치기보다
+     entrypoint별 필요한 block만 보여 주는 편이 더 이해하기 쉽다.
+   - 생성된 artifact를 다시 쓰는 흐름은 수동 YAML 타이핑보다
+     picker surface로 노출하는 편이 반복 실험 비용을 줄인다.
 
 ## 3. 핵심 원칙
 
