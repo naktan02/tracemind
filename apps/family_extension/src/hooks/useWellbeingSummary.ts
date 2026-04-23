@@ -8,7 +8,13 @@ export type WellbeingSummaryLoadState =
   | { status: "loaded"; summary: WellbeingSignalSummaryPayload; errorMessage: null }
   | { status: "error"; summary: null; errorMessage: string };
 
-export function useWellbeingSummary() {
+type UseWellbeingSummaryOptions = {
+  enabled?: boolean;
+};
+
+export function useWellbeingSummary({
+  enabled = true,
+}: UseWellbeingSummaryOptions = {}) {
   const [loadState, setLoadState] = useState<WellbeingSummaryLoadState>({
     status: "loading",
     summary: null,
@@ -16,6 +22,15 @@ export function useWellbeingSummary() {
   });
 
   useEffect(() => {
+    if (!enabled) {
+      setLoadState({
+        status: "loading",
+        summary: null,
+        errorMessage: null,
+      });
+      return;
+    }
+
     let cancelled = false;
 
     async function loadSummary() {
@@ -52,7 +67,7 @@ export function useWellbeingSummary() {
     return () => {
       cancelled = true;
     };
-  }, []);
+  }, [enabled]);
 
   return loadState;
 }

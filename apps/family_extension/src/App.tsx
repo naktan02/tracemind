@@ -135,7 +135,7 @@ export default function App({ initialRoute }: AppProps) {
             <p className="page-description">{routeMeta.description}</p>
           </div>
           <div className="badge-row">
-            <span className="badge">Phase 6 parent unlock</span>
+            <span className="badge">Phase 7 parent detail</span>
             <span className="badge subtle">wellbeing_signal consumer</span>
           </div>
         </header>

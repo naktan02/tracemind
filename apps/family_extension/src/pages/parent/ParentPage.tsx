@@ -1,3 +1,9 @@
+import { useState } from "react";
+
+import { ParentWellbeingSummaryCard } from "../../components/ParentWellbeingSummaryCard";
+import { WellbeingSignalTrendChart } from "../../components/WellbeingSignalTrendChart";
+import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
+import { useWellbeingTimeseries } from "../../hooks/useWellbeingTimeseries";
 import { formatComputedAtLabel } from "../../lib/formatters";
 
 type ParentPageProps = {
@@ -13,6 +19,13 @@ export function ParentPage({
   onMoveToChild,
   onMoveToUnlock,
 }: ParentPageProps) {
+  const [selectedRange, setSelectedRange] = useState<"7d" | "14d" | "30d">("7d");
+  const summaryState = useWellbeingSummary({ enabled: hasActiveParentSession });
+  const timeseriesState = useWellbeingTimeseries({
+    enabled: hasActiveParentSession,
+    requestedRange: selectedRange,
+  });
+
   if (!hasActiveParentSession) {
     return (
       <div className="page-stack">
@@ -67,50 +80,104 @@ export function ParentPage({
 
   return (
     <div className="page-stack">
-      <section className="hero-card parent-hero">
-        <div>
-          <p className="eyebrow">Parent Detail Entry</p>
-          <h2>부모용 상세 shell</h2>
-          <p className="section-copy">
-            다음 단계에서 전체 wellbeing signal, 최근 추이 그래프, 권장 행동이 이
-            화면에 연결됩니다. 현재는 보호자용 정보 밀도와 child 화면 분리를
-            먼저 고정합니다.
-          </p>
-          {activeSessionExpiresAt != null && (
+      {summaryState.status === "loaded" && (
+        <ParentWellbeingSummaryCard summary={summaryState.summary} />
+      )}
+      {summaryState.status === "loading" && (
+        <section className="hero-card parent-hero">
+          <div>
+            <p className="eyebrow">Parent Detail</p>
+            <h2>부모용 현재 상태를 불러오는 중</h2>
             <p className="section-copy">
-              현재 부모 세션은{" "}
-              {formatComputedAtLabel(activeSessionExpiresAt)}까지 유지됩니다.
+              현재 전체 상태와 권장 행동을 로컬 프로그램에서 읽고 있습니다.
             </p>
-          )}
-        </div>
-        <div className="hero-meter hero-meter-wide">
-          <span className="hero-meter-label">future 7d / 14d / 30d trend</span>
-          <strong>라인 차트 자리</strong>
-        </div>
-      </section>
+            {activeSessionExpiresAt != null && (
+              <p className="section-copy">
+                현재 부모 세션은{" "}
+                {formatComputedAtLabel(activeSessionExpiresAt)}까지 유지됩니다.
+              </p>
+            )}
+          </div>
+          <div className="hero-meter">
+            <span className="hero-meter-label">current summary</span>
+            <strong>...</strong>
+          </div>
+        </section>
+      )}
+      {summaryState.status === "error" && (
+        <section className="hero-card parent-hero">
+          <div>
+            <p className="eyebrow">Parent Detail</p>
+            <h2>부모용 현재 상태를 아직 불러오지 못했습니다</h2>
+            <p className="section-copy">{summaryState.errorMessage}</p>
+          </div>
+          <div className="hero-meter">
+            <span className="hero-meter-label">summary 상태</span>
+            <strong>요청 실패</strong>
+          </div>
+        </section>
+      )}
 
-      <section className="card-grid">
-        <article className="surface-card">
-          <p className="card-label">여기에 올라갈 정보</p>
-          <ul className="bullet-list">
-            <li>전체 상태 카드</li>
-            <li>단일 축 signal 추이 그래프</li>
-            <li>권장 행동과 데이터 부족 여부</li>
-          </ul>
-        </article>
-        <article className="surface-card">
-          <p className="card-label">여기서 숨길 정보</p>
-          <ul className="bullet-list">
-            <li>내부 카테고리별 세부 점수</li>
-            <li>실험용 방법론 이름</li>
-            <li>모델/학습 metadata</li>
-          </ul>
-        </article>
-      </section>
+      {timeseriesState.status === "loaded" && (
+        <WellbeingSignalTrendChart
+          activeRange={selectedRange}
+          onRangeChange={setSelectedRange}
+          timeseries={timeseriesState.timeseries}
+        />
+      )}
+      {timeseriesState.status === "loading" && (
+        <section className="surface-card trend-card">
+          <div className="trend-card-header">
+            <div>
+              <p className="card-label">최근 변화</p>
+              <p className="section-copy">
+                최근 wellbeing signal 추이를 불러오는 중입니다.
+              </p>
+            </div>
+          </div>
+          <div className="trend-chart-loading">그래프 데이터를 준비하고 있습니다.</div>
+        </section>
+      )}
+      {timeseriesState.status === "error" && (
+        <section className="surface-card trend-card">
+          <div className="trend-card-header">
+            <div>
+              <p className="card-label">최근 변화</p>
+              <p className="section-copy">{timeseriesState.errorMessage}</p>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {summaryState.status === "loaded" && (
+        <section className="card-grid">
+          <article className="surface-card">
+            <p className="card-label">권장 행동</p>
+            <p className="section-copy">{summaryState.summary.action_tip}</p>
+          </article>
+          <article className="surface-card">
+            <p className="card-label">현재 부모 세션</p>
+            <ul className="bullet-list">
+              <li>
+                만료 시각:{" "}
+                {activeSessionExpiresAt == null
+                  ? "확인할 수 없음"
+                  : formatComputedAtLabel(activeSessionExpiresAt)}
+              </li>
+              <li>
+                데이터 상태:{" "}
+                {summaryState.summary.low_data
+                  ? "데이터가 아직 적습니다"
+                  : "기본 상태 해석 가능"}
+              </li>
+            </ul>
+          </article>
+        </section>
+      )}
 
       <div className="button-row">
         <button className="ghost-button" type="button" onClick={onMoveToUnlock}>
-          PIN shell로 돌아가기
+          PIN 화면으로 돌아가기
         </button>
         <button className="ghost-button" type="button" onClick={onMoveToChild}>
           아이용 화면 보기

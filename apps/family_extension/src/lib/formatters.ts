@@ -1,6 +1,7 @@
 import type {
   WellbeingSignalConfidence,
   WellbeingSignalLevel,
+  WellbeingSignalRange,
   WellbeingSignalTrend,
 } from "../contracts/generated";
 
@@ -55,5 +56,16 @@ export function formatConfidenceLabel(
       return "참고 신호 보통";
     case "high":
       return "참고 신호 높음";
+  }
+}
+
+export function formatRangeLabel(range: WellbeingSignalRange): string {
+  switch (range) {
+    case "7d":
+      return "7일";
+    case "14d":
+      return "14일";
+    case "30d":
+      return "30일";
   }
 }

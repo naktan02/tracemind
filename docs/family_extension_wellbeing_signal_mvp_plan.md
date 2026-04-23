@@ -480,6 +480,13 @@ apps/family_extension/
 
 - summary + timeseries mock으로 parent view 완성
 
+현재 상태:
+
+- 완료
+- `apps/family_extension/src/pages/parent/ParentPage.tsx`가 부모 세션이 유효할 때 summary와 timeseries를 함께 읽는다
+- `apps/family_extension/src/components/ParentWellbeingSummaryCard.tsx`가 부모용 현재 상태 카드를 렌더링한다
+- `apps/family_extension/src/components/WellbeingSignalTrendChart.tsx`가 7d / 14d / 30d range toggle과 단일 선 그래프를 렌더링한다
+
 ### Phase 8. 연결 실패/오프라인 상태 처리
 
 작업:
