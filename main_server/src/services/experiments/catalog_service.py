@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import importlib.util
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -31,9 +31,30 @@ from agent.src.services.training.runtime_compatibility import (
 from agent.src.services.training.training_backends.registry import (
     list_shared_adapter_training_backend_catalog_entries,
 )
+from main_server.src.services.experiments.catalog_constants import (
+    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+    CENTRAL_ADAPTATION_RUNTIME_PATH,
+    FEDERATED_SIMULATION_RUNTIME_PATH,
+    MAIN_SERVER_ROUND_RUNTIME_PATH,
+    SEED_RUNTIME_PATH,
+)
+from main_server.src.services.experiments.catalog_metadata import (
+    build_dataset_preset_metadata,
+    build_federated_run_preset_metadata,
+    declared_fields,
+    extract_override_fields,
+    extract_scalar_metadata,
+    resolve_catalog_item_name,
+    string_or_none,
+)
+from main_server.src.services.experiments.catalog_section_builders import (
+    build_adapter_family_section,
+    build_config_group_section,
+    build_entrypoint_section,
+    build_registry_section,
+)
 from main_server.src.services.experiments.payloads import (
     CatalogItemPayload,
-    CatalogOverrideFieldPayload,
     CatalogSectionPayload,
     CatalogTrackPayload,
     ExperimentCatalogPayload,
@@ -56,17 +77,6 @@ from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
 )
 
-SEED_RUNTIME_PATH = "scripts.seed"
-CENTRAL_ADAPTATION_RUNTIME_PATH = "scripts.central_adaptation"
-FEDERATED_SIMULATION_RUNTIME_PATH = "scripts.federated_simulation"
-AGENT_LIVE_STORED_EVENT_RUNTIME_PATH = "agent.live_stored_event"
-MAIN_SERVER_ROUND_RUNTIME_PATH = "main_server.round_runtime"
-PHASE2_METADATA_ONLY_BLOCKER = (
-    "Phase 2 compiler는 entrypoint와 Hydra preset selection만 지원한다. "
-    "이 항목은 metadata-only catalog surface이며, 후속 phase에서 전용 compile "
-    "규칙이 추가돼야 한다."
-)
-
 
 class ExperimentCatalogService:
     """현재 코드/설정에서 읽어오는 read-only 전략 catalog."""
@@ -85,6 +95,61 @@ class ExperimentCatalogService:
                 self._build_central_adaptation_track(),
                 self._build_federated_runtime_track(),
             ),
+        )
+
+    def _build_entrypoint_section(
+        self,
+        *,
+        section_name: str,
+        display_name: str,
+        description: str,
+        relative_paths: tuple[str, ...],
+        supported_runtime_paths: tuple[str, ...],
+    ) -> CatalogSectionPayload:
+        return build_entrypoint_section(
+            section_name=section_name,
+            display_name=display_name,
+            description=description,
+            relative_paths=relative_paths,
+            supported_runtime_paths=supported_runtime_paths,
+            repo_root=self._repo_root,
+            load_yaml_mapping=self._load_yaml_mapping,
+            relative_repo_path=self._relative_repo_path,
+            resolve_script_path=self._resolve_script_path,
+        )
+
+    def _build_config_group_section(
+        self,
+        *,
+        section_name: str,
+        display_name: str,
+        description: str,
+        relative_dir: str,
+        item_kind: str,
+        family_name: str,
+        preset_group: str,
+        supported_runtime_paths: tuple[str, ...],
+        core_method_resolver=None,
+        metadata_keys: tuple[str, ...] | None = None,
+        tag_resolver=None,
+        metadata_resolver=None,
+    ) -> CatalogSectionPayload:
+        return build_config_group_section(
+            section_name=section_name,
+            display_name=display_name,
+            description=description,
+            relative_dir=relative_dir,
+            item_kind=item_kind,
+            family_name=family_name,
+            preset_group=preset_group,
+            supported_runtime_paths=supported_runtime_paths,
+            iter_yaml_files=self._iter_yaml_files,
+            load_yaml_mapping=self._load_yaml_mapping,
+            relative_repo_path=self._relative_repo_path,
+            core_method_resolver=core_method_resolver,
+            metadata_keys=metadata_keys,
+            tag_resolver=tag_resolver,
+            metadata_resolver=metadata_resolver,
         )
 
     def _build_seed_track(self) -> CatalogTrackPayload:
@@ -115,7 +180,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=supported_runtime_paths,
-                    metadata_resolver=self._build_dataset_preset_metadata,
+                    metadata_resolver=build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="embedding_presets",
@@ -151,7 +216,9 @@ class ExperimentCatalogService:
                     item_kind="hydra_preset",
                     family_name="prototype_pack",
                     preset_group="prototype_builder",
-                    core_method_resolver=lambda _path, raw: self._resolve_name(raw),
+                    core_method_resolver=lambda _path, raw: resolve_catalog_item_name(
+                        raw
+                    ),
                     supported_runtime_paths=supported_runtime_paths,
                 ),
             ),
@@ -190,7 +257,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=supported_runtime_paths,
-                    metadata_resolver=self._build_dataset_preset_metadata,
+                    metadata_resolver=build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="runtime_presets",
@@ -310,7 +377,7 @@ class ExperimentCatalogService:
                     relative_dir="scripts/conf/query_ssl_method",
                     item_kind="hydra_preset",
                     family_name="ssl_method",
-                    core_method_resolver=lambda _path, raw: self._string_or_none(
+                    core_method_resolver=lambda _path, raw: string_or_none(
                         raw.get("algorithm_name")
                     ),
                     preset_group="query_ssl_method",
@@ -387,7 +454,7 @@ class ExperimentCatalogService:
                     family_name="dataset",
                     preset_group="dataset",
                     supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
-                    metadata_resolver=self._build_dataset_preset_metadata,
+                    metadata_resolver=build_dataset_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="embedding_presets",
@@ -428,7 +495,7 @@ class ExperimentCatalogService:
                         "max_examples",
                         "min_required_examples",
                     ),
-                    metadata_resolver=self._build_federated_run_preset_metadata,
+                    metadata_resolver=build_federated_run_preset_metadata,
                 ),
                 self._build_config_group_section(
                     section_name="prototype_builders",
@@ -438,7 +505,9 @@ class ExperimentCatalogService:
                     item_kind="hydra_preset",
                     family_name="prototype_pack",
                     preset_group="prototype_builder",
-                    core_method_resolver=lambda _path, raw: self._resolve_name(raw),
+                    core_method_resolver=lambda _path, raw: resolve_catalog_item_name(
+                        raw
+                    ),
                     supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
                 ),
                 self._build_training_algorithm_profile_section(),
@@ -453,126 +522,16 @@ class ExperimentCatalogService:
             ),
         )
 
-    def _build_entrypoint_section(
-        self,
-        *,
-        section_name: str,
-        display_name: str,
-        description: str,
-        relative_paths: tuple[str, ...],
-        supported_runtime_paths: tuple[str, ...],
-    ) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        for relative_path in relative_paths:
-            path = self._repo_root / relative_path
-            raw = self._load_yaml_mapping(path)
-            item_name = path.stem
-            source_of_truth = self._relative_repo_path(path)
-            items.append(
-                CatalogItemPayload(
-                    item_name=item_name,
-                    display_name=item_name,
-                    item_kind="experiment_entrypoint",
-                    family_name=section_name,
-                    core_method_name=item_name,
-                    variant_profile_name=item_name,
-                    source_of_truth=source_of_truth,
-                    source_kind="hydra_job_config",
-                    compile_support="entrypoint",
-                    script_path=self._resolve_script_path(source_of_truth),
-                    supported_runtime_paths=supported_runtime_paths,
-                    default_groups=self._extract_default_groups(raw),
-                    declared_fields=self._declared_fields(raw),
-                    override_fields=self._extract_override_fields(raw),
-                    metadata=self._extract_scalar_metadata(raw),
-                )
-            )
-        return CatalogSectionPayload(
-            section_name=section_name,
-            display_name=display_name,
-            item_kind="experiment_entrypoint",
-            description=description,
-            source_of_truth="scripts/conf",
-            source_kind="hydra_job_config",
-            selection_mode="single_required",
-            items=tuple(items),
-        )
-
-    def _build_config_group_section(
-        self,
-        *,
-        section_name: str,
-        display_name: str,
-        description: str,
-        relative_dir: str,
-        item_kind: str,
-        family_name: str,
-        preset_group: str,
-        supported_runtime_paths: tuple[str, ...],
-        core_method_resolver=None,
-        metadata_keys: tuple[str, ...] | None = None,
-        tag_resolver=None,
-        metadata_resolver: Callable[
-            [Path, Mapping[str, object], tuple[str, ...] | None],
-            dict[str, object],
-        ]
-        | None = None,
-    ) -> CatalogSectionPayload:
-        items: list[CatalogItemPayload] = []
-        for path in self._iter_yaml_files(relative_dir):
-            raw = self._load_yaml_mapping(path)
-            item_name = self._resolve_name(raw, fallback=path.stem)
-            core_method_name = (
-                None
-                if core_method_resolver is None
-                else core_method_resolver(path, raw)
-            )
-            items.append(
-                CatalogItemPayload(
-                    item_name=item_name,
-                    display_name=item_name,
-                    item_kind=item_kind,
-                    family_name=family_name,
-                    core_method_name=core_method_name,
-                    variant_profile_name=item_name,
-                    preset_group=preset_group,
-                    source_of_truth=self._relative_repo_path(path),
-                    source_kind="hydra_config_group",
-                    compile_support="preset_selector",
-                    supported_runtime_paths=supported_runtime_paths,
-                    declared_fields=self._declared_fields(raw),
-                    override_fields=self._extract_override_fields(raw),
-                    tags=() if tag_resolver is None else tag_resolver(path, raw),
-                    metadata=(
-                        self._extract_scalar_metadata(
-                            raw,
-                            metadata_keys=metadata_keys,
-                        )
-                        if metadata_resolver is None
-                        else metadata_resolver(path, raw, metadata_keys)
-                    ),
-                )
-            )
-        return CatalogSectionPayload(
-            section_name=section_name,
-            display_name=display_name,
-            item_kind=item_kind,
-            description=description,
-            source_of_truth=relative_dir,
-            source_kind="hydra_config_group",
-            items=tuple(items),
-        )
-
     def _build_training_algorithm_profile_section(self) -> CatalogSectionPayload:
         items: list[CatalogItemPayload] = []
         for path in self._iter_yaml_files("scripts/conf/training_algorithm_profile"):
             raw = self._load_yaml_mapping(path)
             profile_name = (
-                self._string_or_none(raw.get("algorithm_profile_name")) or path.stem
+                string_or_none(raw.get("algorithm_profile_name")) or path.stem
             )
             objective_config = TrainingObjectiveConfig.from_mapping(raw)
             training_task = self._build_catalog_training_task(
-                training_scope=self._string_or_none(raw.get("training_scope"))
+                training_scope=string_or_none(raw.get("training_scope"))
                 or "adapter_only",
                 objective_config=objective_config,
             )
@@ -594,7 +553,7 @@ class ExperimentCatalogService:
                     item_name=profile_name,
                     display_name=profile_name,
                     item_kind="training_algorithm_profile",
-                    family_name=self._string_or_none(raw.get("adapter_family_name")),
+                    family_name=string_or_none(raw.get("adapter_family_name")),
                     core_method_name=profile_name,
                     variant_profile_name=profile_name,
                     preset_group="training_algorithm_profile",
@@ -602,14 +561,14 @@ class ExperimentCatalogService:
                     source_kind="hydra_config_group",
                     compile_support="preset_selector",
                     supported_adapter_kinds=(
-                        self._string_or_none(raw.get("adapter_family_name")) or "",
+                        string_or_none(raw.get("adapter_family_name")) or "",
                     )
                     if raw.get("adapter_family_name") is not None
                     else (),
                     supported_runtime_paths=tuple(runtime_paths),
-                    declared_fields=self._declared_fields(raw),
-                    override_fields=self._extract_override_fields(raw),
-                    metadata=self._extract_scalar_metadata(raw),
+                    declared_fields=declared_fields(raw),
+                    override_fields=extract_override_fields(raw),
+                    metadata=extract_scalar_metadata(raw),
                 )
             )
         return CatalogSectionPayload(
@@ -623,107 +582,50 @@ class ExperimentCatalogService:
         )
 
     def _build_adapter_family_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            CatalogItemPayload(
-                item_name=metadata.family_name,
-                display_name=metadata.family_name,
-                item_kind="adapter_family",
-                family_name=metadata.family_name,
-                core_method_name=metadata.family_name,
-                variant_profile_name=metadata.family_name,
-                source_of_truth=self._source_of_truth_for_module(
-                    "shared.src.config.adapter_family_metadata"
-                ),
-                source_kind="python_module",
-                compile_support="metadata_only",
-                compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-                supported_adapter_kinds=(metadata.adapter_kind,),
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    MAIN_SERVER_ROUND_RUNTIME_PATH,
-                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                ),
-                accepted_payload_formats=metadata.accepted_update_payload_formats,
-                metadata={
-                    "canonical_update_payload_format": (
-                        metadata.canonical_update_payload_format
-                    ),
-                },
-            )
-            for metadata in list_shared_adapter_family_metadata()
-        )
-        return CatalogSectionPayload(
-            section_name="adapter_families",
-            display_name="Adapter Families",
-            item_kind="adapter_family",
-            description="server/agent가 공통으로 해석하는 shared adapter family.",
-            source_of_truth=self._source_of_truth_for_module(
-                "shared.src.config.adapter_family_metadata"
+        return build_adapter_family_section(
+            family_metadata=list_shared_adapter_family_metadata(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                MAIN_SERVER_ROUND_RUNTIME_PATH,
+                AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
             ),
-            source_kind="python_module",
-            items=items,
         )
 
     def _build_aggregation_backend_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="aggregation_backend",
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    MAIN_SERVER_ROUND_RUNTIME_PATH,
-                ),
-            )
-            for entry in list_shared_adapter_aggregation_backend_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="aggregation_backends",
             display_name="Aggregation Backends",
             item_kind="aggregation_backend",
             description="adapter family별 서버 aggregation backend.",
-            source_of_truth=self._source_of_truth_for_module(
-                "main_server.src.services.rounds.aggregation_service"
+            source_module_name="main_server.src.services.rounds.aggregation_service",
+            entries=list_shared_adapter_aggregation_backend_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                MAIN_SERVER_ROUND_RUNTIME_PATH,
             ),
-            source_kind="python_registry",
-            items=tuple(items),
         )
 
     def _build_training_backend_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="training_backend",
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                ),
-            )
-            for entry in list_shared_adapter_training_backend_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="training_backends",
             display_name="Training Backends",
             item_kind="training_backend",
             description="로컬 accepted example을 update payload로 바꾸는 backend.",
-            source_of_truth=self._source_of_truth_for_module(
+            source_module_name=(
                 "agent.src.services.training.training_backends.registry"
             ),
-            source_kind="python_registry",
-            items=tuple(items),
+            entries=list_shared_adapter_training_backend_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+            ),
         )
 
     def _build_training_example_backend_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="example_generation_backend",
-                supported_runtime_paths=self._resolve_example_generation_runtime_paths(
-                    entry
-                ),
-            )
-            for entry in list_training_example_backend_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="example_generation_backends",
             display_name="Example Generation Backends",
             item_kind="example_generation_backend",
@@ -731,49 +633,31 @@ class ExperimentCatalogService:
                 "source row 또는 stored event를 학습 예시로 "
                 "재구성하는 backend."
             ),
-            source_of_truth=self._source_of_truth_for_module(
-                "agent.src.services.training.input_backends.registry"
-            ),
-            source_kind="python_registry",
-            items=tuple(items),
+            source_module_name="agent.src.services.training.input_backends.registry",
+            entries=list_training_example_backend_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            runtime_path_resolver=self._resolve_example_generation_runtime_paths,
         )
 
     def _build_evidence_backend_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="evidence_backend",
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                ),
-            )
-            for entry in list_pseudo_label_evidence_backend_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="evidence_backends",
             display_name="Evidence Backends",
             item_kind="evidence_backend",
             description="ScoredEvent를 pseudo-label evidence로 정규화하는 backend.",
-            source_of_truth=self._source_of_truth_for_module(
+            source_module_name=(
                 "agent.src.services.training.evidence_backends.registry"
             ),
-            source_kind="python_registry",
-            items=tuple(items),
+            entries=list_pseudo_label_evidence_backend_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+            ),
         )
 
     def _build_scoring_backend_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="scoring_backend",
-                supported_runtime_paths=self._resolve_scoring_backend_runtime_paths(
-                    entry
-                ),
-            )
-            for entry in list_scoring_backend_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="scoring_backends",
             display_name="Scoring Backends",
             item_kind="scoring_backend",
@@ -781,86 +665,42 @@ class ExperimentCatalogService:
                 "embedding/prototype/shared_state로 category score를 "
                 "계산하는 backend."
             ),
-            source_of_truth=self._source_of_truth_for_module(
-                "agent.src.services.inference.scoring_backends"
-            ),
-            source_kind="python_registry",
-            items=tuple(items),
+            source_module_name="agent.src.services.inference.scoring_backends",
+            entries=list_scoring_backend_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            runtime_path_resolver=self._resolve_scoring_backend_runtime_paths,
         )
 
     def _build_acceptance_policy_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="acceptance_policy",
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                ),
-            )
-            for entry in list_pseudo_label_acceptance_policy_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="acceptance_policies",
             display_name="Acceptance Policies",
             item_kind="acceptance_policy",
             description="pseudo-label evidence를 accepted candidate로 해석하는 정책.",
-            source_of_truth=self._source_of_truth_for_module(
+            source_module_name=(
                 "agent.src.services.training.acceptance_policies.registry"
             ),
-            source_kind="python_registry",
-            items=tuple(items),
+            entries=list_pseudo_label_acceptance_policy_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+            ),
         )
 
     def _build_privacy_guard_section(self) -> CatalogSectionPayload:
-        items = tuple(
-            self._build_registry_catalog_item(
-                entry=entry,
-                item_kind="privacy_guard",
-                supported_runtime_paths=(
-                    FEDERATED_SIMULATION_RUNTIME_PATH,
-                    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-                ),
-            )
-            for entry in list_shared_adapter_privacy_guard_catalog_entries()
-        )
-        return CatalogSectionPayload(
+        return build_registry_section(
             section_name="privacy_guards",
             display_name="Privacy Guards",
             item_kind="privacy_guard",
             description="local update 보호 계층 registry.",
-            source_of_truth=self._source_of_truth_for_module(
-                "agent.src.services.training.privacy_guard_service"
+            source_module_name="agent.src.services.training.privacy_guard_service",
+            entries=list_shared_adapter_privacy_guard_catalog_entries(),
+            source_of_truth_for_module=self._source_of_truth_for_module,
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
             ),
-            source_kind="python_registry",
-            items=tuple(items),
-        )
-
-    def _build_registry_catalog_item(
-        self,
-        *,
-        entry: RegistryCatalogEntry,
-        item_kind: str,
-        supported_runtime_paths: tuple[str, ...],
-    ) -> CatalogItemPayload:
-        return CatalogItemPayload(
-            item_name=entry.item_name,
-            display_name=entry.display_name,
-            item_kind=item_kind,
-            family_name=entry.family_name,
-            core_method_name=entry.core_method_name,
-            variant_profile_name=entry.item_name,
-            source_of_truth=self._source_of_truth_for_module(
-                entry.implementation_module
-            ),
-            source_kind="python_registry",
-            compile_support="metadata_only",
-            compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-            supported_adapter_kinds=entry.supported_adapter_kinds,
-            supported_runtime_paths=supported_runtime_paths,
-            accepted_payload_formats=entry.accepted_payload_formats,
-            tags=entry.tags,
-            metadata=dict(entry.metadata),
         )
 
     def _resolve_example_generation_runtime_paths(
@@ -940,191 +780,6 @@ class ExperimentCatalogService:
             raise ValueError(f"Expected mapping config at {path}.")
         return dict(raw)
 
-    def _extract_default_groups(
-        self,
-        raw: Mapping[str, object],
-    ) -> tuple[str, ...]:
-        defaults = raw.get("defaults")
-        if not isinstance(defaults, list):
-            return ()
-        resolved: list[str] = []
-        for entry in defaults:
-            if isinstance(entry, str):
-                normalized_entry = entry.strip()
-                if not normalized_entry or normalized_entry == "_self_":
-                    continue
-                if "hydra/" in normalized_entry:
-                    continue
-                resolved.append(normalized_entry.lstrip("/"))
-                continue
-            if not isinstance(entry, Mapping):
-                continue
-            for raw_key, raw_value in entry.items():
-                key = str(raw_key).strip()
-                if not key or "hydra/" in key:
-                    continue
-                normalized_key = key.replace("override /", "").lstrip("/")
-                resolved.append(f"{normalized_key}={raw_value}")
-        return tuple(resolved)
-
-    def _declared_fields(self, raw: Mapping[str, object]) -> tuple[str, ...]:
-        return tuple(sorted(str(key) for key in raw if str(key) != "defaults"))
-
-    def _extract_override_fields(
-        self,
-        raw: Mapping[str, object],
-    ) -> tuple[CatalogOverrideFieldPayload, ...]:
-        override_fields: list[CatalogOverrideFieldPayload] = []
-        for key, value in raw.items():
-            field_name = str(key)
-            if field_name in {"defaults", "name", "algorithm_profile_name"}:
-                continue
-            override_field = self._build_override_field(field_name, value)
-            if override_field is None:
-                continue
-            override_fields.append(override_field)
-        return tuple(
-            sorted(override_fields, key=lambda field: field.field_name)
-        )
-
-    @staticmethod
-    def _build_override_field(
-        field_name: str,
-        value: object,
-    ) -> CatalogOverrideFieldPayload | None:
-        if isinstance(value, bool):
-            return CatalogOverrideFieldPayload(
-                field_name=field_name,
-                value_kind="boolean",
-                default_value=value,
-            )
-        if isinstance(value, int):
-            return CatalogOverrideFieldPayload(
-                field_name=field_name,
-                value_kind="integer",
-                default_value=value,
-            )
-        if isinstance(value, float):
-            return CatalogOverrideFieldPayload(
-                field_name=field_name,
-                value_kind="number",
-                default_value=value,
-            )
-        if isinstance(value, str):
-            return CatalogOverrideFieldPayload(
-                field_name=field_name,
-                value_kind="string",
-                default_value=value,
-            )
-        return None
-
-    def _extract_scalar_metadata(
-        self,
-        raw: Mapping[str, object],
-        *,
-        metadata_keys: tuple[str, ...] | None = None,
-    ) -> dict[str, str | int | float | bool | None]:
-        keys = raw.keys() if metadata_keys is None else metadata_keys
-        metadata: dict[str, str | int | float | bool | None] = {}
-        for key in keys:
-            string_key = str(key)
-            if string_key == "defaults":
-                continue
-            value = raw.get(string_key)
-            if self._is_scalar_metadata_value(value):
-                metadata[string_key] = value
-        return metadata
-
-    @staticmethod
-    def _is_scalar_metadata_value(value: object) -> bool:
-        return value is None or isinstance(value, (str, int, float, bool))
-
-    def _build_dataset_preset_metadata(
-        self,
-        _path: Path,
-        raw: Mapping[str, object],
-        _metadata_keys: tuple[str, ...] | None = None,
-    ) -> dict[str, object]:
-        asset_paths = {
-            "train_jsonl": self._string_or_none(raw.get("train_jsonl")),
-            "validation_jsonl": self._string_or_none(raw.get("validation_jsonl")),
-            "test_jsonl": self._string_or_none(raw.get("test_jsonl")),
-            "prototype_input_jsonl": self._string_or_none(
-                raw.get("prototype_input_jsonl")
-            ),
-            "query_dev_jsonl": self._string_or_none(raw.get("query_dev_jsonl")),
-            "query_calibration_jsonl": self._string_or_none(
-                raw.get("query_calibration_jsonl")
-            ),
-            "unlabeled_query_pool_jsonl": self._string_or_none(
-                raw.get("unlabeled_query_pool_jsonl")
-            ),
-        }
-        sources = raw.get("sources")
-        serialized_sources: dict[str, object] = {}
-        if isinstance(sources, Mapping):
-            for source_name, source_raw in sources.items():
-                if not isinstance(source_raw, Mapping):
-                    continue
-                serialized_sources[str(source_name)] = {
-                    "kind": self._string_or_none(source_raw.get("kind")),
-                    "dataset_id": self._string_or_none(source_raw.get("dataset_id")),
-                    "split": self._string_or_none(source_raw.get("split")),
-                    "data_file": self._string_or_none(source_raw.get("data_file")),
-                    "reference_urls": [
-                        str(url)
-                        for url in source_raw.get("reference_urls", [])
-                        if isinstance(url, str) and url.strip()
-                    ],
-                }
-        unlabeled_ready = bool(asset_paths["unlabeled_query_pool_jsonl"])
-        return {
-            "asset_paths": asset_paths,
-            "readiness": {
-                "seed_ready": bool(
-                    asset_paths["train_jsonl"]
-                    and asset_paths["validation_jsonl"]
-                    and asset_paths["test_jsonl"]
-                ),
-                "central_supervised_ready": bool(
-                    asset_paths["train_jsonl"]
-                    and asset_paths["validation_jsonl"]
-                    and asset_paths["test_jsonl"]
-                ),
-                "central_fixmatch_ready": bool(
-                    asset_paths["train_jsonl"]
-                    and asset_paths["validation_jsonl"]
-                    and asset_paths["test_jsonl"]
-                    and unlabeled_ready
-                ),
-                "federated_baseline_ready": bool(
-                    asset_paths["train_jsonl"] and asset_paths["validation_jsonl"]
-                ),
-            },
-            "query_asset_status": {
-                "query_dev_available": bool(asset_paths["query_dev_jsonl"]),
-                "query_calibration_available": bool(
-                    asset_paths["query_calibration_jsonl"]
-                ),
-                "unlabeled_query_pool_available": unlabeled_ready,
-            },
-            "sources": serialized_sources,
-        }
-
-    def _build_federated_run_preset_metadata(
-        self,
-        _path: Path,
-        raw: Mapping[str, object],
-        metadata_keys: tuple[str, ...] | None = None,
-    ) -> dict[str, object]:
-        metadata = self._extract_scalar_metadata(raw, metadata_keys=metadata_keys)
-        metadata["count_semantics"] = {
-            "client_count": "simulation_participants",
-            "live_agent_roster": "not_included",
-            "round_selected_agents": "not_included",
-        }
-        return metadata
-
     def _resolve_script_path(self, job_config_path: str) -> str:
         if job_config_path.startswith("scripts/conf/experiments/"):
             return job_config_path.replace(
@@ -1164,23 +819,3 @@ class ExperimentCatalogService:
             return str(resolved.relative_to(self._repo_root))
         except ValueError:
             return str(resolved)
-
-    def _resolve_name(
-        self,
-        raw: Mapping[str, object],
-        *,
-        fallback: str | None = None,
-    ) -> str:
-        for key in ("name", "algorithm_profile_name"):
-            value = self._string_or_none(raw.get(key))
-            if value is not None:
-                return value
-        if fallback is None:
-            raise ValueError("Catalog item name is missing and no fallback was given.")
-        return fallback
-
-    @staticmethod
-    def _string_or_none(value: object) -> str | None:
-        if value is None:
-            return None
-        return str(value)
