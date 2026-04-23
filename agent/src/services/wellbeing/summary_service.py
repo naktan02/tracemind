@@ -8,6 +8,9 @@ from datetime import datetime, timezone
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
+from agent.src.services.wellbeing.projection_service import (
+    WellbeingSignalProjectionService,
+)
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
@@ -25,9 +28,12 @@ class WellbeingSummaryService:
     """
 
     repository: WellbeingSnapshotRepository | None = None
+    projection_service: WellbeingSignalProjectionService | None = None
     _mock_payload: WellbeingSignalSummaryPayload | None = field(default=None)
 
     def get_current_summary(self) -> WellbeingSignalSummaryPayload:
+        if self.projection_service is not None:
+            self.projection_service.refresh_from_runtime()
         if self.repository is not None:
             latest_summary = self.repository.load_latest_summary()
             if latest_summary is not None:

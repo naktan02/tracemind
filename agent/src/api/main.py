@@ -36,6 +36,9 @@ from agent.src.services.federation.rounds.runtime_service import (
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.projection_service import (
+    WellbeingSignalProjectionService,
+)
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from agent.src.services.wellbeing.timeseries_service import (
     WellbeingTimeseriesService,
@@ -121,11 +124,17 @@ def create_app(
         prototype_runtime_service or PrototypeRuntimeService()
     )
     app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
+    app.state.wellbeing_projection_service = WellbeingSignalProjectionService(
+        scored_event_repository=app.state.scored_event_repository,
+        snapshot_repository=app.state.wellbeing_snapshot_repository,
+    )
     app.state.wellbeing_summary_service = WellbeingSummaryService(
-        repository=app.state.wellbeing_snapshot_repository
+        repository=app.state.wellbeing_snapshot_repository,
+        projection_service=app.state.wellbeing_projection_service,
     )
     app.state.wellbeing_timeseries_service = WellbeingTimeseriesService(
-        repository=app.state.wellbeing_snapshot_repository
+        repository=app.state.wellbeing_snapshot_repository,
+        projection_service=app.state.wellbeing_projection_service,
     )
     app.state.parent_auth_service = ParentAuthService(
         repository=app.state.parent_auth_repository,

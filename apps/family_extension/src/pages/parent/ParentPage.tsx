@@ -54,7 +54,7 @@ export function ParentPage({
             </ul>
           </article>
           <article className="surface-card">
-            <p className="card-label">다음 단계에서 여기에 붙는 것</p>
+            <p className="card-label">이 화면에서 보호하는 정보</p>
             <ul className="bullet-list">
               <li>현재 상태 카드</li>
               <li>7d / 14d / 30d 추이 그래프</li>

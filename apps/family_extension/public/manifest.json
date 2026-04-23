@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "TraceMind Family Extension",
   "version": "0.1.0",
-  "description": "아이용 wellbeing signal과 부모용 보호 화면을 제공하는 TraceMind 확장 프로그램 shell",
+  "description": "아이용 wellbeing signal과 부모용 보호 화면을 제공하는 TraceMind 확장 프로그램",
   "action": {
     "default_title": "TraceMind Family",
     "default_popup": "index.html"

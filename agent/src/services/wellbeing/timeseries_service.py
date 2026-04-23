@@ -8,6 +8,9 @@ from datetime import datetime, timedelta, timezone
 from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
     WellbeingSnapshotRepository,
 )
+from agent.src.services.wellbeing.projection_service import (
+    WellbeingSignalProjectionService,
+)
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalRange,
     WellbeingSignalTimeseriesPayload,
@@ -30,12 +33,15 @@ class WellbeingTimeseriesService:
     """
 
     repository: WellbeingSnapshotRepository | None = None
+    projection_service: WellbeingSignalProjectionService | None = None
 
     def get_timeseries(
         self,
         *,
         requested_range: WellbeingSignalRange,
     ) -> WellbeingSignalTimeseriesPayload:
+        if self.projection_service is not None:
+            self.projection_service.refresh_from_runtime()
         if self.repository is not None:
             now = datetime.now(tz=timezone.utc)
             days = _RANGE_TO_DAYS[requested_range]

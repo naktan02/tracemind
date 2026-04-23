@@ -23,8 +23,8 @@ export function PinPad({ value, onChange }: PinPadProps) {
         }
       />
       <p className="pin-help">
-        shell 단계에서는 입력만 확인합니다. 실제 unlock API 연결은 다음 단계에서
-        붙입니다.
+        4~6자리 숫자를 입력하면 로컬 프로그램이 부모용 접근 가능 여부를
+        확인합니다.
       </p>
     </div>
   );

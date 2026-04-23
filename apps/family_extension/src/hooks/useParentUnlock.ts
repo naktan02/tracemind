@@ -88,8 +88,18 @@ export function useParentUnlock() {
     }
   }
 
+  function clearParentSession() {
+    setSessionResponse(null);
+    setUnlockState({
+      phase: "idle",
+      response: null,
+      errorMessage: null,
+    });
+  }
+
   return {
     activeSessionExpiresAt,
+    clearParentSession,
     hasActiveParentSession,
     submitUnlock,
     unlockState,

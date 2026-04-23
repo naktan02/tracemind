@@ -520,6 +520,13 @@ apps/family_extension/
 
 - UI를 바꾸지 않고 mock을 실제 데이터로 대체 가능
 
+현재 상태:
+
+- 완료
+- `agent/src/services/wellbeing/projection_service.py`가 `scored_events.db`를 replay해 wellbeing snapshot으로 투영한다
+- `agent/src/services/wellbeing/summary_service.py`와 `timeseries_service.py`는 요청 전에 projection refresh를 수행한다
+- `apps/family_extension/src/App.tsx`는 부모 세션이 열리면 unlock 탭을 숨기고, parent 화면을 벗어나면 세션을 즉시 닫는다
+
 ## 파일 단위 체크리스트
 
 ### `shared`

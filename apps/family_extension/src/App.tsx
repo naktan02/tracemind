@@ -39,6 +39,7 @@ export default function App({ initialRoute }: AppProps) {
   const [pin, setPin] = useState("");
   const {
     activeSessionExpiresAt,
+    clearParentSession,
     hasActiveParentSession,
     submitUnlock,
     unlockState,
@@ -60,9 +61,29 @@ export default function App({ initialRoute }: AppProps) {
   }, [currentRoute, fallbackRoute, hasActiveParentSession]);
 
   const routeMeta = useMemo(() => ROUTE_META[currentRoute], [currentRoute]);
+  const visibleRoutes = useMemo<AppRoute[]>(
+    () => (hasActiveParentSession ? ["/child", "/parent"] : ["/child", "/unlock"]),
+    [hasActiveParentSession],
+  );
+
+  useEffect(() => {
+    if (currentRoute === "/parent" && !hasActiveParentSession) {
+      setCurrentRoute("/unlock");
+      updateHash("/unlock");
+    }
+  }, [currentRoute, hasActiveParentSession]);
 
   function moveTo(route: AppRoute) {
-    const nextRoute = resolveAccessibleRoute(route, { hasActiveParentSession });
+    const nextHasActiveParentSession =
+      currentRoute === "/parent" && route !== "/parent"
+        ? false
+        : hasActiveParentSession;
+    if (!nextHasActiveParentSession && currentRoute === "/parent") {
+      clearParentSession();
+    }
+    const nextRoute = resolveAccessibleRoute(route, {
+      hasActiveParentSession: nextHasActiveParentSession,
+    });
     setCurrentRoute(nextRoute);
     updateHash(nextRoute);
   }
@@ -88,9 +109,8 @@ export default function App({ initialRoute }: AppProps) {
         </div>
 
         <nav className="route-nav" aria-label="family extension routes">
-          {(
-            Object.entries(ROUTE_META) as [AppRoute, (typeof ROUTE_META)[AppRoute]][]
-          ).map(([route, meta]) => {
+          {(visibleRoutes as AppRoute[]).map((route) => {
+            const meta = ROUTE_META[route];
             const locked = isRouteLocked(route, { hasActiveParentSession });
             return (
               <button
@@ -139,7 +159,7 @@ export default function App({ initialRoute }: AppProps) {
             <p className="page-description">{routeMeta.description}</p>
           </div>
           <div className="badge-row">
-            <span className="badge">Phase 7 parent detail</span>
+            <span className="badge">Phase 9 runtime projection</span>
             <span className="badge subtle">wellbeing_signal consumer</span>
           </div>
         </header>

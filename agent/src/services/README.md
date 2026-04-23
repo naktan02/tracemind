@@ -63,8 +63,9 @@
 
 1. `wellbeing/summary_service.py`
 2. `wellbeing/timeseries_service.py`
-3. `wellbeing/auth_service.py`
-4. `agent/src/api/wellbeing.py`
+3. `wellbeing/projection_service.py`
+4. `wellbeing/auth_service.py`
+5. `agent/src/api/wellbeing.py`
 
 ## 파일 역할 빠른 맵
 
