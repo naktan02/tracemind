@@ -11,11 +11,20 @@ from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
 from agent.src.api.wellbeing import router as wellbeing_router
+from agent.src.infrastructure.repositories.parent_auth_repository import (
+    ParentAuthRepository,
+)
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRepository,
 )
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
+)
+from agent.src.infrastructure.repositories.wellbeing_settings_repository import (
+    WellbeingSettingsRepository,
+)
+from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
 )
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
 from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
@@ -51,6 +60,9 @@ def create_app(
     pipeline_service: InferencePipelineService | None = None,
     scored_event_repository: ScoredEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
+    wellbeing_snapshot_repository: WellbeingSnapshotRepository | None = None,
+    parent_auth_repository: ParentAuthRepository | None = None,
+    wellbeing_settings_repository: WellbeingSettingsRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
     round_client_factory: RoundClientFactory | None = None,
@@ -65,13 +77,29 @@ def create_app(
     app.state.query_buffer_repository = (
         query_buffer_repository or QueryBufferRepository()
     )
+    app.state.wellbeing_snapshot_repository = (
+        wellbeing_snapshot_repository or WellbeingSnapshotRepository()
+    )
+    app.state.parent_auth_repository = (
+        parent_auth_repository or ParentAuthRepository()
+    )
+    app.state.wellbeing_settings_repository = (
+        wellbeing_settings_repository or WellbeingSettingsRepository()
+    )
     app.state.prototype_runtime_service = (
         prototype_runtime_service or PrototypeRuntimeService()
     )
     app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
-    app.state.wellbeing_summary_service = WellbeingSummaryService()
-    app.state.wellbeing_timeseries_service = WellbeingTimeseriesService()
-    app.state.parent_auth_service = ParentAuthService()
+    app.state.wellbeing_summary_service = WellbeingSummaryService(
+        repository=app.state.wellbeing_snapshot_repository
+    )
+    app.state.wellbeing_timeseries_service = WellbeingTimeseriesService(
+        repository=app.state.wellbeing_snapshot_repository
+    )
+    app.state.parent_auth_service = ParentAuthService(
+        repository=app.state.parent_auth_repository,
+        settings_repository=app.state.wellbeing_settings_repository,
+    )
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory
     )

@@ -230,7 +230,7 @@ MVP는 `SQLite`로 충분하다.
 - `locked_until`
 - `updated_at`
 
-### `app_settings`
+### `wellbeing_settings`
 
 - 기본 range
 - parent session ttl
@@ -498,6 +498,7 @@ apps/family_extension/
 - `agent/src/services/wellbeing/auth_service.py`
 - `agent/src/infrastructure/repositories/wellbeing_snapshot_repository.py`
 - `agent/src/infrastructure/repositories/parent_auth_repository.py`
+- `agent/src/infrastructure/repositories/wellbeing_settings_repository.py`
 - `agent/tests/unit/test_extension_routes.py`
 
 ### `apps/family_extension`

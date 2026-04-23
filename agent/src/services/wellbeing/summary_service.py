@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 
+from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalConfidence,
     WellbeingSignalLevel,
@@ -17,13 +20,18 @@ from shared.src.contracts.wellbeing_signal_contracts import (
 class WellbeingSummaryService:
     """현재 wellbeing signal 한 건을 제공한다.
 
-    MVP 1차 구현은 deterministic mock을 반환한다.
-    다음 단계에서는 repository/실제 판단 엔진 결과를 이 경계 뒤에 연결한다.
+    현재 단계에서는 snapshot repository를 우선 source of truth로 사용하고,
+    저장된 값이 없을 때만 deterministic mock을 fallback으로 반환한다.
     """
 
+    repository: WellbeingSnapshotRepository | None = None
     _mock_payload: WellbeingSignalSummaryPayload | None = field(default=None)
 
     def get_current_summary(self) -> WellbeingSignalSummaryPayload:
+        if self.repository is not None:
+            latest_summary = self.repository.load_latest_summary()
+            if latest_summary is not None:
+                return latest_summary
         if self._mock_payload is not None:
             return self._mock_payload
         return WellbeingSignalSummaryPayload(

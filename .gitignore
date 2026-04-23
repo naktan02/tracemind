@@ -41,6 +41,7 @@ data/processed/
 embeddings/
 main_server/state/
 agent/state/
+agent/data/*.db
 runs/
 
 .DS_Store

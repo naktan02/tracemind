@@ -5,6 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 
+from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import (
+    WellbeingSnapshotRepository,
+)
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalRange,
     WellbeingSignalTimeseriesPayload,
@@ -22,15 +25,36 @@ _RANGE_TO_DAYS: dict[WellbeingSignalRange, int] = {
 class WellbeingTimeseriesService:
     """전체 wellbeing signal 추이를 제공한다.
 
-    MVP 1차 구현은 deterministic mock을 반환한다.
-    다음 단계에서는 snapshot repository 기반 조회로 교체한다.
+    현재 단계에서는 snapshot repository를 우선 source of truth로 사용하고,
+    저장된 구간이 없을 때만 deterministic mock을 fallback으로 반환한다.
     """
+
+    repository: WellbeingSnapshotRepository | None = None
 
     def get_timeseries(
         self,
         *,
         requested_range: WellbeingSignalRange,
     ) -> WellbeingSignalTimeseriesPayload:
+        if self.repository is not None:
+            now = datetime.now(tz=timezone.utc)
+            days = _RANGE_TO_DAYS[requested_range]
+            summaries = self.repository.list_summaries_since(
+                cutoff=now - timedelta(days=days - 1),
+            )
+            if summaries:
+                return WellbeingSignalTimeseriesPayload(
+                    computed_at=now,
+                    range=requested_range,
+                    points=tuple(
+                        WellbeingSignalTimeseriesPointPayload(
+                            ts=summary.computed_at,
+                            signal_score=summary.signal_score,
+                        )
+                        for summary in summaries
+                    ),
+                )
+
         days = _RANGE_TO_DAYS[requested_range]
         now = datetime.now(tz=timezone.utc)
         start_score = 34.0
