@@ -27,3 +27,4 @@
 - `React + TypeScript + Vite`를 기준으로 유지한다.
 - 앱 내부 상태는 최대한 명시적으로 두고, runtime 계약을 재발명하지 않는다.
 - 복잡한 styling framework를 먼저 넣기보다 Phase 목적에 맞는 얇은 CSS를 우선한다.
+- `src/types.ts`는 backend payload에서 생성되는 파일로 유지하고 수동 수정하지 않는다.
