@@ -10,6 +10,15 @@ from agent.src.api.main import app
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
 )
+from agent.src.services.wellbeing.child_support_response_policy import (
+    ChildSupportResponsePolicy,
+)
+from agent.src.services.wellbeing.child_support_safety_intent import (
+    ChildSupportSafetyIntent,
+)
+from agent.src.services.wellbeing.child_support_safety_policy import (
+    ChildSupportSafetyAssessment,
+)
 from agent.src.services.wellbeing.child_support_service import (
     ChildSupportCoachService,
 )
@@ -37,9 +46,9 @@ class StubChildSupportLlmProvider:
     def generate_reply(self, *, prompt: str) -> str:
         self.last_prompt = prompt
         return (
-            "지금 많이 버거운 상태로 보여요. 굳이 정확히 설명하지 않아도 "
-            "괜찮아요. 이 힘듦이 갑자기 커진 건지, 아니면 계속 쌓여온 "
-            "느낌인지부터 같이 볼게요. 한 문장으로만 이어서 말해줘도 괜찮아요."
+            "지금 정말 많이 버거워 보이네요. 말이 잘 안 나와도 괜찮아요. "
+            "이 힘듦이 오늘 갑자기 커진 건지, 아니면 오래 쌓여 있다가 "
+            "터진 건지만 천천히 이어 말해줘도 돼요. 짧은 한 문장이어도 괜찮아요."
         )
 
 
@@ -83,6 +92,48 @@ class MixedToneFollowupLlmProvider:
             "말해보면 좋겠어. 천천히 깊게 숨을 들이마시고 내쉬는 걸 "
             "해보는 건 어떨까? 안전하게 집에 도착하신 거 같으니 "
             "언제든지 말해줘."
+        )
+
+
+def test_child_support_response_skeletons_avoid_meta_counseling_language() -> None:
+    policy = ChildSupportResponsePolicy()
+    blocked_meta_phrases = (
+        "뭘 고르라고",
+        "고르라고",
+        "받아줄게요",
+        "바로 해결책",
+        "굳이 정확히 설명",
+        "어디에 가까운지",
+        "골라볼까요",
+    )
+    assessments = (
+        ChildSupportSafetyAssessment(
+            safety_level=ChildSupportSafetyLevel.CHECK_IN,
+            scope_status=ChildSupportScopeStatus.IN_SCOPE,
+            intent=ChildSupportSafetyIntent.CALMING_KEYWORD,
+        ),
+        ChildSupportSafetyAssessment(
+            safety_level=ChildSupportSafetyLevel.CHECK_IN,
+            scope_status=ChildSupportScopeStatus.IN_SCOPE,
+            intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
+        ),
+        ChildSupportSafetyAssessment(
+            safety_level=ChildSupportSafetyLevel.CHECK_IN,
+            scope_status=ChildSupportScopeStatus.IN_SCOPE,
+            intent=ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP,
+        ),
+        ChildSupportSafetyAssessment(
+            safety_level=ChildSupportSafetyLevel.CHECK_IN,
+            scope_status=ChildSupportScopeStatus.IN_SCOPE,
+            intent=ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING,
+        ),
+    )
+
+    for assessment in assessments:
+        strategy = policy.build_strategy(message="너무 힘들어", assessment=assessment)
+
+        assert not any(
+            phrase in strategy.fallback_text for phrase in blocked_meta_phrases
         )
 
 
@@ -212,7 +263,8 @@ def test_child_support_service_uses_violence_context_for_safe_followup(
 
     assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert second.parent_handoff_suggested is False
-    assert "속상한 마음" in second.reply_text
+    assert "정말 많이 흔들렸겠어요" in second.reply_text
+    assert "마음이 이렇게 흔들리는 것도 이상한 일이 아니에요" in second.reply_text
     assert "다친 곳" not in second.reply_text
     assert "몸 상태" not in second.reply_text
     assert "몸의 어디" not in second.reply_text
@@ -245,7 +297,7 @@ def test_child_support_service_rejects_mixed_tone_followup_llm(
     assert "어떨까" not in second.reply_text
     assert "도착하신" not in second.reply_text
     assert "몸의 어떤 부분" not in second.reply_text
-    assert "속상한 마음" in second.reply_text
+    assert "정말 많이 흔들렸겠어요" in second.reply_text
 
 
 def test_child_support_service_uses_violence_context_for_peer_response_planning(
@@ -329,10 +381,12 @@ def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
     assert second.safety_level == ChildSupportSafetyLevel.URGENT
     assert third.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert third.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
-    assert "뭘 고르라고 하기보다" in third.reply_text
-    assert "많이 힘들다는 말부터 받아줄게요" in third.reply_text
-    assert "네가 나쁜 마음을 가진 게 아니라" in third.reply_text
+    assert "정말 많이 힘들었겠다" in third.reply_text
+    assert "네가 나쁜 아이인 건 아니에요" in third.reply_text
     assert "해치는 쪽으로는 가지 않게" in third.reply_text
+    assert "말이 잘 안 나와도 괜찮아요" in third.reply_text
+    assert "뭘 고르라고" not in third.reply_text
+    assert "받아줄게요" not in third.reply_text
     assert "골라볼까요" not in third.reply_text
     assert "가고 싶은 마음" not in third.reply_text
     assert third.suggested_prompts[0].id == "continue-after-anger"
@@ -396,6 +450,8 @@ def test_child_support_service_keeps_general_distress_in_check_in() -> None:
     assert response.safety_level == ChildSupportSafetyLevel.CHECK_IN
     assert response.parent_handoff_suggested is False
     assert "어른" not in response.reply_text
+    assert "골라볼까요" not in response.reply_text
+    assert "고르라고" not in response.reply_text
 
 
 def test_child_support_service_filters_parent_handoff_from_check_in_llm() -> None:
@@ -407,7 +463,8 @@ def test_child_support_service_filters_parent_handoff_from_check_in_llm() -> Non
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
     assert "가족" not in response.reply_text
     assert "어른" not in response.reply_text
-    assert "한 문장으로만 이어서 말해줘도 괜찮아요" in response.reply_text
+    assert "말이 잘 안 나와도 괜찮아요" in response.reply_text
+    assert "짧은 한 문장이어도 괜찮아요" in response.reply_text
 
 
 def test_child_support_service_handles_self_harm_as_counseling_flow() -> None:
