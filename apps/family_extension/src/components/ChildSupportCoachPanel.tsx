@@ -1,6 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 
-import { createChildSupportMessage } from "../api/childSupport";
+import {
+  createChildSupportMessage,
+  getChildSupportProactivePrompt,
+} from "../api/childSupport";
 import type {
   ChildSupportConversationResponsePayload,
   ChildSupportSuggestionPayload,
@@ -86,6 +89,34 @@ export function ChildSupportCoachPanel() {
       block: "end",
     });
   }, [messages.length, isSending]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadProactivePrompt() {
+      try {
+        const prompt = await getChildSupportProactivePrompt();
+        const promptText = prompt.prompt_text;
+        if (cancelled || !prompt.should_prompt || promptText === null) {
+          return;
+        }
+        setMessages((current) => [
+          ...current,
+          createLocalMessage("assistant", promptText),
+        ]);
+        if (prompt.suggested_prompts.length > 0) {
+          setSuggestions(prompt.suggested_prompts);
+        }
+      } catch {
+        // 화면 진입 보조 문구는 실패해도 기본 대화 UI를 막지 않는다.
+      }
+    }
+
+    void loadProactivePrompt();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   async function submitMessage(seedPrompt?: string) {
     const message = (seedPrompt ?? draft).trim();

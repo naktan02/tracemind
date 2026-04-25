@@ -71,6 +71,14 @@ export interface ChildSupportConversationResponsePayload {
   disclosure_notice: string;
 }
 
+export interface ChildSupportProactivePromptPayload {
+  schema_version: string;
+  should_prompt: boolean;
+  safety_level: ChildSupportSafetyLevel | null;
+  prompt_text: string | null;
+  suggested_prompts: ChildSupportSuggestionPayload[];
+}
+
 export type WellbeingSignalLevel = "low" | "moderate" | "high" | "very_high";
 
 export type WellbeingSignalTrend = "rising" | "steady" | "falling" | "volatile" | "unknown";

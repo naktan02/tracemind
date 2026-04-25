@@ -47,6 +47,13 @@ uv run pytest
 uv run ruff check main_server/src agent/src shared/src scripts tests
 ```
 
+로컬 agent 설정이 필요하면 `agent/.env.example`을 `agent/.env`로 복사해서
+수정한다. `agent/.env`는 커밋하지 않는다.
+
+```bash
+cp agent/.env.example agent/.env
+```
+
 Main server:
 
 ```bash

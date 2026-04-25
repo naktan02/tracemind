@@ -106,6 +106,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
   - `assistant_mode`는 현재 응답 생성 backend가 `local_guarded`, `local_llm`, future `llm` 중 무엇인지 나타낸다
   - `safety_level`은 child UI가 과도한 내부 점수 없이 표시할 수 있는 지원 단계다
   - `scope_status`는 마음 도움 범위 안에서 답했는지, 별도 질문을 redirect했는지 나타낸다
+- `ChildSupportProactivePromptPayload`
+  - 아이 화면 진입 시 agent가 먼저 말을 꺼낼지 여부
+  - 실제 관측 summary가 없거나 low-data이면 `should_prompt=false`로 둔다
 - `ChildSupportSuggestionPayload`
   - 후속 입력 suggestion
 

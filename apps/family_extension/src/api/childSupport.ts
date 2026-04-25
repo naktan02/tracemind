@@ -1,6 +1,7 @@
 import type {
   ChildSupportConversationRequestPayload,
   ChildSupportConversationResponsePayload,
+  ChildSupportProactivePromptPayload,
 } from "../contracts/generated";
 import { requestAgentJson } from "./client";
 
@@ -11,4 +12,8 @@ export async function createChildSupportMessage(
     method: "POST",
     body: JSON.stringify(payload),
   });
+}
+
+export async function getChildSupportProactivePrompt(): Promise<ChildSupportProactivePromptPayload> {
+  return requestAgentJson("/api/v1/child-support/proactive-prompt");
 }

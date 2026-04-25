@@ -15,6 +15,7 @@ from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
 from agent.src.api.wellbeing import router as wellbeing_router
+from agent.src.config.env_file import load_agent_env_files
 from agent.src.infrastructure.repositories.child_support_repository import (
     ChildSupportConversationRepository,
 )
@@ -67,6 +68,8 @@ DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS = (
     "http://localhost:5174",
     "http://127.0.0.1:5174",
 )
+
+load_agent_env_files()
 
 
 def load_family_extension_allowed_origins_from_env(

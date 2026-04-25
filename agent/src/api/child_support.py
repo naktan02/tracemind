@@ -12,6 +12,7 @@ from agent.src.services.wellbeing.child_support_service import (
 from shared.src.contracts.child_support_contracts import (
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptPayload,
 )
 
 router = APIRouter(prefix="/api/v1/child-support", tags=["child-support"])
@@ -46,3 +47,15 @@ def create_child_support_message(
     """아이용 지원 대화 단일 turn 응답을 만든다."""
 
     return service.create_response(request)
+
+
+@router.get(
+    "/proactive-prompt",
+    response_model=ChildSupportProactivePromptPayload,
+)
+def get_child_support_proactive_prompt(
+    service: ChildSupportCoachServiceDep,
+) -> ChildSupportProactivePromptPayload:
+    """아이 화면 진입 시 먼저 건넬 말이 필요한지 반환한다."""
+
+    return service.build_proactive_prompt()

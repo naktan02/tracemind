@@ -35,6 +35,7 @@ class ChildSupportConversationContext:
 
     conversation_id: str
     wellbeing_summary: WellbeingSignalSummaryPayload | None = None
+    wellbeing_summary_is_observed: bool = False
     recent_queries: tuple[ChildSupportRecentQueryContext, ...] = field(
         default_factory=tuple
     )
@@ -60,6 +61,7 @@ class ChildSupportContextProvider:
         return ChildSupportConversationContext(
             conversation_id=conversation_id,
             wellbeing_summary=self._load_summary(),
+            wellbeing_summary_is_observed=self._has_observed_summary(),
             recent_queries=tuple(self._load_recent_queries()),
             recent_messages=tuple(self._load_recent_messages(conversation_id)),
         )
@@ -71,6 +73,17 @@ class ChildSupportContextProvider:
             return self.summary_service.get_current_summary()
         except Exception:
             return None
+
+    def _has_observed_summary(self) -> bool:
+        if self.summary_service is None:
+            return False
+        repository = getattr(self.summary_service, "repository", None)
+        if repository is not None:
+            try:
+                return repository.load_latest_summary() is not None
+            except Exception:
+                return False
+        return getattr(self.summary_service, "_mock_payload", None) is not None
 
     def _load_recent_queries(self) -> list[ChildSupportRecentQueryContext]:
         if self.query_buffer_repository is None:

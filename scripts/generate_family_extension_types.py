@@ -63,6 +63,10 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
         "ChildSupportConversationResponsePayload",
         child_support_contracts.ChildSupportConversationResponsePayload,
     ),
+    (
+        "ChildSupportProactivePromptPayload",
+        child_support_contracts.ChildSupportProactivePromptPayload,
+    ),
     ("WellbeingSignalLevel", wellbeing_signal_contracts.WellbeingSignalLevel),
     ("WellbeingSignalTrend", wellbeing_signal_contracts.WellbeingSignalTrend),
     (

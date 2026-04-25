@@ -14,8 +14,12 @@ from typing import Literal, TypeAlias
 from pydantic import BaseModel, ConfigDict, Field
 
 CHILD_SUPPORT_RESPONSE_V1 = "child_support_response.v1"
+CHILD_SUPPORT_PROACTIVE_PROMPT_V1 = "child_support_proactive_prompt.v1"
 
 ChildSupportResponseSchemaVersion: TypeAlias = Literal["child_support_response.v1"]
+ChildSupportProactivePromptSchemaVersion: TypeAlias = Literal[
+    "child_support_proactive_prompt.v1"
+]
 
 
 class ChildSupportAssistantMode(StrEnum):
@@ -82,11 +86,30 @@ class ChildSupportConversationResponsePayload(BaseModel):
     disclosure_notice: str = Field(min_length=1)
 
 
+class ChildSupportProactivePromptPayload(BaseModel):
+    """아이 화면 진입 시 agent가 먼저 건넬 수 있는 말."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: ChildSupportProactivePromptSchemaVersion = (
+        CHILD_SUPPORT_PROACTIVE_PROMPT_V1
+    )
+    should_prompt: bool
+    safety_level: ChildSupportSafetyLevel | None = None
+    prompt_text: str | None = None
+    suggested_prompts: tuple[ChildSupportSuggestionPayload, ...] = Field(
+        default_factory=tuple
+    )
+
+
 __all__ = [
+    "CHILD_SUPPORT_PROACTIVE_PROMPT_V1",
     "CHILD_SUPPORT_RESPONSE_V1",
     "ChildSupportAssistantMode",
     "ChildSupportConversationRequestPayload",
     "ChildSupportConversationResponsePayload",
+    "ChildSupportProactivePromptPayload",
+    "ChildSupportProactivePromptSchemaVersion",
     "ChildSupportResponseSchemaVersion",
     "ChildSupportScopeStatus",
     "ChildSupportSafetyLevel",

@@ -84,6 +84,7 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | Method | Path | 역할 | Source |
 |---|---|---|---|
 | POST | `/api/v1/child-support/messages` | 아이용 지원 대화 응답 생성 및 agent-local conversation 저장 | `agent/src/api/child_support.py` |
+| GET | `/api/v1/child-support/proactive-prompt` | 아이 화면 진입 시 선제 발화 필요 여부 조회 | `agent/src/api/child_support.py` |
 | GET | `/api/v1/family/setup/status` | 최초 setup 완료 여부 조회 | `agent/src/api/family_access.py` |
 | POST | `/api/v1/family/setup` | child/parent PIN 최초 설정 | `agent/src/api/family_access.py` |
 | POST | `/api/v1/family/unlock` | role별 PIN 잠금 해제 | `agent/src/api/family_access.py` |
@@ -96,6 +97,7 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | Contract | Source |
 |---|---|
 | `ChildSupportConversation*` | `shared/src/contracts/child_support_contracts.py` |
+| `ChildSupportProactivePromptPayload` | `shared/src/contracts/child_support_contracts.py` |
 | `FamilySetup*`, `FamilyUnlock*` | `shared/src/contracts/family_access_contracts.py` |
 | `WellbeingSignalSummaryPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |
 | `WellbeingSignalTimeseriesPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |

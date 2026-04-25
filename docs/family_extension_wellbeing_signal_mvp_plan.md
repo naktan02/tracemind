@@ -78,11 +78,14 @@ Setup
 - provider, prompt, safety policy, conversation 저장은 agent runtime이 소유한다.
 - UI는 `conversation_id`를 넘겨 같은 agent-local 대화를 이어가지만, 대화 원문을 중앙으로 보내지 않는다.
 - 범위 밖 질문은 `scope_status=redirected`로 돌리고 마음 도움 범위로 되돌린다.
+- 아이 화면 진입 시 실제 관측 summary가 high 이상이면 `proactive-prompt`로 먼저 말을 꺼낼 수 있다.
+- 데이터가 없거나 low-data이면 선제 발화하지 않는다.
 
 주요 payload:
 
 - `ChildSupportConversationRequestPayload`
 - `ChildSupportConversationResponsePayload`
+- `ChildSupportProactivePromptPayload`
 - `ChildSupportSuggestionPayload`
 
 ## 로컬 프로그램 API
@@ -93,6 +96,7 @@ Setup
 - `POST /api/v1/family/setup`
 - `POST /api/v1/family/unlock`
 - `POST /api/v1/child-support/messages`
+- `GET /api/v1/child-support/proactive-prompt`
 - `GET /api/v1/wellbeing/summary`
 - `GET /api/v1/wellbeing/timeseries?range=7d|14d|30d`
 - `GET /api/v1/system/health`
@@ -153,6 +157,7 @@ Setup
 13. child-support local context provider
 14. optional Ollama LLM adapter
 15. 마음 도움 범위 제한 redirect
+16. 실제 관측 wellbeing summary 기반 선제 발화 gate
 
 ## 아직 하지 않는 것
 
@@ -163,7 +168,7 @@ Setup
 5. 부모 알림/신고 자동화
 6. persisted personalization state와의 정밀 연결
 7. child/parent별 세션 정책 세분화
-8. 먼저 말 걸기 trigger policy와 빈도 제한
+8. 선제 발화 빈도 제한과 부모 opt-in 알림 경계
 
 ## 다음 우선순위
 
@@ -172,7 +177,7 @@ Setup
 다음 후보는 아래 셋 중 하나다.
 
 1. `personalization state`를 wellbeing projection에 더 정밀하게 연결
-2. child-support 먼저 말 걸기 trigger policy와 부모 opt-in 알림 경계 추가
+2. child-support 선제 발화 빈도 제한과 부모 opt-in 알림 경계 추가
 3. `empty-state / no-data-state`를 mock 없이 더 명시적으로 다듬기
 
 cloud LLM provider를 붙일 때도 UI가 provider를 직접 호출하지 않고,

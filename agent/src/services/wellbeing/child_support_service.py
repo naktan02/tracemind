@@ -27,10 +27,12 @@ from shared.src.contracts.child_support_contracts import (
     ChildSupportAssistantMode,
     ChildSupportConversationRequestPayload,
     ChildSupportConversationResponsePayload,
+    ChildSupportProactivePromptPayload,
     ChildSupportSafetyLevel,
     ChildSupportScopeStatus,
     ChildSupportSuggestionPayload,
 )
+from shared.src.contracts.wellbeing_signal_contracts import WellbeingSignalLevel
 
 DISCLOSURE_NOTICE = (
     "TraceMind는 진단이나 상담을 대신하지 않습니다. 위험하거나 혼자 감당하기 "
@@ -127,6 +129,47 @@ class ChildSupportCoachService:
             disclosure_notice=DISCLOSURE_NOTICE,
         )
 
+    def build_proactive_prompt(self) -> ChildSupportProactivePromptPayload:
+        """아이 화면 진입 시 먼저 말을 걸지 여부를 계산한다.
+
+        데이터가 없거나 위험도가 낮으면 아무 문구도 반환하지 않는다.
+        """
+
+        context = self.context_provider.build(_new_conversation_id())
+        summary = context.wellbeing_summary
+        if (
+            summary is None
+            or summary.low_data
+            or not context.wellbeing_summary_is_observed
+        ):
+            return ChildSupportProactivePromptPayload(should_prompt=False)
+        if summary.signal_level not in {
+            WellbeingSignalLevel.HIGH,
+            WellbeingSignalLevel.VERY_HIGH,
+        }:
+            return ChildSupportProactivePromptPayload(should_prompt=False)
+        safety_level = (
+            ChildSupportSafetyLevel.PARENT_HANDOFF
+            if summary.signal_level == WellbeingSignalLevel.VERY_HIGH
+            else ChildSupportSafetyLevel.CHECK_IN
+        )
+        prompt_text = (
+            "오늘 마음 신호가 평소보다 높게 보여요. 바로 해결책을 말하기보다, "
+            "지금 제일 크게 느껴지는 감정 하나만 같이 확인해볼까요?"
+        )
+        return ChildSupportProactivePromptPayload(
+            should_prompt=True,
+            safety_level=safety_level,
+            prompt_text=prompt_text,
+            suggested_prompts=_build_suggestions(
+                ChildSupportSafetyAssessment(
+                    safety_level=safety_level,
+                    scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                    reason="proactive_high_wellbeing_summary",
+                )
+            ),
+        )
+
     def _build_reply(
         self,
         *,
@@ -221,13 +264,21 @@ def _build_llm_prompt(
         "- 한국어로 3~6문장만 답한다.\n"
         "- 진단, 치료, 법률 조언처럼 말하지 않는다.\n"
         "- 마음 상태, 학교/가족/친구 관계, 안전한 다음 행동 범위 안에서만 답한다.\n"
+        "- 일반적인 '힘들어', '답답해', '우울해' 단계에서는 바로 해결책을 "
+        "제시하지 말고 감정 확인 질문 1개와 짧은 안정 행동 1개만 제안한다.\n"
         "- 별개의 지식 질문, 코딩, 숙제 정답, 투자, 레시피는 답하지 말고 "
         "마음 도움 범위로 부드럽게 돌린다.\n"
         "- 자해 방법, 은폐 방법, 구체적 실행 방법은 절대 제공하지 않는다.\n"
-        "- 위험 신호가 있으면 먼저 공감하고, 지금 안전한 장소인지 확인하고, "
-        "믿을 수 있는 어른에게 알리도록 제안한다.\n"
-        "- 부모에게 말하라는 제안은 강압적으로 쓰지 말고, 아이가 보여줄 수 "
-        "있는 한 문장을 같이 만드는 방식으로 제안한다.\n\n"
+        "- safety_level이 supportive 또는 check_in이면 가족, 친구, 부모, "
+        "어른에게 말하라는 제안을 먼저 꺼내지 않는다.\n"
+        "- safety_level이 parent_handoff 또는 urgent일 때만 보호자/믿을 수 "
+        "있는 어른에게 알리는 제안을 한다.\n"
+        "- safety_level이 parent_handoff이면 대화를 끝내지 말고, 지금 안전한지 "
+        "또는 다친 곳이 있는지 확인하는 질문 1개로 마무리한다.\n"
+        "- '안전하고 편안한 시간 보내', '언제든 말해줘', '행복하길 바라'처럼 "
+        "대화를 종료하는 표현을 쓰지 않는다.\n"
+        "- 보호자에게 말하라는 제안은 강압적으로 쓰지 말고, 아이가 보여줄 "
+        "수 있는 한 문장을 같이 만드는 방식으로 제안한다.\n\n"
         f"safety_level: {assessment.safety_level.value}\n"
         f"scope_status: {assessment.scope_status.value}\n"
         f"immediate_danger: {assessment.immediate_danger}\n"
@@ -245,13 +296,78 @@ def _postprocess_llm_reply(
     assessment: ChildSupportSafetyAssessment,
 ) -> str:
     normalized = " ".join(reply.split())
+    normalized = _remove_conversation_closing_sentences(normalized)
+    if not assessment.allows_parent_handoff_language:
+        normalized = _remove_parent_handoff_sentences(normalized)
+    if assessment.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF:
+        normalized = _ensure_parent_handoff_followup(normalized)
     if len(normalized) > 900:
         normalized = f"{normalized[:900].rstrip()}..."
     if assessment.safety_level == ChildSupportSafetyLevel.URGENT:
         required = "지금 안전한 곳에 있는지 먼저 확인해요."
         if required not in normalized:
             normalized = f"{required} {normalized}"
+    if not normalized:
+        normalized = _build_default_check_in_reply()
     return normalized
+
+
+def _remove_conversation_closing_sentences(reply: str) -> str:
+    closing_keywords = (
+        "안전하고 편안한 시간",
+        "편안한 시간 보내",
+        "언제든지 말씀해줘",
+        "언제든 말해줘",
+        "언제든 이야기해",
+        "행복하길",
+        "좋은 하루",
+    )
+    return _drop_sentences_with_keywords(reply, closing_keywords)
+
+
+def _remove_parent_handoff_sentences(reply: str) -> str:
+    blocked_keywords = (
+        "가족",
+        "부모",
+        "엄마",
+        "아빠",
+        "친구",
+        "어른",
+        "선생님",
+        "상담사",
+    )
+    return _drop_sentences_with_keywords(reply, blocked_keywords)
+
+
+def _drop_sentences_with_keywords(reply: str, keywords: tuple[str, ...]) -> str:
+    sentences = [
+        sentence.strip()
+        for sentence in reply.replace("?", "?.").replace("!", "!.").split(".")
+        if sentence.strip()
+    ]
+    kept_sentences = [
+        sentence
+        for sentence in sentences
+        if not any(keyword in sentence for keyword in keywords)
+    ]
+    return " ".join(kept_sentences).strip()
+
+
+def _ensure_parent_handoff_followup(reply: str) -> str:
+    required_question = (
+        "지금은 안전한 곳에 있고, 다친 곳은 없는지 먼저 말해줄 수 있을까요?"
+    )
+    if "안전한 곳" in reply or "다친 곳" in reply:
+        return reply
+    return f"{reply} {required_question}".strip()
+
+
+def _build_default_check_in_reply() -> str:
+    return (
+        "지금 마음이 많이 무거운 상태로 느껴져요. 바로 해결책을 찾기보다, "
+        "가장 힘든 느낌이 몸의 어디에서 크게 느껴지는지 하나만 골라볼까요? "
+        "그 다음에는 숨을 천천히 한 번 같이 쉬어볼게요."
+    )
 
 
 def _build_scope_redirect_reply() -> str:
@@ -285,16 +401,12 @@ def _build_guarded_reply_text(
         )
     if assessment.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF:
         return (
-            "말해줘서 고마워요. 이건 혼자 해결하려고 버티기보다 어른이 같이 "
-            "확인해 주는 편이 안전해 보여요. 지금 느낀 일을 한 문장으로 적고, "
-            "부모님이나 믿을 수 있는 어른에게 보여줄 준비를 해볼게요."
+            "말해줘서 고마워요. 맞았다는 건 혼자 조용히 넘길 일이 아니라, "
+            "먼저 지금 안전한지 확인해야 하는 일이에요. 지금은 안전한 곳에 있고, "
+            "다친 곳은 없는지 먼저 말해줄 수 있을까요?"
         )
     if assessment.safety_level == ChildSupportSafetyLevel.CHECK_IN:
-        return (
-            "지금 마음이 꽤 크게 흔들린 것 같아요. 먼저 숨을 천천히 세 번만 "
-            "같이 쉬어볼게요. 그 다음에는 무엇이 제일 크게 느껴졌는지 하나만 "
-            "골라서 말해줘도 괜찮아요."
-        )
+        return _build_default_check_in_reply()
 
     summary = context.wellbeing_summary
     context_text = (

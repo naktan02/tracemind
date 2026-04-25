@@ -60,6 +60,7 @@ _CALMING_KEYWORDS = (
     "화나",
     "울고",
     "답답",
+    "힘들",
     "무기력",
     "외로",
     "panic",
@@ -125,6 +126,12 @@ class ChildSupportSafetyAssessment:
             ChildSupportSafetyLevel.PARENT_HANDOFF,
             ChildSupportSafetyLevel.URGENT,
         }
+
+    @property
+    def allows_parent_handoff_language(self) -> bool:
+        """응답에서 보호자/어른 handoff 문구를 직접 써도 되는 단계인지."""
+
+        return self.parent_handoff_suggested
 
 
 class ChildSupportSafetyPolicy:

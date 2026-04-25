@@ -97,20 +97,22 @@ npm run dev
 
 기본 dev origin은 `http://localhost:5174` 또는 `http://127.0.0.1:5174`다.
 
-아이용 AI 마음 도움을 로컬 Ollama로 확인하려면 agent API 실행 전에 아래 환경변수를
-설정한다. 설정하지 않으면 deterministic `local_guarded` 응답을 쓴다.
+아이용 AI 마음 도움을 로컬 Ollama로 확인하려면 `agent/.env.example`을
+`agent/.env`로 복사해서 로컬 주소와 모델을 설정한다. `agent/.env`는 커밋하지
+않는다.
 
 ```bash
-export TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER=ollama
-export TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL=llama3.1:8b
-export TRACEMIND_CHILD_SUPPORT_OLLAMA_BASE_URL=http://127.0.0.1:11434
+cp agent/.env.example agent/.env
 ```
+
+agent API는 `agent/.env`를 먼저 읽고, repo root `.env`는 fallback으로 읽는다.
+이미 shell에 같은 환경변수가 있으면 shell 값이 `.env`보다 우선한다.
 
 Ollama 자체는 별도 터미널에서 실행한다.
 
 ```bash
 ollama serve
-ollama pull llama3.1:8b
+ollama pull exaone3.5:2.4b
 ```
 
 각 app build:
