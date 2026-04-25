@@ -276,6 +276,9 @@ def _build_llm_prompt(
         "너는 TraceMind의 아이용 마음 도움 로컬 상담 코치다.\n"
         "원칙:\n"
         "- 한국어로 3~6문장만 답한다.\n"
+        "- 아이에게 말할 때는 일관된 다정한 해요체만 쓴다.\n"
+        "- 반말, 과한 높임말, '좋겠어', '어떨까', '하신'처럼 어체가 섞이는 "
+        "표현을 쓰지 않는다.\n"
         "- 진단, 치료, 법률 조언처럼 말하지 않는다.\n"
         "- 마음 상태, 학교/가족/친구 관계, 안전한 다음 행동 범위 안에서만 답한다.\n"
         "- 일반적인 '힘들어', '답답해', '우울해' 단계에서는 바로 해결책을 "
@@ -369,6 +372,35 @@ def _drop_sentences_with_keywords(reply: str, keywords: tuple[str, ...]) -> str:
 def _build_suggestions(
     assessment: ChildSupportSafetyAssessment,
 ) -> tuple[ChildSupportSuggestionPayload, ...]:
+    if assessment.reason == "peer_response_planning":
+        return (
+            ChildSupportSuggestionPayload(
+                id="peer-boundary-line",
+                label="상대에게 할 말 정리",
+                prompt=(
+                    "그 친구에게 바로 보내지 않고, 먼저 내가 하고 싶은 말을 "
+                    "짧게 정리해줘."
+                ),
+            ),
+            ChildSupportSuggestionPayload(
+                id="safe-distance",
+                label="안전한 거리 두기",
+                prompt="그 친구와 당분간 어떻게 안전하게 거리를 둘지 같이 정리해줘.",
+            ),
+        )
+    if assessment.reason == "post_handoff_emotional_followup":
+        return (
+            ChildSupportSuggestionPayload(
+                id="name-post-incident-feeling",
+                label="감정 하나 고르기",
+                prompt="방금 일 때문에 남은 감정을 쉬운 보기로 골라줘.",
+            ),
+            ChildSupportSuggestionPayload(
+                id="sort-post-incident",
+                label="방금 일 정리",
+                prompt="방금 있었던 일을 마음이 덜 복잡하게 짧게 정리해줘.",
+            ),
+        )
     if assessment.scope_status == ChildSupportScopeStatus.REDIRECTED:
         return (
             ChildSupportSuggestionPayload(

@@ -20,6 +20,8 @@ class ChildSupportResponseStrategyName(StrEnum):
     SCOPE_REDIRECT = "scope_redirect"
     SUPPORTIVE_REFLECTION = "supportive_reflection"
     CHECK_IN = "check_in"
+    POST_INCIDENT_EMOTIONAL_FOLLOWUP = "post_incident_emotional_followup"
+    PEER_RESPONSE_PLANNING = "peer_response_planning"
     SAFETY_CHECK = "safety_check"
     URGENT_SAFETY = "urgent_safety"
 
@@ -50,6 +52,21 @@ class ChildSupportResponseStrategy:
         )
 
 
+_COMMON_BLOCKED_TERMS = (
+    "좋겠어",
+    "어떨까",
+    "해보자",
+    "쉬어보자",
+    "거야",
+    "하신",
+    "도착하신",
+    "언제든지 말해줘",
+    "언제든 말해줘",
+    "행복하길",
+    "좋은 하루",
+)
+
+
 class ChildSupportResponsePolicy:
     """safety assessment를 실제 응답 전략으로 바꾼다."""
 
@@ -69,6 +86,7 @@ class ChildSupportResponsePolicy:
                     "이야기로 다시 가져오는 게 좋아요. 지금 그 질문 때문에 답답함, "
                     "걱정, 불안 같은 감정이 생겼다면 그 부분부터 같이 정리해볼게요."
                 ),
+                blocked_terms=_COMMON_BLOCKED_TERMS,
                 allow_llm_rewrite=False,
             )
 
@@ -83,6 +101,7 @@ class ChildSupportResponsePolicy:
                         "'지금 혼자 있기 위험해서 도움이 필요해요.'"
                     ),
                     required_terms=("안전", "어른"),
+                    blocked_terms=_COMMON_BLOCKED_TERMS,
                     allow_llm_rewrite=False,
                 )
             return ChildSupportResponseStrategy(
@@ -91,9 +110,10 @@ class ChildSupportResponsePolicy:
                     "그 말을 꺼내준 건 정말 중요한 신호예요. 먼저 지금 안전한 "
                     "곳에 있는지 확인하고 싶어요. 혼자 있다면 사람이 있는 곳으로 "
                     "이동하고, 믿을 수 있는 어른에게 '지금 너무 위험한 생각이 들어서 "
-                    "같이 있어줬으면 좋겠어'라고 보여줄 문장을 같이 만들 수 있어요."
+                    "같이 있어줬으면 좋겠어요'라고 보여줄 문장을 같이 만들 수 있어요."
                 ),
                 required_terms=("안전", "어른"),
+                blocked_terms=_COMMON_BLOCKED_TERMS,
                 allow_llm_rewrite=False,
             )
 
@@ -112,6 +132,7 @@ class ChildSupportResponsePolicy:
                     ("말해줄", "알려줄", "있나요"),
                 ),
                 blocked_terms=(
+                    *_COMMON_BLOCKED_TERMS,
                     "음악",
                     "좋아하는 활동",
                     "혼자 조용히",
@@ -122,20 +143,86 @@ class ChildSupportResponsePolicy:
                 allow_llm_rewrite=True,
             )
 
+        if assessment.reason == "peer_response_planning":
+            return ChildSupportResponseStrategy(
+                name=ChildSupportResponseStrategyName.PEER_RESPONSE_PLANNING,
+                fallback_text=(
+                    "지금 바로 그 친구를 혼자 만나서 따지러 가는 건 안전하지 "
+                    "않을 수 있어요. 먼저 지금 원하는 걸 짧게 정리해볼게요. "
+                    "상대에게 할 말은 '때린 행동은 싫었고, 다시는 그러지 않았으면 "
+                    "해요'처럼 만들 수 있어요. 지금은 그 친구에게 바라는 게 사과, "
+                    "거리 두기, 다시 그러지 않겠다는 약속 중 무엇인지 하나만 "
+                    "골라볼까요?"
+                ),
+                required_any_term_groups=(
+                    ("혼자", "안전"),
+                    ("원하는", "바라는", "할 말"),
+                    ("사과", "거리", "약속", "골라"),
+                ),
+                blocked_terms=(
+                    *_COMMON_BLOCKED_TERMS,
+                    "때려",
+                    "복수해",
+                    "혼내",
+                    "아픈 곳",
+                    "다친 곳",
+                    "몸의 어디",
+                    "몸 어디",
+                ),
+                allow_llm_rewrite=True,
+            )
+
+        if assessment.reason == "post_handoff_emotional_followup":
+            return ChildSupportResponseStrategy(
+                name=ChildSupportResponseStrategyName.POST_INCIDENT_EMOTIONAL_FOLLOWUP,
+                fallback_text=(
+                    "그 친구와 떨어져서 집에 왔다면, 지금은 방금 일을 길게 캐묻기보다 "
+                    "속상한 마음을 먼저 다뤄볼게요. 방금 일에서 제일 크게 남은 "
+                    "감정이 속상함, 억울함, 무서움 중 어디에 가까운지 하나만 "
+                    "골라볼까요? 그 감정이 조금 내려갈 때까지 천천히 숨을 한 번 "
+                    "쉬고, 지금은 안전한 곳에 있다는 사실을 같이 확인해볼게요."
+                ),
+                required_any_term_groups=(
+                    ("속상", "감정", "마음"),
+                    ("골라", "말해", "가까운지"),
+                    ("안전한 곳", "집", "떨어져"),
+                ),
+                blocked_terms=(
+                    *_COMMON_BLOCKED_TERMS,
+                    "아픈 곳",
+                    "다친 곳",
+                    "몸 상태",
+                    "몸의 어디",
+                    "몸 어디",
+                    "몸의 어떤 부분",
+                ),
+                allow_llm_rewrite=True,
+            )
+
         if assessment.safety_level == ChildSupportSafetyLevel.CHECK_IN:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.CHECK_IN,
                 fallback_text=(
                     "지금 마음이 많이 무거운 상태로 느껴져요. 바로 해결책을 찾기보다, "
-                    "가장 힘든 느낌이 몸의 어디에서 크게 느껴지는지 하나만 "
-                    "골라볼까요? 그 다음에는 숨을 천천히 한 번 같이 쉬어볼게요."
+                    "제일 크게 남은 감정이 불안, 답답함, 속상함 중 어디에 가까운지 "
+                    "하나만 골라볼까요? 그 다음에는 숨을 천천히 한 번 같이 "
+                    "쉬어볼게요."
                 ),
                 required_any_term_groups=(
                     ("마음", "감정", "느낌", "느껴"),
                     ("골라", "말해", "알려"),
                     ("숨", "호흡", "천천히"),
                 ),
-                blocked_terms=("가족", "부모", "어른", "선생님", "상담사"),
+                blocked_terms=(
+                    *_COMMON_BLOCKED_TERMS,
+                    "가족",
+                    "부모",
+                    "어른",
+                    "선생님",
+                    "상담사",
+                    "몸의 어디",
+                    "몸 어디",
+                ),
                 allow_llm_rewrite=True,
             )
 
@@ -151,7 +238,14 @@ class ChildSupportResponsePolicy:
                 ("마음", "감정", "느낌"),
                 ("천천히", "나눠", "말해"),
             ),
-            blocked_terms=("가족", "부모", "어른", "선생님", "상담사"),
+            blocked_terms=(
+                *_COMMON_BLOCKED_TERMS,
+                "가족",
+                "부모",
+                "어른",
+                "선생님",
+                "상담사",
+            ),
             allow_llm_rewrite=True,
         )
 

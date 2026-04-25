@@ -37,9 +37,9 @@ class StubChildSupportLlmProvider:
     def generate_reply(self, *, prompt: str) -> str:
         self.last_prompt = prompt
         return (
-            "지금 마음이 많이 무거웠겠어요. 가장 힘든 느낌이 몸 어디에서 "
-            "크게 느껴지는지 하나만 골라볼까요? 그 다음에는 숨을 천천히 "
-            "같이 쉬어볼게요."
+            "지금 마음이 많이 무거웠겠어요. 제일 크게 남은 감정이 불안, "
+            "답답함, 속상함 중 어디에 가까운지 하나만 골라볼까요? "
+            "그 다음에는 숨을 천천히 같이 쉬어볼게요."
         )
 
 
@@ -71,6 +71,18 @@ class UnsafeSoothingViolenceLlmProvider:
         return (
             "친구 때문에 힘들어 보이는데, 지금 혼자 조용히 시간을 가지며 "
             "마음을 진정해 보는 건 어떨까? 편안한 음악을 들으며 쉬어보자."
+        )
+
+
+class MixedToneFollowupLlmProvider:
+    assistant_mode = ChildSupportAssistantMode.LOCAL_LLM
+
+    def generate_reply(self, *, prompt: str) -> str:
+        return (
+            "몸의 어떤 부분이 가장 많이 무거워지거나 답답하게 느껴지는지 "
+            "말해보면 좋겠어. 천천히 깊게 숨을 들이마시고 내쉬는 걸 "
+            "해보는 건 어떨까? 안전하게 집에 도착하신 거 같으니 "
+            "언제든지 말해줘."
         )
 
 
@@ -178,6 +190,87 @@ def test_child_support_service_persists_local_conversation(
 
     assert second.conversation_id == first.conversation_id
     assert repository.count_messages(first.conversation_id) == 4
+
+
+def test_child_support_service_uses_violence_context_for_safe_followup(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    service = ChildSupportCoachService(conversation_repository=repository)
+
+    first = service.create_response(
+        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
+    )
+    second = service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="떨어졌고 집에 왔는데 속상해",
+            conversation_id=first.conversation_id,
+        )
+    )
+
+    assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert second.parent_handoff_suggested is False
+    assert "속상한 마음" in second.reply_text
+    assert "다친 곳" not in second.reply_text
+    assert "몸 상태" not in second.reply_text
+    assert "몸의 어디" not in second.reply_text
+    assert second.suggested_prompts[0].id == "name-post-incident-feeling"
+
+
+def test_child_support_service_rejects_mixed_tone_followup_llm(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    service = ChildSupportCoachService(
+        conversation_repository=repository,
+        llm_provider=MixedToneFollowupLlmProvider(),
+    )
+
+    first = service.create_response(
+        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
+    )
+    second = service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="떨어졌고 집에 왔는데 속상해",
+            conversation_id=first.conversation_id,
+        )
+    )
+
+    assert second.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
+    assert "좋겠어" not in second.reply_text
+    assert "어떨까" not in second.reply_text
+    assert "도착하신" not in second.reply_text
+    assert "몸의 어떤 부분" not in second.reply_text
+    assert "속상한 마음" in second.reply_text
+
+
+def test_child_support_service_uses_violence_context_for_peer_response_planning(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    service = ChildSupportCoachService(conversation_repository=repository)
+
+    first = service.create_response(
+        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
+    )
+    second = service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="내가 걔한테 어떻게 하는게 좋을까",
+            conversation_id=first.conversation_id,
+        )
+    )
+
+    assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert "혼자 만나서 따지러 가는 건 안전하지 않을 수 있어요" in second.reply_text
+    assert "상대에게 할 말" in second.reply_text
+    assert "다친 곳" not in second.reply_text
+    assert second.suggested_prompts[0].id == "peer-boundary-line"
 
 
 def test_child_support_service_redirects_off_topic_question() -> None:

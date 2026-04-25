@@ -61,6 +61,8 @@ _CALMING_KEYWORDS = (
     "울고",
     "답답",
     "힘들",
+    "속상",
+    "억울",
     "무기력",
     "외로",
     "panic",
@@ -85,6 +87,8 @@ _SUPPORT_DOMAIN_KEYWORDS = (
     "혼자",
     "무서",
     "슬퍼",
+    "속상",
+    "억울",
     "불안",
     "우울",
     "힘들",
@@ -168,6 +172,20 @@ class ChildSupportSafetyPolicy:
                 reason="parent_handoff_keyword",
             )
 
+        if _has_recent_parent_handoff_context(context):
+            if _is_peer_response_question(normalized):
+                return ChildSupportSafetyAssessment(
+                    safety_level=ChildSupportSafetyLevel.CHECK_IN,
+                    scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                    reason="peer_response_planning",
+                )
+            if _is_post_handoff_followup(normalized):
+                return ChildSupportSafetyAssessment(
+                    safety_level=ChildSupportSafetyLevel.CHECK_IN,
+                    scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                    reason="post_handoff_emotional_followup",
+                )
+
         if any(keyword in normalized for keyword in _CALMING_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
@@ -200,6 +218,66 @@ def _is_off_topic(normalized_message: str) -> bool:
     if has_support_keyword:
         return False
     return any(keyword in normalized_message for keyword in _OFF_TOPIC_KEYWORDS)
+
+
+def _has_recent_parent_handoff_context(
+    context: ChildSupportConversationContext,
+) -> bool:
+    """최근 같은 conversation에서 폭력/보호자 확인 단계가 있었는지 본다."""
+
+    for record in context.recent_messages[-6:]:
+        if record.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF.value:
+            return True
+    return False
+
+
+def _is_peer_response_question(normalized_message: str) -> bool:
+    """폭력 사건 뒤 상대에게 어떻게 대응할지 묻는 후속 질문인지 본다."""
+
+    response_keywords = (
+        "어떻게",
+        "어쩌",
+        "대응",
+        "말해야",
+        "말할",
+        "해야",
+        "하면",
+        "걔한테",
+        "그 친구",
+        "사과",
+        "거리",
+        "복수",
+        "따져",
+    )
+    return any(keyword in normalized_message for keyword in response_keywords)
+
+
+def _is_post_handoff_followup(normalized_message: str) -> bool:
+    """폭력 사건 뒤 안전 확인 또는 감정 정리로 넘어갈 수 있는지 본다."""
+
+    safe_update_keywords = (
+        "떨어졌",
+        "떨어져",
+        "집",
+        "집에",
+        "안전",
+        "피했",
+        "나왔",
+    )
+    emotional_keywords = (
+        "속상",
+        "억울",
+        "화나",
+        "무서",
+        "슬퍼",
+        "힘들",
+        "답답",
+        "울",
+    )
+    return any(
+        keyword in normalized_message
+        for keyword in safe_update_keywords + emotional_keywords
+    )
 
 
 __all__ = [

@@ -89,6 +89,8 @@ Child Message
 중요:
 
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
+- 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 읽어
+  폭력 사건 후속 대화를 감정 정리나 친구 대응 계획으로 이어간다.
 - 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 LLM은
   `ResponsePolicy` skeleton을 자연스럽게 다듬는 역할만 한다.
 - LLM 응답이 safety 단계별 필수 의미를 잃거나 종료/회피 문구로 흐르면

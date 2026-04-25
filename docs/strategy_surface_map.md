@@ -153,13 +153,15 @@ Embedding
 | Child Support Reply Provider | `local_guarded`, `ollama` | `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER` | unset -> `local_guarded` | 환경변수 `ollama`, `TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL` | 활성 runtime |
 | Child Support Safety Policy | `supportive`, `check_in`, `parent_handoff`, `urgent` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
 | Child Support Scope Policy | `in_scope`, `redirected` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
-| Child Support Response Policy | `scope_redirect`, `supportive_reflection`, `check_in`, `safety_check`, `urgent_safety` | `ChildSupportResponsePolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Response Policy | `scope_redirect`, `supportive_reflection`, `check_in`, `post_incident_emotional_followup`, `peer_response_planning`, `safety_check`, `urgent_safety` | `ChildSupportResponsePolicy` | code default | public config 없음 | 활성 runtime |
 
 중요:
 
 - 이 축은 분류/FL 학습 family가 아니라 child UI 응답 생성 provider 축이다.
 - raw child message, conversation history, query context는 agent-local 저장소와 prompt
   context에만 남기며 main_server로 올리지 않는다.
+- 같은 `conversation_id`의 최근 `parent_handoff` 기록은 후속 메시지의 감정 정리와
+  친구 대응 계획 strategy를 고르는 데 사용한다.
 - LLM provider는 응답 결정을 소유하지 않는다. agent가 먼저 response skeleton을 만들고,
   LLM은 그 skeleton을 자연스럽게 다듬은 뒤 strategy validation을 통과해야 한다.
 - cloud LLM provider를 열 경우에도 기본값으로 승격하지 말고 명시적 opt-in과
