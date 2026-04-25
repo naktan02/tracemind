@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from enum import StrEnum
 
 from agent.src.services.wellbeing.child_support_context_provider import (
     ChildSupportConversationContext,
+)
+from agent.src.services.wellbeing.child_support_safety_intent import (
+    ChildSupportSafetyIntent,
 )
 from shared.src.contracts.child_support_contracts import (
     ChildSupportSafetyLevel,
@@ -131,21 +133,6 @@ _OFF_TOPIC_KEYWORDS = (
 )
 
 
-class ChildSupportSafetyIntent(StrEnum):
-    """agent 내부 routing에 쓰는 typed intent."""
-
-    OFF_TOPIC = "off_topic"
-    SELF_HARM_SIGNAL = "self_harm_signal"
-    OTHER_HARM_IDEATION = "other_harm_ideation"
-    OTHER_HARM_METHOD_REQUEST = "other_harm_method_request"
-    PARENT_HANDOFF_KEYWORD = "parent_handoff_keyword"
-    POST_HANDOFF_EMOTIONAL_FOLLOWUP = "post_handoff_emotional_followup"
-    PEER_RESPONSE_PLANNING = "peer_response_planning"
-    CALMING_KEYWORD = "calming_keyword"
-    HIGH_WELLBEING_SUMMARY = "high_wellbeing_summary"
-    SUPPORTIVE = "supportive"
-
-
 @dataclass(frozen=True, slots=True)
 class ChildSupportSafetyAssessment:
     """child-support 응답 생성 전에 확정하는 안전 판단."""
@@ -214,6 +201,16 @@ class ChildSupportSafetyPolicy:
                 immediate_danger=any(
                     keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
                 ),
+            )
+
+        if (
+            context.conversation_state.has_recent_other_harm_risk
+            and _is_post_urgent_distress_followup(normalized)
+        ):
+            return ChildSupportSafetyAssessment(
+                safety_level=ChildSupportSafetyLevel.CHECK_IN,
+                scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
             )
 
         if any(keyword in normalized for keyword in _PARENT_HANDOFF_KEYWORDS):
@@ -318,6 +315,28 @@ def _is_post_handoff_followup(normalized_message: str) -> bool:
         keyword in normalized_message
         for keyword in safe_update_keywords + emotional_keywords
     )
+
+
+def _is_post_urgent_distress_followup(normalized_message: str) -> bool:
+    """위해 충동 직후 이어지는 힘듦/무너짐 표현인지 본다."""
+
+    distress_keywords = (
+        "힘들",
+        "힘든",
+        "버거",
+        "괴로",
+        "무너",
+        "모르겠",
+        "답답",
+        "속상",
+        "억울",
+        "화가",
+        "화나",
+        "눈물",
+        "울",
+        "너무",
+    )
+    return any(keyword in normalized_message for keyword in distress_keywords)
 
 
 __all__ = [

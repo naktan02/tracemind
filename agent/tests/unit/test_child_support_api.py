@@ -37,9 +37,9 @@ class StubChildSupportLlmProvider:
     def generate_reply(self, *, prompt: str) -> str:
         self.last_prompt = prompt
         return (
-            "지금 마음이 많이 무거웠겠어요. 제일 크게 남은 감정이 불안, "
-            "답답함, 속상함 중 어디에 가까운지 하나만 골라볼까요? "
-            "그 다음에는 숨을 천천히 같이 쉬어볼게요."
+            "지금 많이 버거운 상태로 보여요. 굳이 정확히 설명하지 않아도 "
+            "괜찮아요. 이 힘듦이 갑자기 커진 건지, 아니면 계속 쌓여온 "
+            "느낌인지부터 같이 볼게요. 한 문장으로만 이어서 말해줘도 괜찮아요."
         )
 
 
@@ -267,8 +267,10 @@ def test_child_support_service_uses_violence_context_for_peer_response_planning(
     )
 
     assert second.safety_level == ChildSupportSafetyLevel.CHECK_IN
-    assert "혼자 만나서 따지러 가는 건 안전하지 않을 수 있어요" in second.reply_text
+    assert "복수하고 싶을 만큼 억울하고 화가 났구나" in second.reply_text
+    assert "되갚는 행동은 너를 더 위험하게 만들 수 있어요" in second.reply_text
     assert "상대에게 할 말" in second.reply_text
+    assert "골라볼까요" not in second.reply_text
     assert "다친 곳" not in second.reply_text
     assert second.suggested_prompts[0].id == "peer-boundary-line"
 
@@ -298,6 +300,42 @@ def test_child_support_service_escalates_other_harm_ideation_after_violence(
     assert "어른" in second.reply_text
     assert "골라볼까요" not in second.reply_text
     assert second.suggested_prompts[0].id == "show-adult-harm-risk"
+
+
+def test_child_support_service_uses_warm_deescalation_after_other_harm_urgent(
+    tmp_path: Path,
+) -> None:
+    repository = ChildSupportConversationRepository(
+        db_path=tmp_path / "child_support.db"
+    )
+    service = ChildSupportCoachService(conversation_repository=repository)
+
+    first = service.create_response(
+        ChildSupportConversationRequestPayload(message="친구한테 맞았어 너무 힘들어")
+    )
+    second = service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="그 친구 죽여버리고 싶어",
+            conversation_id=first.conversation_id,
+        )
+    )
+    third = service.create_response(
+        ChildSupportConversationRequestPayload(
+            message="너무 힘든데...",
+            conversation_id=first.conversation_id,
+        )
+    )
+
+    assert second.safety_level == ChildSupportSafetyLevel.URGENT
+    assert third.safety_level == ChildSupportSafetyLevel.CHECK_IN
+    assert third.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
+    assert "뭘 고르라고 하기보다" in third.reply_text
+    assert "많이 힘들다는 말부터 받아줄게요" in third.reply_text
+    assert "네가 나쁜 마음을 가진 게 아니라" in third.reply_text
+    assert "해치는 쪽으로는 가지 않게" in third.reply_text
+    assert "골라볼까요" not in third.reply_text
+    assert "가고 싶은 마음" not in third.reply_text
+    assert third.suggested_prompts[0].id == "continue-after-anger"
 
 
 def test_child_support_service_refuses_other_harm_method_request_after_violence(
@@ -369,7 +407,7 @@ def test_child_support_service_filters_parent_handoff_from_check_in_llm() -> Non
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_GUARDED
     assert "가족" not in response.reply_text
     assert "어른" not in response.reply_text
-    assert "골라볼까요" in response.reply_text
+    assert "한 문장으로만 이어서 말해줘도 괜찮아요" in response.reply_text
 
 
 def test_child_support_service_handles_self_harm_as_counseling_flow() -> None:

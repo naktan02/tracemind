@@ -83,6 +83,7 @@ Child Message
 | local conversation store | `agent/src/infrastructure/repositories/child_support_repository.py` |
 | local context provider | `agent/src/services/wellbeing/child_support_context_provider.py` |
 | conversation state extractor | `agent/src/services/wellbeing/child_support_conversation_state.py` |
+| agent-local safety intent | `agent/src/services/wellbeing/child_support_safety_intent.py` |
 | safety/scope policy | `agent/src/services/wellbeing/child_support_safety_policy.py` |
 | response skeleton/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
 | local LLM adapter | `agent/src/services/wellbeing/child_support_llm_provider.py` |
@@ -93,6 +94,8 @@ Child Message
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
 - 같은 `conversation_id`에서는 agent-local conversation store의 최근 메시지를 읽어
   폭력 사건 후속 대화를 감정 정리나 친구 대응 계획으로 이어간다.
+- 타인 위해 intent 직후의 일반 힘듦 표현은 일반 check-in으로 리셋하지 않고,
+  감정 수용과 위해 행동 경계를 함께 담은 de-escalation 응답으로 이어간다.
 - safety routing은 shared contract의 화면 노출용 `safety_level`과 agent 내부용
   typed `SafetyIntent`를 분리해서, 타인 위해 의도 같은 새 케이스를 UI 계약 변경
   없이 확장할 수 있게 한다.

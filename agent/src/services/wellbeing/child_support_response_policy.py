@@ -5,9 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import StrEnum
 
+from agent.src.services.wellbeing.child_support_safety_intent import (
+    ChildSupportSafetyIntent,
+)
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
-    ChildSupportSafetyIntent,
 )
 from shared.src.contracts.child_support_contracts import (
     ChildSupportSafetyLevel,
@@ -21,6 +23,7 @@ class ChildSupportResponseStrategyName(StrEnum):
     SCOPE_REDIRECT = "scope_redirect"
     SUPPORTIVE_REFLECTION = "supportive_reflection"
     CHECK_IN = "check_in"
+    POST_URGENT_DEESCALATION = "post_urgent_deescalation"
     POST_INCIDENT_EMOTIONAL_FOLLOWUP = "post_incident_emotional_followup"
     PEER_RESPONSE_PLANNING = "peer_response_planning"
     SAFETY_CHECK = "safety_check"
@@ -185,24 +188,56 @@ class ChildSupportResponsePolicy:
                 allow_llm_rewrite=True,
             )
 
+        if assessment.intent == ChildSupportSafetyIntent.POST_URGENT_DEESCALATION:
+            return ChildSupportResponseStrategy(
+                name=ChildSupportResponseStrategyName.POST_URGENT_DEESCALATION,
+                fallback_text=(
+                    "응, 지금은 뭘 고르라고 하기보다 그냥 많이 힘들다는 말부터 "
+                    "받아줄게요. 방금까지 화가 너무 컸고, 이제 그 뒤에 남은 "
+                    "속상함이 밀려오는 것 같아요. 네가 나쁜 마음을 가진 게 아니라, "
+                    "너무 큰 일을 겪어서 마음이 버티기 어려운 상태예요. 그래도 "
+                    "그 친구를 해치는 쪽으로는 가지 않게 여기서 같이 멈춰야 해요. "
+                    "내가 바로 해결책부터 말하지 않고, 지금 제일 버거운 부분부터 "
+                    "같이 들어볼게요."
+                ),
+                required_any_term_groups=(
+                    ("많이 힘들", "버거운"),
+                    ("나쁜 마음", "큰 일", "버티기"),
+                    ("해치는 쪽", "멈춰"),
+                    ("들어볼게요", "받아줄게요"),
+                ),
+                blocked_terms=(
+                    *_COMMON_BLOCKED_TERMS,
+                    "골라볼까요",
+                    "어디에 가까운지",
+                    "가고 싶은 마음",
+                    "상태를 유지",
+                    "위험한 물건",
+                ),
+                allow_llm_rewrite=False,
+            )
+
         if assessment.intent == ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.PEER_RESPONSE_PLANNING,
                 fallback_text=(
-                    "지금 바로 그 친구를 혼자 만나서 따지러 가는 건 안전하지 "
-                    "않을 수 있어요. 먼저 지금 원하는 걸 짧게 정리해볼게요. "
-                    "상대에게 할 말은 '때린 행동은 싫었고, 다시는 그러지 않았으면 "
-                    "해요'처럼 만들 수 있어요. 지금은 그 친구에게 바라는 게 사과, "
-                    "거리 두기, 다시 그러지 않겠다는 약속 중 무엇인지 하나만 "
-                    "골라볼까요?"
+                    "복수하고 싶을 만큼 억울하고 화가 났구나. 그런 마음이 올라오는 "
+                    "건 이상한 일이 아니지만, 혼자 찾아가거나 되갚는 행동은 너를 "
+                    "더 위험하게 만들 수 있어요. 지금은 바로 행동하기보다 네 마음과 "
+                    "안전을 먼저 붙잡을게요. 상대에게 할 말은 '때린 행동은 싫었고, "
+                    "다시는 그러지 않았으면 해요'처럼 천천히 정리할 수 있어요. "
+                    "당장은 그 친구에게 바로 연락하거나 찾아가지 않는 쪽으로 같이 "
+                    "멈춰볼게요."
                 ),
                 required_any_term_groups=(
-                    ("혼자", "안전"),
-                    ("원하는", "바라는", "할 말"),
-                    ("사과", "거리", "약속", "골라"),
+                    ("복수", "억울", "화"),
+                    ("혼자", "위험", "안전"),
+                    ("할 말", "정리"),
+                    ("찾아가지", "멈춰"),
                 ),
                 blocked_terms=(
                     *_COMMON_BLOCKED_TERMS,
+                    "골라볼까요",
                     "때려",
                     "복수해",
                     "혼내",
@@ -222,14 +257,15 @@ class ChildSupportResponsePolicy:
                 name=ChildSupportResponseStrategyName.POST_INCIDENT_EMOTIONAL_FOLLOWUP,
                 fallback_text=(
                     "그 친구와 떨어져서 집에 왔다면, 지금은 방금 일을 길게 캐묻기보다 "
-                    "속상한 마음을 먼저 다뤄볼게요. 방금 일에서 제일 크게 남은 "
-                    "감정이 속상함, 억울함, 무서움 중 어디에 가까운지 하나만 "
-                    "골라볼까요? 그 감정이 조금 내려갈 때까지 천천히 숨을 한 번 "
-                    "쉬고, 지금은 안전한 곳에 있다는 사실을 같이 확인해볼게요."
+                    "속상한 마음을 먼저 받아줄게요. 맞은 일은 그냥 넘길 일이 "
+                    "아니고, 마음이 흔들리는 것도 이상한 일이 아니에요. 지금 "
+                    "떠오르는 장면이나 말 중 제일 마음에 걸리는 것부터 한 문장으로 "
+                    "이어 말해줘도 괜찮아요. 여기서는 복수보다 네 마음이 더 "
+                    "망가지지 않게 붙잡는 걸 먼저 같이 할게요."
                 ),
                 required_any_term_groups=(
                     ("속상", "감정", "마음"),
-                    ("골라", "말해", "가까운지"),
+                    ("받아줄", "괜찮아요", "붙잡"),
                     ("안전한 곳", "집", "떨어져"),
                 ),
                 blocked_terms=(
@@ -240,6 +276,8 @@ class ChildSupportResponsePolicy:
                     "몸의 어디",
                     "몸 어디",
                     "몸의 어떤 부분",
+                    "골라볼까요",
+                    "어디에 가까운지",
                 ),
                 allow_llm_rewrite=True,
             )
@@ -248,18 +286,20 @@ class ChildSupportResponsePolicy:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.CHECK_IN,
                 fallback_text=(
-                    "지금 마음이 많이 무거운 상태로 느껴져요. 바로 해결책을 찾기보다, "
-                    "제일 크게 남은 감정이 불안, 답답함, 속상함 중 어디에 가까운지 "
-                    "하나만 골라볼까요? 그 다음에는 숨을 천천히 한 번 같이 "
-                    "쉬어볼게요."
+                    "지금 많이 버거운 상태로 보여요. 굳이 정확히 설명하지 않아도 "
+                    "괜찮아요. 이 힘듦이 갑자기 커진 건지, 아니면 계속 쌓여온 "
+                    "느낌인지부터 같이 볼게요. 한 문장으로만 이어서 말해줘도 "
+                    "괜찮아요."
                 ),
                 required_any_term_groups=(
-                    ("마음", "감정", "느낌", "느껴"),
-                    ("골라", "말해", "알려"),
-                    ("숨", "호흡", "천천히"),
+                    ("버거", "힘듦", "마음"),
+                    ("설명하지 않아도", "한 문장", "이어"),
+                    ("갑자기", "쌓여", "같이 볼게요"),
                 ),
                 blocked_terms=(
                     *_COMMON_BLOCKED_TERMS,
+                    "골라볼까요",
+                    "어디에 가까운지",
                     "가족",
                     "부모",
                     "어른",

@@ -22,9 +22,11 @@ from agent.src.services.wellbeing.child_support_response_policy import (
     ChildSupportResponsePolicy,
     ChildSupportResponseStrategy,
 )
+from agent.src.services.wellbeing.child_support_safety_intent import (
+    ChildSupportSafetyIntent,
+)
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
-    ChildSupportSafetyIntent,
     ChildSupportSafetyPolicy,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
@@ -393,6 +395,19 @@ def _build_suggestions(
                 id="keep-distance-now",
                 label="지금 거리 두기",
                 prompt="그 친구에게 가지 않기 위해 지금 바로 할 행동을 하나만 골라줘.",
+            ),
+        )
+    if assessment.intent == ChildSupportSafetyIntent.POST_URGENT_DEESCALATION:
+        return (
+            ChildSupportSuggestionPayload(
+                id="continue-after-anger",
+                label="그냥 이어 말하기",
+                prompt="지금 제일 버거운 부분부터 한 문장으로 이어서 말해볼게.",
+            ),
+            ChildSupportSuggestionPayload(
+                id="hold-with-me",
+                label="같이 버티기",
+                prompt="지금 복수 생각에서 조금 떨어질 수 있게 짧게 붙잡아줘.",
             ),
         )
     if assessment.intent == ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING:
