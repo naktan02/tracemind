@@ -19,8 +19,8 @@ from agent.src.services.wellbeing.child_support_llm_provider import (
     ChildSupportLlmProvider,
 )
 from agent.src.services.wellbeing.child_support_response_policy import (
+    ChildSupportResponsePlan,
     ChildSupportResponsePolicy,
-    ChildSupportResponseStrategy,
 )
 from agent.src.services.wellbeing.child_support_safety_intent import (
     ChildSupportSafetyIntent,
@@ -189,40 +189,32 @@ class ChildSupportCoachService:
         context: ChildSupportConversationContext,
         assessment: ChildSupportSafetyAssessment,
     ) -> tuple[str, ChildSupportAssistantMode]:
-        if assessment.scope_status == ChildSupportScopeStatus.REDIRECTED:
-            strategy = self.response_policy.build_strategy(
-                message=message,
-                assessment=assessment,
-            )
-            return strategy.fallback_text, self.fallback_assistant_mode
-        if assessment.immediate_danger:
-            strategy = self.response_policy.build_strategy(
-                message=message,
-                assessment=assessment,
-            )
-            return strategy.fallback_text, self.fallback_assistant_mode
-        strategy = self.response_policy.build_strategy(
+        plan = self.response_policy.build_plan(
             message=message,
             assessment=assessment,
         )
-        if not strategy.allow_llm_rewrite:
-            return strategy.fallback_text, self.fallback_assistant_mode
+        if assessment.scope_status == ChildSupportScopeStatus.REDIRECTED:
+            return plan.fallback_text, self.fallback_assistant_mode
+        if assessment.immediate_danger:
+            return plan.fallback_text, self.fallback_assistant_mode
+        if not plan.allow_llm_rewrite:
+            return plan.fallback_text, self.fallback_assistant_mode
         if self.llm_provider is None:
-            return strategy.fallback_text, self.fallback_assistant_mode
+            return plan.fallback_text, self.fallback_assistant_mode
 
         prompt = _build_llm_prompt(
             message=message,
             context=context,
             assessment=assessment,
-            strategy=strategy,
+            plan=plan,
         )
         try:
             reply = self.llm_provider.generate_reply(prompt=prompt)
         except (ChildSupportLlmError, OSError, RuntimeError):
-            return strategy.fallback_text, self.fallback_assistant_mode
+            return plan.fallback_text, self.fallback_assistant_mode
         processed_reply = _postprocess_llm_reply(reply, assessment)
-        if not strategy.accepts(processed_reply):
-            return strategy.fallback_text, self.fallback_assistant_mode
+        if not plan.accepts(processed_reply):
+            return plan.fallback_text, self.fallback_assistant_mode
         return (
             processed_reply,
             self.llm_provider.assistant_mode,
@@ -239,7 +231,7 @@ def _build_llm_prompt(
     message: str,
     context: ChildSupportConversationContext,
     assessment: ChildSupportSafetyAssessment,
-    strategy: ChildSupportResponseStrategy,
+    plan: ChildSupportResponsePlan,
 ) -> str:
     summary = context.wellbeing_summary
     summary_block = "현재 wellbeing summary: 없음"
@@ -276,6 +268,10 @@ def _build_llm_prompt(
         if message_lines
         else "현재 대화 최근 히스토리: 없음"
     )
+    moves_block = "\n".join(f"- {move.value}" for move in plan.moves)
+    blocked_terms_block = (
+        ", ".join(plan.blocked_terms) if plan.blocked_terms else "없음"
+    )
 
     return (
         "너는 TraceMind의 아이용 마음 도움 로컬 상담 코치다.\n"
@@ -306,9 +302,14 @@ def _build_llm_prompt(
         f"scope_status: {assessment.scope_status.value}\n"
         f"immediate_danger: {assessment.immediate_danger}\n"
         f"assessment_reason: {assessment.reason}\n\n"
-        f"response_strategy: {strategy.name.value}\n"
-        "아래 skeleton의 순서와 의미를 유지해서 말투만 자연스럽게 다듬어라.\n"
-        f"skeleton:\n{strategy.fallback_text}\n\n"
+        f"response_plan: {plan.name.value}\n"
+        f"response_tone: {plan.tone.value}\n"
+        "required_moves:\n"
+        f"{moves_block}\n"
+        f"blocked_terms: {blocked_terms_block}\n"
+        "아래 fallback_reference를 그대로 베끼지 말고, required_moves의 순서와 "
+        "의미를 지켜 자연스럽게 답한다.\n"
+        f"fallback_reference:\n{plan.fallback_text}\n\n"
         f"{summary_block}\n\n"
         f"{query_block}\n\n"
         f"{history_block}\n\n"

@@ -95,7 +95,7 @@ class MixedToneFollowupLlmProvider:
         )
 
 
-def test_child_support_response_skeletons_avoid_meta_counseling_language() -> None:
+def test_child_support_response_plans_avoid_meta_counseling_language() -> None:
     policy = ChildSupportResponsePolicy()
     blocked_meta_phrases = (
         "뭘 고르라고",
@@ -130,11 +130,25 @@ def test_child_support_response_skeletons_avoid_meta_counseling_language() -> No
     )
 
     for assessment in assessments:
-        strategy = policy.build_strategy(message="너무 힘들어", assessment=assessment)
+        plan = policy.build_plan(message="너무 힘들어", assessment=assessment)
 
-        assert not any(
-            phrase in strategy.fallback_text for phrase in blocked_meta_phrases
-        )
+        assert plan.moves
+        assert plan.accepts(plan.fallback_text)
+        assert not any(phrase in plan.fallback_text for phrase in blocked_meta_phrases)
+
+
+def test_child_support_response_plan_rejects_missing_required_move() -> None:
+    policy = ChildSupportResponsePolicy()
+    assessment = ChildSupportSafetyAssessment(
+        safety_level=ChildSupportSafetyLevel.CHECK_IN,
+        scope_status=ChildSupportScopeStatus.IN_SCOPE,
+        intent=ChildSupportSafetyIntent.POST_URGENT_DEESCALATION,
+    )
+
+    plan = policy.build_plan(message="너무 힘들어", assessment=assessment)
+
+    assert plan.accepts(plan.fallback_text)
+    assert not plan.accepts("정말 많이 힘들었겠다. 말이 잘 안 나와도 괜찮아요.")
 
 
 def test_child_support_api_returns_guarded_response() -> None:
@@ -438,8 +452,9 @@ def test_child_support_service_uses_local_llm_provider() -> None:
     assert response.assistant_mode == ChildSupportAssistantMode.LOCAL_LLM
     assert "wellbeing summary" in provider.last_prompt
     assert "safety_intent: calming_keyword" in provider.last_prompt
-    assert "response_strategy: check_in" in provider.last_prompt
-    assert "skeleton:" in provider.last_prompt
+    assert "response_plan: check_in" in provider.last_prompt
+    assert "required_moves:" in provider.last_prompt
+    assert "fallback_reference:" in provider.last_prompt
 
 
 def test_child_support_service_keeps_general_distress_in_check_in() -> None:

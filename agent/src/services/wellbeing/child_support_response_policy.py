@@ -31,19 +31,47 @@ class ChildSupportResponseStrategyName(StrEnum):
     URGENT_SAFETY = "urgent_safety"
 
 
+class ChildSupportResponseMove(StrEnum):
+    """응답이 수행해야 하는 상담 동작 단위."""
+
+    ACKNOWLEDGE_DISCLOSURE = "acknowledge_disclosure"
+    VALIDATE_FEELING = "validate_feeling"
+    NORMALIZE_REACTION = "normalize_reaction"
+    SEPARATE_THOUGHT_FROM_IDENTITY = "separate_thought_from_identity"
+    SET_HARM_BOUNDARY = "set_harm_boundary"
+    REFUSE_HARM_METHOD = "refuse_harm_method"
+    KEEP_PHYSICAL_DISTANCE = "keep_physical_distance"
+    ADULT_HANDOFF = "adult_handoff"
+    CHECK_IMMEDIATE_SAFETY = "check_immediate_safety"
+    CHECK_INJURY = "check_injury"
+    INVITE_OPEN_NARRATIVE = "invite_open_narrative"
+    PLAN_SAFE_BOUNDARY = "plan_safe_boundary"
+    REDIRECT_SCOPE = "redirect_scope"
+    HOLD_WITH_CHILD = "hold_with_child"
+
+
+class ChildSupportResponseTone(StrEnum):
+    """응답 생성에 사용할 말투 policy."""
+
+    WARM_CHILD_SUPPORT = "warm_child_support"
+    CALM_SAFETY_BOUNDARY = "calm_safety_boundary"
+
+
 @dataclass(frozen=True, slots=True)
-class ChildSupportResponseStrategy:
-    """LLM에 넘기거나 fallback으로 쓸 응답 skeleton."""
+class ChildSupportResponsePlan:
+    """LLM에 넘기거나 fallback으로 쓸 응답 plan."""
 
     name: ChildSupportResponseStrategyName
+    moves: tuple[ChildSupportResponseMove, ...]
     fallback_text: str
+    tone: ChildSupportResponseTone = ChildSupportResponseTone.WARM_CHILD_SUPPORT
     required_terms: tuple[str, ...] = ()
     required_any_term_groups: tuple[tuple[str, ...], ...] = ()
     blocked_terms: tuple[str, ...] = ()
     allow_llm_rewrite: bool = True
 
     def accepts(self, reply: str) -> bool:
-        """LLM 응답이 이 strategy를 지키는지 확인한다."""
+        """LLM 응답이 이 plan을 지키는지 확인한다."""
 
         if not reply.strip():
             return False
@@ -51,10 +79,22 @@ class ChildSupportResponseStrategy:
             return False
         if not all(term in reply for term in self.required_terms):
             return False
-        return all(
+        if not all(
             any(term in reply for term in term_group)
             for term_group in self.required_any_term_groups
-        )
+        ):
+            return False
+        return all(_move_is_satisfied(reply, move) for move in self.moves)
+
+    @property
+    def forbidden_terms(self) -> tuple[str, ...]:
+        """기존 호출부 호환용 alias."""
+
+        return self.blocked_terms
+
+
+# 이전 이름을 쓰는 호출부가 생겨도 같은 plan 타입을 보게 둔다.
+ChildSupportResponseStrategy = ChildSupportResponsePlan
 
 
 _COMMON_BLOCKED_TERMS = (
@@ -77,6 +117,51 @@ _COMMON_BLOCKED_TERMS = (
     "굳이 정확히 설명",
 )
 
+_MOVE_REQUIRED_ANY_TERM_GROUPS: dict[
+    ChildSupportResponseMove,
+    tuple[tuple[str, ...], ...],
+] = {
+    ChildSupportResponseMove.ACKNOWLEDGE_DISCLOSURE: (
+        ("말해줘서", "꺼내줘서", "꺼내준", "이야기해줘서", "힘들었겠다"),
+    ),
+    ChildSupportResponseMove.VALIDATE_FEELING: (
+        ("힘들", "화", "억울", "속상", "무서", "버거", "흔들"),
+    ),
+    ChildSupportResponseMove.NORMALIZE_REACTION: (
+        ("이상한 일이 아니", "그럴 수", "나쁜 아이", "나쁜 마음"),
+    ),
+    ChildSupportResponseMove.SEPARATE_THOUGHT_FROM_IDENTITY: (
+        ("나쁜 아이", "나쁜 마음", "그런 생각이 스친다고"),
+    ),
+    ChildSupportResponseMove.SET_HARM_BOUNDARY: (
+        ("해치는 쪽", "해치거나", "하면 안", "멈춰"),
+    ),
+    ChildSupportResponseMove.REFUSE_HARM_METHOD: (
+        ("방법은 알려줄 수 없", "알려줄 수 없"),
+    ),
+    ChildSupportResponseMove.KEEP_PHYSICAL_DISTANCE: (
+        ("가까이 가지", "떨어진", "찾아가지", "거리"),
+    ),
+    ChildSupportResponseMove.ADULT_HANDOFF: (("어른", "보호자", "혼자 있지"),),
+    ChildSupportResponseMove.CHECK_IMMEDIATE_SAFETY: (("안전한 곳", "안전"),),
+    ChildSupportResponseMove.CHECK_INJURY: (("다친 곳", "아픈 곳", "몸 상태"),),
+    ChildSupportResponseMove.INVITE_OPEN_NARRATIVE: (
+        ("한 문장", "이어", "말이 잘 안 나와도", "천천히"),
+    ),
+    ChildSupportResponseMove.PLAN_SAFE_BOUNDARY: (
+        ("할 말", "정리", "찾아가지", "멈춰", "연락하거나"),
+    ),
+    ChildSupportResponseMove.REDIRECT_SCOPE: (("마음", "안전", "다시 가져오는"),),
+    ChildSupportResponseMove.HOLD_WITH_CHILD: (
+        ("같이", "붙잡", "멈춰볼게요", "이어줘도 돼요"),
+    ),
+}
+
+
+def _move_is_satisfied(reply: str, move: ChildSupportResponseMove) -> bool:
+    term_groups = _MOVE_REQUIRED_ANY_TERM_GROUPS.get(move, ())
+    return all(any(term in reply for term in term_group) for term_group in term_groups)
+
 
 class ChildSupportResponsePolicy:
     """safety assessment를 실제 응답 전략으로 바꾼다."""
@@ -87,11 +172,22 @@ class ChildSupportResponsePolicy:
         message: str,
         assessment: ChildSupportSafetyAssessment,
     ) -> ChildSupportResponseStrategy:
-        """현재 safety 단계에 맞는 응답 skeleton을 만든다."""
+        """기존 호출부 호환용 alias."""
+
+        return self.build_plan(message=message, assessment=assessment)
+
+    def build_plan(
+        self,
+        *,
+        message: str,
+        assessment: ChildSupportSafetyAssessment,
+    ) -> ChildSupportResponsePlan:
+        """현재 safety 단계에 맞는 응답 plan을 만든다."""
 
         if assessment.scope_status == ChildSupportScopeStatus.REDIRECTED:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.SCOPE_REDIRECT,
+                moves=(ChildSupportResponseMove.REDIRECT_SCOPE,),
                 fallback_text=(
                     "그 질문은 여기서 자세히 답하기보다, 마음이나 안전과 관련된 "
                     "이야기로 다시 가져오는 게 좋아요. 지금 그 질문 때문에 답답함, "
@@ -110,6 +206,12 @@ class ChildSupportResponsePolicy:
                     assessment.intent
                     == ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST
                 ):
+                    moves = (
+                        ChildSupportResponseMove.REFUSE_HARM_METHOD,
+                        ChildSupportResponseMove.SET_HARM_BOUNDARY,
+                        ChildSupportResponseMove.KEEP_PHYSICAL_DISTANCE,
+                        ChildSupportResponseMove.ADULT_HANDOFF,
+                    )
                     fallback_text = (
                         "그 친구를 해치는 방법은 알려줄 수 없어요. 그 행동은 하면 "
                         "안 되고, 지금은 그 친구에게 가까이 가지 않는 게 먼저예요. "
@@ -118,6 +220,12 @@ class ChildSupportResponsePolicy:
                         "커져서 지금 혼자 있으면 위험해요'라고 바로 보여주세요."
                     )
                 else:
+                    moves = (
+                        ChildSupportResponseMove.VALIDATE_FEELING,
+                        ChildSupportResponseMove.SET_HARM_BOUNDARY,
+                        ChildSupportResponseMove.KEEP_PHYSICAL_DISTANCE,
+                        ChildSupportResponseMove.ADULT_HANDOFF,
+                    )
                     fallback_text = (
                         "그만큼 화가 크다는 뜻일 수 있지만, 그 친구를 해치거나 "
                         "찾아가는 행동은 하면 안 돼요. 지금은 그 친구와 떨어진 "
@@ -127,7 +235,9 @@ class ChildSupportResponsePolicy:
                     )
                 return ChildSupportResponseStrategy(
                     name=ChildSupportResponseStrategyName.HARM_TO_OTHERS_SAFETY,
+                    moves=moves,
                     fallback_text=fallback_text,
+                    tone=ChildSupportResponseTone.CALM_SAFETY_BOUNDARY,
                     required_any_term_groups=(
                         ("해치는 방법은 알려줄 수 없어요", "해치거나"),
                         ("하면 안", "가까이 가지 않는", "떨어진"),
@@ -145,6 +255,10 @@ class ChildSupportResponsePolicy:
             if assessment.immediate_danger:
                 return ChildSupportResponseStrategy(
                     name=ChildSupportResponseStrategyName.URGENT_SAFETY,
+                    moves=(
+                        ChildSupportResponseMove.CHECK_IMMEDIATE_SAFETY,
+                        ChildSupportResponseMove.ADULT_HANDOFF,
+                    ),
                     fallback_text=(
                         "지금은 혼자 버티면서 대화만 이어가기보다 안전을 먼저 "
                         "확인해야 해요. 지금 안전한 곳에 있는지 보고, 바로 가까운 "
@@ -157,6 +271,12 @@ class ChildSupportResponsePolicy:
                 )
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.URGENT_SAFETY,
+                moves=(
+                    ChildSupportResponseMove.ACKNOWLEDGE_DISCLOSURE,
+                    ChildSupportResponseMove.CHECK_IMMEDIATE_SAFETY,
+                    ChildSupportResponseMove.ADULT_HANDOFF,
+                    ChildSupportResponseMove.HOLD_WITH_CHILD,
+                ),
                 fallback_text=(
                     "그 말을 꺼내준 건 정말 중요한 신호예요. 먼저 지금 안전한 "
                     "곳에 있는지 확인하고 싶어요. 혼자 있다면 사람이 있는 곳으로 "
@@ -171,6 +291,11 @@ class ChildSupportResponsePolicy:
         if assessment.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.SAFETY_CHECK,
+                moves=(
+                    ChildSupportResponseMove.ACKNOWLEDGE_DISCLOSURE,
+                    ChildSupportResponseMove.CHECK_IMMEDIATE_SAFETY,
+                    ChildSupportResponseMove.CHECK_INJURY,
+                ),
                 fallback_text=(
                     "친구한테 맞았다는 말을 해줘서 고마워요. 그건 그냥 넘길 "
                     "일이 아니라, 먼저 안전과 몸 상태를 확인해야 하는 일이에요. "
@@ -197,6 +322,14 @@ class ChildSupportResponsePolicy:
         if assessment.intent == ChildSupportSafetyIntent.POST_URGENT_DEESCALATION:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.POST_URGENT_DEESCALATION,
+                moves=(
+                    ChildSupportResponseMove.VALIDATE_FEELING,
+                    ChildSupportResponseMove.NORMALIZE_REACTION,
+                    ChildSupportResponseMove.SEPARATE_THOUGHT_FROM_IDENTITY,
+                    ChildSupportResponseMove.SET_HARM_BOUNDARY,
+                    ChildSupportResponseMove.HOLD_WITH_CHILD,
+                    ChildSupportResponseMove.INVITE_OPEN_NARRATIVE,
+                ),
                 fallback_text=(
                     "응, 정말 많이 힘들었겠다. 방금까지 화가 너무 컸고, 이제 "
                     "그 뒤에 속상함까지 밀려오는 것 같아요. 그런 생각이 스친다고 "
@@ -225,6 +358,13 @@ class ChildSupportResponsePolicy:
         if assessment.intent == ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.PEER_RESPONSE_PLANNING,
+                moves=(
+                    ChildSupportResponseMove.VALIDATE_FEELING,
+                    ChildSupportResponseMove.NORMALIZE_REACTION,
+                    ChildSupportResponseMove.HOLD_WITH_CHILD,
+                    ChildSupportResponseMove.PLAN_SAFE_BOUNDARY,
+                    ChildSupportResponseMove.KEEP_PHYSICAL_DISTANCE,
+                ),
                 fallback_text=(
                     "복수하고 싶을 만큼 억울하고 화가 났구나. 그런 마음이 올라오는 "
                     "건 이상한 일이 아니지만, 혼자 찾아가거나 되갚는 행동은 너를 "
@@ -260,6 +400,12 @@ class ChildSupportResponsePolicy:
         ):
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.POST_INCIDENT_EMOTIONAL_FOLLOWUP,
+                moves=(
+                    ChildSupportResponseMove.VALIDATE_FEELING,
+                    ChildSupportResponseMove.NORMALIZE_REACTION,
+                    ChildSupportResponseMove.INVITE_OPEN_NARRATIVE,
+                    ChildSupportResponseMove.HOLD_WITH_CHILD,
+                ),
                 fallback_text=(
                     "그 친구와 떨어져서 집에 왔다면 정말 많이 흔들렸겠어요. 맞은 "
                     "일은 그냥 넘길 일이 아니고, 마음이 이렇게 흔들리는 것도 "
@@ -290,6 +436,10 @@ class ChildSupportResponsePolicy:
         if assessment.safety_level == ChildSupportSafetyLevel.CHECK_IN:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.CHECK_IN,
+                moves=(
+                    ChildSupportResponseMove.VALIDATE_FEELING,
+                    ChildSupportResponseMove.INVITE_OPEN_NARRATIVE,
+                ),
                 fallback_text=(
                     "지금 정말 많이 버거워 보이네요. 말이 잘 안 나와도 괜찮아요. "
                     "이 힘듦이 오늘 갑자기 커진 건지, 아니면 오래 쌓여 있다가 "
@@ -319,6 +469,10 @@ class ChildSupportResponsePolicy:
         trimmed = " ".join(message.split())
         return ChildSupportResponseStrategy(
             name=ChildSupportResponseStrategyName.SUPPORTIVE_REFLECTION,
+            moves=(
+                ChildSupportResponseMove.ACKNOWLEDGE_DISCLOSURE,
+                ChildSupportResponseMove.INVITE_OPEN_NARRATIVE,
+            ),
             fallback_text=(
                 "말해줘서 고마워요. 지금은 정답을 바로 찾기보다, 방금 말한 "
                 f"'{trimmed[:42]}'에서 어떤 감정이 가장 컸는지부터 천천히 "
@@ -341,7 +495,10 @@ class ChildSupportResponsePolicy:
 
 
 __all__ = [
+    "ChildSupportResponseMove",
+    "ChildSupportResponsePlan",
     "ChildSupportResponsePolicy",
     "ChildSupportResponseStrategy",
     "ChildSupportResponseStrategyName",
+    "ChildSupportResponseTone",
 ]

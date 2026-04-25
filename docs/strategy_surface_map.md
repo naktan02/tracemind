@@ -169,8 +169,9 @@ Embedding
   LLM rewrite를 우회한 guarded response를 쓴다.
 - 타인 위해 intent 직후의 `너무 힘든데` 같은 follow-up은 일반 감정 선택 질문으로
   리셋하지 않고, 감정 수용과 위해 행동 경계를 함께 담은 de-escalation으로 처리한다.
-- LLM provider는 응답 결정을 소유하지 않는다. agent가 먼저 response skeleton을 만들고,
-  LLM은 그 skeleton을 자연스럽게 다듬은 뒤 strategy validation을 통과해야 한다.
+- LLM provider는 응답 결정을 소유하지 않는다. agent가 먼저 response plan과
+  required move를 만들고, LLM은 그 plan을 실행한 뒤 plan validation을 통과해야
+  한다.
 - cloud LLM provider를 열 경우에도 기본값으로 승격하지 말고 명시적 opt-in과
   prompt context 축소 정책을 별도로 둔다.
 

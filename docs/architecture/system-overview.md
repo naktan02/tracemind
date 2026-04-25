@@ -68,9 +68,9 @@ Child Message
 -> LocalContextProvider
 -> ConversationState / SafetyIntent
 -> SafetyPolicy / Scope Redirect
--> ResponsePolicy Skeleton
--> Local Guarded Reply or Local LLM Provider Rewrite
--> Strategy Validation / Fallback
+-> ResponsePolicy Plan / Required Moves
+-> Local Guarded Reply or Local LLM Provider Execution
+-> Plan Validation / Fallback
 -> Child UI Response
 ```
 
@@ -85,7 +85,7 @@ Child Message
 | conversation state extractor | `agent/src/services/wellbeing/child_support_conversation_state.py` |
 | agent-local safety intent | `agent/src/services/wellbeing/child_support_safety_intent.py` |
 | safety/scope policy | `agent/src/services/wellbeing/child_support_safety_policy.py` |
-| response skeleton/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
+| response plan/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
 | local LLM adapter | `agent/src/services/wellbeing/child_support_llm_provider.py` |
 | UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
 
@@ -99,10 +99,11 @@ Child Message
 - safety routing은 shared contract의 화면 노출용 `safety_level`과 agent 내부용
   typed `SafetyIntent`를 분리해서, 타인 위해 의도 같은 새 케이스를 UI 계약 변경
   없이 확장할 수 있게 한다.
-- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 LLM은
-  `ResponsePolicy` skeleton을 자연스럽게 다듬는 역할만 한다.
-- LLM 응답이 safety 단계별 필수 의미를 잃거나 종료/회피 문구로 흐르면
-  strategy validation에서 버리고 guarded fallback을 쓴다.
+- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 agent가
+  `ResponsePolicy` plan과 required move를 먼저 정한다.
+- LLM은 plan의 required move를 순서대로 수행하는 실행 adapter이며, 응답이 필수
+  의미를 잃거나 종료/회피 문구로 흐르면 plan validation에서 버리고 guarded
+  fallback을 쓴다.
 - main_server는 child-support 원문을 읽지 않고 FL aggregation 경계만 소유한다.
 
 ### 3.3 Query Adaptation Rail
