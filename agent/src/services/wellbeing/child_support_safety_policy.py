@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from enum import StrEnum
 
 from agent.src.services.wellbeing.child_support_context_provider import (
     ChildSupportConversationContext,
@@ -25,9 +26,24 @@ _SELF_HARM_KEYWORDS = (
     "suicide",
     "self harm",
 )
+_OTHER_HARM_KEYWORDS = (
+    "죽여",
+    "죽일",
+    "죽이",
+    "살해",
+    "해치고",
+    "해치려",
+    "패버",
+    "때려버",
+    "kill him",
+    "kill her",
+    "kill them",
+    "murder",
+)
 _IMMEDIATE_DANGER_KEYWORDS = (
     "지금 할",
     "오늘 할",
+    "어떻게",
     "방법",
     "계획",
     "칼",
@@ -115,14 +131,34 @@ _OFF_TOPIC_KEYWORDS = (
 )
 
 
+class ChildSupportSafetyIntent(StrEnum):
+    """agent 내부 routing에 쓰는 typed intent."""
+
+    OFF_TOPIC = "off_topic"
+    SELF_HARM_SIGNAL = "self_harm_signal"
+    OTHER_HARM_IDEATION = "other_harm_ideation"
+    OTHER_HARM_METHOD_REQUEST = "other_harm_method_request"
+    PARENT_HANDOFF_KEYWORD = "parent_handoff_keyword"
+    POST_HANDOFF_EMOTIONAL_FOLLOWUP = "post_handoff_emotional_followup"
+    PEER_RESPONSE_PLANNING = "peer_response_planning"
+    CALMING_KEYWORD = "calming_keyword"
+    HIGH_WELLBEING_SUMMARY = "high_wellbeing_summary"
+    SUPPORTIVE = "supportive"
+
+
 @dataclass(frozen=True, slots=True)
 class ChildSupportSafetyAssessment:
     """child-support 응답 생성 전에 확정하는 안전 판단."""
 
     safety_level: ChildSupportSafetyLevel
     scope_status: ChildSupportScopeStatus
+    intent: ChildSupportSafetyIntent = ChildSupportSafetyIntent.SUPPORTIVE
     immediate_danger: bool = False
-    reason: str = "supportive"
+    reason: str = ""
+
+    def __post_init__(self) -> None:
+        if not self.reason:
+            object.__setattr__(self, "reason", self.intent.value)
 
     @property
     def parent_handoff_suggested(self) -> bool:
@@ -152,45 +188,60 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.SUPPORTIVE,
                 scope_status=ChildSupportScopeStatus.REDIRECTED,
-                reason="off_topic",
+                intent=ChildSupportSafetyIntent.OFF_TOPIC,
+            )
+
+        if any(keyword in normalized for keyword in _OTHER_HARM_KEYWORDS):
+            immediate_danger = any(
+                keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
+            )
+            return ChildSupportSafetyAssessment(
+                safety_level=ChildSupportSafetyLevel.URGENT,
+                scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                intent=(
+                    ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST
+                    if immediate_danger
+                    else ChildSupportSafetyIntent.OTHER_HARM_IDEATION
+                ),
+                immediate_danger=immediate_danger,
             )
 
         if any(keyword in normalized for keyword in _SELF_HARM_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.URGENT,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                intent=ChildSupportSafetyIntent.SELF_HARM_SIGNAL,
                 immediate_danger=any(
                     keyword in normalized for keyword in _IMMEDIATE_DANGER_KEYWORDS
                 ),
-                reason="self_harm_signal",
             )
 
         if any(keyword in normalized for keyword in _PARENT_HANDOFF_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.PARENT_HANDOFF,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                reason="parent_handoff_keyword",
+                intent=ChildSupportSafetyIntent.PARENT_HANDOFF_KEYWORD,
             )
 
-        if _has_recent_parent_handoff_context(context):
+        if context.conversation_state.has_recent_parent_handoff:
             if _is_peer_response_question(normalized):
                 return ChildSupportSafetyAssessment(
                     safety_level=ChildSupportSafetyLevel.CHECK_IN,
                     scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    reason="peer_response_planning",
+                    intent=ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING,
                 )
             if _is_post_handoff_followup(normalized):
                 return ChildSupportSafetyAssessment(
                     safety_level=ChildSupportSafetyLevel.CHECK_IN,
                     scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                    reason="post_handoff_emotional_followup",
+                    intent=ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP,
                 )
 
         if any(keyword in normalized for keyword in _CALMING_KEYWORDS):
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                reason="calming_keyword",
+                intent=ChildSupportSafetyIntent.CALMING_KEYWORD,
             )
 
         summary = context.wellbeing_summary
@@ -201,13 +252,13 @@ class ChildSupportSafetyPolicy:
             return ChildSupportSafetyAssessment(
                 safety_level=ChildSupportSafetyLevel.CHECK_IN,
                 scope_status=ChildSupportScopeStatus.IN_SCOPE,
-                reason="high_wellbeing_summary",
+                intent=ChildSupportSafetyIntent.HIGH_WELLBEING_SUMMARY,
             )
 
         return ChildSupportSafetyAssessment(
             safety_level=ChildSupportSafetyLevel.SUPPORTIVE,
             scope_status=ChildSupportScopeStatus.IN_SCOPE,
-            reason="supportive",
+            intent=ChildSupportSafetyIntent.SUPPORTIVE,
         )
 
 
@@ -218,17 +269,6 @@ def _is_off_topic(normalized_message: str) -> bool:
     if has_support_keyword:
         return False
     return any(keyword in normalized_message for keyword in _OFF_TOPIC_KEYWORDS)
-
-
-def _has_recent_parent_handoff_context(
-    context: ChildSupportConversationContext,
-) -> bool:
-    """최근 같은 conversation에서 폭력/보호자 확인 단계가 있었는지 본다."""
-
-    for record in context.recent_messages[-6:]:
-        if record.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF.value:
-            return True
-    return False
 
 
 def _is_peer_response_question(normalized_message: str) -> bool:
@@ -282,5 +322,6 @@ def _is_post_handoff_followup(normalized_message: str) -> bool:
 
 __all__ = [
     "ChildSupportSafetyAssessment",
+    "ChildSupportSafetyIntent",
     "ChildSupportSafetyPolicy",
 ]

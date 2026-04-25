@@ -24,6 +24,7 @@ from agent.src.services.wellbeing.child_support_response_policy import (
 )
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
+    ChildSupportSafetyIntent,
     ChildSupportSafetyPolicy,
 )
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
@@ -116,6 +117,7 @@ class ChildSupportCoachService:
                 assistant_mode=assistant_mode.value,
                 scope_status=assessment.scope_status.value,
                 metadata={
+                    "assessment_intent": assessment.intent.value,
                     "assessment_reason": assessment.reason,
                     "immediate_danger": assessment.immediate_danger,
                 },
@@ -172,6 +174,7 @@ class ChildSupportCoachService:
                 ChildSupportSafetyAssessment(
                     safety_level=safety_level,
                     scope_status=ChildSupportScopeStatus.IN_SCOPE,
+                    intent=ChildSupportSafetyIntent.HIGH_WELLBEING_SUMMARY,
                     reason="proactive_high_wellbeing_summary",
                 )
             ),
@@ -297,6 +300,7 @@ def _build_llm_prompt(
         "- 보호자에게 말하라는 제안은 강압적으로 쓰지 말고, 아이가 보여줄 "
         "수 있는 한 문장을 같이 만드는 방식으로 제안한다.\n\n"
         f"safety_level: {assessment.safety_level.value}\n"
+        f"safety_intent: {assessment.intent.value}\n"
         f"scope_status: {assessment.scope_status.value}\n"
         f"immediate_danger: {assessment.immediate_danger}\n"
         f"assessment_reason: {assessment.reason}\n\n"
@@ -372,7 +376,26 @@ def _drop_sentences_with_keywords(reply: str, keywords: tuple[str, ...]) -> str:
 def _build_suggestions(
     assessment: ChildSupportSafetyAssessment,
 ) -> tuple[ChildSupportSuggestionPayload, ...]:
-    if assessment.reason == "peer_response_planning":
+    if assessment.intent in {
+        ChildSupportSafetyIntent.OTHER_HARM_IDEATION,
+        ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST,
+    }:
+        return (
+            ChildSupportSuggestionPayload(
+                id="show-adult-harm-risk",
+                label="어른에게 보여줄 문장",
+                prompt=(
+                    "누군가를 해칠까 봐 걱정된다는 말을 어른에게 보여줄 "
+                    "문장으로 정리해줘."
+                ),
+            ),
+            ChildSupportSuggestionPayload(
+                id="keep-distance-now",
+                label="지금 거리 두기",
+                prompt="그 친구에게 가지 않기 위해 지금 바로 할 행동을 하나만 골라줘.",
+            ),
+        )
+    if assessment.intent == ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING:
         return (
             ChildSupportSuggestionPayload(
                 id="peer-boundary-line",
@@ -388,7 +411,7 @@ def _build_suggestions(
                 prompt="그 친구와 당분간 어떻게 안전하게 거리를 둘지 같이 정리해줘.",
             ),
         )
-    if assessment.reason == "post_handoff_emotional_followup":
+    if assessment.intent == ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP:
         return (
             ChildSupportSuggestionPayload(
                 id="name-post-incident-feeling",
@@ -463,6 +486,11 @@ def _build_parent_handoff_label(
     assessment: ChildSupportSafetyAssessment,
 ) -> str | None:
     if assessment.safety_level == ChildSupportSafetyLevel.URGENT:
+        if assessment.intent in {
+            ChildSupportSafetyIntent.OTHER_HARM_IDEATION,
+            ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST,
+        }:
+            return "지금 바로 어른에게 알리고 그 친구와 거리 두기"
         if assessment.immediate_danger:
             return "지금 바로 보호자나 믿을 수 있는 어른에게 알리기"
         return "지금 안전한지 확인하고 어른에게 보여줄 문장 만들기"

@@ -152,8 +152,9 @@ Embedding
 |---|---|---|---|---|---|
 | Child Support Reply Provider | `local_guarded`, `ollama` | `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER` | unset -> `local_guarded` | 환경변수 `ollama`, `TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL` | 활성 runtime |
 | Child Support Safety Policy | `supportive`, `check_in`, `parent_handoff`, `urgent` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Safety Intent | `self_harm_signal`, `other_harm_ideation`, `other_harm_method_request`, `peer_response_planning`, `post_handoff_emotional_followup`, etc. | `ChildSupportSafetyIntent` | code default | public config 없음 | agent-local runtime |
 | Child Support Scope Policy | `in_scope`, `redirected` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
-| Child Support Response Policy | `scope_redirect`, `supportive_reflection`, `check_in`, `post_incident_emotional_followup`, `peer_response_planning`, `safety_check`, `urgent_safety` | `ChildSupportResponsePolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Response Policy | `scope_redirect`, `supportive_reflection`, `check_in`, `post_incident_emotional_followup`, `peer_response_planning`, `safety_check`, `harm_to_others_safety`, `urgent_safety` | `ChildSupportResponsePolicy` | code default | public config 없음 | 활성 runtime |
 
 중요:
 
@@ -162,6 +163,10 @@ Embedding
   context에만 남기며 main_server로 올리지 않는다.
 - 같은 `conversation_id`의 최근 `parent_handoff` 기록은 후속 메시지의 감정 정리와
   친구 대응 계획 strategy를 고르는 데 사용한다.
+- 화면 노출용 `safety_level`은 shared contract에 남기고, agent 내부 분기에는
+  typed `SafetyIntent`와 conversation state를 사용한다.
+- 타인을 해치려는 의도나 방법 요청은 peer planning보다 먼저 `urgent`로 라우팅하고
+  LLM rewrite를 우회한 guarded response를 쓴다.
 - LLM provider는 응답 결정을 소유하지 않는다. agent가 먼저 response skeleton을 만들고,
   LLM은 그 skeleton을 자연스럽게 다듬은 뒤 strategy validation을 통과해야 한다.
 - cloud LLM provider를 열 경우에도 기본값으로 승격하지 말고 명시적 opt-in과
@@ -170,6 +175,7 @@ Embedding
 관련 파일:
 
 - [agent/src/services/wellbeing/child_support_service.py](../agent/src/services/wellbeing/child_support_service.py)
+- [agent/src/services/wellbeing/child_support_conversation_state.py](../agent/src/services/wellbeing/child_support_conversation_state.py)
 - [agent/src/services/wellbeing/child_support_response_policy.py](../agent/src/services/wellbeing/child_support_response_policy.py)
 - [agent/src/services/wellbeing/child_support_llm_provider.py](../agent/src/services/wellbeing/child_support_llm_provider.py)
 - [agent/src/services/wellbeing/child_support_safety_policy.py](../agent/src/services/wellbeing/child_support_safety_policy.py)

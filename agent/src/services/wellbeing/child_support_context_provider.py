@@ -13,6 +13,10 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
     QueryBufferRepository,
 )
+from agent.src.services.wellbeing.child_support_conversation_state import (
+    ChildSupportConversationState,
+    derive_child_support_conversation_state,
+)
 from agent.src.services.wellbeing.summary_service import WellbeingSummaryService
 from shared.src.contracts.wellbeing_signal_contracts import (
     WellbeingSignalSummaryPayload,
@@ -34,6 +38,9 @@ class ChildSupportConversationContext:
     """child-support 응답 생성에 필요한 agent-local context."""
 
     conversation_id: str
+    conversation_state: ChildSupportConversationState = field(
+        default_factory=ChildSupportConversationState
+    )
     wellbeing_summary: WellbeingSignalSummaryPayload | None = None
     wellbeing_summary_is_observed: bool = False
     recent_queries: tuple[ChildSupportRecentQueryContext, ...] = field(
@@ -58,12 +65,14 @@ class ChildSupportContextProvider:
     def build(self, conversation_id: str) -> ChildSupportConversationContext:
         """현재 conversation에 맞는 로컬 context를 만든다."""
 
+        recent_messages = tuple(self._load_recent_messages(conversation_id))
         return ChildSupportConversationContext(
             conversation_id=conversation_id,
+            conversation_state=derive_child_support_conversation_state(recent_messages),
             wellbeing_summary=self._load_summary(),
             wellbeing_summary_is_observed=self._has_observed_summary(),
             recent_queries=tuple(self._load_recent_queries()),
-            recent_messages=tuple(self._load_recent_messages(conversation_id)),
+            recent_messages=recent_messages,
         )
 
     def _load_summary(self) -> WellbeingSignalSummaryPayload | None:

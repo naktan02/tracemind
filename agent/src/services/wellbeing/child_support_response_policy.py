@@ -7,6 +7,7 @@ from enum import StrEnum
 
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
+    ChildSupportSafetyIntent,
 )
 from shared.src.contracts.child_support_contracts import (
     ChildSupportSafetyLevel,
@@ -23,6 +24,7 @@ class ChildSupportResponseStrategyName(StrEnum):
     POST_INCIDENT_EMOTIONAL_FOLLOWUP = "post_incident_emotional_followup"
     PEER_RESPONSE_PLANNING = "peer_response_planning"
     SAFETY_CHECK = "safety_check"
+    HARM_TO_OTHERS_SAFETY = "harm_to_others_safety"
     URGENT_SAFETY = "urgent_safety"
 
 
@@ -91,6 +93,46 @@ class ChildSupportResponsePolicy:
             )
 
         if assessment.safety_level == ChildSupportSafetyLevel.URGENT:
+            if assessment.intent in {
+                ChildSupportSafetyIntent.OTHER_HARM_IDEATION,
+                ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST,
+            }:
+                if (
+                    assessment.intent
+                    == ChildSupportSafetyIntent.OTHER_HARM_METHOD_REQUEST
+                ):
+                    fallback_text = (
+                        "그 친구를 해치는 방법은 알려줄 수 없어요. 그 행동은 하면 "
+                        "안 되고, 지금은 그 친구에게 가까이 가지 않는 게 먼저예요. "
+                        "손에 위험한 물건이 있으면 멀리 두고, 집에 있는 어른이나 "
+                        "믿을 수 있는 어른에게 '누군가를 해치고 싶은 생각이 너무 "
+                        "커져서 지금 혼자 있으면 위험해요'라고 바로 보여주세요."
+                    )
+                else:
+                    fallback_text = (
+                        "그만큼 화가 크다는 뜻일 수 있지만, 그 친구를 해치거나 "
+                        "찾아가는 행동은 하면 안 돼요. 지금은 그 친구와 떨어진 "
+                        "상태를 유지하고, 손에 위험한 물건이 있으면 멀리 두세요. "
+                        "가까운 어른에게 '너무 화가 커서 누군가를 해칠까 봐 "
+                        "걱정돼요'라고 보여주고, 지금 혼자 있지 않는 게 필요해요."
+                    )
+                return ChildSupportResponseStrategy(
+                    name=ChildSupportResponseStrategyName.HARM_TO_OTHERS_SAFETY,
+                    fallback_text=fallback_text,
+                    required_any_term_groups=(
+                        ("해치는 방법은 알려줄 수 없어요", "해치거나"),
+                        ("하면 안", "가까이 가지 않는", "떨어진"),
+                        ("어른", "혼자 있지"),
+                    ),
+                    blocked_terms=(
+                        *_COMMON_BLOCKED_TERMS,
+                        "칼로",
+                        "목을",
+                        "찌르",
+                        "때리면",
+                    ),
+                    allow_llm_rewrite=False,
+                )
             if assessment.immediate_danger:
                 return ChildSupportResponseStrategy(
                     name=ChildSupportResponseStrategyName.URGENT_SAFETY,
@@ -143,7 +185,7 @@ class ChildSupportResponsePolicy:
                 allow_llm_rewrite=True,
             )
 
-        if assessment.reason == "peer_response_planning":
+        if assessment.intent == ChildSupportSafetyIntent.PEER_RESPONSE_PLANNING:
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.PEER_RESPONSE_PLANNING,
                 fallback_text=(
@@ -172,7 +214,10 @@ class ChildSupportResponsePolicy:
                 allow_llm_rewrite=True,
             )
 
-        if assessment.reason == "post_handoff_emotional_followup":
+        if (
+            assessment.intent
+            == ChildSupportSafetyIntent.POST_HANDOFF_EMOTIONAL_FOLLOWUP
+        ):
             return ChildSupportResponseStrategy(
                 name=ChildSupportResponseStrategyName.POST_INCIDENT_EMOTIONAL_FOLLOWUP,
                 fallback_text=(
