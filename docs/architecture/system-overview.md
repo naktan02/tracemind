@@ -67,7 +67,9 @@ Child Message
 -> Agent-local Conversation Store
 -> LocalContextProvider
 -> SafetyPolicy / Scope Redirect
--> Local Guarded Reply or Local LLM Provider
+-> ResponsePolicy Skeleton
+-> Local Guarded Reply or Local LLM Provider Rewrite
+-> Strategy Validation / Fallback
 -> Child UI Response
 ```
 
@@ -80,13 +82,17 @@ Child Message
 | local conversation store | `agent/src/infrastructure/repositories/child_support_repository.py` |
 | local context provider | `agent/src/services/wellbeing/child_support_context_provider.py` |
 | safety/scope policy | `agent/src/services/wellbeing/child_support_safety_policy.py` |
+| response skeleton/validation policy | `agent/src/services/wellbeing/child_support_response_policy.py` |
 | local LLM adapter | `agent/src/services/wellbeing/child_support_llm_provider.py` |
 | UI panel | `apps/family_extension/src/components/ChildSupportCoachPanel.tsx` |
 
 중요:
 
 - child-support raw message와 query context는 agent-local boundary에 남긴다.
-- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에만 `local_llm`을 쓴다.
+- 기본값은 deterministic `local_guarded`이고, Ollama를 켠 경우에도 LLM은
+  `ResponsePolicy` skeleton을 자연스럽게 다듬는 역할만 한다.
+- LLM 응답이 safety 단계별 필수 의미를 잃거나 종료/회피 문구로 흐르면
+  strategy validation에서 버리고 guarded fallback을 쓴다.
 - main_server는 child-support 원문을 읽지 않고 FL aggregation 경계만 소유한다.
 
 ### 3.3 Query Adaptation Rail

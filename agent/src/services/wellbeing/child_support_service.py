@@ -18,6 +18,10 @@ from agent.src.services.wellbeing.child_support_llm_provider import (
     ChildSupportLlmError,
     ChildSupportLlmProvider,
 )
+from agent.src.services.wellbeing.child_support_response_policy import (
+    ChildSupportResponsePolicy,
+    ChildSupportResponseStrategy,
+)
 from agent.src.services.wellbeing.child_support_safety_policy import (
     ChildSupportSafetyAssessment,
     ChildSupportSafetyPolicy,
@@ -54,6 +58,9 @@ class ChildSupportCoachService:
     llm_provider: ChildSupportLlmProvider | None = None
     safety_policy: ChildSupportSafetyPolicy = field(
         default_factory=ChildSupportSafetyPolicy
+    )
+    response_policy: ChildSupportResponsePolicy = field(
+        default_factory=ChildSupportResponsePolicy
     )
     fallback_assistant_mode: ChildSupportAssistantMode = (
         ChildSupportAssistantMode.LOCAL_GUARDED
@@ -178,35 +185,41 @@ class ChildSupportCoachService:
         assessment: ChildSupportSafetyAssessment,
     ) -> tuple[str, ChildSupportAssistantMode]:
         if assessment.scope_status == ChildSupportScopeStatus.REDIRECTED:
-            return _build_scope_redirect_reply(), self.fallback_assistant_mode
+            strategy = self.response_policy.build_strategy(
+                message=message,
+                assessment=assessment,
+            )
+            return strategy.fallback_text, self.fallback_assistant_mode
         if assessment.immediate_danger:
-            return _build_guarded_reply_text(
+            strategy = self.response_policy.build_strategy(
                 message=message,
-                context=context,
                 assessment=assessment,
-            ), self.fallback_assistant_mode
+            )
+            return strategy.fallback_text, self.fallback_assistant_mode
+        strategy = self.response_policy.build_strategy(
+            message=message,
+            assessment=assessment,
+        )
+        if not strategy.allow_llm_rewrite:
+            return strategy.fallback_text, self.fallback_assistant_mode
         if self.llm_provider is None:
-            return _build_guarded_reply_text(
-                message=message,
-                context=context,
-                assessment=assessment,
-            ), self.fallback_assistant_mode
+            return strategy.fallback_text, self.fallback_assistant_mode
 
         prompt = _build_llm_prompt(
             message=message,
             context=context,
             assessment=assessment,
+            strategy=strategy,
         )
         try:
             reply = self.llm_provider.generate_reply(prompt=prompt)
         except (ChildSupportLlmError, OSError, RuntimeError):
-            return _build_guarded_reply_text(
-                message=message,
-                context=context,
-                assessment=assessment,
-            ), self.fallback_assistant_mode
+            return strategy.fallback_text, self.fallback_assistant_mode
+        processed_reply = _postprocess_llm_reply(reply, assessment)
+        if not strategy.accepts(processed_reply):
+            return strategy.fallback_text, self.fallback_assistant_mode
         return (
-            _postprocess_llm_reply(reply, assessment),
+            processed_reply,
             self.llm_provider.assistant_mode,
         )
 
@@ -221,6 +234,7 @@ def _build_llm_prompt(
     message: str,
     context: ChildSupportConversationContext,
     assessment: ChildSupportSafetyAssessment,
+    strategy: ChildSupportResponseStrategy,
 ) -> str:
     summary = context.wellbeing_summary
     summary_block = "현재 wellbeing summary: 없음"
@@ -283,6 +297,9 @@ def _build_llm_prompt(
         f"scope_status: {assessment.scope_status.value}\n"
         f"immediate_danger: {assessment.immediate_danger}\n"
         f"assessment_reason: {assessment.reason}\n\n"
+        f"response_strategy: {strategy.name.value}\n"
+        "아래 skeleton의 순서와 의미를 유지해서 말투만 자연스럽게 다듬어라.\n"
+        f"skeleton:\n{strategy.fallback_text}\n\n"
         f"{summary_block}\n\n"
         f"{query_block}\n\n"
         f"{history_block}\n\n"
@@ -299,16 +316,12 @@ def _postprocess_llm_reply(
     normalized = _remove_conversation_closing_sentences(normalized)
     if not assessment.allows_parent_handoff_language:
         normalized = _remove_parent_handoff_sentences(normalized)
-    if assessment.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF:
-        normalized = _ensure_parent_handoff_followup(normalized)
     if len(normalized) > 900:
         normalized = f"{normalized[:900].rstrip()}..."
     if assessment.safety_level == ChildSupportSafetyLevel.URGENT:
         required = "지금 안전한 곳에 있는지 먼저 확인해요."
         if required not in normalized:
             normalized = f"{required} {normalized}"
-    if not normalized:
-        normalized = _build_default_check_in_reply()
     return normalized
 
 
@@ -351,74 +364,6 @@ def _drop_sentences_with_keywords(reply: str, keywords: tuple[str, ...]) -> str:
         if not any(keyword in sentence for keyword in keywords)
     ]
     return " ".join(kept_sentences).strip()
-
-
-def _ensure_parent_handoff_followup(reply: str) -> str:
-    required_question = (
-        "지금은 안전한 곳에 있고, 다친 곳은 없는지 먼저 말해줄 수 있을까요?"
-    )
-    if "안전한 곳" in reply or "다친 곳" in reply:
-        return reply
-    return f"{reply} {required_question}".strip()
-
-
-def _build_default_check_in_reply() -> str:
-    return (
-        "지금 마음이 많이 무거운 상태로 느껴져요. 바로 해결책을 찾기보다, "
-        "가장 힘든 느낌이 몸의 어디에서 크게 느껴지는지 하나만 골라볼까요? "
-        "그 다음에는 숨을 천천히 한 번 같이 쉬어볼게요."
-    )
-
-
-def _build_scope_redirect_reply() -> str:
-    return (
-        "그 질문은 여기서 자세히 답하기보다, 마음이나 안전과 관련된 이야기로 "
-        "다시 가져오는 게 좋아요. 지금 그 질문 때문에 답답함, 걱정, 불안 같은 "
-        "감정이 생겼다면 그 부분부터 같이 정리해볼게요."
-    )
-
-
-def _build_guarded_reply_text(
-    *,
-    message: str,
-    context: ChildSupportConversationContext,
-    assessment: ChildSupportSafetyAssessment,
-) -> str:
-    if assessment.safety_level == ChildSupportSafetyLevel.URGENT:
-        if assessment.immediate_danger:
-            return (
-                "지금은 혼자 버티면서 대화만 이어가기보다 안전을 먼저 확인해야 "
-                "해요. 지금 안전한 곳에 있는지 보고, 바로 가까운 보호자나 믿을 "
-                "수 있는 어른에게 이 문장을 보여주세요: '지금 혼자 있기 위험해서 "
-                "도움이 필요해요.'"
-            )
-        return (
-            "그 말을 꺼내준 건 정말 중요한 신호예요. 바로 해결책을 찾기보다 "
-            "먼저 지금 안전한 곳에 있는지 확인하고 싶어요. 혼자 있다면 문을 "
-            "열어둘 수 있는 곳이나 사람이 있는 곳으로 이동하고, 믿을 수 있는 "
-            "어른에게 '지금 너무 위험한 생각이 들어서 같이 있어줬으면 좋겠어'라고 "
-            "보여줄 문장을 같이 만들 수 있어요."
-        )
-    if assessment.safety_level == ChildSupportSafetyLevel.PARENT_HANDOFF:
-        return (
-            "말해줘서 고마워요. 맞았다는 건 혼자 조용히 넘길 일이 아니라, "
-            "먼저 지금 안전한지 확인해야 하는 일이에요. 지금은 안전한 곳에 있고, "
-            "다친 곳은 없는지 먼저 말해줄 수 있을까요?"
-        )
-    if assessment.safety_level == ChildSupportSafetyLevel.CHECK_IN:
-        return _build_default_check_in_reply()
-
-    summary = context.wellbeing_summary
-    context_text = (
-        f"현재 상태 카드에는 '{summary.signal_label}'로 표시되어 있어요. "
-        if summary is not None
-        else ""
-    )
-    trimmed = " ".join(message.split())
-    return (
-        f"{context_text}말해줘서 고마워요. 지금은 정답을 바로 찾기보다, 방금 말한 "
-        f"'{trimmed[:42]}'에서 어떤 감정이 가장 컸는지부터 천천히 나눠볼게요."
-    )
 
 
 def _build_suggestions(

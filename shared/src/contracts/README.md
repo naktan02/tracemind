@@ -114,7 +114,8 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 
 중요:
 
-- 대화 원문, conversation 저장, LLM provider, prompt, safety policy 실행 방식은 agent runtime이 소유한다.
+- 대화 원문, conversation 저장, LLM provider, prompt, safety policy,
+  response skeleton/validation 실행 방식은 agent runtime이 소유한다.
 - UI는 응답을 표시하고 다음 입력을 보낼 뿐, wellbeing이나 safety 의미를 재정의하지 않는다.
 
 ### `prototype_contracts.py`

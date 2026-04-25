@@ -75,7 +75,8 @@ Setup
 - child view의 AI 마음 도움 단일 turn source of truth
 - 현재 기본 응답 mode는 `local_guarded`다.
 - `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER=ollama`를 켜면 agent가 로컬 Ollama를 호출하는 `local_llm` mode로 응답할 수 있다.
-- provider, prompt, safety policy, conversation 저장은 agent runtime이 소유한다.
+- provider, prompt, safety policy, response skeleton/validation, conversation 저장은 agent runtime이 소유한다.
+- LLM은 agent가 만든 response skeleton을 말투만 다듬는 역할이며, safety 단계별 검증에 실패하면 `local_guarded` fallback으로 돌아간다.
 - UI는 `conversation_id`를 넘겨 같은 agent-local 대화를 이어가지만, 대화 원문을 중앙으로 보내지 않는다.
 - 범위 밖 질문은 `scope_status=redirected`로 돌리고 마음 도움 범위로 되돌린다.
 - 아이 화면 진입 시 실제 관측 summary가 high 이상이면 `proactive-prompt`로 먼저 말을 꺼낼 수 있다.
