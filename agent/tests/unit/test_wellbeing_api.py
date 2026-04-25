@@ -149,6 +149,7 @@ def test_family_unlock_api_uses_requested_role() -> None:
 def test_wellbeing_router_is_registered_on_agent_app() -> None:
     route_paths = {route.path for route in app.routes}
 
+    assert "/api/v1/child-support/messages" in route_paths
     assert "/api/v1/family/setup/status" in route_paths
     assert "/api/v1/family/setup" in route_paths
     assert "/api/v1/family/unlock" in route_paths

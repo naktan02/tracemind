@@ -1,3 +1,4 @@
+import { ChildSupportCoachPanel } from "../../components/ChildSupportCoachPanel";
 import { WellbeingDataNotice } from "../../components/WellbeingDataNotice";
 import { WellbeingSignalCard } from "../../components/WellbeingSignalCard";
 import { useWellbeingSummary } from "../../hooks/useWellbeingSummary";
@@ -50,18 +51,20 @@ export function ChildPage({ onMoveToParentUnlock }: ChildPageProps) {
         </section>
       )}
 
-      <section className="card-grid">
+      <ChildSupportCoachPanel />
+
+      <section className="card-grid child-guidance-grid">
         <article className="surface-card">
-          <p className="card-label">아이에게 지금 보이는 정보</p>
+          <p className="card-label">아이 화면에서 보이는 것</p>
           <ul className="bullet-list">
             <li>현재 상태 한 줄</li>
             <li>짧은 요약 문구</li>
-            <li>짧은 행동 제안 1개</li>
-            <li>마지막 업데이트 시각</li>
+            <li>AI 마음 도움의 안전한 다음 문장</li>
+            <li>부모님께 말할 준비가 필요한지 여부</li>
           </ul>
         </article>
         <article className="surface-card">
-          <p className="card-label">이 단계에서 여전히 하지 않는 것</p>
+          <p className="card-label">아이 화면에서 하지 않는 것</p>
           <ul className="bullet-list">
             <li>카테고리별 점수 공개</li>
             <li>복잡한 상세 이유 노출</li>

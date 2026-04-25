@@ -8,12 +8,16 @@ from collections.abc import Callable, Mapping
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
+from agent.src.api.child_support import router as child_support_router
 from agent.src.api.family_access import router as family_access_router
 from agent.src.api.health import router as health_router
 from agent.src.api.ingest import router as ingest_router
 from agent.src.api.sync import router as sync_router
 from agent.src.api.training import router as training_router
 from agent.src.api.wellbeing import router as wellbeing_router
+from agent.src.infrastructure.repositories.child_support_repository import (
+    ChildSupportConversationRepository,
+)
 from agent.src.infrastructure.repositories.family_access_repository import (
     FamilyAccessRepository,
 )
@@ -37,6 +41,16 @@ from agent.src.services.federation.rounds.runtime_service import (
 )
 from agent.src.services.inference.pipeline_service import InferencePipelineService
 from agent.src.services.wellbeing.auth_service import ParentAuthService
+from agent.src.services.wellbeing.child_support_context_provider import (
+    ChildSupportContextProvider,
+)
+from agent.src.services.wellbeing.child_support_llm_provider import (
+    ChildSupportLlmProvider,
+    build_child_support_llm_provider_from_env,
+)
+from agent.src.services.wellbeing.child_support_service import (
+    ChildSupportCoachService,
+)
 from agent.src.services.wellbeing.family_access_service import FamilyAccessService
 from agent.src.services.wellbeing.projection_service import (
     WellbeingSignalProjectionService,
@@ -62,9 +76,7 @@ def load_family_extension_allowed_origins_from_env(
 
     effective_environ = os.environ if environ is None else environ
     raw_value = effective_environ.get(FAMILY_EXTENSION_ALLOWED_ORIGINS_ENV, "")
-    origins = tuple(
-        origin.strip() for origin in raw_value.split(",") if origin.strip()
-    )
+    origins = tuple(origin.strip() for origin in raw_value.split(",") if origin.strip())
     return origins or DEFAULT_FAMILY_EXTENSION_ALLOWED_ORIGINS
 
 
@@ -85,11 +97,16 @@ def create_app(
     pipeline_service: InferencePipelineService | None = None,
     scored_event_repository: ScoredEventRepository | None = None,
     query_buffer_repository: QueryBufferRepository | None = None,
+    child_support_conversation_repository: (
+        ChildSupportConversationRepository | None
+    ) = None,
     wellbeing_snapshot_repository: WellbeingSnapshotRepository | None = None,
     family_access_repository: FamilyAccessRepository | None = None,
     wellbeing_settings_repository: WellbeingSettingsRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
+    child_support_coach_service: ChildSupportCoachService | None = None,
+    child_support_llm_provider: ChildSupportLlmProvider | None = None,
     round_client_factory: RoundClientFactory | None = None,
     federation_runtime_service_factory: FederationRuntimeServiceFactory | None = None,
     family_extension_allowed_origins: tuple[str, ...] | None = None,
@@ -112,6 +129,9 @@ def create_app(
     )
     app.state.query_buffer_repository = (
         query_buffer_repository or QueryBufferRepository()
+    )
+    app.state.child_support_conversation_repository = (
+        child_support_conversation_repository or ChildSupportConversationRepository()
     )
     app.state.wellbeing_snapshot_repository = (
         wellbeing_snapshot_repository or WellbeingSnapshotRepository()
@@ -145,6 +165,23 @@ def create_app(
     app.state.parent_auth_service = ParentAuthService(
         family_access_service=app.state.family_access_service,
     )
+    app.state.child_support_coach_service = (
+        child_support_coach_service
+        or ChildSupportCoachService(
+            conversation_repository=(app.state.child_support_conversation_repository),
+            context_provider=ChildSupportContextProvider(
+                summary_service=app.state.wellbeing_summary_service,
+                query_buffer_repository=app.state.query_buffer_repository,
+                conversation_repository=(
+                    app.state.child_support_conversation_repository
+                ),
+            ),
+            llm_provider=(
+                child_support_llm_provider
+                or build_child_support_llm_provider_from_env()
+            ),
+        )
+    )
     app.state.round_client_factory = (
         round_client_factory or _default_round_client_factory
     )
@@ -156,6 +193,7 @@ def create_app(
         app.state.pipeline_service = pipeline_service
 
     app.include_router(health_router)
+    app.include_router(child_support_router)
     app.include_router(family_access_router)
     app.include_router(ingest_router)
     app.include_router(sync_router)

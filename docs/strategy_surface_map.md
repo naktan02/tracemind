@@ -146,6 +146,30 @@ Embedding
 - [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
 - [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
 
+### 1-1. 아이용 지원 대화 전략 축
+
+| 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
+|---|---|---|---|---|---|
+| Child Support Reply Provider | `local_guarded`, `ollama` | `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER` | unset -> `local_guarded` | 환경변수 `ollama`, `TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL` | 활성 runtime |
+| Child Support Safety Policy | `supportive`, `check_in`, `parent_handoff`, `urgent` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Scope Policy | `in_scope`, `redirected` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
+
+중요:
+
+- 이 축은 분류/FL 학습 family가 아니라 child UI 응답 생성 provider 축이다.
+- raw child message, conversation history, query context는 agent-local 저장소와 prompt
+  context에만 남기며 main_server로 올리지 않는다.
+- cloud LLM provider를 열 경우에도 기본값으로 승격하지 말고 명시적 opt-in과
+  prompt context 축소 정책을 별도로 둔다.
+
+관련 파일:
+
+- [agent/src/services/wellbeing/child_support_service.py](../agent/src/services/wellbeing/child_support_service.py)
+- [agent/src/services/wellbeing/child_support_llm_provider.py](../agent/src/services/wellbeing/child_support_llm_provider.py)
+- [agent/src/services/wellbeing/child_support_safety_policy.py](../agent/src/services/wellbeing/child_support_safety_policy.py)
+- [agent/src/infrastructure/repositories/child_support_repository.py](../agent/src/infrastructure/repositories/child_support_repository.py)
+- [shared/src/contracts/child_support_contracts.py](../shared/src/contracts/child_support_contracts.py)
+
 ## 2. main_server round/runtime 전략 축
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |

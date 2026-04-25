@@ -16,31 +16,37 @@ source-of-truth 우선순위를 먼저 확인한다.
    - AI용 문맥 지도와 task route
 2. `AGENTS.md`
    - 저장소 구조, 소유 경계, 작업 규칙
-3. `plan.md` (repo root)
+3. `docs/architecture/system-overview.md`
+   - 현재 런타임 구성요소, 활성 rail, 코드 소유 경계
+4. `docs/operations/local-runbook.md`
+   - 로컬 실행, GPU preflight, smoke 절차
+5. `plan.md` (repo root)
    - 왜 seed 단계와 적응 단계를 분리했는지
-4. `docs/project_execution_plan.md`
+6. `docs/project_execution_plan.md`
    - 지금 무엇을 구현하고 무엇을 미루는지, Phase별 현황
-5. `shared/src/contracts/README.md`
+7. `docs/api/api-surface.md`
+   - agent/main_server API route 표면과 contract source
+8. `shared/src/contracts/README.md`
    - 현재 payload 계약 해석
-6. `docs/fl_runtime_implementation_checklist.md`
+9. `docs/fl_runtime_implementation_checklist.md`
    - 시스템 FL 트랙의 실제 구현 순서와 완료 기준
-7. `docs/contracts/algorithm_extension_guide.md`
+10. `docs/contracts/algorithm_extension_guide.md`
    - 알고리즘/전략 교체 시 어느 파일을 보고 어떤 Protocol을 구현할지
-8. `docs/contracts/strategy_addition_playbook.md`
+11. `docs/contracts/strategy_addition_playbook.md`
    - 새 전략을 어떤 순서로 구현, 등록, 기본값 반영, 테스트할지
-9. `docs/strategy_surface_map.md`
+12. `docs/strategy_surface_map.md`
    - 지금 실제로 바꿀 수 있는 전략 축과 metadata-only 축을 한눈에 확인
-10. `docs/contracts/query_buffer_v1.md`
+13. `docs/contracts/query_buffer_v1.md`
    - query buffer와 threshold/policy selection의 local boundary
-11. `shared/src/contracts/workspace_manifest_contracts.py`
+14. `shared/src/contracts/workspace_manifest_contracts.py`
    - Phase 2 workspace manifest와 compile preview canonical contract
-12. web 구현을 볼 때만 `apps/AGENTS.md`
+15. web 구현을 볼 때만 `apps/AGENTS.md`
    - UI shell이 contract source of truth가 되지 않게 유지하는 규칙
-13. 필요한 경우만 `docs/staged_execution_roadmap.md`
+16. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
-14. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
+17. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
    - 아이용/부모용 확장 화면과 로컬 프로그램 API의 단계별 계획
-15. 가족용 확장 UI 구현을 볼 때만 `apps/family_extension/AGENTS.md`
+18. 가족용 확장 UI 구현을 볼 때만 `apps/family_extension/AGENTS.md`
    - popup shell, 부모 상세 entry, wellbeing output consumer 규칙
 
 ## AI Harness 빠른 경로
@@ -72,7 +78,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 12. `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 13. `scripts/experiments/lora_classifier/query_ssl/augmentation.py`
 14. 관련 Hydra config (`scripts/conf/experiments/train_lora_classifier.yaml`, `scripts/conf/experiments/train_lora_bootstrap_classifier_teacher.yaml`, `scripts/conf/experiments/train_lora_pseudo_label_classifier.yaml`, `scripts/conf/experiments/train_lora_fixmatch.yaml`, `scripts/conf/query_adaptation_initial_checkpoint/*`, `scripts/conf/query_ssl_method/*`, `scripts/conf/query_ssl_train_source/*`, `scripts/conf/query_ssl_augmenter/*`, `scripts/conf/paper_backbone/*`, `scripts/conf/lora/*`)
-13. 필요 시 적응 단계 실험 스크립트/노트북
+15. 필요 시 적응 단계 실험 스크립트/노트북
 
 ### agent 로컬 추론/학습
 
@@ -109,6 +115,11 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 | `docs/ai_harness_operating_model.md` | 하네스 유지보수용 보조 문서 |
 | `docs/ai_harness_eval_cases.yaml` | maintainer 전용 harness spot check sample |
 | `AGENTS.md` | 저장소 구조, 소유 경계, 작업 규칙 |
+| `docs/architecture/system-overview.md` | 현재 런타임, 활성 rail, 코드 소유 경계 |
+| `docs/api/api-surface.md` | agent/main_server API route 표면과 contract source |
+| `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke 절차 |
+| `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
+| `docs/governance/document-governance.md` | 문서 class, source-of-truth, 갱신 규칙 |
 | `plan.md` | 연구 비전, 핵심 가설, staged seed/adaptation 원칙 |
 | `docs/project_execution_plan.md` | 활성 아키텍처, 현재 Phase, 다음 액션, 검증 기준 |
 | `docs/fl_runtime_implementation_checklist.md` | 시스템 FL 트랙 구현 작업표 |
@@ -134,6 +145,14 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 4. `docs/contracts/algorithm_extension_guide.md`에서 해당 전략 지점을 찾는다.
 5. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
 6. 사용자 판단이 필요한 항목인지 확인한다.
+
+## 운영 문서 빠른 경로
+
+1. 시스템 구조 확인: `docs/architecture/system-overview.md`
+2. API route 확인: `docs/api/api-surface.md`
+3. 로컬 실행과 smoke: `docs/operations/local-runbook.md`
+4. 테스트 범위 확인: `docs/quality/test-strategy.md`
+5. 문서 갱신 기준 확인: `docs/governance/document-governance.md`
 
 ## 문서 우선순위
 

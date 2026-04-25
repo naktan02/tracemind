@@ -48,11 +48,11 @@ export const ROUTE_META: Record<AppRoute, AppRouteMeta> = {
       "부모용 상세 화면으로 들어가기 전에 role 전용 PIN 검증을 수행합니다.",
   },
   "/child": {
-    label: "아이용 화면",
-    eyebrow: "Child View",
-    title: "아이용 wellbeing summary",
+    label: "AI 마음 도움",
+    eyebrow: "Child Support",
+    title: "아이용 AI 마음 도움",
     description:
-      "아이에게 보여줄 현재 상태, 짧은 요약, 행동 제안을 wellbeing summary 한 건으로 보여줍니다.",
+      "아이에게 보여줄 현재 상태와 로컬 agent의 안전한 대화 도움을 함께 보여줍니다.",
   },
   "/parent": {
     label: "부모 상세 화면",

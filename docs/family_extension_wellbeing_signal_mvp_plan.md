@@ -17,7 +17,7 @@
 ```text
 Setup
   -> Gate
-    -> Child Unlock -> Child View
+    -> Child Unlock -> Child View + AI Support
     -> Parent Unlock -> Parent Detail
 ```
 
@@ -25,9 +25,10 @@ Setup
 
 1. 외부 UI는 내부 카테고리 점수를 노출하지 않는다.
 2. 외부 UI는 `wellbeing_signal` 결과만 소비한다.
-3. child와 parent는 모두 잠금 경계를 거친다.
-4. 현재는 `this_device_only` access mode만 지원한다.
-5. role 화면을 벗어나면 즉시 세션을 폐기한다.
+3. 아이용 지원 대화는 로컬 agent API만 호출하고 외부 provider를 UI가 직접 호출하지 않는다.
+4. child와 parent는 모두 잠금 경계를 거친다.
+5. 현재는 `this_device_only` access mode만 지원한다.
+6. role 화면을 벗어나면 즉시 세션을 폐기한다.
 
 ## Canonical Contract
 
@@ -69,6 +70,21 @@ Setup
 - `FamilyUnlockRequestPayload`
 - `FamilyUnlockResponsePayload`
 
+### `ChildSupportConversation*`
+
+- child view의 AI 마음 도움 단일 turn source of truth
+- 현재 기본 응답 mode는 `local_guarded`다.
+- `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER=ollama`를 켜면 agent가 로컬 Ollama를 호출하는 `local_llm` mode로 응답할 수 있다.
+- provider, prompt, safety policy, conversation 저장은 agent runtime이 소유한다.
+- UI는 `conversation_id`를 넘겨 같은 agent-local 대화를 이어가지만, 대화 원문을 중앙으로 보내지 않는다.
+- 범위 밖 질문은 `scope_status=redirected`로 돌리고 마음 도움 범위로 되돌린다.
+
+주요 payload:
+
+- `ChildSupportConversationRequestPayload`
+- `ChildSupportConversationResponsePayload`
+- `ChildSupportSuggestionPayload`
+
 ## 로컬 프로그램 API
 
 현재 필요한 API:
@@ -76,6 +92,7 @@ Setup
 - `GET /api/v1/family/setup/status`
 - `POST /api/v1/family/setup`
 - `POST /api/v1/family/unlock`
+- `POST /api/v1/child-support/messages`
 - `GET /api/v1/wellbeing/summary`
 - `GET /api/v1/wellbeing/timeseries?range=7d|14d|30d`
 - `GET /api/v1/system/health`
@@ -95,6 +112,10 @@ Setup
   - child/parent role별 PIN hash, 실패 횟수, 잠금 시각
 - `wellbeing_settings`
   - role별 session/lock/attempt 기본값
+- `child_support_conversations`
+  - 아이용 AI 마음 도움 conversation metadata
+- `child_support_messages`
+  - 아이/assistant message 원문과 safety metadata
 
 ## 확장 라우트
 
@@ -124,26 +145,36 @@ Setup
 5. family access SQLite 저장 구조
 6. extension shell
 7. child summary view
-8. parent detail view
-9. health/low-data/stale-data 상태 표시
-10. local-only setup + gate + role별 unlock
+8. child AI support view
+9. parent detail view
+10. health/low-data/stale-data 상태 표시
+11. local-only setup + gate + role별 unlock
+12. child-support agent-local conversation 저장
+13. child-support local context provider
+14. optional Ollama LLM adapter
+15. 마음 도움 범위 제한 redirect
 
 ## 아직 하지 않는 것
 
 1. 원격 agent 페어링/선택
 2. 별도 부모 웹 대시보드
 3. 다중 자녀 프로필
-4. LLM 대화
-5. persisted personalization state와의 정밀 연결
-6. child/parent별 세션 정책 세분화
+4. cloud LLM provider opt-in 연동
+5. 부모 알림/신고 자동화
+6. persisted personalization state와의 정밀 연결
+7. child/parent별 세션 정책 세분화
+8. 먼저 말 걸기 trigger policy와 빈도 제한
 
 ## 다음 우선순위
 
 현재 MVP는 한번 멈추고 실제 사용 흐름을 보는 단계까지 왔다.
 
-다음 후보는 아래 둘 중 하나다.
+다음 후보는 아래 셋 중 하나다.
 
 1. `personalization state`를 wellbeing projection에 더 정밀하게 연결
-2. `empty-state / no-data-state`를 mock 없이 더 명시적으로 다듬기
+2. child-support 먼저 말 걸기 trigger policy와 부모 opt-in 알림 경계 추가
+3. `empty-state / no-data-state`를 mock 없이 더 명시적으로 다듬기
 
-즉 다음 확장은 새 화면 추가보다 `로컬 해석 결과의 품질과 의미를 더 정밀하게 연결하는 작업`이 우선이다.
+cloud LLM provider를 붙일 때도 UI가 provider를 직접 호출하지 않고,
+`agent/src/services/wellbeing/child_support_service.py` 뒤쪽 adapter만 교체한다.
+기본값은 agent-local Ollama 또는 deterministic guarded response로 둔다.

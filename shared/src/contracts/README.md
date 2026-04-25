@@ -93,6 +93,27 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `FamilyUnlockResponsePayload`
   - role별 세션 메타데이터와 남은 시도 횟수
 
+### `child_support_contracts.py`
+
+가족용 확장 프로그램의 아이용 지원 대화 API 경계를 정의한다.
+
+- `ChildSupportConversationRequestPayload`
+  - child UI가 로컬 agent에 보내는 단일 turn 입력
+  - raw message는 로컬 agent API에만 전달되며 서버 공유 artifact가 아니다
+- `ChildSupportConversationResponsePayload`
+  - agent가 반환하는 단일 turn 응답
+  - `conversation_id`는 agent-local 대화 저장소의 conversation key다
+  - `assistant_mode`는 현재 응답 생성 backend가 `local_guarded`, `local_llm`, future `llm` 중 무엇인지 나타낸다
+  - `safety_level`은 child UI가 과도한 내부 점수 없이 표시할 수 있는 지원 단계다
+  - `scope_status`는 마음 도움 범위 안에서 답했는지, 별도 질문을 redirect했는지 나타낸다
+- `ChildSupportSuggestionPayload`
+  - 후속 입력 suggestion
+
+중요:
+
+- 대화 원문, conversation 저장, LLM provider, prompt, safety policy 실행 방식은 agent runtime이 소유한다.
+- UI는 응답을 표시하고 다음 입력을 보낼 뿐, wellbeing이나 safety 의미를 재정의하지 않는다.
+
 ### `prototype_contracts.py`
 
 Prototype runtime이 직접 읽는 semantic artifact 계약을 정의한다.

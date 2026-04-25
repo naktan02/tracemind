@@ -66,8 +66,13 @@
 3. `wellbeing/timeseries_service.py`
 4. `wellbeing/projection_service.py`
 5. `wellbeing/auth_service.py`
-6. `agent/src/api/family_access.py`
-7. `agent/src/api/wellbeing.py`
+6. `wellbeing/child_support_service.py`
+7. `wellbeing/child_support_context_provider.py`
+8. `wellbeing/child_support_safety_policy.py`
+9. `wellbeing/child_support_llm_provider.py`
+10. `agent/src/api/family_access.py`
+11. `agent/src/api/child_support.py`
+12. `agent/src/api/wellbeing.py`
 
 ## 파일 역할 빠른 맵
 

@@ -39,6 +39,38 @@ export interface FamilyUnlockResponsePayload {
   locked_until: string | null;
 }
 
+export type ChildSupportAssistantMode = "local_guarded" | "local_llm" | "llm";
+
+export type ChildSupportSafetyLevel = "supportive" | "check_in" | "parent_handoff" | "urgent";
+
+export type ChildSupportScopeStatus = "in_scope" | "redirected";
+
+export interface ChildSupportSuggestionPayload {
+  id: string;
+  label: string;
+  prompt: string;
+}
+
+export interface ChildSupportConversationRequestPayload {
+  message: string;
+  conversation_id: string | null;
+}
+
+export interface ChildSupportConversationResponsePayload {
+  schema_version: string;
+  conversation_id: string;
+  message_id: string;
+  created_at: string;
+  assistant_mode: ChildSupportAssistantMode;
+  safety_level: ChildSupportSafetyLevel;
+  scope_status: ChildSupportScopeStatus;
+  reply_text: string;
+  suggested_prompts: ChildSupportSuggestionPayload[];
+  parent_handoff_suggested: boolean;
+  parent_handoff_label: string | null;
+  disclosure_notice: string;
+}
+
 export type WellbeingSignalLevel = "low" | "moderate" | "high" | "very_high";
 
 export type WellbeingSignalTrend = "rising" | "steady" | "falling" | "volatile" | "unknown";

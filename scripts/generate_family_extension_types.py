@@ -9,6 +9,7 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
+import shared.src.contracts.child_support_contracts as child_support_contracts
 import shared.src.contracts.family_access_contracts as family_access_contracts
 import shared.src.contracts.wellbeing_signal_contracts as wellbeing_signal_contracts
 
@@ -37,6 +38,30 @@ TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
     (
         "FamilyUnlockResponsePayload",
         family_access_contracts.FamilyUnlockResponsePayload,
+    ),
+    (
+        "ChildSupportAssistantMode",
+        child_support_contracts.ChildSupportAssistantMode,
+    ),
+    (
+        "ChildSupportSafetyLevel",
+        child_support_contracts.ChildSupportSafetyLevel,
+    ),
+    (
+        "ChildSupportScopeStatus",
+        child_support_contracts.ChildSupportScopeStatus,
+    ),
+    (
+        "ChildSupportSuggestionPayload",
+        child_support_contracts.ChildSupportSuggestionPayload,
+    ),
+    (
+        "ChildSupportConversationRequestPayload",
+        child_support_contracts.ChildSupportConversationRequestPayload,
+    ),
+    (
+        "ChildSupportConversationResponsePayload",
+        child_support_contracts.ChildSupportConversationResponsePayload,
     ),
     ("WellbeingSignalLevel", wellbeing_signal_contracts.WellbeingSignalLevel),
     ("WellbeingSignalTrend", wellbeing_signal_contracts.WellbeingSignalTrend),
@@ -196,8 +221,7 @@ def render_schema(
             inline_fields = []
             for field_name, field_schema in properties.items():
                 inline_fields.append(
-                    f"{field_name}: "
-                    f"{render_schema(field_schema, definitions)}"
+                    f"{field_name}: {render_schema(field_schema, definitions)}"
                 )
             return "{ " + "; ".join(inline_fields) + " }"
         if additional_properties in (True, None):
@@ -206,8 +230,7 @@ def render_schema(
             return "Record<string, never>"
         if isinstance(additional_properties, Mapping):
             return (
-                "Record<string, "
-                f"{render_schema(additional_properties, definitions)}>"
+                f"Record<string, {render_schema(additional_properties, definitions)}>"
             )
     title = schema.get("title")
     if isinstance(title, str) and title in definitions:

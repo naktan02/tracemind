@@ -34,6 +34,16 @@ active_entrypoints:
     use_for: research goal and global/local boundary
   - path: docs/project_execution_plan.md
     use_for: active architecture and next priorities
+  - path: docs/architecture/system-overview.md
+    use_for: current runtime components, active rails, and ownership boundaries
+  - path: docs/api/api-surface.md
+    use_for: agent and main_server FastAPI route surface
+  - path: docs/operations/local-runbook.md
+    use_for: local setup, run, GPU preflight, and smoke commands
+  - path: docs/quality/test-strategy.md
+    use_for: test layer map and protection scope
+  - path: docs/governance/document-governance.md
+    use_for: document classes and source-of-truth update rules
   - path: docs/contracts/central_lora_classifier_trainer_contract.md
     use_for: query-domain LoRA adaptation scaffold and output boundary
   - path: docs/contracts/query_buffer_v1.md
@@ -116,12 +126,15 @@ task_routes:
       - AGENTS.md
       - docs/AGENTS.md
       - docs/execution_index.md
+      - docs/governance/document-governance.md
+      - docs/architecture/system-overview.md
       - docs/project_execution_plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
     verify:
       - duplicate guidance is reduced
       - notes stay archive-only
       - source of truth remains code-adjacent
+      - README and manifest point to any new active docs
 
   family_extension_mvp:
     read_order:
