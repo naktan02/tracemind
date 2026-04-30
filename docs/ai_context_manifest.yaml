@@ -11,6 +11,7 @@ canonical_layers:
 
 path_specific_instructions:
   - apps/AGENTS.md
+  - apps/experiment_web/AGENTS.md
   - apps/family_extension/AGENTS.md
   - shared/AGENTS.md
   - agent/AGENTS.md
@@ -120,6 +121,18 @@ task_routes:
       - Hydra config remains the source of truth
       - script-only logic does not absorb runtime core
       - related script tests are updated
+
+  experiment_web:
+    read_order:
+      - AGENTS.md
+      - docs/execution_index.md
+      - apps/AGENTS.md
+      - apps/experiment_web/AGENTS.md
+      - shared/src/contracts/README.md
+    verify:
+      - UI remains a contract/API consumer
+      - track separation stays explicit
+      - generated src/types.ts is not manually edited
 
   docs_sync:
     read_order:

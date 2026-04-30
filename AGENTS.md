@@ -13,6 +13,15 @@
    - `shared/`, `agent/`, `main_server/`, `scripts/`, `tests/`, `docs/`, `apps/`
 4. 관련 code contract와 active docs
 
+## AI Working Principles
+
+하네스는 아래 행동 기준을 기본값으로 둔다.
+
+- 모호한 요구나 여러 해석이 있으면 가정, 선택지, 성공 기준을 먼저 드러낸다.
+- 요청과 직접 연결되는 파일만 고치고, 주변 리팩터링은 별도 필요로 언급한다.
+- 단일 사용처를 위한 추상화, 설정 축, compatibility layer를 미리 만들지 않는다.
+- 변경은 테스트, lint, 실행 결과처럼 검증 가능한 기준으로 닫는다.
+
 ## Project Structure & Ownership
 
 이 저장소는 역할별 모듈이 나뉜 monorepo 구조다.
@@ -57,20 +66,8 @@
 3. `docs/contracts/*`, `docs/*`
 4. `docs/notes/**`
 
-기본 진입점은 아래 순서를 따른다.
-
-1. `docs/ai_context_manifest.yaml`
-2. `docs/execution_index.md`
-3. `plan.md`
-4. `docs/project_execution_plan.md`
-5. `docs/architecture/system-overview.md`
-6. `docs/api/api-surface.md`
-7. `docs/operations/local-runbook.md`
-8. `docs/contracts/central_lora_classifier_trainer_contract.md`
-   - 논문 트랙의 canonical LoRA scaffold와 산출물 경계
-9. `shared/src/contracts/README.md`
-10. `docs/fl_runtime_implementation_checklist.md`
-11. `docs/contracts/algorithm_extension_guide.md`
+세부 active doc 목록과 읽기 순서는 `docs/execution_index.md`가 소유한다.
+task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
 
 ## Architecture Direction
 

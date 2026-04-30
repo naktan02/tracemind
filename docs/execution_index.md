@@ -42,11 +42,13 @@ source-of-truth 우선순위를 먼저 확인한다.
    - Phase 2 workspace manifest와 compile preview canonical contract
 15. web 구현을 볼 때만 `apps/AGENTS.md`
    - UI shell이 contract source of truth가 되지 않게 유지하는 규칙
-16. 필요한 경우만 `docs/staged_execution_roadmap.md`
+16. 실험 workspace UI 구현을 볼 때만 `apps/experiment_web/AGENTS.md`
+   - track separation, compile preview, generated type ownership 규칙
+17. 필요한 경우만 `docs/staged_execution_roadmap.md`
    - Phase 이름과 검증 포인트 빠른 확인
-17. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
+18. 가족용 확장 MVP를 볼 때만 `docs/family_extension_wellbeing_signal_mvp_plan.md`
    - 아이용/부모용 확장 화면과 로컬 프로그램 API의 단계별 계획
-18. 가족용 확장 UI 구현을 볼 때만 `apps/family_extension/AGENTS.md`
+19. 가족용 확장 UI 구현을 볼 때만 `apps/family_extension/AGENTS.md`
    - popup shell, 부모 상세 entry, wellbeing output consumer 규칙
 
 ## AI Harness 빠른 경로
