@@ -9,9 +9,10 @@ prototype scoring은 bootstrap/comparison 경로로 유지한다.
 
 - `agent/src/services/README.md`
 - 로컬 추론 rail: `agent/src/services/inference/`
-- 프로토타입 runtime: `agent/src/services/prototype/`
+- 프로토타입 runtime: `agent/src/services/assets/prototypes/`
 - 로컬 학습 rail: `agent/src/services/training/`
-- 서버 참여 orchestration: `agent/src/services/federation/`
+- 서버 참여 orchestration: `agent/src/services/federation/rounds/`
+- language helper: `agent/src/services/language/`
 
 모델 교체 시작점:
 

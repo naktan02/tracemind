@@ -41,9 +41,13 @@ data/processed/
 embeddings/
 main_server/state/
 agent/state/
+agent/data/*.db
 runs/
 
 .DS_Store
 .idea/
 .vscode/
 tmp/
+node_modules/
+dist/
+npm-debug.log*

@@ -22,7 +22,7 @@
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `agent` 또는 `main_server` |
-| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/rounds/runtime_config.py` |
+| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
 판별 기준은 단순하다.
@@ -67,8 +67,8 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 
 작업 순서:
@@ -96,9 +96,9 @@
 
 보통 수정 파일:
 
-- [agent/src/services/training/input_backends/__init__.py](../../agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](../../agent/src/services/federation/training_example_service.py)
-- 필요 시 [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
+- [agent/src/services/training/backends/inputs/__init__.py](../../agent/src/services/training/backends/inputs/__init__.py)
+- [agent/src/services/training/examples/service.py](../../agent/src/services/training/examples/service.py)
+- 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 
 작업 순서:
 
@@ -125,8 +125,9 @@
 
 1. scorer backend를 추가할지, 기존 backend 안의 policy만 추가할지 먼저 나눈다.
 2. backend면 `register_scoring_backend(...)`, policy면 `register_prototype_score_policy(...)`에 등록한다.
-3. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
-4. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
+3. backend면 `confidence_kind`를 같이 선언해 pipeline/query buffer가 이름 분기 없이 읽게 한다.
+4. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
+5. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
 
 우선 볼 테스트:
 
@@ -139,8 +140,8 @@
 
 보통 수정 파일:
 
-- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
-- 기본 backend를 바꿀 때만 [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
+- 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 
 작업 순서:
 
@@ -168,12 +169,12 @@
 
 - [shared/src/contracts/adapter_contracts.py](../../shared/src/contracts/adapter_contracts.py)
 - [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
-- [agent/src/services/training/training_backends/__init__.py](../../agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/privacy_guard_service.py](../../agent/src/services/training/privacy_guard_service.py)
-- [agent/src/services/training/runtime_compatibility.py](../../agent/src/services/training/runtime_compatibility.py)
-- [main_server/src/services/rounds/aggregation_service.py](../../main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](../../main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/mappers.py](../../main_server/src/services/rounds/mappers.py)
+- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../../agent/src/services/training/execution/privacy_guard_service.py)
+- [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
+- [main_server/src/services/federation/rounds/families/registry.py](../../main_server/src/services/federation/rounds/families/registry.py)
+- [main_server/src/services/federation/rounds/boundary/mappers.py](../../main_server/src/services/federation/rounds/boundary/mappers.py)
 
 작업 순서:
 
@@ -197,7 +198,7 @@
 - local training 기본 전략:
   - [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 - server round runtime 기본 aggregation:
-  - [main_server/src/services/rounds/runtime_config.py](../../main_server/src/services/rounds/runtime_config.py)
+  - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:
   - `scripts/conf/experiments/` 아래 Hydra config group
 

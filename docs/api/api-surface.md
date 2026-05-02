@@ -1,0 +1,185 @@
+# TraceMind API Surface
+
+이 문서는 2026-04-25 기준 FastAPI route 표면을 빠르게 찾기 위한 문서다.
+
+요청/응답 payload 필드의 최종 source of truth는 각 route의 Pydantic 모델과 `shared/src/contracts/*.py`다. 이 문서는 endpoint 위치와 책임 경계만 요약한다.
+
+## 1. App Entry Points
+
+| 앱 | import path | 기본 역할 |
+|---|---|---|
+| Agent API | `agent.src.api.main:app` | 로컬 수집, inference, query/local state, training participation, family/wellbeing output |
+| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication, experiment workspace backend |
+
+로컬 실행 예시:
+
+```bash
+uv run uvicorn main_server.src.api.main:app --reload --port 8000
+uv run uvicorn agent.src.api.main:app --reload --port 8001
+```
+
+## 2. API Boundary Rules
+
+| 규칙 | 의미 |
+|---|---|
+| raw text는 agent local boundary에 남긴다 | 서버 API는 query buffer 원문을 읽지 않는다 |
+| shared contract는 코드가 source of truth다 | API 문서가 payload 필드를 복제해 정본이 되지 않는다 |
+| route는 orchestration edge다 | domain rule과 training/inference mechanism은 services/domain 계층에 둔다 |
+| CORS는 dev UI origin 중심이다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
+
+현재 route-level 인증 dependency는 명시적으로 두껍게 걸려 있지 않다. 외부 노출 전에는 API key, local-only binding, reverse proxy policy, family PIN/session 경계를 별도 security pass로 닫아야 한다.
+
+## 3. Agent API
+
+Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
+
+### Health
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/health` | agent health probe | `agent/src/api/health.py` |
+| GET | `/api/v1/system/health` | family extension이 로컬 프로그램 상태 확인 | `agent/src/api/wellbeing.py` |
+
+### Ingest
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| POST | `/api/v1/ingest/event` | 단일 텍스트 이벤트를 inference pipeline으로 처리 | `agent/src/api/ingest.py` |
+| POST | `/api/v1/ingest/batch` | 최대 100개 이벤트 일괄 처리 | `agent/src/api/ingest.py` |
+| GET | `/api/v1/ingest/status` | 저장된 scored event 수 조회 | `agent/src/api/ingest.py` |
+
+주요 payload:
+
+| Payload | Source |
+|---|---|
+| `IngestEventRequest` | `agent/src/api/ingest.py` |
+| `IngestEventResponse` | `agent/src/api/ingest.py` |
+| `QueryEvent` | `shared/src/domain/entities/inference/events.py` |
+
+### Prototype Sync
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/api/v1/sync/prototypes/current` | agent local active prototype pack 조회 | `agent/src/api/sync.py` |
+| POST | `/api/v1/sync/prototypes/pull` | main server의 current prototype pack을 local로 pull | `agent/src/api/sync.py` |
+
+### Training
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| POST | `/api/v1/training/run-current-task` | server active task를 읽어 local training 후 update upload | `agent/src/api/training.py` |
+| GET | `/api/v1/training/status` | server active task 존재 여부 조회 | `agent/src/api/training.py` |
+
+주요 payload:
+
+| Payload | Source |
+|---|---|
+| `RunCurrentTaskRequest` | `agent/src/api/training.py` |
+| `RunCurrentTaskResponse` | `agent/src/api/training.py` |
+| `TrainingTaskPayload` | `shared/src/contracts/training_contracts.py` |
+| `TrainingUpdateEnvelopePayload` | `shared/src/contracts/training_contracts.py` |
+
+### Family Access and Wellbeing
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| POST | `/api/v1/child-support/messages` | 아이용 지원 대화 응답 생성 및 agent-local conversation 저장 | `agent/src/api/child_support.py` |
+| GET | `/api/v1/child-support/proactive-prompt` | 아이 화면 진입 시 선제 발화 필요 여부 조회 | `agent/src/api/child_support.py` |
+| GET | `/api/v1/family/setup/status` | 최초 setup 완료 여부 조회 | `agent/src/api/family_access.py` |
+| POST | `/api/v1/family/setup` | child/parent PIN 최초 설정 | `agent/src/api/family_access.py` |
+| POST | `/api/v1/family/unlock` | role별 PIN 잠금 해제 | `agent/src/api/family_access.py` |
+| GET | `/api/v1/wellbeing/summary` | 현재 wellbeing summary 조회 | `agent/src/api/wellbeing.py` |
+| GET | `/api/v1/wellbeing/timeseries` | 부모용 추이 조회 | `agent/src/api/wellbeing.py` |
+| POST | `/api/v1/parent/unlock` | 부모 상세 화면용 PIN 검증 | `agent/src/api/wellbeing.py` |
+
+주요 contract:
+
+| Contract | Source |
+|---|---|
+| `ChildSupportConversation*` | `shared/src/contracts/child_support_contracts.py` |
+| `ChildSupportProactivePromptPayload` | `shared/src/contracts/child_support_contracts.py` |
+| `FamilySetup*`, `FamilyUnlock*` | `shared/src/contracts/family_access_contracts.py` |
+| `WellbeingSignalSummaryPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |
+| `WellbeingSignalTimeseriesPayload` | `shared/src/contracts/wellbeing_signal_contracts.py` |
+
+`ChildSupportConversation*` raw message와 conversation 저장은 agent-local
+SQLite 경계다. main_server API는 child-support 원문을 읽지 않는다.
+
+## 4. Main Server API
+
+Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
+
+### Health
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/health` | main server health probe | `main_server/src/api/health.py` |
+
+### FL Rounds
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/api/v1/fl/rounds/current` | 현재 active round 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds` | 새 round open | `main_server/src/api/fl_rounds.py` |
+| GET | `/api/v1/fl/rounds/{round_id}` | 특정 round 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/{round_id}/updates` | agent update envelope accept | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/{round_id}/finalize` | round finalize와 aggregation/publication | `main_server/src/api/fl_rounds.py` |
+
+주요 payload:
+
+| Payload | Source |
+|---|---|
+| `RoundOpenRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
+| `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
+| `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
+| `TrainingUpdateEnvelopePayload` | `shared/src/contracts/training_contracts.py` |
+
+### Prototype Packs
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/api/v1/prototypes/current` | current prototype pack pointer와 payload 조회 | `main_server/src/api/prototypes.py` |
+| GET | `/api/v1/prototypes/{prototype_version}` | version별 prototype pack 조회 | `main_server/src/api/prototypes.py` |
+| POST | `/api/v1/prototypes/activate` | prototype pack 활성화 | `main_server/src/api/prototypes.py` |
+
+주요 contract:
+
+| Contract | Source |
+|---|---|
+| `PrototypePackPayload` | `shared/src/contracts/prototype_contracts.py` |
+| `PrototypePackActivation*` | `shared/src/contracts/prototype_contracts.py` |
+
+### Experiment Workspace
+
+모든 path는 `/api/v1/experiments` prefix를 가진다.
+
+| Method | Path | 역할 | Source |
+|---|---|---|---|
+| GET | `/api/v1/experiments/catalog` | 현재 코드/설정 기준 read-only experiment catalog | `main_server/src/api/experiment_catalog_routes.py` |
+| POST | `/api/v1/experiments/compile` | workspace manifest를 Hydra/script preview로 compile | `main_server/src/api/experiment_catalog_routes.py` |
+| GET | `/api/v1/experiments/workspaces` | saved workspace 목록 조회 | `main_server/src/api/experiment_workspace_routes.py` |
+| POST | `/api/v1/experiments/workspaces` | workspace manifest compile 후 저장 | `main_server/src/api/experiment_workspace_routes.py` |
+| GET | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 상세 조회 | `main_server/src/api/experiment_workspace_routes.py` |
+| DELETE | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 삭제 | `main_server/src/api/experiment_workspace_routes.py` |
+| GET | `/api/v1/experiments/runs` | local experiment run 목록 조회 | `main_server/src/api/experiment_run_routes.py` |
+| POST | `/api/v1/experiments/runs` | local experiment run 시작 | `main_server/src/api/experiment_run_routes.py` |
+| GET | `/api/v1/experiments/runs/{run_id}` | experiment run 상태 조회 | `main_server/src/api/experiment_run_routes.py` |
+| GET | `/api/v1/experiments/runs/{run_id}/logs/{stream_name}` | stdout/stderr log 반환 | `main_server/src/api/experiment_run_routes.py` |
+
+주요 contract:
+
+| Contract | Source |
+|---|---|
+| `WorkspaceManifestPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
+| `ResolvedExperimentPlanPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
+| `ExperimentCatalogPayload` | `main_server/src/services/experiment_workspace/payloads.py` |
+
+## 5. API 변경 시 갱신 기준
+
+| 변경 | 같이 확인할 것 |
+|---|---|
+| shared payload 변경 | `shared/src/contracts/*.py`, contract tests, producer/consumer, 관련 `docs/contracts/*` |
+| agent route 변경 | `agent/tests/unit/*_api.py`, `docs/api/api-surface.md`, relevant app consumer |
+| main_server route 변경 | `main_server/tests/unit/*_api.py`, root integration tests, `docs/api/api-surface.md` |
+| family/wellbeing route 변경 | `apps/family_extension`, generated types, `docs/family_extension_wellbeing_signal_mvp_plan.md` |
+| experiment workspace route 변경 | `apps/experiment_web`, generated types, `shared/src/contracts/workspace_manifest_contracts.py` |

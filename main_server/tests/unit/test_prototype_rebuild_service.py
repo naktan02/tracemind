@@ -14,7 +14,7 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository as prototype_rebuild_input_repository_module,
 )
-from main_server.src.services.prototypes import (
+from main_server.src.services.federation.assets.prototypes import (
     InMemoryPrototypePublicationStrategy,
     PrototypeBuildStateService,
     PrototypePackService,

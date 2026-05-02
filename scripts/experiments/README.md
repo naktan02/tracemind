@@ -9,7 +9,7 @@
 - Hydra top-level config는 `scripts/conf/experiments/*.yaml`이 source of truth다.
 
 전략 축 전체와 현재 override 가능 여부는
-[docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)를
+[docs/strategy_surface_map.md](....docs/strategy_surface_map.md)를
 먼저 보는 편이 빠르다.
 
 ## 직접 실행하는 entrypoint
@@ -20,6 +20,9 @@
   - 선택된 prototype 전략 위에서 threshold policy 비교
 - `run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop
+  - runtime/task/validation 번역 source of truth는
+    `federated_round_runtime`, `federated_training_task`,
+    `federated_validation` Hydra group이다.
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
 - `train_lora_classifier.py`
@@ -62,15 +65,25 @@
 ## 공통 helper
 
 - `scripts/labeled_query_rows.py`
-  - 실험/프로토타입 스크립트가 공유하는 labeled row JSONL shape
+  - shared canonical labeled row contract를 실험층에서 다시 노출하는 wrapper
 - `scripts/query_buffer_selection_diagnostics.py`
   - query-buffer selection summary/trace dump 저장 helper
 - `scripts/run_artifacts.py`
   - run 출력 디렉터리 생성 helper
 - `scripts/classification_report.py`
-  - confusion matrix, per-category metric helper
+  - shared canonical confusion matrix/per-category metric helper wrapper
 
 ## 먼저 읽을 파일
+
+## `scripts/prototypes`와의 차이
+
+- `scripts/experiments/prototype_*`
+  - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
+- `scripts/prototypes/*`
+  - prototype pack을 실제로 seed/evaluate/pull/activate/report 하는
+    artifact workflow 레일
+
+즉 이름은 비슷하지만, 전자는 `비교/탐색`, 후자는 `artifact lifecycle`이 핵심이다.
 
 ### prototype 전략 실험을 보고 싶을 때
 

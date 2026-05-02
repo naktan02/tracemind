@@ -94,6 +94,7 @@ Embedding
 | Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
 | Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
 | Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.objective.score_policy_name`, `score_top_k` | 활성 runtime |
+| Pseudo-label Selection Algorithm | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.pseudo_label_algorithm_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.pseudo_label_algorithm_name`, central 실험의 `pseudo_label_algorithm=<preset>` | 활성 runtime/central selection |
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
 | Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
@@ -102,7 +103,7 @@ Embedding
 
 - 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
-- pseudo-label selection은 `example generation -> evidence backend -> acceptance policy`로 분리돼 있다.
+- pseudo-label selection은 `example generation -> evidence backend -> selection algorithm -> acceptance policy`로 분리돼 있다.
 - `weak_strong_pair` backend는 generic multiview input backend로 유지한다.
 - classifier posterior는 공통 evidence로 읽고, final decision은 local interpretation이 계속 맡는다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.
@@ -123,15 +124,16 @@ Embedding
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
   strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
   실제 backtranslation 메커니즘은 `agent/src/services/backtranslation_service.py`를 재사용한다.
-- 현재 central 실험에서 `acceptance_policy_name` 계약은 compatibility field로 유지하지만,
-  구현 source of truth는 `query_adaptation/ssl`로 이동했다.
+- 현재 central 실험에서 selection source of truth는
+  `pseudo_label_algorithm_name` / `scripts/conf/pseudo_label_algorithm/`이고,
+  `acceptance_policy_name`은 runtime compatibility용 compatibility field로 유지된다.
 
 관련 파일:
 
-- [agent/src/services/training/training_backends/__init__.py](../agent/src/services/training/training_backends/__init__.py)
-- [agent/src/services/training/input_backends/__init__.py](../agent/src/services/training/input_backends/__init__.py)
-- [agent/src/services/federation/training_example_service.py](../agent/src/services/federation/training_example_service.py)
-- [agent/src/services/training/evidence_backends/__init__.py](../agent/src/services/training/evidence_backends/__init__.py)
+- [agent/src/services/training/backends/training/__init__.py](../agent/src/services/training/backends/training/__init__.py)
+- [agent/src/services/training/backends/inputs/__init__.py](../agent/src/services/training/backends/inputs/__init__.py)
+- [agent/src/services/training/examples/service.py](../agent/src/services/training/examples/service.py)
+- [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
 - [shared/src/config/training_algorithm_profiles.py](../shared/src/config/training_algorithm_profiles.py)
 - [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
@@ -142,14 +144,54 @@ Embedding
 - [agent/src/services/training/query_adaptation/algorithms/fixmatch.py](../agent/src/services/training/query_adaptation/algorithms/fixmatch.py)
 - [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
 - [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
-- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
+
+### 1-1. 아이용 지원 대화 전략 축
+
+| 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
+|---|---|---|---|---|---|
+| Child Support Reply Provider | `local_guarded`, `ollama` | `TRACEMIND_CHILD_SUPPORT_LLM_PROVIDER` | unset -> `local_guarded` | 환경변수 `ollama`, `TRACEMIND_CHILD_SUPPORT_OLLAMA_MODEL` | 활성 runtime |
+| Child Support Safety Policy | `supportive`, `check_in`, `parent_handoff`, `urgent` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Safety Intent | `self_harm_signal`, `other_harm_ideation`, `other_harm_method_request`, `post_urgent_deescalation`, `peer_response_planning`, `post_handoff_emotional_followup`, etc. | `ChildSupportSafetyIntent` | code default | public config 없음 | agent-local runtime |
+| Child Support Scope Policy | `in_scope`, `redirected` | `ChildSupportSafetyPolicy` | code default | public config 없음 | 활성 runtime |
+| Child Support Response Policy | `scope_redirect`, `supportive_reflection`, `check_in`, `post_urgent_deescalation`, `post_incident_emotional_followup`, `peer_response_planning`, `safety_check`, `harm_to_others_safety`, `urgent_safety` | `ChildSupportResponsePolicy` | code default | public config 없음 | 활성 runtime |
+
+중요:
+
+- 이 축은 분류/FL 학습 family가 아니라 child UI 응답 생성 provider 축이다.
+- raw child message, conversation history, query context는 agent-local 저장소와 prompt
+  context에만 남기며 main_server로 올리지 않는다.
+- 같은 `conversation_id`의 최근 `parent_handoff` 기록은 후속 메시지의 감정 정리와
+  친구 대응 계획 strategy를 고르는 데 사용한다.
+- 화면 노출용 `safety_level`은 shared contract에 남기고, agent 내부 분기에는
+  typed `SafetyIntent`와 conversation state를 사용한다.
+- 타인을 해치려는 의도나 방법 요청은 peer planning보다 먼저 `urgent`로 라우팅하고
+  LLM rewrite를 우회한 guarded response를 쓴다.
+- 타인 위해 intent 직후의 `너무 힘든데` 같은 follow-up은 일반 감정 선택 질문으로
+  리셋하지 않고, 감정 수용과 위해 행동 경계를 함께 담은 de-escalation으로 처리한다.
+- LLM provider는 응답 결정을 소유하지 않는다. agent가 먼저 response plan과
+  required move를 만들고, LLM은 그 plan을 실행한 뒤 plan validation을 통과해야
+  한다.
+- cloud LLM provider를 열 경우에도 기본값으로 승격하지 말고 명시적 opt-in과
+  prompt context 축소 정책을 별도로 둔다.
+
+관련 파일:
+
+- [agent/src/services/wellbeing/child_support_service.py](../agent/src/services/wellbeing/child_support_service.py)
+- [agent/src/services/wellbeing/child_support_conversation_state.py](../agent/src/services/wellbeing/child_support_conversation_state.py)
+- [agent/src/services/wellbeing/child_support_safety_intent.py](../agent/src/services/wellbeing/child_support_safety_intent.py)
+- [agent/src/services/wellbeing/child_support_response_policy.py](../agent/src/services/wellbeing/child_support_response_policy.py)
+- [agent/src/services/wellbeing/child_support_llm_provider.py](../agent/src/services/wellbeing/child_support_llm_provider.py)
+- [agent/src/services/wellbeing/child_support_safety_policy.py](../agent/src/services/wellbeing/child_support_safety_policy.py)
+- [agent/src/infrastructure/repositories/child_support_repository.py](../agent/src/infrastructure/repositories/child_support_repository.py)
+- [shared/src/contracts/child_support_contracts.py](../shared/src/contracts/child_support_contracts.py)
 
 ## 2. main_server round/runtime 전략 축
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
-| Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
-| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/rounds/runtime_config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
+| Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
+| Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
 | Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `scripts/conf/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
@@ -166,10 +208,10 @@ Embedding
 
 관련 파일:
 
-- [main_server/src/services/rounds/runtime_config.py](../main_server/src/services/rounds/runtime_config.py)
-- [main_server/src/services/rounds/aggregation_service.py](../main_server/src/services/rounds/aggregation_service.py)
-- [main_server/src/services/rounds/adapter_family_service.py](../main_server/src/services/rounds/adapter_family_service.py)
-- [main_server/src/services/rounds/update_acceptance_policy.py](../main_server/src/services/rounds/update_acceptance_policy.py)
+- [main_server/src/services/federation/rounds/runtime/config.py](../main_server/src/services/federation/rounds/runtime/config.py)
+- [main_server/src/services/federation/rounds/aggregation/registry.py](../main_server/src/services/federation/rounds/aggregation/registry.py)
+- [main_server/src/services/federation/rounds/families/registry.py](../main_server/src/services/federation/rounds/families/registry.py)
+- [main_server/src/services/federation/rounds/acceptance/policies.py](../main_server/src/services/federation/rounds/acceptance/policies.py)
 
 ## 3. 보호/암호화 관련 축
 
@@ -187,7 +229,7 @@ Embedding
 
 관련 파일:
 
-- [agent/src/services/training/privacy_guard_service.py](../agent/src/services/training/privacy_guard_service.py)
+- [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
 - [docs/contracts/training_update_envelope_v1.md](contracts/training_update_envelope_v1.md)
 
 ### 3-2. typed contract는 있으나 runtime은 아직 없는 것
@@ -298,6 +340,7 @@ entrypoint:
 - `training_task.objective.scorer_backend_name`
 - `training_task.objective.score_policy_name`
 - `training_task.objective.score_top_k`
+- `training_task.objective.pseudo_label_algorithm_name`
 - `training_task.objective.acceptance_policy_name`
 - `training_task.objective.privacy_guard_name`
 - `training_task.selection_policy.max_examples`
@@ -333,5 +376,5 @@ python -m scripts.experiments.run_federated_simulation \
 1. 이 문서에서 축이 `활성 runtime`인지 `typed metadata only`인지 먼저 본다.
 2. `선택 위치`가 `TrainingObjectiveConfig`면 task override로 바꿔볼 수 있다.
 3. `기본값`이 `shared/src/config/training_defaults.py`면 local training 공용 fallback이다.
-4. `기본값`이 `main_server/src/services/rounds/runtime_config.py`면 server-owned round runtime fallback이다.
+4. `기본값`이 `main_server/src/services/federation/rounds/runtime/config.py`면 server-owned round runtime fallback이다.
 5. `public Hydra leaf 없음`이라고 적혀 있으면, 코드에는 교체 지점이 있어도 CLI에서 바로 안 바뀐다.

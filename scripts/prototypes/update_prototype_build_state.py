@@ -11,10 +11,10 @@ from pathlib import Path
 from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
     EmbeddingAdapterFactory,
 )
-from main_server.src.services.prototypes.prototype_build_state_service import (  # noqa: E402
+from main_server.src.services.federation.assets.prototypes.prototype_build_state_service import (  # noqa: E402
     PrototypeBuildStateService,
 )
-from main_server.src.services.prototypes.prototype_pack_service import (  # noqa: E402
+from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (  # noqa: E402
     PrototypePackService,
 )
 from scripts.prototypes.io import (  # noqa: E402

@@ -6,7 +6,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
-from main_server.src.services.prototypes.prototype_pack_service import (
+from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
     PrototypePackService,
 )
 from shared.src.contracts.prototype_contracts import (

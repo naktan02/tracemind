@@ -1,14 +1,4 @@
-"""Inference domain entities."""
+"""Inference domain entity package.
 
-from .events import QueryEvent, ScoredEvent
-from .result import AssessmentResult
-from .state import BaselineProfile, PersonalizationState, TimeSeriesState
-
-__all__ = [
-    "AssessmentResult",
-    "BaselineProfile",
-    "PersonalizationState",
-    "QueryEvent",
-    "ScoredEvent",
-    "TimeSeriesState",
-]
+repo 내부에서는 package-level export 대신 direct-file import를 기본으로 쓴다.
+"""

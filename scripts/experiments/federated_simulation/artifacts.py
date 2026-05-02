@@ -6,11 +6,11 @@ import json
 from collections import defaultdict
 from pathlib import Path
 
-from agent.src.services.training.pseudo_label_service import (
-    PseudoLabelSelectionResult,
-)
-from agent.src.services.training.training_example_models import (
+from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
+)
+from agent.src.services.training.selection.pseudo_label_service import (
+    PseudoLabelSelectionResult,
 )
 from scripts.experiments.federated_simulation.models import (
     FederatedDiagnosticsConfig,
@@ -66,10 +66,16 @@ def save_selection_diagnostics(
         row = rows_by_query_id[query_id]
         example = examples_by_query_id[query_id]
         evidence = evidences_by_query_id.get(query_id)
-        selection_stage = str(candidate.metadata.get("selection_stage", "unknown"))
-        threshold_accepted = bool(candidate.metadata.get("threshold_accepted", False))
-        selected_by_cap = bool(candidate.metadata.get("selected_by_cap", False))
-        pre_cap_rank = candidate.metadata.get("pre_cap_rank")
+        selection_context = candidate.selection_context
+        if selection_context is None:
+            raise ValueError(
+                "PseudoLabelCandidate.selection_context is required for "
+                f"federated selection artifacts: {candidate.candidate_id}."
+            )
+        selection_stage = selection_context.selection_stage.value
+        threshold_accepted = selection_context.threshold_accepted
+        selected_by_cap = selection_context.selected_by_cap
+        pre_cap_rank = selection_context.pre_cap_rank
         raw_scores = (
             example.evidence_scored_event.category_scores
             if evidence is None
@@ -109,7 +115,9 @@ def save_selection_diagnostics(
                         example.view_kind if evidence is None else evidence.view_kind
                     ),
                     "evidence_confidence": (
-                        candidate.confidence if evidence is None else evidence.top1_score
+                        candidate.confidence
+                        if evidence is None
+                        else evidence.top1_score
                     ),
                     "evidence_margin": (
                         candidate.margin if evidence is None else evidence.margin

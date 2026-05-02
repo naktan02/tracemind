@@ -10,6 +10,9 @@ canonical_layers:
   - .codex/skills/*
 
 path_specific_instructions:
+  - apps/AGENTS.md
+  - apps/experiment_web/AGENTS.md
+  - apps/family_extension/AGENTS.md
   - shared/AGENTS.md
   - agent/AGENTS.md
   - main_server/AGENTS.md
@@ -21,27 +24,50 @@ source_of_truth_priority:
   - shared/src/contracts/*.py
   - shared/src/domain/entities/*
   - shared/src/contracts/README.md
+  - plan.md
   - docs/contracts/*
-  - docs/*
-  - docs/notes/**
+  - docs/*.md
+  - docs/architecture/*
+  - docs/api/*
+  - docs/operations/*
+  - docs/quality/*
+  - docs/governance/*
 
 active_entrypoints:
   - path: docs/execution_index.md
-    use_for: first repo entry and reading order
+    use_for: first repo entry and document map
+  - path: .codex/skills/tracemind-research-loop/SKILL.md
+    use_for: TraceMind skill routing and experiment intent alignment
   - path: plan.md
     use_for: research goal and global/local boundary
   - path: docs/project_execution_plan.md
     use_for: active architecture and next priorities
+  - path: docs/architecture/system-overview.md
+    use_for: current runtime components, active rails, and ownership boundaries
+  - path: docs/api/api-surface.md
+    use_for: agent and main_server FastAPI route surface
+  - path: docs/operations/local-runbook.md
+    use_for: local setup, run, GPU preflight, and smoke commands
+  - path: docs/quality/test-strategy.md
+    use_for: test layer map and protection scope
+  - path: docs/governance/document-governance.md
+    use_for: document classes and source-of-truth update rules
   - path: docs/contracts/central_lora_classifier_trainer_contract.md
     use_for: query-domain LoRA adaptation scaffold and output boundary
   - path: docs/contracts/query_buffer_v1.md
     use_for: agent-owned local query retention and threshold/policy selection boundary
   - path: shared/src/contracts/README.md
     use_for: payload interpretation
+  - path: docs/strategy_surface_map.md
+    use_for: first check for active strategy axes, metadata-only axes, and override availability
+  - path: docs/contracts/strategy_addition_playbook.md
+    use_for: concrete implementation, registration, default update, and test sequence for new strategies
   - path: docs/contracts/algorithm_extension_guide.md
-    use_for: strategy addition and replacement
+    use_for: protocol details and ownership boundaries after the relevant strategy axis is identified
   - path: docs/fl_runtime_implementation_checklist.md
     use_for: fl runtime implementation work
+  - path: docs/family_extension_wellbeing_signal_mvp_plan.md
+    use_for: child/parent chrome extension MVP planning and local wellbeing signal API
 
 task_routes:
   contract_change:
@@ -49,9 +75,12 @@ task_routes:
       - AGENTS.md
       - shared/AGENTS.md
       - shared/src/contracts/README.md
-      - docs/contracts/central_lora_classifier_trainer_contract.md
-      - docs/contracts/algorithm_extension_guide.md
+      - relevant shared/src/contracts file
+      - relevant producer and consumer files
       - docs/project_execution_plan.md
+    conditional_read:
+      - docs/contracts/central_lora_classifier_trainer_contract.md only for query-domain LoRA trainer contracts
+      - docs/contracts/algorithm_extension_guide.md only for strategy-axis contract changes
     verify:
       - producer and consumer stay aligned
       - related tests are updated
@@ -66,8 +95,10 @@ task_routes:
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
-      - scripts/README.md
+      - relevant scripts/experiments entrypoint
+      - relevant scripts/conf config group
     verify:
+      - comparison intent, fixed variables, changed variables, metric, seed, and output metadata are explicit before running
       - seed baseline과 adaptation scaffold가 섞이지 않는다
       - backbone, tokenizer, LoRA spec stay fixed inside one adaptation comparison table
       - outputs keep enough metadata for later FL translation
@@ -76,9 +107,11 @@ task_routes:
     read_order:
       - AGENTS.md
       - docs/project_execution_plan.md
-      - docs/contracts/algorithm_extension_guide.md
       - docs/strategy_surface_map.md
+      - docs/contracts/strategy_addition_playbook.md
       - relevant path-specific AGENTS.md
+    conditional_read:
+      - docs/contracts/algorithm_extension_guide.md only when protocol details or a new strategy axis must be implemented
     verify:
       - family or strategy boundary stays explicit
       - config source of truth stays singular
@@ -100,24 +133,54 @@ task_routes:
     read_order:
       - AGENTS.md
       - scripts/AGENTS.md
-      - scripts/README.md
-      - scripts/conf/*
+      - relevant script entrypoint
+      - relevant scripts/conf config group
+      - scripts/README.md only when command discovery or cross-script convention is needed
     verify:
       - Hydra config remains the source of truth
       - script-only logic does not absorb runtime core
       - related script tests are updated
+
+  experiment_web:
+    read_order:
+      - AGENTS.md
+      - docs/execution_index.md
+      - apps/AGENTS.md
+      - apps/experiment_web/AGENTS.md
+      - shared/src/contracts/README.md
+    verify:
+      - UI remains a contract/API consumer
+      - track separation stays explicit
+      - generated src/types.ts is not manually edited
 
   docs_sync:
     read_order:
       - AGENTS.md
       - docs/AGENTS.md
       - docs/execution_index.md
+      - docs/governance/document-governance.md
+      - docs/architecture/system-overview.md
       - docs/project_execution_plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
     verify:
       - duplicate guidance is reduced
       - notes stay archive-only
       - source of truth remains code-adjacent
+      - README and manifest point to any new active docs
+
+  family_extension_mvp:
+    read_order:
+      - AGENTS.md
+      - docs/AGENTS.md
+      - docs/execution_index.md
+      - docs/family_extension_wellbeing_signal_mvp_plan.md
+      - apps/AGENTS.md
+      - apps/family_extension/AGENTS.md
+      - shared/src/contracts/README.md
+    verify:
+      - external UI only sees overall wellbeing signal
+      - child and parent surfaces stay separated
+      - local program stays the source of truth for computed outputs
 
 archive_paths:
   - docs/notes/**
@@ -125,3 +188,4 @@ archive_paths:
 maintainer_docs:
   - docs/ai_harness_operating_model.md
   - docs/ai_harness_eval_cases.yaml
+  - .codex/skills/THIRD_PARTY_NOTICES.md

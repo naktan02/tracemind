@@ -1173,7 +1173,7 @@ runtime contract와 scoring을 먼저 multi-friendly 하게 올리고
 2. `agent/src/services/inference/scoring_service.py`
    - category마다 여러 prototype을 받을 수 있게 변경
    - 현재 reduction은 category 내부 `max cosine`
-3. `agent/src/services/prototype/runtime_service.py`
+3. `agent/src/services/prototypes/runtime_service.py`
    - `get_active_prototypes()` 추가
    - `get_active_centroids()`는 single-only legacy 경로 유지
 4. `scripts/experiments/run_federated_simulation.py`

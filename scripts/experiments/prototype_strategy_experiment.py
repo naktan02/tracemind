@@ -26,7 +26,7 @@ from scripts.experiments.prototype_strategy.strategies import (
 
 @hydra.main(
     version_base=None,
-    config_path="../conf",
+    config_path="..conf",
     config_name="experiments/prototype_strategy",
 )
 def main(config: DictConfig) -> None:

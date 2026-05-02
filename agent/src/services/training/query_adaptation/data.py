@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 class TextLabelDataset(Dataset[dict[str, Any]]):

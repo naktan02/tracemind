@@ -4,7 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from main_server.src.services.rounds.models import RoundTaskConfig
+from main_server.src.services.federation.rounds.boundary.models import (
+    RoundTaskConfig,
+)
 from scripts.labeled_query_rows import LabeledQueryRow
 
 

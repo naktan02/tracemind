@@ -1,0 +1,5 @@
+# @package round_runtime
+
+adapter_family_name: ${training_algorithm_profile.adapter_family_name}
+aggregation_backend_name: ${training_algorithm_profile.aggregation_backend_name}
+classifier_head_bootstrap_logit_scale: 8.0

@@ -24,15 +24,15 @@ import httpx
 import pytest
 from fastapi.testclient import TestClient
 
-from agent.src.services.federation.round_client import RoundClient
-from agent.src.services.federation.runtime_service import (
+from agent.src.services.federation.rounds.round_client import RoundClient
+from agent.src.services.federation.rounds.runtime_service import (
     FederationRunStatus,
     FederationRuntimeService,
 )
 from main_server.src.api.fl_rounds import get_round_lifecycle_service
 from main_server.src.api.main import app as server_app
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.rounds.round_lifecycle_service import (
+from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
 from shared.src.contracts.adapter_contracts import (

@@ -50,7 +50,7 @@ def _build_cfg() -> object:
                 "name": "margin_threshold_test",
                 "confidence_threshold": 0.8,
                 "margin_threshold": 0.05,
-                "acceptance_policy_name": "top1_margin_threshold",
+                "algorithm_name": "top1_margin_threshold",
             },
             "bootstrap_export_root": "",
             "pseudo_label_export_root": "",
@@ -232,7 +232,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     assert summary["accepted_hidden_label_accuracy"] == 1.0
     assert summary["pseudo_label_algorithm"]["preset_name"] == "margin_threshold_test"
     assert (
-        summary["pseudo_label_algorithm"]["acceptance_policy_name"]
+        summary["pseudo_label_algorithm"]["algorithm_name"]
         == "top1_margin_threshold"
     )
 

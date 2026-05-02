@@ -21,7 +21,7 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.prototypes import (
+from main_server.src.services.federation.assets.prototypes import (
     PrototypeBuildStateService,
     PrototypePackService,
     PrototypeRebuildInputRecord,
@@ -30,36 +30,47 @@ from main_server.src.services.prototypes import (
     ReferenceRebuildPrototypePublicationStrategy,
     StoredReferencePrototypeRebuildService,
 )
-from main_server.src.services.rounds.adapter_family_service import (
-    SharedAdapterRoundFamily,
-    register_shared_adapter_round_family,
+from main_server.src.services.federation.rounds.acceptance.policies import (
+    IdempotentRoundUpdateAcceptancePolicy,
+    StrictRoundUpdateAcceptancePolicy,
 )
-from main_server.src.services.rounds.aggregation_service import (
+from main_server.src.services.federation.rounds.acceptance.trust_policies import (
+    SingleSubmissionPerAgentTrustPolicy,
+)
+from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationResult,
     SharedAdapterAggregationBackend,
+)
+from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     register_shared_adapter_aggregation_backend,
 )
-from main_server.src.services.rounds.models import (
+from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
     RoundStatus,
 )
-from main_server.src.services.rounds.round_lifecycle_service import (
+from main_server.src.services.federation.rounds.families.models import (
+    SharedAdapterRoundFamily,
+)
+from main_server.src.services.federation.rounds.families.registry import (
+    register_shared_adapter_round_family,
+)
+from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundConflictError,
     RoundLifecycleService,
     RoundValidationError,
 )
-from main_server.src.services.rounds.round_manager_service import RoundManagerService
-from main_server.src.services.rounds.runtime_config import ServerRoundRuntimeConfig
-from main_server.src.services.rounds.runtime_factory import (
+from main_server.src.services.federation.rounds.round_manager_service import (
+    RoundManagerService,
+)
+from main_server.src.services.federation.rounds.runtime.config import (
+    ServerRoundRuntimeConfig,
+)
+from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_manager_service_from_config,
 )
-from main_server.src.services.rounds.update_acceptance_policy import (
-    IdempotentRoundUpdateAcceptancePolicy,
-    SingleSubmissionPerAgentTrustPolicy,
-    StrictRoundUpdateAcceptancePolicy,
-)
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
@@ -220,6 +231,14 @@ register_shared_adapter_aggregation_backend(
     TEST_SHIFT_ADAPTER_KIND,
     TEST_SHIFT_BACKEND_NAME,
     factory=lambda _overrides: _TestShiftAggregationBackend(),
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{TEST_SHIFT_ADAPTER_KIND}.{TEST_SHIFT_BACKEND_NAME}",
+        display_name=TEST_SHIFT_BACKEND_NAME,
+        implementation_module=__name__,
+        core_method_name=TEST_SHIFT_BACKEND_NAME,
+        family_name=TEST_SHIFT_ADAPTER_KIND,
+        supported_adapter_kinds=(TEST_SHIFT_ADAPTER_KIND,),
+    ),
 )
 register_shared_adapter_round_family(
     TEST_SHIFT_FAMILY_NAME,

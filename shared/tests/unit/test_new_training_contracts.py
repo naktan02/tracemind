@@ -116,6 +116,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
         scorer_backend_name="prototype_similarity",
         score_policy_name="topk_mean_cosine",
         score_top_k=3,
+        pseudo_label_algorithm_name="top1_margin_threshold",
         acceptance_policy_name="top1_margin_threshold",
         privacy_guard_name="diagonal_scale_clip_only",
     )
@@ -128,6 +129,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
     assert payload.scorer_backend_name == "prototype_similarity"
     assert payload.score_policy_name == "topk_mean_cosine"
     assert payload.score_top_k == 3
+    assert payload.pseudo_label_algorithm_name == "top1_margin_threshold"
     assert payload.acceptance_policy_name == "top1_margin_threshold"
     assert payload.privacy_guard_name == "diagonal_scale_clip_only"
 
@@ -141,6 +143,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "margin_threshold": 0.03,
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
+            "pseudo_label_algorithm_name": "top1_confidence_only",
             "acceptance_policy_name": "top1_confidence_only",
             "privacy_guard_name": "noop",
             "temperature": 0.8,
@@ -155,9 +158,15 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.scorer_backend_name == "prototype_similarity"
     assert config.score_policy_name == "topk_mean_cosine"
     assert config.score_top_k == 2
+    assert config.pseudo_label_algorithm_name == "top1_confidence_only"
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
-    assert config.extras == {"temperature": 0.8}
+    assert config.extras == {
+        "training_backend.delta_scale_multiplier": 10.0,
+        "training_backend.max_abs_delta": 0.05,
+        "training_backend.minimum_effective_scale": 0.0001,
+        "temperature": 0.8,
+    }
     assert config.to_mapping() == {
         "training_backend_name": "diagonal_scale_heuristic",
         "algorithm_profile_name": "prototype_pseudo_label_v1",
@@ -169,8 +178,12 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "topk_mean_cosine",
         "score_top_k": 2,
+        "pseudo_label_algorithm_name": "top1_confidence_only",
         "acceptance_policy_name": "top1_confidence_only",
         "privacy_guard_name": "noop",
+        "training_backend.delta_scale_multiplier": 10.0,
+        "training_backend.max_abs_delta": 0.05,
+        "training_backend.minimum_effective_scale": 0.0001,
         "temperature": 0.8,
     }
 
@@ -184,8 +197,22 @@ def test_training_objective_config_can_expand_algorithm_profile_only() -> None:
     assert config.training_backend_name == "diagonal_scale_heuristic"
     assert config.example_generation_backend_name == "prototype_rescore"
     assert config.evidence_backend_name == "prototype_similarity_evidence"
+    assert config.pseudo_label_algorithm_name == "top1_confidence_only"
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.margin_threshold == 0.0
+
+
+def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback(
+) -> None:
+    config = TrainingObjectiveConfig.from_mapping(
+        {
+            "training_backend_name": "diagonal_scale_heuristic",
+            "acceptance_policy_name": "top1_margin_threshold",
+        }
+    )
+
+    assert config.pseudo_label_algorithm_name == "top1_margin_threshold"
+    assert config.acceptance_policy_name == "top1_margin_threshold"
 
 
 def test_training_objective_config_accepts_legacy_loss_alias() -> None:

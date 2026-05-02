@@ -42,6 +42,10 @@ def test_default_training_objective_builder_uses_shared_profile() -> None:
     assert config.scorer_backend_name == DEFAULT_TRAINING_PROFILE.scorer_backend_name
     assert config.privacy_guard_name == DEFAULT_TRAINING_PROFILE.privacy_guard_name
     assert (
+        config.pseudo_label_algorithm_name
+        == DEFAULT_TRAINING_PROFILE.pseudo_label_algorithm_name
+    )
+    assert (
         config.acceptance_policy_name
         == DEFAULT_TRAINING_PROFILE.acceptance_policy_name
     )

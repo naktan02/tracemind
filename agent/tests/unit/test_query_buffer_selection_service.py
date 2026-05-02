@@ -10,12 +10,12 @@ import pytest
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     build_query_buffer_record,
 )
-from agent.src.services.training.query_buffer_projection import (
+from agent.src.services.training.selection.query_buffer_projection import (
     QUERY_BUFFER_PROJECTION_BACKEND_NAME,
     build_query_buffer_evidence,
     build_query_buffer_evidences,
 )
-from agent.src.services.training.query_buffer_selection_service import (
+from agent.src.services.training.selection.query_buffer_selection_service import (
     QueryBufferSelectionService,
 )
 from shared.src.contracts.training_contracts import (
@@ -28,7 +28,7 @@ from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
 def _build_task(
     *,
-    acceptance_policy_name: str | None = "top1_confidence_only",
+    pseudo_label_algorithm_name: str | None = "top1_confidence_only",
     confidence_threshold: float = 0.8,
     margin_threshold: float = 0.02,
 ) -> TrainingTask:
@@ -48,7 +48,7 @@ def _build_task(
             loss="diagonal_scale_heuristic",
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
-            acceptance_policy_name=acceptance_policy_name,
+            pseudo_label_algorithm_name=pseudo_label_algorithm_name,
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )
@@ -202,7 +202,8 @@ def test_query_buffer_selection_service_filters_candidates_with_policy() -> None
 
     assert accepted.source_event_ref == "q1"
     assert accepted.evidence_ref == "evidence:q1"
-    assert accepted.metadata["evidence_backend_name"] == (
+    assert accepted.selection_context is not None
+    assert accepted.selection_context.evidence_backend_name == (
         QUERY_BUFFER_PROJECTION_BACKEND_NAME
     )
     assert accepted.confidence_kind == "prototype_similarity_top1"

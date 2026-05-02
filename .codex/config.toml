@@ -3,5 +3,5 @@
 
 model = "gpt-5.4"
 approval_policy = "on-request"
-sandbox_mode = "workspace-write"
+sandbox_mode = "danger-full-access"
 web_search = "cached"

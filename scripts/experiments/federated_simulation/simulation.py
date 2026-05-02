@@ -12,7 +12,7 @@ from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
 from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.local_training_service import (
+from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
     LocalTrainingService,
 )
@@ -21,13 +21,13 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.rounds.models import (
+from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
 )
-from main_server.src.services.rounds.round_lifecycle_service import (
+from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
-from main_server.src.services.rounds.round_manager_service import (
+from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from scripts.experiments.federated_simulation.artifacts import (

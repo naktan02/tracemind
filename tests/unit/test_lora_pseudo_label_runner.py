@@ -5,10 +5,10 @@ from pathlib import Path
 
 from omegaconf import OmegaConf
 
-from agent.src.services.training.input_backends.models import (
+from agent.src.services.training.backends.inputs.models import (
     TrainingExampleSource,
 )
-from agent.src.services.training.query_adaptation_dataset_service import (
+from agent.src.services.training.datasets.query_adaptation_dataset_service import (
     QueryAdaptationDataset,
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
@@ -18,6 +18,10 @@ from scripts.experiments.lora_classifier.pseudo_label_runner import (
     run_pseudo_label_self_training,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from shared.src.domain.entities.training.pseudo_label_candidate import (
+    PseudoLabelSelectionContext,
+    PseudoLabelSelectionStage,
+)
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (
@@ -39,7 +43,7 @@ def _build_cfg() -> object:
                 "name": "margin_threshold_v1",
                 "confidence_threshold": 0.6,
                 "margin_threshold": 0.02,
-                "acceptance_policy_name": "top1_margin_threshold",
+                "algorithm_name": "top1_margin_threshold",
             },
             "fixed_categories": [
                 "anxiety",
@@ -91,7 +95,12 @@ def _build_pseudo_label_dataset() -> QueryAdaptationDataset:
                     selection_confidence_kind="prototype_similarity_top1",
                     translated_text_present=False,
                     candidate_id="round_1:pl_q1",
-                    candidate_metadata={"selection_stage": "accepted"},
+                    selection_context=PseudoLabelSelectionContext(
+                        threshold_accepted=True,
+                        selected_by_cap=True,
+                        final_accepted=True,
+                        selection_stage=PseudoLabelSelectionStage.ACCEPTED,
+                    ),
                 ),
                 label_source="pseudo_label",
                 confidence=0.91,
@@ -198,6 +207,9 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
     assert extra_manifest["combined_train_row_count"] == 1
     assert extra_manifest["pseudo_label_algorithm"]["preset_name"] == (
         "margin_threshold_v1"
+    )
+    assert extra_manifest["pseudo_label_algorithm"]["algorithm_name"] == (
+        "top1_margin_threshold"
     )
     assert extra_manifest["pseudo_label_algorithm"]["margin_threshold"] == 0.02
     assert captured["train_jsonl_ref"].endswith("combined_train.jsonl")

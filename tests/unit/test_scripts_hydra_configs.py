@@ -234,7 +234,7 @@ def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_over
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_confidence_only"
     )
 
@@ -298,7 +298,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_confidence_only"
     )
 
@@ -338,6 +338,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "prototype_pseudo_label_v1"
     )
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
+    assert cfg.training_task.objective.algorithm_profile_name == (
+        "prototype_pseudo_label_v1"
+    )
+    assert cfg.validation.confidence_threshold == 0.6
+    assert cfg.validation.margin_threshold == 0.02
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 1
@@ -480,7 +485,7 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
     assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.6
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.02
-    assert cfg.pseudo_label_algorithm.acceptance_policy_name == (
+    assert cfg.pseudo_label_algorithm.algorithm_name == (
         "top1_margin_threshold"
     )
     assert cfg.bootstrap_split.enabled is False

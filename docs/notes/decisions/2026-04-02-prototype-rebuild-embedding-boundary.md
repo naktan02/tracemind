@@ -2,7 +2,7 @@
 
 ## 배경
 
-`main_server/src/services/prototypes`의 rebuild 경로가
+`main_server/src/services/prototype_assets`의 rebuild 경로가
 `agent.src.infrastructure.model_adapters.embedding.factory`를 직접 import하고 있었다.
 
 문제는 두 가지였다.

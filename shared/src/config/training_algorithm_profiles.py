@@ -45,6 +45,7 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_OBJECTIVE_MAPPING = _freeze_mapping(
         **dict(DEFAULT_TRAINING_OBJECTIVE_MAPPING),
         "algorithm_profile_name": PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME,
         "margin_threshold": 0.0,
+        "pseudo_label_algorithm_name": "top1_confidence_only",
         "acceptance_policy_name": "top1_confidence_only",
     }
 )

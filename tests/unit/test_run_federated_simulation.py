@@ -8,7 +8,9 @@ from datetime import datetime, timezone
 import pytest
 
 from agent.src.services.inference.scoring_service import ScoringService
-from main_server.src.services.rounds.models import RoundTaskConfig
+from main_server.src.services.federation.rounds.boundary.models import (
+    RoundTaskConfig,
+)
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
@@ -28,16 +30,15 @@ from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
 )
+from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 from shared.src.services.prototypes.build_strategies import (
-    KMeansPrototypeBuildStrategy,
     SinglePrototypeBuildStrategy,
 )
 
@@ -133,6 +134,7 @@ def _default_training_task_config(
                     if score_top_k is None
                     else {"score_top_k": score_top_k}
                 ),
+                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "acceptance_policy_name": "top1_margin_threshold",
                 "privacy_guard_name": "diagonal_scale_clip_only",
             }
@@ -449,6 +451,7 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
                 "evidence_backend_name": "prototype_similarity_evidence",
                 "scorer_backend_name": "prototype_similarity",
                 "score_policy_name": "max_cosine",
+                "pseudo_label_algorithm_name": "top1_confidence_only",
                 "acceptance_policy_name": "top1_confidence_only",
                 "privacy_guard_name": "noop",
             }
@@ -459,7 +462,8 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
     assert result.accepted_ratio == 0.0
 
 
-def test_build_training_examples_requires_multiview_fields_for_weak_strong_backend() -> None:
+def test_build_training_examples_requires_multiview_fields_for_weak_strong_backend(
+) -> None:
     adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
     adapter_state = VectorAdapterState.identity(
         model_id="hash_debug",
@@ -487,6 +491,7 @@ def test_build_training_examples_requires_multiview_fields_for_weak_strong_backe
                     "evidence_backend_name": "prototype_similarity_evidence",
                     "scorer_backend_name": "prototype_similarity",
                     "score_policy_name": "max_cosine",
+                    "pseudo_label_algorithm_name": "top1_margin_threshold",
                     "acceptance_policy_name": "top1_margin_threshold",
                     "privacy_guard_name": "noop",
                 }
@@ -526,6 +531,7 @@ def test_build_training_examples_supports_multiview_row_fields_when_present() ->
                 "evidence_backend_name": "prototype_similarity_evidence",
                 "scorer_backend_name": "prototype_similarity",
                 "score_policy_name": "max_cosine",
+                "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "acceptance_policy_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
             }

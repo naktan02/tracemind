@@ -9,11 +9,11 @@ import pytest
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     build_query_buffer_record,
 )
-from agent.src.services.training.query_adaptation_dataset_service import (
+from agent.src.services.training.datasets.query_adaptation_dataset_service import (
     QueryAdaptationDatasetConfig,
     QueryAdaptationDatasetService,
 )
-from agent.src.services.training.query_buffer_selection_service import (
+from agent.src.services.training.selection.query_buffer_selection_service import (
     QueryBufferSelectionService,
 )
 from shared.src.contracts.training_contracts import (
@@ -41,7 +41,7 @@ def _build_task() -> TrainingTask:
             loss="diagonal_scale_heuristic",
             confidence_threshold=0.8,
             margin_threshold=0.02,
-            acceptance_policy_name="top1_confidence_only",
+            pseudo_label_algorithm_name="top1_confidence_only",
         ),
         selection_policy=TrainingSelectionPolicy(max_examples=8),
     )
@@ -122,11 +122,20 @@ def test_query_adaptation_dataset_service_builds_raw_text_examples() -> None:
     assert dataset.source_rows[1].text == "요즘 너무 가라앉아요"
     assert dataset.source_rows[1].translated_text is None
     assert dataset.examples[0].provenance.locale == "ko-KR"
+    assert dataset.examples[0].provenance.selection_context is not None
     assert (
-        dataset.examples[0].provenance.candidate_metadata["selection_stage"]
+        dataset.examples[0].provenance.selection_context.selection_stage.value
         == "accepted"
     )
-    assert dataset.examples[0].provenance.query_buffer_metadata["was_translated"] is True
+    assert (
+        dataset.examples[0].provenance.selection_context
+        .pseudo_label_algorithm_name
+        == "top1_confidence_only"
+    )
+    assert (
+        dataset.examples[0].provenance.query_buffer_metadata["was_translated"]
+        is True
+    )
     assert dataset.examples[0].label_source == "pseudo_label"
 
 
@@ -184,7 +193,8 @@ def test_query_adaptation_dataset_service_rejects_duplicate_record_key() -> None
         )
 
 
-def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode() -> None:
+def test_query_adaptation_dataset_service_rejects_manual_labels_in_pseudo_mode(
+) -> None:
     query_event, scored_event = _build_pair(
         query_id="q1",
         text="숨이 차요",

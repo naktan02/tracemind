@@ -10,19 +10,22 @@ import pytest
 from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
-from agent.src.services.federation import (
-    PrototypeRescoringTrainingExampleBackend,
+from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
-    TrainingExampleService,
     TrainingExampleSource,
+)
+from agent.src.services.training.backends.training.registry import (
+    register_shared_adapter_training_backend,
+)
+from agent.src.services.training.examples.service import (
+    PrototypeRescoringTrainingExampleBackend,
+    TrainingExampleService,
     WeakStrongPairTrainingExampleBackend,
     register_training_example_backend,
 )
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.training_backends import (
-    register_shared_adapter_training_backend,
-)
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -80,6 +83,22 @@ def _pack_payload() -> PrototypePackPayload:
                 ],
             },
         }
+    )
+
+
+def _registry_catalog_entry(
+    *,
+    item_name: str,
+    family_name: str,
+    supported_adapter_kinds: tuple[str, ...] = ("*",),
+) -> RegistryCatalogEntry:
+    return RegistryCatalogEntry(
+        item_name=item_name,
+        display_name=item_name,
+        implementation_module=__name__,
+        core_method_name=item_name,
+        family_name=family_name,
+        supported_adapter_kinds=supported_adapter_kinds,
     )
 
 
@@ -210,9 +229,7 @@ def test_training_example_service_accepts_custom_shared_adapter_state() -> None:
 
 
 def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
-    service = TrainingExampleService(
-        backend=WeakStrongPairTrainingExampleBackend()
-    )
+    service = TrainingExampleService(backend=WeakStrongPairTrainingExampleBackend())
     adapter = _StaticEmbeddingAdapter(
         {
             "panic weak": [1.0, 0.0],
@@ -263,9 +280,7 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
 
 
 def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:
-    service = TrainingExampleService(
-        backend=WeakStrongPairTrainingExampleBackend()
-    )
+    service = TrainingExampleService(backend=WeakStrongPairTrainingExampleBackend())
 
     with pytest.raises(
         ValueError,
@@ -302,6 +317,10 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
     register_training_example_backend(
         "constant_examples",
         factory=lambda _objective_config: _ConstantTrainingExampleBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="constant_examples",
+            family_name="example_generation",
+        ),
     )
 
     service = TrainingExampleService.from_objective_config(
@@ -372,10 +391,20 @@ def test_training_example_service_rejects_incompatible_backend_family() -> None:
     register_shared_adapter_training_backend(
         "test_shift_example_training_backend",
         factory=lambda _objective_config: _TestShiftTrainingBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="test_shift_example_training_backend",
+            family_name="test_shift",
+            supported_adapter_kinds=("test_shift",),
+        ),
     )
     register_training_example_backend(
         "diagonal_only_training_examples",
         factory=lambda _objective_config: _DiagonalOnlyTrainingExampleBackend(),
+        catalog_entry=_registry_catalog_entry(
+            item_name="diagonal_only_training_examples",
+            family_name="example_generation",
+            supported_adapter_kinds=("diagonal_scale",),
+        ),
     )
 
     with pytest.raises(

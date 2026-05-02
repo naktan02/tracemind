@@ -1,21 +1,4 @@
-"""Artifact-oriented domain entities."""
+"""Artifact-oriented domain entity package.
 
-from shared.src.contracts.model_contracts import ModelManifest
-
-from .labeled_query import LabeledQuery, LabeledQuerySet
-from .prototype_pack import (
-    CategoryPrototype,
-    PrototypePack,
-    SingleCategoryPrototype,
-    SinglePrototypePack,
-)
-
-__all__ = [
-    "CategoryPrototype",
-    "LabeledQuery",
-    "LabeledQuerySet",
-    "ModelManifest",
-    "PrototypePack",
-    "SingleCategoryPrototype",
-    "SinglePrototypePack",
-]
+repo 내부에서는 package-level export 대신 direct-file import를 기본으로 쓴다.
+"""

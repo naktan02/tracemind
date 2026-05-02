@@ -20,8 +20,10 @@
 - `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/sharding
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
 - `scripts/conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
+- `scripts/conf/federated_round_runtime`, `federated_training_task`, `federated_validation`: federated simulation이 `training_algorithm_profile`을 runtime/task/validation shape로 번역하는 bridge group
 - `scripts/conf/datasets`, `experiments`, `prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
-- `scripts/classification_report.py`, `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 공통 helper
+- `scripts/classification_report.py`, `scripts/labeled_query_rows.py`: shared canonical utility를 다시 노출하는 compatibility wrapper
+- `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 실행 산출물 경로 helper
 
 원칙:
 
@@ -99,7 +101,7 @@ LoRA나 transformer 실험을 GPU로 돌리기 전에 아래를 먼저 확인한
 
 ```bash
 nvidia-smi
-./.venv/bin/python - <<'PY'
+..venv/bin/python - <<'PY'
 import torch
 print(torch.cuda.is_available(), torch.cuda.device_count())
 PY
@@ -522,7 +524,7 @@ uv run python scripts/experiments/train_lora_classifier.py \
 ```bash
 ps aux | rg 'train_lora_classifier|train_lora_bootstrap_classifier_teacher|train_lora_fixmatch'
 nvidia-smi
-./.venv/bin/python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")'
+..venv/bin/python -c 'import torch; print(torch.cuda.is_available(), torch.cuda.device_count(), torch.cuda.get_device_name(0) if torch.cuda.is_available() else "")'
 ```
 
 1. supervised seed LoRA baseline

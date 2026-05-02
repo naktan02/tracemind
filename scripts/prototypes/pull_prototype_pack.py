@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 
-from agent.src.services.prototype.sync_service import PrototypeSyncService
+from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 
 
 def parse_args() -> argparse.Namespace:

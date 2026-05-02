@@ -8,8 +8,10 @@ from pathlib import Path
 from main_server.src.infrastructure.repositories import (  # noqa: E402
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
-from main_server.src.services.rounds.models import RoundOpenRequest  # noqa: E402
-from main_server.src.services.rounds.round_manager_service import (  # noqa: E402
+from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
+    RoundOpenRequest,
+)
+from main_server.src.services.federation.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
 )

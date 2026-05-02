@@ -7,5 +7,6 @@ model revision 관리와 federated learning orchestration을 담당하는
 코드 읽기 시작점:
 
 - `main_server/src/services/README.md`
-- round orchestration: `main_server/src/services/rounds/README.md`
-- prototype rebuild/publication: `main_server/src/services/prototypes/`
+- round orchestration: `main_server/src/services/federation/rounds/README.md`
+- prototype rebuild/publication:
+  `main_server/src/services/federation/assets/prototypes/`
