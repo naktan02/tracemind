@@ -4,12 +4,14 @@
 
 from .io_utils import load_jsonl_rows
 from .models import (
+    ClientEvaluationSummary,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
 )
-from .sharding import split_rows_for_federation
+from .sharding import split_rows_for_federation, split_rows_into_client_shards
 from .simulation import run_simulation

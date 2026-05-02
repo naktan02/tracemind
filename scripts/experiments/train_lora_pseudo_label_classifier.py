@@ -12,7 +12,7 @@ from scripts.experiments.lora_classifier.pseudo_label_runner import (
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/train_lora_pseudo_label_classifier",
 )
 def main(cfg: DictConfig) -> None:

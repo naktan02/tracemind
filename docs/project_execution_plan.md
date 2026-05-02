@@ -36,8 +36,11 @@ central fixed embedding + classifier seed
 - FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `3 seeds`로 고정한다.
 - FL SSL stress split은 같은 조건에서 Dirichlet label-skew `alpha=0.1`로 둔다.
 - 각 client pool은 기본적으로 `10% labeled / 90% unlabeled`로 나눈다.
+- FL SSL main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`으로 고정한다.
+- smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
 - tie-breaker/risk 지표는 `ECE`, communication cost, per-client variance다.
+- FL SSL report는 `fl_ssl_main_comparison` track으로 저장하고 중앙 SSL control report와 같은 ranking으로 합치지 않는다.
 - 시스템 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 
@@ -73,6 +76,8 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - main non-IID: Dirichlet label-skew `alpha=0.3`
 - stress non-IID: Dirichlet label-skew `alpha=0.1`
 - seeds: `3`
+- round budget: `50`
+- local update budget: `local_epochs=1`, `max_steps=50`
 - labeled/unlabeled ratio: `10% / 90%` per client
 - primary metrics: `macro-F1`, `worst-client macro-F1`
 - secondary metrics: `ECE`, communication cost, per-client variance
@@ -125,9 +130,9 @@ Runtime translation:
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
 4. 같은 scaffold에서 pseudo-label, FixMatch, R-Drop, MixText를 비교한다.
-5. central control과 FL main comparison report schema를 분리한다.
-6. 고정된 FL SSL non-IID 조건을 Hydra config/report metadata로 내린다.
-7. `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 메인 비교로 실행한다.
+5. FL SSL main comparison smoke를 `federated_shard_policy=dirichlet_alpha03`로 실행해 report를 확인한다.
+6. `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 Hydra method group으로 추가한다.
+7. 고정 조건에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 메인 비교로 실행한다.
 8. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
@@ -142,8 +147,7 @@ Runtime translation:
 
 1. query buffer raw text retention 기본값.
 2. LoRA target module/rank/alpha/dropout.
-3. FL communication round budget과 local epoch/update budget.
-4. FL 범위를 `lora` family/head에서 어디까지 열지.
-5. private adapter/head 도입 시점.
-6. secure aggregation과 DP 도입 시점.
-7. multi-prototype runtime 확장 여부.
+3. FL 범위를 `lora` family/head에서 어디까지 열지.
+4. private adapter/head 도입 시점.
+5. secure aggregation과 DP 도입 시점.
+6. multi-prototype runtime 확장 여부.

@@ -26,7 +26,7 @@ from scripts.experiments.prototype_strategy.strategies import (
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/prototype_strategy",
 )
 def main(config: DictConfig) -> None:
@@ -54,7 +54,9 @@ def main(config: DictConfig) -> None:
                 dbscan_min_samples_values=tuple(
                     config.strategy.dbscan_min_samples_values
                 ),
-                dbscan_search_sample_size=int(config.strategy.dbscan_search_sample_size),
+                dbscan_search_sample_size=int(
+                    config.strategy.dbscan_search_sample_size
+                ),
                 dbscan_min_cluster_coverage=float(
                     config.strategy.dbscan_min_cluster_coverage
                 ),

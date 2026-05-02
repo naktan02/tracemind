@@ -335,6 +335,9 @@ entrypoint:
 - `embedding`
 - `federated_run_preset`
 - `federated_shard_policy`
+- `federated_report`
+- `round_runtime.adapter_family_name`
+- `round_runtime.aggregation_backend_name`
 - `confidence_threshold`
 - `margin_threshold`
 - `training_task.objective.training_backend_name`
@@ -357,6 +360,7 @@ python -m scripts.experiments.run_federated_simulation \
   embedding=hash_debug \
   federated_run_preset=standard \
   federated_shard_policy=dirichlet_alpha03 \
+  federated_report=fl_ssl_main_comparison \
   confidence_threshold=0.7 \
   margin_threshold=0.05 \
   training_task.objective.score_policy_name=topk_mean_cosine \
@@ -368,9 +372,13 @@ python -m scripts.experiments.run_federated_simulation \
 
 주의:
 
-- `aggregation_backend_name`과 `adapter_family_name`은 현재 simulation Hydra top-level knob로는 직접 노출돼 있지 않다.
+- `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*` leaf override로 노출된다.
+- `federated_run_preset=standard`는 `10 clients`, `50 rounds`를 기본 main budget으로 둔다.
+- 기본 smoke preset은 실행 확인용으로 `4 clients`, `3 rounds`를 쓴다.
 - `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
   `dirichlet_alpha01`은 stress split이다.
+- `federated_report=fl_ssl_main_comparison`은 중앙 SSL control과 섞이지 않는
+  FL main comparison report schema를 고른다.
 - `secure_aggregation.*` 값을 config에 실을 수는 있지만 실제 secure aggregation runtime을 실험하는 것은 아니다.
 - `prototype_rebuild.translation_model_*` 필드는 provenance metadata를 남기는 축이지,
   simulation 중 실제 translation adapter를 바꾸는 축은 아니다.

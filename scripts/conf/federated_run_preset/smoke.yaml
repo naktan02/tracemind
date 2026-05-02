@@ -1,7 +1,7 @@
 name: smoke
 output_dir: runs/federated_simulation_smoke
 client_count: 4
-rounds: 1
+rounds: 3
 bootstrap_ratio: 0.2
 max_examples: 32
 min_required_examples: 4

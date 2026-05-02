@@ -10,7 +10,7 @@ from scripts.experiments.fixed_classifier.runner import run_fixed_embedding_clas
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/train_softmax_classifier",
 )
 def main(cfg: DictConfig) -> None:

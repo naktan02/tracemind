@@ -10,6 +10,7 @@ defaults:
   - /federated_round_runtime: default
   - /federated_training_task: default
   - /federated_validation: default
+  - /federated_report: fl_ssl_main_comparison
   - /prototype_builder: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled

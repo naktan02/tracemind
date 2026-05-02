@@ -13,7 +13,4 @@ score_top_k: null
 pseudo_label_algorithm_name: top1_margin_threshold
 acceptance_policy_name: top1_margin_threshold
 privacy_guard_name: diagonal_scale_clip_only
-training_backend_consistency_loss_weight: 1.0
-training_backend_step_scale_multiplier: 1.0
-training_backend_bias_learning_rate_multiplier: 1.0
 evidence_backend_temperature: 1.0

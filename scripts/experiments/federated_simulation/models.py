@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundTaskConfig,
@@ -43,6 +43,18 @@ class SimulationEvaluation:
     row_count: int
     top1_accuracy: float
     accepted_ratio: float
+    macro_f1: float = 0.0
+    expected_calibration_error: float = 0.0
+    per_label: dict[str, dict[str, int | float]] = field(default_factory=dict)
+    confusion_matrix: dict[str, dict[str, int]] = field(default_factory=dict)
+
+
+@dataclass(slots=True)
+class ClientEvaluationSummary:
+    """client별 heldout validation shard 평가 요약."""
+
+    client_id: str
+    validation: SimulationEvaluation
 
 
 @dataclass(slots=True)
@@ -66,6 +78,8 @@ class SimulationResult:
     initial_validation: SimulationEvaluation
     final_validation: SimulationEvaluation
     rounds: tuple[SimulationRoundSummary, ...]
+    client_evaluations: tuple[ClientEvaluationSummary, ...] = ()
+    report_path: str | None = None
 
 
 @dataclass(slots=True)
@@ -109,6 +123,20 @@ class FederatedDiagnosticsConfig:
     """selection dump 저장 설정."""
 
     dump_dir_name: str
+
+
+@dataclass(slots=True)
+class FederatedReportConfig:
+    """paper 비교용 report schema 설정."""
+
+    schema_version: str
+    track: str
+    table_role: str
+    labeled_ratio: float
+    unlabeled_ratio: float
+    seed_count: int
+    primary_metrics: list[str]
+    secondary_metrics: list[str]
 
 
 @dataclass(slots=True)

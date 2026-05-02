@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import defaultdict
+
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.backends.inputs.base import (
     WEAK_STRONG_PAIR_BACKEND_NAME,
@@ -55,10 +57,7 @@ def build_training_examples(
         if objective_config is None
         else TrainingExampleService.from_objective_config(objective_config)
     )
-    source_rows = tuple(
-        _build_training_example_source(row)
-        for row in rows
-    )
+    source_rows = tuple(_build_training_example_source(row) for row in rows)
     return service.build_examples(
         TrainingExampleBuildRequest(
             source_rows=source_rows,
@@ -102,9 +101,7 @@ def evaluate_rows(
         return SimulationEvaluation(row_count=0, top1_accuracy=0.0, accepted_ratio=0.0)
 
     selection_result = PseudoLabelSelectionService().select(
-        scored_events=tuple(
-            example.evidence_scored_event for example in examples
-        ),
+        scored_events=tuple(example.evidence_scored_event for example in examples),
         training_task=_build_validation_task(
             model_id=model_id,
             model_revision=adapter_state.model_revision,
@@ -112,16 +109,30 @@ def evaluate_rows(
             objective_config=effective_objective_config,
         ),
     )
-    correct = sum(
-        1
-        for row, candidate in zip(rows, selection_result.candidates, strict=True)
-        if candidate.label == str(row["mapped_label_4"])
+    true_labels = [str(row["mapped_label_4"]) for row in rows]
+    predicted_labels = [candidate.label for candidate in selection_result.candidates]
+    correctness = [
+        predicted == true
+        for true, predicted in zip(true_labels, predicted_labels, strict=True)
+    ]
+    macro_f1, per_label, confusion_matrix = _build_classification_metrics(
+        true_labels=true_labels,
+        predicted_labels=predicted_labels,
     )
 
     return SimulationEvaluation(
         row_count=len(rows),
-        top1_accuracy=correct / len(rows),
+        top1_accuracy=sum(correctness) / len(rows),
         accepted_ratio=selection_result.accepted_ratio,
+        macro_f1=macro_f1,
+        expected_calibration_error=_compute_expected_calibration_error(
+            confidences=[
+                candidate.confidence for candidate in selection_result.candidates
+            ],
+            correctness=correctness,
+        ),
+        per_label=per_label,
+        confusion_matrix=confusion_matrix,
     )
 
 
@@ -193,9 +204,7 @@ def _build_validation_objective_config(
     margin_threshold: float,
 ) -> TrainingObjectiveConfig:
     overrides: dict[str, str | int | float | bool] = (
-        {}
-        if objective_config is None
-        else objective_config.to_mapping()
+        {} if objective_config is None else objective_config.to_mapping()
     )
     overrides["confidence_threshold"] = confidence_threshold
     overrides["margin_threshold"] = margin_threshold
@@ -224,3 +233,86 @@ def _build_validation_task(
         objective_config=objective_config,
         selection_policy=TrainingSelectionPolicy(),
     )
+
+
+def _build_classification_metrics(
+    *,
+    true_labels: list[str],
+    predicted_labels: list[str],
+) -> tuple[float, dict[str, dict[str, int | float]], dict[str, dict[str, int]]]:
+    labels = sorted(set(true_labels) | set(predicted_labels))
+    confusion: dict[str, dict[str, int]] = {label: defaultdict(int) for label in labels}
+    for true_label, predicted_label in zip(true_labels, predicted_labels, strict=True):
+        confusion[true_label][predicted_label] += 1
+
+    confusion_matrix = {
+        label: dict(sorted(counts.items()))
+        for label, counts in sorted(confusion.items())
+    }
+    per_label: dict[str, dict[str, int | float]] = {}
+    f1_values: list[float] = []
+    for label in labels:
+        true_positive = confusion[label].get(label, 0)
+        false_positive = sum(
+            confusion[other_label].get(label, 0)
+            for other_label in labels
+            if other_label != label
+        )
+        false_negative = sum(
+            count
+            for predicted_label, count in confusion[label].items()
+            if predicted_label != label
+        )
+        support = true_positive + false_negative
+        predicted_count = true_positive + false_positive
+        precision = true_positive / predicted_count if predicted_count > 0 else 0.0
+        recall = true_positive / support if support > 0 else 0.0
+        f1 = (
+            2 * precision * recall / (precision + recall)
+            if precision + recall > 0
+            else 0.0
+        )
+        per_label[label] = {
+            "support": support,
+            "predicted_count": predicted_count,
+            "true_positive": true_positive,
+            "false_positive": false_positive,
+            "false_negative": false_negative,
+            "precision": precision,
+            "recall": recall,
+            "f1": f1,
+        }
+        f1_values.append(f1)
+
+    macro_f1 = sum(f1_values) / len(f1_values) if f1_values else 0.0
+    return macro_f1, per_label, confusion_matrix
+
+
+def _compute_expected_calibration_error(
+    *,
+    confidences: list[float],
+    correctness: list[bool],
+    bin_count: int = 10,
+) -> float:
+    if not confidences:
+        return 0.0
+    if len(confidences) != len(correctness):
+        raise ValueError("confidences and correctness must have the same length.")
+
+    bins: list[list[tuple[float, bool]]] = [[] for _ in range(bin_count)]
+    for confidence, is_correct in zip(confidences, correctness, strict=True):
+        clamped_confidence = min(1.0, max(0.0, confidence))
+        bin_index = min(int(clamped_confidence * bin_count), bin_count - 1)
+        bins[bin_index].append((clamped_confidence, is_correct))
+
+    total = len(confidences)
+    ece = 0.0
+    for bucket in bins:
+        if not bucket:
+            continue
+        bucket_confidence = sum(item[0] for item in bucket) / len(bucket)
+        bucket_accuracy = sum(1 for _, item_correct in bucket if item_correct) / len(
+            bucket
+        )
+        ece += (len(bucket) / total) * abs(bucket_accuracy - bucket_confidence)
+    return ece

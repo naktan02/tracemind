@@ -24,19 +24,13 @@ def split_rows_for_federation(
     """train row를 prototype bootstrap과 non-IID client shard로 나눈다."""
     if not 0.0 < bootstrap_ratio < 1.0:
         raise ValueError("bootstrap_ratio must be between 0 and 1.")
-    if client_count <= 0:
-        raise ValueError("client_count must be positive.")
-
-    rows_by_label: dict[str, list[LabeledQueryRow]] = defaultdict(list)
-    for row in rows:
-        rows_by_label[str(row["mapped_label_4"])].append(row)
 
     rng = random.Random(seed)
+    rows_by_label = _group_shuffled_rows_by_label(rows, rng)
     bootstrap_rows: list[LabeledQueryRow] = []
     remaining_by_label: dict[str, list[LabeledQueryRow]] = {}
     for label in sorted(rows_by_label):
         bucket = list(rows_by_label[label])
-        rng.shuffle(bucket)
         bootstrap_count = int(round(len(bucket) * bootstrap_ratio))
         if bootstrap_count <= 0 and len(bucket) > 1:
             bootstrap_count = 1
@@ -44,6 +38,58 @@ def split_rows_for_federation(
             bootstrap_count = len(bucket) - 1
         bootstrap_rows.extend(bucket[:bootstrap_count])
         remaining_by_label[label] = bucket[bootstrap_count:]
+
+    client_shards = _assign_client_shards(
+        remaining_by_label=remaining_by_label,
+        client_count=client_count,
+        shard_policy=shard_policy,
+        rng=rng,
+    )
+
+    return FederatedDatasetSplit(
+        bootstrap_rows=bootstrap_rows,
+        client_shards=client_shards,
+    )
+
+
+def split_rows_into_client_shards(
+    rows: list[LabeledQueryRow],
+    *,
+    client_count: int,
+    seed: int,
+    shard_policy: FederatedShardPolicyConfig,
+) -> tuple[FederatedClientShard, ...]:
+    """heldout validation row를 bootstrap 없이 client shard로 나눈다."""
+    rng = random.Random(seed)
+    return _assign_client_shards(
+        remaining_by_label=_group_shuffled_rows_by_label(rows, rng),
+        client_count=client_count,
+        shard_policy=shard_policy,
+        rng=rng,
+    )
+
+
+def _group_shuffled_rows_by_label(
+    rows: list[LabeledQueryRow],
+    rng: random.Random,
+) -> dict[str, list[LabeledQueryRow]]:
+    rows_by_label: dict[str, list[LabeledQueryRow]] = defaultdict(list)
+    for row in rows:
+        rows_by_label[str(row["mapped_label_4"])].append(row)
+    for label in sorted(rows_by_label):
+        rng.shuffle(rows_by_label[label])
+    return rows_by_label
+
+
+def _assign_client_shards(
+    *,
+    remaining_by_label: dict[str, list[LabeledQueryRow]],
+    client_count: int,
+    shard_policy: FederatedShardPolicyConfig,
+    rng: random.Random,
+) -> tuple[FederatedClientShard, ...]:
+    if client_count <= 0:
+        raise ValueError("client_count must be positive.")
 
     client_shards = [
         FederatedClientShard(
@@ -71,11 +117,7 @@ def split_rows_for_federation(
 
     for shard in client_shards:
         rng.shuffle(shard.rows)
-
-    return FederatedDatasetSplit(
-        bootstrap_rows=bootstrap_rows,
-        client_shards=tuple(client_shards),
-    )
+    return tuple(client_shards)
 
 
 def _assign_label_dominant_shards(

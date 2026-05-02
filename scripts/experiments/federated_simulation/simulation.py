@@ -34,6 +34,7 @@ from scripts.experiments.federated_simulation.artifacts import (
     save_model_manifest,
     save_prototype_pack,
     save_selection_diagnostics,
+    save_simulation_report,
 )
 from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
@@ -41,9 +42,11 @@ from scripts.experiments.federated_simulation.evaluation import (
     evaluate_rows,
 )
 from scripts.experiments.federated_simulation.models import (
+    ClientEvaluationSummary,
     ClientRoundSummary,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
@@ -63,6 +66,7 @@ from scripts.experiments.federated_simulation.runtime import (
 )
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
+    split_rows_into_client_shards,
 )
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
@@ -93,6 +97,7 @@ def run_simulation(
     validation_config: FederatedValidationConfig,
     prototype_rebuild_config: FederatedPrototypeRebuildConfig,
     diagnostics_config: FederatedDiagnosticsConfig,
+    report_config: FederatedReportConfig | None = None,
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
 
@@ -101,6 +106,12 @@ def run_simulation(
         bootstrap_ratio=bootstrap_ratio,
         client_count=client_count,
         seed=seed,
+        shard_policy=shard_policy,
+    )
+    validation_client_shards = split_rows_into_client_shards(
+        validation_rows,
+        client_count=client_count,
+        seed=seed + 1,
         shard_policy=shard_policy,
     )
     adapter = EmbeddingAdapterFactory.create(embedding_spec)
@@ -125,12 +136,7 @@ def run_simulation(
     initial_prototype_version = "proto_sim_0000"
     now = datetime.now(timezone.utc)
     category_labels = tuple(
-        sorted(
-            {
-                str(row["mapped_label_4"])
-                for row in (*train_rows, *validation_rows)
-            }
-        )
+        sorted({str(row["mapped_label_4"]) for row in (*train_rows, *validation_rows)})
     )
     initial_state = build_initial_shared_state(
         adapter_family_name=round_runtime_config.adapter_family_name,
@@ -347,10 +353,49 @@ def run_simulation(
     final_validation = (
         round_summaries[-1].validation if round_summaries else initial_validation
     )
-    return SimulationResult(
+    final_validation_scoring_service = build_validation_scoring_service(
+        validation_config,
+        shared_state=active_state,
+    )
+    client_evaluations = tuple(
+        ClientEvaluationSummary(
+            client_id=shard.client_id,
+            validation=evaluate_rows(
+                rows=shard.rows,
+                adapter=adapter,
+                adapter_state=active_state,
+                prototype_pack=active_prototype,
+                model_id=model_id,
+                scoring_service=final_validation_scoring_service,
+                confidence_threshold=validation_config.confidence_threshold,
+                margin_threshold=validation_config.margin_threshold,
+                objective_config=training_task_config.objective_config,
+            ),
+        )
+        for shard in validation_client_shards
+    )
+    result = SimulationResult(
         initial_model_revision=initial_model_revision,
         initial_prototype_version=initial_prototype_version,
         initial_validation=initial_validation,
         final_validation=final_validation,
         rounds=tuple(round_summaries),
+        client_evaluations=client_evaluations,
     )
+    if report_config is not None:
+        result.report_path = str(
+            save_simulation_report(
+                output_dir=output_dir,
+                result=result,
+                report_config=report_config,
+                client_count=client_count,
+                round_budget=rounds,
+                bootstrap_ratio=bootstrap_ratio,
+                seed=seed,
+                shard_policy=shard_policy,
+                training_task_config=training_task_config,
+                validation_config=validation_config,
+                round_runtime_config=round_runtime_config,
+            )
+        )
+    return result

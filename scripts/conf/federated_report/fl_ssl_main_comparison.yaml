@@ -1,0 +1,15 @@
+# @package report
+
+schema_version: federated_simulation_report.v1
+track: fl_ssl_main_comparison
+table_role: main_comparison
+labeled_ratio: 0.1
+unlabeled_ratio: 0.9
+seed_count: 3
+primary_metrics:
+  - macro_f1
+  - worst_client_macro_f1
+secondary_metrics:
+  - expected_calibration_error
+  - communication_cost
+  - per_client_macro_f1_variance

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
@@ -14,10 +15,12 @@ from main_server.src.services.federation.rounds.boundary.models import (
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
+    split_rows_into_client_shards,
 )
 from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
@@ -173,6 +176,23 @@ def _default_diagnostics_config() -> FederatedDiagnosticsConfig:
     return FederatedDiagnosticsConfig(dump_dir_name="selection_dumps")
 
 
+def _default_report_config() -> FederatedReportConfig:
+    return FederatedReportConfig(
+        schema_version="federated_simulation_report.v1",
+        track="fl_ssl_main_comparison",
+        table_role="main_comparison",
+        labeled_ratio=0.1,
+        unlabeled_ratio=0.9,
+        seed_count=3,
+        primary_metrics=["macro_f1", "worst_client_macro_f1"],
+        secondary_metrics=[
+            "expected_calibration_error",
+            "communication_cost",
+            "per_client_macro_f1_variance",
+        ],
+    )
+
+
 def _default_round_runtime_config(
     *,
     adapter_family_name: str = "diagonal_scale",
@@ -282,6 +302,28 @@ def test_split_rows_for_federation_supports_dirichlet_label_skew() -> None:
     assert output_ids == input_ids
 
 
+def test_split_rows_into_client_shards_keeps_all_validation_rows() -> None:
+    rows = [_row(f"a{index}", "panic panic", "anxiety") for index in range(4)] + [
+        _row(f"n{index}", "calm calm", "normal") for index in range(4)
+    ]
+
+    shards = split_rows_into_client_shards(
+        rows,
+        client_count=3,
+        seed=42,
+        shard_policy=FederatedShardPolicyConfig(
+            name="dirichlet_label_skew",
+            alpha=0.3,
+            client_id_prefix="agent",
+        ),
+    )
+
+    assert len(shards) == 3
+    assert {row["query_id"] for shard in shards for row in shard.rows} == {
+        row["query_id"] for row in rows
+    }
+
+
 def test_federated_training_task_config_reuses_round_task_config() -> None:
     training_task_config = _default_training_task_config(
         confidence_threshold=0.6,
@@ -369,6 +411,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
+        report_config=_default_report_config(),
     )
 
     assert result.rounds
@@ -393,6 +436,21 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     first_candidate = json.loads(first_line)
     assert "selection_stage" in first_candidate
     assert "threshold_accepted" in first_candidate
+    assert result.report_path is not None
+    report = json.loads(Path(result.report_path).read_text(encoding="utf-8"))
+    assert report["track"] == "fl_ssl_main_comparison"
+    assert report["table_role"] == "main_comparison"
+    assert report["must_not_merge_with"] == ["central_ssl_control"]
+    assert report["protocol"]["round_budget"] == 1
+    assert report["protocol"]["local_update_budget"]["local_epochs"] == 1
+    assert report["metrics"]["primary"]["macro_f1"] == (
+        result.final_validation.macro_f1
+    )
+    assert (
+        report["metrics"]["secondary"]["communication_cost"]["unit"]
+        == "client_update_envelopes"
+    )
+    assert report["metrics"]["client_validation"]["evaluated_client_count"] > 0
 
 
 def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
@@ -498,6 +556,10 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
 
     assert result.top1_accuracy == 1.0
     assert result.accepted_ratio == 0.0
+    assert result.macro_f1 == 1.0
+    assert result.expected_calibration_error >= 0.0
+    assert result.confusion_matrix == {"anxiety": {"anxiety": 1}}
+    assert result.per_label["anxiety"]["f1"] == 1.0
 
 
 def test_build_training_examples_requires_multiview_fields() -> None:

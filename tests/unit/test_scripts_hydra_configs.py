@@ -335,9 +335,13 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.validation.margin_threshold == 0.02
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
-    assert cfg.federated_run_preset.rounds == 1
+    assert cfg.federated_run_preset.rounds == 3
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
+    assert cfg.report.track == "fl_ssl_main_comparison"
+    assert cfg.report.table_role == "main_comparison"
+    assert cfg.report.labeled_ratio == 0.1
+    assert cfg.report.unlabeled_ratio == 0.9
 
 
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
@@ -359,6 +363,19 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation"
     assert cfg.prototype_builder.name == "kmeans"
     assert list(cfg.prototype_builder.candidate_ks) == [2]
+
+
+def test_federated_simulation_standard_preset_fixes_main_comparison_budget() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/run_federated_simulation",
+            overrides=["federated_run_preset=standard"],
+        )
+
+    assert cfg.federated_run_preset.client_count == 10
+    assert cfg.federated_run_preset.rounds == 50
+    assert cfg.training_task.local_epochs == 1
+    assert cfg.training_task.max_steps == 50
 
 
 def test_federated_simulation_supports_detail_strategy_overrides() -> None:

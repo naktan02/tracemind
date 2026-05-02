@@ -81,6 +81,7 @@ task_routes:
       - FL SSL under non-IID is the main paper comparison for FL-specific methods
       - FL SSL main split uses 10 clients, Dirichlet alpha=0.3, 10/90 labeled/unlabeled, 3 seeds unless a new decision changes it
       - FL SSL stress split uses Dirichlet alpha=0.1
+      - FL SSL main budget uses 50 communication rounds and local_epochs=1 unless a new decision changes it
       - winner criteria include macro-F1 and worst-client macro-F1, with ECE, communication cost, and per-client variance as risk metrics
 
   strategy_addition:

@@ -12,6 +12,7 @@ from omegaconf import DictConfig, OmegaConf
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
     FederatedTrainingTaskConfig,
@@ -60,7 +61,7 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/run_federated_simulation",
 )
 def main(cfg: DictConfig) -> None:
@@ -103,6 +104,7 @@ def main(cfg: DictConfig) -> None:
         diagnostics_config=FederatedDiagnosticsConfig(
             **_to_plain_dict(cfg.diagnostics)
         ),
+        report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
     )
 
     print(f"output_dir={output_dir}")
@@ -126,6 +128,8 @@ def main(cfg: DictConfig) -> None:
     else:
         print("round_count=0")
         print("note=no client updates satisfied the pseudo-label selection criteria.")
+    if result.report_path is not None:
+        print(f"report_json={result.report_path}")
 
 
 if __name__ == "__main__":

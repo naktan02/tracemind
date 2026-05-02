@@ -23,7 +23,7 @@ from scripts.experiments.prototype_strategy.sweep import (
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/prototype_threshold_sweep",
 )
 def main(config: DictConfig) -> None:
@@ -65,6 +65,7 @@ def main(config: DictConfig) -> None:
     )
     print(f"output_dir={output_dir}")
     print(render_sweep_summary(summary))
+
 
 if __name__ == "__main__":
     main()

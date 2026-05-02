@@ -12,7 +12,7 @@ from scripts.experiments.lora_classifier.bootstrap_runner import (
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
+    config_path="../conf",
     config_name="experiments/train_lora_bootstrap_classifier_teacher",
 )
 def main(cfg: DictConfig) -> None:
