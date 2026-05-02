@@ -33,6 +33,11 @@ central fixed embedding + classifier seed
 - 중앙 SSL은 FL client partition 없는 control table이다. seed full replay 기본값이 아니다.
 - 중앙 canonical 규약은 `seed checkpoint 1회 생성 -> new accepted query-derived rows only continual adaptation`이다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL SSL non-IID 메인 비교군이다.
+- FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `3 seeds`로 고정한다.
+- FL SSL stress split은 같은 조건에서 Dirichlet label-skew `alpha=0.1`로 둔다.
+- 각 client pool은 기본적으로 `10% labeled / 90% unlabeled`로 나눈다.
+- winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
+- tie-breaker/risk 지표는 `ECE`, communication cost, per-client variance다.
 - 시스템 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 
@@ -61,6 +66,18 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 ```
 
 중앙 SSL 결과는 sanity check와 pooled/offline control로만 해석한다.
+
+고정 조건:
+
+- clients: `10`
+- main non-IID: Dirichlet label-skew `alpha=0.3`
+- stress non-IID: Dirichlet label-skew `alpha=0.1`
+- seeds: `3`
+- labeled/unlabeled ratio: `10% / 90%` per client
+- primary metrics: `macro-F1`, `worst-client macro-F1`
+- secondary metrics: `ECE`, communication cost, per-client variance
+- report separation: central SSL control table과 FL SSL main comparison table을 같은
+  ranking으로 합치지 않는다.
 
 Runtime translation:
 
@@ -97,7 +114,7 @@ Runtime translation:
 2. Phase 1: `central fixed embedding + classifier` seed 완료.
 3. Phase 2: query buffer, threshold/policy, manual label hook 고정.
 4. Phase 3: central SSL pooled/offline control 비교.
-5. Phase 4: FL SSL non-IID 메인 비교.
+5. Phase 4: 고정된 `10 clients`, `alpha=0.3/0.1`, `10/90`, `3 seeds` 조건에서 FL SSL non-IID 메인 비교.
 6. Phase 5: FL SSL winner runtime translation.
 7. Phase 6: 필요 시 richer shared adapter.
 8. Phase 7: clipping, secure aggregation, DP, 필요 시 HE.
@@ -108,15 +125,16 @@ Runtime translation:
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
 4. 같은 scaffold에서 pseudo-label, FixMatch, R-Drop, MixText를 비교한다.
-5. FL SSL non-IID의 client split, labeled/unlabeled ratio, metric, round budget을 고정한다.
-6. `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 메인 비교로 실행한다.
-7. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
+5. central control과 FL main comparison report schema를 분리한다.
+6. 고정된 FL SSL non-IID 조건을 Hydra config/report metadata로 내린다.
+7. `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 메인 비교로 실행한다.
+8. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 
 - Seed: canonical seed artifact, confusion, confidence distribution이 재현 가능하다.
 - Central SSL: 같은 고정 조건에서 control table과 output metadata가 남는다.
-- FL SSL: client partition, non-IID 정도, local/round budget이 고정돼 있다.
+- FL SSL: client partition, non-IID 정도, labeled/unlabeled ratio, metric, seed, local/round budget이 고정돼 있다.
 - Runtime: update base revision, aggregation, publication, artifact rebuild가 일관된다.
 - Privacy: raw text는 서버로 올라가지 않고 privacy layer는 training logic과 분리된다.
 
@@ -124,9 +142,8 @@ Runtime translation:
 
 1. query buffer raw text retention 기본값.
 2. LoRA target module/rank/alpha/dropout.
-3. FL SSL non-IID client partition과 labeled/unlabeled ratio.
-4. primary metric과 winner promotion 기준.
-5. FL 범위를 `lora` family/head에서 어디까지 열지.
-6. private adapter/head 도입 시점.
-7. secure aggregation과 DP 도입 시점.
-8. multi-prototype runtime 확장 여부.
+3. FL communication round budget과 local epoch/update budget.
+4. FL 범위를 `lora` family/head에서 어디까지 열지.
+5. private adapter/head 도입 시점.
+6. secure aggregation과 DP 도입 시점.
+7. multi-prototype runtime 확장 여부.

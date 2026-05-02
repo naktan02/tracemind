@@ -196,9 +196,7 @@ def test_train_lora_fixmatch_supports_query_ssl_augmenter_override() -> None:
 
 
 def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
-) -> (
-    None
-):
+) -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_pseudo_label_classifier",
@@ -234,15 +232,11 @@ def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_over
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.algorithm_name == (
-        "top1_confidence_only"
-    )
+    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_confidence_only")
 
 
 def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override(  # noqa: E501
-) -> (
-    None
-):
+) -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_bootstrap_classifier_teacher",
@@ -255,9 +249,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_ove
 
 
 def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_overrides(  # noqa: E501
-) -> (
-    None
-):
+) -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(
             config_name="experiments/train_lora_bootstrap_classifier_teacher",
@@ -298,9 +290,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.algorithm_name == (
-        "top1_confidence_only"
-    )
+    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_confidence_only")
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -346,6 +336,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 1
+    assert cfg.shard_policy.name == "label_dominant"
+    assert cfg.shard_policy.dominant_ratio == 0.75
 
 
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
@@ -389,6 +381,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             ],
         )
 
+    assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.6
     assert cfg.training_task.objective.algorithm_profile_name == (
         "prototype_top1_confidence_v1"
@@ -411,6 +404,18 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 
+def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/run_federated_simulation",
+            overrides=["federated_shard_policy=dirichlet_alpha03"],
+        )
+
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.shard_policy.dominant_ratio is None
+
+
 def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(config_name="experiments/train_lora_classifier")
@@ -425,9 +430,7 @@ def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() 
 
 
 def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold(  # noqa: E501
-) -> (
-    None
-):
+) -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(config_name="experiments/train_lora_pseudo_label_classifier")
 
@@ -470,9 +473,7 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
 
 
 def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student(  # noqa: E501
-) -> (
-    None
-):
+) -> None:
     with initialize_config_module(version_base=None, config_module="scripts.conf"):
         cfg = compose(config_name="experiments/train_lora_bootstrap_classifier_teacher")
 
@@ -485,9 +486,7 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
     assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
     assert cfg.pseudo_label_algorithm.confidence_threshold == 0.6
     assert cfg.pseudo_label_algorithm.margin_threshold == 0.02
-    assert cfg.pseudo_label_algorithm.algorithm_name == (
-        "top1_margin_threshold"
-    )
+    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_margin_threshold")
     assert cfg.bootstrap_split.enabled is False
 
 

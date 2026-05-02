@@ -1,6 +1,6 @@
 name: standard
 output_dir: runs/federated_simulation
-client_count: 4
+client_count: 10
 rounds: 1
 bootstrap_ratio: 0.2
 max_examples: 64

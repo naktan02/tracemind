@@ -30,6 +30,10 @@
 
 - client non-IID split 위에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 같은
   FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
+- main condition은 `10 clients`, Dirichlet `alpha=0.3`, `10% labeled / 90% unlabeled`, `3 seeds`다.
+- stress condition은 같은 조건에서 Dirichlet `alpha=0.1`로 둔다.
+- primary metric은 `macro-F1 + worst-client macro-F1`이고,
+  `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
 
 ### Phase 5. 시스템 FL runtime translation
 
@@ -92,6 +96,10 @@
 - 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 정리한다.
 - 중앙 SSL 비교는 pooled/offline control이고, `FedMatch`, `FedLGMatch`, `(FL)^2`는
   FL SSL non-IID 메인 비교선으로 둔다.
+- FL SSL main comparison 조건은 `10 clients`, Dirichlet `alpha=0.3`, `10/90 labeled/unlabeled`,
+  `3 seeds`로 고정했고, `alpha=0.1`은 stress split으로 둔다.
+- winner 1차 기준은 `macro-F1 + worst-client macro-F1`이며,
+  `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -99,9 +107,9 @@
 
 ## Next Session Checklist
 
-1. central SSL control table의 고정 조건과 출력 metadata를 잠근다.
-2. FL SSL non-IID 메인 비교의 client split, label/unlabeled 배치, metric을 잠근다.
-3. central control과 FL main comparison이 같은 ranking으로 오해되지 않게 report schema를 분리한다.
+1. central control과 FL main comparison이 같은 ranking으로 오해되지 않게 report schema를 분리한다.
+2. 고정된 FL SSL split/metric 조건을 Hydra config와 report metadata로 내린다.
+3. FL communication round budget과 local epoch/update budget을 정한다.
 
 ## Guardrails
 

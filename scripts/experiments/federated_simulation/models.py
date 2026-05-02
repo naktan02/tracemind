@@ -73,8 +73,9 @@ class FederatedShardPolicyConfig:
     """client shard 분할 정책 설정."""
 
     name: str
-    dominant_ratio: float
     client_id_prefix: str
+    dominant_ratio: float | None = None
+    alpha: float | None = None
 
 
 FederatedTrainingTaskConfig = RoundTaskConfig

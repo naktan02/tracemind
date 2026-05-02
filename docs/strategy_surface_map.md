@@ -333,6 +333,8 @@ entrypoint:
 바로 조절 가능한 값:
 
 - `embedding`
+- `federated_run_preset`
+- `federated_shard_policy`
 - `confidence_threshold`
 - `margin_threshold`
 - `training_task.objective.training_backend_name`
@@ -353,6 +355,8 @@ entrypoint:
 ```bash
 python -m scripts.experiments.run_federated_simulation \
   embedding=hash_debug \
+  federated_run_preset=standard \
+  federated_shard_policy=dirichlet_alpha03 \
   confidence_threshold=0.7 \
   margin_threshold=0.05 \
   training_task.objective.score_policy_name=topk_mean_cosine \
@@ -365,6 +369,8 @@ python -m scripts.experiments.run_federated_simulation \
 주의:
 
 - `aggregation_backend_name`과 `adapter_family_name`은 현재 simulation Hydra top-level knob로는 직접 노출돼 있지 않다.
+- `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
+  `dirichlet_alpha01`은 stress split이다.
 - `secure_aggregation.*` 값을 config에 실을 수는 있지만 실제 secure aggregation runtime을 실험하는 것은 아니다.
 - `prototype_rebuild.translation_model_*` 필드는 provenance metadata를 남기는 축이지,
   simulation 중 실제 translation adapter를 바꾸는 축은 아니다.

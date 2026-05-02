@@ -129,11 +129,7 @@ def _default_training_task_config(
                 "example_generation_backend_name": "prototype_rescore",
                 "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
-                **(
-                    {}
-                    if score_top_k is None
-                    else {"score_top_k": score_top_k}
-                ),
+                **({} if score_top_k is None else {"score_top_k": score_top_k}),
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "acceptance_policy_name": "top1_margin_threshold",
                 "privacy_guard_name": "diagonal_scale_clip_only",
@@ -242,6 +238,48 @@ def test_split_rows_for_federation_supports_configurable_dominant_ratio() -> Non
 
     shard_sizes = [len(shard.rows) for shard in split.client_shards]
     assert shard_sizes == [2, 1]
+
+
+def test_split_rows_for_federation_supports_dirichlet_label_skew() -> None:
+    rows = [_row(f"a{index}", "panic panic", "anxiety") for index in range(20)] + [
+        _row(f"n{index}", "calm calm", "normal") for index in range(20)
+    ]
+
+    split = split_rows_for_federation(
+        rows,
+        bootstrap_ratio=0.2,
+        client_count=5,
+        seed=42,
+        shard_policy=FederatedShardPolicyConfig(
+            name="dirichlet_label_skew",
+            alpha=0.3,
+            client_id_prefix="agent",
+        ),
+    )
+    repeated = split_rows_for_federation(
+        rows,
+        bootstrap_ratio=0.2,
+        client_count=5,
+        seed=42,
+        shard_policy=FederatedShardPolicyConfig(
+            name="dirichlet_label_skew",
+            alpha=0.3,
+            client_id_prefix="agent",
+        ),
+    )
+
+    assert len(split.client_shards) == 5
+    assert [shard.client_id for shard in split.client_shards] == [
+        f"agent_{index:02d}" for index in range(1, 6)
+    ]
+    assert [
+        [row["query_id"] for row in shard.rows] for shard in split.client_shards
+    ] == [[row["query_id"] for row in shard.rows] for shard in repeated.client_shards]
+    input_ids = {row["query_id"] for row in rows}
+    output_ids = {row["query_id"] for row in split.bootstrap_rows} | {
+        row["query_id"] for shard in split.client_shards for row in shard.rows
+    }
+    assert output_ids == input_ids
 
 
 def test_federated_training_task_config_reuses_round_task_config() -> None:
@@ -462,8 +500,7 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
     assert result.accepted_ratio == 0.0
 
 
-def test_build_training_examples_requires_multiview_fields_for_weak_strong_backend(
-) -> None:
+def test_build_training_examples_requires_multiview_fields() -> None:
     adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
     adapter_state = VectorAdapterState.identity(
         model_id="hash_debug",
