@@ -26,7 +26,9 @@
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
 3. `docs/contracts/*`, active `docs/*`
-4. `docs/notes/**`
+
+`docs/notes/**`는 archive-only다. 현재 규칙이나 작업 절차로 쓰려면 active
+docs나 code-adjacent 문서로 요약 승격한다.
 
 ## 변경 규칙
 
@@ -49,5 +51,7 @@
 - `docs/contracts/central_lora_classifier_trainer_contract.md`는 논문 트랙의
   canonical LoRA scaffold와 산출물 경계를 설명한다.
 - `docs/notes/**`는 참고/아카이브 용도이며 source of truth로 취급하지 않는다.
+- 새 `docs/notes/sessions/**`는 300-500 words 요약으로 제한하고 대화 전문
+  transcript를 추가하지 않는다.
 - 구조 변경 시 관련 README, execution index, manifest를 같은 턴에서 함께
   맞춘다.

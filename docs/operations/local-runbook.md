@@ -4,6 +4,45 @@
 
 현재 저장소에는 Docker Compose 또는 `infra/` manifest가 없다. 로컬 실행 기준은 Python `uv`, FastAPI/Uvicorn, Vite app이다.
 
+## 0. Codex 실행 권한 모델
+
+프로젝트 기본 Codex 설정은 아래를 기준으로 한다.
+
+```toml
+approval_policy = "on-request"
+sandbox_mode = "danger-full-access"
+```
+
+목적은 GPU, model cache, `uv` cache, local server처럼 sandbox 안에서 실패하거나
+환경이 다르게 보이는 검증을 실제 실행 환경에서 먼저 수행하기 위함이다.
+
+### 기본 실행 가능
+
+작업 검증에 직접 필요하면 추가 확인 없이 실행한다.
+
+- 읽기/탐색: `rg`, `find`, `sed`, `git diff`, `git status`
+- 검증: `uv run pytest`, `uv run ruff check`, `uv run ruff format --check`
+- GPU preflight: `nvidia-smi`, `uv run python -c "import torch; ..."`
+- 로컬 smoke: `uv run python ...`, `uv run uvicorn ...`, app `npm run build`
+- 로컬 실험 smoke: 관련 Hydra config와 entrypoint가 명확한 `uv run python scripts/...`
+
+### 사전 확인 필요
+
+아래는 full access 환경에서도 사용자 확인을 먼저 받는다.
+
+- repo 밖 파일 쓰기, 삭제, 이동, 권한 변경
+- `rm -rf`, `git reset --hard`, `git clean`, checkout으로 작업물 되돌리기
+- commit, push, remote 변경, branch 삭제
+- `.env`, credential, system config, shell profile 변경
+- 장시간/대용량 다운로드, paid API 호출, 외부 서비스에 데이터 전송
+- 관련 없는 프로세스 종료 또는 포트 점유 프로세스 강제 종료
+
+### 하지 말 것
+
+- sandbox 우회나 권한 상승을 목적으로 임시 경로에 source-of-truth를 복제하지 않는다.
+- GPU가 안 보인다는 이유만으로 CPU fallback 결과를 최종 검증으로 간주하지 않는다.
+- 실패한 명령을 숨기고 다른 명령으로 우회하지 않는다. 실패 원인과 재실행 환경을 남긴다.
+
 ## 1. 사전 조건
 
 | 항목 | 기준 |
@@ -191,8 +230,9 @@ uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.devi
 
 주의:
 
-- sandbox에서 GPU가 안 보여도 실제 머신에는 GPU가 있을 수 있다.
-- GPU 확인 실패를 곧바로 GPU 부재로 단정하지 말고, 필요하면 sandbox 밖에서 다시 확인한다.
+- sandbox나 제한 환경에서 GPU가 안 보여도 실제 머신에는 GPU가 있을 수 있다.
+- GPU 확인 실패를 곧바로 GPU 부재로 단정하지 말고, `danger-full-access` 실행 환경에서 다시 확인한다.
+- GPU profile 실행 전 `torch.cuda.is_available()`가 `False`면 CPU fallback으로 계속하지 말고, 사용자가 CPU smoke를 원한 경우에만 runtime을 `cpu_local` 또는 `auto_local`로 낮춘다.
 - `local_files_only=false` profile은 모델 다운로드를 시도할 수 있다.
 
 ## 9. Stale Process 확인

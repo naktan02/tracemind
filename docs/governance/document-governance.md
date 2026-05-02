@@ -30,7 +30,7 @@
 | payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md` |
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
-| 알고리즘/전략 추가 절차 | `docs/contracts/algorithm_extension_guide.md`, `docs/contracts/strategy_addition_playbook.md` |
+| 알고리즘/전략 추가 절차 | `docs/strategy_surface_map.md`, `docs/contracts/strategy_addition_playbook.md`, 필요 시 `docs/contracts/algorithm_extension_guide.md` |
 | query buffer local boundary | `docs/contracts/query_buffer_v1.md`, `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | child-support local boundary | `shared/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support_service.py` |
 | family extension planning | `docs/family_extension_wellbeing_signal_mvp_plan.md`, `shared/src/contracts/wellbeing_signal_contracts.py` |
@@ -45,6 +45,8 @@
 6. 같은 배경 설명을 여러 문서에 길게 복제하지 않는다.
 7. API 문서는 field 전체 복제보다 route, owner, contract source를 명시한다.
 8. 운영 절차는 실제 존재하는 command, config, 파일 기준으로 쓴다.
+9. 읽기 안내 문서는 전체 읽기 순서가 아니라 task route와 필요한 문서 선택 기준을 제공한다.
+10. 세션 기록은 기본적으로 300-500 words 요약만 남기고, 대화 전문 transcript는 repo 안 active/archive 문서로 추가하지 않는다.
 
 ## 4. 언제 어떤 문서를 갱신하는가
 
@@ -106,6 +108,7 @@
 |---|---|
 | `docs/notes/decisions/` | 대안 비교와 선택 이유 |
 | `docs/notes/incidents/` | 장애, sandbox 이슈, flaky/debug 기록 |
-| `docs/notes/sessions/` | 세션 로그와 작업 맥락 |
+| `docs/notes/sessions/` | 짧은 세션 요약과 작업 맥락 |
 
 notes에 남긴 내용이 현재 규칙이 되면 active docs나 contract 코드 가까이 요약해서 승격한다.
+기존에 남아 있는 긴 session transcript는 historical archive로만 취급하고 통째로 읽지 않는다.

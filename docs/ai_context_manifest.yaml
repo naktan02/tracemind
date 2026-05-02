@@ -24,13 +24,20 @@ source_of_truth_priority:
   - shared/src/contracts/*.py
   - shared/src/domain/entities/*
   - shared/src/contracts/README.md
+  - plan.md
   - docs/contracts/*
-  - docs/*
-  - docs/notes/**
+  - docs/*.md
+  - docs/architecture/*
+  - docs/api/*
+  - docs/operations/*
+  - docs/quality/*
+  - docs/governance/*
 
 active_entrypoints:
   - path: docs/execution_index.md
-    use_for: first repo entry and reading order
+    use_for: first repo entry and document map
+  - path: .codex/skills/tracemind-research-loop/SKILL.md
+    use_for: TraceMind skill routing and experiment intent alignment
   - path: plan.md
     use_for: research goal and global/local boundary
   - path: docs/project_execution_plan.md
@@ -51,8 +58,12 @@ active_entrypoints:
     use_for: agent-owned local query retention and threshold/policy selection boundary
   - path: shared/src/contracts/README.md
     use_for: payload interpretation
+  - path: docs/strategy_surface_map.md
+    use_for: first check for active strategy axes, metadata-only axes, and override availability
+  - path: docs/contracts/strategy_addition_playbook.md
+    use_for: concrete implementation, registration, default update, and test sequence for new strategies
   - path: docs/contracts/algorithm_extension_guide.md
-    use_for: strategy addition and replacement
+    use_for: protocol details and ownership boundaries after the relevant strategy axis is identified
   - path: docs/fl_runtime_implementation_checklist.md
     use_for: fl runtime implementation work
   - path: docs/family_extension_wellbeing_signal_mvp_plan.md
@@ -64,9 +75,12 @@ task_routes:
       - AGENTS.md
       - shared/AGENTS.md
       - shared/src/contracts/README.md
-      - docs/contracts/central_lora_classifier_trainer_contract.md
-      - docs/contracts/algorithm_extension_guide.md
+      - relevant shared/src/contracts file
+      - relevant producer and consumer files
       - docs/project_execution_plan.md
+    conditional_read:
+      - docs/contracts/central_lora_classifier_trainer_contract.md only for query-domain LoRA trainer contracts
+      - docs/contracts/algorithm_extension_guide.md only for strategy-axis contract changes
     verify:
       - producer and consumer stay aligned
       - related tests are updated
@@ -81,8 +95,10 @@ task_routes:
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
-      - scripts/README.md
+      - relevant scripts/experiments entrypoint
+      - relevant scripts/conf config group
     verify:
+      - comparison intent, fixed variables, changed variables, metric, seed, and output metadata are explicit before running
       - seed baseline과 adaptation scaffold가 섞이지 않는다
       - backbone, tokenizer, LoRA spec stay fixed inside one adaptation comparison table
       - outputs keep enough metadata for later FL translation
@@ -91,9 +107,11 @@ task_routes:
     read_order:
       - AGENTS.md
       - docs/project_execution_plan.md
-      - docs/contracts/algorithm_extension_guide.md
       - docs/strategy_surface_map.md
+      - docs/contracts/strategy_addition_playbook.md
       - relevant path-specific AGENTS.md
+    conditional_read:
+      - docs/contracts/algorithm_extension_guide.md only when protocol details or a new strategy axis must be implemented
     verify:
       - family or strategy boundary stays explicit
       - config source of truth stays singular
@@ -115,8 +133,9 @@ task_routes:
     read_order:
       - AGENTS.md
       - scripts/AGENTS.md
-      - scripts/README.md
-      - scripts/conf/*
+      - relevant script entrypoint
+      - relevant scripts/conf config group
+      - scripts/README.md only when command discovery or cross-script convention is needed
     verify:
       - Hydra config remains the source of truth
       - script-only logic does not absorb runtime core
@@ -169,3 +188,4 @@ archive_paths:
 maintainer_docs:
   - docs/ai_harness_operating_model.md
   - docs/ai_harness_eval_cases.yaml
+  - .codex/skills/THIRD_PARTY_NOTICES.md

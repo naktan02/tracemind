@@ -25,9 +25,11 @@ description: Use when adding or replacing an adapter family, aggregation backend
 2. 아래 순서로 읽는다.
    - root `AGENTS.md`
    - `docs/project_execution_plan.md`
-   - `docs/contracts/algorithm_extension_guide.md`
    - `docs/strategy_surface_map.md`
+   - `docs/contracts/strategy_addition_playbook.md`
    - 관련 path-specific `AGENTS.md`
+   - 새 Protocol이나 전략 축 구현 세부가 필요할 때만
+     `docs/contracts/algorithm_extension_guide.md`
 3. 소유 경계를 먼저 정한다.
    - canonical rule은 `shared`
    - local runtime은 `agent`

@@ -189,7 +189,7 @@ Raw Event / Local Signal
 
 | 문서 | 역할 |
 |---|---|
-| `docs/execution_index.md` | 짧은 진입점과 읽기 순서 |
+| `docs/execution_index.md` | 짧은 진입점과 문서 지도 |
 | `docs/project_execution_plan.md` | 활성 연구/시스템 계획과 현재 Phase |
 | `shared/src/contracts/README.md` | contract 파일 가까운 payload 해석 |
 | `docs/api/api-surface.md` | 현재 FastAPI endpoint 표면 |

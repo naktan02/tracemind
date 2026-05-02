@@ -18,6 +18,9 @@
 하네스는 아래 행동 기준을 기본값으로 둔다.
 
 - 모호한 요구나 여러 해석이 있으면 가정, 선택지, 성공 기준을 먼저 드러낸다.
+- 알고리즘, 방법론, baseline, ablation 비교처럼 의도 해석이 갈릴 수 있는
+  작업은 구현이나 실행 전에 비교 목표, 고정 변수, 변경 변수, metric, seed,
+  산출물 metadata를 먼저 맞춘다.
 - 요청과 직접 연결되는 파일만 고치고, 주변 리팩터링은 별도 필요로 언급한다.
 - 단일 사용처를 위한 추상화, 설정 축, compatibility layer를 미리 만들지 않는다.
 - 변경은 테스트, lint, 실행 결과처럼 검증 가능한 기준으로 닫는다.
@@ -63,10 +66,13 @@
 
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`
 2. `shared/src/contracts/README.md`
-3. `docs/contracts/*`, `docs/*`
-4. `docs/notes/**`
+3. `docs/contracts/*`, active `docs/*.md`, `docs/architecture/*`, `docs/api/*`,
+   `docs/operations/*`, `docs/quality/*`, `docs/governance/*`
 
-세부 active doc 목록과 읽기 순서는 `docs/execution_index.md`가 소유한다.
+`docs/notes/**`는 source of truth가 아니라 archive다. 현재 규칙으로 쓰려면
+active docs나 code-adjacent 문서로 요약 승격한 뒤 참조한다.
+
+세부 active doc 목록과 문서 지도는 `docs/execution_index.md`가 소유한다.
 task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
 
 ## Architecture Direction
@@ -108,6 +114,22 @@ task별 read order는 `docs/ai_context_manifest.yaml`을 우선한다.
 GPU 의존 실행 전에는 실제 실행 환경에서 `nvidia-smi`와 해당 가상환경의
 `torch.cuda.is_available()`를 먼저 확인한다. sandbox에서 GPU가 보이지 않으면
 즉시 GPU 부재로 단정하지 말고, 필요 시 sandbox 밖에서 다시 확인한다.
+
+## Command Permission Policy
+
+프로젝트 기본 Codex 설정은 `approval_policy=on-request`,
+`sandbox_mode=danger-full-access`다. 따라서 GPU preflight, `uv run pytest`,
+`uv run python ...`, `nvidia-smi`, local API/app 실행처럼 작업 검증에 직접 필요한
+명령은 실제 실행 환경에서 우선 실행한다.
+
+그래도 아래 작업은 사용자가 명시적으로 요청하거나 별도 확인을 받은 뒤 진행한다.
+
+- repo 밖 파일 삭제/이동/대량 수정
+- `git reset --hard`, `git clean`, checkout으로 작업물 되돌리기
+- commit, push, remote 변경, branch 삭제
+- 비밀값, `.env`, credential, system config 변경
+- 장시간/대용량 다운로드, 비용 발생 가능 API 호출
+- 관련 없는 프로세스 종료
 
 ## Coding Style & Naming Conventions
 
