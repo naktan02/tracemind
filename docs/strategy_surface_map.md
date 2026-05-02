@@ -121,7 +121,11 @@ Embedding
   `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`,
   `scripts/conf/query_ssl_augmenter/`이고,
   USB core mapping은 `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`가 소유한다.
+  objective 선택 seam은 `agent/src/services/training/query_adaptation/algorithms/base.py`와
+  `agent/src/services/training/query_adaptation/algorithms/registry.py`에 두며,
+  trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
+  `query_ssl_method.algorithm_name`별 scripts adapter registry로 loader/preparation만 바꾼다.
   strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
   실제 backtranslation 메커니즘은 `agent/src/services/backtranslation_service.py`를 재사용한다.
 - 현재 central 실험에서 selection source of truth는
@@ -141,6 +145,8 @@ Embedding
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
 - [agent/src/services/training/query_adaptation/ssl/registry.py](../agent/src/services/training/query_adaptation/ssl/registry.py)
 - [scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
+- [agent/src/services/training/query_adaptation/algorithms/base.py](../agent/src/services/training/query_adaptation/algorithms/base.py)
+- [agent/src/services/training/query_adaptation/algorithms/registry.py](../agent/src/services/training/query_adaptation/algorithms/registry.py)
 - [agent/src/services/training/query_adaptation/algorithms/fixmatch.py](../agent/src/services/training/query_adaptation/algorithms/fixmatch.py)
 - [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
 - [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)

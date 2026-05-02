@@ -351,6 +351,8 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 **구성 위치:**
 - agent 코어:
+  - `agent/src/services/training/query_adaptation/algorithms/base.py`
+  - `agent/src/services/training/query_adaptation/algorithms/registry.py`
   - `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
   - `agent/src/services/training/query_adaptation/training.py`
 - scripts family runner:
@@ -362,16 +364,21 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 **교체 절차:**
 1. `query_adaptation/algorithms/` 아래에 objective core를 구현한다
-2. trainer loop adapter는 `query_adaptation/training.py`에서 연결한다
-3. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
-4. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
-5. 같은 family runner 안에서는 algorithm-specific wiring만 추가하고, eval/artifact 껍데기는 재사용한다
+2. objective adapter가 `QuerySslObjective`를 만족하게 만든다
+3. `algorithms/registry.py`에 `algorithm_name`으로 등록한다
+4. `train_query_ssl_classifier(...)` 공통 loop에는 새 objective만 주입한다
+5. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
+6. scripts runner의 `QuerySslMethodAdapter` registry에 loader/preparation wiring을 추가한다
+7. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
+8. 같은 family runner 안에서는 algorithm-specific wiring만 추가하고, eval/artifact 껍데기는 재사용한다
 
 주의:
 - `FixMatch`는 selection rule이 아니라 adaptation objective다.
 - 즉 기존 `query_adaptation/ssl/` selection 코어와 같은 축으로 넣지 않는다.
 - USB `fixmatch.py::train_step`의 수식 코어는 `algorithms/fixmatch.py`에 두고,
   USB `AlgorithmBase`가 맡던 loop/iterator/hook orchestration만 TraceMind trainer adapter로 둔다.
+- `query_ssl_method` manifest는 `parameters`를 canonical method parameter map으로 남기고,
+  기존 report consumer 호환을 위해 현재 parameter를 top-level에도 함께 남긴다.
 
 ---
 

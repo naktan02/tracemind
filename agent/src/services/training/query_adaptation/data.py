@@ -1,4 +1,4 @@
-"""Query adaptation supervised / FixMatch baseline용 데이터 준비 유틸리티."""
+"""Query adaptation supervised / Query SSL baseline용 데이터 준비 유틸리티."""
 
 from __future__ import annotations
 
@@ -66,7 +66,7 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
             strong_text = row.get("strong_text")
             if weak_text is None or strong_text is None:
                 raise ValueError(
-                    "FixMatch unlabeled rows require either strict USB "
+                    "Multiview Query SSL unlabeled rows require either strict USB "
                     "text/aug_0/aug_1 fields or legacy weak_text/strong_text."
                 )
             weak_text = str(weak_text)
@@ -138,7 +138,7 @@ def build_multiview_dataloader(
     task_prefix: str,
     shuffle: bool,
 ) -> DataLoader[dict[str, Any]]:
-    """weak/strong unlabeled row를 FixMatch 입력 DataLoader로 변환한다."""
+    """weak/strong unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
     dataset = TextMultiviewDataset(
         rows=rows,

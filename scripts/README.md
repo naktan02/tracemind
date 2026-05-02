@@ -691,9 +691,12 @@ canonical 경로:
 - 첫 bootstrap은 `fixed embedding + classifier` teacher가 unlabeled pool에 pseudo-label을 붙이고,
   그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
 - `train_lora_fixmatch.py`는 USB `fixmatch.py::train_step`의 수식 코어를 가져오되,
-  USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind epoch trainer adapter로 둔다.
+  USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind
+  `train_query_ssl_classifier(...)` 공통 loop와 objective adapter로 둔다.
 - scripts 쪽 실행 껍데기는 `query_ssl/common.py`와 `query_ssl/consistency_runner.py`로 나눠
-  family 공통 scaffolding과 알고리즘별 wiring을 분리한다.
+  family 공통 scaffolding과 `query_ssl_method.algorithm_name`별 scripts wiring을 분리한다.
+- objective core 선택은 `agent/src/services/training/query_adaptation/algorithms/registry.py`에서
+  `algorithm_name`으로 수행한다.
 - 현재 `FixMatch`는 `text + aug_0 + aug_1` canonical unlabeled shape를 쓰고,
   `query_ssl_augmenter`가 strict USB형 strong candidate를 먼저 준비한다.
 - `train_lora_pseudo_label_classifier.py`는 첫 bootstrap 이후 같은-family self-training loop에 쓴다.

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import copy
 import random
-from collections.abc import Iterator
+from collections.abc import Iterator, Mapping
 from typing import Any
 
 import torch
@@ -17,7 +17,8 @@ from shared.src.domain.services.classification_report import (
     summarize_per_category,
 )
 
-from .algorithms.fixmatch import FixMatchConfig, compute_fixmatch_step
+from .algorithms.base import QuerySslObjective
+from .algorithms.fixmatch import FixMatchConfig, FixMatchObjective
 from .modeling import LoraTextClassifier
 
 
@@ -269,7 +270,63 @@ def _move_tensor_batch_to_device(
     return moved
 
 
-def train_fixmatch_classifier(
+def _accumulate_scalar_tensors(
+    *,
+    sums: dict[str, float],
+    values: Mapping[str, torch.Tensor],
+) -> None:
+    for name, value in values.items():
+        sums[name] = sums.get(name, 0.0) + float(value.detach().item())
+
+
+def _build_average_scalar_record(
+    *,
+    sums: dict[str, float],
+    step_count: int,
+) -> dict[str, float]:
+    return {
+        f"train_{name}": round(safe_divide(total, step_count), 6)
+        for name, total in sums.items()
+    }
+
+
+def _format_running_scalars(
+    *,
+    total_loss_sum: float,
+    component_sums: dict[str, float],
+    metric_sums: dict[str, float],
+    step_count: int,
+) -> str:
+    fields = [
+        f"running_total_loss={safe_divide(total_loss_sum, step_count):.4f}",
+    ]
+    fields.extend(
+        f"running_{name}={safe_divide(total, step_count):.4f}"
+        for name, total in component_sums.items()
+    )
+    fields.extend(
+        f"running_{name}={safe_divide(total, step_count):.4f}"
+        for name, total in metric_sums.items()
+    )
+    return " ".join(fields)
+
+
+def _format_epoch_scalars(epoch_record: dict[str, Any]) -> str:
+    metric_fields = [
+        f"{name}={value:.4f}"
+        for name, value in epoch_record.items()
+        if name.startswith("train_")
+    ]
+    metric_fields.extend(
+        [
+            f"selection_loss={epoch_record['selection_loss']:.4f}",
+            f"selection_accuracy={epoch_record['selection_accuracy_top_1']:.4f}",
+        ]
+    )
+    return " ".join(metric_fields)
+
+
+def train_query_ssl_classifier(
     *,
     model: LoraTextClassifier,
     train_loader: DataLoader[dict[str, Any]],
@@ -283,19 +340,19 @@ def train_fixmatch_classifier(
     weight_decay: float,
     max_grad_norm: float,
     log_every_steps: int,
-    fixmatch_config: FixMatchConfig,
+    objective: QuerySslObjective,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
-    """USB FixMatch core를 epoch-based query adaptation scaffold에 얹어 학습한다."""
+    """Query SSL objective를 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
-    if len(unlabeled_loader) == 0:
-        raise ValueError("FixMatch unlabeled_loader must not be empty.")
-    labeled_updates_enabled = (
-        fixmatch_config.supervised_loss_weight > 0 and len(train_loader) > 0
+    objective.validate_loaders(
+        train_loader_length=len(train_loader),
+        unlabeled_loader_length=len(unlabeled_loader),
     )
-    if fixmatch_config.supervised_loss_weight > 0 and len(train_loader) == 0:
+    labeled_updates_enabled = objective.uses_labeled_batches and len(train_loader) > 0
+    if objective.uses_labeled_batches and len(train_loader) == 0:
         raise ValueError(
-            "FixMatch labeled train_loader must not be empty when "
-            "supervised_loss_weight > 0."
+            f"{objective.objective_name} labeled train_loader must not be empty "
+            "when the objective uses labeled batches."
         )
 
     optimizer = build_optimizer(
@@ -312,9 +369,8 @@ def train_fixmatch_classifier(
     for epoch in range(1, epochs + 1):
         model.train()
         step_total_loss_sum = 0.0
-        step_sup_loss_sum = 0.0
-        step_unsup_loss_sum = 0.0
-        step_util_ratio_sum = 0.0
+        step_component_sums: dict[str, float] = {}
+        step_metric_sums: dict[str, float] = {}
         step_count = 0
 
         labeled_iterator = None if not labeled_updates_enabled else iter(train_loader)
@@ -348,11 +404,10 @@ def train_fixmatch_classifier(
             )
 
             optimizer.zero_grad(set_to_none=True)
-            step_output = compute_fixmatch_step(
+            step_output = objective.compute_step(
                 model=model,
                 labeled_batch=labeled_batch,
                 unlabeled_batch=unlabeled_batch,
-                config=fixmatch_config,
             )
             step_output.total_loss.backward()
             if max_grad_norm > 0:
@@ -360,22 +415,25 @@ def train_fixmatch_classifier(
             optimizer.step()
 
             step_count += 1
-            step_total_loss_sum += float(step_output.total_loss.item())
-            step_sup_loss_sum += float(step_output.sup_loss.item())
-            step_unsup_loss_sum += float(step_output.unsup_loss.item())
-            step_util_ratio_sum += float(step_output.util_ratio.item())
+            step_total_loss_sum += float(step_output.total_loss.detach().item())
+            _accumulate_scalar_tensors(
+                sums=step_component_sums,
+                values=step_output.loss_components,
+            )
+            _accumulate_scalar_tensors(
+                sums=step_metric_sums,
+                values=step_output.metrics,
+            )
 
             if log_every_steps > 0 and step_index % log_every_steps == 0:
                 print(
                     f"[epoch={epoch} step={step_index}] "
-                    f"running_total_loss="
-                    f"{safe_divide(step_total_loss_sum, step_count):.4f} "
-                    f"running_sup_loss="
-                    f"{safe_divide(step_sup_loss_sum, step_count):.4f} "
-                    f"running_unsup_loss="
-                    f"{safe_divide(step_unsup_loss_sum, step_count):.4f} "
-                    f"running_util_ratio="
-                    f"{safe_divide(step_util_ratio_sum, step_count):.4f}",
+                    + _format_running_scalars(
+                        total_loss_sum=step_total_loss_sum,
+                        component_sums=step_component_sums,
+                        metric_sums=step_metric_sums,
+                        step_count=step_count,
+                    ),
                     flush=True,
                 )
 
@@ -388,21 +446,20 @@ def train_fixmatch_classifier(
         epoch_record = {
             "epoch": epoch,
             "train_loss": round(safe_divide(step_total_loss_sum, step_count), 6),
-            "train_sup_loss": round(safe_divide(step_sup_loss_sum, step_count), 6),
-            "train_unsup_loss": round(safe_divide(step_unsup_loss_sum, step_count), 6),
-            "train_util_ratio": round(safe_divide(step_util_ratio_sum, step_count), 6),
+            **_build_average_scalar_record(
+                sums=step_component_sums,
+                step_count=step_count,
+            ),
+            **_build_average_scalar_record(
+                sums=step_metric_sums,
+                step_count=step_count,
+            ),
             "selection_loss": selection_report["loss"],
             "selection_accuracy_top_1": selection_report["accuracy_top_1"],
         }
         history.append(epoch_record)
         print(
-            f"[epoch={epoch}] "
-            f"train_loss={epoch_record['train_loss']:.4f} "
-            f"train_sup_loss={epoch_record['train_sup_loss']:.4f} "
-            f"train_unsup_loss={epoch_record['train_unsup_loss']:.4f} "
-            f"train_util_ratio={epoch_record['train_util_ratio']:.4f} "
-            f"selection_loss={epoch_record['selection_loss']:.4f} "
-            f"selection_accuracy={epoch_record['selection_accuracy_top_1']:.4f}",
+            f"[epoch={epoch}] " + _format_epoch_scalars(epoch_record),
             flush=True,
         )
 
@@ -413,10 +470,47 @@ def train_fixmatch_classifier(
             best_selection_report = selection_report
 
     if best_state_dict is None or best_selection_report is None:
-        raise RuntimeError("FixMatch training did not produce a best checkpoint.")
+        raise RuntimeError(
+            f"{objective.objective_name} training did not produce a best checkpoint."
+        )
 
     model.load_state_dict(best_state_dict)
     return model, history, best_selection_report
+
+
+def train_fixmatch_classifier(
+    *,
+    model: LoraTextClassifier,
+    train_loader: DataLoader[dict[str, Any]],
+    unlabeled_loader: DataLoader[dict[str, Any]],
+    selection_loader: DataLoader[dict[str, torch.Tensor]],
+    categories: list[str],
+    device: str,
+    epochs: int,
+    learning_rate: float,
+    classifier_learning_rate: float,
+    weight_decay: float,
+    max_grad_norm: float,
+    log_every_steps: int,
+    fixmatch_config: FixMatchConfig,
+) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
+    """기존 FixMatch 호출자를 위한 compatibility wrapper."""
+
+    return train_query_ssl_classifier(
+        model=model,
+        train_loader=train_loader,
+        unlabeled_loader=unlabeled_loader,
+        selection_loader=selection_loader,
+        categories=categories,
+        device=device,
+        epochs=epochs,
+        learning_rate=learning_rate,
+        classifier_learning_rate=classifier_learning_rate,
+        weight_decay=weight_decay,
+        max_grad_norm=max_grad_norm,
+        log_every_steps=log_every_steps,
+        objective=FixMatchObjective(config=fixmatch_config),
+    )
 
 
 __all__ = [
@@ -425,4 +519,5 @@ __all__ = [
     "set_seed",
     "train_classifier",
     "train_fixmatch_classifier",
+    "train_query_ssl_classifier",
 ]

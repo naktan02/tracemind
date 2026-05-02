@@ -125,20 +125,24 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
                 "attention_mask": torch.ones((batch, 2), dtype=torch.long),
             }
 
-    def _fake_train_fixmatch_classifier(**kwargs):
-        captured["fixmatch_config"] = kwargs["fixmatch_config"]
+    def _fake_train_query_ssl_classifier(**kwargs):
+        captured["objective"] = kwargs["objective"]
         captured["train_loader"] = kwargs["train_loader"]
         captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
-        return kwargs["model"], [{"epoch": 1, "train_loss": 0.1}], {
-            "loss": 0.2,
-            "accuracy_top_1": 0.75,
-            "rows_total": 2,
-            "mean_true_label_probability": 0.7,
-            "mean_top_1_probability": 0.8,
-            "mean_margin_top1_top2": 0.3,
-            "confusion_matrix": {},
-            "per_category": {},
-        }
+        return (
+            kwargs["model"],
+            [{"epoch": 1, "train_loss": 0.1}],
+            {
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+        )
 
     def _fake_write_run_artifacts(**kwargs):
         captured["extra_manifest"] = kwargs["extra_manifest"]
@@ -157,8 +161,8 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.consistency_runner.train_fixmatch_classifier",
-        _fake_train_fixmatch_classifier,
+        "scripts.experiments.lora_classifier.query_ssl.consistency_runner.train_query_ssl_classifier",
+        _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.common.evaluate_classifier",
@@ -190,9 +194,9 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
 
     assert outputs["output_dir"] == "runs/fake_fixmatch"
     assert captured["history"] == [{"epoch": 1, "train_loss": 0.1}]
-    assert captured["fixmatch_config"].p_cutoff == 0.95
-    assert captured["fixmatch_config"].hard_label is True
-    assert captured["fixmatch_config"].supervised_loss_weight == 1.0
+    assert captured["objective"].config.p_cutoff == 0.95
+    assert captured["objective"].config.hard_label is True
+    assert captured["objective"].config.supervised_loss_weight == 1.0
     assert captured["extra_manifest"]["unlabeled_row_count"] == 1
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
@@ -202,8 +206,10 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         captured["extra_manifest"]["query_ssl_method"]["algorithm_name"] == "fixmatch"
     )
     assert (
-        captured["extra_manifest"]["query_ssl_method"]["supervised_loss_weight"]
-        == 1.0
+        captured["extra_manifest"]["query_ssl_method"]["supervised_loss_weight"] == 1.0
+    )
+    assert (
+        captured["extra_manifest"]["query_ssl_method"]["parameters"]["p_cutoff"] == 0.95
     )
     assert (
         captured["extra_manifest"]["query_ssl_augmenter"]["preset_name"]

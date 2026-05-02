@@ -10,6 +10,7 @@ from torch.nn import functional as F
 
 from agent.src.services.training.query_adaptation.modeling import LoraTextClassifier
 
+from .base import QuerySslStepOutput
 from .common import (
     build_fixed_threshold_mask,
     build_pseudo_label_from_probs,
@@ -41,6 +42,57 @@ class FixMatchStepOutput:
     @property
     def util_ratio(self) -> Tensor:
         return self.mask.float().mean()
+
+    @property
+    def loss_components(self) -> dict[str, Tensor]:
+        return {
+            "sup_loss": self.sup_loss,
+            "unsup_loss": self.unsup_loss,
+        }
+
+    @property
+    def metrics(self) -> dict[str, Tensor]:
+        return {"util_ratio": self.util_ratio}
+
+
+@dataclass(frozen=True, slots=True)
+class FixMatchObjective:
+    """FixMatch objective를 공통 Query SSL trainer seam에 맞춘 adapter."""
+
+    config: FixMatchConfig
+    objective_name: str = "fixmatch"
+
+    @property
+    def uses_labeled_batches(self) -> bool:
+        return self.config.supervised_loss_weight > 0
+
+    def validate_loaders(
+        self,
+        *,
+        train_loader_length: int,
+        unlabeled_loader_length: int,
+    ) -> None:
+        if unlabeled_loader_length == 0:
+            raise ValueError("FixMatch unlabeled_loader must not be empty.")
+        if self.config.supervised_loss_weight > 0 and train_loader_length == 0:
+            raise ValueError(
+                "FixMatch labeled train_loader must not be empty when "
+                "supervised_loss_weight > 0."
+            )
+
+    def compute_step(
+        self,
+        *,
+        model: LoraTextClassifier,
+        labeled_batch: dict[str, Tensor] | None,
+        unlabeled_batch: dict[str, Tensor],
+    ) -> QuerySslStepOutput:
+        return compute_fixmatch_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+            config=self.config,
+        )
 
 
 def compute_fixmatch_step(
@@ -87,9 +139,7 @@ def compute_fixmatch_step(
         targets=pseudo_label,
         mask=mask,
     )
-    total_loss = (
-        config.supervised_loss_weight * sup_loss + config.lambda_u * unsup_loss
-    )
+    total_loss = config.supervised_loss_weight * sup_loss + config.lambda_u * unsup_loss
     return FixMatchStepOutput(
         total_loss=total_loss,
         sup_loss=sup_loss,
@@ -100,6 +150,7 @@ def compute_fixmatch_step(
 
 __all__ = [
     "FixMatchConfig",
+    "FixMatchObjective",
     "FixMatchStepOutput",
     "compute_fixmatch_step",
 ]

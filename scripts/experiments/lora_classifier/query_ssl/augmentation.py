@@ -25,7 +25,7 @@ QUERY_SSL_AUGMENTER_SUMMARY_SCHEMA_VERSION = "query_ssl_augmenter_summary.v1"
 
 @dataclass(slots=True)
 class PreparedQuerySslUnlabeledRows:
-    """FixMatch가 실제로 소비할 unlabeled row와 cache metadata."""
+    """Query SSL objective가 실제로 소비할 unlabeled row와 cache metadata."""
 
     rows: list[LabeledQueryRow]
     mode: str
@@ -97,17 +97,18 @@ def build_query_ssl_augmenter_manifest(cfg) -> dict[str, object]:
     return manifest
 
 
-def prepare_fixmatch_unlabeled_rows(
+def prepare_usb_multiview_unlabeled_rows(
     cfg,
     *,
     rows: Sequence[LabeledQueryRow],
     source_jsonl: str | Path | None,
+    algorithm_name: str,
 ) -> PreparedQuerySslUnlabeledRows:
-    """Strict USB형 FixMatch unlabeled row를 보장한다."""
+    """Strict USB형 multiview unlabeled row를 보장한다."""
 
     effective_rows = list(rows)
     if not effective_rows:
-        raise ValueError("FixMatch unlabeled_rows must not be empty.")
+        raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
     if _rows_have_usb_candidates(effective_rows):
         return PreparedQuerySslUnlabeledRows(
             rows=effective_rows,
@@ -118,8 +119,8 @@ def prepare_fixmatch_unlabeled_rows(
     augmenter_type = str(cfg.query_ssl_augmenter.augmenter_type)
     if augmenter_type == "precomputed_usb_candidates":
         raise ValueError(
-            "FixMatch requires each unlabeled row to include both aug_0 and aug_1 "
-            "when query_ssl_augmenter is precomputed-only."
+            f"{algorithm_name} requires each unlabeled row to include both aug_0 "
+            "and aug_1 when query_ssl_augmenter is precomputed-only."
         )
     if augmenter_type != "nllb_backtranslation":
         raise ValueError(
@@ -138,7 +139,7 @@ def prepare_fixmatch_unlabeled_rows(
         and cache_artifacts.summary_path.exists()
     ):
         cached_rows = load_labeled_query_rows(cache_artifacts.jsonl_path)
-        _validate_usb_candidate_rows(cached_rows, algorithm_name="FixMatch")
+        _validate_usb_candidate_rows(cached_rows, algorithm_name=algorithm_name)
         print(
             "query_ssl_augmenter=cache_hit "
             f"rows={len(cached_rows)} "
@@ -182,12 +183,11 @@ def prepare_fixmatch_unlabeled_rows(
         prepared_row["aug_1_pivot_lang"] = candidate_pair.aug_1_pivot_lang
         prepared_rows.append(prepared_row)
 
-    _validate_usb_candidate_rows(prepared_rows, algorithm_name="FixMatch")
+    _validate_usb_candidate_rows(prepared_rows, algorithm_name=algorithm_name)
 
     if cache_artifacts is None:
         print(
-            "query_ssl_augmenter=generated_in_memory "
-            f"rows={len(prepared_rows)}",
+            f"query_ssl_augmenter=generated_in_memory rows={len(prepared_rows)}",
             flush=True,
         )
         return PreparedQuerySslUnlabeledRows(
@@ -215,6 +215,22 @@ def prepare_fixmatch_unlabeled_rows(
         prepared_jsonl_path=cache_artifacts.jsonl_path,
         manifest_path=cache_artifacts.manifest_path,
         summary_path=cache_artifacts.summary_path,
+    )
+
+
+def prepare_fixmatch_unlabeled_rows(
+    cfg,
+    *,
+    rows: Sequence[LabeledQueryRow],
+    source_jsonl: str | Path | None,
+) -> PreparedQuerySslUnlabeledRows:
+    """기존 FixMatch 호출자를 위한 strict USB multiview wrapper."""
+
+    return prepare_usb_multiview_unlabeled_rows(
+        cfg,
+        rows=rows,
+        source_jsonl=source_jsonl,
+        algorithm_name="FixMatch",
     )
 
 
@@ -390,8 +406,7 @@ def _build_cache_summary(
 
 def _slugify(value: str) -> str:
     characters = [
-        character.lower() if character.isalnum() else "_"
-        for character in value.strip()
+        character.lower() if character.isalnum() else "_" for character in value.strip()
     ]
     slug = "".join(characters).strip("_")
     return slug or "query_ssl"

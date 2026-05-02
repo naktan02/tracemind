@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
-    FixMatchConfig,
+from agent.src.services.training.query_adaptation.algorithms.registry import (
+    build_query_ssl_objective,
 )
 from agent.src.services.training.query_adaptation.data import (
     build_multiview_dataloader,
 )
 from agent.src.services.training.query_adaptation.training import (
-    train_fixmatch_classifier,
+    train_query_ssl_classifier,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
@@ -22,19 +22,20 @@ from ..artifacts import write_run_artifacts
 from .augmentation import (
     PreparedQuerySslUnlabeledRows,
     build_query_ssl_augmenter_manifest,
-    prepare_fixmatch_unlabeled_rows,
+    prepare_usb_multiview_unlabeled_rows,
 )
 from .common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
+    build_query_ssl_method_parameters,
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
 
 
 @dataclass(frozen=True, slots=True)
-class ConsistencyMethodAdapter:
-    """Consistency family algorithm-specific wiring."""
+class QuerySslMethodAdapter:
+    """Query SSL method별 scripts wiring."""
 
     algorithm_name: str
     trainer_version_prefix: str
@@ -49,10 +50,35 @@ class ConsistencyMethodAdapter:
     ]
 
 
-def run_consistency_query_ssl_lora_baseline(
+QuerySslMethodAdapterFactory = Callable[[Any], QuerySslMethodAdapter]
+ConsistencyMethodAdapter = QuerySslMethodAdapter
+
+_QUERY_SSL_METHOD_ADAPTER_REGISTRY: dict[str, QuerySslMethodAdapterFactory] = {}
+
+
+def register_query_ssl_method_adapter(
+    *algorithm_names: str,
+    factory: QuerySslMethodAdapterFactory,
+) -> None:
+    """query_ssl_method.algorithm_name별 scripts adapter를 등록한다."""
+
+    for algorithm_name in algorithm_names:
+        _QUERY_SSL_METHOD_ADAPTER_REGISTRY[algorithm_name.strip().lower()] = factory
+
+
+def build_query_ssl_method_adapter(cfg) -> QuerySslMethodAdapter:
+    """Hydra query_ssl_method에서 scripts adapter를 선택한다."""
+
+    algorithm_name = str(cfg.query_ssl_method.algorithm_name)
+    factory = _QUERY_SSL_METHOD_ADAPTER_REGISTRY.get(algorithm_name.strip().lower())
+    if factory is None:
+        raise ValueError(f"Unsupported query SSL method adapter: {algorithm_name}.")
+    return factory(cfg)
+
+
+def run_query_ssl_lora_baseline(
     cfg,
     *,
-    adapter: ConsistencyMethodAdapter,
     train_rows: list[LabeledQueryRow] | None = None,
     unlabeled_rows: list[LabeledQueryRow] | None = None,
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
@@ -60,7 +86,32 @@ def run_consistency_query_ssl_lora_baseline(
     extra_manifest: Mapping[str, Any] | None = None,
     categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
-    """Consistency family query SSL baseline을 공통 scaffolding으로 실행한다."""
+    """query_ssl_method.algorithm_name에 맞는 중앙 Query SSL baseline을 실행한다."""
+
+    return run_consistency_query_ssl_lora_baseline(
+        cfg=cfg,
+        adapter=build_query_ssl_method_adapter(cfg),
+        train_rows=train_rows,
+        unlabeled_rows=unlabeled_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        extra_manifest=extra_manifest,
+        categories_override=categories_override,
+    )
+
+
+def run_consistency_query_ssl_lora_baseline(
+    cfg,
+    *,
+    adapter: QuerySslMethodAdapter,
+    train_rows: list[LabeledQueryRow] | None = None,
+    unlabeled_rows: list[LabeledQueryRow] | None = None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
+    selection_set_name: str | None = None,
+    extra_manifest: Mapping[str, Any] | None = None,
+    categories_override: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, str]:
+    """Query SSL baseline을 공통 scaffolding으로 실행한다."""
 
     if unlabeled_rows is None:
         if getattr(cfg, "unlabeled_jsonl", None) is None:
@@ -140,7 +191,7 @@ def run_fixmatch_lora_baseline(
     extra_manifest: Mapping[str, Any] | None = None,
     categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
-    """USB FixMatch core를 consistency family runner 위에서 실행한다."""
+    """USB FixMatch core를 Query SSL runner 위에서 실행한다."""
 
     return run_consistency_query_ssl_lora_baseline(
         cfg=cfg,
@@ -155,22 +206,26 @@ def run_fixmatch_lora_baseline(
 
 
 def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
-    fixmatch_config = FixMatchConfig(
-        temperature=float(cfg.query_ssl_method.temperature),
-        p_cutoff=float(cfg.query_ssl_method.p_cutoff),
-        hard_label=bool(cfg.query_ssl_method.hard_label),
-        lambda_u=float(cfg.query_ssl_method.lambda_u),
-        supervised_loss_weight=float(cfg.query_ssl_method.supervised_loss_weight),
+    algorithm_name = str(cfg.query_ssl_method.algorithm_name)
+    if algorithm_name.strip().lower() != "fixmatch":
+        raise ValueError(
+            "run_fixmatch_lora_baseline requires "
+            "query_ssl_method.algorithm_name=fixmatch."
+        )
+    objective = build_query_ssl_objective(
+        objective_name="fixmatch",
+        parameters=build_query_ssl_method_parameters(cfg),
     )
 
     def _prepare_unlabeled_rows(
         rows: list[LabeledQueryRow],
         source_jsonl: str | Path | None,
     ) -> PreparedQuerySslUnlabeledRows:
-        return prepare_fixmatch_unlabeled_rows(
+        return prepare_usb_multiview_unlabeled_rows(
             cfg,
             rows=rows,
             source_jsonl=source_jsonl,
+            algorithm_name="FixMatch",
         )
 
     def _build_unlabeled_loader(context: QuerySslRunContext):
@@ -187,7 +242,7 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
         context: QuerySslRunContext,
         unlabeled_loader,
     ) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
-        return train_fixmatch_classifier(
+        return train_query_ssl_classifier(
             model=context.model,
             train_loader=context.train_loader,
             unlabeled_loader=unlabeled_loader,
@@ -200,13 +255,16 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
             weight_decay=float(cfg.weight_decay),
             max_grad_norm=float(cfg.max_grad_norm),
             log_every_steps=int(cfg.log_every_steps),
-            fixmatch_config=fixmatch_config,
+            objective=objective,
         )
 
-    return ConsistencyMethodAdapter(
+    return QuerySslMethodAdapter(
         algorithm_name="FixMatch",
         trainer_version_prefix="lora_fixmatch",
         prepare_unlabeled_rows=_prepare_unlabeled_rows,
         build_unlabeled_loader=_build_unlabeled_loader,
         train=_train,
     )
+
+
+register_query_ssl_method_adapter("fixmatch", factory=_build_fixmatch_adapter)

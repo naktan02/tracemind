@@ -10,7 +10,11 @@ from agent.src.services.training.query_adaptation.algorithms.common import (
 )
 from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
     FixMatchConfig,
+    FixMatchObjective,
     compute_fixmatch_step,
+)
+from agent.src.services.training.query_adaptation.algorithms.registry import (
+    build_query_ssl_objective,
 )
 
 
@@ -40,6 +44,23 @@ def test_build_fixmatch_pseudo_label_keeps_usb_temperature_behavior() -> None:
 
     assert hard_targets.tolist() == [0, 0]
     assert torch.equal(soft_targets, probs)
+
+
+def test_query_ssl_objective_registry_builds_fixmatch_objective() -> None:
+    objective = build_query_ssl_objective(
+        objective_name="fixmatch",
+        parameters={
+            "temperature": 0.5,
+            "p_cutoff": 0.95,
+            "hard_label": True,
+            "lambda_u": 1.0,
+            "supervised_loss_weight": 1.0,
+        },
+    )
+
+    assert isinstance(objective, FixMatchObjective)
+    assert objective.objective_name == "fixmatch"
+    assert objective.config.p_cutoff == 0.95
 
 
 def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
@@ -92,6 +113,9 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
     assert torch.allclose(output.mask, expected_mask)
     assert torch.isclose(output.sup_loss, expected_sup_loss)
     assert torch.isclose(output.unsup_loss, expected_unsup_loss)
+    assert output.loss_components["sup_loss"] is output.sup_loss
+    assert output.loss_components["unsup_loss"] is output.unsup_loss
+    assert torch.isclose(output.metrics["util_ratio"], output.util_ratio)
     assert torch.isclose(
         output.total_loss,
         expected_sup_loss + expected_unsup_loss,

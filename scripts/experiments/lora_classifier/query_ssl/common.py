@@ -7,6 +7,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from omegaconf import OmegaConf
+
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from ..common import (
@@ -39,20 +41,34 @@ class QuerySslRunContext:
     selection_loader: Any
 
 
+_QUERY_SSL_METHOD_IDENTITY_KEYS = {"name", "algorithm_name"}
+
+
+def build_query_ssl_method_parameters(cfg) -> dict[str, object]:
+    """algorithm별 method parameter를 Hydra config에서 plain dict로 추출한다."""
+
+    method_payload = OmegaConf.to_container(cfg.query_ssl_method, resolve=True)
+    if not isinstance(method_payload, dict):
+        raise ValueError("query_ssl_method config must be a mapping.")
+    return {
+        str(key): value
+        for key, value in method_payload.items()
+        if str(key) not in _QUERY_SSL_METHOD_IDENTITY_KEYS
+    }
+
+
 def build_query_ssl_method_manifest(cfg) -> dict[str, object]:
     """Query SSL method config를 artifact manifest에 남길 canonical shape."""
 
-    return {
+    parameters = build_query_ssl_method_parameters(cfg)
+    manifest: dict[str, object] = {
         "preset_name": str(cfg.query_ssl_method.name),
         "algorithm_name": str(cfg.query_ssl_method.algorithm_name),
-        "temperature": float(cfg.query_ssl_method.temperature),
-        "p_cutoff": float(cfg.query_ssl_method.p_cutoff),
-        "hard_label": bool(cfg.query_ssl_method.hard_label),
-        "lambda_u": float(cfg.query_ssl_method.lambda_u),
-        "supervised_loss_weight": float(cfg.query_ssl_method.supervised_loss_weight),
-        "unlabeled_batch_size": int(cfg.query_ssl_method.unlabeled_batch_size),
-        "require_multiview": bool(cfg.query_ssl_method.require_multiview),
+        "parameters": parameters,
     }
+    # 기존 report consumer를 깨지 않도록 parameter를 top-level에도 남긴다.
+    manifest.update(parameters)
+    return manifest
 
 
 def validate_multiview_rows(
