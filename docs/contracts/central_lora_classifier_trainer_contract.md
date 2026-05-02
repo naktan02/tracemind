@@ -3,10 +3,14 @@
 ## 목적
 
 이 문서는 TraceMind의 query-domain 적응 단계에서 쓰는 중앙집중형 `LoRA + classifier`
-비교 scaffold를 정의한다.
+pooled/offline control scaffold를 정의한다.
 
 이 문서가 다루는 것은 현재 시스템/FL runtime contract가 아니라,
 `adaptation-track central trainer`가 어떤 고정 조건과 산출물을 가져야 하는지다.
+중앙 SSL 결과는 FL SSL 논문 비교의 대조군이며, 최종 메인 랭킹은 non-IID client
+split 위의 FL SSL 비교에서 정한다.
+여기서 `pooled/offline`은 FL client partition 없이 중앙 control을 만든다는 뜻이며,
+seed full replay를 매번 수행하는 offline union retraining을 뜻하지 않는다.
 
 ## 범위
 
@@ -66,9 +70,9 @@ Query Buffer (raw text)
 7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
 8. scripts 실험 표면에서는 `query_adaptation_initial_checkpoint` Hydra group을 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
 
-## 적응 비교축
+## 중앙 SSL control 비교축
 
-### 메인 비교 family
+### control family
 
 같은 LoRA adaptation scaffold 위에서 아래를 우선 비교한다.
 
@@ -97,7 +101,7 @@ Query Buffer (raw text)
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
-  central query-domain 비교 family에는 넣지 않고, FL stage 비교선으로 둔다.
+  central query-domain control family에는 넣지 않고, FL SSL non-IID 메인 비교선으로 둔다.
 
 ## 고정해야 할 입력 조건
 
@@ -136,9 +140,9 @@ Query Buffer (raw text)
 - LoRA adapter와 classifier head는 분리된 artifact로 남기는 편이 좋다.
 - 그래야 나중에 시스템 FL translation에서 `lora family`와 `classifier` 결합 방식을 다시 선택하기 쉽다.
 
-## future FL translation 경계
+## future FL SSL translation 경계
 
-적응 트랙 결과를 시스템/FL로 옮길 때는 아래 원칙을 지킨다.
+중앙 control 결과와 FL SSL winner를 시스템/FL로 옮길 때는 아래 원칙을 지킨다.
 
 1. paper/adaptation checkpoint를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 우겨넣지 않는다.
 2. 먼저 `lora` family용 state/update payload를 별도 정의한다.
@@ -146,8 +150,9 @@ Query Buffer (raw text)
 4. `diagonal_scale`은 제거하지 않고 lightweight baseline으로 유지한다.
 5. `classifier_head` family는 translation fallback으로 남길 수 있다.
 
-즉, 이 문서는 query-domain 적응에서 `LoRA + classifier`가 실제로 도움이 되는지 검증하고,
-시스템 트랙은 그 winner를 `어떤 shared family로 배포/집계할지`를 다시 설계한다.
+즉, 이 문서는 중앙 pooled/offline 조건에서 `LoRA + classifier` SSL objective가
+기본적으로 성립하는지 검증하고, 메인 논문 비교는 FL SSL non-IID 조건에서 별도로
+닫는다. 시스템 트랙은 FL SSL winner를 `어떤 shared family로 배포/집계할지`를 다시 설계한다.
 
 ## central continual protocol note
 

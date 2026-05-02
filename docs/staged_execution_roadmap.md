@@ -19,19 +19,21 @@
 
 - query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 정한다.
 
-### Phase 3. 중앙집중형 적응 비교
+### Phase 3. 중앙집중형 SSL control 비교
 
 - 같은 초기 seed checkpoint와 accepted query-derived rows를 기준으로
   `LoRA + classifier` continual adaptation 위에서
-  `supervised -> pseudo-label self-training -> R-Drop -> MixText`를 비교한다.
+  `supervised -> pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
+  pooled/offline control table로 비교한다.
 
-### Phase 4. 시스템 FL baseline
+### Phase 4. FL SSL non-IID 메인 비교
 
-- `fixed embedding + classifier_head` 기준 FL baseline을 닫는다.
+- client non-IID split 위에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 같은
+  FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
 
-### Phase 5. 시스템 FL translation
+### Phase 5. 시스템 FL runtime translation
 
-- 적응 winner를 우선 `LoRA family + classifier` 후보로 FL/runtime 제약에 맞게 옮긴다.
+- FL SSL winner를 우선 `LoRA family + classifier` 후보로 runtime/privacy 제약에 맞게 옮긴다.
 
 ### Phase 6. richer shared adapter
 
@@ -88,7 +90,8 @@
 - 현재 helper는 첫 bootstrap 이후 같은-family loop에서
   seed labeled rows와 pseudo-labeled rows를 합쳐 실행하는 offline 경로를 가진다.
 - 다만 central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 정리한다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`는 central 단계가 아니라 FL 단계 비교선으로 미룬다.
+- 중앙 SSL 비교는 pooled/offline control이고, `FedMatch`, `FedLGMatch`, `(FL)^2`는
+  FL SSL non-IID 메인 비교선으로 둔다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -96,9 +99,9 @@
 
 ## Next Session Checklist
 
-1. same initial checkpoint reuse를 기준으로 central continual adaptation 비교 규약을 잠근다.
-2. 현재 offline union helper와 canonical continual protocol 사이의 차이를 정리한다.
-3. `R-Drop` objective를 baseline trainer 위에 추가한다.
+1. central SSL control table의 고정 조건과 출력 metadata를 잠근다.
+2. FL SSL non-IID 메인 비교의 client split, label/unlabeled 배치, metric을 잠근다.
+3. central control과 FL main comparison이 같은 ranking으로 오해되지 않게 report schema를 분리한다.
 
 ## Guardrails
 

@@ -97,8 +97,12 @@ task_routes:
       - scripts/AGENTS.md
       - relevant scripts/experiments entrypoint
       - relevant scripts/conf config group
+    conditional_read:
+      - docs/fl_runtime_implementation_checklist.md only for FL SSL non-IID paper comparisons or runtime translation
     verify:
       - comparison intent, fixed variables, changed variables, metric, seed, and output metadata are explicit before running
+      - central SSL comparison stays a pooled/offline control table unless explicitly promoted
+      - FL SSL under non-IID is treated as the main paper comparison when FL-specific methods are involved
       - seed baseline과 adaptation scaffold가 섞이지 않는다
       - backbone, tokenizer, LoRA spec stay fixed inside one adaptation comparison table
       - outputs keep enough metadata for later FL translation

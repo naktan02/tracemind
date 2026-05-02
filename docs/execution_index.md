@@ -4,7 +4,7 @@
 
 이 문서는 TraceMind 작업의 짧은 진입점이다.
 현재 활성 경로는 `personalized local inference + federated shared model improvement`다.
-현재 작업 순서는 `central fixed+classifier seed -> query continual adaptation LoRA+classifier -> 시스템용 FL translation`으로 본다.
+현재 작업 순서는 `central fixed+classifier seed -> central SSL pooled/offline control -> FL SSL non-IID main comparison -> 시스템용 FL translation`으로 본다.
 
 Codex CLI와 VS Code Codex extension을 사용할 때는
 `docs/ai_context_manifest.yaml`의 task route를 먼저 보고, 아래 문서 지도에서
@@ -152,6 +152,7 @@ Codex용 하네스 문서는 아래 순서를 권장한다.
 5. 새 Protocol이나 구현 세부가 필요할 때만 `docs/contracts/algorithm_extension_guide.md`를 본다.
 6. 운영 후보 로직이면 `scripts`가 아니라 `shared/agent/main_server` 소유 경계에 먼저 둔다.
 7. 사용자 판단이 필요한 항목인지 확인한다.
+8. SSL 논문 비교라면 중앙 비교는 pooled/offline control인지, FL non-IID 메인 비교인지 먼저 구분한다.
 
 ## 운영 문서 빠른 경로
 

@@ -8,7 +8,7 @@
 2. 공통 의미 표현 공간은 전역 모델과 shared artifact로 유지한다.
 3. 해석과 최종 판단은 로컬 개인화 상태로 수행한다.
 4. 초기 seed는 중앙집중형 `fixed embedding + classifier`로 안정적으로 만든다.
-5. query가 충분히 쌓인 뒤 `LoRA + classifier` 적응을 열고, 그 winner를 FL/runtime 제약에 맞게 후행 translation 한다.
+5. 중앙 SSL은 pooled/offline control로 비교하고, 논문 메인 비교는 `FL SSL under non-IID`로 둔 뒤 runtime/privacy 제약에 맞게 후행 translation 한다.
 
 중요:
 
@@ -20,6 +20,9 @@
   - manifest: `data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json`
   - report: `runs/train_classifier/clf_2026_04_11_143138/reports/report.json`
 - query-domain 적응 단계에서만 `LoRA + classifier`를 연다.
+- 중앙 SSL 비교는 pooled/offline control table이며 최종 논문 메인 랭킹이 아니다.
+- 여기서 pooled/offline은 FL client partition 없이 중앙 control을 만든다는 뜻이며, seed full replay 기본값을 뜻하지 않는다.
+- FL SSL non-IID 비교가 논문 메인 비교선이다.
 - 시스템 트랙의 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - 라벨된 데이터셋은 prototype build 전용이 아니라 supervised classifier seed와
   validation/calibration split source로도 직접 사용한다.
@@ -51,10 +54,9 @@
 - `FixMatch`의 현재 strict NLP baseline은 `EN->DE->EN`, `EN->FR->EN` backtranslation을 기본 augmenter로 둔다.
 - `TAPT`는 적응 앞단의 optional preadaptation phase다.
 - LoRA는 query-domain 적응과 이후 FL LoRA family translation에 유리하다.
-- `FedMatch`, `FedLGMatch`, `(FL)^2`는 central query-domain 비교선이 아니라, 이후 FL stage에서 비교할 논문군으로 둔다.
-- 중앙 query-domain 비교의 목적은 FL stage로 가져갈 후보를 줄이는 것이다.
-  즉 모든 중앙 알고리즘을 FL로 다시 옮기는 것이 아니라, 중앙에서 의미 있게 남는
-  소수의 winner만 translation 대상으로 본다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`는 central query-domain control이 아니라, FL SSL non-IID 메인 비교 논문군으로 둔다.
+- 중앙 query-domain 비교의 목적은 pooled/offline control과 구현 sanity check다.
+  즉 중앙 table은 FL stage 후보를 보조 설명하지만, FL-specific 방법론은 non-IID client split에서 직접 비교한다.
 - `v1` 시스템은 여전히 `same global representation + different local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 - multi-prototype runtime은 v1 필수가 아니라 future option으로 둔다.
@@ -134,10 +136,10 @@ Reddit Labeled Data
 3. query-domain 적응은 query가 충분히 쌓인 뒤에만 연다.
 4. 첫 pseudo-label bootstrap은 `fixed classifier teacher -> LoRA student`로 두고,
    그 이후 loop에서는 같은 초기 checkpoint에서 출발해 newly accepted query-derived rows만으로 same-family continual adaptation을 연다.
-5. baseline 이후에는 `pseudo-label self-training`, `FixMatch`, `R-Drop`, `MixText`를 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙, 같은 초기 checkpoint 위에서 비교한다.
+5. baseline 이후에는 `pseudo-label self-training`, `FixMatch`, `R-Drop`, `MixText`를 가능한 한 같은 backbone, 같은 LoRA spec, 같은 query selection 규칙, 같은 초기 checkpoint 위에서 중앙 pooled/offline control로 비교한다.
 6. `TAPT`는 backbone을 target query 분포로 먼저 적응시키는 별도 preadaptation 단계다.
 7. raw query text는 LoRA 재학습과 future query adaptation에 필요하므로 로컬에 남겨야 한다.
-8. `FedMatch`, `FedLGMatch`, `(FL)^2` 같은 FL-specific 방법론은 중앙 continual protocol이 아니라 FL translation stage에서만 비교한다.
+8. `FedMatch`, `FedLGMatch`, `(FL)^2` 같은 FL-specific 방법론은 중앙 continual protocol이 아니라 FL SSL non-IID 메인 비교에서 다룬다.
 
 ### 3-3. 시스템 FL 레일
 
@@ -154,7 +156,7 @@ Raw Event / Local Signal
 
 1. 시스템 v1에서는 backbone은 고정하고 shared classifier/head family를 우선 baseline으로 다룬다.
 2. 현재 구현된 family는 `diagonal_scale`, `classifier_head` 두 개다.
-3. query-domain 적응 winner를 FL로 옮길 때는 `lora` family를 새로 추가하는 것이 1순위 translation 후보다.
+3. FL SSL winner를 runtime으로 옮길 때는 `lora` family를 새로 추가하는 것이 1순위 translation 후보다.
 4. 시스템 기본 비교축은 `global classifier + local interpretation`이고,
    `diagonal_scale`과 prototype scoring은 비교 실험/확장 레일로 유지한다.
 5. `diagonal_scale`은 lightweight baseline으로 계속 유지하지만, 메인 query adaptation scaffold는 아니다.
@@ -195,12 +197,13 @@ Raw Event / Local Signal
 
 1. query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 설계한다.
    - local source of truth: `docs/contracts/query_buffer_v1.md`
-2. 그 뒤에만 `LoRA + classifier` 적응 레일을 열고 `supervised -> pseudo-label -> FixMatch -> R-Drop -> MixText`를 같은 continual adaptation 규약 아래에서 닫는다.
-3. 이후에야 시스템 FL translation 기준선을 선택한다.
-4. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
-5. 아직 두 번째 real aggregation backend는 없다.
-6. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
-7. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
+2. 그 뒤에만 `LoRA + classifier` 중앙 control 레일을 열고 `supervised -> pseudo-label -> FixMatch -> R-Drop -> MixText`를 같은 pooled/offline 또는 continual adaptation 규약 아래에서 닫는다.
+3. FL SSL non-IID 메인 비교의 client split, 라벨/비라벨 배치, metric을 고정한다.
+4. 이후 시스템 FL translation 기준선을 선택한다.
+5. classifier-first 시스템 baseline을 live agent/runtime 레일까지 안정적으로 확장한다.
+6. 아직 두 번째 real aggregation backend는 없다.
+7. integration test infra를 안정화하고 multi-agent HTTP 시나리오를 확대한다.
+8. secure aggregation / DP / robust aggregation의 실제 runtime 구현을 붙인다.
 
 ## 6. Phase 요약
 
@@ -218,19 +221,21 @@ Raw Event / Local Signal
 - query 버퍼, threshold/policy selection, 소량 수동 라벨 개입 지점을 정한다.
 - query buffer local contract는 `docs/contracts/query_buffer_v1.md`로 고정한다.
 
-### Phase 3. 중앙집중형 적응 비교
+### Phase 3. 중앙집중형 SSL control 비교
 
 - 같은 초기 seed checkpoint와 같은 accepted query-derived rows를 기준으로
   `LoRA + classifier` continual adaptation 위에서
-  `supervised -> pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를 비교한다.
+  `supervised -> pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
+  pooled/offline control table로 비교한다.
 
-### Phase 4. 시스템 FL baseline
+### Phase 4. FL SSL non-IID 메인 비교
 
-- `fixed embedding + classifier_head` 기준의 FL baseline을 닫는다.
+- client non-IID split 위에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 같은
+  FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
 
-### Phase 5. 시스템 FL translation
+### Phase 5. 시스템 FL runtime translation
 
-- 적응 winner를 우선 `LoRA family + classifier` 후보로 FL/runtime 제약에 맞게 옮긴다.
+- FL SSL winner를 우선 `LoRA family + classifier` 후보로 runtime/privacy 제약에 맞게 옮긴다.
 
 ### Phase 6. richer shared adapter
 
@@ -246,12 +251,12 @@ Raw Event / Local Signal
 
 1. query 버퍼에 어떤 필드(raw text, confidence, predicted label, timestamp, model_revision)를 남길지 정한다.
 2. threshold/policy selection과 소량 수동 라벨 개입 지점을 설계한다.
-3. 그다음 `LoRA + classifier` 적응용 supervised baseline을 연다.
-4. 같은 query-domain 적응 scaffold에서 `pseudo-label self-training`, `FixMatch`, `R-Drop`, `MixText`를 같은 continual adaptation 규약으로 비교한다.
+3. 그다음 `LoRA + classifier` 중앙 control용 supervised baseline을 연다.
+4. 같은 query-domain 적응 scaffold에서 `pseudo-label self-training`, `FixMatch`, `R-Drop`, `MixText`를 같은 고정 조건으로 pooled/offline control 비교한다.
 5. 필요하면 `TAPT`를 preadaptation 축으로 추가한다.
-6. `FedMatch`, `FedLGMatch`, `(FL)^2`는 중앙 비교가 아니라 FL stage 논문군으로 남긴다.
-7. 적응 winner를 고른 뒤에 시스템용 `FL supervised classifier` baseline으로 넘어간다.
-8. 그 winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
+6. FL SSL non-IID 비교의 client split, label/unlabeled ratio, metric, aggregation budget을 고정한다.
+7. `FedMatch`, `FedLGMatch`, `(FL)^2` 같은 FL-specific 논문군을 메인 비교로 실행한다.
+8. FL SSL winner를 우선 `lora` family, 필요 시 `classifier_head` 같은 현실적인 시스템 scope로 translation 한다.
 9. 그 다음에야 live agent path와 richer FL family를 닫는다.
 
 ## 8. 검증 기준
@@ -263,11 +268,18 @@ Raw Event / Local Signal
 3. prototype은 메인 라벨러가 아니라 comparison/reference artifact로만 쓰인다.
 4. canonical seed artifact는 `clf_2026_04_11_143138`으로 고정한다.
 
-### query-domain 적응
+### central SSL control
 
 1. query 버퍼와 threshold/policy selection 규칙이 문서로 명확하다.
-2. 적응 단계에서 supervised / pseudo-label self-training / FixMatch / R-Drop / MixText 비교가 같은 continual adaptation 규약 아래 가능하다.
+2. 적응 단계에서 supervised / pseudo-label self-training / FixMatch / R-Drop / MixText 비교가 같은 pooled/offline 또는 continual adaptation 규약 아래 가능하다.
 3. raw query text retention과 pseudo-label 사용 범위가 명확하다.
+
+### FL SSL non-IID
+
+1. client partition과 non-IID 정도가 고정돼 있다.
+2. 각 client의 labeled/unlabeled pool, local epoch, communication round budget이 고정돼 있다.
+3. 중앙 SSL control과 FL SSL main comparison의 report metadata가 분리돼 있다.
+4. FedMatch/FedLGMatch/(FL)^2 계열의 변경점이 base SSL objective와 FL-specific modification으로 분리 기록된다.
 
 ### 시스템 FL
 
@@ -286,8 +298,9 @@ Raw Event / Local Signal
 1. query 버퍼 raw text retention 기본값은 현재 `30일 + 최신 5000건 유지`로 둔다. 필요 시 로컬 config로 조정한다.
 2. threshold/policy로 채택한 query는 현재 `pseudo-label only`로 학습하고, manual label은 이후 같은 dataset shape 위에 override로 얹는다.
 3. query-domain 적응에서 LoRA target module/rank를 무엇으로 고정할지
-4. FL 범위를 `lora` family/head에서 어디까지 열지
-5. private adapter/head를 언제 도입할지
-6. secure aggregation과 DP 도입 시점
-7. multi-prototype를 runtime까지 확장할지
-8. shared adapter를 기본선으로 복귀시킬지, 비교축으로 유지할지
+4. FL SSL non-IID 비교에서 client partition 기준과 labeled/unlabeled ratio를 무엇으로 고정할지
+5. FL 범위를 `lora` family/head에서 어디까지 열지
+6. private adapter/head를 언제 도입할지
+7. secure aggregation과 DP 도입 시점
+8. multi-prototype를 runtime까지 확장할지
+9. shared adapter를 기본선으로 복귀시킬지, 비교축으로 유지할지

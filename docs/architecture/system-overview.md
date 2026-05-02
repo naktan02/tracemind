@@ -12,7 +12,8 @@ TraceMind는 `personalized local inference + federated shared model improvement`
 
 ```text
 central fixed embedding + classifier seed
--> query accumulation and continual LoRA + classifier adaptation
+-> central SSL pooled/offline control
+-> FL SSL non-IID main comparison
 -> FL/runtime translation
 ```
 
@@ -132,6 +133,12 @@ Reddit Labeled Data
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
 
+주의:
+
+- 이 레일의 중앙 SSL 비교는 pooled/offline control table이다.
+- `FedMatch`, `FedLGMatch`, `(FL)^2`처럼 non-IID client 제약이 핵심인 방법은
+  FL runtime rail에서 메인 논문 비교로 다룬다.
+
 ### 3.4 FL Runtime Rail
 
 ```text
@@ -141,6 +148,8 @@ Raw Event / Local Signal
 -> Central Aggregation
 -> New ModelManifest / PrototypePack pair
 ```
+
+논문 비교 관점에서는 이 레일이 `FL SSL under non-IID`의 메인 비교 위치다.
 
 주요 코드:
 
