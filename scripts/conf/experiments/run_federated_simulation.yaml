@@ -6,6 +6,7 @@ defaults:
   - /runtime: gpu_online
   - /federated_run_preset: smoke
   - /federated_shard_policy: label_dominant
+  - /federated_ssl_method: fedavg_pseudo_label
   - /training_algorithm_profile: prototype_pseudo_label_v1
   - /federated_round_runtime: default
   - /federated_training_task: default

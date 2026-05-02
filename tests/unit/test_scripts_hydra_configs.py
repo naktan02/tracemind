@@ -338,6 +338,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.federated_run_preset.rounds == 3
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
+    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert cfg.ssl_method.method_role == "baseline"
+    assert cfg.ssl_method.implementation_status == "active_runtime"
+    assert cfg.ssl_method.client_step.owner == "agent"
+    assert cfg.ssl_method.server_step.aggregation_backend_name == "fedavg"
     assert cfg.report.track == "fl_ssl_main_comparison"
     assert cfg.report.table_role == "main_comparison"
     assert cfg.report.labeled_ratio == 0.1
@@ -431,6 +436,22 @@ def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None
     assert cfg.shard_policy.name == "dirichlet_label_skew"
     assert cfg.shard_policy.alpha == 0.3
     assert cfg.shard_policy.dominant_ratio is None
+
+
+def test_federated_simulation_supports_ssl_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+        cfg = compose(
+            config_name="experiments/run_federated_simulation",
+            overrides=["federated_ssl_method=fedavg_pseudo_label"],
+        )
+
+    assert cfg.ssl_method.schema_version == "federated_ssl_method.v1"
+    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert list(cfg.ssl_method.report_tags) == [
+        "baseline",
+        "fedavg",
+        "pseudo_label",
+    ]
 
 
 def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:

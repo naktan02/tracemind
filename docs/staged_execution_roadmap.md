@@ -36,6 +36,8 @@
 - smoke budget은 실행 확인용 `3 rounds`다.
 - primary metric은 `macro-F1 + worst-client macro-F1`이고,
   `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
+- 현재 active method baseline은 `federated_ssl_method=fedavg_pseudo_label`이다.
+- 추가 논문 method는 후보 확정 전까지 구현 파일을 만들지 않는다.
 
 ### Phase 5. 시스템 FL runtime translation
 
@@ -104,6 +106,7 @@
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이며,
   `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
 - FL SSL simulation report는 `fl_ssl_main_comparison` track으로 저장해 중앙 SSL control table과 분리한다.
+- FL SSL method 선택 축은 열었고, 현재는 `fedavg_pseudo_label` baseline만 active runtime이다.
 - selection 결과는 새 shape를 만들지 않고 기존 `PseudoLabelEvidence`, `PseudoLabelCandidate`, `DecisionFeedbackSignal`로 연결한다.
 - 아직 하지 않는 것:
   - `lora family` shared/FL contract 추가
@@ -111,9 +114,11 @@
 
 ## Next Session Checklist
 
-1. `federated_shard_policy=dirichlet_alpha03` smoke 실행으로 report JSON을 확인한다.
-2. FL SSL method group을 만들고 `FedMatch`, `FedLGMatch`, `(FL)^2`를 같은 surface에 올린다.
-3. `alpha=0.3` main과 `alpha=0.1` stress를 3 seeds로 실행할 sweep wrapper를 만든다.
+1. `federated_shard_policy=dirichlet_alpha03`와 `federated_ssl_method=fedavg_pseudo_label`
+   smoke 실행으로 report JSON을 확인한다.
+2. 구현 전 후보 FL SSL 논문 method를 비교하고, 실제 구현할 method를 확정한다.
+3. 확정 method부터 `agent`/`main_server` 소유 경계에 구현한다.
+4. `alpha=0.3` main과 `alpha=0.1` stress를 3 seeds로 실행할 sweep wrapper를 만든다.
 
 ## Guardrails
 

@@ -335,6 +335,7 @@ entrypoint:
 - `embedding`
 - `federated_run_preset`
 - `federated_shard_policy`
+- `federated_ssl_method`
 - `federated_report`
 - `round_runtime.adapter_family_name`
 - `round_runtime.aggregation_backend_name`
@@ -360,6 +361,7 @@ python -m scripts.experiments.run_federated_simulation \
   embedding=hash_debug \
   federated_run_preset=standard \
   federated_shard_policy=dirichlet_alpha03 \
+  federated_ssl_method=fedavg_pseudo_label \
   federated_report=fl_ssl_main_comparison \
   confidence_threshold=0.7 \
   margin_threshold=0.05 \
@@ -377,6 +379,8 @@ python -m scripts.experiments.run_federated_simulation \
 - 기본 smoke preset은 실행 확인용으로 `4 clients`, `3 rounds`를 쓴다.
 - `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
   `dirichlet_alpha01`은 stress split이다.
+- `federated_ssl_method=fedavg_pseudo_label`는 현재 active runtime baseline이다.
+- 후보 논문 method는 확정 전까지 config/파일을 미리 추가하지 않는다.
 - `federated_report=fl_ssl_main_comparison`은 중앙 SSL control과 섞이지 않는
   FL main comparison report schema를 고른다.
 - `secure_aggregation.*` 값을 config에 실을 수는 있지만 실제 secure aggregation runtime을 실험하는 것은 아니다.

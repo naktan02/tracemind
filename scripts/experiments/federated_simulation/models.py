@@ -140,6 +140,21 @@ class FederatedReportConfig:
 
 
 @dataclass(slots=True)
+class FederatedSslMethodConfig:
+    """FL SSL method 선택과 report metadata 설정."""
+
+    schema_version: str
+    name: str
+    display_name: str
+    method_role: str
+    implementation_status: str
+    client_step: dict[str, object] = field(default_factory=dict)
+    server_step: dict[str, object] = field(default_factory=dict)
+    report_tags: list[str] = field(default_factory=list)
+    notes: list[str] = field(default_factory=list)
+
+
+@dataclass(slots=True)
 class FederatedRoundRuntimeConfig:
     """simulation이 사용할 shared family / aggregation backend 설정."""
 

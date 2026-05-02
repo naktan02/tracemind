@@ -19,6 +19,7 @@ from scripts.experiments.federated_simulation.models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
+    FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     SimulationEvaluation,
@@ -193,6 +194,7 @@ def save_simulation_report(
     bootstrap_ratio: float,
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
+    ssl_method_config: FederatedSslMethodConfig,
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
@@ -211,6 +213,7 @@ def save_simulation_report(
                 bootstrap_ratio=bootstrap_ratio,
                 seed=seed,
                 shard_policy=shard_policy,
+                ssl_method_config=ssl_method_config,
                 training_task_config=training_task_config,
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
@@ -233,6 +236,7 @@ def _build_simulation_report_payload(
     bootstrap_ratio: float,
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
+    ssl_method_config: FederatedSslMethodConfig,
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
@@ -252,6 +256,7 @@ def _build_simulation_report_payload(
             "seed_count": report_config.seed_count,
             "bootstrap_ratio": bootstrap_ratio,
             "shard_policy": _shard_policy_to_payload(shard_policy),
+            "ssl_method": _ssl_method_to_payload(ssl_method_config),
             "labeled_unlabeled_split": {
                 "labeled_ratio": report_config.labeled_ratio,
                 "unlabeled_ratio": report_config.unlabeled_ratio,
@@ -400,6 +405,22 @@ def _shard_policy_to_payload(
         "client_id_prefix": shard_policy.client_id_prefix,
         "dominant_ratio": shard_policy.dominant_ratio,
         "alpha": shard_policy.alpha,
+    }
+
+
+def _ssl_method_to_payload(
+    ssl_method_config: FederatedSslMethodConfig,
+) -> dict[str, object]:
+    return {
+        "schema_version": ssl_method_config.schema_version,
+        "name": ssl_method_config.name,
+        "display_name": ssl_method_config.display_name,
+        "method_role": ssl_method_config.method_role,
+        "implementation_status": ssl_method_config.implementation_status,
+        "client_step": dict(ssl_method_config.client_step),
+        "server_step": dict(ssl_method_config.server_step),
+        "report_tags": list(ssl_method_config.report_tags),
+        "notes": list(ssl_method_config.notes),
     }
 
 

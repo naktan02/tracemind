@@ -41,6 +41,8 @@ central fixed embedding + classifier seed
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
 - tie-breaker/risk 지표는 `ECE`, communication cost, per-client variance다.
 - FL SSL report는 `fl_ssl_main_comparison` track으로 저장하고 중앙 SSL control report와 같은 ranking으로 합치지 않는다.
+- 현재 FL SSL method 축의 활성 baseline은 `fedavg_pseudo_label`이다.
+- FedMatch/FedLGMatch/(FL)^2 같은 논문 method 구현은 후보 비교 후 확정된 method부터 연다.
 - 시스템 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 
@@ -83,6 +85,7 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - secondary metrics: `ECE`, communication cost, per-client variance
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
+- method selection: `federated_ssl_method=fedavg_pseudo_label` baseline만 현재 active runtime이다.
 
 Runtime translation:
 
@@ -130,10 +133,13 @@ Runtime translation:
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
 4. 같은 scaffold에서 pseudo-label, FixMatch, R-Drop, MixText를 비교한다.
-5. FL SSL main comparison smoke를 `federated_shard_policy=dirichlet_alpha03`로 실행해 report를 확인한다.
-6. `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 Hydra method group으로 추가한다.
-7. 고정 조건에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 계열을 메인 비교로 실행한다.
-8. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
+5. FL SSL main comparison smoke를 `federated_shard_policy=dirichlet_alpha03`와
+   `federated_ssl_method=fedavg_pseudo_label`로 실행해 report를 확인한다.
+6. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
+7. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
+   경계에 구현한다.
+8. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
+9. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

@@ -41,6 +41,9 @@ from scripts.experiments.federated_simulation.evaluation import (
     build_validation_scoring_service,
     evaluate_rows,
 )
+from scripts.experiments.federated_simulation.methods import (
+    resolve_federated_ssl_method,
+)
 from scripts.experiments.federated_simulation.models import (
     ClientEvaluationSummary,
     ClientRoundSummary,
@@ -49,6 +52,7 @@ from scripts.experiments.federated_simulation.models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
+    FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     SimulationResult,
@@ -97,9 +101,19 @@ def run_simulation(
     validation_config: FederatedValidationConfig,
     prototype_rebuild_config: FederatedPrototypeRebuildConfig,
     diagnostics_config: FederatedDiagnosticsConfig,
+    ssl_method_config: FederatedSslMethodConfig,
     report_config: FederatedReportConfig | None = None,
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
+
+    ssl_method_descriptor = resolve_federated_ssl_method(ssl_method_config.name)
+    if ssl_method_config.implementation_status != (
+        ssl_method_descriptor.implementation_status
+    ):
+        raise ValueError(
+            "ssl_method implementation_status must match the registered "
+            f"descriptor for {ssl_method_config.name}."
+        )
 
     dataset_split = split_rows_for_federation(
         train_rows,
@@ -393,6 +407,7 @@ def run_simulation(
                 bootstrap_ratio=bootstrap_ratio,
                 seed=seed,
                 shard_policy=shard_policy,
+                ssl_method_config=ssl_method_config,
                 training_task_config=training_task_config,
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,

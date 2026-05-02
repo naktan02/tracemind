@@ -18,6 +18,7 @@ from scripts.experiments.federated_simulation import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
+    FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     split_rows_into_client_shards,
@@ -25,6 +26,9 @@ from scripts.experiments.federated_simulation import (
 from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
     evaluate_rows,
+)
+from scripts.experiments.federated_simulation.methods import (
+    resolve_federated_ssl_method,
 )
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
@@ -193,6 +197,25 @@ def _default_report_config() -> FederatedReportConfig:
     )
 
 
+def _default_ssl_method_config() -> FederatedSslMethodConfig:
+    return FederatedSslMethodConfig(
+        schema_version="federated_ssl_method.v1",
+        name="fedavg_pseudo_label",
+        display_name="FedAvg pseudo-label baseline",
+        method_role="baseline",
+        implementation_status="active_runtime",
+        client_step={
+            "owner": "agent",
+            "task_type": "pseudo_label_self_training",
+        },
+        server_step={
+            "owner": "main_server",
+            "aggregation_backend_name": "fedavg",
+        },
+        report_tags=["baseline", "fedavg", "pseudo_label"],
+    )
+
+
 def _default_round_runtime_config(
     *,
     adapter_family_name: str = "diagonal_scale",
@@ -358,6 +381,17 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
     assert request.selection_policy is training_task_config.selection_policy
 
 
+def test_federated_ssl_method_registry_only_wires_active_baseline() -> None:
+    descriptor = resolve_federated_ssl_method("fedavg_pseudo_label")
+
+    assert descriptor.implementation_status == "active_runtime"
+    assert descriptor.requires_custom_client_runtime is False
+    assert descriptor.requires_custom_server_runtime is False
+
+    with pytest.raises(NotImplementedError, match="not wired yet"):
+        resolve_federated_ssl_method("paper_method_candidate")
+
+
 def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
@@ -411,6 +445,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
         report_config=_default_report_config(),
     )
 
@@ -442,6 +477,8 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["table_role"] == "main_comparison"
     assert report["must_not_merge_with"] == ["central_ssl_control"]
     assert report["protocol"]["round_budget"] == 1
+    assert report["protocol"]["ssl_method"]["name"] == "fedavg_pseudo_label"
+    assert report["protocol"]["ssl_method"]["method_role"] == "baseline"
     assert report["protocol"]["local_update_budget"]["local_epochs"] == 1
     assert report["metrics"]["primary"]["macro_f1"] == (
         result.final_validation.macro_f1
@@ -514,6 +551,7 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
     )
 
     assert result.rounds

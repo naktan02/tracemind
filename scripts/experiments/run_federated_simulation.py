@@ -15,6 +15,7 @@ from scripts.experiments.federated_simulation import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
+    FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     load_jsonl_rows,
@@ -104,6 +105,7 @@ def main(cfg: DictConfig) -> None:
         diagnostics_config=FederatedDiagnosticsConfig(
             **_to_plain_dict(cfg.diagnostics)
         ),
+        ssl_method_config=FederatedSslMethodConfig(**_to_plain_dict(cfg.ssl_method)),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
     )
 

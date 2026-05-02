@@ -10,6 +10,7 @@ from .models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedShardPolicyConfig,
+    FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
 )
