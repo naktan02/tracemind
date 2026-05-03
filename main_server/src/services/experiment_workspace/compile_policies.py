@@ -102,7 +102,7 @@ class FederatedSimulationCompilePolicy:
             return tuple(warnings)
 
         preset_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/federated_run_preset",
+            relative_dir="scripts/conf/fl_ssl/run_preset",
             item_name=federated_run_preset,
         )
         client_count = _resolve_effective_int_override(
@@ -159,7 +159,7 @@ class FixMatchCompilePolicy:
                 "query_ssl_train_source preset을 결정할 수 없습니다."
             )
         train_source_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/query_ssl_train_source",
+            relative_dir="scripts/conf/central_ssl/train_source",
             item_name=train_source_name,
         )
         source_unlabeled = _string_or_none(train_source_raw.get("unlabeled_jsonl"))

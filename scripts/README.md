@@ -19,8 +19,10 @@
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
 - `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/sharding
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
-- `scripts/conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
-- `scripts/conf/federated_round_runtime`, `federated_training_task`, `federated_validation`: federated simulation이 `training_algorithm_profile`을 runtime/task/validation shape로 번역하는 bridge group
+- `scripts/conf/dataset`, `embedding`, `runtime`: 공통 Hydra config group
+- `scripts/conf/common/paper_backbone`, `prototype/builder`: namespaced source of truth
+- `scripts/conf/central_ssl/*`, `scripts/conf/fl_ssl/*`: 중앙 SSL / FL SSL 재사용 Hydra config group source of truth
+- `scripts/conf/paper_backbone`, `prototype_builder`, `federated_*`, `query_ssl_*`, `lora_*`: 기존 CLI override를 위한 compatibility alias group
 - `scripts/conf/datasets`, `experiments`, `prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
 - `scripts/classification_report.py`, `scripts/labeled_query_rows.py`: shared canonical utility를 다시 노출하는 compatibility wrapper
 - `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 실행 산출물 경로 helper

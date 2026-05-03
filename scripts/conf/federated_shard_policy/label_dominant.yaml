@@ -1,6 +1,4 @@
 # @package shard_policy
 
-name: label_dominant
-client_id_prefix: agent
-dominant_ratio: 0.75
-alpha: null
+defaults:
+  - /fl_ssl/shard_policy: label_dominant

@@ -1,11 +1,2 @@
-name: default
-seed: 42
-selection_set: validation
-train_batch_size: 16
-eval_batch_size: 32
-epochs: 5
-learning_rate: 0.0002
-classifier_learning_rate: 0.001
-weight_decay: 0.01
-max_grad_norm: 1.0
-log_every_steps: 100
+defaults:
+  - /central_ssl/run_preset@_here_: default

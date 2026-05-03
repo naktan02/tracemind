@@ -1,2 +1,2 @@
-_target_: shared.src.services.prototypes.build_strategies.SinglePrototypeBuildStrategy
-name: single
+defaults:
+  - /prototype/builder@_here_: single

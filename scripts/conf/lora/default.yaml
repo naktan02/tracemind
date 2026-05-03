@@ -1,8 +1,2 @@
-name: default
-peft_adapter_name: lora
-rank: 8
-alpha: 16
-dropout: 0.1
-bias: none
-target_modules: all-linear
-use_rslora: false
+defaults:
+  - /central_ssl/peft_adapter@_here_: default

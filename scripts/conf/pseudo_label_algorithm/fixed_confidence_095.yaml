@@ -1,4 +1,2 @@
-name: fixed_confidence_095
-confidence_threshold: 0.95
-margin_threshold: 0.0
-algorithm_name: top1_confidence_only
+defaults:
+  - /central_ssl/pseudo_label_algorithm@_here_: fixed_confidence_095

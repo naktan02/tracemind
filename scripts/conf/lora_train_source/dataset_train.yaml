@@ -1,2 +1,2 @@
-name: dataset_train
-train_jsonl: ${dataset.train_jsonl}
+defaults:
+  - /central_ssl/supervised_train_source@_here_: dataset_train

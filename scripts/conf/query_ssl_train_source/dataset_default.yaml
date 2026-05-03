@@ -1,3 +1,2 @@
-name: dataset_default
-train_jsonl: ${dataset.train_jsonl}
-unlabeled_jsonl: ${dataset.unlabeled_query_pool_jsonl}
+defaults:
+  - /central_ssl/train_source@_here_: dataset_default

@@ -1,0 +1,23 @@
+# @package ssl_method
+
+schema_version: federated_ssl_method.v1
+name: fedavg_pseudo_label
+display_name: FedAvg pseudo-label baseline
+method_role: baseline
+implementation_status: active_runtime
+client_step:
+  owner: agent
+  task_type: pseudo_label_self_training
+  uses_training_algorithm_profile: true
+  custom_method_runtime_required: false
+server_step:
+  owner: main_server
+  aggregation_backend_name: ${round_runtime.aggregation_backend_name}
+  custom_round_policy_required: false
+report_tags:
+  - baseline
+  - fedavg
+  - pseudo_label
+notes:
+  - 현재 TraceMind FL runtime의 pseudo-label self-training baseline이다.
+  - 새 논문 방법론은 확정 전까지 이 group에 config만 추가하지 않는다.

@@ -1,16 +1,2 @@
-algorithm_profile_name: prototype_top1_confidence_v1
-training_scope: adapter_only
-adapter_family_name: diagonal_scale
-aggregation_backend_name: fedavg
-training_backend_name: diagonal_scale_heuristic
-confidence_threshold: 0.6
-margin_threshold: 0.0
-example_generation_backend_name: prototype_rescore
-evidence_backend_name: prototype_similarity_evidence
-scorer_backend_name: prototype_similarity
-score_policy_name: max_cosine
-score_top_k: null
-pseudo_label_algorithm_name: top1_confidence_only
-acceptance_policy_name: top1_confidence_only
-privacy_guard_name: diagonal_scale_clip_only
-evidence_backend_temperature: 1.0
+defaults:
+  - /fl_ssl/algorithm_profile@_here_: prototype_top1_confidence_v1

@@ -1,6 +1,4 @@
 # @package shard_policy
 
-name: dirichlet_label_skew
-client_id_prefix: agent
-dominant_ratio: null
-alpha: 0.3
+defaults:
+  - /fl_ssl/shard_policy: dirichlet_alpha03

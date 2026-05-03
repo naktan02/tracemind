@@ -1,5 +1,2 @@
-_target_: shared.src.services.prototypes.build_strategies.KMeansPrototypeBuildStrategy
-name: kmeans
-candidate_ks: [2, 3, 4, 5]
-silhouette_sample_size: 2000
-random_state: 42
+defaults:
+  - /prototype/builder@_here_: kmeans

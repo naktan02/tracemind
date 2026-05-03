@@ -1,7 +1,2 @@
-name: standard
-output_dir: runs/federated_simulation
-client_count: 10
-rounds: 50
-bootstrap_ratio: 0.2
-max_examples: 64
-min_required_examples: 4
+defaults:
+  - /fl_ssl/run_preset@_here_: standard

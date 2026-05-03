@@ -1,5 +1,2 @@
-name: required
-mode: required
-manifest_path: ""
-adapter_dir: ""
-classifier_path: ""
+defaults:
+  - /central_ssl/initial_checkpoint@_here_: required

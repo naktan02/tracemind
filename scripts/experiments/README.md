@@ -33,8 +33,10 @@
 - `train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
     `LoRA + classifier` student를 학습하는 bootstrap entrypoint
-  - selection rule source of truth는 `scripts/conf/pseudo_label_algorithm/*.yaml`이다.
-  - student initial checkpoint source of truth는 `scripts/conf/query_adaptation_initial_checkpoint/*.yaml`이다.
+  - selection rule source of truth는
+    `scripts/conf/central_ssl/pseudo_label_algorithm/*.yaml`이다.
+  - student initial checkpoint source of truth는
+    `scripts/conf/central_ssl/initial_checkpoint/*.yaml`이다.
 - `train_lora_pseudo_label_classifier.py`
   - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint
   - 현재 helper는 offline union retraining 경로를 포함하지만,

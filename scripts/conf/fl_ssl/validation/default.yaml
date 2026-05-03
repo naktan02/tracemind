@@ -1,0 +1,8 @@
+# @package validation
+
+similarity_name: cosine
+scorer_backend_name: ${training_task.objective.scorer_backend_name}
+score_policy_name: ${training_task.objective.score_policy_name}
+score_top_k: ${training_task.objective.score_top_k}
+confidence_threshold: ${training_task.objective.confidence_threshold}
+margin_threshold: ${training_task.objective.margin_threshold}

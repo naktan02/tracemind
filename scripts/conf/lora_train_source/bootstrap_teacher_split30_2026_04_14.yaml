@@ -1,2 +1,2 @@
-name: bootstrap_teacher_split30_2026_04_14
-train_jsonl: data/processed/lora_bootstrap_classifier_teacher/bootstrap_teacher_split30_2026_04_14/teacher_seed_train.jsonl
+defaults:
+  - /central_ssl/supervised_train_source@_here_: bootstrap_teacher_split30_2026_04_14
