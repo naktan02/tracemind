@@ -9,18 +9,6 @@ from uuid import uuid4
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.execution.privacy_guard_service import (
-    NoOpSharedAdapterPrivacyGuard,
-    SharedAdapterPrivacyGuard,
-    build_shared_adapter_privacy_guard,
-)
-from agent.src.services.training.selection.pseudo_label_service import (
-    PseudoLabelSelectionResult,
-    PseudoLabelSelectionService,
-)
-from agent.src.services.training.execution.runtime_compatibility import (
-    validate_local_training_runtime,
-)
 from agent.src.services.training.backends.training.base import (
     SharedAdapterTrainingBackend,
 )
@@ -32,6 +20,18 @@ from agent.src.services.training.backends.training.registry import (
 )
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
+)
+from agent.src.services.training.execution.privacy_guard_service import (
+    NoOpSharedAdapterPrivacyGuard,
+    SharedAdapterPrivacyGuard,
+    build_shared_adapter_privacy_guard,
+)
+from agent.src.services.training.execution.runtime_compatibility import (
+    validate_local_training_runtime,
+)
+from agent.src.services.training.selection.pseudo_label_service import (
+    PseudoLabelSelectionResult,
+    PseudoLabelSelectionService,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (

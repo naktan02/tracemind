@@ -166,11 +166,3 @@ def build_model(
         "parameter_counts": count_parameters(model),
     }
     return model, tokenizer, summary
-
-
-__all__ = [
-    "LoraTextClassifier",
-    "build_model",
-    "count_parameters",
-    "require_transformer_stack",
-]

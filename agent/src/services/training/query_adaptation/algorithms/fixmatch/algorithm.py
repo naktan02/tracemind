@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from typing import Any
 
 import torch
 from torch import Tensor
@@ -10,13 +12,14 @@ from torch.nn import functional as F
 
 from agent.src.services.training.query_adaptation.modeling import LoraTextClassifier
 
-from .base import QuerySslStepOutput
-from .common import (
+from ..base import QuerySslStepOutput
+from ..common import (
     build_fixed_threshold_mask,
     build_pseudo_label_from_probs,
     compute_prob,
     consistency_cross_entropy_loss,
 )
+from ..registry import register_query_ssl_algorithm
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,11 +59,11 @@ class FixMatchStepOutput:
 
 
 @dataclass(frozen=True, slots=True)
-class FixMatchObjective:
-    """FixMatch objective를 공통 Query SSL trainer seam에 맞춘 adapter."""
+class FixMatchAlgorithm:
+    """FixMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
     config: FixMatchConfig
-    objective_name: str = "fixmatch"
+    algorithm_name: str = "fixmatch"
 
     @property
     def uses_labeled_batches(self) -> bool:
@@ -148,9 +151,16 @@ def compute_fixmatch_step(
     )
 
 
-__all__ = [
-    "FixMatchConfig",
-    "FixMatchObjective",
-    "FixMatchStepOutput",
-    "compute_fixmatch_step",
-]
+@register_query_ssl_algorithm("fixmatch")
+def build_fixmatch_algorithm(parameters: Mapping[str, Any]) -> FixMatchAlgorithm:
+    """Hydra method parameter mapping으로 FixMatch algorithm을 만든다."""
+
+    return FixMatchAlgorithm(
+        config=FixMatchConfig(
+            temperature=float(parameters["temperature"]),
+            p_cutoff=float(parameters["p_cutoff"]),
+            hard_label=bool(parameters.get("hard_label", True)),
+            lambda_u=float(parameters.get("lambda_u", 1.0)),
+            supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
+        )
+    )

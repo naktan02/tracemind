@@ -1,4 +1,4 @@
-"""Query adaptation SSL selection algorithm base types."""
+"""Pseudo-label selection hook base types."""
 
 from __future__ import annotations
 
@@ -12,25 +12,22 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 
 
 @dataclass(frozen=True, slots=True)
-class QuerySslAlgorithmConfig:
-    """Selection algorithm이 해석할 threshold 입력."""
+class PseudoLabelSelectionConfig:
+    """Selection hook이 해석할 threshold 입력."""
 
     confidence_threshold: float
     margin_threshold: float = 0.0
 
 
-class QuerySslAlgorithm(Protocol):
-    """Query adaptation용 SSL selection 알고리즘 인터페이스."""
+class PseudoLabelSelectionHook(Protocol):
+    """중앙/FL SSL에서 재사용하는 pseudo-label selection hook."""
 
-    algorithm_name: str
+    hook_name: str
 
     def evaluate(
         self,
         *,
         evidence: PseudoLabelEvidence,
-        config: QuerySslAlgorithmConfig,
+        config: PseudoLabelSelectionConfig,
     ) -> AcceptanceDecision:
         """Evidence 하나를 selection decision 하나로 해석한다."""
-
-
-__all__ = ["QuerySslAlgorithm", "QuerySslAlgorithmConfig"]

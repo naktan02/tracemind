@@ -1,11 +1,8 @@
 """Federated SSL method descriptor helpers."""
 
 from .registry import (
-    FederatedSslMethodDescriptor,
-    resolve_federated_ssl_method,
+    FederatedSslMethodDescriptor as FederatedSslMethodDescriptor,
 )
-
-__all__ = [
-    "FederatedSslMethodDescriptor",
-    "resolve_federated_ssl_method",
-]
+from .registry import (
+    resolve_federated_ssl_method as resolve_federated_ssl_method,
+)

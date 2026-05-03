@@ -10,7 +10,9 @@ from shared.src.config.adapter_family_metadata import (
 )
 
 from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
-from ..aggregation.registry import build_shared_adapter_aggregation_backend
+from ..aggregation.registry import (
+    build_shared_adapter_aggregation_backend,
+)
 from .classifier_head import ClassifierHeadRoundFamily
 from .diagonal_scale import DiagonalScaleRoundFamily
 from .models import RoundFamilyFactory, SharedAdapterRoundFamily

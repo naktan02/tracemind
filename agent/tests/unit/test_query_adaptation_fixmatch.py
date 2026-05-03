@@ -8,13 +8,13 @@ from torch import nn
 from agent.src.services.training.query_adaptation.algorithms.common import (
     build_pseudo_label_from_probs,
 )
-from agent.src.services.training.query_adaptation.algorithms.fixmatch import (
+from agent.src.services.training.query_adaptation.algorithms.fixmatch.algorithm import (
+    FixMatchAlgorithm,
     FixMatchConfig,
-    FixMatchObjective,
     compute_fixmatch_step,
 )
 from agent.src.services.training.query_adaptation.algorithms.registry import (
-    build_query_ssl_objective,
+    build_query_ssl_algorithm,
 )
 
 
@@ -46,9 +46,9 @@ def test_build_fixmatch_pseudo_label_keeps_usb_temperature_behavior() -> None:
     assert torch.equal(soft_targets, probs)
 
 
-def test_query_ssl_objective_registry_builds_fixmatch_objective() -> None:
-    objective = build_query_ssl_objective(
-        objective_name="fixmatch",
+def test_query_ssl_algorithm_registry_builds_fixmatch_algorithm() -> None:
+    algorithm = build_query_ssl_algorithm(
+        algorithm_name="fixmatch",
         parameters={
             "temperature": 0.5,
             "p_cutoff": 0.95,
@@ -58,9 +58,9 @@ def test_query_ssl_objective_registry_builds_fixmatch_objective() -> None:
         },
     )
 
-    assert isinstance(objective, FixMatchObjective)
-    assert objective.objective_name == "fixmatch"
-    assert objective.config.p_cutoff == 0.95
+    assert isinstance(algorithm, FixMatchAlgorithm)
+    assert algorithm.algorithm_name == "fixmatch"
+    assert algorithm.config.p_cutoff == 0.95
 
 
 def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:

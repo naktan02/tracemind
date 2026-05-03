@@ -11,6 +11,10 @@ from agent.src.services.inference.scoring_policies import (
     PrototypeScorePolicy,
     build_prototype_score_policy,
 )
+from shared.src.config.local_training_registry_catalog import (
+    CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
+    PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -238,51 +242,10 @@ def _coerce_prototype_vectors(
 register_scoring_backend(
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
     factory=_build_prototype_similarity_backend,
-    catalog_entry=RegistryCatalogEntry(
-        item_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
-        display_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
-        implementation_module=PrototypeSimilarityScoringBackend.__module__,
-        core_method_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
-        family_name="scoring",
-        supported_adapter_kinds=("*",),
-        metadata={
-            "requires_shared_state": False,
-            "confidence_kind": PROTOTYPE_SIMILARITY_CONFIDENCE_KIND,
-        },
-    ),
+    catalog_entry=PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
 )
 register_scoring_backend(
     CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     factory=_build_classifier_head_logits_backend,
-    catalog_entry=RegistryCatalogEntry(
-        item_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-        display_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-        implementation_module=ClassifierHeadLogitsScoringBackend.__module__,
-        core_method_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-        family_name="scoring",
-        supported_adapter_kinds=("classifier_head",),
-        tags=("requires_shared_state",),
-        metadata={
-            "requires_shared_state": True,
-            "confidence_kind": CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND,
-        },
-    ),
+    catalog_entry=CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
 )
-
-
-__all__ = [
-    "CLASSIFIER_HEAD_LOGITS_BACKEND_NAME",
-    "CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND",
-    "PROTOTYPE_SIMILARITY_BACKEND_NAME",
-    "PROTOTYPE_SIMILARITY_CONFIDENCE_KIND",
-    "ClassifierHeadLogitsScoringBackend",
-    "PrototypeSimilarityScoringBackend",
-    "ScoringBackend",
-    "ScoringBackendFactory",
-    "build_scoring_backend",
-    "list_scoring_backend_catalog_entries",
-    "list_registered_scoring_backend_names",
-    "register_scoring_backend",
-    "resolve_scoring_backend_name",
-    "resolve_scoring_confidence_kind",
-]

@@ -11,19 +11,25 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
     StoredScoredEvent,
 )
 from agent.src.services.inference.scoring_service import ScoringService
+from agent.src.services.training.backends.inputs import (
+    registry as training_example_backend_registry,
+)
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
 )
+from agent.src.services.training.backends.inputs.prototype_rescore import (
+    PrototypeRescoringTrainingExampleBackend,
+)
+from agent.src.services.training.backends.inputs.weak_strong_pair import (
+    WeakStrongPairTrainingExampleBackend,
+)
 from agent.src.services.training.backends.training.registry import (
     register_shared_adapter_training_backend,
 )
 from agent.src.services.training.examples.service import (
-    PrototypeRescoringTrainingExampleBackend,
     TrainingExampleService,
-    WeakStrongPairTrainingExampleBackend,
-    register_training_example_backend,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
@@ -314,7 +320,7 @@ class _ConstantTrainingExampleBackend:
 
 
 def test_training_example_service_selects_backend_from_objective_config() -> None:
-    register_training_example_backend(
+    training_example_backend_registry.register_training_example_backend(
         "constant_examples",
         factory=lambda _objective_config: _ConstantTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(
@@ -397,7 +403,7 @@ def test_training_example_service_rejects_incompatible_backend_family() -> None:
             supported_adapter_kinds=("test_shift",),
         ),
     )
-    register_training_example_backend(
+    training_example_backend_registry.register_training_example_backend(
         "diagonal_only_training_examples",
         factory=lambda _objective_config: _DiagonalOnlyTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(

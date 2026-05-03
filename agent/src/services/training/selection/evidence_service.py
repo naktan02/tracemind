@@ -73,6 +73,3 @@ class PseudoLabelEvidenceService:
             backend_name,
             objective_config=training_task.objective_config,
         )
-
-
-__all__ = ["PseudoLabelEvidenceService"]

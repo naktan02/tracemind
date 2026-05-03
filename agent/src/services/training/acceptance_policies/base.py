@@ -38,6 +38,3 @@ class PseudoLabelAcceptancePolicy(Protocol):
         margin_threshold: float,
     ) -> AcceptanceDecision:
         """Evidence를 해석해 acceptance 결과를 만든다."""
-
-
-__all__ = ["AcceptanceDecision", "PseudoLabelAcceptancePolicy"]

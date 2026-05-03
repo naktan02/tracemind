@@ -10,14 +10,14 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildService,
 )
+from main_server.src.services.federation.rounds import (
+    build_shared_adapter_round_family,
+)
 from main_server.src.services.federation.rounds.acceptance.models import (
     RoundUpdateAcceptancePolicy,
 )
 from main_server.src.services.federation.rounds.acceptance.policies import (
     StrictRoundUpdateAcceptancePolicy,
-)
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,

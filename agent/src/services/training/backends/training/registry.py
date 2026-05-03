@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.config.local_training_registry_catalog import (
+    DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -66,28 +68,5 @@ register_shared_adapter_training_backend(
     "diagonal_scale_heuristic",
     "synthetic_vector_adapter",
     factory=DiagonalScaleHeuristicTrainingBackend.from_objective_config,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="diagonal_scale_heuristic",
-        display_name="diagonal_scale_heuristic",
-        implementation_module=DiagonalScaleHeuristicTrainingBackend.__module__,
-        core_method_name="diagonal_scale_heuristic",
-        family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-        supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
-        accepted_payload_formats=(
-            DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format,
-        ),
-        metadata={
-            "payload_format": (
-                DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
-            )
-        },
-    ),
+    catalog_entry=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
 )
-
-
-__all__ = [
-    "build_shared_adapter_training_backend",
-    "list_shared_adapter_training_backend_catalog_entries",
-    "list_registered_shared_adapter_training_backend_names",
-    "register_shared_adapter_training_backend",
-]

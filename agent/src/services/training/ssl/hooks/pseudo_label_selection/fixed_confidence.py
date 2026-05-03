@@ -1,4 +1,4 @@
-"""Fixed-confidence selection baseline."""
+"""Fixed-confidence pseudo-label selection hook."""
 
 from __future__ import annotations
 
@@ -12,25 +12,24 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from ..base import QuerySslAlgorithmConfig
+from .base import PseudoLabelSelectionConfig
+from .registry import register_pseudo_label_selection_hook
 
 
+@register_pseudo_label_selection_hook("top1_confidence_only")
 @dataclass(slots=True)
-class FixedConfidenceQuerySslAlgorithm:
-    """Top1 confidence threshold만 보는 selection baseline."""
+class FixedConfidencePseudoLabelSelectionHook:
+    """Top1 confidence threshold만 보는 selection hook."""
 
-    algorithm_name: str = "top1_confidence_only"
+    hook_name: str = "top1_confidence_only"
 
     def evaluate(
         self,
         *,
         evidence: PseudoLabelEvidence,
-        config: QuerySslAlgorithmConfig,
+        config: PseudoLabelSelectionConfig,
     ) -> AcceptanceDecision:
         return build_acceptance_decision(
             evidence=evidence,
             accepted=evidence.top1_score >= config.confidence_threshold,
         )
-
-
-__all__ = ["FixedConfidenceQuerySslAlgorithm"]

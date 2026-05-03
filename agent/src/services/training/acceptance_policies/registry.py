@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from shared.src.config.local_training_registry_catalog import (
+    TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY,
+    TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -69,33 +73,10 @@ def list_pseudo_label_acceptance_policy_catalog_entries(
 register_pseudo_label_acceptance_policy(
     "top1_margin_threshold",
     factory=Top1MarginThresholdAcceptancePolicy,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="top1_margin_threshold",
-        display_name="top1_margin_threshold",
-        implementation_module=Top1MarginThresholdAcceptancePolicy.__module__,
-        core_method_name="top1_margin_threshold",
-        family_name="pseudo_label_acceptance",
-        supported_adapter_kinds=("*",),
-    ),
+    catalog_entry=TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY,
 )
 register_pseudo_label_acceptance_policy(
     "top1_confidence_only",
     factory=Top1ConfidenceOnlyAcceptancePolicy,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="top1_confidence_only",
-        display_name="top1_confidence_only",
-        implementation_module=Top1ConfidenceOnlyAcceptancePolicy.__module__,
-        core_method_name="top1_confidence_only",
-        family_name="pseudo_label_acceptance",
-        supported_adapter_kinds=("*",),
-    ),
+    catalog_entry=TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY,
 )
-
-
-__all__ = [
-    "AcceptancePolicyFactory",
-    "build_pseudo_label_acceptance_policy",
-    "list_pseudo_label_acceptance_policy_catalog_entries",
-    "list_registered_pseudo_label_acceptance_policy_names",
-    "register_pseudo_label_acceptance_policy",
-]

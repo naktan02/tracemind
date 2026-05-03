@@ -14,18 +14,18 @@ from agent.src.services.training.acceptance_policies.registry import (
 from agent.src.services.training.backends.evidence.registry import (
     resolve_pseudo_label_evidence_backend,
 )
-from agent.src.services.training.backends.inputs.registry import (
-    resolve_training_example_backend,
-)
-from agent.src.services.training.execution.privacy_guard_service import (
-    SharedAdapterPrivacyGuard,
-    build_shared_adapter_privacy_guard,
+from agent.src.services.training.backends.inputs import (
+    registry as training_example_backend_registry,
 )
 from agent.src.services.training.backends.training.base import (
     SharedAdapterTrainingBackend,
 )
 from agent.src.services.training.backends.training.registry import (
     build_shared_adapter_training_backend,
+)
+from agent.src.services.training.execution.privacy_guard_service import (
+    SharedAdapterPrivacyGuard,
+    build_shared_adapter_privacy_guard,
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingTask
@@ -58,7 +58,9 @@ def validate_live_agent_stored_event_runtime(
         objective.training_backend_name,
         objective_config=objective,
     )
-    training_example_backend = resolve_training_example_backend(
+    training_example_backend = (
+        training_example_backend_registry.resolve_training_example_backend
+    )(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
@@ -116,7 +118,9 @@ def validate_local_training_runtime(
             objective_config=objective,
         )
     )
-    training_example_backend = resolve_training_example_backend(
+    training_example_backend = (
+        training_example_backend_registry.resolve_training_example_backend
+    )(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
@@ -198,10 +202,3 @@ def _require_adapter_kind_support(
         f"Incompatible {component_type}: {component_name} does not support "
         f"adapter_kind={adapter_kind}."
     )
-
-
-__all__ = [
-    "LocalTrainingRuntimeCompatibility",
-    "validate_live_agent_stored_event_runtime",
-    "validate_local_training_runtime",
-]

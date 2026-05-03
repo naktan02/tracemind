@@ -28,15 +28,15 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from ..query_adaptation.ssl.algorithms.margin_threshold import (
-    MarginThresholdQuerySslAlgorithm,
+from ..ssl.hooks.pseudo_label_selection.base import (
+    PseudoLabelSelectionConfig,
+    PseudoLabelSelectionHook,
 )
-from ..query_adaptation.ssl.base import (
-    QuerySslAlgorithm,
-    QuerySslAlgorithmConfig,
+from ..ssl.hooks.pseudo_label_selection.margin_threshold import (
+    MarginThresholdPseudoLabelSelectionHook,
 )
-from ..query_adaptation.ssl.registry import (
-    build_query_ssl_algorithm,
+from ..ssl.hooks.pseudo_label_selection.registry import (
+    build_pseudo_label_selection_hook,
 )
 from .evidence_service import (
     PseudoLabelEvidenceService,
@@ -94,8 +94,8 @@ class PseudoLabelSelectionService:
     default_policy: PseudoLabelAcceptancePolicy = field(
         default_factory=Top1MarginThresholdAcceptancePolicy
     )
-    default_algorithm: QuerySslAlgorithm = field(
-        default_factory=MarginThresholdQuerySslAlgorithm
+    default_selection_hook: PseudoLabelSelectionHook = field(
+        default_factory=MarginThresholdPseudoLabelSelectionHook
     )
 
     def __post_init__(self) -> None:
@@ -106,10 +106,10 @@ class PseudoLabelSelectionService:
             )
         if (
             self.default_pseudo_label_algorithm_name
-            != self.default_algorithm.algorithm_name
+            != self.default_selection_hook.hook_name
         ):
             raise ValueError(
-                "Default query SSL algorithm does not match the configured "
+                "Default pseudo-label selection hook does not match the configured "
                 "default objective profile."
             )
         if (
@@ -168,10 +168,10 @@ class PseudoLabelSelectionService:
             if training_task.objective_config.margin_threshold is not None
             else self.default_margin_threshold
         )
-        ssl_algorithm = self._resolve_algorithm(training_task=training_task)
+        selection_hook = self._resolve_selection_hook(training_task=training_task)
         max_examples = training_task.selection_policy.max_examples
         evidence_list = tuple(evidences)
-        algorithm_config = QuerySslAlgorithmConfig(
+        selection_config = PseudoLabelSelectionConfig(
             confidence_threshold=confidence_threshold,
             margin_threshold=margin_threshold,
         )
@@ -180,8 +180,8 @@ class PseudoLabelSelectionService:
             self._build_candidate(
                 evidence=evidence,
                 training_task=training_task,
-                algorithm_config=algorithm_config,
-                ssl_algorithm=ssl_algorithm,
+                selection_config=selection_config,
+                selection_hook=selection_hook,
             )
             for evidence in evidence_list
         ]
@@ -240,8 +240,8 @@ class PseudoLabelSelectionService:
                     if not threshold_accepted
                     else pre_cap_ranks[candidate.candidate_id]
                 ),
-                confidence_threshold=algorithm_config.confidence_threshold,
-                margin_threshold=algorithm_config.margin_threshold,
+                confidence_threshold=selection_config.confidence_threshold,
+                margin_threshold=selection_config.margin_threshold,
                 max_examples=max_examples,
             )
 
@@ -273,12 +273,12 @@ class PseudoLabelSelectionService:
         *,
         evidence: PseudoLabelEvidence,
         training_task: TrainingTask,
-        algorithm_config: QuerySslAlgorithmConfig,
-        ssl_algorithm: QuerySslAlgorithm,
+        selection_config: PseudoLabelSelectionConfig,
+        selection_hook: PseudoLabelSelectionHook,
     ) -> _BuiltCandidate:
-        decision = ssl_algorithm.evaluate(
+        decision = selection_hook.evaluate(
             evidence=evidence,
-            config=algorithm_config,
+            config=selection_config,
         )
 
         return _BuiltCandidate(
@@ -300,7 +300,7 @@ class PseudoLabelSelectionService:
                 round_id=training_task.round_id,
             ),
             context_seed=_SelectionContextSeed(
-                pseudo_label_algorithm_name=ssl_algorithm.algorithm_name,
+                pseudo_label_algorithm_name=selection_hook.hook_name,
                 evidence_backend_name=self._resolve_evidence_backend_name(
                     evidence=evidence,
                     training_task=training_task,
@@ -338,18 +338,18 @@ class PseudoLabelSelectionService:
             evidence_view_kind=context_seed.evidence_view_kind,
         )
 
-    def _resolve_algorithm(
+    def _resolve_selection_hook(
         self,
         *,
         training_task: TrainingTask,
-    ) -> QuerySslAlgorithm:
+    ) -> PseudoLabelSelectionHook:
         algorithm_name = (
             training_task.objective_config.pseudo_label_algorithm_name
             or self.default_pseudo_label_algorithm_name
         )
-        if algorithm_name == self.default_algorithm.algorithm_name:
-            return self.default_algorithm
-        return build_query_ssl_algorithm(algorithm_name)
+        if algorithm_name == self.default_selection_hook.hook_name:
+            return self.default_selection_hook
+        return build_pseudo_label_selection_hook(algorithm_name)
 
     def _resolve_evidence_backend_name(
         self,

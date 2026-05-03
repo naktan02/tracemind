@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from agent.src.services.training.query_adaptation.ssl.base import (
-    QuerySslAlgorithmConfig,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection.base import (
+    PseudoLabelSelectionConfig,
 )
 
 
@@ -16,7 +16,7 @@ class ResolvedPseudoLabelAlgorithm:
 
     preset_name: str
     algorithm_name: str
-    config: QuerySslAlgorithmConfig
+    config: PseudoLabelSelectionConfig
 
     def to_manifest_entry(self) -> dict[str, Any]:
         return {
@@ -49,7 +49,7 @@ def resolve_pseudo_label_algorithm(
         return ResolvedPseudoLabelAlgorithm(
             preset_name=preset_name,
             algorithm_name=algorithm_name,
-            config=QuerySslAlgorithmConfig(
+            config=PseudoLabelSelectionConfig(
                 confidence_threshold=float(raw_group.confidence_threshold),
                 margin_threshold=float(raw_group.margin_threshold),
             ),
@@ -68,7 +68,7 @@ def resolve_pseudo_label_algorithm(
     return ResolvedPseudoLabelAlgorithm(
         preset_name=algorithm_name,
         algorithm_name=algorithm_name,
-        config=QuerySslAlgorithmConfig(
+        config=PseudoLabelSelectionConfig(
             confidence_threshold=float(cfg.pseudo_label_confidence_threshold),
             margin_threshold=float(cfg.pseudo_label_margin_threshold),
         ),
@@ -85,10 +85,3 @@ def build_pseudo_label_algorithm_manifest(
     except (AttributeError, TypeError, ValueError):
         return None
     return resolved.to_manifest_entry()
-
-
-__all__ = [
-    "ResolvedPseudoLabelAlgorithm",
-    "build_pseudo_label_algorithm_manifest",
-    "resolve_pseudo_label_algorithm",
-]

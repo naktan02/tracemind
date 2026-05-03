@@ -1,61 +1,43 @@
-"""Query SSL adaptation objective registry."""
+"""Query SSL algorithm registry."""
 
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from typing import Any
 
-from .base import QuerySslObjective
-from .fixmatch import FixMatchConfig, FixMatchObjective
+from .base import QuerySslAlgorithm
 
-QuerySslObjectiveFactory = Callable[[Mapping[str, Any]], QuerySslObjective]
+QuerySslAlgorithmFactory = Callable[[Mapping[str, Any]], QuerySslAlgorithm]
 
-_QUERY_SSL_OBJECTIVE_REGISTRY: dict[str, QuerySslObjectiveFactory] = {}
-
-
-def register_query_ssl_objective(
-    *objective_names: str,
-    factory: QuerySslObjectiveFactory,
-) -> None:
-    """algorithm_name으로 Query SSL objective 구현을 등록한다."""
-
-    for objective_name in objective_names:
-        _QUERY_SSL_OBJECTIVE_REGISTRY[objective_name.strip().lower()] = factory
+_QUERY_SSL_ALGORITHM_REGISTRY: dict[str, QuerySslAlgorithmFactory] = {}
 
 
-def build_query_ssl_objective(
+def register_query_ssl_algorithm(
+    *algorithm_names: str,
+) -> Callable[[QuerySslAlgorithmFactory], QuerySslAlgorithmFactory]:
+    """algorithm_name으로 Query SSL algorithm factory를 등록하는 decorator."""
+
+    def _decorator(factory: QuerySslAlgorithmFactory) -> QuerySslAlgorithmFactory:
+        for algorithm_name in algorithm_names:
+            _QUERY_SSL_ALGORITHM_REGISTRY[algorithm_name.strip().lower()] = factory
+        return factory
+
+    return _decorator
+
+
+def build_query_ssl_algorithm(
     *,
-    objective_name: str,
+    algorithm_name: str,
     parameters: Mapping[str, Any],
-) -> QuerySslObjective:
-    """algorithm_name과 method parameter로 objective adapter를 생성한다."""
+) -> QuerySslAlgorithm:
+    """algorithm_name과 parameter로 Query SSL algorithm을 생성한다."""
 
-    normalized_name = objective_name.strip().lower()
-    factory = _QUERY_SSL_OBJECTIVE_REGISTRY.get(normalized_name)
+    normalized_name = algorithm_name.strip().lower()
+    factory = _QUERY_SSL_ALGORITHM_REGISTRY.get(normalized_name)
     if factory is None:
-        raise ValueError(
-            f"Unsupported query SSL adaptation objective: {objective_name}."
-        )
+        raise ValueError(f"Unsupported query SSL algorithm: {algorithm_name}.")
     return factory(parameters)
 
 
-def _build_fixmatch_objective(parameters: Mapping[str, Any]) -> FixMatchObjective:
-    return FixMatchObjective(
-        config=FixMatchConfig(
-            temperature=float(parameters["temperature"]),
-            p_cutoff=float(parameters["p_cutoff"]),
-            hard_label=bool(parameters.get("hard_label", True)),
-            lambda_u=float(parameters.get("lambda_u", 1.0)),
-            supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
-        )
-    )
-
-
-register_query_ssl_objective("fixmatch", factory=_build_fixmatch_objective)
-
-
-__all__ = [
-    "QuerySslObjectiveFactory",
-    "build_query_ssl_objective",
-    "register_query_ssl_objective",
-]
+# Built-in algorithms self-register via decorators when imported.
+from .fixmatch import algorithm as _fixmatch_algorithm  # noqa: E402,F401

@@ -10,6 +10,11 @@ from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
 )
+from shared.src.config.local_training_registry_catalog import (
+    CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
+    DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
+    NOOP_PRIVACY_GUARD_CATALOG_ENTRY,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -200,53 +205,15 @@ def list_shared_adapter_privacy_guard_catalog_entries(
 register_shared_adapter_privacy_guard(
     "diagonal_scale_clip_only",
     factory=DiagonalScaleClipOnlyPrivacyGuard,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="diagonal_scale_clip_only",
-        display_name="diagonal_scale_clip_only",
-        implementation_module=DiagonalScaleClipOnlyPrivacyGuard.__module__,
-        core_method_name="diagonal_scale_clip_only",
-        family_name="privacy_guard",
-        supported_adapter_kinds=(
-            DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-        ),
-    ),
+    catalog_entry=DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
 )
 register_shared_adapter_privacy_guard(
     "classifier_head_clip_only",
     factory=ClassifierHeadClipOnlyPrivacyGuard,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="classifier_head_clip_only",
-        display_name="classifier_head_clip_only",
-        implementation_module=ClassifierHeadClipOnlyPrivacyGuard.__module__,
-        core_method_name="classifier_head_clip_only",
-        family_name="privacy_guard",
-        supported_adapter_kinds=(
-            CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
-        ),
-    ),
+    catalog_entry=CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
 )
 register_shared_adapter_privacy_guard(
     "noop",
     factory=NoOpSharedAdapterPrivacyGuard,
-    catalog_entry=RegistryCatalogEntry(
-        item_name="noop",
-        display_name="noop",
-        implementation_module=NoOpSharedAdapterPrivacyGuard.__module__,
-        core_method_name="noop",
-        family_name="privacy_guard",
-        supported_adapter_kinds=("*",),
-    ),
+    catalog_entry=NOOP_PRIVACY_GUARD_CATALOG_ENTRY,
 )
-
-
-__all__ = [
-    "ClassifierHeadClipOnlyPrivacyGuard",
-    "DiagonalScaleClipOnlyPrivacyGuard",
-    "NoOpSharedAdapterPrivacyGuard",
-    "PrivacyProtectedUpdate",
-    "SharedAdapterPrivacyGuard",
-    "build_shared_adapter_privacy_guard",
-    "list_shared_adapter_privacy_guard_catalog_entries",
-    "list_registered_shared_adapter_privacy_guard_names",
-    "register_shared_adapter_privacy_guard",
-]

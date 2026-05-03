@@ -74,7 +74,10 @@ def softmax_distribution(
 ) -> dict[str, float]:
     if temperature <= 0.0:
         raise ValueError("temperature must be positive.")
-    scaled_pairs = [(label, float(score) / temperature) for label, score in category_scores.items()]
+    scaled_pairs = [
+        (label, float(score) / temperature)
+        for label, score in category_scores.items()
+    ]
     if not scaled_pairs:
         raise ValueError("ScoredEvent must contain at least one category score.")
     max_score = max(score for _, score in scaled_pairs)
@@ -84,10 +87,3 @@ def softmax_distribution(
     ]
     normalizer = math.fsum(value for _, value in exp_pairs)
     return {label: value / normalizer for label, value in exp_pairs}
-
-
-__all__ = [
-    "build_ranked_evidence",
-    "rank_category_scores",
-    "softmax_distribution",
-]

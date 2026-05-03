@@ -47,7 +47,9 @@ def write_run_artifacts(
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     classifier_path = classifier_output_dir / f"{trainer_version}.pt"
-    classifier_manifest_path = classifier_output_dir / f"{trainer_version}.manifest.json"
+    classifier_manifest_path = (
+        classifier_output_dir / f"{trainer_version}.manifest.json"
+    )
     report_path = report_dir / "report.json"
 
     model.backbone.save_pretrained(adapter_output_dir)

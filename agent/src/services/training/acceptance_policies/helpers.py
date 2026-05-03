@@ -24,6 +24,3 @@ def build_acceptance_decision(
         runner_up_score=evidence.top2_score,
         sample_weight=evidence.sample_weight,
     )
-
-
-__all__ = ["build_acceptance_decision"]

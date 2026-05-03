@@ -5,28 +5,6 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from agent.src.services.inference.scoring_backends import (
-    list_scoring_backend_catalog_entries,
-)
-from agent.src.services.training.acceptance_policies.registry import (
-    list_pseudo_label_acceptance_policy_catalog_entries,
-)
-from agent.src.services.training.backends.evidence.registry import (
-    list_pseudo_label_evidence_backend_catalog_entries,
-)
-from agent.src.services.training.backends.inputs.registry import (
-    list_training_example_backend_catalog_entries,
-)
-from agent.src.services.training.backends.training.registry import (
-    list_shared_adapter_training_backend_catalog_entries,
-)
-from agent.src.services.training.execution.privacy_guard_service import (
-    list_shared_adapter_privacy_guard_catalog_entries,
-)
-from agent.src.services.training.execution.runtime_compatibility import (
-    validate_live_agent_stored_event_runtime,
-    validate_local_training_runtime,
-)
 from main_server.src.services.experiment_workspace.artifact_catalog_items import (
     build_generated_bootstrap_teacher_source_items,
     build_generated_initial_checkpoint_items,
@@ -72,6 +50,17 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
 from shared.src.config.adapter_family_metadata import (
     list_shared_adapter_family_metadata,
 )
+from shared.src.config.local_training_registry_catalog import (
+    ANY_ADAPTER_KIND,
+    list_pseudo_label_acceptance_policy_catalog_entries,
+    list_pseudo_label_evidence_backend_catalog_entries,
+    list_scoring_backend_catalog_entries,
+    list_shared_adapter_privacy_guard_catalog_entries,
+    list_shared_adapter_training_backend_catalog_entries,
+    list_training_example_backend_catalog_entries,
+)
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 BuildCustomSection = Callable[
@@ -615,19 +604,9 @@ def _build_training_algorithm_profile_section(
             string_or_none(raw.get("training_scope")) or "adapter_only",
             objective_config,
         )
-        runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
-        try:
-            validate_local_training_runtime(training_task)
-        except ValueError:
-            pass
-        else:
-            runtime_paths.append(MAIN_SERVER_ROUND_RUNTIME_PATH)
-        try:
-            validate_live_agent_stored_event_runtime(training_task)
-        except ValueError:
-            pass
-        else:
-            runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
+        runtime_paths = _resolve_training_profile_runtime_paths(
+            training_task.objective_config
+        )
         items.append(
             CatalogItemPayload(
                 item_name=profile_name,
@@ -659,6 +638,134 @@ def _build_training_algorithm_profile_section(
         source_of_truth="scripts/conf/training_algorithm_profile",
         source_kind="hydra_config_group",
         items=tuple(items),
+    )
+
+
+def _resolve_training_profile_runtime_paths(
+    objective_config: TrainingObjectiveConfig,
+) -> tuple[str, ...]:
+    """Agent runtime import 없이 objective 조합의 catalog compatibility를 계산한다."""
+
+    runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
+    if not _is_local_training_runtime_catalog_compatible(objective_config):
+        return tuple(runtime_paths)
+
+    runtime_paths.append(MAIN_SERVER_ROUND_RUNTIME_PATH)
+    example_backend = _find_catalog_entry(
+        list_training_example_backend_catalog_entries(),
+        objective_config.example_generation_backend_name
+        or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
+    )
+    scorer_backend = _find_catalog_entry(
+        list_scoring_backend_catalog_entries(),
+        objective_config.scorer_backend_name
+        or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+    )
+    if bool(example_backend.metadata.get("supports_stored_event_rebuild")) and (
+        not bool(scorer_backend.metadata.get("requires_shared_state"))
+    ):
+        runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
+    return tuple(runtime_paths)
+
+
+def _is_local_training_runtime_catalog_compatible(
+    objective_config: TrainingObjectiveConfig,
+) -> bool:
+    """Registry metadata만으로 local training runtime 조합 호환성을 판정한다."""
+
+    try:
+        training_backend = _find_catalog_entry(
+            list_shared_adapter_training_backend_catalog_entries(),
+            objective_config.training_backend_name,
+        )
+        adapter_kind = _resolve_single_adapter_kind(training_backend)
+        _require_catalog_adapter_kind_support(
+            entry=_find_catalog_entry(
+                list_training_example_backend_catalog_entries(),
+                objective_config.example_generation_backend_name
+                or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
+            ),
+            adapter_kind=adapter_kind,
+        )
+        _require_catalog_adapter_kind_support(
+            entry=_find_catalog_entry(
+                list_pseudo_label_evidence_backend_catalog_entries(),
+                objective_config.evidence_backend_name
+                or DEFAULT_TRAINING_PROFILE.evidence_backend_name,
+            ),
+            adapter_kind=adapter_kind,
+        )
+        _require_catalog_adapter_kind_support(
+            entry=_find_catalog_entry(
+                list_scoring_backend_catalog_entries(),
+                objective_config.scorer_backend_name
+                or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+            ),
+            adapter_kind=adapter_kind,
+        )
+        _require_catalog_adapter_kind_support(
+            entry=_find_catalog_entry(
+                list_pseudo_label_acceptance_policy_catalog_entries(),
+                objective_config.acceptance_policy_name
+                or DEFAULT_TRAINING_PROFILE.acceptance_policy_name,
+            ),
+            adapter_kind=adapter_kind,
+        )
+        _require_catalog_adapter_kind_support(
+            entry=_find_catalog_entry(
+                list_shared_adapter_privacy_guard_catalog_entries(),
+                objective_config.privacy_guard_name
+                or DEFAULT_TRAINING_PROFILE.privacy_guard_name,
+            ),
+            adapter_kind=adapter_kind,
+        )
+    except ValueError:
+        return False
+    return True
+
+
+def _find_catalog_entry(
+    entries: tuple[RegistryCatalogEntry, ...],
+    item_name: str,
+) -> RegistryCatalogEntry:
+    normalized_name = item_name.strip().lower()
+    for entry in entries:
+        if entry.item_name.strip().lower() == normalized_name:
+            return entry
+    raise ValueError(f"Unknown registry catalog item: {item_name}.")
+
+
+def _resolve_single_adapter_kind(entry: RegistryCatalogEntry) -> str:
+    concrete_adapter_kinds = tuple(
+        adapter_kind
+        for adapter_kind in entry.supported_adapter_kinds
+        if adapter_kind != ANY_ADAPTER_KIND
+    )
+    if len(concrete_adapter_kinds) != 1:
+        raise ValueError(
+            "Training backend catalog entry must expose one concrete "
+            f"adapter kind: {entry.item_name}."
+        )
+    return concrete_adapter_kinds[0]
+
+
+def _require_catalog_adapter_kind_support(
+    *,
+    entry: RegistryCatalogEntry,
+    adapter_kind: str,
+) -> None:
+    normalized_supported = tuple(
+        value.strip().lower() for value in entry.supported_adapter_kinds
+    )
+    normalized_adapter_kind = adapter_kind.strip().lower()
+    if (
+        ANY_ADAPTER_KIND in normalized_supported
+        or normalized_adapter_kind in normalized_supported
+    ):
+        return
+    raise ValueError(
+        f"Catalog item does not support adapter_kind={adapter_kind}: "
+        f"{entry.item_name}."
     )
 
 

@@ -4,11 +4,12 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
-)
 from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
+)
+
+from ..families.registry import (
+    build_shared_adapter_round_family,
 )
 
 

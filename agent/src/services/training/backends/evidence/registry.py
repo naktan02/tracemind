@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from shared.src.config.local_training_registry_catalog import (
+    PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -10,7 +13,6 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import (
-    ANY_ADAPTER_KIND,
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     PseudoLabelEvidenceBackend,
     PseudoLabelEvidenceBackendFactory,
@@ -87,21 +89,5 @@ def resolve_pseudo_label_evidence_backend(
 register_pseudo_label_evidence_backend(
     PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
     factory=lambda _objective_config: PrototypeSimilarityEvidenceBackend(),
-    catalog_entry=RegistryCatalogEntry(
-        item_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        display_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        implementation_module=PrototypeSimilarityEvidenceBackend.__module__,
-        core_method_name=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME,
-        family_name="pseudo_label_evidence",
-        supported_adapter_kinds=(ANY_ADAPTER_KIND,),
-    ),
+    catalog_entry=PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY,
 )
-
-
-__all__ = [
-    "build_pseudo_label_evidence_backend",
-    "list_pseudo_label_evidence_backend_catalog_entries",
-    "list_registered_pseudo_label_evidence_backend_names",
-    "register_pseudo_label_evidence_backend",
-    "resolve_pseudo_label_evidence_backend",
-]

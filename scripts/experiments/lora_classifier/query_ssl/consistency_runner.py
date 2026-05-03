@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from agent.src.services.training.query_adaptation.algorithms.registry import (
-    build_query_ssl_objective,
+    build_query_ssl_algorithm,
 )
 from agent.src.services.training.query_adaptation.data import (
     build_multiview_dataloader,
@@ -34,8 +34,8 @@ from .common import (
 
 
 @dataclass(frozen=True, slots=True)
-class QuerySslMethodAdapter:
-    """Query SSL method별 scripts wiring."""
+class QuerySslAlgorithmAdapter:
+    """Query SSL algorithm별 scripts wiring."""
 
     algorithm_name: str
     trainer_version_prefix: str
@@ -50,29 +50,29 @@ class QuerySslMethodAdapter:
     ]
 
 
-QuerySslMethodAdapterFactory = Callable[[Any], QuerySslMethodAdapter]
-ConsistencyMethodAdapter = QuerySslMethodAdapter
+QuerySslAlgorithmAdapterFactory = Callable[[Any], QuerySslAlgorithmAdapter]
+ConsistencyMethodAdapter = QuerySslAlgorithmAdapter
 
-_QUERY_SSL_METHOD_ADAPTER_REGISTRY: dict[str, QuerySslMethodAdapterFactory] = {}
+_QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY: dict[str, QuerySslAlgorithmAdapterFactory] = {}
 
 
-def register_query_ssl_method_adapter(
+def register_query_ssl_algorithm_adapter(
     *algorithm_names: str,
-    factory: QuerySslMethodAdapterFactory,
+    factory: QuerySslAlgorithmAdapterFactory,
 ) -> None:
     """query_ssl_method.algorithm_name별 scripts adapter를 등록한다."""
 
     for algorithm_name in algorithm_names:
-        _QUERY_SSL_METHOD_ADAPTER_REGISTRY[algorithm_name.strip().lower()] = factory
+        _QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY[algorithm_name.strip().lower()] = factory
 
 
-def build_query_ssl_method_adapter(cfg) -> QuerySslMethodAdapter:
+def build_query_ssl_algorithm_adapter(cfg) -> QuerySslAlgorithmAdapter:
     """Hydra query_ssl_method에서 scripts adapter를 선택한다."""
 
     algorithm_name = str(cfg.query_ssl_method.algorithm_name)
-    factory = _QUERY_SSL_METHOD_ADAPTER_REGISTRY.get(algorithm_name.strip().lower())
+    factory = _QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY.get(algorithm_name.strip().lower())
     if factory is None:
-        raise ValueError(f"Unsupported query SSL method adapter: {algorithm_name}.")
+        raise ValueError(f"Unsupported query SSL algorithm adapter: {algorithm_name}.")
     return factory(cfg)
 
 
@@ -90,7 +90,7 @@ def run_query_ssl_lora_baseline(
 
     return run_consistency_query_ssl_lora_baseline(
         cfg=cfg,
-        adapter=build_query_ssl_method_adapter(cfg),
+        adapter=build_query_ssl_algorithm_adapter(cfg),
         train_rows=train_rows,
         unlabeled_rows=unlabeled_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -103,7 +103,7 @@ def run_query_ssl_lora_baseline(
 def run_consistency_query_ssl_lora_baseline(
     cfg,
     *,
-    adapter: QuerySslMethodAdapter,
+    adapter: QuerySslAlgorithmAdapter,
     train_rows: list[LabeledQueryRow] | None = None,
     unlabeled_rows: list[LabeledQueryRow] | None = None,
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
@@ -212,8 +212,8 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
             "run_fixmatch_lora_baseline requires "
             "query_ssl_method.algorithm_name=fixmatch."
         )
-    objective = build_query_ssl_objective(
-        objective_name="fixmatch",
+    algorithm = build_query_ssl_algorithm(
+        algorithm_name="fixmatch",
         parameters=build_query_ssl_method_parameters(cfg),
     )
 
@@ -255,10 +255,10 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
             weight_decay=float(cfg.weight_decay),
             max_grad_norm=float(cfg.max_grad_norm),
             log_every_steps=int(cfg.log_every_steps),
-            objective=objective,
+            algorithm=algorithm,
         )
 
-    return QuerySslMethodAdapter(
+    return QuerySslAlgorithmAdapter(
         algorithm_name="FixMatch",
         trainer_version_prefix="lora_fixmatch",
         prepare_unlabeled_rows=_prepare_unlabeled_rows,
@@ -267,4 +267,4 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
     )
 
 
-register_query_ssl_method_adapter("fixmatch", factory=_build_fixmatch_adapter)
+register_query_ssl_algorithm_adapter("fixmatch", factory=_build_fixmatch_adapter)

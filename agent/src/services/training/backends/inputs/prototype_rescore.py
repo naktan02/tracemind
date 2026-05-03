@@ -109,6 +109,3 @@ class PrototypeRescoringTrainingExampleBackend:
                 )
             )
         return tuple(examples)
-
-
-__all__ = ["PrototypeRescoringTrainingExampleBackend"]

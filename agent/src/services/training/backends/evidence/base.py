@@ -33,11 +33,3 @@ PseudoLabelEvidenceBackendFactory = Callable[
     [TrainingObjectiveConfig],
     PseudoLabelEvidenceBackend,
 ]
-
-
-__all__ = [
-    "ANY_ADAPTER_KIND",
-    "PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME",
-    "PseudoLabelEvidenceBackend",
-    "PseudoLabelEvidenceBackendFactory",
-]

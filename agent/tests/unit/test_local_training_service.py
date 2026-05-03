@@ -12,11 +12,11 @@ from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
 from agent.src.services.inference.scoring_backends import register_scoring_backend
+from agent.src.services.training.backends.inputs import (
+    registry as training_example_backend_registry,
+)
 from agent.src.services.training.backends.training.registry import (
     register_shared_adapter_training_backend,
-)
-from agent.src.services.training.examples.service import (
-    register_training_example_backend,
 )
 from agent.src.services.training.execution.local_training_service import (
     EmbeddedTrainingExample,
@@ -807,7 +807,7 @@ def test_local_training_service_rejects_incompatible_training_example_backend(
             accepted_payload_formats=("test_shift_update_incompatible_examples",),
         ),
     )
-    register_training_example_backend(
+    training_example_backend_registry.register_training_example_backend(
         "diagonal_only_training_examples",
         factory=lambda _objective_config: DiagonalOnlyTrainingExampleBackend(),
         catalog_entry=_registry_catalog_entry(

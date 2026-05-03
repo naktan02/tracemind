@@ -39,8 +39,8 @@
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
-| Query SSL Selection Algorithm | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/query_adaptation/ssl/`, `scripts/conf/pseudo_label_algorithm/` |
-| Query SSL Adaptation Objective | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
+| Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `scripts/conf/pseudo_label_algorithm/` |
+| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
@@ -314,13 +314,13 @@ class PseudoLabelAcceptancePolicy(Protocol):
 주의:
 - central query-domain 실험에서는 compatibility field로만 남을 수 있다.
 - 현재 bootstrap / pseudo-label self-training 실험의 selection 코어는
-  `agent/src/services/training/query_adaptation/ssl/`이 소유한다.
+  `agent/src/services/training/ssl/hooks/pseudo_label_selection/`이 소유한다.
 
 ---
 
-### 7-1. Query SSL Selection Algorithm (agent/scripts)
+### 7-1. Pseudo-label Selection Hook (agent/scripts)
 
-**역할:** 중앙 query adaptation 실험에서 pseudo-label evidence를 어떤 알고리즘으로
+**역할:** 중앙/FL SSL에서 pseudo-label evidence를 어떤 selection hook으로
 해석할지 결정한다.
 
 **현재 구현:**
@@ -329,22 +329,22 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 **구성 위치:**
 - agent 코어:
-  - `agent/src/services/training/query_adaptation/ssl/`
+  - `agent/src/services/training/ssl/hooks/pseudo_label_selection/`
 - scripts preset:
   - `scripts/conf/pseudo_label_algorithm/*.yaml`
 
 **교체 절차:**
-1. `query_adaptation/ssl/algorithms/` 아래에 알고리즘 구현을 추가한다
-2. `ssl/registry.py`에 얇게 등록한다
+1. `ssl/hooks/pseudo_label_selection/` 아래에 hook 구현을 추가한다
+2. `ssl/hooks/pseudo_label_selection/registry.py`에 얇게 등록한다
 3. `TrainingObjectiveConfigPayload.pseudo_label_algorithm_name`으로 선택한다
 4. scripts에서는 `pseudo_label_algorithm=<preset>`으로 preset을 고른다
 5. acceptance runtime 검증이 필요하면 별도 `acceptance_policy_name`을 함께 둔다
 
 ---
 
-### 7-2. Query SSL Adaptation Objective (agent/scripts)
+### 7-2. Query SSL Algorithm (agent/scripts)
 
-**역할:** 중앙 query adaptation trainer에서 `LoRA + classifier` adaptation objective 자체를 바꾼다.
+**역할:** 중앙 query adaptation trainer에서 `LoRA + classifier` SSL algorithm 자체를 바꾼다.
 
 **현재 구현:**
 - `fixmatch`
@@ -353,7 +353,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - agent 코어:
   - `agent/src/services/training/query_adaptation/algorithms/base.py`
   - `agent/src/services/training/query_adaptation/algorithms/registry.py`
-  - `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
+  - `agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py`
   - `agent/src/services/training/query_adaptation/training.py`
 - scripts family runner:
   - `scripts/experiments/lora_classifier/query_ssl/common.py`
@@ -363,19 +363,19 @@ class PseudoLabelAcceptancePolicy(Protocol):
   - `scripts/conf/query_ssl_train_source/*.yaml`
 
 **교체 절차:**
-1. `query_adaptation/algorithms/` 아래에 objective core를 구현한다
-2. objective adapter가 `QuerySslObjective`를 만족하게 만든다
+1. `query_adaptation/algorithms/<algorithm_name>/` 아래에 algorithm core를 구현한다
+2. algorithm adapter가 `QuerySslAlgorithm`를 만족하게 만든다
 3. `algorithms/registry.py`에 `algorithm_name`으로 등록한다
 4. `train_query_ssl_classifier(...)` 공통 loop에는 새 objective만 주입한다
 5. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
-6. scripts runner의 `QuerySslMethodAdapter` registry에 loader/preparation wiring을 추가한다
+6. scripts runner의 `QuerySslAlgorithmAdapter` registry에 loader/preparation wiring을 추가한다
 7. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
 8. 같은 family runner 안에서는 algorithm-specific wiring만 추가하고, eval/artifact 껍데기는 재사용한다
 
 주의:
 - `FixMatch`는 selection rule이 아니라 adaptation objective다.
-- 즉 기존 `query_adaptation/ssl/` selection 코어와 같은 축으로 넣지 않는다.
-- USB `fixmatch.py::train_step`의 수식 코어는 `algorithms/fixmatch.py`에 두고,
+- 즉 기존 `ssl/hooks/pseudo_label_selection/` selection 코어와 같은 축으로 넣지 않는다.
+- USB `fixmatch.py::train_step`의 수식 코어는 `algorithms/fixmatch/algorithm.py`에 두고,
   USB `AlgorithmBase`가 맡던 loop/iterator/hook orchestration만 TraceMind trainer adapter로 둔다.
 - `query_ssl_method` manifest는 `parameters`를 canonical method parameter map으로 남기고,
   기존 report consumer 호환을 위해 현재 parameter를 top-level에도 함께 남긴다.

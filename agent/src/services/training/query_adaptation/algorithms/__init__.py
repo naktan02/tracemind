@@ -1,1 +1,1 @@
-"""Query adaptation algorithm implementations."""
+"""Query adaptation SSL algorithms."""

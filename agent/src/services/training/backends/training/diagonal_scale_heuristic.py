@@ -168,10 +168,3 @@ class DiagonalScaleHeuristicTrainingBackend:
 
 
 SyntheticVectorAdapterTrainingBackend = DiagonalScaleHeuristicTrainingBackend
-
-
-__all__ = [
-    "build_diagonal_scale_heuristic_training_backend_config",
-    "DiagonalScaleHeuristicTrainingBackend",
-    "SyntheticVectorAdapterTrainingBackend",
-]

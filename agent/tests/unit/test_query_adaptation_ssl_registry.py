@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from agent.src.services.training.query_adaptation.ssl.base import (
-    QuerySslAlgorithmConfig,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection import (
+    registry as pseudo_label_selection_registry,
 )
-from agent.src.services.training.query_adaptation.ssl.registry import (
-    build_query_ssl_algorithm,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection.base import (
+    PseudoLabelSelectionConfig,
 )
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PSEUDO_LABEL_EVIDENCE_V1,
@@ -37,11 +37,13 @@ def _build_evidence() -> PseudoLabelEvidence:
 
 
 def test_margin_threshold_algorithm_requires_margin_cutoff() -> None:
-    algorithm = build_query_ssl_algorithm("top1_margin_threshold")
+    selection_hook = pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+        "top1_margin_threshold"
+    )
 
-    decision = algorithm.evaluate(
+    decision = selection_hook.evaluate(
         evidence=_build_evidence(),
-        config=QuerySslAlgorithmConfig(
+        config=PseudoLabelSelectionConfig(
             confidence_threshold=0.6,
             margin_threshold=0.02,
         ),
@@ -53,11 +55,13 @@ def test_margin_threshold_algorithm_requires_margin_cutoff() -> None:
 
 
 def test_fixed_confidence_algorithm_ignores_margin_cutoff() -> None:
-    algorithm = build_query_ssl_algorithm("top1_confidence_only")
+    selection_hook = pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+        "top1_confidence_only"
+    )
 
-    decision = algorithm.evaluate(
+    decision = selection_hook.evaluate(
         evidence=_build_evidence(),
-        config=QuerySslAlgorithmConfig(
+        config=PseudoLabelSelectionConfig(
             confidence_threshold=0.6,
             margin_threshold=0.99,
         ),

@@ -381,7 +381,7 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
     assert request.selection_policy is training_task_config.selection_policy
 
 
-def test_federated_ssl_method_registry_only_wires_active_baseline() -> None:
+def test_federated_ssl_method_resolver_only_wires_active_baseline() -> None:
     descriptor = resolve_federated_ssl_method("fedavg_pseudo_label")
 
     assert descriptor.implementation_status == "active_runtime"

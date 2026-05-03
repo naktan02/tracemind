@@ -35,6 +35,3 @@ class PrototypeSimilarityEvidenceBackend:
             view_kind=self.view_kind,
             backend_name=self.backend_name,
         )
-
-
-__all__ = ["PrototypeSimilarityEvidenceBackend"]

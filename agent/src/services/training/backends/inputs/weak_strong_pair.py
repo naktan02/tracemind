@@ -106,6 +106,3 @@ class WeakStrongPairTrainingExampleBackend:
             "weak_strong_pair backend is not supported for stored scored events yet. "
             "Stored event reconstruction currently lacks weak/strong view data."
         )
-
-
-__all__ = ["WeakStrongPairTrainingExampleBackend"]

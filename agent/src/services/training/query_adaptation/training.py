@@ -17,8 +17,8 @@ from shared.src.domain.services.classification_report import (
     summarize_per_category,
 )
 
-from .algorithms.base import QuerySslObjective
-from .algorithms.fixmatch import FixMatchConfig, FixMatchObjective
+from .algorithms.base import QuerySslAlgorithm
+from .algorithms.fixmatch.algorithm import FixMatchAlgorithm, FixMatchConfig
 from .modeling import LoraTextClassifier
 
 
@@ -340,19 +340,19 @@ def train_query_ssl_classifier(
     weight_decay: float,
     max_grad_norm: float,
     log_every_steps: int,
-    objective: QuerySslObjective,
+    algorithm: QuerySslAlgorithm,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
-    """Query SSL objective를 epoch-based query adaptation scaffold에 얹어 학습한다."""
+    """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
-    objective.validate_loaders(
+    algorithm.validate_loaders(
         train_loader_length=len(train_loader),
         unlabeled_loader_length=len(unlabeled_loader),
     )
-    labeled_updates_enabled = objective.uses_labeled_batches and len(train_loader) > 0
-    if objective.uses_labeled_batches and len(train_loader) == 0:
+    labeled_updates_enabled = algorithm.uses_labeled_batches and len(train_loader) > 0
+    if algorithm.uses_labeled_batches and len(train_loader) == 0:
         raise ValueError(
-            f"{objective.objective_name} labeled train_loader must not be empty "
-            "when the objective uses labeled batches."
+            f"{algorithm.algorithm_name} labeled train_loader must not be empty "
+            "when the algorithm uses labeled batches."
         )
 
     optimizer = build_optimizer(
@@ -404,7 +404,7 @@ def train_query_ssl_classifier(
             )
 
             optimizer.zero_grad(set_to_none=True)
-            step_output = objective.compute_step(
+            step_output = algorithm.compute_step(
                 model=model,
                 labeled_batch=labeled_batch,
                 unlabeled_batch=unlabeled_batch,
@@ -471,7 +471,7 @@ def train_query_ssl_classifier(
 
     if best_state_dict is None or best_selection_report is None:
         raise RuntimeError(
-            f"{objective.objective_name} training did not produce a best checkpoint."
+            f"{algorithm.algorithm_name} training did not produce a best checkpoint."
         )
 
     model.load_state_dict(best_state_dict)
@@ -509,15 +509,5 @@ def train_fixmatch_classifier(
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
         log_every_steps=log_every_steps,
-        objective=FixMatchObjective(config=fixmatch_config),
+        algorithm=FixMatchAlgorithm(config=fixmatch_config),
     )
-
-
-__all__ = [
-    "build_optimizer",
-    "evaluate_classifier",
-    "set_seed",
-    "train_classifier",
-    "train_fixmatch_classifier",
-    "train_query_ssl_classifier",
-]

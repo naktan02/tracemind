@@ -4,24 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
+from agent.src.services.training.backends.inputs import (
+    registry as training_example_backend_registry,
+)
 from agent.src.services.training.backends.inputs.base import (
     TrainingExampleBackend,
 )
 from agent.src.services.training.backends.inputs.models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
-    TrainingExampleSource,
 )
 from agent.src.services.training.backends.inputs.prototype_rescore import (
     PrototypeRescoringTrainingExampleBackend,
-)
-from agent.src.services.training.backends.inputs.registry import (
-    build_training_example_backend,
-    register_training_example_backend,
-    resolve_training_example_backend,
-)
-from agent.src.services.training.backends.inputs.weak_strong_pair import (
-    WeakStrongPairTrainingExampleBackend,
 )
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
@@ -43,7 +37,9 @@ class TrainingExampleService:
         objective_config: TrainingObjectiveConfig,
     ) -> "TrainingExampleService":
         return cls(
-            backend=resolve_training_example_backend(objective_config=objective_config)
+            backend=training_example_backend_registry.resolve_training_example_backend(
+                objective_config=objective_config
+            )
         )
 
     def build_examples(
@@ -57,17 +53,3 @@ class TrainingExampleService:
         request: StoredEventTrainingExampleBuildRequest,
     ) -> tuple[EmbeddedTrainingExample, ...]:
         return self.backend.build_examples_from_stored_events(request)
-
-
-__all__ = [
-    "PrototypeRescoringTrainingExampleBackend",
-    "StoredEventTrainingExampleBuildRequest",
-    "TrainingExampleBackend",
-    "TrainingExampleBuildRequest",
-    "TrainingExampleService",
-    "TrainingExampleSource",
-    "WeakStrongPairTrainingExampleBackend",
-    "build_training_example_backend",
-    "register_training_example_backend",
-    "resolve_training_example_backend",
-]

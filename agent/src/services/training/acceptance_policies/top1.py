@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.training.query_adaptation.ssl.base import (
-    QuerySslAlgorithmConfig,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection import (
+    registry as pseudo_label_selection_registry,
 )
-from agent.src.services.training.query_adaptation.ssl.registry import (
-    build_query_ssl_algorithm,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection.base import (
+    PseudoLabelSelectionConfig,
 )
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
@@ -31,9 +31,11 @@ class Top1MarginThresholdAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        return build_query_ssl_algorithm(self.policy_name).evaluate(
+        return pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+            self.policy_name
+        ).evaluate(
             evidence=evidence,
-            config=QuerySslAlgorithmConfig(
+            config=PseudoLabelSelectionConfig(
                 confidence_threshold=confidence_threshold,
                 margin_threshold=margin_threshold,
             ),
@@ -54,16 +56,12 @@ class Top1ConfidenceOnlyAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        return build_query_ssl_algorithm(self.policy_name).evaluate(
+        return pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+            self.policy_name
+        ).evaluate(
             evidence=evidence,
-            config=QuerySslAlgorithmConfig(
+            config=PseudoLabelSelectionConfig(
                 confidence_threshold=confidence_threshold,
                 margin_threshold=margin_threshold,
             ),
         )
-
-
-__all__ = [
-    "Top1ConfidenceOnlyAcceptancePolicy",
-    "Top1MarginThresholdAcceptancePolicy",
-]

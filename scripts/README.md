@@ -656,7 +656,7 @@ canonical 경로:
 - FixMatch entrypoint: `scripts/experiments/train_lora_fixmatch.py`
 - Query SSL consistency runner: `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - agent 학습 코어: `agent/src/services/training/query_adaptation/`
-- USB FixMatch core mapping: `agent/src/services/training/query_adaptation/algorithms/fixmatch.py`
+- USB FixMatch core mapping: `agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py`
 - teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
 - teacher bootstrap helper: `scripts/experiments/lora_classifier/bootstrap_runner.py`
 - pseudo-label entrypoint: `scripts/experiments/train_lora_pseudo_label_classifier.py`
@@ -692,10 +692,10 @@ canonical 경로:
   그 accepted pseudo-label을 `LoRA + classifier` student가 학습하는 teacher-student 구조다.
 - `train_lora_fixmatch.py`는 USB `fixmatch.py::train_step`의 수식 코어를 가져오되,
   USB `AlgorithmBase`가 맡던 iterator/hook orchestration은 현재 TraceMind
-  `train_query_ssl_classifier(...)` 공통 loop와 objective adapter로 둔다.
+  `train_query_ssl_classifier(...)` 공통 loop와 algorithm adapter로 둔다.
 - scripts 쪽 실행 껍데기는 `query_ssl/common.py`와 `query_ssl/consistency_runner.py`로 나눠
   family 공통 scaffolding과 `query_ssl_method.algorithm_name`별 scripts wiring을 분리한다.
-- objective core 선택은 `agent/src/services/training/query_adaptation/algorithms/registry.py`에서
+- algorithm core 선택은 `agent/src/services/training/query_adaptation/algorithms/registry.py`에서
   `algorithm_name`으로 수행한다.
 - 현재 `FixMatch`는 `text + aug_0 + aug_1` canonical unlabeled shape를 쓰고,
   `query_ssl_augmenter`가 strict USB형 strong candidate를 먼저 준비한다.
@@ -771,8 +771,8 @@ client shard 분배 비율이나 scoring policy 같은 세부 전략을 바꾸�
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
   shard_policy.dominant_ratio=0.6 \
-  training_task.objective.score_policy_name=topk_mean_cosine \
-  training_task.objective.score_top_k=2 \
+  training_task.method.score_policy_name=topk_mean_cosine \
+  training_task.method.score_top_k=2 \
   validation.score_policy_name=topk_mean_cosine \
   validation.score_top_k=2
 ```

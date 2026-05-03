@@ -1,4 +1,4 @@
-"""Margin-threshold selection baseline."""
+"""Margin-threshold pseudo-label selection hook."""
 
 from __future__ import annotations
 
@@ -12,20 +12,22 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from ..base import QuerySslAlgorithmConfig
+from .base import PseudoLabelSelectionConfig
+from .registry import register_pseudo_label_selection_hook
 
 
+@register_pseudo_label_selection_hook("top1_margin_threshold")
 @dataclass(slots=True)
-class MarginThresholdQuerySslAlgorithm:
-    """Top1 confidence와 top1-top2 margin을 함께 보는 baseline."""
+class MarginThresholdPseudoLabelSelectionHook:
+    """Top1 confidence와 top1-top2 margin을 함께 보는 selection hook."""
 
-    algorithm_name: str = "top1_margin_threshold"
+    hook_name: str = "top1_margin_threshold"
 
     def evaluate(
         self,
         *,
         evidence: PseudoLabelEvidence,
-        config: QuerySslAlgorithmConfig,
+        config: PseudoLabelSelectionConfig,
     ) -> AcceptanceDecision:
         return build_acceptance_decision(
             evidence=evidence,
@@ -34,6 +36,3 @@ class MarginThresholdQuerySslAlgorithm:
                 and evidence.margin >= config.margin_threshold
             ),
         )
-
-
-__all__ = ["MarginThresholdQuerySslAlgorithm"]

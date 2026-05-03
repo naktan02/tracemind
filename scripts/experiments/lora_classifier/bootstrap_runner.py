@@ -13,8 +13,8 @@ from typing import Any
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from agent.src.services.training.query_adaptation.ssl.registry import (
-    build_query_ssl_algorithm,
+from agent.src.services.training.ssl.hooks.pseudo_label_selection.registry import (
+    build_pseudo_label_selection_hook,
 )
 from scripts.datasets.lib.split import split_rows
 from scripts.experiments.fixed_classifier.runner import (
@@ -311,7 +311,7 @@ def _build_teacher_pseudo_label_rows(
     if len(rows) != len(predictions):
         raise ValueError("rows and predictions must have the same length.")
 
-    algorithm = build_query_ssl_algorithm(
+    selection_hook = build_pseudo_label_selection_hook(
         pseudo_label_algorithm.algorithm_name
     )
     accepted_rows: list[LabeledQueryRow] = []
@@ -323,7 +323,7 @@ def _build_teacher_pseudo_label_rows(
 
     for row, prediction in zip(rows, predictions, strict=True):
         hidden_label = str(row["mapped_label_4"])
-        decision = algorithm.evaluate(
+        decision = selection_hook.evaluate(
             evidence=_build_teacher_evidence(
                 row=row,
                 prediction=prediction,
@@ -500,6 +500,3 @@ def _write_jsonl(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
     with path.open("w", encoding="utf-8") as file:
         for row in rows:
             file.write(json.dumps(dict(row), ensure_ascii=True) + "\n")
-
-
-__all__ = ["run_fixed_classifier_teacher_lora_student_bootstrap"]

@@ -1,4 +1,4 @@
-"""Query SSL adaptation objective 공통 인터페이스."""
+"""Query SSL algorithm 공통 인터페이스."""
 
 from __future__ import annotations
 
@@ -11,7 +11,7 @@ from agent.src.services.training.query_adaptation.modeling import LoraTextClassi
 
 
 class QuerySslStepOutput(Protocol):
-    """Query SSL objective 한 step의 loss와 metric 결과."""
+    """Query SSL algorithm 한 step의 loss와 metric 결과."""
 
     total_loss: Tensor
 
@@ -24,10 +24,10 @@ class QuerySslStepOutput(Protocol):
         """epoch history에 `train_{name}`으로 기록할 scalar metric."""
 
 
-class QuerySslObjective(Protocol):
-    """중앙 Query SSL trainer가 호출하는 objective seam."""
+class QuerySslAlgorithm(Protocol):
+    """중앙 Query SSL trainer가 호출하는 algorithm seam."""
 
-    objective_name: str
+    algorithm_name: str
 
     @property
     def uses_labeled_batches(self) -> bool:
@@ -39,7 +39,7 @@ class QuerySslObjective(Protocol):
         train_loader_length: int,
         unlabeled_loader_length: int,
     ) -> None:
-        """objective별 loader 전제조건을 검증한다."""
+        """algorithm별 loader 전제조건을 검증한다."""
 
     def compute_step(
         self,
@@ -48,10 +48,4 @@ class QuerySslObjective(Protocol):
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Any],
     ) -> QuerySslStepOutput:
-        """model과 batch로 한 optimization step의 objective를 계산한다."""
-
-
-__all__ = [
-    "QuerySslObjective",
-    "QuerySslStepOutput",
-]
+        """model과 batch로 algorithm-specific optimization step을 계산한다."""

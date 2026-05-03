@@ -8,7 +8,10 @@ from typing import TYPE_CHECKING, Protocol
 
 from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig, TrainingTask
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingTask,
+)
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
@@ -62,12 +65,4 @@ TrainingBackend = SharedAdapterTrainingBackend
 TrainingBackendFactory = Callable[
     [TrainingObjectiveConfig | None],
     SharedAdapterTrainingBackend,
-]
-
-
-__all__ = [
-    "AcceptedTrainingExample",
-    "SharedAdapterTrainingBackend",
-    "TrainingBackend",
-    "TrainingBackendFactory",
 ]
