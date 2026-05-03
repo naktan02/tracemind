@@ -1,4 +1,5 @@
 name: default
+peft_adapter_name: lora
 rank: 8
 alpha: 16
 dropout: 0.1

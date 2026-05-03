@@ -28,6 +28,7 @@ from scripts.experiments.federated_simulation.evaluation import (
     evaluate_rows,
 )
 from scripts.experiments.federated_simulation.methods import (
+    build_federated_ssl_method_runtime,
     resolve_federated_ssl_method,
 )
 from scripts.experiments.federated_simulation.task_config import (
@@ -385,8 +386,13 @@ def test_federated_ssl_method_resolver_only_wires_active_baseline() -> None:
     descriptor = resolve_federated_ssl_method("fedavg_pseudo_label")
 
     assert descriptor.implementation_status == "active_runtime"
+    assert descriptor.client_trainer_name == "local_training_service"
+    assert descriptor.pseudo_labeler_name == "agent_pseudo_label_selection"
+    assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
     assert descriptor.requires_custom_client_runtime is False
     assert descriptor.requires_custom_server_runtime is False
+    runtime = build_federated_ssl_method_runtime("fedavg_pseudo_label")
+    assert runtime.descriptor is descriptor
 
     with pytest.raises(NotImplementedError, match="not wired yet"):
         resolve_federated_ssl_method("paper_method_candidate")

@@ -6,6 +6,12 @@ from typing import Any
 
 from torch import nn
 
+from .peft_adapters.base import PeftAdapterBuildContext
+from .peft_adapters.registry import (
+    build_peft_adapter_builder,
+    resolve_peft_adapter_name,
+)
+
 
 def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
     """실험 extra가 설치돼 있을 때만 transformer/peft stack을 연다."""
@@ -64,12 +70,6 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
     return {"total": total, "trainable": trainable}
 
 
-def _resolve_target_modules(raw_value: Any) -> str | list[str]:
-    if isinstance(raw_value, str):
-        return raw_value
-    return [str(value) for value in raw_value]
-
-
 def build_model(
     *,
     cfg,
@@ -111,17 +111,19 @@ def build_model(
             initial_adapter_dir,
             is_trainable=True,
         )
+        peft_adapter_builder = None
     else:
-        lora_config = LoraConfig(
-            r=int(cfg.lora.rank),
-            lora_alpha=int(cfg.lora.alpha),
-            lora_dropout=float(cfg.lora.dropout),
-            target_modules=_resolve_target_modules(cfg.lora.target_modules),
-            bias=str(cfg.lora.bias),
-            use_rslora=bool(cfg.lora.use_rslora),
-            task_type=TaskType.FEATURE_EXTRACTION,
+        peft_adapter_name = resolve_peft_adapter_name(cfg)
+        peft_adapter_builder = build_peft_adapter_builder(peft_adapter_name)
+        backbone = peft_adapter_builder.build_backbone(
+            backbone_base=backbone_base,
+            context=PeftAdapterBuildContext(
+                cfg=cfg,
+                lora_config_cls=LoraConfig,
+                task_type=TaskType,
+                get_peft_model=get_peft_model,
+            ),
         )
-        backbone = get_peft_model(backbone_base, lora_config)
     hidden_size = int(backbone.config.hidden_size)
     model = LoraTextClassifier(
         backbone=backbone,
@@ -152,12 +154,19 @@ def build_model(
         "max_length": int(cfg.paper_backbone.max_length),
         "task_prefix": str(cfg.paper_backbone.task_prefix),
         "lora": {
-            "rank": int(cfg.lora.rank),
-            "alpha": int(cfg.lora.alpha),
-            "dropout": float(cfg.lora.dropout),
-            "bias": str(cfg.lora.bias),
-            "target_modules": _resolve_target_modules(cfg.lora.target_modules),
-            "use_rslora": bool(cfg.lora.use_rslora),
+            **(
+                peft_adapter_builder.build_summary(cfg=cfg)
+                if peft_adapter_builder is not None
+                else {
+                    "adapter_name": "loaded_from_checkpoint",
+                    "rank": int(cfg.lora.rank),
+                    "alpha": int(cfg.lora.alpha),
+                    "dropout": float(cfg.lora.dropout),
+                    "bias": str(cfg.lora.bias),
+                    "target_modules": str(cfg.lora.target_modules),
+                    "use_rslora": bool(cfg.lora.use_rslora),
+                }
+            ),
         },
         "initial_checkpoint": {
             "adapter_dir": initial_adapter_dir or None,

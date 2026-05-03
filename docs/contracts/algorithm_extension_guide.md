@@ -42,9 +42,11 @@
 | Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `scripts/conf/pseudo_label_algorithm/` |
 | Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
+| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/query_adaptation/peft_adapters/`, `scripts/conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
+| Secure Update Codec | shared/agent/main_server | `noop` | `shared/src/services/secure_update_codec.py` |
 | Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/federation/rounds/families/`, `shared/src/contracts/adapter_contracts.py` |
 
 ---
@@ -509,6 +511,53 @@ class RoundUpdateAcceptancePolicy(Protocol):
 - 즉 `계약 -> protocol/base -> 구현체 파일 -> 얇은 wiring -> singular config source`
   순서를 유지하고, trust policy / encryption scheme / aggregation rule을 한 클래스에
   섞지 않는다.
+
+### PEFT Adapter Builder (agent/scripts)
+
+**역할:** 중앙 query adaptation rail에서 frozen backbone 위에 얹는 PEFT adapter
+생성 방식을 바꾼다.
+
+**현재 구현:**
+- `lora`
+- `rslora`
+
+**구성 위치:**
+- `agent/src/services/training/query_adaptation/peft_adapters/base.py`
+- `agent/src/services/training/query_adaptation/peft_adapters/registry.py`
+- `agent/src/services/training/query_adaptation/peft_adapters/lora.py`
+- `scripts/conf/lora/*.yaml`
+
+**교체 절차:**
+1. `peft_adapters/` 아래에 builder 구현을 추가한다
+2. `PeftAdapterBuilder`를 만족하게 만든다
+3. `peft_adapters/registry.py`에 `peft_adapter_name`으로 등록한다
+4. `scripts/conf/lora/<preset>.yaml`에서 `peft_adapter_name`과 method별
+   하이퍼파라미터를 둔다
+
+주의:
+- DoRA/IA3는 이름만 미리 열지 않는다. 실제 PEFT config 생성과 manifest summary가
+  준비될 때 builder로 추가한다.
+
+### Secure Update Codec (shared/agent/main_server)
+
+**역할:** agent가 만든 update envelope을 server acceptance/aggregation 전에
+secure aggregation 또는 encryption 제출 형태로 변환한다.
+
+**현재 구현:**
+- `noop`
+
+**구성 위치:**
+- `shared/src/services/secure_update_codec.py`
+- agent encode 지점: `LocalTrainingService.secure_update_codec`
+- server decode 지점: `RoundLifecycleService.secure_update_codec`
+
+**교체 절차:**
+1. codec 구현이 `SecureUpdateCodec`을 만족하게 만든다
+2. agent encode와 server decode 양쪽에서 같은 envelope metadata 계약을 따른다
+3. `TrainingTask.secure_aggregation`과 `TrainingUpdateEnvelope.secure_aggregation`
+   필드 의미를 함께 검증한다
+4. aggregation backend가 plaintext를 요구하는지 secure aggregate를 요구하는지
+   명시한다
 
 ---
 

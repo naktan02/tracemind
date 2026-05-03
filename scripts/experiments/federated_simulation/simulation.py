@@ -8,13 +8,9 @@ from pathlib import Path
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
-)
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
-    LocalTrainingService,
 )
 from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository,
@@ -37,11 +33,11 @@ from scripts.experiments.federated_simulation.artifacts import (
     save_simulation_report,
 )
 from scripts.experiments.federated_simulation.evaluation import (
-    build_training_examples,
     build_validation_scoring_service,
     evaluate_rows,
 )
 from scripts.experiments.federated_simulation.methods import (
+    build_federated_ssl_method_runtime,
     resolve_federated_ssl_method,
 )
 from scripts.experiments.federated_simulation.models import (
@@ -71,9 +67,6 @@ from scripts.experiments.federated_simulation.runtime import (
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
-)
-from scripts.experiments.federated_simulation.task_config import (
-    build_round_open_request,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -107,6 +100,7 @@ def run_simulation(
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
 
     ssl_method_descriptor = resolve_federated_ssl_method(ssl_method_config.name)
+    ssl_method_runtime = build_federated_ssl_method_runtime(ssl_method_config.name)
     if ssl_method_config.implementation_status != (
         ssl_method_descriptor.implementation_status
     ):
@@ -249,7 +243,7 @@ def run_simulation(
     for round_index in range(1, rounds + 1):
         round_id = f"round_{round_index:04d}"
         round_record = lifecycle_service.open_round(
-            build_round_open_request(
+            ssl_method_runtime.build_round_open_request(
                 active_manifest=active_manifest,
                 round_id=round_id,
                 training_task_config=training_task_config,
@@ -265,7 +259,7 @@ def run_simulation(
         updates = []
         client_summaries: list[ClientRoundSummary] = []
         for shard in dataset_split.client_shards:
-            training_examples = build_training_examples(
+            training_examples = ssl_method_runtime.build_training_examples(
                 rows=shard.rows,
                 adapter=adapter,
                 adapter_state=active_state,
@@ -274,10 +268,8 @@ def run_simulation(
                 scoring_service=training_scoring_service,
                 objective_config=training_task.objective_config,
             )
-            local_training_service = LocalTrainingService(
-                repository=TrainingArtifactRepository(
-                    state_root=output_dir / "agents" / shard.client_id
-                )
+            local_training_service = ssl_method_runtime.build_local_training_service(
+                client_state_root=output_dir / "agents" / shard.client_id
             )
             local_result = local_training_service.run(
                 LocalTrainingRequest(

@@ -43,6 +43,10 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+from shared.src.services.secure_update_codec import (
+    NoOpSecureUpdateCodec,
+    SecureUpdateCodec,
+)
 
 
 @dataclass(slots=True)
@@ -82,6 +86,9 @@ class LocalTrainingService:
     )
     privacy_guard: SharedAdapterPrivacyGuard = field(
         default_factory=NoOpSharedAdapterPrivacyGuard
+    )
+    secure_update_codec: SecureUpdateCodec = field(
+        default_factory=NoOpSecureUpdateCodec
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -172,6 +179,10 @@ class LocalTrainingService:
             clipped=protected_update.clipped,
             dp_applied=protected_update.dp_applied,
             agent_id=request.agent_id,
+        )
+        update_envelope = self.secure_update_codec.encode_for_submission(
+            envelope=update_envelope,
+            training_task=request.training_task,
         )
         return LocalTrainingResult(
             selection_result=selection_result,

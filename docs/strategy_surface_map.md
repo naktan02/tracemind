@@ -98,6 +98,7 @@ Embedding
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
 | Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.privacy_guard_name` | 활성 runtime |
+| PEFT Adapter Builder | `lora`, `rslora` | `lora.peft_adapter_name` | `scripts/conf/lora/default.yaml` | `lora.peft_adapter_name=rslora` | 중앙 LoRA rail 활성 seam |
 
 추가 설명:
 
@@ -124,6 +125,9 @@ Embedding
   algorithm 선택 seam은 `agent/src/services/training/query_adaptation/algorithms/base.py`와
   `agent/src/services/training/query_adaptation/algorithms/registry.py`에 두며,
   trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
+  PEFT adapter 생성은 `agent/src/services/training/query_adaptation/peft_adapters/registry.py`에서
+  `lora.peft_adapter_name`으로 선택한다. 현재 활성 builder는 `lora`, `rslora`이며
+  DoRA/IA3는 실제 구현이 붙을 때 별도 builder로 추가한다.
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
   `query_ssl_method.algorithm_name`별 scripts adapter registry로 loader/preparation만 바꾼다.
   strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
@@ -198,6 +202,7 @@ Embedding
 |---|---|---|---|---|---|
 | Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
 | Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
+| Secure Update Codec | `noop` | `RoundLifecycleService.secure_update_codec`, `LocalTrainingService.secure_update_codec` | `NoOpSecureUpdateCodec` | public Hydra leaf 없음 | runtime seam만 활성 |
 | Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `scripts/conf/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
@@ -206,6 +211,9 @@ Embedding
 
 - `aggregation backend`는 문자열로 고를 수 있지만, 현재 `run_federated_simulation` Hydra config에는 top-level knob로 노출돼 있지 않다.
 - `update acceptance`는 교체 지점은 있지만 registry나 public config key보다 코드 주입 형태에 가깝다.
+- secure aggregation/encryption은 `shared/src/services/secure_update_codec.py`의
+  `SecureUpdateCodec` seam으로 agent upload와 server acceptance 사이에 걸려 있다.
+  현재는 plaintext `noop`만 제공하며, task가 secure aggregation을 요구하면 no-op codec은 실패한다.
 - `classifier_head` family bootstrap은 현재 category별 centroid 하나를 classifier weight로 바꾸므로
   `prototype_builder=single`일 때만 안전하다.
 - aggregation도 SSL selection과 같은 구조 철학으로 본다.
@@ -386,6 +394,11 @@ python -m scripts.experiments.run_federated_simulation \
 - `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
   `dirichlet_alpha01`은 stress split이다.
 - `federated_ssl_method=fedavg_pseudo_label`는 현재 active runtime baseline이다.
+- `federated_ssl_method`는 descriptor만이 아니라
+  `scripts/experiments/federated_simulation/methods/base.py`의
+  `FederatedSslMethodRuntime` 조합을 선택한다.
+  현재 baseline은 round open, client example build, local trainer를 기존 pseudo-label
+  self-training runtime으로 연결한다.
 - 후보 논문 method는 확정 전까지 config/파일을 미리 추가하지 않는다.
 - `federated_report=fl_ssl_main_comparison`은 중앙 SSL control과 섞이지 않는
   FL main comparison report schema를 고른다.

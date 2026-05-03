@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field, replace
+from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
@@ -34,13 +34,30 @@ from main_server.src.services.federation.rounds.round_manager_service import (
 )
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.services.clock import Clock, SystemUtcClock
+from shared.src.services.secure_update_codec import (
+    NoOpSecureUpdateCodec,
+    SecureUpdateCodec,
+)
+
+if TYPE_CHECKING:
+    from main_server.src.infrastructure.repositories.round_repository import (
+        RoundRepository,
+    )
+
+
+def _build_round_repository() -> RoundRepository:
+    from main_server.src.infrastructure.repositories.round_repository import (
+        RoundRepository,
+    )
+
+    return RoundRepository()
 
 
 @dataclass(slots=True)
 class RoundLifecycleService:
     """active round open/update/finalize 전이를 조정한다."""
 
-    round_repository: RoundRepository = field(default_factory=RoundRepository)
+    round_repository: RoundRepository = field(default_factory=_build_round_repository)
     round_manager_service: RoundManagerService = field(
         default_factory=RoundManagerService
     )
@@ -49,6 +66,9 @@ class RoundLifecycleService:
     )
     update_acceptance_policy: RoundUpdateAcceptancePolicy = field(
         default_factory=StrictRoundUpdateAcceptancePolicy
+    )
+    secure_update_codec: SecureUpdateCodec = field(
+        default_factory=NoOpSecureUpdateCodec
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -102,9 +122,13 @@ class RoundLifecycleService:
             raise RoundConflictError(f"Round is not open: {round_id}")
 
         accepted_at = self.clock.now()
+        decoded_update = self.secure_update_codec.decode_submission(
+            envelope=update,
+            training_task=record.training_task,
+        )
         decision = self.update_acceptance_policy.evaluate(
             record=record,
-            update=update,
+            update=decoded_update,
             accepted_at=accepted_at,
         )
         updated_record = record
