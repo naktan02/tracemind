@@ -21,7 +21,7 @@
 
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
-| 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `agent` 또는 `main_server` |
+| 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` + runtime owner |
 | 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
@@ -67,18 +67,20 @@
 
 보통 수정 파일:
 
+- [methods/adaptation/](../../methods/adaptation/)
 - [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 
 작업 순서:
 
-1. `SharedAdapterTrainingBackend` Protocol을 만족하는 클래스를 추가한다.
-2. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
-3. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
-4. `register_shared_adapter_training_backend(...)`에 이름을 등록한다.
-5. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
-6. 기본값까지 바꾸려면 `DEFAULT_TRAINING_PROFILE` 계열을 수정한다.
+1. 재사용 가능한 update 계산은 `methods/adaptation/<adapter_family>/`에 추가한다.
+2. `SharedAdapterTrainingBackend` Protocol을 만족하는 agent adapter 클래스를 추가한다.
+3. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
+4. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
+5. `register_shared_adapter_training_backend(...)`에 이름을 등록한다.
+6. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
+7. 기본값까지 바꾸려면 `DEFAULT_TRAINING_PROFILE` 계열을 수정한다.
 
 보통 건드리지 않는 것:
 
@@ -87,6 +89,7 @@
 
 우선 볼 테스트:
 
+- [tests/unit/test_methods_diagonal_scale_heuristic_update.py](../../tests/unit/test_methods_diagonal_scale_heuristic_update.py)
 - [agent/tests/unit/test_local_training_service.py](../../agent/tests/unit/test_local_training_service.py)
 - 필요 시 [agent/tests/unit/test_training_example_service.py](../../agent/tests/unit/test_training_example_service.py)
 

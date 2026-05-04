@@ -33,7 +33,7 @@
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
 | Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `conf/training_algorithm_profile/` |
-| Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/backends/training/` |
+| Training Backend | methods/agent | DiagonalScaleHeuristicTrainingBackend | `methods/adaptation/diagonal_scale/`, `agent/src/services/training/backends/training/` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
 | Evidence Backend | methods/agent | PrototypeSimilarityEvidenceBackend | `methods/prototype/evidence/`, `agent/src/services/training/backends/evidence/` |
 | Scorer Backend | methods/agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `methods/prototype/scoring/`, `agent/src/services/inference/scoring_backends.py` |
@@ -84,7 +84,7 @@
 
 ---
 
-### 2. Training Backend (agent)
+### 2. Training Backend (methods/agent)
 
 **역할:** 채택된 pseudo-label 예시로 adapter delta를 실제로 계산하는 방식.
 
@@ -109,6 +109,9 @@ class SharedAdapterTrainingBackend(Protocol):
 
 **현재:** `DiagonalScaleHeuristicTrainingBackend`
 - `DiagonalScaleHeuristicTrainingBackend`는 gradient 없이 confidence 가중 방향으로 delta를 계산한다.
+- 실제 `VectorAdapterDelta` 산술 core는 `methods/adaptation/diagonal_scale/`가
+  소유하고, agent backend는 `SharedAdapterTrainingBackend` protocol과 runtime
+  registry에 연결한다.
 
 주의:
 - 현재 runtime의 `SharedAdapterTrainingBackend`는 family별 shared state delta를 반환한다.
@@ -120,9 +123,10 @@ class SharedAdapterTrainingBackend(Protocol):
 - 다른 adapter family용 backend 추가 (LoRA 등)
 
 **교체 절차:**
-1. `training_backends/` 아래에 새 구현 파일을 추가한다
-2. `register_shared_adapter_training_backend()`로 thin registry wiring에 등록
-3. `TrainingObjectiveConfigPayload.training_backend_name` 값과 backend_name을 맞춤
+1. 재사용 가능한 update 산술이면 `methods/adaptation/<adapter_family>/`에 먼저 둔다
+2. `training_backends/` 아래에 agent backend adapter를 추가한다
+3. `register_shared_adapter_training_backend()`로 thin registry wiring에 등록
+4. `TrainingObjectiveConfigPayload.training_backend_name` 값과 backend_name을 맞춤
 
 **건드리지 않는 것:** `LocalTrainingService`는 backend를 주입받으므로 수정 불필요.
 

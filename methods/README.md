@@ -7,6 +7,7 @@
 
 - SSL objective, pseudo-label, loss, thresholding 같은 method 계산
 - PEFT/adaptation 적용 방식
+- adapter family별 local update 계산 방식
 - federated aggregation의 순수 계산 core
 - FL-SSL composition에서 재사용되는 method 조립 규칙
 - prototype builder, assignment, update 같은 연구/production 공통 mechanism
@@ -44,6 +45,7 @@ research
   selection hook
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
+- `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산
 - `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별
   next-state 계산 core
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산

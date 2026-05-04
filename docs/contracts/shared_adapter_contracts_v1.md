@@ -292,6 +292,9 @@ update payload:
 5. accepted example 임베딩의 confidence 가중 평균을 구한다.
 6. 그 평균 방향으로 `dimension_deltas`를 만든다.
 
+현재 산술 core는 `methods/adaptation/diagonal_scale/`가 소유하고, agent의
+`DiagonalScaleHeuristicTrainingBackend`는 local training runtime adapter로 남긴다.
+
 즉 현재 update는
 "특정 prototype으로 직접 당기기"
 가 아니라,

@@ -121,11 +121,13 @@
 - `training/acceptance_policies/`
   - evidence 기반 pseudo-label acceptance 정책 구현
 - `training/backends/training/`
-  - adapter update 생성 backend 구현과 registry wiring
+  - adapter update 생성 backend adapter와 registry wiring
+- `methods/adaptation/diagonal_scale/`
+  - diagonal-scale local update 계산 core
 
 ## 전략 추가 시 출발점
 
-- training backend 추가: `training/backends/training/`
+- training backend 추가: `methods/adaptation/<family>/`와 `training/backends/training/`
 - example-generation backend 추가: `training/backends/inputs/`와 `training/examples/service.py`
 - scorer backend 추가: `inference/scoring_backends.py`
 - prototype score policy 추가: `methods/prototype/scoring/`

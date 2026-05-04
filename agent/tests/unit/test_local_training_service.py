@@ -180,8 +180,7 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert result.update_envelope.payload_format == "diagonal_scale_update"
     assert Path(result.update_envelope.payload_ref).exists()
     assert (
-        Path(result.update_envelope.payload_ref).parent.name
-        == "shared_adapter_updates"
+        Path(result.update_envelope.payload_ref).parent.name == "shared_adapter_updates"
     )
     assert result.update_envelope.clipped is False
     assert candidates["q1"].selection_context is not None
@@ -192,8 +191,7 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert candidates["q2"].selection_context.selection_stage.value == "dropped_by_cap"
     assert candidates["q3"].selection_context.selection_stage.value == "dropped_by_cap"
     assert (
-        candidates["q4"].selection_context.selection_stage.value
-        == "threshold_rejected"
+        candidates["q4"].selection_context.selection_stage.value == "threshold_rejected"
     )
     assert candidates["q2"].selection_context.threshold_accepted is True
     assert candidates["q4"].selection_context.threshold_accepted is False
@@ -285,6 +283,7 @@ def test_local_training_service_skips_update_when_examples_are_insufficient(
     assert result.selection_result.accepted_count == 1
     assert result.update_envelope is None
     assert result.update_payload is None
+
 
 def test_local_training_service_marks_update_as_clipped_when_privacy_guard_scales_delta(
     tmp_path: Path,

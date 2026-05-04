@@ -101,6 +101,7 @@ Contract 변경은 producer, consumer, serialization/compatibility test, 관련 
 | `agent/tests/unit/test_query_buffer_repository.py` | query buffer local persistence |
 | `agent/tests/unit/test_query_buffer_selection_service.py` | query buffer selection |
 | `tests/unit/test_methods_fixmatch.py` | reusable FixMatch method objective |
+| `tests/unit/test_methods_diagonal_scale_heuristic_update.py` | reusable diagonal-scale local update method core |
 | `tests/unit/test_methods_federated_ssl.py` | reusable FL SSL method descriptor |
 | `tests/unit/test_methods_federated_shard_policy.py` | reusable FL shard policy method core |
 | `tests/unit/test_methods_prototype_scoring.py` | reusable prototype scoring method core |

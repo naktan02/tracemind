@@ -4,6 +4,7 @@
 
 현재 활성 구현:
 
+- `diagonal_scale/`: diagonal-scale heuristic local update 계산 core
 - `peft/`: PEFT adapter builder protocol과 registry
 - `lora/`: LoRA/RSLoRA builder core
 

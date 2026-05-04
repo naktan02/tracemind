@@ -103,6 +103,9 @@ Embedding
 추가 설명:
 
 - 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
+- `diagonal_scale_heuristic`의 update 산술 core는
+  `methods/adaptation/diagonal_scale/`이 소유하고, agent training backend는 이를
+  local runtime에 연결한다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
 - prototype score policy 계산 core는 `methods/prototype/scoring/`이 소유하고,
   agent scoring backend는 이를 inference/training runtime에 연결한다.
@@ -144,6 +147,7 @@ Embedding
 관련 파일:
 
 - [agent/src/services/training/backends/training/__init__.py](../agent/src/services/training/backends/training/__init__.py)
+- [methods/adaptation/diagonal_scale/](../methods/adaptation/diagonal_scale/)
 - [agent/src/services/training/backends/inputs/__init__.py](../agent/src/services/training/backends/inputs/__init__.py)
 - [agent/src/services/training/examples/service.py](../agent/src/services/training/examples/service.py)
 - [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
