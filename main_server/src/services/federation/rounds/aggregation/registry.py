@@ -14,6 +14,9 @@ from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationBackendFactory,
     SharedAdapterAggregationBackend,
 )
+from methods.federated.aggregation.registry import (
+    get_federated_aggregation_method_spec,
+)
 from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
@@ -29,6 +32,14 @@ _AGGREGATION_BACKEND_REGISTRY: dict[
     tuple[str, str],
     tuple[AggregationBackendFactory, RegistryCatalogEntry],
 ] = {}
+_DIAGONAL_SCALE_FEDAVG_SPEC = get_federated_aggregation_method_spec(
+    adapter_kind=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    method_name="fedavg",
+)
+_CLASSIFIER_HEAD_FEDAVG_SPEC = get_federated_aggregation_method_spec(
+    adapter_kind=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    method_name="fedavg",
+)
 
 
 def register_shared_adapter_aggregation_backend(
@@ -82,8 +93,9 @@ def list_registered_shared_adapter_aggregation_backends(
     return tuple(key for key in registered if key[0] == normalized_adapter_kind)
 
 
-def list_shared_adapter_aggregation_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_shared_adapter_aggregation_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 aggregation backend catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(
@@ -100,8 +112,8 @@ register_shared_adapter_aggregation_backend(
     catalog_entry=RegistryCatalogEntry(
         item_name=f"{DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind}.fedavg",
         display_name="fedavg",
-        implementation_module=DiagonalScaleAggregationService.__module__,
-        core_method_name="fedavg",
+        implementation_module=_DIAGONAL_SCALE_FEDAVG_SPEC.implementation_module,
+        core_method_name=_DIAGONAL_SCALE_FEDAVG_SPEC.method_name,
         family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
         supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
         metadata={"adapter_kind": DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind},
@@ -115,8 +127,8 @@ register_shared_adapter_aggregation_backend(
     catalog_entry=RegistryCatalogEntry(
         item_name=f"{CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind}.fedavg",
         display_name="fedavg",
-        implementation_module=ClassifierHeadFedAvgAggregationService.__module__,
-        core_method_name="fedavg",
+        implementation_module=_CLASSIFIER_HEAD_FEDAVG_SPEC.implementation_module,
+        core_method_name=_CLASSIFIER_HEAD_FEDAVG_SPEC.method_name,
         family_name=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
         supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
         metadata={"adapter_kind": CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind},

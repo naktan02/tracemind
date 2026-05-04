@@ -44,7 +44,7 @@
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
 | PEFT Adapter Builder | methods/scripts | `lora`, `rslora` | `methods/adaptation/`, `conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
-| Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
+| Aggregation Backend | methods/main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `methods/federated/aggregation/fedavg/`, `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
 | Secure Update Codec | shared/agent/main_server | `noop` | `shared/src/services/secure_update_codec.py` |
 | Adapter Family | main_server/shared | `diagonal_scale`, `classifier_head` | `main_server/src/services/federation/rounds/families/`, `shared/src/contracts/adapter_contracts.py` |
@@ -436,8 +436,10 @@ class SharedAdapterAggregationBackend(Protocol):
     ) -> AggregationResult: ...
 ```
 
-**현재:** `DiagonalScaleAggregationService`
-- `diagonal_scale` family용
+**현재:** `fedavg`
+- 순수 계산 core: `methods/federated/aggregation/fedavg/`
+- server boundary adapter: `DiagonalScaleAggregationService`,
+  `ClassifierHeadFedAvgAggregationService`
 - example_count 가중 평균 기반
 
 **교체 시나리오:**
@@ -446,9 +448,11 @@ class SharedAdapterAggregationBackend(Protocol):
 - 가중 FedAvg: example_count 대신 trust score로 가중
 
 **교체 절차:**
-1. `aggregation/` 아래에 새 backend 클래스와 registry wiring을 추가
-2. `register_shared_adapter_aggregation_backend()` 또는 family 조합 지점에 등록
-3. q-합의 등 trust 기반이라면 `TrainingUpdateEnvelope.agent_id`를 사전 단계에서 활용
+1. 순수 계산은 `methods/federated/aggregation/` 아래 method core로 추가한다.
+2. `main_server`의 `aggregation/`에는 `SharedAdapterAggregationBackend` adapter와
+   registry wiring만 추가한다.
+3. `register_shared_adapter_aggregation_backend()` 또는 family 조합 지점에 등록한다.
+4. q-합의 등 trust 기반이라면 `TrainingUpdateEnvelope.agent_id`를 사전 단계에서 활용한다.
 
 **참고 필드:** `client_metrics`의 `ClientMetricKeys` 상수들 (`mean_confidence`, `delta_l2_norm` 등)이
 aggregation 품질 판단에 활용 가능.
@@ -499,7 +503,8 @@ class RoundUpdateAcceptancePolicy(Protocol):
 | `shared/src/contracts/adapter_contracts.py` | 새 State/Update payload 클래스 추가 |
 | `shared/src/domain/entities/training/` | 새 도메인 객체 추가 |
 | `agent/src/services/training/backends/training/` | 새 family용 backend 추가 |
-| `main_server/src/services/federation/rounds/aggregation/` | 새 family용 aggregation backend 추가 |
+| `methods/federated/aggregation/` | 새 family용 aggregation 계산 core 추가 |
+| `main_server/src/services/federation/rounds/aggregation/` | 새 family용 server aggregation adapter 추가 |
 | `main_server/src/services/federation/rounds/families/` | 라우팅 등록 |
 | `main_server/src/services/federation/rounds/boundary/mappers.py` | 새 payload 변환 추가 |
 

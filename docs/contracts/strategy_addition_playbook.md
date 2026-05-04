@@ -140,15 +140,17 @@
 
 보통 수정 파일:
 
+- [methods/federated/aggregation/](../../methods/federated/aggregation/)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
 - 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 
 작업 순서:
 
-1. `SharedAdapterAggregationBackend` 구현 클래스를 추가한다.
-2. `register_shared_adapter_aggregation_backend(adapter_kind, ...)`로 등록한다.
-3. 현재 family builder가 새 backend 이름을 받을 수 있는지 확인한다.
-4. 기본 선택값까지 바꾸려면 `ServerRoundRuntimeConfig.aggregation_backend_name` fallback을 수정한다.
+1. 순수 aggregation 계산은 `methods/federated/aggregation/`에 추가한다.
+2. `SharedAdapterAggregationBackend` 구현 클래스는 server boundary adapter로 둔다.
+3. `register_shared_adapter_aggregation_backend(adapter_kind, ...)`로 등록한다.
+4. 현재 family builder가 새 backend 이름을 받을 수 있는지 확인한다.
+5. 기본 선택값까지 바꾸려면 `ServerRoundRuntimeConfig.aggregation_backend_name` fallback을 수정한다.
 
 보통 건드리지 않는 것:
 
@@ -159,6 +161,7 @@
 
 - [main_server/tests/unit/test_aggregation_service.py](../../main_server/tests/unit/test_aggregation_service.py)
 - [main_server/tests/unit/test_round_runtime_factory.py](../../main_server/tests/unit/test_round_runtime_factory.py)
+- [tests/unit/test_methods_fedavg.py](../../tests/unit/test_methods_fedavg.py)
 
 ## 4. 새 adapter family 추가
 

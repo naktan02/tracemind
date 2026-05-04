@@ -157,7 +157,8 @@ Raw Event / Local Signal
 |---|---|
 | round lifecycle | `main_server/src/services/federation/rounds/round_lifecycle_service.py` |
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
-| aggregation backend | `main_server/src/services/federation/rounds/aggregation/*` |
+| aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
+| FedAvg method core | `methods/federated/aggregation/fedavg/*` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 

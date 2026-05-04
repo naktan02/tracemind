@@ -6,6 +6,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from methods.federated.aggregation.fedavg.diagonal_scale_fedavg import (
+    DiagonalScaleFedAvgUpdate,
+    compute_diagonal_scale_fedavg,
+)
 from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
@@ -22,7 +26,7 @@ from .models import AggregationConfig, AggregationResult
 
 @dataclass(slots=True)
 class DiagonalScaleAggregationService:
-    """Diagonal scale adapter update를 전역 상태로 집계한다."""
+    """Diagonal scale server boundary를 FedAvg method core에 연결한다."""
 
     adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind
     config: AggregationConfig = field(
@@ -62,11 +66,7 @@ class DiagonalScaleAggregationService:
             raise ValueError("At least one non-empty update payload is required.")
 
         embedding_dim = base_state.embedding_dim
-        total_examples = sum(payload.example_count for payload in valid_updates)
-        weighted_delta = [0.0] * embedding_dim
-        weighted_confidence = 0.0
-        weighted_margin = 0.0
-        weighted_delta_norm = 0.0
+        method_updates: list[DiagonalScaleFedAvgUpdate] = []
 
         for payload in valid_updates:
             if not isinstance(payload, VectorAdapterDelta):
@@ -91,42 +91,33 @@ class DiagonalScaleAggregationService:
                 raise ValueError(
                     "All update payloads must share the same embedding_dim."
                 )
-
-            weight = payload.example_count / total_examples
-            weighted_confidence += payload.mean_confidence * weight
-            weighted_margin += (payload.mean_margin or 0.0) * weight
-            weighted_delta_norm += payload.l2_norm() * weight
-            for index, value in enumerate(payload.dimension_deltas):
-                weighted_delta[index] += value * weight
-
-        next_scales = [
-            max(
-                self.config.min_scale,
-                min(self.config.max_scale, scale + delta),
+            method_updates.append(
+                DiagonalScaleFedAvgUpdate(
+                    dimension_deltas=payload.dimension_deltas,
+                    example_count=payload.example_count,
+                    mean_confidence=payload.mean_confidence,
+                    mean_margin=payload.mean_margin,
+                    delta_l2_norm=payload.l2_norm(),
+                )
             )
-            for scale, delta in zip(
-                base_state.dimension_scales,
-                weighted_delta,
-                strict=True,
-            )
-        ]
+
+        method_result = compute_diagonal_scale_fedavg(
+            base_dimension_scales=base_state.dimension_scales,
+            updates=method_updates,
+            min_scale=self.config.min_scale,
+            max_scale=self.config.max_scale,
+        )
         next_state = VectorAdapterState(
             schema_version=base_state.schema_version,
             model_id=base_state.model_id,
             model_revision=next_model_revision,
             training_scope=base_state.training_scope,
-            dimension_scales=next_scales,
+            dimension_scales=method_result.next_dimension_scales,
             updated_at=aggregated_at,
             adapter_kind=base_state.adapter_kind,
         )
         return AggregationResult(
             next_state=next_state,
-            aggregated_metrics={
-                "client_count": float(len(valid_updates)),
-                "example_count": float(total_examples),
-                "mean_confidence": weighted_confidence,
-                "mean_margin": weighted_margin,
-                "mean_delta_l2_norm": weighted_delta_norm,
-            },
-            update_count=len(valid_updates),
+            aggregated_metrics=method_result.aggregated_metrics,
+            update_count=method_result.update_count,
         )

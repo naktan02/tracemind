@@ -47,13 +47,14 @@
 - `families/`
   - adapter family별 state/update/payload 해석과 aggregation wiring
 - `aggregation/`
-  - concrete aggregation backend registry와 구현
+  - server-owned aggregation backend registry와 methods core adapter
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 
 ## 새 전략 추가 시 어디를 보는가
 
-- aggregation backend 추가: `aggregation/`
+- aggregation backend 추가: server adapter/wiring은 `aggregation/`, 순수 method
+  계산은 `methods/federated/aggregation/`
 - adapter family 추가: `families/` + `shared/src/contracts/adapter_contracts.py`
 - server runtime 기본 축 변경: `runtime/config.py`
 

@@ -41,5 +41,8 @@ research
 - `methods/ssl/fixmatch/`: USB 스타일 FixMatch objective core
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
+- `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별
+  next-state 계산 core
 
-다음 단계부터 FedAvg 계산 core, prototype method를 작은 단위로 옮긴다.
+다음 단계에서는 FL-SSL composition, shard policy, prototype method를 실제 구현이
+붙는 순서대로 작은 단위로 옮긴다.

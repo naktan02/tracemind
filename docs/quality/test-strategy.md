@@ -116,6 +116,7 @@ Agent 테스트는 raw text, local retention, private state가 server boundary�
 | `main_server/tests/unit/test_round_lifecycle_service.py` | round open/update/finalize |
 | `main_server/tests/unit/test_round_manager_service.py` | round orchestration facade |
 | `main_server/tests/unit/test_aggregation_service.py` | aggregation backend |
+| `tests/unit/test_methods_fedavg.py` | reusable FedAvg method core |
 | `main_server/tests/unit/test_fl_rounds_api.py` | FL round API |
 | `main_server/tests/unit/test_prototype_pack_service.py` | prototype pack publication |
 | `main_server/tests/unit/test_experiment_workspace_service.py` | workspace save/compile |

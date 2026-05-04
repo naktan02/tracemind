@@ -9,6 +9,10 @@ from datetime import datetime
 from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationResult,
 )
+from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
+    ClassifierHeadFedAvgUpdate,
+    compute_classifier_head_fedavg,
+)
 from shared.src.config.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
@@ -22,7 +26,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 @dataclass(slots=True)
 class ClassifierHeadFedAvgAggregationService:
-    """Classifier-head delta를 전역 선형 head 상태로 집계한다."""
+    """Classifier-head server boundary를 FedAvg method core에 연결한다."""
 
     adapter_kind: str = CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind
 
@@ -53,14 +57,7 @@ class ClassifierHeadFedAvgAggregationService:
 
         labels = base_state.labels
         embedding_dim = base_state.embedding_dim
-        total_examples = sum(payload.example_count for payload in valid_updates)
-        weighted_weight_deltas = {
-            label: [0.0] * embedding_dim for label in labels
-        }
-        weighted_bias_deltas = {label: 0.0 for label in labels}
-        weighted_confidence = 0.0
-        weighted_margin = 0.0
-        weighted_delta_norm = 0.0
+        method_updates: list[ClassifierHeadFedAvgUpdate] = []
 
         for payload in valid_updates:
             if not isinstance(payload, ClassifierHeadDelta):
@@ -89,17 +86,22 @@ class ClassifierHeadFedAvgAggregationService:
                 raise ValueError(
                     "All update payloads must share the same embedding_dim."
                 )
-
-            weight = payload.example_count / total_examples
-            weighted_confidence += payload.mean_confidence * weight
-            weighted_margin += (payload.mean_margin or 0.0) * weight
-            weighted_delta_norm += payload.l2_norm() * weight
-            for label in labels:
-                for index, value in enumerate(payload.label_weight_deltas[label]):
-                    weighted_weight_deltas[label][index] += float(value) * weight
-                weighted_bias_deltas[label] += (
-                    float(payload.label_bias_deltas.get(label, 0.0)) * weight
+            method_updates.append(
+                ClassifierHeadFedAvgUpdate(
+                    label_weight_deltas=payload.label_weight_deltas,
+                    label_bias_deltas=payload.label_bias_deltas,
+                    example_count=payload.example_count,
+                    mean_confidence=payload.mean_confidence,
+                    mean_margin=payload.mean_margin,
+                    delta_l2_norm=payload.l2_norm(),
                 )
+            )
+
+        method_result = compute_classifier_head_fedavg(
+            base_label_weights=base_state.label_weights,
+            base_label_biases=base_state.label_biases,
+            updates=method_updates,
+        )
 
         next_state = ClassifierHeadState(
             schema_version=base_state.schema_version,
@@ -108,31 +110,11 @@ class ClassifierHeadFedAvgAggregationService:
             model_revision=next_model_revision,
             training_scope=base_state.training_scope,
             updated_at=aggregated_at,
-            label_weights={
-                label: [
-                    float(base_value) + float(delta)
-                    for base_value, delta in zip(
-                        base_state.label_weights[label],
-                        weighted_weight_deltas[label],
-                        strict=True,
-                    )
-                ]
-                for label in labels
-            },
-            label_biases={
-                label: float(base_state.label_biases.get(label, 0.0))
-                + float(weighted_bias_deltas[label])
-                for label in labels
-            },
+            label_weights=method_result.label_weights,
+            label_biases=method_result.label_biases,
         )
         return AggregationResult(
             next_state=next_state,
-            aggregated_metrics={
-                "client_count": float(len(valid_updates)),
-                "example_count": float(total_examples),
-                "mean_confidence": weighted_confidence,
-                "mean_margin": weighted_margin,
-                "mean_delta_l2_norm": weighted_delta_norm,
-            },
-            update_count=len(valid_updates),
+            aggregated_metrics=method_result.aggregated_metrics,
+            update_count=method_result.update_count,
         )

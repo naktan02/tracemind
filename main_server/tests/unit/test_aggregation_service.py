@@ -6,11 +6,18 @@ from datetime import datetime, timezone
 
 import pytest
 
-from main_server.src.services.federation.rounds import (
-    DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG,
+from main_server.src.services.federation.rounds.aggregation import (
+    diagonal_scale_defaults,
+)
+from main_server.src.services.federation.rounds.aggregation.classifier_head import (
     ClassifierHeadFedAvgAggregationService,
+)
+from main_server.src.services.federation.rounds.aggregation.diagonal_scale import (
     DiagonalScaleAggregationService,
+)
+from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
+    list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
@@ -59,7 +66,24 @@ def test_diagonal_scale_aggregation_uses_shared_default_config() -> None:
     )
 
     assert isinstance(backend, DiagonalScaleAggregationService)
-    assert backend.config == DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG
+    assert (
+        backend.config
+        == diagonal_scale_defaults.DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG
+    )
+
+
+def test_aggregation_backend_catalog_points_to_methods_core() -> None:
+    entries = {
+        entry.item_name: entry
+        for entry in list_shared_adapter_aggregation_backend_catalog_entries()
+    }
+
+    assert entries["diagonal_scale.fedavg"].implementation_module.endswith(
+        "diagonal_scale_fedavg"
+    )
+    assert entries["classifier_head.fedavg"].implementation_module.endswith(
+        "classifier_head_fedavg"
+    )
 
 
 def test_diagonal_scale_aggregation_applies_backend_overrides() -> None:
@@ -71,9 +95,7 @@ def test_diagonal_scale_aggregation_applies_backend_overrides() -> None:
 
     result = backend.aggregate(
         base_state=_build_base_state(),
-        update_payloads=(
-            _build_update(deltas=[0.5, -0.5], example_count=1),
-        ),
+        update_payloads=(_build_update(deltas=[0.5, -0.5], example_count=1),),
         next_model_revision="rev_001",
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )

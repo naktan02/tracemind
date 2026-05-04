@@ -218,12 +218,15 @@ Embedding
   `prototype_builder=single`일 때만 안전하다.
 - aggregation도 SSL selection과 같은 구조 철학으로 본다.
   즉 `protocol/base -> 구현체 파일 -> 얇은 wiring -> config source of truth`를 유지하되,
-  소유 경계는 `main_server`가 가진다.
+  순수 FedAvg 계산 core는 `methods/federated/aggregation/fedavg/`가 소유하고
+  server lifecycle adapter와 runtime wiring은 `main_server`가 가진다.
 
 관련 파일:
 
 - [main_server/src/services/federation/rounds/runtime/config.py](../main_server/src/services/federation/rounds/runtime/config.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../main_server/src/services/federation/rounds/aggregation/registry.py)
+- [methods/federated/aggregation/registry.py](../methods/federated/aggregation/registry.py)
+- [methods/federated/aggregation/fedavg/fedavg.py](../methods/federated/aggregation/fedavg/fedavg.py)
 - [main_server/src/services/federation/rounds/families/registry.py](../main_server/src/services/federation/rounds/families/registry.py)
 - [main_server/src/services/federation/rounds/acceptance/policies.py](../main_server/src/services/federation/rounds/acceptance/policies.py)
 
