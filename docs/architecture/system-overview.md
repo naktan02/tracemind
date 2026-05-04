@@ -164,6 +164,7 @@ Raw Event / Local Signal
 | FL simulation runtime adapter | `scripts/experiments/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
+| prototype evidence core | `methods/prototype/evidence/*` |
 
 ## 4. 코드 계층과 소유권
 

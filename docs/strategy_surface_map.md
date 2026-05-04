@@ -105,6 +105,9 @@ Embedding
 - 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
 - pseudo-label selection은 `example generation -> evidence backend -> selection algorithm -> acceptance policy`로 분리돼 있다.
+- `prototype_similarity_evidence`의 evidence 정규화 core는
+  `methods/prototype/evidence/`가 소유하고, agent evidence backend는 이를
+  runtime registry에 연결한다.
 - `weak_strong_pair` backend는 generic multiview input backend로 유지한다.
 - classifier posterior는 공통 evidence로 읽고, final decision은 local interpretation이 계속 맡는다.
 - 다만 현재 agent의 stored event 재구성 경로는 weak/strong view를 저장하지 않으므로 `prototype_rescore`만 안전하게 지원한다.

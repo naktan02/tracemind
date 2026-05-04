@@ -87,7 +87,8 @@
 - `infrastructure/repositories/query_buffer_repository.py`
   - raw text + prediction snapshot을 로컬에 저장하는 query buffer 저장소
 - `training/selection/query_buffer_projection.py`
-  - query buffer snapshot + scored event를 `PseudoLabelEvidence`로 정규화
+  - query buffer snapshot + scored event를 `methods/prototype/evidence/` core로
+    `PseudoLabelEvidence`에 투영
 - `training/selection/query_buffer_selection_service.py`
   - query buffer 기반 selection runner
 - `training/selection/query_buffer_selection_diagnostics.py`

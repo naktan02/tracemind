@@ -8,7 +8,7 @@ from collections.abc import Iterable
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
 )
-from agent.src.services.training.backends.evidence.helpers import (
+from methods.prototype.evidence.helpers import (
     build_ranked_evidence,
     rank_category_scores,
 )
@@ -81,9 +81,7 @@ def _validate_query_buffer_alignment(
     scored_event: ScoredEvent,
 ) -> None:
     if record.query_id != scored_event.query_id:
-        raise ValueError(
-            "QueryBufferRecord query_id must match ScoredEvent query_id."
-        )
+        raise ValueError("QueryBufferRecord query_id must match ScoredEvent query_id.")
     if record.occurred_at != scored_event.occurred_at:
         raise ValueError(
             "QueryBufferRecord occurred_at must match ScoredEvent occurred_at."

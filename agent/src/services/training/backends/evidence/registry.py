@@ -60,8 +60,9 @@ def list_registered_pseudo_label_evidence_backend_names() -> tuple[str, ...]:
     return tuple(sorted(_PSEUDO_LABEL_EVIDENCE_BACKEND_REGISTRY))
 
 
-def list_pseudo_label_evidence_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_pseudo_label_evidence_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 evidence backend catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(

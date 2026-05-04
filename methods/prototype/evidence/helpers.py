@@ -1,4 +1,4 @@
-"""Evidence backend helpers."""
+"""Prototype score를 pseudo-label evidence로 정규화하는 helper."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 def rank_category_scores(
     category_scores: Mapping[str, float],
 ) -> list[tuple[str, float]]:
+    """category score를 confidence 내림차순, label 오름차순으로 정렬한다."""
     ranked_scores = sorted(
         ((str(label), float(score)) for label, score in category_scores.items()),
         key=lambda item: (-item[1], item[0]),
@@ -35,6 +36,7 @@ def build_ranked_evidence(
     sample_weight: float | None = None,
     metadata: dict[str, str | int | float | bool] | None = None,
 ) -> PseudoLabelEvidence:
+    """정렬된 category score를 canonical `PseudoLabelEvidence`로 변환한다."""
     top1_label, top1_score = ranked_scores[0]
     if len(ranked_scores) > 1:
         top2_label, top2_score = ranked_scores[1]
@@ -72,18 +74,15 @@ def softmax_distribution(
     *,
     temperature: float,
 ) -> dict[str, float]:
+    """category score를 temperature softmax distribution으로 변환한다."""
     if temperature <= 0.0:
         raise ValueError("temperature must be positive.")
     scaled_pairs = [
-        (label, float(score) / temperature)
-        for label, score in category_scores.items()
+        (label, float(score) / temperature) for label, score in category_scores.items()
     ]
     if not scaled_pairs:
         raise ValueError("ScoredEvent must contain at least one category score.")
     max_score = max(score for _, score in scaled_pairs)
-    exp_pairs = [
-        (label, math.exp(score - max_score))
-        for label, score in scaled_pairs
-    ]
+    exp_pairs = [(label, math.exp(score - max_score)) for label, score in scaled_pairs]
     normalizer = math.fsum(value for _, value in exp_pairs)
     return {label: value / normalizer for label, value in exp_pairs}

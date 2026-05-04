@@ -4,13 +4,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from methods.prototype.evidence.helpers import (
+    build_ranked_evidence,
+    rank_category_scores,
+)
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
 from .base import ANY_ADAPTER_KIND, PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_NAME
-from .helpers import build_ranked_evidence, rank_category_scores
 
 
 @dataclass(slots=True)
