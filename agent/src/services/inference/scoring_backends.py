@@ -6,11 +6,12 @@ from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from agent.src.services.inference.scoring_policies import (
+from methods.prototype.scoring.base import PrototypeScorePolicy
+from methods.prototype.scoring.policies import (
     MaxCosineScorePolicy,
-    PrototypeScorePolicy,
     build_prototype_score_policy,
 )
+from methods.prototype.scoring.similarity import score_prototype_categories
 from shared.src.config.local_training_registry_catalog import (
     CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
     PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
@@ -68,20 +69,12 @@ class PrototypeSimilarityScoringBackend:
         shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
         del shared_state
-        embedding_vector = _coerce_vector(embedding, vector_name="embedding")
-        scores: dict[str, float] = {}
-        for category, category_prototypes in prototypes.items():
-            prototype_vectors = _coerce_prototype_vectors(
-                category_prototypes,
-                vector_name=f"prototype[{category}]",
-            )
-            scores[category] = self.policy.score_category(
-                embedding_vector=embedding_vector,
-                prototype_vectors=prototype_vectors,
-                similarity_name=self.similarity_name,
-                category=category,
-            )
-        return scores
+        return score_prototype_categories(
+            embedding=embedding,
+            prototypes=prototypes,
+            policy=self.policy,
+            similarity_name=self.similarity_name,
+        )
 
 
 @dataclass(slots=True)
@@ -105,7 +98,7 @@ class ClassifierHeadLogitsScoringBackend:
                 "classifier_head_logits backend requires "
                 "ClassifierHeadState as shared_state."
             )
-        embedding_vector = _coerce_vector(embedding, vector_name="embedding")
+        embedding_vector = _coerce_embedding_vector(embedding)
         return shared_state.compute_logits(embedding_vector)
 
 
@@ -153,8 +146,7 @@ def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     """등록된 scoring backend catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(
-        catalog_entry
-        for _factory, catalog_entry in _SCORING_BACKEND_REGISTRY.values()
+        catalog_entry for _factory, catalog_entry in _SCORING_BACKEND_REGISTRY.values()
     )
 
 
@@ -202,41 +194,11 @@ def _build_classifier_head_logits_backend(
     return ClassifierHeadLogitsScoringBackend()
 
 
-def _coerce_vector(
-    values: Sequence[float],
-    *,
-    vector_name: str,
-) -> tuple[float, ...]:
+def _coerce_embedding_vector(values: Sequence[float]) -> tuple[float, ...]:
     vector = tuple(float(value) for value in values)
     if not vector:
-        raise ValueError(f"{vector_name} must not be empty.")
+        raise ValueError("embedding must not be empty.")
     return vector
-
-
-def _coerce_prototype_vectors(
-    values: Sequence[float] | Sequence[Sequence[float]],
-    *,
-    vector_name: str,
-) -> tuple[tuple[float, ...], ...]:
-    raw_values = tuple(values)
-    if not raw_values:
-        raise ValueError(f"{vector_name} must not be empty.")
-
-    if isinstance(raw_values[0], (int, float)):
-        return (
-            _coerce_vector(
-                raw_values,  # type: ignore[arg-type]
-                vector_name=vector_name,
-            ),
-        )
-
-    return tuple(
-        _coerce_vector(
-            prototype,
-            vector_name=f"{vector_name}[{index}]",
-        )
-        for index, prototype in enumerate(raw_values)
-    )
 
 
 register_scoring_backend(

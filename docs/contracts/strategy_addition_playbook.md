@@ -117,20 +117,22 @@
 
 보통 수정 파일:
 
+- [methods/prototype/scoring/](../../methods/prototype/scoring/)
 - [agent/src/services/inference/scoring_backends.py](../../agent/src/services/inference/scoring_backends.py)
-- [agent/src/services/inference/scoring_policies.py](../../agent/src/services/inference/scoring_policies.py)
 - 필요 시 [scripts/experiments/prototype_strategy/scoring.py](../../scripts/experiments/prototype_strategy/scoring.py)
 
 작업 순서:
 
 1. scorer backend를 추가할지, 기존 backend 안의 policy만 추가할지 먼저 나눈다.
-2. backend면 `register_scoring_backend(...)`, policy면 `register_prototype_score_policy(...)`에 등록한다.
-3. backend면 `confidence_kind`를 같이 선언해 pipeline/query buffer가 이름 분기 없이 읽게 한다.
-4. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
-5. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
+2. prototype score 계산/policy는 `methods/prototype/scoring/`에 추가한다.
+3. backend면 `register_scoring_backend(...)`, policy면 `register_prototype_score_policy(...)`에 등록한다.
+4. backend면 `confidence_kind`를 같이 선언해 pipeline/query buffer가 이름 분기 없이 읽게 한다.
+5. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
+6. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
 
 우선 볼 테스트:
 
+- [tests/unit/test_methods_prototype_scoring.py](../../tests/unit/test_methods_prototype_scoring.py)
 - [agent/tests/unit/test_scoring_service.py](../../agent/tests/unit/test_scoring_service.py)
 - [tests/unit/test_prototype_strategy_experiment.py](../../tests/unit/test_prototype_strategy_experiment.py)
 

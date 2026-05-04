@@ -104,6 +104,8 @@ Embedding
 
 - 현재 v1에서 권장 baseline은 `global classifier + local interpretation`이다.
 - scoring은 `scorer backend`와 `score policy` 두 축으로 나뉜다.
+- prototype score policy 계산 core는 `methods/prototype/scoring/`이 소유하고,
+  agent scoring backend는 이를 inference/training runtime에 연결한다.
 - pseudo-label selection은 `example generation -> evidence backend -> selection algorithm -> acceptance policy`로 분리돼 있다.
 - `prototype_similarity_evidence`의 evidence 정규화 core는
   `methods/prototype/evidence/`가 소유하고, agent evidence backend는 이를
@@ -147,8 +149,8 @@ Embedding
 - [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
 - [shared/src/config/training_algorithm_profiles.py](../shared/src/config/training_algorithm_profiles.py)
 - [conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
+- [methods/prototype/scoring/](../methods/prototype/scoring/)
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
-- [agent/src/services/inference/scoring_policies.py](../agent/src/services/inference/scoring_policies.py)
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
 - [methods/ssl/hooks/registry.py](../methods/ssl/hooks/registry.py)
 - [conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../conf/pseudo_label_algorithm/margin_threshold_v1.yaml)

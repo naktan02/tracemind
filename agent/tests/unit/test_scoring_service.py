@@ -15,8 +15,8 @@ from agent.src.services.inference.scoring_backends import (
     PrototypeSimilarityScoringBackend,
     register_scoring_backend,
 )
-from agent.src.services.inference.scoring_policies import TopKMeanCosineScorePolicy
 from agent.src.services.inference.scoring_service import ScoringService
+from methods.prototype.scoring.policies import TopKMeanCosineScorePolicy
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 

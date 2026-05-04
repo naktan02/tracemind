@@ -77,9 +77,9 @@
 ## 파일 역할 빠른 맵
 
 - `inference/scoring_backends.py`
-  - scorer backend registry와 concrete scorer 구현
-- `inference/scoring_policies.py`
-  - 같은 scorer backend 안에서 score 집계 정책
+  - scorer backend registry와 agent runtime adapter 구현
+- `methods/prototype/scoring/`
+  - prototype similarity와 score 집계 policy core
 - `training/selection/pseudo_label_service.py`
   - score를 pseudo-label candidate/accepted set으로 해석
 - `docs/contracts/query_buffer_v1.md`
@@ -127,7 +127,8 @@
 
 - training backend 추가: `training/backends/training/`
 - example-generation backend 추가: `training/backends/inputs/`와 `training/examples/service.py`
-- scorer backend/policy 추가: `inference/scoring_backends.py`, `inference/scoring_policies.py`
+- scorer backend 추가: `inference/scoring_backends.py`
+- prototype score policy 추가: `methods/prototype/scoring/`
 - privacy guard 추가: `training/execution/privacy_guard_service.py`
 
 확장 전에 `shared/src/contracts/README.md`,

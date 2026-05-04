@@ -57,7 +57,8 @@ Raw Event
 |---|---|
 | API 수집 | `agent/src/api/ingest.py` |
 | pipeline 조합 | `agent/src/services/inference/pipeline_service.py` |
-| scoring backend/policy | `agent/src/services/inference/scoring_backends.py`, `agent/src/services/inference/scoring_policies.py` |
+| prototype scoring core | `methods/prototype/scoring/*` |
+| scoring backend adapter | `agent/src/services/inference/scoring_backends.py` |
 | final decision | `agent/src/services/inference/decision_service.py` |
 | wellbeing projection | `agent/src/services/wellbeing/*` |
 
@@ -164,6 +165,7 @@ Raw Event / Local Signal
 | FL simulation runtime adapter | `scripts/experiments/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
+| prototype scoring core | `methods/prototype/scoring/*` |
 | prototype evidence core | `methods/prototype/evidence/*` |
 
 ## 4. 코드 계층과 소유권

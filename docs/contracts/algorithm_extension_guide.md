@@ -36,7 +36,7 @@
 | Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/backends/training/` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
 | Evidence Backend | methods/agent | PrototypeSimilarityEvidenceBackend | `methods/prototype/evidence/`, `agent/src/services/training/backends/evidence/` |
-| Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
+| Scorer Backend | methods/agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `methods/prototype/scoring/`, `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Pseudo-label Selection Hook | methods/scripts | `top1_margin_threshold`, `top1_confidence_only` | `methods/ssl/hooks/`, `conf/pseudo_label_algorithm/` |
@@ -45,7 +45,7 @@
 | PEFT Adapter Builder | methods/scripts | `lora`, `rslora` | `methods/adaptation/`, `conf/lora/` |
 | Federated Shard Policy | methods/scripts | `label_dominant`, `dirichlet_label_skew` | `methods/federated/shard_policy/`, `scripts/experiments/federated_simulation/sharding.py`, `conf/federated_shard_policy/` |
 | FL SSL Method Descriptor | methods/scripts | `fedavg_pseudo_label` | `methods/federated_ssl/`, `scripts/experiments/federated_simulation/method_runtime.py`, `conf/federated_ssl_method/` |
-| Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
+| Scoring Policy | methods | MaxCosineScorePolicy, TopKMeanCosineScorePolicy | `methods/prototype/scoring/policies.py` |
 | Aggregation Backend | methods/main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `methods/federated/aggregation/fedavg/`, `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
 | Secure Update Codec | shared/agent/main_server | `noop` | `shared/src/services/secure_update_codec.py` |
@@ -206,7 +206,7 @@ class PseudoLabelEvidenceBackend(Protocol):
 
 ---
 
-### 5. Scorer Backend (agent/scripts)
+### 5. Scorer Backend (methods/agent/scripts)
 
 **역할:** 카테고리 score를 만드는 전체 방식 자체를 고른다.
 `score_policy`보다 한 단계 위 축이다.
@@ -216,11 +216,12 @@ class PseudoLabelEvidenceBackend(Protocol):
 - scoring policy: 같은 scorer backend 안에서 `max`, `top-k mean` 같은 집계 방식
 
 **교체 절차:**
-1. `scoring_backends.py`에 새 backend 추가
-2. `register_scoring_backend()`로 등록
-3. query buffer/projection에 남길 `confidence_kind`를 backend가 직접 선언
-4. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
-5. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
+1. 재사용 가능한 prototype score 계산이면 `methods/prototype/scoring/`에 먼저 둔다
+2. `scoring_backends.py`에 새 backend 추가
+3. `register_scoring_backend()`로 등록
+4. query buffer/projection에 남길 `confidence_kind`를 backend가 직접 선언
+5. `TrainingObjectiveConfigPayload.scorer_backend_name`으로 선택
+6. 필요하면 scripts의 threshold/prototype 전략도 같은 축을 타게 맞춤
 
 ---
 
@@ -391,13 +392,13 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 ---
 
-### 8. Scoring Policy (agent)
+### 8. Scoring Policy (methods/prototype)
 
 **역할:** 임베딩과 prototype 간 유사도 계산 방식.
 
 **Protocol:**
 ```python
-# agent/src/services/inference/scoring_policies.py
+# methods/prototype/scoring/base.py
 class PrototypeScorePolicy(Protocol):
     def score_category(
         self,
@@ -416,7 +417,7 @@ class PrototypeScorePolicy(Protocol):
 - Learnable similarity (학습 가능한 metric)
 
 **교체 절차:**
-1. `scoring_policies.py`에 새 클래스 추가
+1. `methods/prototype/scoring/policies.py`에 새 클래스 추가
 2. `register_prototype_score_policy()`로 thin registry wiring에 등록
 3. `ScoringService.from_objective_config()`가 읽는 `TrainingObjectiveConfigPayload.score_policy_name`과 맞춤
 
