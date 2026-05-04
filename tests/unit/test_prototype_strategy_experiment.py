@@ -84,6 +84,8 @@ def test_kmeans_and_dbscan_build_multiple_prototypes_for_separable_clusters() ->
 
     assert len(kmeans_index.categories["anxiety"]) >= 2
     assert len(dbscan_index.categories["anxiety"]) >= 2
+    assert dbscan_index.metadata["source"] == "shared_runtime"
+    assert dbscan_index.metadata["labels"]["anxiety"]["fallback"] is False
 
 
 def test_selection_policy_prefers_accuracy_then_acceptance_then_simplicity() -> None:

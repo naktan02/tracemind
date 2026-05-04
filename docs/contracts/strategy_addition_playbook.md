@@ -37,8 +37,8 @@
 
 1. 바뀌는 축을 확정한다.
    - `training_backend`, `example_generation_backend`, `scorer_backend`,
-     `score_policy`, `privacy_guard`, `aggregation_backend`, `adapter_family`
-     중 무엇인지 먼저 적는다.
+     `score_policy`, `privacy_guard`, `aggregation_backend`,
+     `prototype_builder`, `adapter_family` 중 무엇인지 먼저 적는다.
 2. contract 변경이 필요한지 판별한다.
    - 새 payload shape가 없으면 `shared/src/contracts/`는 건드리지 않는다.
    - 새 family면 `shared/src/contracts/adapter_contracts.py`부터 본다.
@@ -54,6 +54,29 @@
    - `algorithm_extension_guide.md`나 이 플레이북에 새 이름/축을 반영한다.
 
 ## 3. 같은 계약 안의 새 구현체 추가
+
+### 3-0. 새 prototype builder 추가
+
+예: `dbscan`, `kmeans` 변형
+
+보통 수정 파일:
+
+- [shared/src/services/prototypes/build_strategies.py](../../shared/src/services/prototypes/build_strategies.py)
+- [scripts/experiments/prototype_strategy/strategies.py](../../scripts/experiments/prototype_strategy/strategies.py)
+- 운영 artifact builder로 열 때만 [conf/prototype_builder/](../../conf/prototype_builder/)
+
+작업 순서:
+
+1. Prototype pack payload shape가 기존 `PrototypePackPayload`로 충분한지 먼저 확인한다.
+2. 공용 build 계산은 `shared/src/services/prototypes/build_strategies.py`에 둔다.
+3. 실험 모듈에는 `PrototypeIndex` adapter와 selection glue만 둔다.
+4. exact incremental build-state를 지원하지 않으면 `supports_exact_build_state=False`로 둔다.
+5. 기본 artifact builder로 노출할 때만 `conf/prototype_builder/`에 Hydra group을 추가한다.
+
+우선 볼 테스트:
+
+- [tests/unit/test_prototype_build_strategies.py](../../tests/unit/test_prototype_build_strategies.py)
+- [tests/unit/test_prototype_strategy_experiment.py](../../tests/unit/test_prototype_strategy_experiment.py)
 
 ### 3-1. 새 training backend 추가
 

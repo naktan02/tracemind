@@ -10,7 +10,6 @@
 - adapter family별 local update 계산 방식
 - federated aggregation의 순수 계산 core
 - FL-SSL composition에서 재사용되는 method 조립 규칙
-- prototype builder, assignment, update 같은 연구/production 공통 mechanism
 - prototype scoring/evidence 같은 local inference/training 공통 mechanism
 - prototype 기반 학습 input view 계산
 
@@ -55,5 +54,8 @@ research
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
 
-다음 단계에서는 prototype method를 실제 구현이 붙는 순서대로 작은 단위로
-옮긴다.
+Prototype pack 생성 전략은 현재
+`shared/src/services/prototypes/build_strategies.py`의 단일 표면을 쓴다.
+single/kmeans/dbscan처럼 pack contract와 publication runtime이 함께 소비하는
+builder는 별도 methods 표면을 만들지 않는다. 같은 알고리즘 표면을 두 군데로
+쪼개야 할 만큼 change axis가 커질 때만 재검토한다.

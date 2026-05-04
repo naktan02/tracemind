@@ -1,10 +1,15 @@
 # Prototype Methods
 
-`methods/prototype/`는 prototype builder, assignment, update, scoring, evidence,
-training input mechanism을 둔다.
+`methods/prototype/`는 prototype scoring, evidence, training input처럼
+prototype pack을 소비하는 method mechanism을 둔다.
 
-Prototype pack contract와 serialization은 `shared`가 소유하고, prototype 분석
-실험 runner나 sweep은 `scripts/` 또는 `research/analysis/`가 소유한다.
+Prototype pack contract, serialization, 공용 build strategy 표면은 `shared`가
+소유한다. 현재 single/kmeans/dbscan builder는
+`shared/src/services/prototypes/build_strategies.py`에 함께 둔다. 별도
+`methods/prototype/building` 계층은 만들지 않는다.
+
+Prototype 분석 실험 runner나 sweep은 `scripts/` 또는 `research/analysis/`가
+소유한다.
 
 현재 활성 구현:
 

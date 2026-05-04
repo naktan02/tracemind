@@ -2,21 +2,21 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
 import numpy as np
-from sklearn.cluster import DBSCAN
-from sklearn.metrics import silhouette_score
 
 from scripts.experiments.prototype_strategy.models import (
     PrototypeBuildStrategy,
     PrototypeIndex,
     PrototypeVector,
 )
-from scripts.experiments.prototype_strategy.sampling import sample_index_array
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.services.prototypes.build_strategies import (
+    DbscanPrototypeBuildStrategy as RuntimeDbscanPrototypeBuildStrategy,
+)
 from shared.src.services.prototypes.build_strategies import (
     KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
 )
@@ -28,20 +28,6 @@ from shared.src.services.prototypes.build_strategies import (
 )
 
 _EXPERIMENT_BUILT_AT = datetime(1970, 1, 1, tzinfo=timezone.utc)
-
-
-def normalize_vector(values: Sequence[float]) -> list[float]:
-    """벡터를 L2 정규화한다."""
-    array = np.asarray(values, dtype=np.float64)
-    norm = np.linalg.norm(array)
-    if norm == 0.0:
-        raise ValueError("Prototype centroid must not have zero norm.")
-    return (array / norm).tolist()
-
-
-def mean_centroid(embeddings: np.ndarray) -> list[float]:
-    """임베딩 평균 centroid를 정규화해 반환한다."""
-    return normalize_vector(embeddings.mean(axis=0))
 
 
 def _build_runtime_request(
@@ -170,144 +156,18 @@ class DbscanPrototypeStrategy:
         self,
         embeddings_by_label: Mapping[str, np.ndarray],
     ) -> PrototypeIndex:
-        categories: dict[str, list[PrototypeVector]] = {}
-        metadata: dict[str, dict[str, float | int | bool | list[int] | str]] = {}
-
-        for label, embeddings in sorted(embeddings_by_label.items()):
-            count = int(embeddings.shape[0])
-            if count < 2:
-                categories[label] = [
-                    PrototypeVector(
-                        prototype_id=f"{label}:single",
-                        centroid=mean_centroid(embeddings),
-                        member_count=count,
-                    )
-                ]
-                metadata[label] = {
-                    "fallback": True,
-                    "reason": "too_few_examples",
-                }
-                continue
-
-            sample_index = sample_index_array(
-                count,
-                limit=self.search_sample_size,
-                seed=self.random_state,
-            )
-            sample_embeddings = embeddings[sample_index]
-
-            best_params: tuple[float, int] | None = None
-            best_score = -1.0
-            best_coverage = 0.0
-
-            for eps in self.eps_values:
-                for min_samples in self.min_samples_values:
-                    labels = DBSCAN(
-                        eps=eps,
-                        min_samples=min_samples,
-                        metric="cosine",
-                    ).fit_predict(sample_embeddings)
-                    unique_labels = sorted(
-                        int(cluster_id)
-                        for cluster_id in np.unique(labels)
-                        if cluster_id >= 0
-                    )
-                    if len(unique_labels) < 2:
-                        continue
-
-                    covered_mask = labels >= 0
-                    coverage = float(np.mean(covered_mask))
-                    if coverage < self.min_cluster_coverage:
-                        continue
-
-                    filtered_embeddings = sample_embeddings[covered_mask]
-                    filtered_labels = labels[covered_mask]
-                    unique_filtered = np.unique(filtered_labels)
-                    if unique_filtered.shape[0] < 2:
-                        continue
-
-                    silhouette = float(
-                        silhouette_score(
-                            filtered_embeddings,
-                            filtered_labels,
-                            metric="cosine",
-                        )
-                    )
-                    score = silhouette * coverage
-                    if score > best_score:
-                        best_score = score
-                        best_coverage = coverage
-                        best_params = (eps, min_samples)
-
-            if best_params is None:
-                categories[label] = [
-                    PrototypeVector(
-                        prototype_id=f"{label}:single",
-                        centroid=mean_centroid(embeddings),
-                        member_count=count,
-                    )
-                ]
-                metadata[label] = {
-                    "fallback": True,
-                    "reason": "no_valid_cluster",
-                }
-                continue
-
-            best_eps, best_min_samples = best_params
-            final_labels = DBSCAN(
-                eps=best_eps,
-                min_samples=best_min_samples,
-                metric="cosine",
-            ).fit_predict(embeddings)
-
-            cluster_ids = sorted(
-                int(cluster_id)
-                for cluster_id in np.unique(final_labels)
-                if cluster_id >= 0
-            )
-            prototypes: list[PrototypeVector] = []
-            member_counts: list[int] = []
-            for cluster_id in cluster_ids:
-                cluster_members = embeddings[final_labels == cluster_id]
-                member_count = int(cluster_members.shape[0])
-                member_counts.append(member_count)
-                prototypes.append(
-                    PrototypeVector(
-                        prototype_id=f"{label}:dbscan:{cluster_id}",
-                        centroid=mean_centroid(cluster_members),
-                        member_count=member_count,
-                    )
-                )
-
-            noise_members = embeddings[final_labels < 0]
-            if noise_members.size > 0:
-                prototypes.append(
-                    PrototypeVector(
-                        prototype_id=f"{label}:dbscan:noise",
-                        centroid=mean_centroid(noise_members),
-                        member_count=int(noise_members.shape[0]),
-                    )
-                )
-                member_counts.append(int(noise_members.shape[0]))
-
-            categories[label] = prototypes
-            metadata[label] = {
-                "selected_eps": best_eps,
-                "selected_min_samples": best_min_samples,
-                "silhouette": best_score / best_coverage,
-                "coverage": best_coverage,
-                "fallback": False,
-                "member_counts": member_counts,
-            }
-
-        return PrototypeIndex(
+        build_artifacts = RuntimeDbscanPrototypeBuildStrategy(
+            eps_values=self.eps_values,
+            min_samples_values=self.min_samples_values,
+            search_sample_size=self.search_sample_size,
+            min_cluster_coverage=self.min_cluster_coverage,
+            random_state=self.random_state,
+            name=self.name,
+        ).build(_build_runtime_request(embeddings_by_label))
+        return _prototype_index_from_pack(
             strategy_name=self.name,
-            categories=categories,
-            metadata={
-                "eps_values": list(self.eps_values),
-                "min_samples_values": list(self.min_samples_values),
-                "labels": metadata,
-            },
+            pack_payload=build_artifacts.pack_payload,
+            metadata=build_artifacts.metadata,
         )
 
 
