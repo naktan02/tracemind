@@ -19,10 +19,10 @@
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
 - `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/sharding
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
-- `scripts/conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
-- `scripts/conf/federated_shard_policy`, `federated_ssl_method`, `training_algorithm_profile`: FL simulation 재사용 Hydra config group
-- `scripts/conf/experiments/run_federated_simulation.yaml`: FL simulation의 `round_runtime`, `training_task`, `validation`, `report` shape source of truth
-- `scripts/conf/datasets`, `experiments`, `prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
+- `conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
+- `conf/federated_shard_policy`, `federated_ssl_method`, `training_algorithm_profile`: FL simulation 재사용 Hydra config group
+- `conf/jobs/experiments/run_federated_simulation.yaml`: FL simulation의 `round_runtime`, `training_task`, `validation`, `report` shape source of truth
+- `conf/jobs/datasets`, `conf/jobs/experiments`, `conf/jobs/prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
 - `scripts/classification_report.py`, `scripts/labeled_query_rows.py`: shared canonical utility를 다시 노출하는 compatibility wrapper
 - `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 실행 산출물 경로 helper
 
@@ -145,7 +145,7 @@ uv run python <script>.py --cfg job
 
 ### classifier-first 자산 필드
 
-`scripts/conf/dataset/*.yaml`은 논문 트랙과 시스템 트랙이 공유하는 데이터 자산 source of truth다.
+`conf/dataset/*.yaml`은 논문 트랙과 시스템 트랙이 공유하는 데이터 자산 source of truth다.
 현재 활성 필드 의미는 아래로 고정한다.
 
 - `train_jsonl`: supervised classifier seed 학습용 labeled train split
@@ -183,7 +183,7 @@ uv run python scripts/datasets/run_dataset_pipeline.py \
   runtime=gpu_local
 ```
 
-`scripts/conf/dataset/*.yaml`에 등록된 dataset alias만 보고 싶다면:
+`conf/dataset/*.yaml`에 등록된 dataset alias만 보고 싶다면:
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true
@@ -458,7 +458,7 @@ USB FixMatch 실행:
 ```bash
 uv run python scripts/experiments/train_lora_fixmatch.py \
   runtime=gpu_local \
-  query_ssl_train_source=bootstrap_teacher_split30_2026_04_14 \
+  query_source=bootstrap_teacher_split30_2026_04_14 \
   query_adaptation_initial_checkpoint.manifest_path=/abs/path/to/initial_lora_seed.manifest.json \
   lora_run_preset=smoke_verbose_e1
 ```
@@ -478,13 +478,13 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
   - `teacher_unlabeled_jsonl=...`를 직접 넘긴다.
   - `bootstrap_split.enabled=true`로 켜고 train split 일부를 hidden unlabeled pool로 자동 분리한다.
 - 경로 override를 직접 길게 넘길 수도 있지만, 지금은 아래처럼 preset group 선택으로 줄일 수 있다.
-- 재사용 split은 `bootstrap_teacher_source=<preset>`과 `lora_train_source=<preset>`으로 고른다.
+- 재사용 split은 `query_source=<preset>`으로 고른다.
 - student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
 - teacher bootstrap selection rule과 이후 self-training provenance preset은 `pseudo_label_algorithm=<preset>`으로 고른다.
 - 적응 단계 initial checkpoint source of truth는 `query_adaptation_initial_checkpoint=<preset>`이다.
 - LoRA manifest를 넘기면 adapter+classifier를 함께 warm-start하고,
   fixed classifier manifest를 넘기면 classifier head만 warm-start한다.
-- FixMatch consistency baseline의 unlabeled source는 `query_ssl_train_source=<preset>`으로 고른다.
+- FixMatch consistency baseline의 unlabeled source는 `query_source=<preset>`으로 고른다.
 - FixMatch method hyperparameter source of truth는 `query_ssl_method=<preset>`이다.
 - FixMatch NLP strong view 생성/caching source of truth는 `query_ssl_augmenter=<preset>`이다.
 
@@ -493,7 +493,7 @@ bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
   runtime=gpu_local \
-  bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14 \
+  query_source=bootstrap_teacher_split30_2026_04_14 \
   pseudo_label_algorithm=fixed_confidence_095 \
   lora_run_preset=smoke_verbose_e1 \
   bootstrap_version=bootstrap_teacher_split30_2026_04_14_rerun \
@@ -506,7 +506,7 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py \
   runtime=gpu_local \
-  lora_train_source=bootstrap_teacher_split30_2026_04_14 \
+  query_source=bootstrap_teacher_split30_2026_04_14 \
   lora_run_preset=smoke_verbose_e1 \
   trainer_version=supervised_seed_split30_2026_04_14_rerun
 ```
@@ -585,18 +585,10 @@ uv run python scripts/experiments/train_lora_fixmatch.py \
 
 현재 제공하는 preset:
 
-- `bootstrap_teacher_source=dataset_default`
-  - dataset alias가 가리키는 기본 teacher 입력 사용
-- `bootstrap_teacher_source=bootstrap_teacher_split30_2026_04_14`
-  - 이미 만든 split30 bootstrap 산출물 재사용
-- `lora_train_source=dataset_train`
-  - dataset alias의 기본 train split 사용
-- `lora_train_source=bootstrap_teacher_split30_2026_04_14`
-  - split30 teacher seed train 재사용
-- `query_ssl_train_source=dataset_default`
+- `query_source=dataset_default`
   - dataset alias의 labeled train + unlabeled query pool 경로 사용
-  - 현재 `ourafla`처럼 `dataset.unlabeled_query_pool_jsonl=null`인 alias에서는 직접 override가 필요하다
-- `query_ssl_train_source=bootstrap_teacher_split30_2026_04_14`
+  - 현재 `ourafla`처럼 `dataset.unlabeled_query_pool_jsonl=null`인 alias에서는 unlabeled 경로 직접 override가 필요하다
+- `query_source=bootstrap_teacher_split30_2026_04_14`
   - split30 labeled train / hidden unlabeled pool 재사용
 - `lora_run_preset=default`
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=5`, `log_every_steps=100`

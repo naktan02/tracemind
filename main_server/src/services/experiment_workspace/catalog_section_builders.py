@@ -79,7 +79,7 @@ def build_entrypoint_section(
         display_name=display_name,
         item_kind="experiment_entrypoint",
         description=description,
-        source_of_truth="scripts/conf",
+        source_of_truth="conf",
         source_kind="hydra_job_config",
         selection_mode="single_required",
         items=tuple(items),

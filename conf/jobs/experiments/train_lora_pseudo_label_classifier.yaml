@@ -6,18 +6,19 @@ defaults:
   - /paper_backbone: mxbai_encoder
   - /lora: default
   - /lora_run_preset: default
-  - /query_ssl_train_source: dataset_default
-  - /query_ssl_method: fixmatch_usb_v1
-  - /query_ssl_augmenter: backtranslation_nllb_en_de_fr_usb_v1
+  - /query_source: dataset_default
+  - /pseudo_label_algorithm: margin_threshold_v1
   - /query_adaptation_initial_checkpoint: canonical_fixed_classifier_seed
   - /lora_experiment: default
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
 
-train_jsonl: ${query_ssl_train_source.train_jsonl}
-unlabeled_jsonl: ${query_ssl_train_source.unlabeled_jsonl}
-output_dir: runs/train_lora_fixmatch
+train_jsonl: ${query_source.train_jsonl}
+pseudo_label_jsonl: null
+pseudo_label_export_root: data/processed/lora_pseudo_label
+include_seed_train_rows: false
+output_dir: runs/train_lora_pseudo_label_classifier
 
 hydra:
   run:

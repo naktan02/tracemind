@@ -207,7 +207,7 @@ uv run python scripts/experiments/train_lora_classifier.py --cfg job
 
 ## 7. Runtime Profiles
 
-`scripts/conf/runtime/*.yaml`이 script runtime source of truth다.
+`conf/runtime/*.yaml`이 script runtime source of truth다.
 
 | Profile | 의미 |
 |---|---|

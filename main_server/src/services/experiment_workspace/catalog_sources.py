@@ -58,19 +58,19 @@ class ExperimentCatalogSource:
     def resolve_script_path(self, job_config_path: str) -> str:
         """Hydra job config 경로에서 대응되는 script entrypoint 경로를 해석한다."""
 
-        if job_config_path.startswith("scripts/conf/experiments/"):
+        if job_config_path.startswith("conf/jobs/experiments/"):
             return job_config_path.replace(
-                "scripts/conf/experiments/",
+                "conf/jobs/experiments/",
                 "scripts/experiments/",
             ).replace(".yaml", ".py")
-        if job_config_path.startswith("scripts/conf/prototypes/"):
+        if job_config_path.startswith("conf/jobs/prototypes/"):
             return job_config_path.replace(
-                "scripts/conf/prototypes/",
+                "conf/jobs/prototypes/",
                 "scripts/prototypes/",
             ).replace(".yaml", ".py")
-        if job_config_path.startswith("scripts/conf/datasets/"):
+        if job_config_path.startswith("conf/jobs/datasets/"):
             return job_config_path.replace(
-                "scripts/conf/datasets/",
+                "conf/jobs/datasets/",
                 "scripts/datasets/",
             ).replace(".yaml", ".py")
         raise ValueError(

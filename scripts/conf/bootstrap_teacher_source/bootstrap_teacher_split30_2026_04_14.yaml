@@ -1,3 +1,0 @@
-name: bootstrap_teacher_split30_2026_04_14
-teacher_train_jsonl: data/processed/lora_bootstrap_classifier_teacher/bootstrap_teacher_split30_2026_04_14/teacher_seed_train.jsonl
-teacher_unlabeled_jsonl: data/processed/lora_bootstrap_classifier_teacher/bootstrap_teacher_split30_2026_04_14/teacher_unlabeled_pool.jsonl

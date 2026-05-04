@@ -9,10 +9,8 @@ from main_server.src.services.experiment_workspace import (
     federated_runtime_catalog_sections as fl_catalog_sections,
 )
 from main_server.src.services.experiment_workspace.artifact_catalog_items import (
-    build_generated_bootstrap_teacher_source_items,
     build_generated_initial_checkpoint_items,
-    build_generated_lora_train_source_items,
-    build_generated_query_ssl_train_source_items,
+    build_generated_query_source_items,
 )
 from main_server.src.services.experiment_workspace.catalog_build_context import (
     ExperimentCatalogBuildContext,
@@ -106,8 +104,8 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             display_name="실행 작업",
             description="이 탭에서 바로 실행할 수 있는 작업 목록입니다.",
             relative_paths=(
-                "scripts/conf/experiments/train_softmax_classifier.yaml",
-                "scripts/conf/prototypes/seed_prototypes.yaml",
+                "conf/jobs/experiments/train_softmax_classifier.yaml",
+                "conf/jobs/prototypes/seed_prototypes.yaml",
             ),
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
         ),
@@ -115,7 +113,7 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="기준선 생성 단계에서 바로 쓰는 dataset alias입니다.",
-            relative_dir="scripts/conf/dataset",
+            relative_dir="conf/dataset",
             item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
@@ -126,7 +124,7 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             section_name="embedding_presets",
             display_name="임베딩",
             description="분류기/프로토타입 생성에 쓰는 임베딩 preset입니다.",
-            relative_dir="scripts/conf/embedding",
+            relative_dir="conf/embedding",
             item_kind="hydra_preset",
             family_name="embedding",
             preset_group="embedding",
@@ -136,7 +134,7 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="기준선 생성 단계에서 공통으로 쓰는 runtime preset입니다.",
-            relative_dir="scripts/conf/runtime",
+            relative_dir="conf/runtime",
             item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
@@ -146,7 +144,7 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             section_name="prototype_builders",
             display_name="프로토타입 빌더",
             description="프로토타입 pack을 어떤 빌더로 생성할지 정합니다.",
-            relative_dir="scripts/conf/prototype_builder",
+            relative_dir="conf/prototype_builder",
             item_kind="hydra_preset",
             family_name="prototype_pack",
             preset_group="prototype_builder",
@@ -170,10 +168,10 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             display_name="실행 작업",
             description="중앙 적응 비교선에서 직접 실행할 작업 목록입니다.",
             relative_paths=(
-                "scripts/conf/experiments/train_lora_classifier.yaml",
-                "scripts/conf/experiments/train_lora_pseudo_label_classifier.yaml",
-                "scripts/conf/experiments/train_lora_fixmatch.yaml",
-                "scripts/conf/experiments/train_lora_bootstrap_classifier_teacher.yaml",
+                "conf/jobs/experiments/train_lora_classifier.yaml",
+                "conf/jobs/experiments/train_lora_pseudo_label_classifier.yaml",
+                "conf/jobs/experiments/train_lora_fixmatch.yaml",
+                "conf/jobs/experiments/train_lora_bootstrap_classifier_teacher.yaml",
             ),
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
         ),
@@ -181,7 +179,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="중앙 적응 비교선에서 쓰는 dataset alias입니다.",
-            relative_dir="scripts/conf/dataset",
+            relative_dir="conf/dataset",
             item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
@@ -192,7 +190,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="중앙 적응 실행에 쓰는 runtime preset입니다.",
-            relative_dir="scripts/conf/runtime",
+            relative_dir="conf/runtime",
             item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
@@ -202,7 +200,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="paper_backbones",
             display_name="백본",
             description="중앙 적응에 쓰는 backbone preset입니다.",
-            relative_dir="scripts/conf/paper_backbone",
+            relative_dir="conf/paper_backbone",
             item_kind="hydra_preset",
             family_name="backbone",
             preset_group="paper_backbone",
@@ -216,7 +214,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "적응에 쓰는 PEFT preset입니다. 현재는 LoRA가 기본이지만 같은 "
                 "축에서 DoRA 같은 변형을 추가할 수 있습니다."
             ),
-            relative_dir="scripts/conf/lora",
+            relative_dir="conf/lora",
             item_kind="hydra_preset",
             family_name="peft_adapter",
             preset_group="lora",
@@ -234,7 +232,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="lora_run_presets",
             display_name="적응 실행 프리셋",
             description="중앙 적응 baseline에서 공통으로 쓰는 실행 preset입니다.",
-            relative_dir="scripts/conf/lora_run_preset",
+            relative_dir="conf/lora_run_preset",
             item_kind="hydra_preset",
             family_name="run_preset",
             preset_group="lora_run_preset",
@@ -249,54 +247,20 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             ),
         ),
         ConfigGroupSectionSpec(
-            section_name="lora_train_sources",
-            display_name="지도 적응 데이터 소스",
+            section_name="query_sources",
+            display_name="Query 데이터 소스",
             description=(
-                "supervised/teacher bootstrap에서 쓰는 중앙 적응 train "
-                "source preset입니다."
+                "supervised, teacher bootstrap, FixMatch가 공유하는 train/"
+                "unlabeled source preset입니다."
             ),
-            relative_dir="scripts/conf/lora_train_source",
+            relative_dir="conf/query_source",
             item_kind="hydra_preset",
             family_name="train_source",
-            preset_group="lora_train_source",
+            preset_group="query_source",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
-            extra_items_builder=lambda context: build_generated_lora_train_source_items(
+            extra_items_builder=lambda context: build_generated_query_source_items(
                 repo_root=context.repo_root,
                 relative_repo_path=context.relative_repo_path,
-            ),
-        ),
-        ConfigGroupSectionSpec(
-            section_name="query_ssl_train_sources",
-            display_name="SSL 적응 데이터 소스",
-            description=(
-                "pseudo-label/FixMatch query adaptation용 train source preset입니다."
-            ),
-            relative_dir="scripts/conf/query_ssl_train_source",
-            item_kind="hydra_preset",
-            family_name="train_source",
-            preset_group="query_ssl_train_source",
-            supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
-            extra_items_builder=lambda context: (
-                build_generated_query_ssl_train_source_items(
-                    repo_root=context.repo_root,
-                    relative_repo_path=context.relative_repo_path,
-                )
-            ),
-        ),
-        ConfigGroupSectionSpec(
-            section_name="bootstrap_teacher_sources",
-            display_name="교사 초기 데이터 소스",
-            description="teacher bootstrap seed source preset입니다.",
-            relative_dir="scripts/conf/bootstrap_teacher_source",
-            item_kind="hydra_preset",
-            family_name="bootstrap_teacher_source",
-            preset_group="bootstrap_teacher_source",
-            supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
-            extra_items_builder=lambda context: (
-                build_generated_bootstrap_teacher_source_items(
-                    repo_root=context.repo_root,
-                    relative_repo_path=context.relative_repo_path,
-                )
             ),
         ),
         ConfigGroupSectionSpec(
@@ -306,7 +270,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "중앙 pseudo-label adaptation에서 쓰는 selection "
                 "algorithm preset입니다."
             ),
-            relative_dir="scripts/conf/pseudo_label_algorithm",
+            relative_dir="conf/pseudo_label_algorithm",
             item_kind="hydra_preset",
             family_name="pseudo_label_algorithm",
             preset_group="pseudo_label_algorithm",
@@ -321,7 +285,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="query_ssl_methods",
             display_name="Query SSL 목표 함수",
             description="중앙 query SSL objective preset입니다.",
-            relative_dir="scripts/conf/query_ssl_method",
+            relative_dir="conf/query_ssl_method",
             item_kind="hydra_preset",
             family_name="ssl_method",
             preset_group="query_ssl_method",
@@ -346,7 +310,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="query_ssl_augmenters",
             display_name="멀티뷰 증강",
             description="중앙 FixMatch/query SSL multiview augmenter preset입니다.",
-            relative_dir="scripts/conf/query_ssl_augmenter",
+            relative_dir="conf/query_ssl_augmenter",
             item_kind="hydra_preset",
             family_name="ssl_augmenter",
             preset_group="query_ssl_augmenter",
@@ -356,7 +320,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="initial_checkpoints",
             display_name="초기 체크포인트",
             description="중앙 적응 시작 시 warm-start checkpoint preset입니다.",
-            relative_dir="scripts/conf/query_adaptation_initial_checkpoint",
+            relative_dir="conf/query_adaptation_initial_checkpoint",
             item_kind="hydra_preset",
             family_name="initial_checkpoint",
             preset_group="query_adaptation_initial_checkpoint",
@@ -385,7 +349,9 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             section_name="entrypoints",
             display_name="실행 작업",
             description="현재 FL baseline을 직접 실행하는 작업 목록입니다.",
-            relative_paths=("scripts/conf/experiments/run_federated_simulation.yaml",),
+            relative_paths=(
+                "conf/jobs/experiments/run_federated_simulation.yaml",
+            ),
             supported_runtime_paths=(
                 FEDERATED_SIMULATION_RUNTIME_PATH,
                 MAIN_SERVER_ROUND_RUNTIME_PATH,
@@ -395,7 +361,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="FL simulation에 쓰는 dataset alias입니다.",
-            relative_dir="scripts/conf/dataset",
+            relative_dir="conf/dataset",
             item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
@@ -406,7 +372,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             section_name="embedding_presets",
             display_name="임베딩",
             description="FL simulation에서 쓰는 embedding preset입니다.",
-            relative_dir="scripts/conf/embedding",
+            relative_dir="conf/embedding",
             item_kind="hydra_preset",
             family_name="embedding",
             preset_group="embedding",
@@ -416,7 +382,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="FL simulation runtime preset입니다.",
-            relative_dir="scripts/conf/runtime",
+            relative_dir="conf/runtime",
             item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
@@ -428,7 +394,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             description=(
                 "client 수, rounds, max_examples 같은 FL simulation preset입니다."
             ),
-            relative_dir="scripts/conf/federated_run_preset",
+            relative_dir="conf/federated_run_preset",
             item_kind="hydra_preset",
             family_name="federated_run_preset",
             preset_group="federated_run_preset",
@@ -446,7 +412,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             section_name="prototype_builders",
             display_name="프로토타입 빌더",
             description="FL baseline prototype rebuild/build preset입니다.",
-            relative_dir="scripts/conf/prototype_builder",
+            relative_dir="conf/prototype_builder",
             item_kind="hydra_preset",
             family_name="prototype_pack",
             preset_group="prototype_builder",

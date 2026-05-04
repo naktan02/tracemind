@@ -88,7 +88,7 @@ class FederatedSimulationCompilePolicy:
             return tuple(warnings)
 
         dataset_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/dataset",
+            relative_dir="conf/dataset",
             item_name=dataset_name,
         )
         label_count = len(
@@ -102,7 +102,7 @@ class FederatedSimulationCompilePolicy:
             return tuple(warnings)
 
         preset_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/federated_run_preset",
+            relative_dir="conf/federated_run_preset",
             item_name=federated_run_preset,
         )
         client_count = _resolve_effective_int_override(
@@ -148,25 +148,25 @@ class FixMatchCompilePolicy:
         if _has_non_null_override(
             context.hydra_override_map,
             "unlabeled_jsonl",
-            "query_ssl_train_source.unlabeled_jsonl",
+            "query_source.unlabeled_jsonl",
         ):
             return
 
-        train_source_name = context.effective_groups.get("query_ssl_train_source")
+        train_source_name = context.effective_groups.get("query_source")
         if train_source_name is None:
             raise ValueError(
                 "FixMatch compile readiness check failed: "
-                "query_ssl_train_source preset을 결정할 수 없습니다."
+                "query_source preset을 결정할 수 없습니다."
             )
         train_source_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/query_ssl_train_source",
+            relative_dir="conf/query_source",
             item_name=train_source_name,
         )
         source_unlabeled = _string_or_none(train_source_raw.get("unlabeled_jsonl"))
         if source_unlabeled is None or source_unlabeled == "null":
             raise ValueError(
                 "FixMatch compile readiness check failed: "
-                f"query_ssl_train_source={train_source_name} 에 "
+                f"query_source={train_source_name} 에 "
                 "unlabeled_jsonl이 없습니다."
             )
         if source_unlabeled != "${dataset.unlabeled_query_pool_jsonl}":
@@ -179,7 +179,7 @@ class FixMatchCompilePolicy:
                 "dataset preset을 결정할 수 없습니다."
             )
         dataset_raw = context.catalog_service.load_config_group_item(
-            relative_dir="scripts/conf/dataset",
+            relative_dir="conf/dataset",
             item_name=dataset_name,
         )
         dataset_unlabeled = _string_or_none(
@@ -190,7 +190,7 @@ class FixMatchCompilePolicy:
                 "FixMatch compile readiness check failed: "
                 f"dataset={dataset_name} 는 "
                 "unlabeled_query_pool_jsonl이 아직 비어 있습니다. "
-                "다른 query_ssl_train_source preset을 고르거나 "
+                "다른 query_source preset을 고르거나 "
                 "unlabeled_jsonl override를 직접 제공하세요."
             )
 

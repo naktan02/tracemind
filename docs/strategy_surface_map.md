@@ -60,7 +60,7 @@ Embedding
 | Scripts/Prototype Embedding Adapter | `mxbai`, `hash_debug` | Hydra `embedding` group -> `EmbeddingAdapterSpec` -> `EmbeddingAdapterFactory.create(...)` | 각 script의 `defaults: - /embedding: ...` | `embedding=mxbai`, `embedding=hash_debug`, `embedding.model_id=...` | 활성 runtime |
 | Agent Embedding Model | 현재 기본 config는 `mxbai_large` | `agent/conf/embedding/*.yaml` | `agent/conf/config.yaml` | agent Hydra config override | 활성 runtime |
 | Agent Translation Model | `nllb_200_distilled_600m`, `opus_mt_tc_big_ko_en` | `agent/conf/translation/*.yaml` + `TranslationService` | `agent/conf/config.yaml` | agent Hydra config override | 활성 runtime |
-| Prototype Translation Provenance | `translation_model_id`, `translation_model_revision`, `translation_direction` | `scripts/conf/prototypes/seed_prototypes.yaml`, `scripts/conf/experiments/run_federated_simulation.yaml` | 대부분 `null` | leaf override 가능 | typed metadata only |
+| Prototype Translation Provenance | `translation_model_id`, `translation_model_revision`, `translation_direction` | `conf/jobs/prototypes/seed_prototypes.yaml`, `conf/jobs/experiments/run_federated_simulation.yaml` | 대부분 `null` | leaf override 가능 | typed metadata only |
 
 중요:
 
@@ -82,14 +82,14 @@ Embedding
 - [agent/conf/translation/opus_mt_tc_big_ko_en.yaml](../agent/conf/translation/opus_mt_tc_big_ko_en.yaml)
 - [agent/src/services/inference/pipeline_service.py](../agent/src/services/inference/pipeline_service.py)
 - [scripts/prototypes/seed_prototypes.py](../scripts/prototypes/seed_prototypes.py)
-- [scripts/conf/prototypes/seed_prototypes.yaml](../scripts/conf/prototypes/seed_prototypes.yaml)
+- [conf/jobs/prototypes/seed_prototypes.yaml](../conf/jobs/prototypes/seed_prototypes.yaml)
 
 ## 1. agent 로컬 학습/추론 전략 축
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
 | Training Backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.training_backend_name` | 활성 runtime |
-| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
+| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
 | Example Generation Backend | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.example_generation_backend_name` | 활성 runtime |
 | Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
 | Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
@@ -98,7 +98,7 @@ Embedding
 | Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
 | Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
-| PEFT Adapter Builder | `lora`, `rslora` | `lora.peft_adapter_name` | `scripts/conf/lora/default.yaml` | `lora.peft_adapter_name=rslora` | 중앙 LoRA rail 활성 seam |
+| PEFT Adapter Builder | `lora`, `rslora` | `lora.peft_adapter_name` | `conf/lora/default.yaml` | `lora.peft_adapter_name=rslora` | 중앙 LoRA rail 활성 seam |
 
 추가 설명:
 
@@ -115,12 +115,12 @@ Embedding
 - privacy는 현재 `clip only`와 `noop`만 runtime 구현이 있다.
 - query-domain 중앙 `LoRA + classifier` 비교 레일은 위 active runtime knob와 별도다.
   bootstrap / pseudo-label self-training 실험의 selection rule source of truth는
-  `scripts/conf/pseudo_label_algorithm/`이고, 구현 코어는
+  `conf/pseudo_label_algorithm/`이고, 구현 코어는
   `agent/src/services/training/ssl/hooks/pseudo_label_selection/`이 소유한다.
 - 중앙 query-domain consistency algorithm은 또 다른 별도 축이다.
   현재 `FixMatch`의 algorithm/source source of truth는
-  `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`,
-  `scripts/conf/query_ssl_augmenter/`이고,
+  `conf/query_ssl_method/`, `conf/query_source/`,
+  `conf/query_ssl_augmenter/`이고,
   USB core mapping은 `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`가 소유한다.
   algorithm 선택 seam은 `agent/src/services/training/query_ssl_algorithms/base.py`와
   `agent/src/services/training/query_ssl_algorithms/registry.py`에 두며,
@@ -133,7 +133,7 @@ Embedding
   strict USB NLP input preparation/cache는 `query_ssl/augmentation.py`가 담당한다.
   실제 backtranslation 메커니즘은 `agent/src/services/backtranslation_service.py`를 재사용한다.
 - 현재 central 실험에서 selection source of truth는
-  `pseudo_label_algorithm_name` / `scripts/conf/pseudo_label_algorithm/`이고,
+  `pseudo_label_algorithm_name` / `conf/pseudo_label_algorithm/`이고,
   `acceptance_policy_name`은 runtime compatibility용 compatibility field로 유지된다.
 
 관련 파일:
@@ -143,17 +143,17 @@ Embedding
 - [agent/src/services/training/examples/service.py](../agent/src/services/training/examples/service.py)
 - [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
 - [shared/src/config/training_algorithm_profiles.py](../shared/src/config/training_algorithm_profiles.py)
-- [scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../scripts/conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
+- [conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml](../conf/training_algorithm_profile/prototype_pseudo_label_v1.yaml)
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
 - [agent/src/services/inference/scoring_policies.py](../agent/src/services/inference/scoring_policies.py)
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
 - [agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py](../agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py)
-- [scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
+- [conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
 - [agent/src/services/training/query_ssl_algorithms/base.py](../agent/src/services/training/query_ssl_algorithms/base.py)
 - [agent/src/services/training/query_ssl_algorithms/registry.py](../agent/src/services/training/query_ssl_algorithms/registry.py)
 - [agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py](../agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py)
-- [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
-- [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
+- [conf/query_ssl_method/fixmatch_usb_v1.yaml](../conf/query_ssl_method/fixmatch_usb_v1.yaml)
+- [conf/query_source/dataset_default.yaml](../conf/query_source/dataset_default.yaml)
 - [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
 
 ### 1-1. 아이용 지원 대화 전략 축
@@ -203,7 +203,7 @@ Embedding
 | Adapter Family | `diagonal_scale`, `classifier_head` | `ServerRoundRuntimeConfig.adapter_family_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.adapter_family_name` | 활성 runtime |
 | Aggregation Backend | `fedavg` | `ServerRoundRuntimeConfig.aggregation_backend_name` | `main_server/src/services/federation/rounds/runtime/config.py` | `run_federated_simulation`의 `round_runtime.aggregation_backend_name` | 활성 runtime |
 | Secure Update Codec | `noop` | `RoundLifecycleService.secure_update_codec`, `LocalTrainingService.secure_update_codec` | `NoOpSecureUpdateCodec` | public Hydra leaf 없음 | runtime seam만 활성 |
-| Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `scripts/conf/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
+| Classifier Head Bootstrap Scale | `8.0` 기본값 | `FederatedRoundRuntimeConfig.classifier_head_bootstrap_logit_scale` | `conf/jobs/experiments/run_federated_simulation.yaml` | `run_federated_simulation`의 `round_runtime.classifier_head_bootstrap_logit_scale` | simulation 전용 |
 | Update Acceptance Network Policy | `StrictRoundNetworkPolicy`, `IdempotentRoundNetworkPolicy` | `StrictRoundUpdateAcceptancePolicy` / `IdempotentRoundUpdateAcceptancePolicy` 구성 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 | Update Trust Policy | `AllowAllRoundTrustPolicy`, `SingleSubmissionPerAgentTrustPolicy` | acceptance policy 구성 객체 내부 | runtime factory / DI | public Hydra leaf 없음 | 코드 주입 지점 |
 
@@ -280,7 +280,7 @@ Embedding
 entrypoint:
 
 - [scripts/experiments/prototype_strategy_experiment.py](../scripts/experiments/prototype_strategy_experiment.py)
-- config: [scripts/conf/experiments/prototype_strategy.yaml](../scripts/conf/experiments/prototype_strategy.yaml)
+- config: [conf/jobs/experiments/prototype_strategy.yaml](../conf/jobs/experiments/prototype_strategy.yaml)
 
 바로 조절 가능한 값:
 
@@ -313,7 +313,7 @@ python -m scripts.experiments.prototype_strategy_experiment \
 entrypoint:
 
 - [scripts/experiments/prototype_threshold_sweep.py](../scripts/experiments/prototype_threshold_sweep.py)
-- config: [scripts/conf/experiments/prototype_threshold_sweep.yaml](../scripts/conf/experiments/prototype_threshold_sweep.yaml)
+- config: [conf/jobs/experiments/prototype_threshold_sweep.yaml](../conf/jobs/experiments/prototype_threshold_sweep.yaml)
 
 바로 조절 가능한 값:
 
@@ -342,7 +342,7 @@ python -m scripts.experiments.prototype_threshold_sweep \
 entrypoint:
 
 - [scripts/experiments/run_federated_simulation.py](../scripts/experiments/run_federated_simulation.py)
-- config: [scripts/conf/experiments/run_federated_simulation.yaml](../scripts/conf/experiments/run_federated_simulation.yaml)
+- config: [conf/jobs/experiments/run_federated_simulation.yaml](../conf/jobs/experiments/run_federated_simulation.yaml)
 
 바로 조절 가능한 값:
 

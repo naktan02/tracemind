@@ -29,8 +29,8 @@ from shared.src.domain.value_objects import EmbeddingAdapterSpec  # noqa: E402
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
-    config_name="prototypes/evaluate_prototype_pack",
+    config_path="../../conf",
+    config_name="jobs/prototypes/evaluate_prototype_pack",
 )
 def main(cfg: DictConfig) -> None:
     if not cfg.prototype_pack:

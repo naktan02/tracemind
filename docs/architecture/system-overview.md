@@ -32,7 +32,7 @@ central fixed embedding + classifier seed
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication, experiment workspace backend | `main_server/src/api/*`, `main_server/src/services/*` |
-| Scripts | dataset/prototype/classifier/LoRA/FL simulation 실행 조합 | `scripts/experiments/*`, `scripts/prototypes/*`, `scripts/conf/*` |
+| Scripts | dataset/prototype/classifier/LoRA/FL simulation 실행 조합 | `scripts/experiments/*`, `scripts/prototypes/*`, `conf/*` |
 | Apps | developer experiment UI와 family extension UI shell | `apps/experiment_web/*`, `apps/family_extension/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 

@@ -57,6 +57,8 @@ include = [
     "agent",
     "agent.src",
     "agent.src.*",
+    "conf",
+    "conf.*",
     "main_server",
     "main_server.src",
     "main_server.src.*",
@@ -69,6 +71,9 @@ include = [
     "scripts.*",
 ]
 namespaces = true
+
+[tool.setuptools.package-data]
+conf = ["**/*.yaml", "**/*.md"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests", "agent/tests", "main_server/tests", "shared/tests"]

@@ -39,7 +39,7 @@ central fixed embedding + classifier seed
 
 Seed / central SSL:
 
-1. relevant `scripts/conf/**`
+1. relevant `conf/**`
 2. `docs/contracts/query_buffer_v1.md`
 3. `docs/contracts/central_lora_classifier_trainer_contract.md`
 4. `scripts/experiments/train_lora_classifier.py`

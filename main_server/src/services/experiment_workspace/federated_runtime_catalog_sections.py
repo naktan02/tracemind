@@ -50,7 +50,7 @@ def build_training_algorithm_profile_section(
     """Hydra training profile preset을 runtime compatibility와 함께 노출한다."""
 
     items: list[CatalogItemPayload] = []
-    for path in context.iter_yaml_files("scripts/conf/training_algorithm_profile"):
+    for path in context.iter_yaml_files("conf/training_algorithm_profile"):
         raw = context.load_yaml_mapping(path)
         profile_name = string_or_none(raw.get("algorithm_profile_name")) or path.stem
         objective_config = TrainingObjectiveConfig.from_mapping(raw)
@@ -89,7 +89,7 @@ def build_training_algorithm_profile_section(
         display_name="학습 알고리즘 프로필",
         item_kind="training_algorithm_profile",
         description="현재 FL objective/aggregation 조합 preset입니다.",
-        source_of_truth="scripts/conf/training_algorithm_profile",
+        source_of_truth="conf/training_algorithm_profile",
         source_kind="hydra_config_group",
         items=tuple(items),
     )

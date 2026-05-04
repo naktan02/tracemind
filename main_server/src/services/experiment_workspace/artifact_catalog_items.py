@@ -11,76 +11,13 @@ from main_server.src.services.experiment_workspace.payloads import (
 )
 
 
-def build_generated_lora_train_source_items(
+def build_generated_query_source_items(
     *,
     repo_root: Path,
     relative_repo_path,
 ) -> tuple[CatalogItemPayload, ...]:
-    items: list[CatalogItemPayload] = []
+    """저장된 query source artifact를 공통 query_source preset으로 노출한다."""
 
-    for manifest_path in _iter_teacher_split_manifests(repo_root):
-        payload = _load_json_object(manifest_path)
-        bootstrap_version = str(
-            payload.get("bootstrap_version", manifest_path.parent.name)
-        )
-        train_jsonl = _string_or_none(payload.get("teacher_seed_jsonl"))
-        if train_jsonl is None:
-            continue
-        items.append(
-            _build_generated_preset_item(
-                item_name=f"generated_lora_train_source__{bootstrap_version}",
-                display_name=f"saved: {bootstrap_version}",
-                family_name="train_source",
-                core_method_name="artifact_train_source",
-                preset_group="lora_train_source",
-                compiled_selector_name="dataset_train",
-                source_of_truth=relative_repo_path(manifest_path),
-                description="기존 bootstrap split에서 생성된 seed train JSONL입니다.",
-                default_override_patch={"train_jsonl": train_jsonl},
-                metadata={
-                    "generated_from": "teacher_split_manifest",
-                    "train_jsonl": train_jsonl,
-                    "unlabeled_ratio": payload.get("unlabeled_ratio"),
-                    "teacher_seed_row_count": payload.get("teacher_seed_row_count"),
-                },
-            )
-        )
-
-    for subset_dir in _iter_query_ssl_subset_dirs(repo_root):
-        seed_path = _find_first(subset_dir, "seed_train*.jsonl")
-        if seed_path is None:
-            continue
-        subset_name = subset_dir.name
-        items.append(
-            _build_generated_preset_item(
-                item_name=f"generated_lora_train_source__{subset_name}",
-                display_name=f"saved subset: {subset_name}",
-                family_name="train_source",
-                core_method_name="artifact_train_source",
-                preset_group="lora_train_source",
-                compiled_selector_name="dataset_train",
-                source_of_truth=relative_repo_path(seed_path),
-                description=(
-                    "기존 query SSL subset에서 재사용하는 labeled seed train입니다."
-                ),
-                default_override_patch={
-                    "train_jsonl": relative_repo_path(seed_path),
-                },
-                metadata={
-                    "generated_from": "query_ssl_subset",
-                    "train_jsonl": relative_repo_path(seed_path),
-                },
-            )
-        )
-
-    return tuple(sorted(items, key=lambda item: item.display_name, reverse=True))
-
-
-def build_generated_query_ssl_train_source_items(
-    *,
-    repo_root: Path,
-    relative_repo_path,
-) -> tuple[CatalogItemPayload, ...]:
     items: list[CatalogItemPayload] = []
 
     for manifest_path in _iter_teacher_split_manifests(repo_root):
@@ -90,25 +27,25 @@ def build_generated_query_ssl_train_source_items(
         )
         train_jsonl = _string_or_none(payload.get("teacher_seed_jsonl"))
         unlabeled_jsonl = _string_or_none(payload.get("teacher_unlabeled_jsonl"))
-        if train_jsonl is None or unlabeled_jsonl is None:
+        if train_jsonl is None:
             continue
+        override_patch = {"train_jsonl": train_jsonl}
+        if unlabeled_jsonl is not None:
+            override_patch["unlabeled_jsonl"] = unlabeled_jsonl
         items.append(
             _build_generated_preset_item(
-                item_name=f"generated_query_ssl_train_source__{bootstrap_version}",
+                item_name=f"generated_query_source__{bootstrap_version}",
                 display_name=f"saved: {bootstrap_version}",
                 family_name="train_source",
-                core_method_name="artifact_query_ssl_source",
-                preset_group="query_ssl_train_source",
+                core_method_name="artifact_query_source",
+                preset_group="query_source",
                 compiled_selector_name="dataset_default",
                 source_of_truth=relative_repo_path(manifest_path),
                 description=(
-                    "기존 bootstrap split에서 생성된 labeled seed + unlabeled "
-                    "pool입니다."
+                    "기존 bootstrap split에서 생성된 seed train과 unlabeled pool을 "
+                    "재사용합니다."
                 ),
-                default_override_patch={
-                    "train_jsonl": train_jsonl,
-                    "unlabeled_jsonl": unlabeled_jsonl,
-                },
+                default_override_patch=override_patch,
                 metadata={
                     "generated_from": "teacher_split_manifest",
                     "train_jsonl": train_jsonl,
@@ -124,79 +61,32 @@ def build_generated_query_ssl_train_source_items(
     for subset_dir in _iter_query_ssl_subset_dirs(repo_root):
         seed_path = _find_first(subset_dir, "seed_train*.jsonl")
         unlabeled_path = _find_first(subset_dir, "unlabeled_pool*.jsonl")
-        if seed_path is None or unlabeled_path is None:
+        if seed_path is None:
             continue
         subset_name = subset_dir.name
+        override_patch = {"train_jsonl": relative_repo_path(seed_path)}
+        metadata = {
+            "generated_from": "query_ssl_subset",
+            "train_jsonl": relative_repo_path(seed_path),
+        }
+        if unlabeled_path is not None:
+            override_patch["unlabeled_jsonl"] = relative_repo_path(unlabeled_path)
+            metadata["unlabeled_jsonl"] = relative_repo_path(unlabeled_path)
         items.append(
             _build_generated_preset_item(
-                item_name=f"generated_query_ssl_train_source__{subset_name}",
+                item_name=f"generated_query_source__{subset_name}",
                 display_name=f"saved subset: {subset_name}",
                 family_name="train_source",
-                core_method_name="artifact_query_ssl_source",
-                preset_group="query_ssl_train_source",
+                core_method_name="artifact_query_source",
+                preset_group="query_source",
                 compiled_selector_name="dataset_default",
                 source_of_truth=relative_repo_path(subset_dir),
-                description=(
-                    "기존 query SSL subset에서 재사용하는 labeled seed + "
-                    "unlabeled pool입니다."
-                ),
-                default_override_patch={
-                    "train_jsonl": relative_repo_path(seed_path),
-                    "unlabeled_jsonl": relative_repo_path(unlabeled_path),
-                },
-                metadata={
-                    "generated_from": "query_ssl_subset",
-                    "train_jsonl": relative_repo_path(seed_path),
-                    "unlabeled_jsonl": relative_repo_path(unlabeled_path),
-                },
+                description="기존 query SSL subset의 query source를 재사용합니다.",
+                default_override_patch=override_patch,
+                metadata=metadata,
             )
         )
 
-    return tuple(sorted(items, key=lambda item: item.display_name, reverse=True))
-
-
-def build_generated_bootstrap_teacher_source_items(
-    *,
-    repo_root: Path,
-    relative_repo_path,
-) -> tuple[CatalogItemPayload, ...]:
-    items: list[CatalogItemPayload] = []
-    for manifest_path in _iter_teacher_split_manifests(repo_root):
-        payload = _load_json_object(manifest_path)
-        bootstrap_version = str(
-            payload.get("bootstrap_version", manifest_path.parent.name)
-        )
-        teacher_train_jsonl = _string_or_none(payload.get("teacher_seed_jsonl"))
-        teacher_unlabeled_jsonl = _string_or_none(
-            payload.get("teacher_unlabeled_jsonl")
-        )
-        if teacher_train_jsonl is None or teacher_unlabeled_jsonl is None:
-            continue
-        items.append(
-            _build_generated_preset_item(
-                item_name=f"generated_bootstrap_teacher_source__{bootstrap_version}",
-                display_name=f"saved: {bootstrap_version}",
-                family_name="bootstrap_teacher_source",
-                core_method_name="artifact_bootstrap_teacher_source",
-                preset_group="bootstrap_teacher_source",
-                compiled_selector_name="dataset_default",
-                source_of_truth=relative_repo_path(manifest_path),
-                description="기존 teacher bootstrap split 결과를 다시 사용합니다.",
-                default_override_patch={
-                    "teacher_train_jsonl": teacher_train_jsonl,
-                    "teacher_unlabeled_jsonl": teacher_unlabeled_jsonl,
-                },
-                metadata={
-                    "generated_from": "teacher_split_manifest",
-                    "teacher_train_jsonl": teacher_train_jsonl,
-                    "teacher_unlabeled_jsonl": teacher_unlabeled_jsonl,
-                    "teacher_seed_row_count": payload.get("teacher_seed_row_count"),
-                    "teacher_unlabeled_row_count": payload.get(
-                        "teacher_unlabeled_row_count"
-                    ),
-                },
-            )
-        )
     return tuple(sorted(items, key=lambda item: item.display_name, reverse=True))
 
 

@@ -6,7 +6,7 @@
 
 - 운영 후보 로직은 `shared`, `agent`, `main_server`에 둔다.
 - 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
-- Hydra top-level config는 `scripts/conf/experiments/*.yaml`이 source of truth다.
+- Hydra top-level config는 `conf/jobs/experiments/*.yaml`이 source of truth다.
 
 전략 축 전체와 현재 override 가능 여부는
 [docs/strategy_surface_map.md](....docs/strategy_surface_map.md)를
@@ -21,7 +21,7 @@
 - `run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop
   - runtime/task/validation/report shape는
-    `scripts/conf/experiments/run_federated_simulation.yaml` 안의
+    `conf/jobs/experiments/run_federated_simulation.yaml` 안의
     `round_runtime`, `training_task`, `validation`, `report` section이다.
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
@@ -29,12 +29,12 @@
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
 - `train_lora_fixmatch.py`
   - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint
-  - method/source/augmentation/initial checkpoint source of truth는 `query_ssl_method`, `query_ssl_train_source`, `query_ssl_augmenter`, `query_adaptation_initial_checkpoint` Hydra group이다.
+  - method/source/augmentation/initial checkpoint source of truth는 `query_ssl_method`, `query_source`, `query_ssl_augmenter`, `query_adaptation_initial_checkpoint` Hydra group이다.
 - `train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
     `LoRA + classifier` student를 학습하는 bootstrap entrypoint
-  - selection rule source of truth는 `scripts/conf/pseudo_label_algorithm/*.yaml`이다.
-  - student initial checkpoint source of truth는 `scripts/conf/query_adaptation_initial_checkpoint/*.yaml`이다.
+  - selection rule source of truth는 `conf/pseudo_label_algorithm/*.yaml`이다.
+  - student initial checkpoint source of truth는 `conf/query_adaptation_initial_checkpoint/*.yaml`이다.
 - `train_lora_pseudo_label_classifier.py`
   - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint
   - 현재 helper는 offline union retraining 경로를 포함하지만,

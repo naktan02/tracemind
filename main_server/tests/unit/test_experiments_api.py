@@ -32,9 +32,7 @@ from shared.src.contracts.workspace_manifest_contracts import (
 
 
 def _find_section(catalog, *, track_name: str, section_name: str):
-    track = next(
-        track for track in catalog.tracks if track.track_name == track_name
-    )
+    track = next(track for track in catalog.tracks if track.track_name == track_name)
     return next(
         section for section in track.sections if section.section_name == section_name
     )
@@ -72,8 +70,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert fixmatch.compile_support == "preset_selector"
     assert fixmatch.metadata["require_multiview"] is True
     assert all(
-        field.field_name != "algorithm_name"
-        for field in fixmatch.override_fields
+        field.field_name != "algorithm_name" for field in fixmatch.override_fields
     )
 
     dataset_presets = _find_section(
@@ -85,16 +82,13 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     ourafla = _find_item(dataset_presets, "ourafla")
     assert ourafla.metadata["readiness"]["central_fixmatch_ready"] is False
     assert ourafla.metadata["sources"]["train"]["kind"] == "huggingface"
-    assert (
-        ourafla.metadata["asset_paths"]["unlabeled_query_pool_jsonl"] is None
-    )
+    assert ourafla.metadata["asset_paths"]["unlabeled_query_pool_jsonl"] is None
     assert any(
         field.field_name == "train_jsonl" and field.value_kind == "string"
         for field in ourafla.override_fields
     )
     assert all(
-        not field.field_name.startswith("sources")
-        for field in ourafla.override_fields
+        not field.field_name.startswith("sources") for field in ourafla.override_fields
     )
 
     peft_methods = _find_section(
@@ -130,11 +124,11 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     generated_ssl_sources = _find_section(
         payload,
         track_name="central_adaptation",
-        section_name="query_ssl_train_sources",
+        section_name="query_sources",
     )
     generated_bootstrap_source = _find_item(
         generated_ssl_sources,
-        "generated_query_ssl_train_source__bootstrap_teacher_split30_2026_04_14",
+        "generated_query_source__bootstrap_teacher_split30_2026_04_14",
     )
     assert generated_bootstrap_source.compiled_selector_name == "dataset_default"
     assert generated_bootstrap_source.default_override_patch == {
@@ -173,8 +167,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     fixmatch_entrypoint = _find_item(central_entrypoints, "train_lora_fixmatch")
     assert fixmatch_entrypoint.compile_support == "entrypoint"
     assert (
-        fixmatch_entrypoint.script_path
-        == "scripts/experiments/train_lora_fixmatch.py"
+        fixmatch_entrypoint.script_path == "scripts/experiments/train_lora_fixmatch.py"
     )
 
     federated_aggregations = _find_section(
@@ -316,7 +309,7 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
                 ),
                 WorkspaceSelectionPayload(
                     slot_name="train_source",
-                    section_name="query_ssl_train_sources",
+                    section_name="query_sources",
                     variant_profile_name="bootstrap_teacher_split30_2026_04_14",
                     family_name="train_source",
                 ),
@@ -330,7 +323,7 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
     assert plan.selection_default_groups == (
         "query_ssl_method=fixmatch_usb_v1",
         "lora=default",
-        "query_ssl_train_source=bootstrap_teacher_split30_2026_04_14",
+        "query_source=bootstrap_teacher_split30_2026_04_14",
     )
     assert "query_ssl_method.temperature=0.7" in plan.hydra_overrides
     assert "lora.rank=16" in plan.hydra_overrides
@@ -357,10 +350,9 @@ def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> Non
                 ),
                 WorkspaceSelectionPayload(
                     slot_name="train_source",
-                    section_name="query_ssl_train_sources",
+                    section_name="query_sources",
                     variant_profile_name=(
-                        "generated_query_ssl_train_source__"
-                        "bootstrap_teacher_split30_2026_04_14"
+                        "generated_query_source__bootstrap_teacher_split30_2026_04_14"
                     ),
                     family_name="train_source",
                 ),
@@ -378,20 +370,19 @@ def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> Non
         service=compiler_service,
     )
 
-    assert "query_ssl_train_source=dataset_default" in plan.selection_default_groups
+    assert "query_source=dataset_default" in plan.selection_default_groups
     assert (
-        "query_ssl_train_source.train_jsonl="
+        "query_source.train_jsonl="
         "data/processed/lora_bootstrap_classifier_teacher/"
         "bootstrap_teacher_split30_2026_04_14/teacher_seed_train.jsonl"
     ) in plan.hydra_overrides
     assert (
-        "query_ssl_train_source.unlabeled_jsonl="
+        "query_source.unlabeled_jsonl="
         "data/processed/lora_bootstrap_classifier_teacher/"
         "bootstrap_teacher_split30_2026_04_14/teacher_unlabeled_pool.jsonl"
     ) in plan.hydra_overrides
     assert (
-        "query_adaptation_initial_checkpoint=required"
-        in plan.selection_default_groups
+        "query_adaptation_initial_checkpoint=required" in plan.selection_default_groups
     )
     assert (
         "query_adaptation_initial_checkpoint.manifest_path="
@@ -400,8 +391,7 @@ def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> Non
     ) in plan.hydra_overrides
 
 
-def test_experiment_compile_api_rejects_fixmatch_when_dataset_lacks_unlabeled_pool(
-) -> None:
+def test_experiment_compile_api_rejects_fixmatch_without_unlabeled_pool() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     catalog_service = ExperimentCatalogService(repo_root=repo_root)
     compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
@@ -461,8 +451,7 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
     assert any("simulation participant" in warning for warning in plan.warnings)
 
 
-def test_experiment_compile_api_warns_when_client_count_outgrows_label_dominant_shards(
-) -> None:
+def test_experiment_compile_api_warns_on_large_label_dominant_client_count() -> None:
     repo_root = Path(__file__).resolve().parents[3]
     catalog_service = ExperimentCatalogService(repo_root=repo_root)
     compiler_service = ExperimentCompilerService(catalog_service=catalog_service)

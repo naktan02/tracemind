@@ -71,7 +71,7 @@ task_routes:
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
-      - relevant scripts/conf config group
+      - relevant conf config group
       - relevant scripts/experiments entrypoint
     conditional_read:
       - docs/fl_runtime_implementation_checklist.md for FL SSL non-IID comparisons or runtime translation
@@ -115,7 +115,7 @@ task_routes:
       - AGENTS.md
       - scripts/AGENTS.md
       - relevant script entrypoint
-      - relevant scripts/conf config group
+      - relevant conf config group
     conditional_read:
       - scripts/README.md only for command discovery or cross-script convention
     verify:

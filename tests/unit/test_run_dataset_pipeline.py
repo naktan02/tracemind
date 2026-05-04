@@ -15,16 +15,13 @@ def test_supported_dataset_aliases_include_ourafla_and_cssrs() -> None:
 
 
 def test_hydra_dataset_group_contains_pipeline_metadata() -> None:
-    with initialize_config_module(version_base=None, config_module="scripts.conf"):
+    with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="datasets/run_dataset_pipeline",
+            config_name="jobs/datasets/run_dataset_pipeline",
             overrides=["dataset=ourafla"],
         )
 
     assert cfg.dataset.stages == ["download", "map", "split", "prototype"]
     assert cfg.dataset.split.source == "train"
     assert cfg.dataset.prototype.source == "split_train"
-    assert (
-        cfg.dataset.sources.train.data_file
-        == "mental_heath_unbanlanced.csv"
-    )
+    assert cfg.dataset.sources.train.data_file == "mental_heath_unbanlanced.csv"

@@ -32,17 +32,17 @@
 
 | 이름 | 계층 | 현재 구현체 | 파일 |
 |---|---|---|---|
-| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `scripts/conf/training_algorithm_profile/` |
+| Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `conf/training_algorithm_profile/` |
 | Training Backend | agent | DiagonalScaleHeuristicTrainingBackend | `agent/src/services/training/backends/training/` |
 | Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
 | Evidence Backend | agent | PrototypeSimilarityEvidenceBackend | `agent/src/services/training/backends/evidence/` |
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
-| Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `scripts/conf/pseudo_label_algorithm/` |
-| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_ssl_algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
-| Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
-| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/peft_adapters/`, `scripts/conf/lora/` |
+| Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `conf/pseudo_label_algorithm/` |
+| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_ssl_algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
+| Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
+| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/peft_adapters/`, `conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
@@ -71,14 +71,14 @@
 - shared canonical registry:
   - `shared/src/config/training_algorithm_profiles.py`
 - scripts 실험 선택:
-  - `scripts/conf/training_algorithm_profile/*.yaml`
+  - `conf/training_algorithm_profile/*.yaml`
 
 **권장 사용법:**
 - 새 논문 방법을 넣을 때 먼저 공통 backend 축을 구현한다.
 - 그 다음 해당 논문 이름의 algorithm profile을 추가해 기본 조합을 묶는다.
 - 실험에서는 profile을 고르고, 필요할 때 개별 축만 override한다.
 - 단, 중앙 query-domain 적응 실험처럼 runtime broad preset보다 더 좁은 비교축이 필요하면
-  `scripts/conf/pseudo_label_algorithm/`처럼 별도 Hydra group을 두는 편이 낫다.
+  `conf/pseudo_label_algorithm/`처럼 별도 Hydra group을 두는 편이 낫다.
 
 ---
 
@@ -239,7 +239,7 @@ class PseudoLabelEvidenceBackend(Protocol):
   - 이미 `aug_0`, `aug_1`가 있는 JSONL을 그대로 소비한다
 
 source of truth:
-- Hydra group: `scripts/conf/query_ssl_augmenter/*.yaml`
+- Hydra group: `conf/query_ssl_augmenter/*.yaml`
 - reusable core: `agent/src/services/backtranslation_service.py`
 - scripts preparation/cache: `scripts/experiments/lora_classifier/query_ssl/augmentation.py`
 
@@ -333,7 +333,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - agent 코어:
   - `agent/src/services/training/ssl/hooks/pseudo_label_selection/`
 - scripts preset:
-  - `scripts/conf/pseudo_label_algorithm/*.yaml`
+  - `conf/pseudo_label_algorithm/*.yaml`
 
 **교체 절차:**
 1. `ssl/hooks/pseudo_label_selection/` 아래에 hook 구현을 추가한다
@@ -361,15 +361,15 @@ class PseudoLabelAcceptancePolicy(Protocol):
   - `scripts/experiments/lora_classifier/query_ssl/common.py`
   - `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - scripts preset:
-  - `scripts/conf/query_ssl_method/*.yaml`
-  - `scripts/conf/query_ssl_train_source/*.yaml`
+  - `conf/query_ssl_method/*.yaml`
+  - `conf/query_source/*.yaml`
 
 **교체 절차:**
 1. `query_ssl_algorithms/<algorithm_name>/` 아래에 algorithm core를 구현한다
 2. algorithm adapter가 `QuerySslAlgorithm`를 만족하게 만든다
 3. `algorithms/registry.py`에 `algorithm_name`으로 등록한다
 4. `train_query_ssl_classifier(...)` 공통 loop에는 새 objective만 주입한다
-5. scripts에서는 `query_ssl_method=<preset>`과 `query_ssl_train_source=<preset>`으로 선택한다
+5. scripts에서는 `query_ssl_method=<preset>`과 `query_source=<preset>`으로 선택한다
 6. scripts runner의 `QuerySslAlgorithmAdapter` registry에 loader/preparation wiring을 추가한다
 7. weak/strong view가 필요한 objective면 source row contract와 export helper를 함께 맞춘다
 8. 같은 family runner 안에서는 algorithm-specific wiring만 추가하고, eval/artifact 껍데기는 재사용한다
@@ -525,13 +525,13 @@ class RoundUpdateAcceptancePolicy(Protocol):
 - `agent/src/services/training/peft_adapters/base.py`
 - `agent/src/services/training/peft_adapters/registry.py`
 - `agent/src/services/training/peft_adapters/lora.py`
-- `scripts/conf/lora/*.yaml`
+- `conf/lora/*.yaml`
 
 **교체 절차:**
 1. `peft_adapters/` 아래에 builder 구현을 추가한다
 2. `PeftAdapterBuilder`를 만족하게 만든다
 3. `peft_adapters/registry.py`에 `peft_adapter_name`으로 등록한다
-4. `scripts/conf/lora/<preset>.yaml`에서 `peft_adapter_name`과 method별
+4. `conf/lora/<preset>.yaml`에서 `peft_adapter_name`과 method별
    하이퍼파라미터를 둔다
 
 주의:

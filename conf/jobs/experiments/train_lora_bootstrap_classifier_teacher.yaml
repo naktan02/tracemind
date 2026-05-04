@@ -7,7 +7,7 @@ defaults:
   - /paper_backbone: mxbai_encoder
   - /lora: default
   - /lora_run_preset: default
-  - /bootstrap_teacher_source: dataset_default
+  - /query_source: dataset_default
   - /pseudo_label_algorithm: margin_threshold_v1
   - /query_adaptation_initial_checkpoint: canonical_fixed_classifier_seed
   - /lora_experiment: default
@@ -16,8 +16,8 @@ defaults:
   - _self_
 
 bootstrap_version: ""
-teacher_train_jsonl: ${bootstrap_teacher_source.teacher_train_jsonl}
-teacher_unlabeled_jsonl: ${bootstrap_teacher_source.teacher_unlabeled_jsonl}
+teacher_train_jsonl: ${query_source.train_jsonl}
+teacher_unlabeled_jsonl: ${query_source.unlabeled_jsonl}
 teacher_embed_chunk_size: 1024
 teacher_train_batch_size: 256
 teacher_eval_batch_size: 256

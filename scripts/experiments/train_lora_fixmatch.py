@@ -12,8 +12,8 @@ from scripts.experiments.lora_classifier.query_ssl.consistency_runner import (
 
 @hydra.main(
     version_base=None,
-    config_path="../conf",
-    config_name="experiments/train_lora_fixmatch",
+    config_path="../../conf",
+    config_name="jobs/experiments/train_lora_fixmatch",
 )
 def main(cfg: DictConfig) -> None:
     run_fixmatch_lora_baseline(cfg=cfg)

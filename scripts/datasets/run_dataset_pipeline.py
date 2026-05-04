@@ -27,7 +27,7 @@ from scripts.datasets.lib.split import (  # noqa: E402
 from scripts.prototypes.seeding import seed_prototype_pack  # noqa: E402
 
 PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
-DATASET_CONFIG_DIR = PROJECT_ROOT / "scripts/conf/dataset"
+DATASET_CONFIG_DIR = PROJECT_ROOT / "conf/dataset"
 
 
 def supported_dataset_aliases() -> tuple[str, ...]:
@@ -549,8 +549,8 @@ def run_dataset(
 
 @hydra.main(
     version_base=None,
-    config_path="..conf",
-    config_name="datasets/run_dataset_pipeline",
+    config_path="../../conf",
+    config_name="jobs/datasets/run_dataset_pipeline",
 )
 def main(cfg: DictConfig) -> None:
     if bool(cfg.list_datasets):

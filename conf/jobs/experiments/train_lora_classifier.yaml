@@ -1,0 +1,24 @@
+# @package _global_
+
+defaults:
+  - /dataset: ourafla
+  - /runtime: gpu_online
+  - /paper_backbone: mxbai_encoder
+  - /lora: default
+  - /lora_run_preset: default
+  - /query_source: dataset_default
+  - /query_adaptation_initial_checkpoint: none
+  - /lora_experiment: default
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${query_source.train_jsonl}
+output_dir: runs/train_lora_classifier
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

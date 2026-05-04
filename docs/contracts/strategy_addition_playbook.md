@@ -200,13 +200,13 @@
 - server round runtime 기본 aggregation:
   - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:
-  - `scripts/conf/experiments/` 아래 Hydra config group
+  - `conf/jobs/experiments/` 아래 Hydra config group
 
 원칙:
 
 - 공용 local training 기본값은 `shared`
 - server-owned round runtime 기본값은 `main_server`
-- 실험 preset 기본값은 `scripts/conf`
+- 실험 preset 기본값은 `conf`
 
 ## 6. 전략 추가 후 검증 순서
 

@@ -1,22 +1,27 @@
-# Experiment Config
+# Hydra Config Layout
 
-`conf/`는 최종적으로 TraceMind 실험 조합과 method 파라미터의 루트 Hydra config
-공간이 될 위치다.
+`conf/`는 TraceMind 실험 조합과 method/runtime 파라미터의 루트 Hydra config
+공간이다. 여러 entrypoint나 여러 preset이 공유하는 축만 config group으로
+유지하고, 단일 entrypoint 전용 shape는 해당 job config 안에 둔다.
 
-## 책임
+## 현재 분류
 
-- 사람이 직접 실행할 experiment recipe
-- method 기본 파라미터
-- dataset, model, training, runtime, evaluation config
-- 실험 조합의 source of truth
+- Job config: `jobs/datasets/`, `jobs/prototypes/`, `jobs/experiments/`
+- 공통 실행 축: `dataset/`, `embedding/`, `runtime/`, `paper_backbone/`
+- Prototype 축: `prototype_builder/`
+- Central SSL / LoRA 축: `lora/`, `lora_run_preset/`, `query_source/`,
+  `pseudo_label_algorithm/`, `query_ssl_method/`, `query_ssl_augmenter/`,
+  `query_adaptation_initial_checkpoint/`, `lora_experiment/`
+- FL SSL 축: `federated_run_preset/`, `federated_shard_policy/`,
+  `federated_ssl_method/`, `training_algorithm_profile/`
+- FL simulation entrypoint-local section:
+  `jobs/experiments/run_federated_simulation.yaml`의 `round_runtime`,
+  `training_task`, `validation`, `report`
 
-## 진행 상태
+## 정리 기준
 
-이 디렉터리는 1단계 scaffold다. 현재 활성 Hydra config는 아직 `scripts/conf/`에
-남아 있다. 2단계에서 config group을 이동하면서 entrypoint의 `config_path`,
-Hydra defaults, config compose test를 함께 갱신한다.
-
-## 원칙
-
-YAML은 실행 조합표와 파라미터를 담는다. Python 구현, DB 접근, FastAPI route,
-복잡한 계산 로직은 이 계층에 두지 않는다.
+- 새 job은 `jobs/datasets/`, `jobs/prototypes/`, `jobs/experiments/` 중 하나에 둔다.
+- 새 reusable group은 실행 rail을 이름에 드러낸다.
+- preset이 1개뿐이고 해당 entrypoint에서만 쓰이면 group을 만들지 않는다.
+- YAML은 실행 조합표와 파라미터를 담고, Python 구현이나 복잡한 계산 로직은 두지 않는다.
+- namespace 이동은 Hydra config test와 관련 catalog/doc 갱신을 같이 닫는다.

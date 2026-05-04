@@ -23,8 +23,8 @@ from scripts.experiments.prototype_strategy.sweep import (
 
 @hydra.main(
     version_base=None,
-    config_path="../conf",
-    config_name="experiments/prototype_threshold_sweep",
+    config_path="../../conf",
+    config_name="jobs/experiments/prototype_threshold_sweep",
 )
 def main(config: DictConfig) -> None:
     created_at = datetime.now(timezone.utc)
