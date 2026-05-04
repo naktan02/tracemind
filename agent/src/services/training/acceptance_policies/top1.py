@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.training.ssl.hooks.pseudo_label_selection import (
+from methods.ssl.pseudo_label_selection import (
     registry as pseudo_label_selection_registry,
 )
-from agent.src.services.training.ssl.hooks.pseudo_label_selection.base import (
+from methods.ssl.pseudo_label_selection.base import (
     PseudoLabelSelectionConfig,
 )
 from shared.src.domain.entities.training.pseudo_label_evidence import (
@@ -15,6 +15,7 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 )
 
 from .base import AcceptanceDecision
+from .helpers import acceptance_decision_from_selection_decision
 
 
 @dataclass(slots=True)
@@ -31,7 +32,7 @@ class Top1MarginThresholdAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        return pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+        decision = pseudo_label_selection_registry.build_pseudo_label_selection_hook(
             self.policy_name
         ).evaluate(
             evidence=evidence,
@@ -40,6 +41,7 @@ class Top1MarginThresholdAcceptancePolicy:
                 margin_threshold=margin_threshold,
             ),
         )
+        return acceptance_decision_from_selection_decision(decision)
 
 
 @dataclass(slots=True)
@@ -56,7 +58,7 @@ class Top1ConfidenceOnlyAcceptancePolicy:
         confidence_threshold: float,
         margin_threshold: float,
     ) -> AcceptanceDecision:
-        return pseudo_label_selection_registry.build_pseudo_label_selection_hook(
+        decision = pseudo_label_selection_registry.build_pseudo_label_selection_hook(
             self.policy_name
         ).evaluate(
             evidence=evidence,
@@ -65,3 +67,4 @@ class Top1ConfidenceOnlyAcceptancePolicy:
                 margin_threshold=margin_threshold,
             ),
         )
+        return acceptance_decision_from_selection_decision(decision)

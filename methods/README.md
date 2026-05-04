@@ -39,6 +39,7 @@ research
 현재 활성 구현:
 
 - `methods/ssl/fixmatch/`: USB 스타일 FixMatch objective core
+- `methods/ssl/pseudo_label_selection/`: 중앙/FL SSL pseudo-label selection rule
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
 - `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별

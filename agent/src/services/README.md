@@ -92,9 +92,9 @@
   - query buffer 기반 selection runner
 - `training/selection/query_buffer_selection_diagnostics.py`
   - selection 결과를 family-agnostic summary/trace 진단 shape로 정리
-- `training/training/ssl/hooks/pseudo_label_selection/`
-  - query-domain adaptation 실험에서 재사용하는 pseudo-label selection 알고리즘 구현
-  - 현재 agent selection과 bootstrap teacher pseudo-labeling이 같은 코어를 공유한다
+- `training/selection/pseudo_label_service.py`
+  - `methods/ssl/pseudo_label_selection/`의 selection rule을 agent-local
+    candidate/context/diagnostics로 감싼다
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다

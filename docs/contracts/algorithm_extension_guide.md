@@ -39,7 +39,7 @@
 | Scorer Backend | agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
-| Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `conf/pseudo_label_algorithm/` |
+| Pseudo-label Selection Method | methods/scripts | `top1_margin_threshold`, `top1_confidence_only` | `methods/ssl/pseudo_label_selection/`, `conf/pseudo_label_algorithm/` |
 | Query SSL Algorithm | methods/scripts | `fixmatch` | `methods/ssl/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
 | PEFT Adapter Builder | methods/scripts | `lora`, `rslora` | `methods/adaptation/`, `conf/lora/` |
@@ -317,13 +317,13 @@ class PseudoLabelAcceptancePolicy(Protocol):
 주의:
 - central query-domain 실험에서는 compatibility field로만 남을 수 있다.
 - 현재 bootstrap / pseudo-label self-training 실험의 selection 코어는
-  `agent/src/services/training/ssl/hooks/pseudo_label_selection/`이 소유한다.
+  `methods/ssl/pseudo_label_selection/`이 소유한다.
 
 ---
 
-### 7-1. Pseudo-label Selection Hook (agent/scripts)
+### 7-1. Pseudo-label Selection Method (methods/scripts)
 
-**역할:** 중앙/FL SSL에서 pseudo-label evidence를 어떤 selection hook으로
+**역할:** 중앙/FL SSL에서 pseudo-label evidence를 어떤 selection method로
 해석할지 결정한다.
 
 **현재 구현:**
@@ -331,14 +331,17 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - `top1_confidence_only`
 
 **구성 위치:**
-- agent 코어:
-  - `agent/src/services/training/ssl/hooks/pseudo_label_selection/`
+- method 코어:
+  - `methods/ssl/pseudo_label_selection/`
+- agent adapter:
+  - `agent/src/services/training/selection/pseudo_label_service.py`
+  - `agent/src/services/training/acceptance_policies/`
 - scripts preset:
   - `conf/pseudo_label_algorithm/*.yaml`
 
 **교체 절차:**
-1. `ssl/hooks/pseudo_label_selection/` 아래에 hook 구현을 추가한다
-2. `ssl/hooks/pseudo_label_selection/registry.py`에 얇게 등록한다
+1. `methods/ssl/pseudo_label_selection/` 아래에 method 구현을 추가한다
+2. `methods/ssl/pseudo_label_selection/registry.py`에 얇게 등록한다
 3. `TrainingObjectiveConfigPayload.pseudo_label_algorithm_name`으로 선택한다
 4. scripts에서는 `pseudo_label_algorithm=<preset>`으로 preset을 고른다
 5. acceptance runtime 검증이 필요하면 별도 `acceptance_policy_name`을 함께 둔다
@@ -378,7 +381,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 주의:
 - `FixMatch`는 selection rule이 아니라 adaptation objective다.
-- 즉 기존 `ssl/hooks/pseudo_label_selection/` selection 코어와 같은 축으로 넣지 않는다.
+- 즉 기존 `methods/ssl/pseudo_label_selection/` selection 코어와 같은 축으로 넣지 않는다.
 - USB `fixmatch.py::train_step`의 수식 코어는 `algorithms/fixmatch/algorithm.py`에 두고,
   USB `AlgorithmBase`가 맡던 loop/iterator/hook orchestration만 TraceMind trainer adapter로 둔다.
 - `query_ssl_method` manifest는 `parameters`를 canonical method parameter map으로 남기고,

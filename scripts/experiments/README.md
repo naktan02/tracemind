@@ -51,7 +51,7 @@
   - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
   - `pseudo_label_runner.py`는 현재 offline union retraining helper를 제공한다.
   - `bootstrap_runner.py`의 teacher pseudo-label selection은
-    `agent/src/services/training/training/ssl/hooks/pseudo_label_selection/` 코어를 재사용한다.
+    `methods/ssl/pseudo_label_selection/` 코어를 재사용한다.
   - bootstrap 실험에서 선택 규칙 preset은
     `training_algorithm_profile`이 아니라 `pseudo_label_algorithm` Hydra group으로 고른다.
   - central canonical 비교 규약에서는 same initial checkpoint에서 출발해

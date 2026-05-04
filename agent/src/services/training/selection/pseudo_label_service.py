@@ -10,6 +10,16 @@ from agent.src.services.training.acceptance_policies.base import (
 from agent.src.services.training.acceptance_policies.top1 import (
     Top1MarginThresholdAcceptancePolicy,
 )
+from methods.ssl.pseudo_label_selection.base import (
+    PseudoLabelSelectionConfig,
+    PseudoLabelSelectionHook,
+)
+from methods.ssl.pseudo_label_selection.margin_threshold import (
+    MarginThresholdPseudoLabelSelectionMethod,
+)
+from methods.ssl.pseudo_label_selection.registry import (
+    build_pseudo_label_selection_hook,
+)
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     TrainingDefaultsProfile,
@@ -28,16 +38,6 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
-from ..ssl.hooks.pseudo_label_selection.base import (
-    PseudoLabelSelectionConfig,
-    PseudoLabelSelectionHook,
-)
-from ..ssl.hooks.pseudo_label_selection.margin_threshold import (
-    MarginThresholdPseudoLabelSelectionHook,
-)
-from ..ssl.hooks.pseudo_label_selection.registry import (
-    build_pseudo_label_selection_hook,
-)
 from .evidence_service import (
     PseudoLabelEvidenceService,
 )
@@ -85,9 +85,7 @@ class _BuiltCandidate:
 class PseudoLabelSelectionService:
     """score threshold와 margin 기준으로 pseudo-label을 선별한다."""
 
-    default_profile: TrainingDefaultsProfile = field(
-        default=DEFAULT_TRAINING_PROFILE
-    )
+    default_profile: TrainingDefaultsProfile = field(default=DEFAULT_TRAINING_PROFILE)
     evidence_service: PseudoLabelEvidenceService = field(
         default_factory=PseudoLabelEvidenceService
     )
@@ -95,7 +93,7 @@ class PseudoLabelSelectionService:
         default_factory=Top1MarginThresholdAcceptancePolicy
     )
     default_selection_hook: PseudoLabelSelectionHook = field(
-        default_factory=MarginThresholdPseudoLabelSelectionHook
+        default_factory=MarginThresholdPseudoLabelSelectionMethod
     )
 
     def __post_init__(self) -> None:

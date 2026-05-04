@@ -36,9 +36,7 @@ def register_pseudo_label_acceptance_policy(
 
     registered_policy = (factory, catalog_entry)
     for policy_name in policy_names:
-        _ACCEPTANCE_POLICY_REGISTRY[
-            policy_name.strip().lower()
-        ] = registered_policy
+        _ACCEPTANCE_POLICY_REGISTRY[policy_name.strip().lower()] = registered_policy
 
 
 def build_pseudo_label_acceptance_policy(
@@ -60,8 +58,9 @@ def list_registered_pseudo_label_acceptance_policy_names() -> tuple[str, ...]:
     return tuple(sorted(_ACCEPTANCE_POLICY_REGISTRY))
 
 
-def list_pseudo_label_acceptance_policy_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_pseudo_label_acceptance_policy_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 acceptance policy catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(

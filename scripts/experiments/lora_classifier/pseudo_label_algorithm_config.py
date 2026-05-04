@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from agent.src.services.training.ssl.hooks.pseudo_label_selection.base import (
+from methods.ssl.pseudo_label_selection.base import (
     PseudoLabelSelectionConfig,
 )
 
