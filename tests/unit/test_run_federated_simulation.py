@@ -387,7 +387,7 @@ def test_federated_ssl_method_resolver_only_wires_active_baseline() -> None:
 
     assert descriptor.implementation_status == "active_runtime"
     assert descriptor.client_trainer_name == "local_training_service"
-    assert descriptor.pseudo_labeler_name == "agent_pseudo_label_selection"
+    assert descriptor.pseudo_labeler_name == "ssl_pseudo_label_selection_hook"
     assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
     assert descriptor.requires_custom_client_runtime is False
     assert descriptor.requires_custom_server_runtime is False

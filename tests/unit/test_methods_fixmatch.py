@@ -5,13 +5,13 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from methods.ssl.common import (
-    build_pseudo_label_from_probs,
-)
 from methods.ssl.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
     compute_fixmatch_step,
+)
+from methods.ssl.hooks.pseudo_labeling import (
+    build_pseudo_label_from_probs,
 )
 from methods.ssl.registry import build_query_ssl_algorithm
 

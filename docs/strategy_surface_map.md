@@ -114,9 +114,9 @@ Embedding
 - acceptance는 `policy`와 `threshold`가 분리돼 있다.
 - privacy는 현재 `clip only`와 `noop`만 runtime 구현이 있다.
 - query-domain 중앙 `LoRA + classifier` 비교 레일은 위 active runtime knob와 별도다.
-  bootstrap / pseudo-label self-training 실험의 selection rule source of truth는
+  bootstrap / pseudo-label self-training 실험의 selection source of truth는
   `conf/pseudo_label_algorithm/`이고, 구현 코어는
-  `methods/ssl/pseudo_label_selection/`이 소유한다.
+  `methods/ssl/hooks/selection.py`와 `methods/ssl/hooks/registry.py`가 소유한다.
 - 중앙 query-domain consistency algorithm은 또 다른 별도 축이다.
   현재 `FixMatch`의 algorithm/source source of truth는
   `conf/query_ssl_method/`, `conf/query_source/`,
@@ -147,7 +147,7 @@ Embedding
 - [agent/src/services/inference/scoring_backends.py](../agent/src/services/inference/scoring_backends.py)
 - [agent/src/services/inference/scoring_policies.py](../agent/src/services/inference/scoring_policies.py)
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
-- [methods/ssl/pseudo_label_selection/registry.py](../methods/ssl/pseudo_label_selection/registry.py)
+- [methods/ssl/hooks/registry.py](../methods/ssl/hooks/registry.py)
 - [conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
 - [methods/ssl/base.py](../methods/ssl/base.py)
 - [methods/ssl/registry.py](../methods/ssl/registry.py)

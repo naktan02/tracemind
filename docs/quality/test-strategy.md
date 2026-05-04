@@ -136,7 +136,7 @@ Server 테스트는 round state, aggregation policy, publication side effect가 
 | `tests/unit/test_fixed_classifier_runner.py` | fixed classifier seed runner |
 | `tests/unit/test_lora_supervised_runner.py` | LoRA supervised runner |
 | `tests/unit/test_lora_fixmatch_runner.py` | FixMatch runner |
-| `tests/unit/test_methods_pseudo_label_selection.py` | reusable pseudo-label selection method |
+| `tests/unit/test_methods_ssl_hooks.py` | reusable SSL pseudo-labeling/masking/selection hooks |
 | `tests/unit/test_run_federated_simulation.py` | FL simulation entrypoint |
 | `tests/unit/test_experiment_web_type_generation.py` | experiment web generated type drift |
 | `tests/unit/test_family_extension_type_generation.py` | family extension generated type drift |

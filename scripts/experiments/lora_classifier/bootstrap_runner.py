@@ -13,7 +13,7 @@ from typing import Any
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from methods.ssl.pseudo_label_selection.registry import (
+from methods.ssl.hooks.registry import (
     build_pseudo_label_selection_hook,
 )
 from scripts.datasets.lib.split import split_rows

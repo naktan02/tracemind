@@ -12,11 +12,11 @@ from torch.nn import functional as F
 
 from ..base import QuerySslStepOutput, TextBatchClassifier
 from ..common import (
-    build_fixed_threshold_mask,
-    build_pseudo_label_from_probs,
     compute_prob,
     consistency_cross_entropy_loss,
 )
+from ..hooks.masking import build_fixed_threshold_mask
+from ..hooks.pseudo_labeling import build_pseudo_label_from_probs
 from ..registry import register_query_ssl_algorithm
 
 

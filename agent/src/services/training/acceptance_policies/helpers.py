@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.ssl.pseudo_label_selection.base import PseudoLabelSelectionDecision
+from methods.ssl.hooks.selection import PseudoLabelSelectionDecision
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
