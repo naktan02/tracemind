@@ -10,9 +10,6 @@ from typing import Any
 
 import torch
 
-from agent.src.services.training.query_classifier_adaptation.modeling import (
-    LoraTextClassifier,
-)
 from scripts.run_artifacts import build_run_dir
 
 
@@ -21,7 +18,7 @@ def write_run_artifacts(
     cfg,
     trainer_version: str,
     created_at: datetime,
-    model: LoraTextClassifier,
+    model: Any,
     tokenizer: Any,
     categories: list[str],
     eval_set_map: dict[str, Path],

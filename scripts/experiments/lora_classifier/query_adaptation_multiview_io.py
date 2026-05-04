@@ -7,11 +7,8 @@ from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import cast
+from typing import Any, cast
 
-from agent.src.services.training.datasets.query_adaptation_multiview_service import (
-    QueryAdaptationMultiviewDataset,
-)
 from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 QUERY_ADAPTATION_MULTIVIEW_EXPORT_SCHEMA_VERSION = (
@@ -32,7 +29,7 @@ class QueryAdaptationMultiviewExportArtifacts:
 
 
 def build_labeled_rows_from_query_adaptation_multiview_dataset(
-    dataset: QueryAdaptationMultiviewDataset,
+    dataset: Any,
     *,
     annotation_source: str = "query_adaptation_multiview",
 ) -> list[LabeledQueryRow]:
@@ -68,7 +65,7 @@ def build_labeled_rows_from_query_adaptation_multiview_dataset(
 
 def write_query_adaptation_multiview_dataset(
     *,
-    dataset: QueryAdaptationMultiviewDataset,
+    dataset: Any,
     output_path: str | Path,
     annotation_source: str = "query_adaptation_multiview",
     generated_at: datetime | None = None,
@@ -131,7 +128,7 @@ def write_query_adaptation_multiview_dataset(
 
 def _build_query_adaptation_multiview_summary(
     *,
-    dataset: QueryAdaptationMultiviewDataset,
+    dataset: Any,
     annotation_source: str,
     generated_at: datetime,
 ) -> dict[str, object]:

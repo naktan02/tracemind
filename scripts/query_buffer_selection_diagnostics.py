@@ -5,10 +5,7 @@ from __future__ import annotations
 import json
 from dataclasses import dataclass
 from pathlib import Path
-
-from agent.src.services.training.selection.query_buffer_selection_diagnostics import (
-    QueryBufferSelectionDiagnostics,
-)
+from typing import Any
 
 
 @dataclass(slots=True)
@@ -21,7 +18,7 @@ class QueryBufferSelectionDiagnosticsArtifacts:
 
 def write_query_buffer_selection_diagnostics(
     *,
-    diagnostics: QueryBufferSelectionDiagnostics,
+    diagnostics: Any,
     output_prefix: str | Path,
 ) -> QueryBufferSelectionDiagnosticsArtifacts:
     """Selection summary와 row trace를 파일로 저장한다."""

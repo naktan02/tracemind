@@ -10,21 +10,19 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from agent.src.infrastructure.runtime import resolve_runtime_device
-from agent.src.services.training.query_classifier_adaptation.data import (
-    build_dataloader,
-    build_label_index,
-)
-from agent.src.services.training.query_classifier_adaptation.modeling import build_model
-from agent.src.services.training.query_classifier_adaptation.training import (
-    evaluate_classifier,
-    set_seed,
-)
 from scripts.classification_report import (
     render_confusion_table,
     render_per_category_table,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name
+from scripts.runtime_adapters.query_lora_runtime import (
+    build_query_lora_dataloader,
+    build_query_lora_label_index,
+    build_query_lora_model,
+    evaluate_query_lora_classifier,
+    set_query_lora_seed,
+)
 
 from .initial_checkpoint import resolve_query_adaptation_initial_checkpoint
 
@@ -84,7 +82,7 @@ def prepare_supervised_lora_run_context(
             f"selection_set '{effective_selection_set}' is not included in eval_sets."
         )
 
-    set_seed(int(cfg.seed))
+    set_query_lora_seed(int(cfg.seed))
     effective_train_rows = (
         load_labeled_query_rows(Path(effective_train_jsonl_ref))
         if train_rows is None
@@ -96,7 +94,7 @@ def prepare_supervised_lora_run_context(
         raw_fixed_categories=getattr(cfg, "fixed_categories", None),
     )
 
-    training_device = resolve_runtime_device(str(cfg.runtime.device))
+    training_device = resolve_runtime_device_name(str(cfg.runtime.device))
     created_at = datetime.now(timezone.utc)
     trainer_version = (
         trainer_version_override
@@ -111,7 +109,7 @@ def prepare_supervised_lora_run_context(
         selection_set_name=effective_selection_set,
     )
 
-    model, tokenizer, backbone_summary = build_model(
+    model, tokenizer, backbone_summary = build_query_lora_model(
         cfg=effective_cfg,
         categories=categories,
         device=training_device,
@@ -123,7 +121,7 @@ def prepare_supervised_lora_run_context(
         flush=True,
     )
 
-    train_loader = build_dataloader(
+    train_loader = build_query_lora_dataloader(
         rows=effective_train_rows,
         label_to_index=label_to_index,
         tokenizer=tokenizer,
@@ -213,7 +211,7 @@ def build_eval_loaders(
             if eval_row_map is None
             else eval_row_map[dataset_name]
         )
-        eval_loaders[dataset_name] = build_dataloader(
+        eval_loaders[dataset_name] = build_query_lora_dataloader(
             rows=rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
@@ -237,7 +235,7 @@ def evaluate_supervised_lora_run_context(
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
-        report = evaluate_classifier(
+        report = evaluate_query_lora_classifier(
             model=model,
             dataloader=dataloader,
             categories=categories,
@@ -329,7 +327,7 @@ def _resolve_categories(
         ]
 
     if effective_categories_override is None:
-        return build_label_index(rows)
+        return build_query_lora_label_index(rows)
 
     categories = list(
         dict.fromkeys(str(category) for category in effective_categories_override)

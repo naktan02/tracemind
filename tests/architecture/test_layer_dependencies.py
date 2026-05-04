@@ -10,6 +10,11 @@ SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
+SCRIPTS_SRC = REPO_ROOT / "scripts"
+SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+TEMPORARY_SCRIPT_RUNTIME_IMPORT_EXCEPTIONS = (
+    SCRIPTS_SRC / "experiments" / "federated_simulation",
+)
 LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
@@ -44,9 +49,12 @@ def _find_forbidden_imports(
     *,
     root: Path,
     forbidden_prefixes: tuple[str, ...],
+    ignored_roots: tuple[Path, ...] = (),
 ) -> list[tuple[Path, str]]:
     violations: list[tuple[Path, str]] = []
     for path in _iter_python_files(root):
+        if any(path.is_relative_to(ignored_root) for ignored_root in ignored_roots):
+            continue
         imports = _collect_absolute_imports(path)
         for imported_module in sorted(imports):
             if imported_module.startswith(forbidden_prefixes):
@@ -129,4 +137,21 @@ def test_main_server_agent_imports_are_limited_to_documented_exceptions() -> Non
         f"actual={sorted(str(path) for path in actual_exception_paths)}\n"
         "expected="
         f"{sorted(str(path) for path in TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS)}"
+    )
+
+
+def test_scripts_runtime_imports_stay_behind_documented_bridges() -> None:
+    violations = _find_forbidden_imports(
+        root=SCRIPTS_SRC,
+        forbidden_prefixes=("agent.src", "main_server.src"),
+        ignored_roots=(
+            SCRIPTS_RUNTIME_ADAPTER_SRC,
+            *TEMPORARY_SCRIPT_RUNTIME_IMPORT_EXCEPTIONS,
+        ),
+    )
+    assert not violations, (
+        "scripts는 agent/main_server 내부를 직접 import하지 않는다. "
+        "runtime bridge는 scripts/runtime_adapters에 두고, "
+        "federated_simulation 예외는 FL/runtime translation 정리 후 제거한다.\n"
+        f"{_format_violations(violations)}"
     )

@@ -6,13 +6,6 @@ import json
 from collections import Counter
 from pathlib import Path
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
-from main_server.src.services.federation.assets.prototypes import (
-    PrototypeRebuildService,
-    ReferenceRebuildPrototypePublicationStrategy,
-)
 from methods.prototype.building.base import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
@@ -23,6 +16,10 @@ from scripts.prototypes.io import (
     group_rows_by_label,
     load_jsonl,
     resolve_metadata_from_manifests,
+)
+from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
+from scripts.runtime_adapters.prototype_publication_runtime import (
+    build_reference_prototype_rebuild_service,
 )
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
@@ -53,7 +50,7 @@ def seed_prototype_pack(
     mapping_version, source_dataset_id = resolve_metadata_from_manifests(input_jsonl)
     if build_strategy is None:
         build_strategy = SinglePrototypeBuildStrategy()
-    adapter = EmbeddingAdapterFactory.create(
+    adapter = create_embedding_adapter(
         EmbeddingAdapterSpec(
             backend=backend,
             model_id=embedding_model_id,
@@ -77,12 +74,10 @@ def seed_prototype_pack(
         label_counts[category] = len(label_rows)
         print(f"embedded_category={category} rows={len(texts)}", flush=True)
 
-    rebuild_service = PrototypeRebuildService(
+    rebuild_service = build_reference_prototype_rebuild_service(
+        output_dir=output_dir,
+        build_state_output_dir=build_state_output_dir,
         build_strategy=build_strategy,
-        publication_strategy=ReferenceRebuildPrototypePublicationStrategy(
-            reference_pack_output_dir=output_dir,
-            reference_build_state_output_dir=build_state_output_dir,
-        ),
     )
     rebuild_result = rebuild_service.rebuild(
         PrototypeBuildRequest(

@@ -72,8 +72,10 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
 
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.query_ssl.augmentation."
-        "_build_nllb_backtranslation_service",
-        lambda _cfg: _FakeBacktranslationAugmenter(),
+        "build_nllb_backtranslation_candidate_pairs",
+        lambda _cfg, *, texts: _FakeBacktranslationAugmenter().build_candidate_pairs(
+            texts=texts
+        ),
     )
 
     prepared = prepare_fixmatch_unlabeled_rows(
@@ -95,8 +97,8 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
 
     monkeypatch.setattr(
         "scripts.experiments.lora_classifier.query_ssl.augmentation."
-        "_build_nllb_backtranslation_service",
-        lambda _cfg: (_ for _ in ()).throw(
+        "build_nllb_backtranslation_candidate_pairs",
+        lambda _cfg, *, texts: (_ for _ in ()).throw(
             AssertionError("cache hit should skip regeneration")
         ),
     )

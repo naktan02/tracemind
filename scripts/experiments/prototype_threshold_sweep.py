@@ -8,9 +8,6 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
 from scripts.experiments.prototype_strategy.io_utils import (
     load_jsonl_rows,
     resolve_output_dir,
@@ -19,6 +16,7 @@ from scripts.experiments.prototype_strategy.sweep import (
     ThresholdPolicyExperimentRequest,
     render_sweep_summary,
 )
+from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 
 
 @hydra.main(
@@ -36,7 +34,7 @@ def main(config: DictConfig) -> None:
     )
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
-    adapter = EmbeddingAdapterFactory.create(instantiate(config.embedding.spec))
+    adapter = create_embedding_adapter(instantiate(config.embedding.spec))
     threshold_policies = tuple(
         instantiate(policy_config) for policy_config in config.threshold_policies
     )

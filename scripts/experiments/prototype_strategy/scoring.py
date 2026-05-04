@@ -6,8 +6,8 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from agent.src.services.inference.scoring_service import ScoringService
 from scripts.experiments.prototype_strategy.models import PrototypeIndex
+from scripts.runtime_adapters.prototype_scoring_runtime import PrototypeScoringRuntime
 from shared.src.config.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     build_default_training_objective_config,
@@ -84,7 +84,7 @@ class ConfiguredPrototypeIndexScorer:
     score_policy_name: str = DEFAULT_TRAINING_PROFILE.score_policy_name
     score_top_k: int | None = None
     similarity_name: str = "cosine"
-    scoring_service: ScoringService = field(init=False, repr=False)
+    scoring_runtime: PrototypeScoringRuntime = field(init=False, repr=False)
 
     def __post_init__(self) -> None:
         config = PrototypeScoringConfig(
@@ -93,7 +93,7 @@ class ConfiguredPrototypeIndexScorer:
             score_policy_name=self.score_policy_name,
             score_top_k=self.score_top_k,
         )
-        self.scoring_service = ScoringService.from_objective_config(
+        self.scoring_runtime = PrototypeScoringRuntime(
             build_default_training_objective_config(
                 overrides=config.to_training_objective_overrides()
             ),
@@ -105,7 +105,7 @@ class ConfiguredPrototypeIndexScorer:
         embedding: Sequence[float],
         prototype_index: PrototypeIndex,
     ) -> dict[str, float]:
-        return self.scoring_service.score(
+        return self.scoring_runtime.score(
             embedding,
             _prototype_mapping(prototype_index),
         )

@@ -153,7 +153,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.common.build_model",
+        "scripts.experiments.lora_classifier.common.build_query_lora_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -161,11 +161,12 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.consistency_runner.train_query_ssl_classifier",
+        "scripts.experiments.lora_classifier.query_ssl.consistency_runner."
+        "train_query_ssl_lora_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.common.evaluate_classifier",
+        "scripts.experiments.lora_classifier.common.evaluate_query_lora_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,

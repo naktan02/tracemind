@@ -7,14 +7,12 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent.src.services.training.query_classifier_adaptation.data import (
-    build_multiview_dataloader,
-)
-from agent.src.services.training.query_classifier_adaptation.training import (
-    train_query_ssl_classifier,
-)
 from methods.ssl.registry import build_query_ssl_algorithm
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.runtime_adapters.query_lora_runtime import (
+    build_query_lora_multiview_dataloader,
+    train_query_ssl_lora_classifier,
+)
 
 from ..artifacts import write_run_artifacts
 from .augmentation import (
@@ -227,7 +225,7 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
         )
 
     def _build_unlabeled_loader(context: QuerySslRunContext):
-        return build_multiview_dataloader(
+        return build_query_lora_multiview_dataloader(
             rows=context.effective_unlabeled_rows,
             tokenizer=context.tokenizer,
             batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
@@ -240,7 +238,7 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
         context: QuerySslRunContext,
         unlabeled_loader,
     ) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
-        return train_query_ssl_classifier(
+        return train_query_ssl_lora_classifier(
             model=context.model,
             train_loader=context.train_loader,
             unlabeled_loader=unlabeled_loader,

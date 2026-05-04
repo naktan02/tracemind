@@ -12,9 +12,6 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from agent.src.services.training.datasets.query_adaptation_dataset_service import (
-    QueryAdaptationDataset,
-)
 from scripts.labeled_query_rows import (
     LabeledQueryRow,
     dump_labeled_query_rows,
@@ -92,7 +89,7 @@ def run_pseudo_label_self_training(
     cfg: DictConfig,
     pseudo_label_jsonl: str | Path | None = None,
     pseudo_label_rows: Sequence[LabeledQueryRow] | None = None,
-    pseudo_label_dataset: QueryAdaptationDataset | None = None,
+    pseudo_label_dataset: Any | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
     include_seed_train_rows: bool | None = None,
     train_jsonl_ref: str | Path | None = None,
@@ -142,7 +139,7 @@ def prepare_pseudo_label_self_training_run(
     cfg: DictConfig,
     pseudo_label_jsonl: str | Path | None = None,
     pseudo_label_rows: Sequence[LabeledQueryRow] | None = None,
-    pseudo_label_dataset: QueryAdaptationDataset | None = None,
+    pseudo_label_dataset: Any | None = None,
     seed_train_rows: Sequence[LabeledQueryRow] | None = None,
     include_seed_train_rows: bool | None = None,
     train_jsonl_ref: str | Path | None = None,
@@ -249,7 +246,7 @@ def _resolve_pseudo_label_rows(
     cfg: DictConfig,
     pseudo_label_jsonl: str | Path | None,
     pseudo_label_rows: Sequence[LabeledQueryRow] | None,
-    pseudo_label_dataset: QueryAdaptationDataset | None,
+    pseudo_label_dataset: Any | None,
 ) -> list[LabeledQueryRow]:
     provided_sources = sum(
         source is not None

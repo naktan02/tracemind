@@ -6,10 +6,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from agent.src.services.training.query_classifier_adaptation.training import (
-    train_classifier,
-)
 from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.runtime_adapters.query_lora_runtime import (
+    train_query_lora_classifier,
+)
 
 from .artifacts import write_run_artifacts
 from .common import (
@@ -46,7 +46,7 @@ def run_supervised_lora_baseline(
         eval_set_refs=eval_set_refs,
         trainer_version_override=trainer_version_override,
     )
-    model, history, best_selection_report = train_classifier(
+    model, history, best_selection_report = train_query_lora_classifier(
         model=context.model,
         train_loader=context.train_loader,
         selection_loader=context.selection_loader,

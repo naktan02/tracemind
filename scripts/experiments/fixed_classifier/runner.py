@@ -13,10 +13,6 @@ import torch
 from omegaconf import DictConfig
 from torch import nn
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
-from agent.src.infrastructure.runtime import resolve_runtime_device
 from scripts.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
@@ -26,6 +22,10 @@ from scripts.classification_report import (
 )
 from scripts.labeled_query_rows import LabeledQueryRow
 from scripts.run_artifacts import build_run_dir
+from scripts.runtime_adapters.embedding_runtime import (
+    create_embedding_adapter,
+    resolve_runtime_device_name,
+)
 from shared.src.domain.services import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
@@ -288,8 +288,8 @@ def train_fixed_embedding_classifier(
     """메모리 row 기준으로 fixed embedding classifier를 학습/평가한다."""
 
     categories, label_to_index = build_label_index(train_rows)
-    training_device = resolve_runtime_device(embedding_spec.device)
-    adapter = EmbeddingAdapterFactory.create(embedding_spec)
+    training_device = resolve_runtime_device_name(embedding_spec.device)
+    adapter = create_embedding_adapter(embedding_spec)
 
     print(f"embedding_train_rows={len(train_rows)}", flush=True)
     train_features = embed_rows(
@@ -529,7 +529,7 @@ def load_fixed_classifier_artifacts(
     categories = [str(category) for category in serialized["categories"]]
     state_dict = cast(dict[str, torch.Tensor], serialized["classifier_state_dict"])
     hidden_size = int(serialized.get("hidden_size", state_dict["weight"].shape[1]))
-    training_device = resolve_runtime_device(device)
+    training_device = resolve_runtime_device_name(device)
     model = nn.Linear(hidden_size, len(categories)).to(training_device)
     model.load_state_dict(state_dict)
     model.eval()
@@ -544,7 +544,7 @@ def load_fixed_classifier_artifacts(
         task_prefix=str(manifest.get("task_prefix", "")),
         local_files_only=local_files_only,
     )
-    adapter = EmbeddingAdapterFactory.create(embedding_spec)
+    adapter = create_embedding_adapter(embedding_spec)
     classifier_version = str(manifest["classifier_version"])
     report_path = (
         Path("runs/train_classifier") / classifier_version / "reports" / "report.json"

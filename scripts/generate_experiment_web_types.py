@@ -9,98 +9,14 @@ from typing import Any
 
 from pydantic import BaseModel, TypeAdapter
 
-import main_server.src.services.experiment_workspace.payloads as experiment_payloads
-import shared.src.contracts.workspace_manifest_contracts as workspace_manifest_contracts
+from scripts.runtime_adapters.experiment_web_schema_runtime import (
+    build_experiment_web_type_sources,
+)
 
 ROOT = Path(__file__).resolve().parents[1]
 OUTPUT_PATH = ROOT / "apps/experiment_web/src/types.ts"
 
-TYPE_SOURCES: tuple[tuple[str, Any], ...] = (
-    (
-        "CatalogItemCompileSupport",
-        experiment_payloads.CatalogItemCompileSupport,
-    ),
-    (
-        "CatalogOverrideFieldValueKind",
-        experiment_payloads.CatalogOverrideFieldValueKind,
-    ),
-    (
-        "CatalogSectionSelectionMode",
-        experiment_payloads.CatalogSectionSelectionMode,
-    ),
-    (
-        "WorkspaceConfigScalar",
-        workspace_manifest_contracts.WorkspaceConfigScalar,
-    ),
-    (
-        "CatalogOverrideFieldPayload",
-        experiment_payloads.CatalogOverrideFieldPayload,
-    ),
-    (
-        "CatalogItemPayload",
-        experiment_payloads.CatalogItemPayload,
-    ),
-    (
-        "CatalogSectionPayload",
-        experiment_payloads.CatalogSectionPayload,
-    ),
-    (
-        "CatalogTrackPayload",
-        experiment_payloads.CatalogTrackPayload,
-    ),
-    (
-        "ExperimentCatalogPayload",
-        experiment_payloads.ExperimentCatalogPayload,
-    ),
-    (
-        "SavedWorkspaceSummaryPayload",
-        experiment_payloads.SavedWorkspaceSummaryPayload,
-    ),
-    (
-        "SavedWorkspaceSelectionPreviewPayload",
-        experiment_payloads.SavedWorkspaceSelectionPreviewPayload,
-    ),
-    (
-        "SavedWorkspaceDetailPayload",
-        experiment_payloads.SavedWorkspaceDetailPayload,
-    ),
-    (
-        "LaunchExperimentRunRequestPayload",
-        experiment_payloads.LaunchExperimentRunRequestPayload,
-    ),
-    (
-        "ExperimentRunMetricPayload",
-        experiment_payloads.ExperimentRunMetricPayload,
-    ),
-    (
-        "ExperimentRunResultSummaryPayload",
-        experiment_payloads.ExperimentRunResultSummaryPayload,
-    ),
-    (
-        "ExperimentRunStatus",
-        experiment_payloads.ExperimentRunStatus,
-    ),
-    (
-        "ExperimentRunPayload",
-        experiment_payloads.ExperimentRunPayload,
-    ),
-    (
-        "WorkspaceSelectionPayload",
-        workspace_manifest_contracts.WorkspaceSelectionPayload,
-    ),
-    (
-        "WorkspaceManifestPayload",
-        workspace_manifest_contracts.WorkspaceManifestPayload,
-    ),
-    (
-        "ResolvedWorkspaceSelectionPayload",
-        workspace_manifest_contracts.ResolvedWorkspaceSelectionPayload,
-    ),
-    (
-        "ResolvedExperimentPlanPayload",
-        workspace_manifest_contracts.ResolvedExperimentPlanPayload,
-    ),
-)
+TYPE_SOURCES: tuple[tuple[str, Any], ...] = build_experiment_web_type_sources()
 
 
 def build_schema_definitions() -> dict[str, dict[str, Any]]:
@@ -230,8 +146,7 @@ def render_schema(
             inline_fields = []
             for field_name, field_schema in properties.items():
                 inline_fields.append(
-                    f"{field_name}: "
-                    f"{render_schema(field_schema, definitions)}"
+                    f"{field_name}: {render_schema(field_schema, definitions)}"
                 )
             return "{ " + "; ".join(inline_fields) + " }"
         if additional_properties in (True, None):
@@ -240,8 +155,7 @@ def render_schema(
             return "Record<string, never>"
         if isinstance(additional_properties, Mapping):
             return (
-                "Record<string, "
-                f"{render_schema(additional_properties, definitions)}>"
+                f"Record<string, {render_schema(additional_properties, definitions)}>"
             )
     title = schema.get("title")
     if isinstance(title, str) and title in definitions:

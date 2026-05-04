@@ -6,12 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from omegaconf import DictConfig
 
-from agent.src.services.training.datasets.query_adaptation_dataset_service import (
-    QueryAdaptationDataset,
-)
 from scripts.labeled_query_rows import LabeledQueryRow
 
 from .query_adaptation_io import (
@@ -68,9 +66,9 @@ class PreparedQueryAdaptationSupervisedRun:
 def run_query_adaptation_supervised_baseline(
     *,
     cfg: DictConfig,
-    train_dataset: QueryAdaptationDataset,
-    selection_dataset: QueryAdaptationDataset | None = None,
-    eval_datasets: Mapping[str, QueryAdaptationDataset] | None = None,
+    train_dataset: Any,
+    selection_dataset: Any | None = None,
+    eval_datasets: Mapping[str, Any] | None = None,
     export_root: str | Path = "data/processed/query_adaptation_lora",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
@@ -103,9 +101,9 @@ def run_query_adaptation_supervised_baseline(
 def prepare_query_adaptation_supervised_run(
     *,
     cfg: DictConfig,
-    train_dataset: QueryAdaptationDataset,
-    selection_dataset: QueryAdaptationDataset | None = None,
-    eval_datasets: Mapping[str, QueryAdaptationDataset] | None = None,
+    train_dataset: Any,
+    selection_dataset: Any | None = None,
+    eval_datasets: Mapping[str, Any] | None = None,
     export_root: str | Path = "data/processed/query_adaptation_lora",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,

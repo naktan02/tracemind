@@ -84,16 +84,20 @@ def test_run_supervised_lora_baseline_wires_common_context_and_artifacts(
         captured["train_loader"] = kwargs["train_loader"]
         captured["selection_loader"] = kwargs["selection_loader"]
         captured["categories"] = kwargs["categories"]
-        return kwargs["model"], [{"epoch": 1, "train_loss": 0.1}], {
-            "loss": 0.2,
-            "accuracy_top_1": 0.75,
-            "rows_total": 2,
-            "mean_true_label_probability": 0.7,
-            "mean_top_1_probability": 0.8,
-            "mean_margin_top1_top2": 0.3,
-            "confusion_matrix": {},
-            "per_category": {},
-        }
+        return (
+            kwargs["model"],
+            [{"epoch": 1, "train_loss": 0.1}],
+            {
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+        )
 
     def _fake_write_run_artifacts(**kwargs):
         captured["extra_manifest"] = kwargs["extra_manifest"]
@@ -105,7 +109,7 @@ def test_run_supervised_lora_baseline_wires_common_context_and_artifacts(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.common.build_model",
+        "scripts.experiments.lora_classifier.common.build_query_lora_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -113,11 +117,11 @@ def test_run_supervised_lora_baseline_wires_common_context_and_artifacts(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.runner.train_classifier",
+        "scripts.experiments.lora_classifier.runner.train_query_lora_classifier",
         _fake_train_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.common.evaluate_classifier",
+        "scripts.experiments.lora_classifier.common.evaluate_query_lora_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,

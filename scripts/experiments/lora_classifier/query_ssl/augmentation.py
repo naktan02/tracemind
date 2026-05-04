@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.services.language.backtranslation_service import (
-    NllbBacktranslationService,
-)
 from scripts.labeled_query_rows import (
     LabeledQueryRow,
     dump_labeled_query_rows,
     load_labeled_query_rows,
+)
+from scripts.runtime_adapters.backtranslation_runtime import (
+    build_nllb_backtranslation_candidate_pairs,
 )
 
 QUERY_SSL_AUGMENTER_CACHE_SCHEMA_VERSION = "query_ssl_augmenter_cache.v1"
@@ -164,9 +164,8 @@ def prepare_usb_multiview_unlabeled_rows(
         f"pivots={list(cfg.query_ssl_augmenter.pivot_languages)}",
         flush=True,
     )
-    backtranslation_service = _build_nllb_backtranslation_service(cfg)
-    candidate_pairs = backtranslation_service.build_candidate_pairs(
-        texts=[str(row["text"]) for row in effective_rows]
+    candidate_pairs = build_nllb_backtranslation_candidate_pairs(
+        cfg, texts=[str(row["text"]) for row in effective_rows]
     )
     if len(candidate_pairs) != len(effective_rows):
         raise ValueError(
@@ -259,23 +258,6 @@ def _validate_usb_candidate_rows(
             f"{algorithm_name} requires each unlabeled row to include both aug_0 "
             f"and aug_1. Missing examples: {missing_query_ids[:5]}."
         )
-
-
-def _build_nllb_backtranslation_service(cfg) -> NllbBacktranslationService:
-    return NllbBacktranslationService(
-        source_lang=str(cfg.query_ssl_augmenter.source_lang),
-        pivot_languages=tuple(
-            str(language) for language in cfg.query_ssl_augmenter.pivot_languages
-        ),
-        model_id=str(cfg.query_ssl_augmenter.model_id),
-        revision=str(cfg.query_ssl_augmenter.revision),
-        device=str(cfg.query_ssl_augmenter.device),
-        batch_size=int(cfg.query_ssl_augmenter.batch_size),
-        max_new_tokens=int(cfg.query_ssl_augmenter.max_new_tokens),
-        torch_dtype=str(getattr(cfg.query_ssl_augmenter, "torch_dtype", "auto")),
-        cache_dir=str(cfg.query_ssl_augmenter.cache_dir),
-        local_files_only=bool(cfg.query_ssl_augmenter.local_files_only),
-    )
 
 
 def _resolve_cache_artifacts(

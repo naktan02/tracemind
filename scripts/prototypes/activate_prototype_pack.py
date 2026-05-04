@@ -4,8 +4,8 @@ from __future__ import annotations
 
 import argparse
 
-from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
-    PrototypePackService,
+from scripts.runtime_adapters.prototype_publication_runtime import (
+    activate_prototype_pack_version,
 )
 
 
@@ -25,7 +25,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    pointer = PrototypePackService().activate(args.prototype_version)
+    pointer = activate_prototype_pack_version(args.prototype_version)
     print(f"prototype_version={pointer.prototype_version}")
     print(f"activated_at={pointer.activated_at.isoformat()}")
 

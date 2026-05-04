@@ -8,13 +8,6 @@ from collections import Counter
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
-    EmbeddingAdapterFactory,
-)
-from main_server.src.services.federation.assets.prototypes import (  # noqa: E402
-    PrototypeBuildStateService,
-    PrototypePackService,
-)
 from methods.prototype.building.pack_builder import (  # noqa: E402
     PrototypePackBuilder,
 )
@@ -22,6 +15,13 @@ from scripts.prototypes.io import (  # noqa: E402
     group_rows_by_label,
     load_jsonl,
     resolve_metadata_from_manifests,
+)
+from scripts.runtime_adapters.embedding_runtime import (  # noqa: E402
+    create_embedding_adapter,
+)
+from scripts.runtime_adapters.prototype_publication_runtime import (  # noqa: E402
+    publish_prototype_build_state,
+    publish_prototype_pack,
 )
 from shared.src.contracts.prototype_build_state_contracts import (  # noqa: E402
     SinglePrototypeBuildStatePayload,
@@ -139,7 +139,7 @@ def update_prototype_build_state(
             f"build state: {unexpected_categories}"
         )
 
-    adapter = EmbeddingAdapterFactory.create(
+    adapter = create_embedding_adapter(
         EmbeddingAdapterSpec(
             backend=base_state.embedding_backend,
             model_id=base_state.embedding_model_id,
@@ -186,10 +186,8 @@ def update_prototype_build_state(
     pack_payload = build_single_prototype_pack_payload(pack)
     dump_prototype_pack_payload(pack_path, pack_payload)
 
-    main_server_build_state_path = PrototypeBuildStateService().publish_state(
-        build_state_payload
-    )
-    main_server_pack_path = PrototypePackService().publish_pack(pack_payload)
+    main_server_build_state_path = publish_prototype_build_state(build_state_payload)
+    main_server_pack_path = publish_prototype_pack(pack_payload)
     manifest = {
         "prototype_version": prototype_version,
         "base_build_state": str(base_build_state_path),

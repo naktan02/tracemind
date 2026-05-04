@@ -10,9 +10,6 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (  # noqa: E402
-    EmbeddingAdapterFactory,
-)
 from scripts.classification_report import (  # noqa: E402
     render_confusion_table,
     render_per_category_table,
@@ -20,6 +17,9 @@ from scripts.classification_report import (  # noqa: E402
 from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
 from scripts.prototypes.io import load_jsonl  # noqa: E402
 from scripts.run_artifacts import build_run_dir  # noqa: E402
+from scripts.runtime_adapters.embedding_runtime import (  # noqa: E402
+    create_embedding_adapter,
+)
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
     load_prototype_pack_payload,
@@ -66,7 +66,7 @@ def main(cfg: DictConfig) -> None:
             "embedding.spec must instantiate to EmbeddingAdapterSpec, "
             f"got {type(embedding_spec)!r}."
         )
-    adapter = EmbeddingAdapterFactory.create(embedding_spec)
+    adapter = create_embedding_adapter(embedding_spec)
 
     created_at = datetime.now(timezone.utc)
     run_id = created_at.strftime("%Y%m%dT%H%M%SZ")

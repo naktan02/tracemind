@@ -4,7 +4,9 @@ from __future__ import annotations
 
 import argparse
 
-from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from scripts.runtime_adapters.prototype_publication_runtime import (
+    pull_current_prototype_pack,
+)
 
 
 def parse_args() -> argparse.Namespace:
@@ -21,7 +23,7 @@ def parse_args() -> argparse.Namespace:
 
 def main() -> None:
     args = parse_args()
-    pointer = PrototypeSyncService().pull_current(server_base_url=args.server_base_url)
+    pointer = pull_current_prototype_pack(server_base_url=args.server_base_url)
     print(f"prototype_version={pointer.prototype_version}")
     print(f"activated_at={pointer.activated_at.isoformat()}")
 

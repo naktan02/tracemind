@@ -19,6 +19,7 @@
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
 - `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/shard adapter
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
+- `scripts/runtime_adapters/`: scripts가 불가피하게 agent/main_server runtime을 재사용할 때 쓰는 명시 bridge
 - `conf/execution_context/`: dataset asset, embedding adapter, runtime environment config group
 - `conf/strategy_axes/prototype/`: prototype pack 같은 공유 artifact 생성 config group
 - `conf/strategy_axes/`: SSL/adaptation/FL 전략 축 config group
@@ -32,6 +33,8 @@
 
 - production/runtime에서 재사용해야 하는 코어는 `shared`, `agent`, `main_server`로 올린다.
 - `scripts`는 그 코어를 조합해서 실행하는 entrypoint와 experiment 전용 helper만 둔다.
+- `scripts`는 `agent.src`, `main_server.src` 내부를 직접 import하지 않는다. 필요한 경우 역할이 드러나는 함수형 bridge를 `scripts/runtime_adapters/`에 둔다.
+- `scripts/experiments/federated_simulation/`의 직접 runtime import는 FL/runtime translation 정리 전까지의 임시 예외다.
 - `scripts/prototypes/lib` 같은 compatibility indirection은 유지하지 않는다.
 
 현재 활성 실행 방식은 **Hydra config group + override** 기준이다.  

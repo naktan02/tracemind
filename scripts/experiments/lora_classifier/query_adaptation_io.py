@@ -8,10 +8,8 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from math import fsum
 from pathlib import Path
+from typing import Any
 
-from agent.src.services.training.datasets.query_adaptation_dataset_service import (
-    QueryAdaptationDataset,
-)
 from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION = "query_adaptation_lora_export.v1"
@@ -28,7 +26,7 @@ class QueryAdaptationLoraExportArtifacts:
 
 
 def build_labeled_rows_from_query_adaptation_dataset(
-    dataset: QueryAdaptationDataset,
+    dataset: Any,
     *,
     annotation_source: str = "query_adaptation_dataset",
 ) -> list[LabeledQueryRow]:
@@ -57,7 +55,7 @@ def build_labeled_rows_from_query_adaptation_dataset(
 
 def write_query_adaptation_lora_dataset(
     *,
-    dataset: QueryAdaptationDataset,
+    dataset: Any,
     output_path: str | Path,
     annotation_source: str = "query_adaptation_dataset",
     generated_at: datetime | None = None,
@@ -116,7 +114,7 @@ def write_query_adaptation_lora_dataset(
 
 def _build_query_adaptation_summary(
     *,
-    dataset: QueryAdaptationDataset,
+    dataset: Any,
     annotation_source: str,
     generated_at: datetime,
 ) -> dict[str, object]:
