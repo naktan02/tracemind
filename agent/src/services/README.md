@@ -116,6 +116,8 @@
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`
   - single-view, weak/strong pair 같은 training input backend 구현
+- `methods/prototype/training_inputs/`
+  - prototype score 기반 single/multiview input view 계산 core
 - `training/backends/evidence/`
   - pseudo-label evidence 정규화 backend 구현
 - `training/acceptance_policies/`
@@ -128,7 +130,8 @@
 ## 전략 추가 시 출발점
 
 - training backend 추가: `methods/adaptation/<family>/`와 `training/backends/training/`
-- example-generation backend 추가: `training/backends/inputs/`와 `training/examples/service.py`
+- example-generation backend 추가: `methods/prototype/training_inputs/`,
+  `training/backends/inputs/`, `training/examples/service.py`
 - scorer backend 추가: `inference/scoring_backends.py`
 - prototype score policy 추가: `methods/prototype/scoring/`
 - privacy guard 추가: `training/execution/privacy_guard_service.py`

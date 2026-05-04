@@ -2,15 +2,18 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass, replace
+from dataclasses import dataclass
 from datetime import datetime, timezone
 
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
+from methods.prototype.training_inputs.examples import (
+    PrototypeSingleViewTrainingInput,
+    build_prototype_rescore_inputs,
+    build_prototype_rescore_inputs_from_stored_events,
+)
 from shared.src.contracts.common_types import TrainingScope
-from shared.src.contracts.prototype_contracts import extract_category_prototypes
-from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.shared_adapter_state import (
     IdentitySharedAdapterState,
 )
@@ -39,33 +42,15 @@ class PrototypeRescoringTrainingExampleBackend:
 
         texts = [row.text for row in request.source_rows]
         base_embeddings = request.adapter.embed_texts(texts)
-        prototypes = extract_category_prototypes(request.prototype_pack)
-        examples: list[EmbeddedTrainingExample] = []
-        for row, base_embedding in zip(
-            request.source_rows,
-            base_embeddings,
-            strict=True,
-        ):
-            adapted_embedding = request.adapter_state.apply(base_embedding)
-            scored_event = ScoredEvent(
-                query_id=row.query_id,
-                occurred_at=row.occurred_at,
-                translated_text=row.translated_text,
-                embedding_model_id=request.model_id,
-                translation_model_id=request.prototype_pack.translation_model_id,
-                category_scores=request.scoring_service.score(
-                    adapted_embedding,
-                    prototypes,
-                ),
-            )
-            examples.append(
-                EmbeddedTrainingExample(
-                    scored_event=scored_event,
-                    embedding=adapted_embedding,
-                    base_embedding=list(base_embedding),
-                )
-            )
-        return tuple(examples)
+        inputs = build_prototype_rescore_inputs(
+            source_rows=request.source_rows,
+            base_embeddings=base_embeddings,
+            adapter_state=request.adapter_state,
+            prototype_pack=request.prototype_pack,
+            model_id=request.model_id,
+            scorer=request.scoring_service,
+        )
+        return tuple(_to_embedded_example(input_item) for input_item in inputs)
 
     def build_examples_from_stored_events(
         self,
@@ -87,25 +72,20 @@ class PrototypeRescoringTrainingExampleBackend:
             embedding_dim=len(usable_events[0].base_embedding),
             updated_at=datetime.now(tz=timezone.utc),
         )
-        prototypes = extract_category_prototypes(request.prototype_pack)
-        examples: list[EmbeddedTrainingExample] = []
-        for stored_event in usable_events:
-            base_embedding = stored_event.base_embedding
-            if base_embedding is None:
-                continue
-            adapted_embedding = adapter_state.apply(base_embedding)
-            scored_event = replace(
-                stored_event.scored_event,
-                category_scores=request.scoring_service.score(
-                    adapted_embedding,
-                    prototypes,
-                ),
-            )
-            examples.append(
-                EmbeddedTrainingExample(
-                    scored_event=scored_event,
-                    embedding=adapted_embedding,
-                    base_embedding=list(base_embedding),
-                )
-            )
-        return tuple(examples)
+        inputs = build_prototype_rescore_inputs_from_stored_events(
+            stored_events=usable_events,
+            adapter_state=adapter_state,
+            prototype_pack=request.prototype_pack,
+            scorer=request.scoring_service,
+        )
+        return tuple(_to_embedded_example(input_item) for input_item in inputs)
+
+
+def _to_embedded_example(
+    input_item: PrototypeSingleViewTrainingInput,
+) -> EmbeddedTrainingExample:
+    return EmbeddedTrainingExample(
+        scored_event=input_item.scored_event,
+        embedding=list(input_item.embedding),
+        base_embedding=list(input_item.base_embedding),
+    )

@@ -99,20 +99,23 @@
 
 보통 수정 파일:
 
+- [methods/prototype/training_inputs/](../../methods/prototype/training_inputs/)
 - [agent/src/services/training/backends/inputs/__init__.py](../../agent/src/services/training/backends/inputs/__init__.py)
 - [agent/src/services/training/examples/service.py](../../agent/src/services/training/examples/service.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 
 작업 순서:
 
-1. `TrainingExampleBackend` 구현 클래스를 추가한다.
-2. `supported_adapter_kinds`를 정확히 적는다.
-3. `register_training_example_backend(...)`로 등록한다.
-4. `resolve_training_example_backend(...)` 경로에서 현재 training backend와 호환되는지 확인한다.
-5. stored event 경로와 raw row 경로를 둘 다 테스트한다.
+1. 재사용 가능한 prototype input view 계산은 `methods/prototype/training_inputs/`에 추가한다.
+2. `TrainingExampleBackend` 구현 클래스를 추가한다.
+3. `supported_adapter_kinds`를 정확히 적는다.
+4. `register_training_example_backend(...)`로 등록한다.
+5. `resolve_training_example_backend(...)` 경로에서 현재 training backend와 호환되는지 확인한다.
+6. stored event 경로와 raw row 경로를 둘 다 테스트한다.
 
 우선 볼 테스트:
 
+- [tests/unit/test_methods_prototype_training_inputs.py](../../tests/unit/test_methods_prototype_training_inputs.py)
 - [agent/tests/unit/test_training_example_service.py](../../agent/tests/unit/test_training_example_service.py)
 - [agent/tests/unit/test_local_training_service.py](../../agent/tests/unit/test_local_training_service.py)
 

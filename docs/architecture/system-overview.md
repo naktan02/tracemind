@@ -159,6 +159,7 @@ Raw Event / Local Signal
 | round lifecycle | `main_server/src/services/federation/rounds/round_lifecycle_service.py` |
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
 | diagonal-scale local update core | `methods/adaptation/diagonal_scale/*` |
+| prototype training input core | `methods/prototype/training_inputs/*` |
 | FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |

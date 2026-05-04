@@ -12,6 +12,7 @@
 - FL-SSL composition에서 재사용되는 method 조립 규칙
 - prototype builder, assignment, update 같은 연구/production 공통 mechanism
 - prototype scoring/evidence 같은 local inference/training 공통 mechanism
+- prototype 기반 학습 input view 계산
 
 ## 제외
 
@@ -52,6 +53,7 @@ research
 - `methods/federated_ssl/`: FL SSL method descriptor와 조합 metadata
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
+- `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
 
 다음 단계에서는 prototype method를 실제 구현이 붙는 순서대로 작은 단위로
 옮긴다.

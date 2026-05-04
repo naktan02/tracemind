@@ -34,7 +34,7 @@
 |---|---|---|---|
 | Algorithm Profile | shared/scripts | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `shared/src/config/training_algorithm_profiles.py`, `conf/training_algorithm_profile/` |
 | Training Backend | methods/agent | DiagonalScaleHeuristicTrainingBackend | `methods/adaptation/diagonal_scale/`, `agent/src/services/training/backends/training/` |
-| Example Generation Backend | agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
+| Example Generation Backend | methods/agent | PrototypeRescoringTrainingExampleBackend, WeakStrongPairTrainingExampleBackend | `methods/prototype/training_inputs/`, `agent/src/services/training/backends/inputs/`, `agent/src/services/training/examples/service.py` |
 | Evidence Backend | methods/agent | PrototypeSimilarityEvidenceBackend | `methods/prototype/evidence/`, `agent/src/services/training/backends/evidence/` |
 | Scorer Backend | methods/agent/scripts | PrototypeSimilarityScoringBackend, ClassifierHeadLogitsScoringBackend | `methods/prototype/scoring/`, `agent/src/services/inference/scoring_backends.py` |
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
@@ -132,11 +132,15 @@ class SharedAdapterTrainingBackend(Protocol):
 
 ---
 
-### 3. Example Generation Backend (agent)
+### 3. Example Generation Backend (methods/agent)
 
 **역할:** raw row 또는 stored scored event를 `EmbeddedTrainingExample`으로
 재구성하는 방식. 역할상 `training input backend`에 가깝지만,
 현재 코드 식별자는 `Example Generation Backend`를 유지한다.
+
+prototype score 기반 view 계산 core는 `methods/prototype/training_inputs/`가
+소유하고, agent backend는 embedding 실행과 `EmbeddedTrainingExample` wrapping을
+맡는다.
 
 **Protocol:**
 ```python
@@ -171,9 +175,10 @@ class TrainingExampleBackend(Protocol):
   - 현재는 stored scored event 재구성 경로를 아직 지원하지 않는다.
 
 **교체 절차:**
-1. `training/input_backends/` 아래에 새 backend 구현 파일을 추가한다
-2. `register_training_example_backend()`로 thin registry wiring에 등록
-3. `TrainingObjectiveConfigPayload.example_generation_backend_name`으로 선택
+1. 재사용 가능한 input view 계산이면 `methods/prototype/training_inputs/`에 먼저 둔다
+2. `training/backends/inputs/` 아래에 agent backend adapter를 추가한다
+3. `register_training_example_backend()`로 thin registry wiring에 등록
+4. `TrainingObjectiveConfigPayload.example_generation_backend_name`으로 선택
 
 ---
 

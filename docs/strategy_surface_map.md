@@ -110,6 +110,9 @@ Embedding
 - prototype score policy 계산 core는 `methods/prototype/scoring/`이 소유하고,
   agent scoring backend는 이를 inference/training runtime에 연결한다.
 - pseudo-label selection은 `example generation -> evidence backend -> selection algorithm -> acceptance policy`로 분리돼 있다.
+- prototype score 기반 input view 계산 core는
+  `methods/prototype/training_inputs/`가 소유하고, agent example backend는 이를
+  `EmbeddedTrainingExample`으로 감싼다.
 - `prototype_similarity_evidence`의 evidence 정규화 core는
   `methods/prototype/evidence/`가 소유하고, agent evidence backend는 이를
   runtime registry에 연결한다.
@@ -148,6 +151,7 @@ Embedding
 
 - [agent/src/services/training/backends/training/__init__.py](../agent/src/services/training/backends/training/__init__.py)
 - [methods/adaptation/diagonal_scale/](../methods/adaptation/diagonal_scale/)
+- [methods/prototype/training_inputs/](../methods/prototype/training_inputs/)
 - [agent/src/services/training/backends/inputs/__init__.py](../agent/src/services/training/backends/inputs/__init__.py)
 - [agent/src/services/training/examples/service.py](../agent/src/services/training/examples/service.py)
 - [agent/src/services/training/backends/evidence/__init__.py](../agent/src/services/training/backends/evidence/__init__.py)
