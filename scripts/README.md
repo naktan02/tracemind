@@ -650,7 +650,7 @@ canonical 경로:
 - Query SSL consistency runner: `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - agent 학습 코어: `agent/src/services/training/query_classifier_adaptation/`
 - Query SSL objective 코어: `methods/ssl/`
-- PEFT adapter builder: `agent/src/services/training/peft_adapters/`
+- PEFT adapter builder: `methods/adaptation/`
 - USB FixMatch core mapping: `methods/ssl/fixmatch/fixmatch.py`
 - teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
 - teacher bootstrap helper: `scripts/experiments/lora_classifier/bootstrap_runner.py`

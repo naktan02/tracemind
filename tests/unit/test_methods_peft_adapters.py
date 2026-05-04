@@ -6,10 +6,10 @@ from types import SimpleNamespace
 
 from torch import nn
 
-from agent.src.services.training.peft_adapters.base import (
+from methods.adaptation.peft.base import (
     PeftAdapterBuildContext,
 )
-from agent.src.services.training.peft_adapters.registry import (
+from methods.adaptation.peft.registry import (
     build_peft_adapter_builder,
     resolve_peft_adapter_name,
 )

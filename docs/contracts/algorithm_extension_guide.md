@@ -42,7 +42,7 @@
 | Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `conf/pseudo_label_algorithm/` |
 | Query SSL Algorithm | methods/scripts | `fixmatch` | `methods/ssl/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
-| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/peft_adapters/`, `conf/lora/` |
+| PEFT Adapter Builder | methods/scripts | `lora`, `rslora` | `methods/adaptation/`, `conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
@@ -513,7 +513,7 @@ class RoundUpdateAcceptancePolicy(Protocol):
   순서를 유지하고, trust policy / encryption scheme / aggregation rule을 한 클래스에
   섞지 않는다.
 
-### PEFT Adapter Builder (agent/scripts)
+### PEFT Adapter Builder (methods/scripts)
 
 **역할:** 중앙 query adaptation rail에서 frozen backbone 위에 얹는 PEFT adapter
 생성 방식을 바꾼다.
@@ -523,15 +523,15 @@ class RoundUpdateAcceptancePolicy(Protocol):
 - `rslora`
 
 **구성 위치:**
-- `agent/src/services/training/peft_adapters/base.py`
-- `agent/src/services/training/peft_adapters/registry.py`
-- `agent/src/services/training/peft_adapters/lora.py`
+- `methods/adaptation/peft/base.py`
+- `methods/adaptation/peft/registry.py`
+- `methods/adaptation/lora/lora_adapter.py`
 - `conf/lora/*.yaml`
 
 **교체 절차:**
-1. `peft_adapters/` 아래에 builder 구현을 추가한다
+1. `methods/adaptation/<method_name>/` 아래에 builder 구현을 추가한다
 2. `PeftAdapterBuilder`를 만족하게 만든다
-3. `peft_adapters/registry.py`에 `peft_adapter_name`으로 등록한다
+3. `methods/adaptation/peft/registry.py`에 `peft_adapter_name`으로 등록한다
 4. `conf/lora/<preset>.yaml`에서 `peft_adapter_name`과 method별
    하이퍼파라미터를 둔다
 

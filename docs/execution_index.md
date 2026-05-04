@@ -47,7 +47,7 @@ Seed / central SSL:
 6. `scripts/experiments/train_lora_fixmatch.py`
 7. `agent/src/services/training/query_classifier_adaptation/*`
 8. `methods/ssl/*`
-9. `agent/src/services/training/peft_adapters/*`
+9. `methods/adaptation/*`
 
 Agent runtime:
 

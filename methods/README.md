@@ -39,5 +39,7 @@ research
 현재 활성 구현:
 
 - `methods/ssl/fixmatch/`: USB 스타일 FixMatch objective core
+- `methods/adaptation/peft/`: PEFT adapter builder seam
+- `methods/adaptation/lora/`: LoRA/RSLoRA builder core
 
-다음 단계부터 LoRA/PEFT, FedAvg 계산 core, prototype method를 작은 단위로 옮긴다.
+다음 단계부터 FedAvg 계산 core, prototype method를 작은 단위로 옮긴다.

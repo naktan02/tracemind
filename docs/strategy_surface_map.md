@@ -125,7 +125,7 @@ Embedding
   algorithm 선택 seam은 `methods/ssl/base.py`와
   `methods/ssl/registry.py`에 두며,
   trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
-  PEFT adapter 생성은 `agent/src/services/training/peft_adapters/registry.py`에서
+  PEFT adapter 생성은 `methods/adaptation/peft/registry.py`에서
   `lora.peft_adapter_name`으로 선택한다. 현재 활성 builder는 `lora`, `rslora`이며
   DoRA/IA3는 실제 구현이 붙을 때 별도 builder로 추가한다.
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,

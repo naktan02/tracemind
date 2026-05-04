@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from .base import PeftAdapterBuilder
+from methods.adaptation.peft.base import PeftAdapterBuilder
 
 PeftAdapterBuilderFactory = Callable[[], PeftAdapterBuilder]
 
@@ -53,4 +53,4 @@ def build_peft_adapter_builder(adapter_name: str) -> PeftAdapterBuilder:
 
 
 # Built-in PEFT adapters self-register via decorators when imported.
-from . import lora as _lora  # noqa: E402,F401
+from methods.adaptation.lora import lora_adapter as _lora_adapter  # noqa: E402,F401

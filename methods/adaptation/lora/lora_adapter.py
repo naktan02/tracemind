@@ -7,8 +7,8 @@ from typing import Any
 
 from torch import nn
 
-from .base import PeftAdapterBuildContext
-from .registry import register_peft_adapter_builder
+from methods.adaptation.peft.base import PeftAdapterBuildContext
+from methods.adaptation.peft.registry import register_peft_adapter_builder
 
 
 def resolve_target_modules(raw_value: Any) -> str | list[str]:
