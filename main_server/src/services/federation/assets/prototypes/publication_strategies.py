@@ -6,7 +6,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from methods.prototype.building.build_strategies import PrototypeBuildArtifacts
+from methods.prototype.building.base import PrototypeBuildArtifacts
 from shared.src.contracts.prototype_build_state_contracts import (
     dump_prototype_build_state_payload,
 )

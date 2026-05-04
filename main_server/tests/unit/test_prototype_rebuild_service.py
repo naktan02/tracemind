@@ -26,9 +26,13 @@ from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )
-from methods.prototype.building.build_strategies import (
-    KMeansPrototypeBuildStrategy,
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
+)
+from methods.prototype.building.kmeans import (
+    KMeansPrototypeBuildStrategy,
+)
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
 from shared.src.contracts.adapter_contracts import VectorAdapterState

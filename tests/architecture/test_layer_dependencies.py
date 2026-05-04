@@ -14,6 +14,7 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
 )
+PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 
@@ -82,6 +83,14 @@ def test_prototype_builder_core_stays_in_methods_layer() -> None:
     assert not existing_paths, (
         "prototype builder 알고리즘 core는 methods/prototype/building에 둔다. "
         f"legacy shared paths={sorted(str(path) for path in existing_paths)}"
+    )
+
+
+def test_prototype_building_keeps_strategy_files_separate() -> None:
+    monolith_path = PROTOTYPE_BUILDING_SRC / "build_strategies.py"
+    assert not monolith_path.exists(), (
+        "prototype builder strategy는 base/single/kmeans/dbscan 파일로 나눈다. "
+        f"monolith path={_relative_repo_path(monolith_path)}"
     )
 
 

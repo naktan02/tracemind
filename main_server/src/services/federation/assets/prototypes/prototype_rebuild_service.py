@@ -5,9 +5,11 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 
-from methods.prototype.building.build_strategies import (
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
+)
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock

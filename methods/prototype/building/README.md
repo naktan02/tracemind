@@ -5,7 +5,11 @@
 현재 포함:
 
 - `pack_builder.py`: single-centroid pack과 exact incremental build-state 계산
-- `build_strategies.py`: `single`, `kmeans`, `dbscan` build strategy
+- `base.py`: build request/artifact/protocol
+- `vector_ops.py`: centroid 정규화와 deterministic sampling helper
+- `single.py`: `single` build strategy
+- `kmeans.py`: `kmeans` build strategy
+- `dbscan.py`: `dbscan` build strategy
 
 경계:
 

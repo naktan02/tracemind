@@ -14,7 +14,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from methods.prototype.building.build_strategies import (
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
 from scripts.experiments.federated_simulation import (

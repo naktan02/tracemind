@@ -13,7 +13,7 @@ from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.prototype.building.build_strategies import PrototypeBuildStrategy
+from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.federated_simulation.artifacts import (
     save_model_manifest,
     save_prototype_pack,

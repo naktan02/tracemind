@@ -4,10 +4,16 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from methods.prototype.building.build_strategies import (
-    DbscanPrototypeBuildStrategy,
-    KMeansPrototypeBuildStrategy,
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
+)
+from methods.prototype.building.dbscan import (
+    DbscanPrototypeBuildStrategy,
+)
+from methods.prototype.building.kmeans import (
+    KMeansPrototypeBuildStrategy,
+)
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
 

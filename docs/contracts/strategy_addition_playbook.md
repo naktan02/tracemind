@@ -61,7 +61,10 @@
 
 보통 수정 파일:
 
-- [methods/prototype/building/build_strategies.py](../../methods/prototype/building/build_strategies.py)
+- [methods/prototype/building/base.py](../../methods/prototype/building/base.py)
+- [methods/prototype/building/single.py](../../methods/prototype/building/single.py)
+- [methods/prototype/building/kmeans.py](../../methods/prototype/building/kmeans.py)
+- [methods/prototype/building/dbscan.py](../../methods/prototype/building/dbscan.py)
 - [methods/prototype/building/pack_builder.py](../../methods/prototype/building/pack_builder.py)
 - [scripts/experiments/prototype_strategy/strategies.py](../../scripts/experiments/prototype_strategy/strategies.py)
 - 운영 artifact builder로 열 때만 [conf/prototype_builder/](../../conf/prototype_builder/)
@@ -69,7 +72,7 @@
 작업 순서:
 
 1. Prototype pack payload shape가 기존 `PrototypePackPayload`로 충분한지 먼저 확인한다.
-2. build 알고리즘 계산은 `methods/prototype/building/`에 둔다.
+2. build 알고리즘 계산은 `methods/prototype/building/<builder_name>.py`에 둔다.
 3. 실험 모듈에는 `PrototypeIndex` adapter와 selection glue만 둔다.
 4. exact incremental build-state를 지원하지 않으면 `supports_exact_build_state=False`로 둔다.
 5. 기본 artifact builder로 노출할 때만 `conf/prototype_builder/`에 Hydra group을 추가한다.

@@ -314,8 +314,8 @@ entrypoint:
 구현 경계:
 
 - `single`, `kmeans`, `dbscan` prototype build 계산은
-  [methods/prototype/building/build_strategies.py](../methods/prototype/building/build_strategies.py)
-  의 method build strategy를 사용한다.
+  [methods/prototype/building/](../methods/prototype/building/)의 builder별
+  method build strategy를 사용한다.
 - exact single-centroid build-state 계산은
   [methods/prototype/building/pack_builder.py](../methods/prototype/building/pack_builder.py)
   가 소유한다.

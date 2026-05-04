@@ -13,12 +13,12 @@ from main_server.src.services.federation.assets.prototypes import (
     PrototypeRebuildService,
     ReferenceRebuildPrototypePublicationStrategy,
 )
-from methods.prototype.building.build_strategies import (
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
     PrototypeBuildStrategy,
-    SinglePrototypeBuildStrategy,
     describe_prototype_build_strategy,
 )
+from methods.prototype.building.single import SinglePrototypeBuildStrategy
 from scripts.prototypes.io import (
     group_rows_by_label,
     load_jsonl,

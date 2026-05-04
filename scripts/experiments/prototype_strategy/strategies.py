@@ -8,16 +8,16 @@ from datetime import datetime, timezone
 
 import numpy as np
 
-from methods.prototype.building.build_strategies import (
-    DbscanPrototypeBuildStrategy as RuntimeDbscanPrototypeBuildStrategy,
-)
-from methods.prototype.building.build_strategies import (
-    KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
-)
-from methods.prototype.building.build_strategies import (
+from methods.prototype.building.base import (
     PrototypeBuildRequest,
 )
-from methods.prototype.building.build_strategies import (
+from methods.prototype.building.dbscan import (
+    DbscanPrototypeBuildStrategy as RuntimeDbscanPrototypeBuildStrategy,
+)
+from methods.prototype.building.kmeans import (
+    KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
+)
+from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy as RuntimeSinglePrototypeBuildStrategy,
 )
 from scripts.experiments.prototype_strategy.models import (
