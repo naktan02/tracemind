@@ -80,9 +80,7 @@ class ExperimentRunService:
             )
         saved_workspace = None
         if request.workspace_id is not None:
-            saved_workspace = self.workspace_service.get_workspace(
-                request.workspace_id
-            )
+            saved_workspace = self.workspace_service.get_workspace(request.workspace_id)
             if saved_workspace.manifest != manifest:
                 raise ValueError(
                     "workspace_id와 launch manifest가 다릅니다. "

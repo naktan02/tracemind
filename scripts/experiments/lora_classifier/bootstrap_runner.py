@@ -385,9 +385,7 @@ def _build_teacher_pseudo_label_rows(
             len(accepted_rows) / len(rows) if rows else 0.0,
             6,
         ),
-        "pseudo_label_algorithm": (
-            pseudo_label_algorithm.to_manifest_entry()
-        ),
+        "pseudo_label_algorithm": (pseudo_label_algorithm.to_manifest_entry()),
         "accepted_label_counts": dict(sorted(accepted_label_counts.items())),
         "hidden_label_counts": dict(sorted(hidden_label_counts.items())),
         "accepted_hidden_label_counts": dict(

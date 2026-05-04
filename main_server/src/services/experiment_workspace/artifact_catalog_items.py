@@ -226,8 +226,7 @@ def build_generated_initial_checkpoint_items(
                 compiled_selector_name="required",
                 source_of_truth=relative_repo_path(manifest_path),
                 description=(
-                    "기존 고정 분류기 seed manifest를 초기 체크포인트로 "
-                    "사용합니다."
+                    "기존 고정 분류기 seed manifest를 초기 체크포인트로 사용합니다."
                 ),
                 default_override_patch={
                     "manifest_path": relative_repo_path(manifest_path),

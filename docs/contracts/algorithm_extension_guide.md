@@ -40,9 +40,9 @@
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `scripts/conf/pseudo_label_algorithm/` |
-| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_adaptation/algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
+| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_ssl_algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `scripts/conf/query_ssl_augmenter/` |
-| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/query_adaptation/peft_adapters/`, `scripts/conf/lora/` |
+| PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/peft_adapters/`, `scripts/conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `main_server/src/services/federation/rounds/aggregation/` |
 | Update Acceptance Policy | main_server | CompositeRoundUpdateAcceptancePolicy | `main_server/src/services/federation/rounds/acceptance/` |
@@ -353,10 +353,10 @@ class PseudoLabelAcceptancePolicy(Protocol):
 
 **구성 위치:**
 - agent 코어:
-  - `agent/src/services/training/query_adaptation/algorithms/base.py`
-  - `agent/src/services/training/query_adaptation/algorithms/registry.py`
-  - `agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py`
-  - `agent/src/services/training/query_adaptation/training.py`
+  - `agent/src/services/training/query_ssl_algorithms/base.py`
+  - `agent/src/services/training/query_ssl_algorithms/registry.py`
+  - `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`
+  - `agent/src/services/training/query_classifier_adaptation/training.py`
 - scripts family runner:
   - `scripts/experiments/lora_classifier/query_ssl/common.py`
   - `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
@@ -365,7 +365,7 @@ class PseudoLabelAcceptancePolicy(Protocol):
   - `scripts/conf/query_ssl_train_source/*.yaml`
 
 **교체 절차:**
-1. `query_adaptation/algorithms/<algorithm_name>/` 아래에 algorithm core를 구현한다
+1. `query_ssl_algorithms/<algorithm_name>/` 아래에 algorithm core를 구현한다
 2. algorithm adapter가 `QuerySslAlgorithm`를 만족하게 만든다
 3. `algorithms/registry.py`에 `algorithm_name`으로 등록한다
 4. `train_query_ssl_classifier(...)` 공통 loop에는 새 objective만 주입한다
@@ -522,9 +522,9 @@ class RoundUpdateAcceptancePolicy(Protocol):
 - `rslora`
 
 **구성 위치:**
-- `agent/src/services/training/query_adaptation/peft_adapters/base.py`
-- `agent/src/services/training/query_adaptation/peft_adapters/registry.py`
-- `agent/src/services/training/query_adaptation/peft_adapters/lora.py`
+- `agent/src/services/training/peft_adapters/base.py`
+- `agent/src/services/training/peft_adapters/registry.py`
+- `agent/src/services/training/peft_adapters/lora.py`
 - `scripts/conf/lora/*.yaml`
 
 **교체 절차:**

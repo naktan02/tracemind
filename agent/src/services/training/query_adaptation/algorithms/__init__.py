@@ -1,1 +1,0 @@
-"""Query adaptation SSL algorithms."""

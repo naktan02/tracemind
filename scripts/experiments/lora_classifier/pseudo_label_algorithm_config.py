@@ -40,12 +40,8 @@ def resolve_pseudo_label_algorithm(
             or ""
         ).strip()
         if not algorithm_name:
-            raise ValueError(
-                "pseudo_label_algorithm.algorithm_name must not be empty."
-            )
-        preset_name = str(
-            getattr(raw_group, "name", "") or algorithm_name
-        ).strip()
+            raise ValueError("pseudo_label_algorithm.algorithm_name must not be empty.")
+        preset_name = str(getattr(raw_group, "name", "") or algorithm_name).strip()
         return ResolvedPseudoLabelAlgorithm(
             preset_name=preset_name,
             algorithm_name=algorithm_name,

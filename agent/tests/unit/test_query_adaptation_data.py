@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from agent.src.services.training.query_adaptation.data import TextMultiviewDataset
+from agent.src.services.training.query_classifier_adaptation.data import (
+    TextMultiviewDataset,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
@@ -26,7 +28,7 @@ def test_text_multiview_dataset_uses_usb_aug_candidates(monkeypatch) -> None:
     row["aug_1"] = "Today I feel uneasy."
 
     monkeypatch.setattr(
-        "agent.src.services.training.query_adaptation.data.random.choice",
+        "agent.src.services.training.query_classifier_adaptation.data.random.choice",
         lambda choices: choices[1],
     )
 

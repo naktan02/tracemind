@@ -5,15 +5,15 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from agent.src.services.training.query_adaptation.algorithms.common import (
+from agent.src.services.training.query_ssl_algorithms.common import (
     build_pseudo_label_from_probs,
 )
-from agent.src.services.training.query_adaptation.algorithms.fixmatch.algorithm import (
+from agent.src.services.training.query_ssl_algorithms.fixmatch.algorithm import (
     FixMatchAlgorithm,
     FixMatchConfig,
     compute_fixmatch_step,
 )
-from agent.src.services.training.query_adaptation.algorithms.registry import (
+from agent.src.services.training.query_ssl_algorithms.registry import (
     build_query_ssl_algorithm,
 )
 

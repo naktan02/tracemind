@@ -20,9 +20,9 @@
   - 선택된 prototype 전략 위에서 threshold policy 비교
 - `run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop
-  - runtime/task/validation 번역 source of truth는
-    `federated_round_runtime`, `federated_training_task`,
-    `federated_validation` Hydra group이다.
+  - runtime/task/validation/report shape는
+    `scripts/conf/experiments/run_federated_simulation.yaml` 안의
+    `round_runtime`, `training_task`, `validation`, `report` section이다.
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
 - `train_lora_classifier.py`

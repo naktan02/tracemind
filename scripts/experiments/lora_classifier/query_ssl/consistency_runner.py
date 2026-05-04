@@ -7,14 +7,14 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from agent.src.services.training.query_adaptation.algorithms.registry import (
-    build_query_ssl_algorithm,
-)
-from agent.src.services.training.query_adaptation.data import (
+from agent.src.services.training.query_classifier_adaptation.data import (
     build_multiview_dataloader,
 )
-from agent.src.services.training.query_adaptation.training import (
+from agent.src.services.training.query_classifier_adaptation.training import (
     train_query_ssl_classifier,
+)
+from agent.src.services.training.query_ssl_algorithms.registry import (
+    build_query_ssl_algorithm,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 

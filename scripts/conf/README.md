@@ -1,7 +1,8 @@
 # Hydra Config Layout
 
-`scripts/conf`는 실행 job config와 재사용 전략 group이 섞여 있기 때문에 탐색
-비용이 생긴다. 현재 override 호환성을 깨지 않기 위해 기존 group 이름은 유지한다.
+`scripts/conf`는 실행 job config와 재사용 전략 group을 함께 둔다. 여러
+entrypoint나 여러 preset이 공유하는 축만 config group으로 유지하고, 단일
+entrypoint 전용 shape는 해당 job config 안에 둔다.
 
 ## 현재 분류
 
@@ -13,13 +14,15 @@
   `query_ssl_train_source/`, `query_ssl_augmenter/`,
   `query_adaptation_initial_checkpoint/`, `lora_experiment/`
 - FL SSL 축: `federated_run_preset/`, `federated_shard_policy/`,
-  `federated_ssl_method/`, `federated_round_runtime/`,
-  `federated_training_task/`, `federated_validation/`, `federated_report/`,
-  `training_algorithm_profile/`
+  `federated_ssl_method/`, `training_algorithm_profile/`
+- FL simulation entrypoint-local section:
+  `experiments/run_federated_simulation.yaml`의 `round_runtime`,
+  `training_task`, `validation`, `report`
 
 ## 정리 기준
 
 - 새 job은 `datasets/`, `prototypes/`, `experiments/` 중 하나에 둔다.
 - 새 reusable group은 실행 rail을 이름에 드러낸다.
+- preset이 1개뿐이고 해당 entrypoint에서만 쓰이면 group을 만들지 않는다.
 - 기존 CLI override가 많은 group은 한 번에 이동하지 않는다.
 - namespace 이동은 compatibility alias와 Hydra config test를 같이 추가한 뒤 한다.

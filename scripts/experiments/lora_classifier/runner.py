@@ -6,7 +6,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from agent.src.services.training.query_adaptation.training import train_classifier
+from agent.src.services.training.query_classifier_adaptation.training import (
+    train_classifier,
+)
 from scripts.labeled_query_rows import LabeledQueryRow
 
 from .artifacts import write_run_artifacts

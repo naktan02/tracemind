@@ -50,8 +50,7 @@ class ExperimentCompilerService:
         )
         if entrypoint_item.compile_support != "entrypoint":
             raise ValueError(
-                "Workspace entrypoint is not compileable: "
-                f"{manifest.entrypoint_name}."
+                f"Workspace entrypoint is not compileable: {manifest.entrypoint_name}."
             )
         if entrypoint_item.script_path is None:
             raise ValueError(
@@ -144,12 +143,8 @@ class ExperimentCompilerService:
             hydra_override_map=hydra_override_map,
             catalog_service=self.catalog_service,
         )
-        compile_policy = self.compile_policy_registry.resolve(
-            entrypoint_item.item_name
-        )
-        warnings.extend(
-            compile_policy.collect_warnings(context=compile_context)
-        )
+        compile_policy = self.compile_policy_registry.resolve(entrypoint_item.item_name)
+        warnings.extend(compile_policy.collect_warnings(context=compile_context))
         compile_policy.validate_requirements(context=compile_context)
 
         script_path = entrypoint_item.script_path

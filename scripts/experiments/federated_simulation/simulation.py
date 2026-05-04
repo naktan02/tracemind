@@ -12,20 +12,6 @@ from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
 )
-from main_server.src.infrastructure.repositories import (
-    prototype_rebuild_input_repository,
-    shared_adapter_state_repository,
-)
-from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.rounds.boundary.models import (
-    RoundFinalizeRequest,
-)
-from main_server.src.services.federation.rounds.round_lifecycle_service import (
-    RoundLifecycleService,
-)
-from main_server.src.services.federation.rounds.round_manager_service import (
-    RoundManagerService,
-)
 from scripts.experiments.federated_simulation.artifacts import (
     save_model_manifest,
     save_prototype_pack,
@@ -55,14 +41,9 @@ from scripts.experiments.federated_simulation.models import (
     SimulationRoundSummary,
 )
 from scripts.experiments.federated_simulation.runtime import (
-    SimulationEmbeddingAdapterFactory,
+    SimulationServerRuntime,
     build_classifier_head_state_from_prototype_pack,
     build_initial_shared_state,
-    build_prototype_rebuild_runtime_service,
-    build_simulation_round_family,
-    load_active_state,
-    rebuild_reference_prototype_pack,
-    store_prototype_rebuild_input,
 )
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
@@ -128,17 +109,11 @@ def run_simulation(
     embedding_dim = len(
         adapter.embed_texts([str(dataset_split.bootstrap_rows[0]["text"])])[0]
     )
-    state_repository = shared_adapter_state_repository.SharedAdapterStateRepository(
-        state_root=output_dir / "main_server" / "shared_adapter_states"
+    server_runtime = SimulationServerRuntime.build(
+        output_dir=output_dir,
+        round_runtime_config=round_runtime_config,
+        prototype_build_strategy=prototype_build_strategy,
     )
-    round_manager = RoundManagerService(
-        adapter_family=build_simulation_round_family(
-            adapter_family_name=round_runtime_config.adapter_family_name,
-            aggregation_backend_name=round_runtime_config.aggregation_backend_name,
-        ),
-        artifact_repository=state_repository,
-    )
-    round_repository = RoundRepository(state_root=output_dir / "main_server" / "rounds")
 
     initial_model_revision = "sim_rev_0000"
     initial_prototype_version = "proto_sim_0000"
@@ -155,30 +130,13 @@ def run_simulation(
         labels=category_labels,
         updated_at=now,
     )
-    SimulationEmbeddingAdapterFactory.adapter = adapter
-    input_repository = (
-        prototype_rebuild_input_repository.PrototypeRebuildInputRepository(
-            state_root=output_dir / "main_server" / "prototype_rebuild_inputs"
-        )
-    )
-    store_prototype_rebuild_input(
+    server_runtime.set_embedding_adapter(adapter)
+    server_runtime.store_prototype_rebuild_input(
         rows=dataset_split.bootstrap_rows,
         embedding_spec=embedding_spec,
-        repository=input_repository,
         rebuild_config=prototype_rebuild_config,
     )
-    stored_rebuild_service = build_prototype_rebuild_runtime_service(
-        output_dir=output_dir,
-        build_strategy=prototype_build_strategy,
-        input_repository=input_repository,
-    )
-    lifecycle_service = RoundLifecycleService(
-        round_repository=round_repository,
-        round_manager_service=round_manager,
-        prototype_rebuild_runtime_service=stored_rebuild_service,
-    )
-    active_prototype = rebuild_reference_prototype_pack(
-        stored_rebuild_service=stored_rebuild_service,
+    active_prototype = server_runtime.rebuild_reference_prototype_pack(
         adapter_state=initial_state,
         prototype_version=initial_prototype_version,
         embedding_model_id=model_id,
@@ -207,7 +165,7 @@ def run_simulation(
         validation_config,
         shared_state=initial_state,
     )
-    initial_state_path = state_repository.save_shared_adapter_state(initial_state)
+    initial_state_path = server_runtime.save_shared_adapter_state(initial_state)
     save_prototype_pack(output_dir, active_prototype)
     active_manifest = ModelManifest(
         schema_version="model_manifest.v1",
@@ -242,7 +200,7 @@ def run_simulation(
     active_state = initial_state
     for round_index in range(1, rounds + 1):
         round_id = f"round_{round_index:04d}"
-        round_record = lifecycle_service.open_round(
+        round_record = server_runtime.open_round(
             ssl_method_runtime.build_round_open_request(
                 active_manifest=active_manifest,
                 round_id=round_id,
@@ -288,7 +246,7 @@ def run_simulation(
                 diagnostics_config=diagnostics_config,
             )
             if local_result.update_envelope is not None:
-                lifecycle_service.accept_update(
+                server_runtime.accept_update(
                     round_id,
                     local_result.update_envelope,
                 )
@@ -307,21 +265,15 @@ def run_simulation(
 
         next_model_revision = f"sim_rev_{round_index:04d}"
         next_prototype_version = f"proto_sim_{round_index:04d}"
-        finalized_round = lifecycle_service.finalize_round(
-            round_id,
-            RoundFinalizeRequest(
-                next_model_revision=next_model_revision,
-                next_prototype_version=next_prototype_version,
-            ),
+        finalized_round = server_runtime.finalize_round(
+            round_id=round_id,
+            next_model_revision=next_model_revision,
+            next_prototype_version=next_prototype_version,
         )
         if finalized_round.publication is None:
             raise ValueError("Finalized simulation round must contain publication.")
         active_manifest = finalized_round.publication.next_manifest
-        active_state = load_active_state(
-            manifest=active_manifest,
-            state_repository=state_repository,
-            round_manager=round_manager,
-        )
+        active_state = server_runtime.load_active_state(active_manifest)
         save_model_manifest(output_dir, active_manifest)
         if finalized_round.publication.prototype_pack_ref is None:
             raise ValueError(

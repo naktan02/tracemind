@@ -66,10 +66,13 @@ def resolve_query_adaptation_initial_checkpoint(
         adapter_dir = (
             adapter_dir or str(manifest_payload.get("adapter_dir", "")).strip()
         )
-        classifier_path = classifier_path or str(
-            manifest_payload.get("classifier_path", "")
-            or manifest_payload.get("model_path", "")
-        ).strip()
+        classifier_path = (
+            classifier_path
+            or str(
+                manifest_payload.get("classifier_path", "")
+                or manifest_payload.get("model_path", "")
+            ).strip()
+        )
         source = "manifest"
         resolved_kind = _detect_manifest_kind(manifest_payload)
     elif group_adapter_dir or group_classifier_path:

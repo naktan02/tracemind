@@ -11,14 +11,17 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from agent.src.services.training.query_ssl_algorithms.base import QuerySslAlgorithm
+from agent.src.services.training.query_ssl_algorithms.fixmatch.algorithm import (
+    FixMatchAlgorithm,
+    FixMatchConfig,
+)
 from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     safe_divide,
     summarize_per_category,
 )
 
-from .algorithms.base import QuerySslAlgorithm
-from .algorithms.fixmatch.algorithm import FixMatchAlgorithm, FixMatchConfig
 from .modeling import LoraTextClassifier
 
 

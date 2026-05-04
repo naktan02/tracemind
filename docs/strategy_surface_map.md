@@ -88,16 +88,16 @@ Embedding
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 실험 override | 상태 |
 |---|---|---|---|---|---|
-| Training Backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.training_backend_name` | 활성 runtime |
-| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.method.algorithm_profile_name=...` | 활성 runtime |
-| Example Generation Backend | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.example_generation_backend_name` | 활성 runtime |
-| Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.evidence_backend_name` | 활성 runtime |
-| Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.method.scorer_backend_name` | 활성 runtime |
-| Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.method.score_policy_name`, `score_top_k` | 활성 runtime |
-| Pseudo-label Selection Algorithm | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.pseudo_label_algorithm_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.pseudo_label_algorithm_name`, central 실험의 `pseudo_label_algorithm=<preset>` | 활성 runtime/central selection |
-| Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.acceptance_policy_name` | 활성 runtime |
+| Training Backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.training_backend_name` | 활성 runtime |
+| Algorithm Profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `TrainingObjectiveConfig.algorithm_profile_name`, Hydra `training_algorithm_profile` group | `shared/src/config/training_default_values.py`, `scripts/conf/training_algorithm_profile/` | `training_algorithm_profile=...`, `training_task.objective.algorithm_profile_name=...` | 활성 runtime |
+| Example Generation Backend | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.example_generation_backend_name` | 활성 runtime |
+| Evidence Backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.evidence_backend_name` | 활성 runtime |
+| Scorer Backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.scorer_backend_name`, `run_federated_simulation`의 `training_task.objective.scorer_backend_name` | 활성 runtime |
+| Score Policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` + `score_top_k` | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.score_policy_name`, `runner.score_top_k`, `run_federated_simulation`의 `training_task.objective.score_policy_name`, `score_top_k` | 활성 runtime |
+| Pseudo-label Selection Algorithm | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.pseudo_label_algorithm_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.pseudo_label_algorithm_name`, central 실험의 `pseudo_label_algorithm=<preset>` | 활성 runtime/central selection |
+| Pseudo-label Acceptance Policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.acceptance_policy_name` | 활성 runtime |
 | Acceptance Threshold | `confidence_threshold`, `margin_threshold` | `TrainingObjectiveConfig` 필드 | `shared/src/config/training_defaults.py` | `prototype_strategy`의 `runner.confidence_threshold`, `runner.margin_threshold`, `run_federated_simulation`의 `confidence_threshold`, `margin_threshold` | 활성 runtime |
-| Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.method.privacy_guard_name` | 활성 runtime |
+| Privacy Guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `shared/src/config/training_defaults.py` | `run_federated_simulation`의 `training_task.objective.privacy_guard_name` | 활성 runtime |
 | PEFT Adapter Builder | `lora`, `rslora` | `lora.peft_adapter_name` | `scripts/conf/lora/default.yaml` | `lora.peft_adapter_name=rslora` | 중앙 LoRA rail 활성 seam |
 
 추가 설명:
@@ -121,11 +121,11 @@ Embedding
   현재 `FixMatch`의 algorithm/source source of truth는
   `scripts/conf/query_ssl_method/`, `scripts/conf/query_ssl_train_source/`,
   `scripts/conf/query_ssl_augmenter/`이고,
-  USB core mapping은 `agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py`가 소유한다.
-  algorithm 선택 seam은 `agent/src/services/training/query_adaptation/algorithms/base.py`와
-  `agent/src/services/training/query_adaptation/algorithms/registry.py`에 두며,
+  USB core mapping은 `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`가 소유한다.
+  algorithm 선택 seam은 `agent/src/services/training/query_ssl_algorithms/base.py`와
+  `agent/src/services/training/query_ssl_algorithms/registry.py`에 두며,
   trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
-  PEFT adapter 생성은 `agent/src/services/training/query_adaptation/peft_adapters/registry.py`에서
+  PEFT adapter 생성은 `agent/src/services/training/peft_adapters/registry.py`에서
   `lora.peft_adapter_name`으로 선택한다. 현재 활성 builder는 `lora`, `rslora`이며
   DoRA/IA3는 실제 구현이 붙을 때 별도 builder로 추가한다.
   scripts family runner는 `scripts/experiments/lora_classifier/query_ssl/` 아래에서 공통화하고,
@@ -149,9 +149,9 @@ Embedding
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
 - [agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py](../agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py)
 - [scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../scripts/conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
-- [agent/src/services/training/query_adaptation/algorithms/base.py](../agent/src/services/training/query_adaptation/algorithms/base.py)
-- [agent/src/services/training/query_adaptation/algorithms/registry.py](../agent/src/services/training/query_adaptation/algorithms/registry.py)
-- [agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py](../agent/src/services/training/query_adaptation/algorithms/fixmatch/algorithm.py)
+- [agent/src/services/training/query_ssl_algorithms/base.py](../agent/src/services/training/query_ssl_algorithms/base.py)
+- [agent/src/services/training/query_ssl_algorithms/registry.py](../agent/src/services/training/query_ssl_algorithms/registry.py)
+- [agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py](../agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py)
 - [scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml](../scripts/conf/query_ssl_method/fixmatch_usb_v1.yaml)
 - [scripts/conf/query_ssl_train_source/dataset_default.yaml](../scripts/conf/query_ssl_train_source/dataset_default.yaml)
 - [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)
@@ -350,19 +350,18 @@ entrypoint:
 - `federated_run_preset`
 - `federated_shard_policy`
 - `federated_ssl_method`
-- `federated_report`
 - `round_runtime.adapter_family_name`
 - `round_runtime.aggregation_backend_name`
-- `confidence_threshold`
-- `margin_threshold`
-- `training_task.method.training_backend_name`
-- `training_task.method.example_generation_backend_name`
-- `training_task.method.scorer_backend_name`
-- `training_task.method.score_policy_name`
-- `training_task.method.score_top_k`
-- `training_task.method.pseudo_label_algorithm_name`
-- `training_task.method.acceptance_policy_name`
-- `training_task.method.privacy_guard_name`
+- `training_task.objective.confidence_threshold`
+- `training_task.objective.margin_threshold`
+- `training_task.objective.training_backend_name`
+- `training_task.objective.example_generation_backend_name`
+- `training_task.objective.scorer_backend_name`
+- `training_task.objective.score_policy_name`
+- `training_task.objective.score_top_k`
+- `training_task.objective.pseudo_label_algorithm_name`
+- `training_task.objective.acceptance_policy_name`
+- `training_task.objective.privacy_guard_name`
 - `training_task.selection_policy.max_examples`
 - `validation.scorer_backend_name`
 - `validation.score_policy_name`
@@ -376,12 +375,11 @@ python -m scripts.experiments.run_federated_simulation \
   federated_run_preset=standard \
   federated_shard_policy=dirichlet_alpha03 \
   federated_ssl_method=fedavg_pseudo_label \
-  federated_report=fl_ssl_main_comparison \
-  confidence_threshold=0.7 \
-  margin_threshold=0.05 \
-  training_task.method.score_policy_name=topk_mean_cosine \
-  training_task.method.score_top_k=2 \
-  training_task.method.privacy_guard_name=noop \
+  training_task.objective.confidence_threshold=0.7 \
+  training_task.objective.margin_threshold=0.05 \
+  training_task.objective.score_policy_name=topk_mean_cosine \
+  training_task.objective.score_top_k=2 \
+  training_task.objective.privacy_guard_name=noop \
   validation.score_policy_name=topk_mean_cosine \
   validation.score_top_k=2
 ```
@@ -400,8 +398,9 @@ python -m scripts.experiments.run_federated_simulation \
   현재 baseline은 round open, client example build, local trainer를 기존 pseudo-label
   self-training runtime으로 연결한다.
 - 후보 논문 method는 확정 전까지 config/파일을 미리 추가하지 않는다.
-- `federated_report=fl_ssl_main_comparison`은 중앙 SSL control과 섞이지 않는
-  FL main comparison report schema를 고른다.
+- `report.track=fl_ssl_main_comparison`은 중앙 SSL control과 섞이지 않는
+  FL main comparison report schema다. 현재 report shape는
+  `run_federated_simulation.yaml` 안의 entrypoint-local section이다.
 - `secure_aggregation.*` 값을 config에 실을 수는 있지만 실제 secure aggregation runtime을 실험하는 것은 아니다.
 - `prototype_rebuild.translation_model_*` 필드는 provenance metadata를 남기는 축이지,
   simulation 중 실제 translation adapter를 바꾸는 축은 아니다.

@@ -43,9 +43,7 @@ def build_labeled_rows_from_query_adaptation_multiview_dataset(
         base_example = example.base_example
         source_row = example.source_row
         approved_by = (
-            None
-            if base_example.label_source == "pseudo_label"
-            else "manual_override"
+            None if base_example.label_source == "pseudo_label" else "manual_override"
         )
         row: LabeledQueryRow = {
             "query_id": base_example.query_id,

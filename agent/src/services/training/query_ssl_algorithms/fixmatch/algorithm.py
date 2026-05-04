@@ -10,9 +10,7 @@ import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from agent.src.services.training.query_adaptation.modeling import LoraTextClassifier
-
-from ..base import QuerySslStepOutput
+from ..base import QuerySslStepOutput, TextBatchClassifier
 from ..common import (
     build_fixed_threshold_mask,
     build_pseudo_label_from_probs,
@@ -86,7 +84,7 @@ class FixMatchAlgorithm:
     def compute_step(
         self,
         *,
-        model: LoraTextClassifier,
+        model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Tensor],
     ) -> QuerySslStepOutput:
@@ -100,7 +98,7 @@ class FixMatchAlgorithm:
 
 def compute_fixmatch_step(
     *,
-    model: LoraTextClassifier,
+    model: TextBatchClassifier,
     labeled_batch: dict[str, Tensor] | None,
     unlabeled_batch: dict[str, Tensor],
     config: FixMatchConfig,

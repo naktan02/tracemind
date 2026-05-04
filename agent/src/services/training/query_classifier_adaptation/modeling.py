@@ -6,8 +6,8 @@ from typing import Any
 
 from torch import nn
 
-from .peft_adapters.base import PeftAdapterBuildContext
-from .peft_adapters.registry import (
+from agent.src.services.training.peft_adapters.base import PeftAdapterBuildContext
+from agent.src.services.training.peft_adapters.registry import (
     build_peft_adapter_builder,
     resolve_peft_adapter_name,
 )

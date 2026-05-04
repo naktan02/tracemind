@@ -11,12 +11,12 @@ from typing import Any
 from omegaconf import OmegaConf
 
 from agent.src.infrastructure.runtime import resolve_runtime_device
-from agent.src.services.training.query_adaptation.data import (
+from agent.src.services.training.query_classifier_adaptation.data import (
     build_dataloader,
     build_label_index,
 )
-from agent.src.services.training.query_adaptation.modeling import build_model
-from agent.src.services.training.query_adaptation.training import (
+from agent.src.services.training.query_classifier_adaptation.modeling import build_model
+from agent.src.services.training.query_classifier_adaptation.training import (
     evaluate_classifier,
     set_seed,
 )
@@ -336,9 +336,7 @@ def _resolve_categories(
     )
     if not categories:
         raise ValueError("categories_override must not be empty.")
-    label_to_index = {
-        str(category): index for index, category in enumerate(categories)
-    }
+    label_to_index = {str(category): index for index, category in enumerate(categories)}
     unknown_labels = sorted(
         {
             str(row["mapped_label_4"])
@@ -348,8 +346,7 @@ def _resolve_categories(
     )
     if unknown_labels:
         raise ValueError(
-            "Train rows include labels outside categories_override: "
-            f"{unknown_labels}"
+            f"Train rows include labels outside categories_override: {unknown_labels}"
         )
     return categories, label_to_index
 

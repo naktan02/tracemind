@@ -150,9 +150,7 @@ def build_dataset_preset_metadata(
         },
         "query_asset_status": {
             "query_dev_available": bool(asset_paths["query_dev_jsonl"]),
-            "query_calibration_available": bool(
-                asset_paths["query_calibration_jsonl"]
-            ),
+            "query_calibration_available": bool(asset_paths["query_calibration_jsonl"]),
             "unlabeled_query_pool_available": unlabeled_ready,
         },
         "sources": serialized_sources,

@@ -83,9 +83,7 @@ class PreparedPseudoLabelSelfTrainingRun:
             self.cfg
         )
         if pseudo_label_algorithm_manifest is not None:
-            manifest["pseudo_label_algorithm"] = (
-                pseudo_label_algorithm_manifest
-            )
+            manifest["pseudo_label_algorithm"] = pseudo_label_algorithm_manifest
         return manifest
 
 
@@ -177,11 +175,7 @@ def prepare_pseudo_label_self_training_run(
         effective_seed_train_rows = (
             load_labeled_query_rows(
                 Path(
-                    str(
-                        cfg.train_jsonl
-                        if train_jsonl_ref is None
-                        else train_jsonl_ref
-                    )
+                    str(cfg.train_jsonl if train_jsonl_ref is None else train_jsonl_ref)
                 )
             )
             if seed_train_rows is None

@@ -102,9 +102,7 @@ class CatalogItemPayload(BaseModel):
     def _validate_compile_surface(self) -> CatalogItemPayload:
         if self.compile_support == "entrypoint":
             if self.script_path is None:
-                raise ValueError(
-                    "Entrypoint catalog item must declare script_path."
-                )
+                raise ValueError("Entrypoint catalog item must declare script_path.")
             if self.preset_group is not None:
                 raise ValueError(
                     "Entrypoint catalog item must not declare preset_group."

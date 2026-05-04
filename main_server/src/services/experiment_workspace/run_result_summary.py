@@ -107,9 +107,7 @@ def _extract_report_metrics(report_path: Path) -> dict[str, float]:
     if isinstance(manifest, Mapping):
         best_selection_report = manifest.get("best_selection_report")
         if isinstance(best_selection_report, Mapping):
-            metrics.update(
-                _flatten_eval_report("selection", best_selection_report)
-            )
+            metrics.update(_flatten_eval_report("selection", best_selection_report))
 
     if isinstance(results, Mapping):
         for dataset_name, report in sorted(results.items()):
