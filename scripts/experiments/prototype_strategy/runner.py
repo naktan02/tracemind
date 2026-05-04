@@ -23,7 +23,7 @@ from scripts.experiments.prototype_strategy.scoring import (
     PrototypeScoringConfigMixin,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
-from shared.src.domain.services import EmbeddingAdapter
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 @dataclass(slots=True)

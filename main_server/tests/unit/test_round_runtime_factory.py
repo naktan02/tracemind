@@ -14,18 +14,28 @@ from main_server.src.api.main import (
     create_app,
     load_experiment_web_allowed_origins_from_env,
 )
-from main_server.src.services.federation.rounds import (
+from main_server.src.services.federation.rounds.aggregation.models import (
+    SharedAdapterAggregationBackend,
+)
+from main_server.src.services.federation.rounds.aggregation.registry import (
+    build_shared_adapter_aggregation_backend,
+    register_shared_adapter_aggregation_backend,
+)
+from main_server.src.services.federation.rounds.families.models import (
+    SharedAdapterRoundFamily,
+)
+from main_server.src.services.federation.rounds.families.registry import (
+    register_shared_adapter_round_family,
+)
+from main_server.src.services.federation.rounds.runtime.config import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
     ServerRoundRuntimeConfig,
-    SharedAdapterAggregationBackend,
-    SharedAdapterRoundFamily,
-    build_round_manager_service_from_config,
-    build_shared_adapter_aggregation_backend,
     load_server_round_runtime_config_from_env,
-    register_shared_adapter_aggregation_backend,
-    register_shared_adapter_round_family,
+)
+from main_server.src.services.federation.rounds.runtime.factory import (
+    build_round_manager_service_from_config,
 )
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (

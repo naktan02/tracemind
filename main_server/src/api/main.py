@@ -25,7 +25,7 @@ from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
 )
 from main_server.src.services.federation.assets.prototypes import (
-    PrototypePackService,
+    prototype_pack_service as prototype_pack_service_module,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
@@ -43,6 +43,7 @@ DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS = (
     "http://localhost:5173",
     "http://127.0.0.1:5173",
 )
+PrototypePackService = prototype_pack_service_module.PrototypePackService
 
 
 def load_experiment_web_allowed_origins_from_env(

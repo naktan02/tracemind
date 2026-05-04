@@ -26,7 +26,7 @@ from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
     resolve_runtime_device_name,
 )
-from shared.src.domain.services import EmbeddingAdapter
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 from .common import prepare_fixed_classifier_run_context

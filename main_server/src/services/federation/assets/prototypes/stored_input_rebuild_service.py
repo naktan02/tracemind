@@ -12,7 +12,7 @@ from main_server.src.services.federation.assets.prototypes.models import (
     StoredReferencePrototypeRebuildRequest,
 )
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 class PrototypeRebuildInputRepositoryProtocol(Protocol):
@@ -43,7 +43,7 @@ class EmbeddingAdapterFactoryProtocol(Protocol):
 
 
 def _default_prototype_rebuild_service() -> ReferenceRowPrototypeRebuildServiceProtocol:
-    from main_server.src.services.federation.assets.prototypes.prototype_rebuild_service import (
+    from .prototype_rebuild_service import (
         PrototypeRebuildService,
     )
 

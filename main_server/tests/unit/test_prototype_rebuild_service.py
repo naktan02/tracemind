@@ -15,16 +15,22 @@ from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository as prototype_rebuild_input_repository_module,
 )
 from main_server.src.services.federation.assets.prototypes import (
-    InMemoryPrototypePublicationStrategy,
-    PrototypeBuildStateService,
-    PrototypePackService,
-    PrototypeRebuildInputRecord,
-    PrototypeRebuildService,
-    ReferencePrototypeRebuildRequest,
-    ReferencePrototypeSourceRow,
-    ReferenceRebuildPrototypePublicationStrategy,
-    StoredReferencePrototypeRebuildRequest,
-    StoredReferencePrototypeRebuildService,
+    models as prototype_models,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_build_state_service as build_state_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_pack_service as pack_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_rebuild_service as rebuild_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    publication_strategies as publication_strategy_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    stored_input_rebuild_service as stored_rebuild_service_module,
 )
 from methods.prototype.building.base import (
     PrototypeBuildRequest,
@@ -37,7 +43,26 @@ from methods.prototype.building.single import (
 )
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.domain.services.clock import FixedClock
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+InMemoryPrototypePublicationStrategy = (
+    publication_strategy_module.InMemoryPrototypePublicationStrategy
+)
+PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateService
+PrototypePackService = pack_service_module.PrototypePackService
+PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
+PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
+ReferencePrototypeRebuildRequest = prototype_models.ReferencePrototypeRebuildRequest
+ReferencePrototypeSourceRow = prototype_models.ReferencePrototypeSourceRow
+ReferenceRebuildPrototypePublicationStrategy = (
+    publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
+)
+StoredReferencePrototypeRebuildRequest = (
+    prototype_models.StoredReferencePrototypeRebuildRequest
+)
+StoredReferencePrototypeRebuildService = (
+    stored_rebuild_service_module.StoredReferencePrototypeRebuildService
+)
 
 
 class _StaticEmbeddingAdapter:

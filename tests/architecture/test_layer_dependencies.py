@@ -105,6 +105,31 @@ def test_python_modules_do_not_define_dunder_all() -> None:
     )
 
 
+def test_init_modules_stay_marker_only() -> None:
+    violations: list[Path] = []
+    for root in PYTHON_SOURCE_ROOTS:
+        for path in _iter_python_files(root):
+            if path.name != "__init__.py":
+                continue
+            tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+            non_marker_nodes = [
+                node
+                for node in tree.body
+                if not (
+                    isinstance(node, ast.Expr)
+                    and isinstance(node.value, ast.Constant)
+                    and isinstance(node.value.value, str)
+                )
+            ]
+            if non_marker_nodes:
+                violations.append(_relative_repo_path(path))
+    assert not violations, (
+        "__init__.py는 package marker/docstring만 둔다. "
+        "공개 표면은 direct-file import로 드러낸다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_prototype_builder_core_stays_in_methods_layer() -> None:
     existing_paths = [
         _relative_repo_path(path)

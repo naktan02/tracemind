@@ -6,10 +6,6 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
-from main_server.src.services.federation.assets.prototypes import (
-    StoredReferencePrototypeRebuildRequest,
-    StoredReferencePrototypeRebuildService,
-)
 from main_server.src.services.federation.rounds.acceptance.errors import (
     RoundConflictError,
     RoundValidationError,
@@ -37,6 +33,13 @@ from shared.src.domain.services.clock import Clock, SystemUtcClock
 from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
     SecureUpdateCodec,
+)
+
+from ..assets.prototypes.models import (
+    StoredReferencePrototypeRebuildRequest,
+)
+from ..assets.prototypes.stored_input_rebuild_service import (
+    StoredReferencePrototypeRebuildService,
 )
 
 if TYPE_CHECKING:

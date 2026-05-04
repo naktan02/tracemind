@@ -24,7 +24,9 @@ from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
     load_prototype_pack_payload,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec  # noqa: E402
+from shared.src.domain.value_objects.embedding_adapter_spec import (  # noqa: E402
+    EmbeddingAdapterSpec,
+)
 
 
 @hydra.main(

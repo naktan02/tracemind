@@ -21,7 +21,7 @@ from scripts.experiments.prototype_strategy.scoring import (
     PrototypeIndexScorer,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
-from shared.src.domain.services import EmbeddingAdapter
+from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 def embed_rows(
@@ -184,9 +184,7 @@ def _build_evaluation_metrics(
 ) -> EvaluationMetrics:
     """accepted prediction 집합이 주어졌을 때 공통 메트릭을 계산한다."""
     actual_labels = [prediction.actual_label for prediction in scored_predictions]
-    predicted_labels = [
-        prediction.predicted_label for prediction in scored_predictions
-    ]
+    predicted_labels = [prediction.predicted_label for prediction in scored_predictions]
     true_label_scores = [
         prediction.true_label_score for prediction in scored_predictions
     ]

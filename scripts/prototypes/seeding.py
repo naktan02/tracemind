@@ -21,7 +21,7 @@ from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 from scripts.runtime_adapters.prototype_publication_runtime import (
     build_reference_prototype_rebuild_service,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 def seed_prototype_pack(

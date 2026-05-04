@@ -50,7 +50,7 @@ from scripts.runtime_adapters.federated_server_runtime import (
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 def run_simulation(

@@ -21,21 +21,31 @@ from main_server.src.infrastructure.repositories import (
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.assets.prototypes import (
-    PrototypeBuildStateService,
-    PrototypePackService,
-    PrototypeRebuildInputRecord,
-    PrototypeRebuildService,
-    ReferencePrototypeSourceRow,
-    ReferenceRebuildPrototypePublicationStrategy,
-    StoredReferencePrototypeRebuildRequest,
-    StoredReferencePrototypeRebuildService,
+    models as prototype_models,
 )
-from main_server.src.services.federation.rounds import build_shared_adapter_round_family
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_build_state_service as build_state_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_pack_service as pack_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    prototype_rebuild_service as rebuild_service_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    publication_strategies as publication_strategy_module,
+)
+from main_server.src.services.federation.assets.prototypes import (
+    stored_input_rebuild_service as stored_rebuild_service_module,
+)
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
     RoundRecord,
     RoundTaskConfig,
+)
+from main_server.src.services.federation.rounds.families.registry import (
+    build_shared_adapter_round_family,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
@@ -58,7 +68,22 @@ from shared.src.contracts.prototype_contracts import (
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateService
+PrototypePackService = pack_service_module.PrototypePackService
+PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
+PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
+ReferencePrototypeSourceRow = prototype_models.ReferencePrototypeSourceRow
+ReferenceRebuildPrototypePublicationStrategy = (
+    publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
+)
+StoredReferencePrototypeRebuildRequest = (
+    prototype_models.StoredReferencePrototypeRebuildRequest
+)
+StoredReferencePrototypeRebuildService = (
+    stored_rebuild_service_module.StoredReferencePrototypeRebuildService
+)
 
 
 class SimulationEmbeddingAdapterFactory:

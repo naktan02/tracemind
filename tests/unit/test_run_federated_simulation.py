@@ -13,15 +13,6 @@ from methods.federated_ssl.registry import resolve_federated_ssl_method_descript
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
-from scripts.experiments.federated_simulation import (
-    FederatedDiagnosticsConfig,
-    FederatedPrototypeRebuildConfig,
-    FederatedReportConfig,
-    FederatedRoundRuntimeConfig,
-    FederatedSslMethodConfig,
-    FederatedValidationConfig,
-    split_rows_into_client_shards,
-)
 from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
     evaluate_rows,
@@ -29,12 +20,23 @@ from scripts.experiments.federated_simulation.evaluation import (
 from scripts.experiments.federated_simulation.method_runtime import (
     build_federated_ssl_simulation_runtime,
 )
+from scripts.experiments.federated_simulation.models import (
+    FederatedDiagnosticsConfig,
+    FederatedPrototypeRebuildConfig,
+    FederatedReportConfig,
+    FederatedRoundRuntimeConfig,
+    FederatedSslMethodConfig,
+    FederatedValidationConfig,
+)
+from scripts.experiments.federated_simulation.sharding import (
+    split_rows_for_federation,
+    split_rows_into_client_shards,
+)
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
 )
 from scripts.experiments.run_federated_simulation import (
     run_simulation,
-    split_rows_for_federation,
 )
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
@@ -49,7 +51,7 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 class _StaticEmbeddingAdapter:

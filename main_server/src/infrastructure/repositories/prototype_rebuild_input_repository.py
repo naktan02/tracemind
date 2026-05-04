@@ -13,7 +13,7 @@ from main_server.src.services.federation.assets.prototypes.models import (
     PrototypeRebuildInputRecord,
     ReferencePrototypeSourceRow,
 )
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[3]
 
