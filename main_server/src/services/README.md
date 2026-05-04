@@ -11,6 +11,8 @@
     federation asset lifecycle
 - `experiment_workspace/`
   - 개발자용 experiment workspace catalog/compile/run/save backend
+  - `catalog/`, `compiler/`, `run_execution/`가 각각 선택지 노출, Hydra preview 번역,
+    local run orchestration을 맡는다.
 
 ## newcomer용 읽기 순서
 

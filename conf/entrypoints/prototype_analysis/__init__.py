@@ -1,0 +1,1 @@
+"""Prototype analysis entrypoint configs."""

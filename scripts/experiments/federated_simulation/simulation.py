@@ -147,7 +147,8 @@ def run_simulation(
         and getattr(prototype_build_strategy, "name", "") != "single"
     ):
         raise ValueError(
-            "classifier_head bootstrap currently requires prototype_builder=single. "
+            "classifier_head bootstrap currently requires "
+            "strategy_axes/prototype/build_strategy=single. "
             "The current bootstrap path converts one centroid per category into "
             "classifier weights and does not support multi-prototype packs yet."
         )

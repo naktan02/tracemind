@@ -63,7 +63,7 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="jobs/experiments/run_federated_simulation",
+    config_name="entrypoints/fl_ssl/run_federated_simulation",
 )
 def main(cfg: DictConfig) -> None:
     created_at = datetime.now(timezone.utc)

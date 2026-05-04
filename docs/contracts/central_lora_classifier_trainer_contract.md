@@ -68,7 +68,7 @@ Query Buffer (raw text)
 5. 방법론 비교에서는 adaptation objective만 바꾼다.
 6. full seed replay는 canonical 경로가 아니라 optional ablation로만 다룬다.
 7. raw query text는 로컬에 남겨야 한다. embedding snapshot만으로는 LoRA 재학습과 future query adaptation을 닫을 수 없다.
-8. scripts 실험 표면에서는 `query_adaptation_initial_checkpoint` Hydra group을 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
+8. scripts 실험 표면에서는 `strategy_axes/adaptation/initial_checkpoint` selector를 source of truth로 두고, 같은 비교표 안의 run은 같은 초기 checkpoint provenance를 공유해야 한다.
 
 ## 중앙 SSL control 비교축
 
@@ -97,7 +97,7 @@ Query Buffer (raw text)
 - NLP strict USB baseline에서는 `FixMatch` unlabeled input을
   `text + aug_0 + aug_1` canonical shape로 둔다.
   즉 weak는 `text`, strong은 `aug_0` 또는 `aug_1` 중 랜덤 1개를 사용한다.
-  `aug_0`, `aug_1` 생성/caching은 `query_ssl_augmenter` 축이 담당한다.
+  `aug_0`, `aug_1` 생성/caching은 `strategy_axes/ssl/augmentation` 축이 담당한다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로

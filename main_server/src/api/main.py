@@ -12,13 +12,13 @@ from main_server.src.api.experiments import router as experiments_router
 from main_server.src.api.fl_rounds import router as fl_rounds_router
 from main_server.src.api.health import router as health_router
 from main_server.src.api.prototypes import router as prototypes_router
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler.service import (
     ExperimentCompilerService,
 )
-from main_server.src.services.experiment_workspace.run_service import (
+from main_server.src.services.experiment_workspace.run_execution.service import (
     ExperimentRunService,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (
@@ -52,9 +52,7 @@ def load_experiment_web_allowed_origins_from_env(
 
     effective_environ = os.environ if environ is None else environ
     raw_value = effective_environ.get(EXPERIMENT_WEB_ALLOWED_ORIGINS_ENV, "")
-    origins = tuple(
-        origin.strip() for origin in raw_value.split(",") if origin.strip()
-    )
+    origins = tuple(origin.strip() for origin in raw_value.split(",") if origin.strip())
     return origins or DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS
 
 
@@ -107,12 +105,9 @@ def create_app(
         )
     )
     app.state.experiment_workspace_service = effective_experiment_workspace_service
-    app.state.experiment_run_service = (
-        experiment_run_service
-        or ExperimentRunService(
-            compiler_service=app.state.experiment_compiler_service,
-            workspace_service=effective_experiment_workspace_service,
-        )
+    app.state.experiment_run_service = experiment_run_service or ExperimentRunService(
+        compiler_service=app.state.experiment_compiler_service,
+        workspace_service=effective_experiment_workspace_service,
     )
     app.include_router(health_router)
     app.include_router(experiments_router)

@@ -15,7 +15,7 @@ from scripts.prototypes.seeding import seed_prototype_pack  # noqa: E402
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="jobs/prototypes/seed_prototypes",
+    config_name="entrypoints/prototype_pack/seed_prototypes",
 )
 def main(cfg: DictConfig) -> None:
     built_at = datetime.now(timezone.utc)

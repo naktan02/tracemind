@@ -1,0 +1,28 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/runtime_env: gpu_online
+  - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
+  - /strategy_axes/adaptation/peft_adapter: default
+  - /track_presets/central_ssl_control/training_preset: default
+  - /track_presets/central_ssl_control/query_source: dataset_default
+  - /strategy_axes/ssl/pseudo_label_selection: margin_threshold_v1
+  - /strategy_axes/adaptation/initial_checkpoint: canonical_fixed_classifier_seed
+  - /track_presets/central_ssl_control/lora_classifier_defaults: default
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${query_source.train_jsonl}
+pseudo_label_jsonl: null
+pseudo_label_export_root: data/processed/lora_pseudo_label
+include_seed_train_rows: false
+output_dir: runs/train_lora_pseudo_label_classifier
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

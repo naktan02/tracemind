@@ -12,14 +12,14 @@ from main_server.src.api.main import app
 from main_server.src.infrastructure.repositories import (
     experiment_workspace_repository,
 )
-from main_server.src.services.experiment_workspace.catalog_constants import (
+from main_server.src.services.experiment_workspace.catalog.constants import (
     AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     FEDERATED_SIMULATION_RUNTIME_PATH,
 )
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler.service import (
     ExperimentCompilerService,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (
@@ -321,9 +321,9 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
 
     assert plan.script_path == "scripts/experiments/train_lora_fixmatch.py"
     assert plan.selection_default_groups == (
-        "query_ssl_method=fixmatch_usb_v1",
-        "lora=default",
-        "query_source=bootstrap_teacher_split30_2026_04_14",
+        "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
+        "strategy_axes/adaptation/peft_adapter=default",
+        "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
     )
     assert "query_ssl_method.temperature=0.7" in plan.hydra_overrides
     assert "lora.rank=16" in plan.hydra_overrides
@@ -370,7 +370,10 @@ def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> Non
         service=compiler_service,
     )
 
-    assert "query_source=dataset_default" in plan.selection_default_groups
+    assert (
+        "track_presets/central_ssl_control/query_source=dataset_default"
+        in plan.selection_default_groups
+    )
     assert (
         "query_source.train_jsonl="
         "data/processed/lora_bootstrap_classifier_teacher/"
@@ -382,7 +385,8 @@ def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> Non
         "bootstrap_teacher_split30_2026_04_14/teacher_unlabeled_pool.jsonl"
     ) in plan.hydra_overrides
     assert (
-        "query_adaptation_initial_checkpoint=required" in plan.selection_default_groups
+        "strategy_axes/adaptation/initial_checkpoint=required"
+        in plan.selection_default_groups
     )
     assert (
         "query_adaptation_initial_checkpoint.manifest_path="
@@ -445,7 +449,7 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
 
     assert plan.script_path == "scripts/experiments/run_federated_simulation.py"
     assert plan.selection_default_groups == (
-        "training_algorithm_profile=prototype_pseudo_label_v1",
+        "strategy_axes/fl/client_training_profile=prototype_pseudo_label_v1",
     )
     assert plan.hydra_overrides == ("training_task.local_epochs=2",)
     assert any("simulation participant" in warning for warning in plan.warnings)

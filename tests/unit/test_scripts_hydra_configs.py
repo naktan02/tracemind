@@ -9,17 +9,17 @@ from hydra import compose, initialize_config_module
 @pytest.mark.parametrize(
     "config_name",
     [
-        "jobs/datasets/run_dataset_pipeline",
-        "jobs/prototypes/seed_prototypes",
-        "jobs/prototypes/evaluate_prototype_pack",
-        "jobs/experiments/prototype_strategy",
-        "jobs/experiments/prototype_threshold_sweep",
-        "jobs/experiments/run_federated_simulation",
-        "jobs/experiments/train_softmax_classifier",
-        "jobs/experiments/train_lora_classifier",
-        "jobs/experiments/train_lora_fixmatch",
-        "jobs/experiments/train_lora_pseudo_label_classifier",
-        "jobs/experiments/train_lora_bootstrap_classifier_teacher",
+        "entrypoints/data_pipeline/run_dataset_pipeline",
+        "entrypoints/prototype_pack/seed_prototypes",
+        "entrypoints/prototype_pack/evaluate_prototype_pack",
+        "entrypoints/prototype_analysis/prototype_strategy",
+        "entrypoints/prototype_analysis/prototype_threshold_sweep",
+        "entrypoints/fl_ssl/run_federated_simulation",
+        "entrypoints/central_classifier_seed/train_softmax_classifier",
+        "entrypoints/central_ssl_control/train_lora_classifier",
+        "entrypoints/central_ssl_control/train_lora_fixmatch",
+        "entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
+        "entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -36,7 +36,7 @@ def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
 
 def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/prototypes/seed_prototypes")
+        cfg = compose(config_name="entrypoints/prototype_pack/seed_prototypes")
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.embedding.backend == "transformers_mxbai"
@@ -49,9 +49,9 @@ def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
 def test_seed_prototypes_supports_short_builder_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/prototypes/seed_prototypes",
+            config_name="entrypoints/prototype_pack/seed_prototypes",
             overrides=[
-                "prototype_builder=kmeans",
+                "strategy_axes/prototype/build_strategy=kmeans",
                 "prototype_builder.candidate_ks=[2]",
             ],
         )
@@ -63,10 +63,10 @@ def test_seed_prototypes_supports_short_builder_override() -> None:
 def test_prototype_strategy_supports_short_group_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/prototype_strategy",
+            config_name="entrypoints/prototype_analysis/prototype_strategy",
             overrides=[
-                "runtime=gpu_local",
-                "embedding=hash_debug",
+                "execution_context/runtime_env=gpu_local",
+                "execution_context/embedding_adapter=hash_debug",
                 "strategy.name=kmeans",
                 "strategy.kmeans_candidate_ks=[2]",
                 "runner.score_policy_name=topk_mean_cosine",
@@ -88,8 +88,8 @@ def test_prototype_strategy_supports_short_group_override() -> None:
 def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_classifier",
-            overrides=["runtime=auto_local"],
+            config_name="entrypoints/central_ssl_control/train_lora_classifier",
+            overrides=["execution_context/runtime_env=auto_local"],
         )
 
     assert cfg.runtime.name == "auto_local"
@@ -100,10 +100,10 @@ def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
 def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_classifier",
+            config_name="entrypoints/central_ssl_control/train_lora_classifier",
             overrides=[
-                "query_source=bootstrap_teacher_split30_2026_04_14",
-                "lora_run_preset=smoke_verbose_e1",
+                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
 
@@ -123,8 +123,8 @@ def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override
 ):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_pseudo_label_classifier",
-            overrides=["runtime=auto_local"],
+            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
+            overrides=["execution_context/runtime_env=auto_local"],
         )
 
     assert cfg.runtime.name == "auto_local"
@@ -135,8 +135,8 @@ def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override
 def test_train_lora_fixmatch_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_fixmatch",
-            overrides=["runtime=auto_local"],
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
+            overrides=["execution_context/runtime_env=auto_local"],
         )
 
     assert cfg.runtime.name == "auto_local"
@@ -147,10 +147,10 @@ def test_train_lora_fixmatch_supports_auto_local_runtime_override() -> None:
 def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_fixmatch",
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
             overrides=[
-                "query_source=bootstrap_teacher_split30_2026_04_14",
-                "lora_run_preset=smoke_verbose_e1",
+                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
 
@@ -171,7 +171,7 @@ def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
 def test_train_lora_fixmatch_supports_query_ssl_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_fixmatch",
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
             overrides=[
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -187,8 +187,8 @@ def test_train_lora_fixmatch_supports_query_ssl_method_override() -> None:
 def test_train_lora_fixmatch_supports_query_ssl_augmenter_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_fixmatch",
-            overrides=["query_ssl_augmenter=precomputed_usb_candidates_v1"],
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
+            overrides=["strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1"],
         )
 
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
@@ -199,10 +199,10 @@ def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_pseudo_label_classifier",
+            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
             overrides=[
-                "query_source=bootstrap_teacher_split30_2026_04_14",
-                "lora_run_preset=smoke_verbose_e1",
+                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
 
@@ -225,8 +225,8 @@ def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_over
 ):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_pseudo_label_classifier",
-            overrides=["pseudo_label_algorithm=fixed_confidence_095"],
+            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
+            overrides=["strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095"],
         )
 
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
@@ -239,8 +239,8 @@ def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_ove
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_bootstrap_classifier_teacher",
-            overrides=["runtime=auto_local"],
+            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
+            overrides=["execution_context/runtime_env=auto_local"],
         )
 
     assert cfg.runtime.name == "auto_local"
@@ -252,10 +252,10 @@ def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_bootstrap_classifier_teacher",
+            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
             overrides=[
-                "query_source=bootstrap_teacher_split30_2026_04_14",
-                "lora_run_preset=smoke_verbose_e1",
+                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
 
@@ -283,8 +283,8 @@ def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm
 ):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_bootstrap_classifier_teacher",
-            overrides=["pseudo_label_algorithm=fixed_confidence_095"],
+            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
+            overrides=["strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095"],
         )
 
     assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
@@ -296,7 +296,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm
 def test_threshold_sweep_supports_short_leaf_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/prototype_threshold_sweep",
+            config_name="entrypoints/prototype_analysis/prototype_threshold_sweep",
             overrides=[
                 "strategy.name=single",
                 "runner.score_policy_name=topk_mean_cosine",
@@ -321,7 +321,7 @@ def test_threshold_sweep_supports_short_leaf_override() -> None:
 
 def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/experiments/run_federated_simulation")
+        cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.federated_run_preset.name == "smoke"
     assert cfg.training_algorithm_profile.algorithm_profile_name == (
@@ -352,12 +352,12 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/run_federated_simulation",
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "federated_run_preset=standard",
+                "track_presets/fl_ssl/simulation_preset=standard",
                 "federated_run_preset.rounds=3",
                 "federated_run_preset.client_count=8",
-                "prototype_builder=kmeans",
+                "strategy_axes/prototype/build_strategy=kmeans",
                 "prototype_builder.candidate_ks=[2]",
             ],
         )
@@ -373,8 +373,8 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
 def test_federated_simulation_standard_preset_fixes_main_comparison_budget() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/run_federated_simulation",
-            overrides=["federated_run_preset=standard"],
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["track_presets/fl_ssl/simulation_preset=standard"],
         )
 
     assert cfg.federated_run_preset.client_count == 10
@@ -386,9 +386,9 @@ def test_federated_simulation_standard_preset_fixes_main_comparison_budget() -> 
 def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/run_federated_simulation",
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "training_algorithm_profile=prototype_top1_confidence_v1",
+                "strategy_axes/fl/client_training_profile=prototype_top1_confidence_v1",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.example_generation_backend_name=prototype_rescore",
                 "training_task.objective.evidence_backend_name=prototype_similarity_evidence",
@@ -429,8 +429,8 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
 def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/run_federated_simulation",
-            overrides=["federated_shard_policy=dirichlet_alpha03"],
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["strategy_axes/fl/shard_policy=dirichlet_alpha03"],
         )
 
     assert cfg.shard_policy.name == "dirichlet_label_skew"
@@ -441,8 +441,8 @@ def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None
 def test_federated_simulation_supports_ssl_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/run_federated_simulation",
-            overrides=["federated_ssl_method=fedavg_pseudo_label"],
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["strategy_axes/fl/method_descriptor=fedavg_pseudo_label"],
         )
 
     assert cfg.ssl_method.schema_version == "federated_ssl_method.v1"
@@ -456,7 +456,9 @@ def test_federated_simulation_supports_ssl_method_override() -> None:
 
 def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/experiments/train_lora_classifier")
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_classifier"
+        )
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.runtime.name == "gpu_online"
@@ -470,7 +472,9 @@ def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() 
 def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold(  # noqa: E501
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/experiments/train_lora_pseudo_label_classifier")
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier"
+        )
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.runtime.name == "gpu_online"
@@ -485,7 +489,7 @@ def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lor
 
 def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/experiments/train_lora_fixmatch")
+        cfg = compose(config_name="entrypoints/central_ssl_control/train_lora_fixmatch")
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.runtime.name == "gpu_online"
@@ -514,7 +518,7 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
 ) -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/experiments/train_lora_bootstrap_classifier_teacher"
+            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher"
         )
 
     assert cfg.dataset.name == "ourafla"
@@ -532,7 +536,7 @@ def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="jobs/datasets/run_dataset_pipeline")
+        cfg = compose(config_name="entrypoints/data_pipeline/run_dataset_pipeline")
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.dataset.test_jsonl == cfg.dataset.test_labeled_jsonl

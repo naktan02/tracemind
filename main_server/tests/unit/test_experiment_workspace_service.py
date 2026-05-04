@@ -7,10 +7,10 @@ from pathlib import Path
 from main_server.src.infrastructure.repositories import (
     experiment_workspace_repository,
 )
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler.service import (
     ExperimentCompilerService,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (

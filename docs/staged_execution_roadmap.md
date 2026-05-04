@@ -36,7 +36,7 @@
 - smoke budget은 실행 확인용 `3 rounds`다.
 - primary metric은 `macro-F1 + worst-client macro-F1`이고,
   `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
-- 현재 active method baseline은 `federated_ssl_method=fedavg_pseudo_label`이다.
+- 현재 active method baseline은 `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`이다.
 - 추가 논문 method는 후보 확정 전까지 구현 파일을 만들지 않는다.
 
 ### Phase 5. 시스템 FL runtime translation
@@ -79,7 +79,7 @@
 - adaptation dataset export는 JSONL/manifest와 함께 summary JSON도 남긴다.
 - adaptation dataset은 baseline runner에 labeled row를 메모리에서 직접 넘기고,
   export JSONL은 trace/audit 산출물로만 남긴다.
-- `runtime=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
+- `execution_context/runtime_env=auto_local` 기준으로 query adaptation dataset에서 supervised `LoRA + classifier` smoke run 1회를 검증했다.
 - query-buffer selection 결과를 family-agnostic summary/trace diagnostics shape로 정리하고,
   JSON/JSONL dump로 저장하는 helper가 들어갔다.
 - single-view query adaptation dataset에서 weak/strong source row를 만드는
@@ -114,7 +114,7 @@
 
 ## Next Session Checklist
 
-1. `federated_shard_policy=dirichlet_alpha03`와 `federated_ssl_method=fedavg_pseudo_label`
+1. `strategy_axes/fl/shard_policy=dirichlet_alpha03`와 `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`
    smoke 실행으로 report JSON을 확인한다.
 2. 구현 전 후보 FL SSL 논문 method를 비교하고, 실제 구현할 method를 확정한다.
 3. 확정 method부터 `agent`/`main_server` 소유 경계에 구현한다.

@@ -68,17 +68,22 @@ def test_resolved_experiment_plan_payload_round_trips_json(tmp_path: Path) -> No
         manifest_id="manifest_001",
         track_name="central_adaptation",
         entrypoint_name="train_lora_fixmatch",
-        job_config_path="conf/jobs/experiments/train_lora_fixmatch.yaml",
+        job_config_path="conf/entrypoints/central_ssl_control/train_lora_fixmatch.yaml",
         script_path="scripts/experiments/train_lora_fixmatch.py",
-        base_default_groups=("dataset=ourafla", "runtime=gpu_online"),
-        selection_default_groups=("query_ssl_method=fixmatch_usb_v1",),
+        base_default_groups=(
+            "execution_context/dataset_asset=ourafla",
+            "execution_context/runtime_env=gpu_online",
+        ),
+        selection_default_groups=(
+            "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
+        ),
         hydra_overrides=("query_ssl_method.temperature=0.7",),
         command_args=(
             "uv",
             "run",
             "python",
             "scripts/experiments/train_lora_fixmatch.py",
-            "query_ssl_method=fixmatch_usb_v1",
+            "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
             "query_ssl_method.temperature=0.7",
         ),
         resolved_selections=(
@@ -88,9 +93,11 @@ def test_resolved_experiment_plan_payload_round_trips_json(tmp_path: Path) -> No
                 family_name="ssl_method",
                 core_method_name="fixmatch",
                 variant_profile_name="fixmatch_usb_v1",
-                source_of_truth="conf/query_ssl_method/fixmatch_usb_v1.yaml",
+                source_of_truth=(
+                    "conf/strategy_axes/ssl/consistency_method/fixmatch_usb_v1.yaml"
+                ),
                 preset_group="query_ssl_method",
-                compiled_selector="query_ssl_method=fixmatch_usb_v1",
+                compiled_selector="strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
                 compiled_overrides=("query_ssl_method.temperature=0.7",),
             ),
         ),

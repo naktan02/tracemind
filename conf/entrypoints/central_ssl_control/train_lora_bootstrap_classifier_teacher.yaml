@@ -1,0 +1,50 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/embedding_adapter: mxbai
+  - /execution_context/runtime_env: gpu_online
+  - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
+  - /strategy_axes/adaptation/peft_adapter: default
+  - /track_presets/central_ssl_control/training_preset: default
+  - /track_presets/central_ssl_control/query_source: dataset_default
+  - /strategy_axes/ssl/pseudo_label_selection: margin_threshold_v1
+  - /strategy_axes/adaptation/initial_checkpoint: canonical_fixed_classifier_seed
+  - /track_presets/central_ssl_control/lora_classifier_defaults: default
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+bootstrap_version: ""
+teacher_train_jsonl: ${query_source.train_jsonl}
+teacher_unlabeled_jsonl: ${query_source.unlabeled_jsonl}
+teacher_embed_chunk_size: 1024
+teacher_train_batch_size: 256
+teacher_eval_batch_size: 256
+teacher_epochs: 12
+teacher_learning_rate: 0.001
+teacher_weight_decay: 0.0001
+teacher_output_dir: runs/train_classifier
+teacher_model_output_dir: data/processed/classifier_heads
+teacher_classifier_version: ""
+teacher_reuse_manifest_path: data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json
+
+bootstrap_split:
+  enabled: false
+  unlabeled_ratio: 0.2
+  seed: ${seed}
+
+bootstrap_export_root: data/processed/lora_bootstrap_classifier_teacher
+
+train_jsonl: ${teacher_train_jsonl}
+pseudo_label_jsonl: null
+pseudo_label_export_root: data/processed/lora_pseudo_label
+student_include_seed_train_rows: false
+output_dir: runs/train_lora_pseudo_label_classifier
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

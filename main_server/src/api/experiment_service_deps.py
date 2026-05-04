@@ -6,13 +6,13 @@ from typing import Annotated
 
 from fastapi import Depends, Request
 
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler.service import (
     ExperimentCompilerService,
 )
-from main_server.src.services.experiment_workspace.run_service import (
+from main_server.src.services.experiment_workspace.run_execution.service import (
     ExperimentRunService,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (

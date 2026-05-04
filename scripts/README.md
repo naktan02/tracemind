@@ -19,10 +19,12 @@
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
 - `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/shard adapter
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
-- `conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
-- `conf/federated_shard_policy`, `federated_ssl_method`, `training_algorithm_profile`: FL simulation 재사용 Hydra config group
-- `conf/jobs/experiments/run_federated_simulation.yaml`: FL simulation의 `round_runtime`, `training_task`, `validation`, `report` shape source of truth
-- `conf/jobs/datasets`, `conf/jobs/experiments`, `conf/jobs/prototypes`: 각 entrypoint가 읽는 top-level Hydra job config
+- `conf/execution_context/`: dataset asset, embedding adapter, runtime environment config group
+- `conf/strategy_axes/prototype/`: prototype pack 같은 공유 artifact 생성 config group
+- `conf/strategy_axes/`: SSL/adaptation/FL 전략 축 config group
+- `conf/track_presets/`: central SSL control, FL SSL 같은 비교 track별 preset
+- `conf/entrypoints/fl_ssl/run_federated_simulation.yaml`: FL simulation의 `round_runtime`, `training_task`, `validation`, `report` shape source of truth
+- `conf/entrypoints/`: 각 entrypoint가 읽는 top-level Hydra config
 - `scripts/classification_report.py`, `scripts/labeled_query_rows.py`: shared canonical utility를 다시 노출하는 compatibility wrapper
 - `scripts/run_artifacts.py`: 여러 스크립트가 공유하는 실행 산출물 경로 helper
 
@@ -36,7 +38,7 @@
 즉 예전처럼 `--dataset`, `--runtime-profile`를 길게 넘기기보다 아래처럼 실행한다.
 
 ```bash
-uv run python <script>.py dataset=ourafla runtime=gpu_online
+uv run python <script>.py execution_context/dataset_asset=ourafla execution_context/runtime_env=gpu_online
 ```
 
 ## 사전 준비
@@ -51,9 +53,9 @@ uv sync --extra dev --extra experiments
 
 대부분의 활성 스크립트는 아래 기본 group를 사용한다.
 
-- `dataset=ourafla`
-- `embedding=mxbai`
-- `runtime=gpu_online`
+- `execution_context/dataset_asset=ourafla`
+- `execution_context/embedding_adapter=mxbai`
+- `execution_context/runtime_env=gpu_online`
 
 즉 별도 override 없이 실행하면:
 
@@ -72,27 +74,27 @@ uv sync --extra dev --extra experiments
 
 ### `gpu_online`이란?
 
-- `runtime=gpu_online`
+- `execution_context/runtime_env=gpu_online`
   - `device=cuda`
   - `local_files_only=false`
   - GPU를 기본으로 쓰되, 캐시에 모델이 없으면 다운로드도 허용한다.
 
-- `runtime=gpu_local`
+- `execution_context/runtime_env=gpu_local`
   - `device=cuda`
   - `local_files_only=true`
   - GPU를 쓰되, 로컬 캐시에 이미 있는 파일만 사용한다.
 
-- `runtime=cpu_local`
+- `execution_context/runtime_env=cpu_local`
   - `device=cpu`
   - `local_files_only=true`
 
-- `runtime=auto_local`
+- `execution_context/runtime_env=auto_local`
   - `device=auto`
   - `local_files_only=true`
   - GPU가 보이면 GPU를 쓰고, 없으면 CPU로 fallback한다.
   - smoke나 로컬 캐시 기반 검증에 권장한다.
 
-- `runtime=auto_online`
+- `execution_context/runtime_env=auto_online`
   - `device=auto`
   - `local_files_only=false`
 
@@ -117,8 +119,8 @@ PY
 
 ```bash
 uv run python <script>.py \
-  dataset=ourafla \
-  embedding=mxbai \
+  execution_context/dataset_asset=ourafla \
+  execution_context/embedding_adapter=mxbai \
   embedding.model_id=intfloat/e5-large-v2 \
   embedding.revision=main
 ```
@@ -127,9 +129,9 @@ uv run python <script>.py \
 
 ```bash
 uv run python <script>.py \
-  dataset=ourafla \
-  embedding=hash_debug \
-  runtime=cpu_local \
+  execution_context/dataset_asset=ourafla \
+  execution_context/embedding_adapter=hash_debug \
+  execution_context/runtime_env=cpu_local \
   embedding.hash_dim=64
 ```
 
@@ -145,7 +147,7 @@ uv run python <script>.py --cfg job
 
 ### classifier-first 자산 필드
 
-`conf/dataset/*.yaml`은 논문 트랙과 시스템 트랙이 공유하는 데이터 자산 source of truth다.
+`conf/execution_context/dataset_asset/*.yaml`은 논문 트랙과 시스템 트랙이 공유하는 데이터 자산 source of truth다.
 현재 활성 필드 의미는 아래로 고정한다.
 
 - `train_jsonl`: supervised classifier seed 학습용 labeled train split
@@ -172,7 +174,7 @@ uv run python scripts/datasets/run_dataset_pipeline.py
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py \
-  dataset=ourafla \
+  execution_context/dataset_asset=ourafla \
   only_stages=[download,map,split]
 ```
 
@@ -180,10 +182,10 @@ offline cache만 쓰고 싶다면 prototype stage runtime만 이렇게 바뀐다
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py \
-  runtime=gpu_local
+  execution_context/runtime_env=gpu_local
 ```
 
-`conf/dataset/*.yaml`에 등록된 dataset alias만 보고 싶다면:
+`conf/execution_context/dataset_asset/*.yaml`에 등록된 dataset alias만 보고 싶다면:
 
 ```bash
 uv run python scripts/datasets/run_dataset_pipeline.py list_datasets=true
@@ -233,14 +235,14 @@ uv run python scripts/prototypes/seed_prototypes.py
 
 ```bash
 uv run python scripts/prototypes/seed_prototypes.py \
-  prototype_builder=kmeans \
+  strategy_axes/prototype/build_strategy=kmeans \
   prototype_builder.candidate_ks=[2,3,4,5]
 ```
 
 명시적 GPU local 실행:
 
 ```bash
-uv run python scripts/prototypes/seed_prototypes.py runtime=gpu_local
+uv run python scripts/prototypes/seed_prototypes.py execution_context/runtime_env=gpu_local
 ```
 
 출력 기본 경로:
@@ -251,7 +253,7 @@ uv run python scripts/prototypes/seed_prototypes.py runtime=gpu_local
 설명:
 
 - 기본 builder는 `single`이다.
-- `prototype_builder=kmeans`로 바꾸면 category마다 여러 prototype을 저장할 수 있다.
+- `strategy_axes/prototype/build_strategy=kmeans`로 바꾸면 category마다 여러 prototype을 저장할 수 있다.
 - exact incremental용 `prototype_build_state`는 현재 single builder에서만 생성된다.
 
 ---
@@ -270,7 +272,7 @@ offline cache만 쓰고 싶다면:
 ```bash
 uv run python scripts/prototypes/evaluate_prototype_pack.py \
   prototype_pack=data/processed/prototype_packs/<prototype_version>.json \
-  runtime=gpu_local
+  execution_context/runtime_env=gpu_local
 ```
 
 출력 기본 경로:
@@ -308,8 +310,8 @@ uv run python scripts/experiments/prototype_strategy_experiment.py \
 
 ```bash
 uv run python scripts/experiments/prototype_strategy_experiment.py \
-  embedding=hash_debug \
-  runtime=cpu_local \
+  execution_context/embedding_adapter=hash_debug \
+  execution_context/runtime_env=cpu_local \
   embedding.hash_dim=64
 ```
 
@@ -369,8 +371,8 @@ smoke 예시:
 
 ```bash
 uv run python scripts/experiments/prototype_threshold_sweep.py \
-  embedding=hash_debug \
-  runtime=cpu_local \
+  execution_context/embedding_adapter=hash_debug \
+  execution_context/runtime_env=cpu_local \
   strategy.name=single \
   threshold_policies[0].thresholds=[0.8,0.95] \
   threshold_policies[1].target_errors=[0.05,0.1] \
@@ -426,17 +428,17 @@ uv run python scripts/experiments/train_lora_classifier.py
 
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py \
-  runtime=gpu_local \
+  execution_context/runtime_env=gpu_local \
   epochs=1
 ```
 
 step 로그를 더 자주 보고 싶다면 직접 override를 주거나,
-`lora_run_preset=smoke_verbose_e1`를 선택한다.
+`track_presets/central_ssl_control/training_preset=smoke_verbose_e1`를 선택한다.
 
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py \
-  runtime=gpu_local \
-  lora_run_preset=smoke_verbose_e1
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1
 ```
 
 현재 LoRA runner 로그는 `log_every_steps` 간격으로 `running_train_loss`만 출력한다.
@@ -447,8 +449,8 @@ pseudo-label self-training 실행:
 
 ```bash
 uv run python scripts/experiments/train_lora_pseudo_label_classifier.py \
-  lora_run_preset=smoke_verbose_e1 \
-  pseudo_label_algorithm=margin_threshold_v1 \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
+  strategy_axes/ssl/pseudo_label_selection=margin_threshold_v1 \
   query_adaptation_initial_checkpoint.manifest_path=/abs/path/to/initial_lora_seed.manifest.json \
   pseudo_label_jsonl=/abs/path/to/pseudo_label_rows.jsonl
 ```
@@ -457,17 +459,17 @@ USB FixMatch 실행:
 
 ```bash
 uv run python scripts/experiments/train_lora_fixmatch.py \
-  runtime=gpu_local \
-  query_source=bootstrap_teacher_split30_2026_04_14 \
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14 \
   query_adaptation_initial_checkpoint.manifest_path=/abs/path/to/initial_lora_seed.manifest.json \
-  lora_run_preset=smoke_verbose_e1
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1
 ```
 
 첫 진입 bootstrap 실행:
 
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
-  lora_run_preset=smoke_verbose_e1 \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
   teacher_unlabeled_jsonl=/abs/path/to/unlabeled_pool.jsonl
 ```
 
@@ -478,24 +480,24 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
   - `teacher_unlabeled_jsonl=...`를 직접 넘긴다.
   - `bootstrap_split.enabled=true`로 켜고 train split 일부를 hidden unlabeled pool로 자동 분리한다.
 - 경로 override를 직접 길게 넘길 수도 있지만, 지금은 아래처럼 preset group 선택으로 줄일 수 있다.
-- 재사용 split은 `query_source=<preset>`으로 고른다.
-- student 학습 배치/epoch/log 간격은 `lora_run_preset=<preset>`으로 고른다.
-- teacher bootstrap selection rule과 이후 self-training provenance preset은 `pseudo_label_algorithm=<preset>`으로 고른다.
-- 적응 단계 initial checkpoint source of truth는 `query_adaptation_initial_checkpoint=<preset>`이다.
+- 재사용 split은 `track_presets/central_ssl_control/query_source=<preset>`으로 고른다.
+- student 학습 배치/epoch/log 간격은 `track_presets/central_ssl_control/training_preset=<preset>`으로 고른다.
+- teacher bootstrap selection rule과 이후 self-training provenance preset은 `strategy_axes/ssl/pseudo_label_selection=<preset>`으로 고른다.
+- 적응 단계 initial checkpoint source of truth는 `strategy_axes/adaptation/initial_checkpoint=<preset>`이다.
 - LoRA manifest를 넘기면 adapter+classifier를 함께 warm-start하고,
   fixed classifier manifest를 넘기면 classifier head만 warm-start한다.
-- FixMatch consistency baseline의 unlabeled source는 `query_source=<preset>`으로 고른다.
-- FixMatch method hyperparameter source of truth는 `query_ssl_method=<preset>`이다.
-- FixMatch NLP strong view 생성/caching source of truth는 `query_ssl_augmenter=<preset>`이다.
+- FixMatch consistency baseline의 unlabeled source는 `track_presets/central_ssl_control/query_source=<preset>`으로 고른다.
+- FixMatch method hyperparameter source of truth는 `strategy_axes/ssl/consistency_method=<preset>`이다.
+- FixMatch NLP strong view 생성/caching source of truth는 `strategy_axes/ssl/augmentation=<preset>`이다.
 
 bootstrap split을 이미 만들어 둔 경우의 짧은 실행 예시:
 
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
-  runtime=gpu_local \
-  query_source=bootstrap_teacher_split30_2026_04_14 \
-  pseudo_label_algorithm=fixed_confidence_095 \
-  lora_run_preset=smoke_verbose_e1 \
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14 \
+  strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095 \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
   bootstrap_version=bootstrap_teacher_split30_2026_04_14_rerun \
   teacher_classifier_version=fixed_teacher_split30_2026_04_14_rerun \
   trainer_version=lora_student_bootstrap_split30_2026_04_14_rerun
@@ -505,9 +507,9 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py \
-  runtime=gpu_local \
-  query_source=bootstrap_teacher_split30_2026_04_14 \
-  lora_run_preset=smoke_verbose_e1 \
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14 \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
   trainer_version=supervised_seed_split30_2026_04_14_rerun
 ```
 
@@ -532,9 +534,9 @@ nvidia-smi
 
 ```bash
 uv run python scripts/experiments/train_lora_classifier.py \
-  runtime=gpu_online \
+  execution_context/runtime_env=gpu_online \
   train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
-  lora_run_preset=default \
+  track_presets/central_ssl_control/training_preset=default \
   trainer_version=stage3_supervised_seed4096_2026_04_20
 ```
 
@@ -544,13 +546,13 @@ uv run python scripts/experiments/train_lora_classifier.py \
 
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
-  runtime=gpu_online \
+  execution_context/runtime_env=gpu_online \
   teacher_train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
   teacher_unlabeled_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/unlabeled_pool_stratified_1024.jsonl \
-  pseudo_label_algorithm=fixed_confidence_095 \
-  query_adaptation_initial_checkpoint=required \
+  strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095 \
+  strategy_axes/adaptation/initial_checkpoint=required \
   query_adaptation_initial_checkpoint.manifest_path=data/processed/lora_classifier_heads/stage3_supervised_seed4096_2026_04_20.manifest.json \
-  lora_run_preset=default \
+  track_presets/central_ssl_control/training_preset=default \
   bootstrap_version=stage3_pseudolabel_seed4096_unl1024_2026_04_20 \
   trainer_version=stage3_pseudolabel_seed4096_unl1024_2026_04_20
 ```
@@ -563,14 +565,14 @@ uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
 
 ```bash
 uv run python scripts/experiments/train_lora_fixmatch.py \
-  runtime=gpu_online \
+  execution_context/runtime_env=gpu_online \
   train_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/seed_train_stratified_4096.jsonl \
   unlabeled_jsonl=data/processed/query_ssl_smoke_subsets/2026_04_20_warmstart/unlabeled_pool_stratified_1024.jsonl \
-  query_adaptation_initial_checkpoint=required \
+  strategy_axes/adaptation/initial_checkpoint=required \
   query_adaptation_initial_checkpoint.manifest_path=data/processed/lora_classifier_heads/stage3_supervised_seed4096_2026_04_20.manifest.json \
-  query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1 \
+  strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1 \
   query_ssl_augmenter.batch_size=32 \
-  lora_run_preset=default \
+  track_presets/central_ssl_control/training_preset=default \
   train_batch_size=8 \
   eval_batch_size=16 \
   log_every_steps=20 \
@@ -585,58 +587,58 @@ uv run python scripts/experiments/train_lora_fixmatch.py \
 
 현재 제공하는 preset:
 
-- `query_source=dataset_default`
+- `track_presets/central_ssl_control/query_source=dataset_default`
   - dataset alias의 labeled train + unlabeled query pool 경로 사용
   - 현재 `ourafla`처럼 `dataset.unlabeled_query_pool_jsonl=null`인 alias에서는 unlabeled 경로 직접 override가 필요하다
-- `query_source=bootstrap_teacher_split30_2026_04_14`
+- `track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14`
   - split30 labeled train / hidden unlabeled pool 재사용
-- `lora_run_preset=default`
+- `track_presets/central_ssl_control/training_preset=default`
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=5`, `log_every_steps=100`
-- `lora_run_preset=smoke_verbose_e1`
+- `track_presets/central_ssl_control/training_preset=smoke_verbose_e1`
   - `train_batch_size=16`, `eval_batch_size=32`, `epochs=1`, `log_every_steps=20`
-- `pseudo_label_algorithm=margin_threshold_v1`
+- `strategy_axes/ssl/pseudo_label_selection=margin_threshold_v1`
   - 현재 bootstrap baseline
   - `confidence_threshold=0.6`, `margin_threshold=0.02`
-- `pseudo_label_algorithm=fixed_confidence_095`
+- `strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095`
   - confidence-only 비교선
   - `confidence_threshold=0.95`, `margin_threshold=0.0`
-- `query_ssl_method=fixmatch_usb_v1`
+- `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`
   - USB FixMatch core baseline
   - `temperature=0.5`, `p_cutoff=0.95`, `hard_label=true`, `lambda_u=1.0`, `supervised_loss_weight=1.0`
   - 현재 USB semilearn 경로와 동일하게 pseudo label target 생성에서는 `temperature`가 실제로 쓰이지 않는다
   - `query_ssl_method.supervised_loss_weight=0.0`으로 override하면 warm-start checkpoint 위 `unlabeled-only` ablation을 돌릴 수 있다
-- `query_adaptation_initial_checkpoint=none`
+- `strategy_axes/adaptation/initial_checkpoint=none`
   - supervised LoRA seed baseline용 fresh-start
-- `query_adaptation_initial_checkpoint=canonical_fixed_classifier_seed`
+- `strategy_axes/adaptation/initial_checkpoint=canonical_fixed_classifier_seed`
   - canonical fixed classifier seed manifest를 읽어 classifier head 초기값을 재사용한다
-- `query_adaptation_initial_checkpoint=required`
+- `strategy_axes/adaptation/initial_checkpoint=required`
   - warm-start artifact를 명시적으로 넘겨야 하는 strict preset
-- `query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1`
+- `strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1`
   - strict USB형 NLP input baseline
   - `weak=text`, `strong=random(aug_0, aug_1)`
   - `aug_0`, `aug_1`는 `EN->DE->EN`, `EN->FR->EN` backtranslation으로 자동 생성 후 cache한다
   - 기본 `torch_dtype=auto`이며, CUDA에서는 `float16`, CPU에서는 `float32`로 해석한다
-- `query_ssl_augmenter=precomputed_usb_candidates_v1`
+- `strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1`
   - 이미 `aug_0`, `aug_1`가 들어 있는 JSONL을 그대로 소비한다
 
 hidden unlabeled split을 지금 바로 자동 생성하려면:
 
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
-  runtime=gpu_local \
-  lora_run_preset=smoke_verbose_e1 \
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
   bootstrap_split.enabled=true \
   bootstrap_split.unlabeled_ratio=0.3 \
   bootstrap_version=bootstrap_teacher_split30_2026_04_14
 ```
 
 bootstrap runner에서도 student LoRA 단계 로그를 더 자주 보려면
-같은 `lora_run_preset=smoke_verbose_e1`를 쓰면 된다.
+같은 `track_presets/central_ssl_control/training_preset=smoke_verbose_e1`를 쓰면 된다.
 
 ```bash
 uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py \
-  runtime=gpu_local \
-  lora_run_preset=smoke_verbose_e1 \
+  execution_context/runtime_env=gpu_local \
+  track_presets/central_ssl_control/training_preset=smoke_verbose_e1 \
   bootstrap_split.enabled=true \
   bootstrap_split.unlabeled_ratio=0.3 \
   epochs=1
@@ -708,7 +710,7 @@ canonical 경로:
   그 산출물을 `train_lora_fixmatch.py` 입력으로 바로 사용할 수 있다.
 - weak/strong augmentation recipe는 이 단계에서 고정하지 않고,
   agent의 `QueryAdaptationMultiviewService`에 pluggable augmenter로 주입한다.
-- 로컬 smoke 검증은 `runtime=auto_local`이 권장된다.
+- 로컬 smoke 검증은 `execution_context/runtime_env=auto_local`이 권장된다.
 - epoch 로그는 기본적으로 `log_every_steps=100` 간격으로 출력된다.
   긴 run을 닫기 전에 step-level loss가 정상인지 먼저 확인하는 용도로 둔다.
 
@@ -736,7 +738,7 @@ uv run python scripts/experiments/run_federated_simulation.py
 
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
-  federated_run_preset=standard \
+  track_presets/fl_ssl/simulation_preset=standard \
   federated_run_preset.client_count=4 \
   federated_run_preset.rounds=3
 ```
@@ -745,10 +747,10 @@ FL 재빌드도 `kmeans` multi-prototype로 보려면:
 
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
-  federated_run_preset=standard \
+  track_presets/fl_ssl/simulation_preset=standard \
   federated_run_preset.client_count=8 \
   federated_run_preset.rounds=3 \
-  prototype_builder=kmeans \
+  strategy_axes/prototype/build_strategy=kmeans \
   prototype_builder.candidate_ks=[2]
 ```
 
@@ -756,9 +758,9 @@ uv run python scripts/experiments/run_federated_simulation.py \
 
 ```bash
 uv run python scripts/experiments/run_federated_simulation.py \
-  embedding=hash_debug \
-  runtime=cpu_local \
-  federated_run_preset=smoke
+  execution_context/embedding_adapter=hash_debug \
+  execution_context/runtime_env=cpu_local \
+  track_presets/fl_ssl/simulation_preset=smoke
 ```
 
 client shard 분배 비율이나 scoring policy 같은 세부 전략을 바꾸려면:
@@ -782,8 +784,8 @@ uv run python scripts/experiments/run_federated_simulation.py \
 
 출력 예시:
 
-- `federated_run_preset=smoke`: `runs/federated_simulation_smoke/<run_id>/...`
-- `federated_run_preset=standard`: `runs/federated_simulation/<run_id>/...`
+- `track_presets/fl_ssl/simulation_preset=smoke`: `runs/federated_simulation_smoke/<run_id>/...`
+- `track_presets/fl_ssl/simulation_preset=standard`: `runs/federated_simulation/<run_id>/...`
 
 현재 수준:
 

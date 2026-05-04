@@ -1,27 +1,68 @@
 # Hydra Config Layout
 
 `conf/`는 TraceMind 실험 조합과 method/runtime 파라미터의 루트 Hydra config
-공간이다. 여러 entrypoint나 여러 preset이 공유하는 축만 config group으로
-유지하고, 단일 entrypoint 전용 shape는 해당 job config 안에 둔다.
+공간이다. 폴더명은 사람이 탐색할 때의 의미를 우선하고, YAML `# @package`는
+기존 코드가 읽는 canonical config shape를 유지한다.
+
+예를 들어 `execution_context/dataset_asset=ourafla`는 compose 후에도
+`cfg.dataset`으로 들어가고, `strategy_axes/ssl/pseudo_label_selection=...`은
+`cfg.pseudo_label_algorithm`으로 들어간다.
 
 ## 현재 분류
 
-- Job config: `jobs/datasets/`, `jobs/prototypes/`, `jobs/experiments/`
-- 공통 실행 축: `dataset/`, `embedding/`, `runtime/`, `paper_backbone/`
-- Prototype 축: `prototype_builder/`
-- Central SSL / LoRA 축: `lora/`, `lora_run_preset/`, `query_source/`,
-  `pseudo_label_algorithm/`, `query_ssl_method/`, `query_ssl_augmenter/`,
-  `query_adaptation_initial_checkpoint/`, `lora_experiment/`
-- FL SSL 축: `federated_run_preset/`, `federated_shard_policy/`,
-  `federated_ssl_method/`, `training_algorithm_profile/`
-- FL simulation entrypoint-local section:
-  `jobs/experiments/run_federated_simulation.yaml`의 `round_runtime`,
-  `training_task`, `validation`, `report`
+- `entrypoints/`: `@hydra.main(config_name=...)`이 읽는 실행 시작점별 root config.
+- `execution_context/`: 여러 실험이 공유하는 데이터 자산, embedding adapter, runtime 환경.
+- `strategy_axes/`: 중앙 SSL과 FL SSL이 공유하거나 각 track에서 교체하는 전략 축.
+- `track_presets/`: 논문 비교 track 안에서만 의미가 생기는 preset.
+
+```text
+conf/
+├── entrypoints/
+│   ├── central_classifier_seed/
+│   ├── central_ssl_control/
+│   ├── data_pipeline/
+│   ├── fl_ssl/
+│   ├── prototype_analysis/
+│   └── prototype_pack/
+├── execution_context/
+│   ├── dataset_asset/
+│   ├── embedding_adapter/
+│   └── runtime_env/
+├── strategy_axes/
+│   ├── adaptation/
+│   │   ├── initial_checkpoint/
+│   │   ├── peft_adapter/
+│   │   └── transformer_backbone/
+│   ├── fl/
+│   │   ├── client_training_profile/
+│   │   ├── method_descriptor/
+│   │   └── shard_policy/
+│   ├── prototype/
+│   │   └── build_strategy/
+│   └── ssl/
+│       ├── augmentation/
+│       ├── consistency_method/
+│       └── pseudo_label_selection/
+└── track_presets/
+    ├── central_ssl_control/
+    │   ├── lora_classifier_defaults/
+    │   ├── query_source/
+    │   └── training_preset/
+    └── fl_ssl/
+        └── simulation_preset/
+```
+
+## 이름 기준
+
+- entrypoint config는 실행 스크립트의 시작점이다.
+- execution context는 방법론 비교가 아니라 실행 재료다.
+- strategy axis는 실제로 교체 가능한 계산/정책 축이다.
+- track preset은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 옵션 묶음이다.
 
 ## 정리 기준
 
-- 새 job은 `jobs/datasets/`, `jobs/prototypes/`, `jobs/experiments/` 중 하나에 둔다.
-- 새 reusable group은 실행 rail을 이름에 드러낸다.
-- preset이 1개뿐이고 해당 entrypoint에서만 쓰이면 group을 만들지 않는다.
+- 새 실행 시작점은 `entrypoints/<track_or_stage>/` 아래에 둔다.
+- 새 reusable group은 위치만 보고도 역할이 드러나야 한다.
+- preset이 1개뿐이고 해당 entrypoint 전용이면 group으로 만들지 않는다.
 - YAML은 실행 조합표와 파라미터를 담고, Python 구현이나 복잡한 계산 로직은 두지 않는다.
-- namespace 이동은 Hydra config test와 관련 catalog/doc 갱신을 같이 닫는다.
+- namespace 이동은 Hydra config test, experiment catalog, active docs 갱신을 같이 닫는다.

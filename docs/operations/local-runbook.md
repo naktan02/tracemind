@@ -207,7 +207,7 @@ uv run python scripts/experiments/train_lora_classifier.py --cfg job
 
 ## 7. Runtime Profiles
 
-`conf/runtime/*.yaml`이 script runtime source of truth다.
+`conf/execution_context/runtime_env/*.yaml`이 script runtime source of truth다.
 
 | Profile | 의미 |
 |---|---|
@@ -217,7 +217,7 @@ uv run python scripts/experiments/train_lora_classifier.py --cfg job
 | `auto_local` | GPU가 있으면 GPU, 없으면 CPU, local cache만 사용 |
 | `auto_online` | 자동 device 선택, online download 허용 |
 
-기본 실험 문서는 `dataset=ourafla`, `embedding=mxbai`, `runtime=gpu_online`을 기준으로 본다.
+기본 실험 문서는 `execution_context/dataset_asset=ourafla`, `execution_context/embedding_adapter=mxbai`, `execution_context/runtime_env=gpu_online`을 기준으로 본다.
 
 ## 8. GPU Preflight
 

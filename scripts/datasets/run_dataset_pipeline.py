@@ -27,7 +27,8 @@ from scripts.datasets.lib.split import (  # noqa: E402
 from scripts.prototypes.seeding import seed_prototype_pack  # noqa: E402
 
 PIPELINE_STAGE_ORDER = ("download", "map", "split", "prototype")
-DATASET_CONFIG_DIR = PROJECT_ROOT / "conf/dataset"
+DATASET_CONFIG_DIR = PROJECT_ROOT / "conf/execution_context/dataset_asset"
+DATASET_CONFIG_GROUP = "execution_context/dataset_asset"
 
 
 def supported_dataset_aliases() -> tuple[str, ...]:
@@ -423,7 +424,7 @@ def _write_pipeline_run_manifest(
         "schema_version": "dataset_pipeline_run.v2",
         "dataset_name": dataset_cfg.name,
         "description": str(dataset_cfg.get("description", "")),
-        "dataset_config_group": f"dataset={dataset_cfg.name}",
+        "dataset_config_group": f"{DATASET_CONFIG_GROUP}={dataset_cfg.name}",
         "dataset_config_path": str(DATASET_CONFIG_DIR / f"{dataset_cfg.name}.yaml"),
         "executed_at": executed_at.isoformat(),
         "executed_stages": selected_stages,
@@ -550,7 +551,7 @@ def run_dataset(
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="jobs/datasets/run_dataset_pipeline",
+    config_name="entrypoints/data_pipeline/run_dataset_pipeline",
 )
 def main(cfg: DictConfig) -> None:
     if bool(cfg.list_datasets):

@@ -17,8 +17,8 @@ def test_supported_dataset_aliases_include_ourafla_and_cssrs() -> None:
 def test_hydra_dataset_group_contains_pipeline_metadata() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="jobs/datasets/run_dataset_pipeline",
-            overrides=["dataset=ourafla"],
+            config_name="entrypoints/data_pipeline/run_dataset_pipeline",
+            overrides=["execution_context/dataset_asset=ourafla"],
         )
 
     assert cfg.dataset.stages == ["download", "map", "split", "prototype"]

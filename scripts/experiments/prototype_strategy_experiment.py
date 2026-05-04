@@ -27,7 +27,7 @@ from scripts.experiments.prototype_strategy.strategies import (
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="jobs/experiments/prototype_strategy",
+    config_name="entrypoints/prototype_analysis/prototype_strategy",
 )
 def main(config: DictConfig) -> None:
     created_at = datetime.now(timezone.utc)

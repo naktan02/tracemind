@@ -1,5 +1,0 @@
-name: canonical_fixed_classifier_seed
-mode: required
-manifest_path: data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json
-adapter_dir: ""
-classifier_path: ""

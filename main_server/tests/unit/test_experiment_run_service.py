@@ -14,18 +14,20 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories.experiment_run_repository import (
     ExperimentRunRepository,
 )
-from main_server.src.services.experiment_workspace.catalog_service import (
+from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler_service import (
+from main_server.src.services.experiment_workspace.compiler.service import (
     ExperimentCompilerService,
 )
 from main_server.src.services.experiment_workspace.payloads import (
     LaunchExperimentRunRequestPayload,
 )
-from main_server.src.services.experiment_workspace.run_service import (
+from main_server.src.services.experiment_workspace.run_execution import (
+    runtime_support,
+)
+from main_server.src.services.experiment_workspace.run_execution.service import (
     ExperimentRunService,
-    LocalExperimentProcessHandle,
 )
 from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
@@ -61,14 +63,14 @@ class _LaunchCapture:
         cwd: Path,
         stdout_log_path: Path,
         stderr_log_path: Path,
-    ) -> LocalExperimentProcessHandle:
+    ) -> runtime_support.LocalExperimentProcessHandle:
         self.command_args = command_args
         self.cwd = cwd
         self.stdout_log_path = stdout_log_path
         self.stderr_log_path = stderr_log_path
         stdout_log_path.write_text(self.stdout_text, encoding="utf-8")
         stderr_log_path.write_text(self.stderr_text, encoding="utf-8")
-        return LocalExperimentProcessHandle(process=self.process)
+        return runtime_support.LocalExperimentProcessHandle(process=self.process)
 
 
 def test_experiment_run_service_launches_local_run_and_refreshes_status(
@@ -178,8 +180,7 @@ def test_experiment_run_service_launches_local_run_and_refreshes_status(
     assert launched.reported_outputs["report_json"] == str(report_path)
     assert launched.result_summary is not None
     metric_values = {
-        metric.metric_key: metric.value
-        for metric in launched.result_summary.metrics
+        metric.metric_key: metric.value for metric in launched.result_summary.metrics
     }
     assert metric_values["validation.accuracy_top_1"] == pytest.approx(0.8)
     assert metric_values["validation.macro_f1"] == pytest.approx(

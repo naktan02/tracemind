@@ -85,7 +85,7 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - secondary metrics: `ECE`, communication cost, per-client variance
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
-- method selection: `federated_ssl_method=fedavg_pseudo_label` baseline만 현재 active runtime이다.
+- method selection: `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
 
 Runtime translation:
 
@@ -134,8 +134,8 @@ Runtime translation:
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
 4. 같은 scaffold에서 pseudo-label, FixMatch, R-Drop, MixText를 비교한다.
-5. FL SSL main comparison smoke를 `federated_shard_policy=dirichlet_alpha03`와
-   `federated_ssl_method=fedavg_pseudo_label`로 실행해 report를 확인한다.
+5. FL SSL main comparison smoke를 `strategy_axes/fl/shard_policy=dirichlet_alpha03`와
+   `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`로 실행해 report를 확인한다.
 6. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
 7. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
    경계에 구현한다.

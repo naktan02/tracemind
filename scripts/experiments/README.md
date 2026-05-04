@@ -6,7 +6,7 @@
 
 - 운영 후보 로직은 `shared`, `agent`, `main_server`에 둔다.
 - 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
-- Hydra top-level config는 `conf/jobs/experiments/*.yaml`이 source of truth다.
+- Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
 
 전략 축 전체와 현재 override 가능 여부는
 [docs/strategy_surface_map.md](....docs/strategy_surface_map.md)를
@@ -21,7 +21,7 @@
 - `run_federated_simulation.py`
   - agent/main_server 코어를 조합한 synthetic FL loop
   - runtime/task/validation/report shape는
-    `conf/jobs/experiments/run_federated_simulation.yaml` 안의
+    `conf/entrypoints/fl_ssl/run_federated_simulation.yaml` 안의
     `round_runtime`, `training_task`, `validation`, `report` section이다.
 - `train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline
@@ -29,17 +29,22 @@
   - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
 - `train_lora_fixmatch.py`
   - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint
-  - method/source/augmentation/initial checkpoint source of truth는 `query_ssl_method`, `query_source`, `query_ssl_augmenter`, `query_adaptation_initial_checkpoint` Hydra group이다.
+  - method/source/augmentation/initial checkpoint source of truth는
+    `strategy_axes/ssl/consistency_method`,
+    `track_presets/central_ssl_control/query_source`,
+    `strategy_axes/ssl/augmentation`,
+    `strategy_axes/adaptation/initial_checkpoint` selector다.
 - `train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
     `LoRA + classifier` student를 학습하는 bootstrap entrypoint
-  - selection rule source of truth는 `conf/pseudo_label_algorithm/*.yaml`이다.
-  - student initial checkpoint source of truth는 `conf/query_adaptation_initial_checkpoint/*.yaml`이다.
+  - selection rule source of truth는 `conf/strategy_axes/ssl/pseudo_label_selection/*.yaml`이다.
+  - student initial checkpoint source of truth는 `conf/strategy_axes/adaptation/initial_checkpoint/*.yaml`이다.
 - `train_lora_pseudo_label_classifier.py`
   - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint
   - 현재 helper는 offline union retraining 경로를 포함하지만,
     central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 본다.
-  - 실험 표면에서는 bootstrap과 같은 `pseudo_label_algorithm` Hydra group을 공유하고,
+  - 실험 표면에서는 bootstrap과 같은
+    `strategy_axes/ssl/pseudo_label_selection` selector를 공유하고,
     산출물 manifest에 해당 preset을 provenance로 남긴다.
   - warm-start provenance는 `query_adaptation_initial_checkpoint` 축으로 함께 남긴다.
 - `lora_classifier/`
@@ -53,7 +58,8 @@
   - `bootstrap_runner.py`의 teacher pseudo-label selection은
     `methods/ssl/hooks/`의 selection hook을 재사용한다.
   - bootstrap 실험에서 선택 규칙 preset은
-    `training_algorithm_profile`이 아니라 `pseudo_label_algorithm` Hydra group으로 고른다.
+    `strategy_axes/fl/client_training_profile`이 아니라
+    `strategy_axes/ssl/pseudo_label_selection` selector로 고른다.
   - central canonical 비교 규약에서는 same initial checkpoint에서 출발해
     new accepted query-derived rows only continual adaptation으로 해석한다.
   - `query_adaptation_io.py`는 agent-local adaptation dataset을 현재 JSONL 입력 shape로 export한다.
@@ -113,12 +119,12 @@
    - labeled seed subset으로 supervised LoRA seed manifest를 먼저 만든다.
 2. `train_lora_bootstrap_classifier_teacher.py`
    - 기존 fixed classifier teacher로 pseudo-label을 붙이되,
-     student는 `query_adaptation_initial_checkpoint=required`와
+     student는 `strategy_axes/adaptation/initial_checkpoint=required`와
      `query_adaptation_initial_checkpoint.manifest_path=<supervised_lora_manifest>`로
      같은 initial checkpoint에서 warm-start한다.
 3. `train_lora_fixmatch.py`
    - 같은 supervised LoRA seed manifest에서 warm-start하고,
-     `query_ssl_augmenter=backtranslation_nllb_en_de_fr_usb_v1`로
+     `strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1`로
      strict USB형 `text + aug_0 + aug_1` input을 생성한다.
    - `query_ssl_method.supervised_loss_weight=0.0`을 주면
      local labeled loss를 끄는 `unlabeled-only` ablation을 돌릴 수 있다.

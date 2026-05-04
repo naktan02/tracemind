@@ -1,0 +1,88 @@
+# @package _global_
+
+defaults:
+  - /execution_context/dataset_asset: ourafla
+  - /execution_context/embedding_adapter: mxbai
+  - /execution_context/runtime_env: gpu_online
+  - /track_presets/fl_ssl/simulation_preset: smoke
+  - /strategy_axes/fl/shard_policy: label_dominant
+  - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
+  - /strategy_axes/fl/client_training_profile: prototype_pseudo_label_v1
+  - /strategy_axes/prototype/build_strategy: single
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+train_jsonl: ${dataset.train_jsonl}
+validation_jsonl: ${dataset.validation_jsonl}
+published_model_id: tracemind-embed-sim
+seed: 42
+
+prototype_rebuild:
+  embedding_backend: simulation
+  mapping_version: ourafla_to_4cat.v1
+  translation_model_id: null
+  translation_model_revision: null
+  translation_direction: null
+
+diagnostics:
+  dump_dir_name: selection_dumps
+
+round_runtime:
+  adapter_family_name: ${training_algorithm_profile.adapter_family_name}
+  aggregation_backend_name: ${training_algorithm_profile.aggregation_backend_name}
+  classifier_head_bootstrap_logit_scale: 8.0
+
+training_task:
+  local_epochs: 1
+  batch_size: 16
+  learning_rate: 0.0001
+  max_steps: 50
+  min_required_examples: ${federated_run_preset.min_required_examples}
+  gradient_clip_norm: 0.5
+  objective:
+    algorithm_profile_name: ${training_algorithm_profile.algorithm_profile_name}
+    training_backend_name: ${training_algorithm_profile.training_backend_name}
+    confidence_threshold: ${training_algorithm_profile.confidence_threshold}
+    margin_threshold: ${training_algorithm_profile.margin_threshold}
+    example_generation_backend_name: ${training_algorithm_profile.example_generation_backend_name}
+    evidence_backend_name: ${training_algorithm_profile.evidence_backend_name}
+    scorer_backend_name: ${training_algorithm_profile.scorer_backend_name}
+    score_policy_name: ${training_algorithm_profile.score_policy_name}
+    score_top_k: ${training_algorithm_profile.score_top_k}
+    pseudo_label_algorithm_name: ${training_algorithm_profile.pseudo_label_algorithm_name}
+    acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
+    privacy_guard_name: ${training_algorithm_profile.privacy_guard_name}
+    evidence_backend.temperature: ${training_algorithm_profile.evidence_backend_temperature}
+  selection_policy:
+    max_examples: ${federated_run_preset.max_examples}
+
+validation:
+  similarity_name: cosine
+  scorer_backend_name: ${training_task.objective.scorer_backend_name}
+  score_policy_name: ${training_task.objective.score_policy_name}
+  score_top_k: ${training_task.objective.score_top_k}
+  confidence_threshold: ${training_task.objective.confidence_threshold}
+  margin_threshold: ${training_task.objective.margin_threshold}
+
+report:
+  schema_version: federated_simulation_report.v1
+  track: fl_ssl_main_comparison
+  table_role: main_comparison
+  labeled_ratio: 0.1
+  unlabeled_ratio: 0.9
+  seed_count: 3
+  primary_metrics:
+    - macro_f1
+    - worst_client_macro_f1
+  secondary_metrics:
+    - expected_calibration_error
+    - communication_cost
+    - per_client_macro_f1_variance
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

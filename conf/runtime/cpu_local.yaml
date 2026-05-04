@@ -1,3 +1,0 @@
-name: cpu_local
-device: cpu
-local_files_only: true

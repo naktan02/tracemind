@@ -11,7 +11,7 @@ from scripts.experiments.lora_classifier.runner import run_supervised_lora_basel
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="jobs/experiments/train_lora_classifier",
+    config_name="entrypoints/central_ssl_control/train_lora_classifier",
 )
 def main(cfg: DictConfig) -> None:
     run_supervised_lora_baseline(cfg)

@@ -37,8 +37,8 @@ prototype artifact 작업 entrypoint를 모은다.
 
 ```bash
 python -m scripts.prototypes.seed_prototypes \
-  embedding=hash_debug \
-  prototype_builder=kmeans \
+  execution_context/embedding_adapter=hash_debug \
+  strategy_axes/prototype/build_strategy=kmeans \
   prototype_builder.candidate_ks=[2,3] \
   translation_model_id=facebook/nllb-200-distilled-600M \
   translation_model_revision=main \
@@ -48,7 +48,7 @@ python -m scripts.prototypes.seed_prototypes \
 ## 중요한 구분
 
 - `embedding`은 실제 runtime knob다.
-  `conf/embedding/*.yaml`에서 backend/model을 고르고,
+  `conf/execution_context/embedding_adapter/*.yaml`에서 backend/model을 고르고,
   `EmbeddingAdapterFactory`가 실제 adapter를 만든다.
 - `translation_model_id`, `translation_model_revision`, `translation_direction`은
   현재 prototype pack/build state에 남는 provenance metadata다.
