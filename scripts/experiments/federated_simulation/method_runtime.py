@@ -1,9 +1,10 @@
-"""FedAvg pseudo-label FL SSL baseline runtime."""
+"""FL SSL method descriptor를 simulation runtime으로 연결하는 adapter."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Protocol
 
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
@@ -16,15 +17,9 @@ from agent.src.services.training.execution.local_training_service import (
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
-    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
-)
-from scripts.experiments.federated_simulation.evaluation import (
-    build_training_examples,
-)
-from scripts.experiments.federated_simulation.methods.base import (
-    FederatedSslMethodDescriptor,
-)
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from scripts.experiments.federated_simulation.evaluation import build_training_examples
 from scripts.experiments.federated_simulation.models import (
     FederatedTrainingTaskConfig,
 )
@@ -35,19 +30,50 @@ from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-from shared.src.domain.entities.training.shared_adapter_state import (
-    SharedAdapterState,
-)
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
-from .registry import register_federated_ssl_method
+
+class FederatedSslSimulationRuntime(Protocol):
+    """Simulation loop가 호출하는 FL SSL 실행 조합."""
+
+    descriptor: FederatedSslMethodDescriptor
+
+    def build_round_open_request(
+        self,
+        *,
+        active_manifest: ModelManifest,
+        round_id: str,
+        training_task_config: FederatedTrainingTaskConfig,
+    ) -> RoundOpenRequest:
+        """method별 round task를 생성한다."""
+
+    def build_training_examples(
+        self,
+        *,
+        rows: list[LabeledQueryRow],
+        adapter: EmbeddingAdapter,
+        adapter_state: SharedAdapterState,
+        prototype_pack: PrototypePackPayload,
+        model_id: str,
+        scoring_service: ScoringService,
+        objective_config: TrainingObjectiveConfig,
+    ) -> tuple[EmbeddedTrainingExample, ...]:
+        """client shard row를 method별 local training 입력으로 변환한다."""
+
+    def build_local_training_service(
+        self,
+        *,
+        client_state_root: Path,
+    ) -> LocalTrainingService:
+        """client local trainer를 생성한다."""
 
 
 @dataclass(frozen=True, slots=True)
-class FedAvgPseudoLabelRuntime:
-    """기존 FedAvg + pseudo-label self-training 실행 조합."""
+class DefaultFederatedSslSimulationRuntime:
+    """기본 FL SSL simulation runtime 조합."""
 
-    descriptor: FederatedSslMethodDescriptor = FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    descriptor: FederatedSslMethodDescriptor
 
     def build_round_open_request(
         self,
@@ -93,11 +119,17 @@ class FedAvgPseudoLabelRuntime:
         )
 
 
-@register_federated_ssl_method(
-    "fedavg_pseudo_label",
-    descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
-)
-def build_fedavg_pseudo_label_runtime() -> FedAvgPseudoLabelRuntime:
-    """FedAvg pseudo-label baseline runtime을 생성한다."""
-
-    return FedAvgPseudoLabelRuntime()
+def build_federated_ssl_simulation_runtime(
+    name: str,
+) -> FederatedSslSimulationRuntime:
+    """method descriptor를 기본 simulation runtime adapter로 변환한다."""
+    descriptor = resolve_federated_ssl_method_descriptor(name)
+    if (
+        descriptor.requires_custom_client_runtime
+        or descriptor.requires_custom_server_runtime
+    ):
+        raise NotImplementedError(
+            "Federated SSL method requires a custom simulation runtime: "
+            f"{descriptor.name}"
+        )
+    return DefaultFederatedSslSimulationRuntime(descriptor=descriptor)

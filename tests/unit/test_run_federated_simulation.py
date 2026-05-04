@@ -12,6 +12,7 @@ from agent.src.services.inference.scoring_service import ScoringService
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundTaskConfig,
 )
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
@@ -27,9 +28,8 @@ from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
     evaluate_rows,
 )
-from scripts.experiments.federated_simulation.methods import (
-    build_federated_ssl_method_runtime,
-    resolve_federated_ssl_method,
+from scripts.experiments.federated_simulation.method_runtime import (
+    build_federated_ssl_simulation_runtime,
 )
 from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
@@ -382,8 +382,8 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
     assert request.selection_policy is training_task_config.selection_policy
 
 
-def test_federated_ssl_method_resolver_only_wires_active_baseline() -> None:
-    descriptor = resolve_federated_ssl_method("fedavg_pseudo_label")
+def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
 
     assert descriptor.implementation_status == "active_runtime"
     assert descriptor.client_trainer_name == "local_training_service"
@@ -391,11 +391,11 @@ def test_federated_ssl_method_resolver_only_wires_active_baseline() -> None:
     assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
     assert descriptor.requires_custom_client_runtime is False
     assert descriptor.requires_custom_server_runtime is False
-    runtime = build_federated_ssl_method_runtime("fedavg_pseudo_label")
+    runtime = build_federated_ssl_simulation_runtime("fedavg_pseudo_label")
     assert runtime.descriptor is descriptor
 
-    with pytest.raises(NotImplementedError, match="not wired yet"):
-        resolve_federated_ssl_method("paper_method_candidate")
+    with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
+        build_federated_ssl_simulation_runtime("paper_method_candidate")
 
 
 def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:

@@ -160,7 +160,7 @@ Raw Event / Local Signal
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |
 | FL SSL method descriptor | `methods/federated_ssl/*` |
-| FL simulation runtime adapter | `scripts/experiments/federated_simulation/methods/*` |
+| FL simulation runtime adapter | `scripts/experiments/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 

@@ -397,7 +397,7 @@ python -m scripts.experiments.run_federated_simulation \
 - `federated_ssl_method=fedavg_pseudo_label`는 현재 active runtime baseline이다.
 - `federated_ssl_method`의 descriptor source of truth는
   `methods/federated_ssl/`이고, simulation runtime adapter는
-  `scripts/experiments/federated_simulation/methods/`가 붙인다.
+  `scripts/experiments/federated_simulation/method_runtime.py`가 붙인다.
   현재 baseline은 round open, client example build, local trainer를 기존 pseudo-label
   self-training runtime으로 연결한다.
 - 후보 논문 method는 확정 전까지 config/파일을 미리 추가하지 않는다.

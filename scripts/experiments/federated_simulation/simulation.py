@@ -22,9 +22,8 @@ from scripts.experiments.federated_simulation.evaluation import (
     build_validation_scoring_service,
     evaluate_rows,
 )
-from scripts.experiments.federated_simulation.methods import (
-    build_federated_ssl_method_runtime,
-    resolve_federated_ssl_method,
+from scripts.experiments.federated_simulation.method_runtime import (
+    build_federated_ssl_simulation_runtime,
 )
 from scripts.experiments.federated_simulation.models import (
     ClientEvaluationSummary,
@@ -80,8 +79,8 @@ def run_simulation(
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
 
-    ssl_method_descriptor = resolve_federated_ssl_method(ssl_method_config.name)
-    ssl_method_runtime = build_federated_ssl_method_runtime(ssl_method_config.name)
+    ssl_method_runtime = build_federated_ssl_simulation_runtime(ssl_method_config.name)
+    ssl_method_descriptor = ssl_method_runtime.descriptor
     if ssl_method_config.implementation_status != (
         ssl_method_descriptor.implementation_status
     ):
