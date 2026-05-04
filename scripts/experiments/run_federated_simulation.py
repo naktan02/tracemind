@@ -23,6 +23,9 @@ from scripts.experiments.federated_simulation import (
     split_rows_for_federation,
 )
 from scripts.run_artifacts import build_run_dir
+from scripts.runtime_adapters.federated_server_runtime import (
+    build_federated_training_task_config,
+)
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
@@ -46,7 +49,7 @@ def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:
 def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
     objective_config = _to_plain_dict(cfg.objective)
     selection_policy = _to_plain_dict(cfg.selection_policy)
-    return FederatedTrainingTaskConfig(
+    return build_federated_training_task_config(
         local_epochs=int(cfg.local_epochs),
         batch_size=int(cfg.batch_size),
         learning_rate=float(cfg.learning_rate),

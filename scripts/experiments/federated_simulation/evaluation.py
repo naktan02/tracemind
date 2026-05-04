@@ -3,27 +3,15 @@
 from __future__ import annotations
 
 from collections import defaultdict
+from typing import Any
 
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.backends.inputs.base import (
-    WEAK_STRONG_PAIR_BACKEND_NAME,
-)
-from agent.src.services.training.backends.inputs.models import (
-    TrainingExampleBuildRequest,
-    TrainingExampleSource,
-)
-from agent.src.services.training.examples.models import (
-    EmbeddedTrainingExample,
-)
-from agent.src.services.training.examples.service import (
-    TrainingExampleService,
-)
-from agent.src.services.training.selection.pseudo_label_service import (
-    PseudoLabelSelectionService,
-)
 from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.runtime_adapters.federated_agent_runtime import (
+    build_federated_scoring_service,
+    build_federated_training_examples,
+    select_federated_pseudo_labels,
+)
 from shared.src.config.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
     build_default_training_objective_config,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -46,29 +34,19 @@ def build_training_examples(
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,
-    scoring_service: ScoringService,
+    scoring_service: Any,
     objective_config: TrainingObjectiveConfig | None = None,
-) -> tuple[EmbeddedTrainingExample, ...]:
+) -> tuple[Any, ...]:
     """simulation row를 agent runtime training example builder로 변환한다."""
-    _validate_multiview_rows(
+    return build_federated_training_examples(
         rows=rows,
+        adapter=adapter,
+        adapter_state=adapter_state,
+        prototype_pack=prototype_pack,
+        model_id=model_id,
+        scoring_service=scoring_service,
         objective_config=objective_config,
-    )
-    service = (
-        TrainingExampleService()
-        if objective_config is None
-        else TrainingExampleService.from_objective_config(objective_config)
-    )
-    source_rows = tuple(_build_training_example_source(row) for row in rows)
-    return service.build_examples(
-        TrainingExampleBuildRequest(
-            source_rows=source_rows,
-            adapter=adapter,
-            adapter_state=adapter_state,
-            prototype_pack=prototype_pack,
-            model_id=model_id,
-            scoring_service=scoring_service,
-        )
+        parse_created_at=parse_created_at,
     )
 
 
@@ -79,7 +57,7 @@ def evaluate_rows(
     adapter_state: SharedAdapterState,
     prototype_pack: PrototypePackPayload,
     model_id: str,
-    scoring_service: ScoringService,
+    scoring_service: Any,
     confidence_threshold: float,
     margin_threshold: float,
     objective_config: TrainingObjectiveConfig | None = None,
@@ -102,7 +80,7 @@ def evaluate_rows(
     if not examples:
         return SimulationEvaluation(row_count=0, top1_accuracy=0.0, accepted_ratio=0.0)
 
-    selection_result = PseudoLabelSelectionService().select(
+    selection_result = select_federated_pseudo_labels(
         scored_events=tuple(example.evidence_scored_event for example in examples),
         training_task=_build_validation_task(
             model_id=model_id,
@@ -142,7 +120,7 @@ def build_validation_scoring_service(
     validation_config: FederatedValidationConfig,
     *,
     shared_state: SharedAdapterState | None = None,
-) -> ScoringService:
+) -> Any:
     """validation 설정으로 scoring service를 조립한다."""
     overrides: dict[str, str | int | float | bool] = {
         "scorer_backend_name": validation_config.scorer_backend_name,
@@ -151,52 +129,11 @@ def build_validation_scoring_service(
         overrides["score_policy_name"] = validation_config.score_policy_name
     if validation_config.score_top_k is not None:
         overrides["score_top_k"] = validation_config.score_top_k
-    return ScoringService.from_objective_config(
-        build_default_training_objective_config(overrides=overrides),
+    return build_federated_scoring_service(
+        objective_config=build_default_training_objective_config(overrides=overrides),
         similarity_name=validation_config.similarity_name,
         shared_state=shared_state,
     )
-
-
-def _build_training_example_source(row: LabeledQueryRow) -> TrainingExampleSource:
-    return TrainingExampleSource(
-        query_id=str(row["query_id"]),
-        text=str(row["text"]),
-        occurred_at=parse_created_at(str(row["created_at"])),
-        weak_text=_optional_row_value(row, "weak_text"),
-        strong_text=_optional_row_value(row, "strong_text"),
-        weak_translated_text=_optional_row_value(row, "weak_translated_text"),
-        strong_translated_text=_optional_row_value(row, "strong_translated_text"),
-    )
-
-
-def _optional_row_value(row: LabeledQueryRow, key: str) -> str | None:
-    value = row.get(key)
-    return None if value is None else str(value)
-
-
-def _validate_multiview_rows(
-    *,
-    rows: list[LabeledQueryRow],
-    objective_config: TrainingObjectiveConfig | None,
-) -> None:
-    backend_name = (
-        DEFAULT_TRAINING_PROFILE.example_generation_backend_name
-        if objective_config is None
-        else (
-            objective_config.example_generation_backend_name
-            or DEFAULT_TRAINING_PROFILE.example_generation_backend_name
-        )
-    )
-    if backend_name != WEAK_STRONG_PAIR_BACKEND_NAME:
-        return
-    for row in rows:
-        if row.get("weak_text") and row.get("strong_text"):
-            continue
-        raise ValueError(
-            "weak_strong_pair simulation requires each row to include both "
-            "weak_text and strong_text."
-        )
 
 
 def _build_validation_objective_config(

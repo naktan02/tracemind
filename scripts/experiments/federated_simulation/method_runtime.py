@@ -4,19 +4,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Protocol
+from typing import Any, Protocol
 
-from agent.src.infrastructure.repositories.training_artifact_repository import (
-    TrainingArtifactRepository,
-)
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.examples.models import EmbeddedTrainingExample
-from agent.src.services.training.execution.local_training_service import (
-    LocalTrainingService,
-)
-from main_server.src.services.federation.rounds.boundary.models import (
-    RoundOpenRequest,
-)
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.federated_simulation.evaluation import build_training_examples
@@ -27,6 +16,9 @@ from scripts.experiments.federated_simulation.task_config import (
     build_round_open_request,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.runtime_adapters.federated_agent_runtime import (
+    build_federated_local_training_service,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -45,7 +37,7 @@ class FederatedSslSimulationRuntime(Protocol):
         active_manifest: ModelManifest,
         round_id: str,
         training_task_config: FederatedTrainingTaskConfig,
-    ) -> RoundOpenRequest:
+    ) -> Any:
         """method별 round task를 생성한다."""
 
     def build_training_examples(
@@ -56,16 +48,16 @@ class FederatedSslSimulationRuntime(Protocol):
         adapter_state: SharedAdapterState,
         prototype_pack: PrototypePackPayload,
         model_id: str,
-        scoring_service: ScoringService,
+        scoring_service: Any,
         objective_config: TrainingObjectiveConfig,
-    ) -> tuple[EmbeddedTrainingExample, ...]:
+    ) -> tuple[Any, ...]:
         """client shard row를 method별 local training 입력으로 변환한다."""
 
     def build_local_training_service(
         self,
         *,
         client_state_root: Path,
-    ) -> LocalTrainingService:
+    ) -> Any:
         """client local trainer를 생성한다."""
 
 
@@ -81,7 +73,7 @@ class DefaultFederatedSslSimulationRuntime:
         active_manifest: ModelManifest,
         round_id: str,
         training_task_config: FederatedTrainingTaskConfig,
-    ) -> RoundOpenRequest:
+    ) -> Any:
         return build_round_open_request(
             active_manifest=active_manifest,
             round_id=round_id,
@@ -96,9 +88,9 @@ class DefaultFederatedSslSimulationRuntime:
         adapter_state: SharedAdapterState,
         prototype_pack: PrototypePackPayload,
         model_id: str,
-        scoring_service: ScoringService,
+        scoring_service: Any,
         objective_config: TrainingObjectiveConfig,
-    ) -> tuple[EmbeddedTrainingExample, ...]:
+    ) -> tuple[Any, ...]:
         return build_training_examples(
             rows=rows,
             adapter=adapter,
@@ -113,9 +105,9 @@ class DefaultFederatedSslSimulationRuntime:
         self,
         *,
         client_state_root: Path,
-    ) -> LocalTrainingService:
-        return LocalTrainingService(
-            repository=TrainingArtifactRepository(state_root=client_state_root)
+    ) -> Any:
+        return build_federated_local_training_service(
+            client_state_root=client_state_root
         )
 
 

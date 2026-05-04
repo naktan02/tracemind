@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from main_server.src.services.federation.rounds.boundary.models import (
-    RoundOpenRequest,
+from typing import Any
+
+from scripts.runtime_adapters.federated_server_runtime import (
+    build_round_open_request as build_server_round_open_request,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 
@@ -15,9 +17,10 @@ def build_round_open_request(
     active_manifest: ModelManifest,
     round_id: str,
     training_task_config: FederatedTrainingTaskConfig,
-) -> RoundOpenRequest:
+) -> Any:
     """simulation task template을 canonical round open request로 변환한다."""
-    return training_task_config.to_round_open_request(
+    return build_server_round_open_request(
         active_manifest=active_manifest,
         round_id=round_id,
+        training_task_config=training_task_config,
     )

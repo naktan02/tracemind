@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Any
 
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as build_state_repo,
@@ -34,6 +35,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenRequest,
     RoundRecord,
+    RoundTaskConfig,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
@@ -57,8 +59,6 @@ from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-
-from .models import FederatedPrototypeRebuildConfig, FederatedRoundRuntimeConfig
 
 
 class SimulationEmbeddingAdapterFactory:
@@ -90,7 +90,7 @@ class SimulationServerRuntime:
         cls,
         *,
         output_dir: Path,
-        round_runtime_config: FederatedRoundRuntimeConfig,
+        round_runtime_config: Any,
         prototype_build_strategy: PrototypeBuildStrategy,
     ) -> "SimulationServerRuntime":
         """simulation output root 기준 main_server runtime adapter를 만든다."""
@@ -141,7 +141,7 @@ class SimulationServerRuntime:
         *,
         rows: list[LabeledQueryRow],
         embedding_spec: EmbeddingAdapterSpec,
-        rebuild_config: FederatedPrototypeRebuildConfig,
+        rebuild_config: Any,
     ) -> str:
         """bootstrap row를 main_server prototype rebuild input으로 저장한다."""
 
@@ -223,7 +223,7 @@ def store_prototype_rebuild_input(
     rows: list[LabeledQueryRow],
     embedding_spec: EmbeddingAdapterSpec,
     repository: rebuild_input_repo.PrototypeRebuildInputRepository,
-    rebuild_config: FederatedPrototypeRebuildConfig,
+    rebuild_config: Any,
 ) -> str:
     """bootstrap row를 canonical prototype rebuild input으로 저장한다."""
     input_id = "bootstrap_v1"
@@ -385,4 +385,43 @@ def build_classifier_head_state_from_prototype_pack(
             for label, centroid in centroids.items()
         },
         label_biases={label: 0.0 for label in centroids},
+    )
+
+
+def build_federated_training_task_config(
+    *,
+    local_epochs: int,
+    batch_size: int,
+    learning_rate: float,
+    max_steps: int,
+    min_required_examples: int,
+    gradient_clip_norm: float | None,
+    objective_config: Any,
+    selection_policy: Any,
+) -> Any:
+    """FL simulation용 RoundTaskConfig 생성을 main_server bridge로 격리한다."""
+
+    return RoundTaskConfig(
+        local_epochs=local_epochs,
+        batch_size=batch_size,
+        learning_rate=learning_rate,
+        max_steps=max_steps,
+        min_required_examples=min_required_examples,
+        gradient_clip_norm=gradient_clip_norm,
+        objective_config=objective_config,
+        selection_policy=selection_policy,
+    )
+
+
+def build_round_open_request(
+    *,
+    active_manifest: ModelManifest,
+    round_id: str,
+    training_task_config: Any,
+) -> Any:
+    """simulation task template을 canonical round open request로 변환한다."""
+
+    return training_task_config.to_round_open_request(
+        active_manifest=active_manifest,
+        round_id=round_id,
     )

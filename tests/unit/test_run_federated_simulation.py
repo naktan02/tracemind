@@ -8,10 +8,6 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.services.inference.scoring_service import ScoringService
-from main_server.src.services.federation.rounds.boundary.models import (
-    RoundTaskConfig,
-)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.prototype.building.single import (
@@ -23,7 +19,6 @@ from scripts.experiments.federated_simulation import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
-    FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     split_rows_into_client_shards,
 )
@@ -40,6 +35,12 @@ from scripts.experiments.federated_simulation.task_config import (
 from scripts.experiments.run_federated_simulation import (
     run_simulation,
     split_rows_for_federation,
+)
+from scripts.runtime_adapters.federated_agent_runtime import (
+    build_federated_scoring_service,
+)
+from scripts.runtime_adapters.federated_server_runtime import (
+    build_federated_training_task_config,
 )
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.model_contracts import ModelManifest
@@ -121,8 +122,8 @@ def _default_training_task_config(
     scorer_backend_name: str = "prototype_similarity",
     score_policy_name: str = "max_cosine",
     score_top_k: int | None = None,
-) -> FederatedTrainingTaskConfig:
-    return FederatedTrainingTaskConfig(
+) -> object:
+    return build_federated_training_task_config(
         local_epochs=1,
         batch_size=16,
         learning_rate=1e-4,
@@ -373,7 +374,7 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
         training_task_config=training_task_config,
     )
 
-    assert isinstance(training_task_config, RoundTaskConfig)
+    assert training_task_config.__class__.__name__ == "RoundTaskConfig"
     assert request.local_epochs == training_task_config.local_epochs
     assert request.batch_size == training_task_config.batch_size
     assert request.learning_rate == training_task_config.learning_rate
@@ -575,27 +576,31 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
 
+    objective_config = TrainingObjectiveConfig.from_mapping(
+        {
+            "training_backend_name": "diagonal_scale_heuristic",
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "pseudo_label_algorithm_name": "top1_confidence_only",
+            "acceptance_policy_name": "top1_confidence_only",
+            "privacy_guard_name": "noop",
+        }
+    )
     result = evaluate_rows(
         rows=rows,
         adapter=adapter,
         adapter_state=adapter_state,
         prototype_pack=_pack_payload(),
         model_id="hash_debug",
-        scoring_service=ScoringService(),
+        scoring_service=build_federated_scoring_service(
+            objective_config=objective_config,
+            similarity_name="cosine",
+        ),
         confidence_threshold=0.9,
         margin_threshold=0.0,
-        objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "diagonal_scale_heuristic",
-                "example_generation_backend_name": "prototype_rescore",
-                "evidence_backend_name": "prototype_similarity_evidence",
-                "scorer_backend_name": "prototype_similarity",
-                "score_policy_name": "max_cosine",
-                "pseudo_label_algorithm_name": "top1_confidence_only",
-                "acceptance_policy_name": "top1_confidence_only",
-                "privacy_guard_name": "noop",
-            }
-        ),
+        objective_config=objective_config,
     )
 
     assert result.top1_accuracy == 1.0
@@ -620,25 +625,29 @@ def test_build_training_examples_requires_multiview_fields() -> None:
         ValueError,
         match="requires each row to include both weak_text and strong_text",
     ):
+        objective_config = TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "diagonal_scale_heuristic",
+                "example_generation_backend_name": "weak_strong_pair",
+                "evidence_backend_name": "prototype_similarity_evidence",
+                "scorer_backend_name": "prototype_similarity",
+                "score_policy_name": "max_cosine",
+                "pseudo_label_algorithm_name": "top1_margin_threshold",
+                "acceptance_policy_name": "top1_margin_threshold",
+                "privacy_guard_name": "noop",
+            }
+        )
         build_training_examples(
             rows=[_row("q1", "panic panic", "anxiety")],
             adapter=adapter,
             adapter_state=adapter_state,
             prototype_pack=_pack_payload(),
             model_id="hash_debug",
-            scoring_service=ScoringService(),
-            objective_config=TrainingObjectiveConfig.from_mapping(
-                {
-                    "training_backend_name": "diagonal_scale_heuristic",
-                    "example_generation_backend_name": "weak_strong_pair",
-                    "evidence_backend_name": "prototype_similarity_evidence",
-                    "scorer_backend_name": "prototype_similarity",
-                    "score_policy_name": "max_cosine",
-                    "pseudo_label_algorithm_name": "top1_margin_threshold",
-                    "acceptance_policy_name": "top1_margin_threshold",
-                    "privacy_guard_name": "noop",
-                }
+            scoring_service=build_federated_scoring_service(
+                objective_config=objective_config,
+                similarity_name="cosine",
             ),
+            objective_config=objective_config,
         )
 
 
@@ -660,25 +669,29 @@ def test_build_training_examples_supports_multiview_row_fields_when_present() ->
     row["weak_text"] = "panic weak"
     row["strong_text"] = "panic strong"
 
+    objective_config = TrainingObjectiveConfig.from_mapping(
+        {
+            "training_backend_name": "diagonal_scale_heuristic",
+            "example_generation_backend_name": "weak_strong_pair",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "noop",
+        }
+    )
     examples = build_training_examples(
         rows=[row],
         adapter=adapter,
         adapter_state=adapter_state,
         prototype_pack=_pack_payload(),
         model_id="hash_debug",
-        scoring_service=ScoringService(),
-        objective_config=TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "diagonal_scale_heuristic",
-                "example_generation_backend_name": "weak_strong_pair",
-                "evidence_backend_name": "prototype_similarity_evidence",
-                "scorer_backend_name": "prototype_similarity",
-                "score_policy_name": "max_cosine",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
-                "acceptance_policy_name": "top1_margin_threshold",
-                "privacy_guard_name": "noop",
-            }
+        scoring_service=build_federated_scoring_service(
+            objective_config=objective_config,
+            similarity_name="cosine",
         ),
+        objective_config=objective_config,
     )
 
     assert len(examples) == 1

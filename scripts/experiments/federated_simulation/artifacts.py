@@ -6,13 +6,8 @@ import json
 from collections import defaultdict
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
-from agent.src.services.training.examples.models import (
-    EmbeddedTrainingExample,
-)
-from agent.src.services.training.selection.pseudo_label_service import (
-    PseudoLabelSelectionResult,
-)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.federated_simulation.models import (
     ClientEvaluationSummary,
@@ -42,8 +37,8 @@ def save_selection_diagnostics(
     round_id: str,
     client_id: str,
     rows: list[LabeledQueryRow],
-    training_examples: tuple[EmbeddedTrainingExample, ...],
-    selection_result: PseudoLabelSelectionResult,
+    training_examples: tuple[Any, ...],
+    selection_result: Any,
     diagnostics_config: FederatedDiagnosticsConfig,
 ) -> tuple[Path, Path]:
     """row별 selection 원인과 요약을 저장한다."""

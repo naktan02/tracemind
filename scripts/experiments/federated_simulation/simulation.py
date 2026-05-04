@@ -5,13 +5,6 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from agent.src.infrastructure.model_adapters.embedding.factory import (
-    EmbeddingAdapterFactory,
-)
-from agent.src.services.inference.scoring_service import ScoringService
-from agent.src.services.training.execution.local_training_service import (
-    LocalTrainingRequest,
-)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.federated_simulation.artifacts import (
@@ -40,16 +33,21 @@ from scripts.experiments.federated_simulation.models import (
     SimulationResult,
     SimulationRoundSummary,
 )
-from scripts.experiments.federated_simulation.runtime import (
-    SimulationServerRuntime,
-    build_classifier_head_state_from_prototype_pack,
-    build_initial_shared_state,
-)
 from scripts.experiments.federated_simulation.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
+from scripts.runtime_adapters.federated_agent_runtime import (
+    build_federated_scoring_service,
+    run_federated_local_training,
+)
+from scripts.runtime_adapters.federated_server_runtime import (
+    SimulationServerRuntime,
+    build_classifier_head_state_from_prototype_pack,
+    build_initial_shared_state,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
@@ -102,7 +100,7 @@ def run_simulation(
         seed=seed + 1,
         shard_policy=shard_policy,
     )
-    adapter = EmbeddingAdapterFactory.create(embedding_spec)
+    adapter = create_embedding_adapter(embedding_spec)
     if not dataset_split.bootstrap_rows:
         raise ValueError("Bootstrap split must contain at least one row.")
     embedding_dim = len(
@@ -208,8 +206,8 @@ def run_simulation(
             )
         )
         training_task = round_record.training_task
-        training_scoring_service = ScoringService.from_objective_config(
-            training_task.objective_config,
+        training_scoring_service = build_federated_scoring_service(
+            objective_config=training_task.objective_config,
             similarity_name=validation_config.similarity_name,
             shared_state=active_state,
         )
@@ -229,12 +227,11 @@ def run_simulation(
             local_training_service = ssl_method_runtime.build_local_training_service(
                 client_state_root=output_dir / "agents" / shard.client_id
             )
-            local_result = local_training_service.run(
-                LocalTrainingRequest(
-                    training_examples=training_examples,
-                    training_task=training_task,
-                    model_manifest=active_manifest,
-                )
+            local_result = run_federated_local_training(
+                local_training_service=local_training_service,
+                training_examples=training_examples,
+                training_task=training_task,
+                model_manifest=active_manifest,
             )
             save_selection_diagnostics(
                 output_dir=output_dir,

@@ -3,11 +3,14 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from typing import Any, Protocol
 
-from main_server.src.services.federation.rounds.boundary.models import (
-    RoundTaskConfig,
-)
 from scripts.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
 
 
 @dataclass(slots=True)
@@ -82,7 +85,25 @@ class SimulationResult:
     report_path: str | None = None
 
 
-FederatedTrainingTaskConfig = RoundTaskConfig
+class FederatedTrainingTaskConfig(Protocol):
+    """federated simulation이 요구하는 round task config surface."""
+
+    local_epochs: int
+    batch_size: int
+    learning_rate: float
+    max_steps: int
+    min_required_examples: int
+    gradient_clip_norm: float | None
+    objective_config: TrainingObjectiveConfig
+    selection_policy: TrainingSelectionPolicy
+
+    def to_round_open_request(
+        self,
+        *,
+        active_manifest: ModelManifest,
+        round_id: str,
+    ) -> Any:
+        """main_server round open request로 변환한다."""
 
 
 @dataclass(slots=True)
