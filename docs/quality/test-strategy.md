@@ -102,6 +102,7 @@ Contract 변경은 producer, consumer, serialization/compatibility test, 관련 
 | `agent/tests/unit/test_query_buffer_selection_service.py` | query buffer selection |
 | `tests/unit/test_methods_fixmatch.py` | reusable FixMatch method objective |
 | `tests/unit/test_methods_federated_ssl.py` | reusable FL SSL method descriptor |
+| `tests/unit/test_methods_federated_shard_policy.py` | reusable FL shard policy method core |
 | `agent/tests/unit/test_local_training_service.py` | local training execution |
 | `agent/tests/unit/test_training_api.py` | agent training route |
 | `agent/tests/unit/test_wellbeing_api.py` | family/wellbeing route |

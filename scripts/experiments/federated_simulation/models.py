@@ -82,16 +82,6 @@ class SimulationResult:
     report_path: str | None = None
 
 
-@dataclass(slots=True)
-class FederatedShardPolicyConfig:
-    """client shard 분할 정책 설정."""
-
-    name: str
-    client_id_prefix: str
-    dominant_ratio: float | None = None
-    alpha: float | None = None
-
-
 FederatedTrainingTaskConfig = RoundTaskConfig
 
 

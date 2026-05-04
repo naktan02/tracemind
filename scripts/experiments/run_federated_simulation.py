@@ -9,12 +9,12 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
+from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
-    FederatedShardPolicyConfig,
     FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,

@@ -43,6 +43,7 @@
 | Query SSL Algorithm | methods/scripts | `fixmatch` | `methods/ssl/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
 | PEFT Adapter Builder | methods/scripts | `lora`, `rslora` | `methods/adaptation/`, `conf/lora/` |
+| Federated Shard Policy | methods/scripts | `label_dominant`, `dirichlet_label_skew` | `methods/federated/shard_policy/`, `scripts/experiments/federated_simulation/sharding.py`, `conf/federated_shard_policy/` |
 | FL SSL Method Descriptor | methods/scripts | `fedavg_pseudo_label` | `methods/federated_ssl/`, `scripts/experiments/federated_simulation/method_runtime.py`, `conf/federated_ssl_method/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
 | Aggregation Backend | methods/main_server | DiagonalScaleAggregationService (`fedavg`), ClassifierHeadFedAvgAggregationService (`fedavg`) | `methods/federated/aggregation/fedavg/`, `main_server/src/services/federation/rounds/aggregation/` |

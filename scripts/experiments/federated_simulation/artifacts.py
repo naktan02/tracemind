@@ -13,12 +13,12 @@ from agent.src.services.training.examples.models import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
+from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.federated_simulation.models import (
     ClientEvaluationSummary,
     FederatedDiagnosticsConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
-    FederatedShardPolicyConfig,
     FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,

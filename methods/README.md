@@ -45,7 +45,8 @@ research
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
 - `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별
   next-state 계산 core
+- `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
 - `methods/federated_ssl/`: FL SSL method descriptor와 조합 metadata
 
-다음 단계에서는 shard policy, prototype method를 실제 구현이 붙는 순서대로
-작은 단위로 옮긴다.
+다음 단계에서는 prototype method를 실제 구현이 붙는 순서대로 작은 단위로
+옮긴다.

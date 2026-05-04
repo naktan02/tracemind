@@ -12,13 +12,13 @@ from agent.src.services.inference.scoring_service import ScoringService
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundTaskConfig,
 )
+from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
-    FederatedShardPolicyConfig,
     FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,

@@ -157,6 +157,7 @@ Raw Event / Local Signal
 |---|---|
 | round lifecycle | `main_server/src/services/federation/rounds/round_lifecycle_service.py` |
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
+| FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |
 | FL SSL method descriptor | `methods/federated_ssl/*` |

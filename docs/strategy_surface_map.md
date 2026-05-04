@@ -394,6 +394,9 @@ python -m scripts.experiments.run_federated_simulation \
 - 기본 smoke preset은 실행 확인용으로 `4 clients`, `3 rounds`를 쓴다.
 - `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
   `dirichlet_alpha01`은 stress split이다.
+- `federated_shard_policy`의 순수 assignment source of truth는
+  `methods/federated/shard_policy/`이고, simulation row adapter는
+  `scripts/experiments/federated_simulation/sharding.py`가 붙인다.
 - `federated_ssl_method=fedavg_pseudo_label`는 현재 active runtime baseline이다.
 - `federated_ssl_method`의 descriptor source of truth는
   `methods/federated_ssl/`이고, simulation runtime adapter는

@@ -17,7 +17,7 @@
 - `scripts/prototypes/*.py`: 직접 실행하는 prototype CLI entrypoint
 - `scripts/prototypes/io.py`, `evaluation.py`, `seeding.py`: prototype CLI가 직접 쓰는 활성 helper
 - `scripts/experiments/*.py`: 직접 실행하는 experiment Hydra entrypoint
-- `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/sharding
+- `scripts/experiments/federated_simulation/`: federated simulation 전용 조합/덤프/shard adapter
 - `scripts/experiments/prototype_strategy/`: prototype 전략 비교 실험 전용 모듈
 - `conf/dataset`, `embedding`, `runtime`, `prototype_builder`, `federated_run_preset`: 재사용 Hydra config group
 - `conf/federated_shard_policy`, `federated_ssl_method`, `training_algorithm_profile`: FL simulation 재사용 Hydra config group
