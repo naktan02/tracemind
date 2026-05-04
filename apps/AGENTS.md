@@ -7,7 +7,7 @@
 중요:
 
 - `apps`는 source of truth가 아니다.
-- 계약 의미, 전략 이름, 실행 기본값은 `shared`, `main_server`, `scripts/conf`가 소유한다.
+- 계약 의미, 전략 이름, 실행 기본값은 `shared`, `main_server`, 루트 `conf/`가 소유한다.
 - UI는 catalog/API/contract를 소비하고 보여주는 역할만 맡는다.
 
 ## 변경 규칙

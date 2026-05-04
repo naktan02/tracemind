@@ -25,6 +25,7 @@ central fixed embedding + classifier seed
 
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
 - `PrototypePack`은 bootstrap/comparison/reference artifact이며 메인 판정기가 아니다.
+- prototype 기반 pseudo-label/SSL은 SSL 비교군 중 하나로 다룬다.
 - canonical seed artifact는 `clf_2026_04_11_143138`이다.
 - seed model: `data/processed/classifier_heads/clf_2026_04_11_143138.pt`
 - seed manifest: `data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json`
@@ -60,9 +61,10 @@ Central SSL control:
 Query Buffer -> Selection -> Accepted Rows -> LoRA + Classifier -> Central Evaluation
 ```
 
-비교 family는 `supervised`, `pseudo-label`, `FixMatch`, `R-Drop`, `MixText`이고
-`TAPT`는 optional preadaptation이다. 같은 table 안에서는 backbone, tokenizer,
-label schema, LoRA spec, initial checkpoint, query selection rule, seed를 고정한다.
+비교 family는 `supervised`, `pseudo-label`, `prototype SSL`, `FixMatch`,
+`R-Drop`, `MixText`이고 `TAPT`는 optional preadaptation이다. 같은 table 안에서는
+backbone, tokenizer, label schema, LoRA spec, initial checkpoint, query selection
+rule, seed를 고정한다.
 
 FL SSL non-IID:
 
@@ -111,11 +113,16 @@ Runtime translation:
 
 - 공용 contract, domain entity, canonical payload 해석은 `shared`에 둔다.
 - 교체 가능한 algorithm/method 계산은 `methods`에 둔다.
+- 실행 조합과 파라미터는 루트 `conf`에 둔다.
 - agent-owned local training/inference runtime은 `agent`에 둔다.
 - server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.
 - `scripts`는 실험 조합과 실행 표면만 소유한다.
 - 운영 후보 로직을 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
 - query-domain 중앙 trainer는 시스템 runtime contract를 오염시키지 않는 별도 레일이다.
+
+구조 목표는 `shared -> methods -> agent/main_server/scripts` 방향으로 읽힌다.
+`agent`, `main_server`, `scripts` 사이 직접 의존은 금지하고, scripts가 runtime을
+재사용해야 할 때만 `scripts/runtime_adapters/`에 명시 bridge를 둔다.
 
 ## Phase Map
 
@@ -133,7 +140,7 @@ Runtime translation:
 1. query buffer 필드와 retention을 고정한다.
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
-4. 같은 scaffold에서 pseudo-label, FixMatch, R-Drop, MixText를 비교한다.
+4. 같은 scaffold에서 pseudo-label, prototype SSL, FixMatch, R-Drop, MixText를 비교한다.
 5. FL SSL main comparison smoke를 `strategy_axes/fl/shard_policy=dirichlet_alpha03`와
    `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`로 실행해 report를 확인한다.
 6. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.

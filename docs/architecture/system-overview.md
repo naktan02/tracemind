@@ -22,6 +22,7 @@ central fixed embedding + classifier seed
 - 원문 텍스트와 개인 해석 상태는 agent 로컬에 남긴다.
 - 전역 서버는 round lifecycle, aggregation, artifact publication을 소유한다.
 - 공통 payload와 canonical 계산 규칙은 `shared`가 소유한다.
+- 교체 가능한 알고리즘/method 계산 core는 `methods`가 소유한다.
 - `scripts`는 운영 후보 코어를 소유하지 않고, 실험 조합과 실행 표면만 소유한다.
 - `apps`는 contract/API consumer이며 source of truth가 아니다.
 
@@ -30,6 +31,7 @@ central fixed embedding + classifier seed
 | 구성요소 | 역할 | 주요 코드 |
 |---|---|---|
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
+| Methods | SSL, adaptation, prototype, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication, experiment workspace backend | `main_server/src/api/*`, `main_server/src/services/*` |
 | Scripts | dataset/prototype/classifier/LoRA/FL simulation 실행 조합 | `scripts/experiments/*`, `scripts/prototypes/*`, `conf/*` |
@@ -137,6 +139,7 @@ Reddit Labeled Data
 주의:
 
 - 이 레일의 중앙 SSL 비교는 pooled/offline control table이다.
+- prototype 기반 pseudo-label/SSL도 SSL 비교군 중 하나다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`처럼 non-IID client 제약이 핵심인 방법은
   FL runtime rail에서 메인 논문 비교로 다룬다.
 
@@ -175,6 +178,7 @@ Raw Event / Local Signal
 | 경로 | 소유 책임 | 금지 사항 |
 |---|---|---|
 | `shared/` | 공통 contract, domain entity, canonical 계산 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
+| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | 서버 round orchestration과 aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication, experiment workspace backend | raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
 | `scripts/` | Hydra 기반 실험 entrypoint, sweep, report, compatibility wrapper | 운영 후보 알고리즘 코어를 먼저 만들고 나중에 복사하지 않는다 |

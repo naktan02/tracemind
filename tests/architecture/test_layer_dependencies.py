@@ -12,6 +12,15 @@ AGENT_SRC = REPO_ROOT / "agent" / "src"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+PYTHON_SOURCE_ROOTS = (
+    SHARED_SRC,
+    METHODS_SRC,
+    AGENT_SRC,
+    MAIN_SERVER_SRC,
+    SCRIPTS_SRC,
+    REPO_ROOT / "tests",
+)
+FORBIDDEN_DUNDER_ALL = "__" + "all__"
 LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
@@ -80,6 +89,20 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
         ),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_python_modules_do_not_define_dunder_all() -> None:
+    violations = [
+        _relative_repo_path(path)
+        for root in PYTHON_SOURCE_ROOTS
+        for path in _iter_python_files(root)
+        if FORBIDDEN_DUNDER_ALL in path.read_text(encoding="utf-8")
+    ]
+    assert not violations, (
+        "package-level export list는 사용하지 않는다. "
+        "direct-file import로 공개 표면을 드러낸다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
 
 
 def test_prototype_builder_core_stays_in_methods_layer() -> None:

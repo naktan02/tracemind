@@ -29,12 +29,10 @@ shared
 methods
   ↑
 agent / main_server / scripts
-  ↑
-research
 ```
 
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
-`main_server`, `scripts`, `research`를 import하지 않는다.
+`main_server`, `scripts`를 import하지 않는다.
 
 ## 진행 상태
 
