@@ -41,6 +41,7 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from methods.prototype.building.build_strategies import PrototypeBuildStrategy
 from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadState,
@@ -56,7 +57,6 @@ from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
 from .models import FederatedPrototypeRebuildConfig, FederatedRoundRuntimeConfig
 

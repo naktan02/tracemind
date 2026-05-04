@@ -70,6 +70,7 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_manager_service_from_config,
 )
+from methods.prototype.building.build_strategies import SinglePrototypeBuildStrategy
 from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
@@ -88,7 +89,6 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 from shared.src.domain.services.clock import FixedClock
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import SinglePrototypeBuildStrategy
 
 
 class _StaticEmbeddingAdapter:
@@ -157,9 +157,12 @@ class _TestShiftAggregationBackend:
             raise ValueError("At least one test-shift update is required.")
 
         total_examples = sum(payload.example_count for payload in valid_updates)
-        weighted_shift = sum(
-            payload.shift_delta * payload.example_count for payload in valid_updates
-        ) / total_examples
+        weighted_shift = (
+            sum(
+                payload.shift_delta * payload.example_count for payload in valid_updates
+            )
+            / total_examples
+        )
         next_state = _TestShiftStatePayload(
             model_id=base_state.model_id,
             model_revision=next_model_revision,
@@ -731,7 +734,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
             created_at=fixed_time,
             adapter_kind=TEST_SHIFT_ADAPTER_KIND,
             shift_delta=0.3,
-        )
+        ),
     )
     update = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",

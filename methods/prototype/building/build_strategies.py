@@ -1,4 +1,4 @@
-"""공용 prototype 생성 전략."""
+"""Prototype 생성 전략 method core."""
 
 from __future__ import annotations
 
@@ -11,6 +11,7 @@ import numpy as np
 from sklearn.cluster import DBSCAN, KMeans
 from sklearn.metrics import silhouette_score
 
+from methods.prototype.building.pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
 )
@@ -20,7 +21,6 @@ from shared.src.services.prototypes.payload_serialization import (
     build_prototype_pack_payload,
     build_single_prototype_pack_payload,
 )
-from shared.src.services.prototypes.prototype_pack_builder import PrototypePackBuilder
 
 
 @dataclass(slots=True)

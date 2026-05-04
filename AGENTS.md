@@ -22,7 +22,8 @@ Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
 
 ## Ownership
 
-- `shared/`: 공통 contract, domain entity, canonical 계산 규칙.
+- `shared/`: 공통 contract, domain entity, canonical payload 해석 규칙.
+- `methods/`: 교체 가능한 알고리즘/method 계산 core.
 - `agent/`: 로컬 inference/training, private/local state, FL participant.
 - `main_server/`: round lifecycle, aggregation, publication, server API.
 - `scripts/`: Hydra 실험 entrypoint, sweep, report, visualization thin wrapper.
@@ -31,7 +32,8 @@ Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
 - `docs/`: 설명 계층. source of truth를 대체하지 않는다.
 
 운영 후보 알고리즘은 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
-재사용 코어는 처음부터 `shared`, `agent`, `main_server` 경계에 둔다.
+재사용 알고리즘 core는 처음부터 `methods`에 둔다. 공통 contract/domain은
+`shared`, runtime adapter는 `agent`/`main_server`, 실험 실행은 `scripts`에 둔다.
 
 ## Source Of Truth
 

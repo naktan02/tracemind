@@ -6,20 +6,21 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Protocol
 
-from main_server.src.services.federation.assets.prototypes.models import (
-    PrototypeRebuildResult,
-)
-from main_server.src.services.federation.assets.prototypes.prototype_build_state_service import (
-    PrototypeBuildStateService,
-)
-from main_server.src.services.federation.assets.prototypes.prototype_pack_service import (
-    PrototypePackService,
-)
+from methods.prototype.building.build_strategies import PrototypeBuildArtifacts
 from shared.src.contracts.prototype_build_state_contracts import (
     dump_prototype_build_state_payload,
 )
 from shared.src.contracts.prototype_contracts import dump_prototype_pack_payload
-from shared.src.services.prototypes.build_strategies import PrototypeBuildArtifacts
+
+from .models import (
+    PrototypeRebuildResult,
+)
+from .prototype_build_state_service import (
+    PrototypeBuildStateService,
+)
+from .prototype_pack_service import (
+    PrototypePackService,
+)
 
 
 class PrototypePublicationStrategy(Protocol):

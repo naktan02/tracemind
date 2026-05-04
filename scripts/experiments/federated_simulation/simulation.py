@@ -13,6 +13,7 @@ from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.prototype.building.build_strategies import PrototypeBuildStrategy
 from scripts.experiments.federated_simulation.artifacts import (
     save_model_manifest,
     save_prototype_pack,
@@ -52,7 +53,6 @@ from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import PrototypeBuildStrategy
 
 
 def run_simulation(

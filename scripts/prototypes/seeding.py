@@ -9,9 +9,15 @@ from pathlib import Path
 from agent.src.infrastructure.model_adapters.embedding.factory import (
     EmbeddingAdapterFactory,
 )
-from main_server.src.services.federation.assets.prototypes.prototype_rebuild_service import (
+from main_server.src.services.federation.assets.prototypes import (
     PrototypeRebuildService,
     ReferenceRebuildPrototypePublicationStrategy,
+)
+from methods.prototype.building.build_strategies import (
+    PrototypeBuildRequest,
+    PrototypeBuildStrategy,
+    SinglePrototypeBuildStrategy,
+    describe_prototype_build_strategy,
 )
 from scripts.prototypes.io import (
     group_rows_by_label,
@@ -19,12 +25,6 @@ from scripts.prototypes.io import (
     resolve_metadata_from_manifests,
 )
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import (
-    PrototypeBuildRequest,
-    PrototypeBuildStrategy,
-    SinglePrototypeBuildStrategy,
-    describe_prototype_build_strategy,
-)
 
 
 def seed_prototype_pack(

@@ -222,8 +222,7 @@ class PrototypePackBuilder:
                         "mismatched dimensions."
                     )
                 total_sum = [
-                    left + right
-                    for left, right in zip(total_sum, new_sum, strict=True)
+                    left + right for left, right in zip(total_sum, new_sum, strict=True)
                 ]
                 total_count += new_count
 

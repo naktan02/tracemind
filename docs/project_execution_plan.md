@@ -109,7 +109,8 @@ Runtime translation:
 
 ## Boundaries
 
-- 공용 계산 규칙과 canonical 알고리즘은 `shared`에 둔다.
+- 공용 contract, domain entity, canonical payload 해석은 `shared`에 둔다.
+- 교체 가능한 algorithm/method 계산은 `methods`에 둔다.
 - agent-owned local training/inference runtime은 `agent`에 둔다.
 - server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.
 - `scripts`는 실험 조합과 실행 표면만 소유한다.

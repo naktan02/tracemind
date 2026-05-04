@@ -1,10 +1,10 @@
-"""Production prototype build strategy tests."""
+"""Prototype build method strategy tests."""
 
 from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from shared.src.services.prototypes.build_strategies import (
+from methods.prototype.building.build_strategies import (
     DbscanPrototypeBuildStrategy,
     KMeansPrototypeBuildStrategy,
     PrototypeBuildRequest,

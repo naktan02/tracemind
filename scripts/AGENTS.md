@@ -15,8 +15,8 @@ sweep, visualization, exploratory-only logic만 둔다.
 ## 변경 규칙
 
 - 운영 후보 알고리즘을 `scripts`에 먼저 만들고 나중에 복사하지 않는다.
-- production/runtime에서 재사용되어야 하는 코어는 `shared`, `agent`,
-  `main_server`로 올린다.
+- production/runtime에서 재사용되어야 하는 알고리즘 코어는 `methods`로 올린다.
+  공통 contract/domain은 `shared`, runtime adapter는 `agent`/`main_server`에 둔다.
 - 실행 설정의 source of truth는 `conf/` Hydra config group이다.
 - `dataset`, `embedding`, `runtime` group를 기본 축으로 본다.
 - 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.

@@ -26,14 +26,14 @@ from main_server.src.services.federation.assets.prototypes import (
     StoredReferencePrototypeRebuildRequest,
     StoredReferencePrototypeRebuildService,
 )
-from shared.src.contracts.adapter_contracts import VectorAdapterState
-from shared.src.domain.services.clock import FixedClock
-from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import (
+from methods.prototype.building.build_strategies import (
     KMeansPrototypeBuildStrategy,
     PrototypeBuildRequest,
     SinglePrototypeBuildStrategy,
 )
+from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.domain.services.clock import FixedClock
+from shared.src.domain.value_objects import EmbeddingAdapterSpec
 
 
 class _StaticEmbeddingAdapter:

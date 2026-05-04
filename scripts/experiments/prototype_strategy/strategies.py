@@ -8,24 +8,24 @@ from datetime import datetime, timezone
 
 import numpy as np
 
+from methods.prototype.building.build_strategies import (
+    DbscanPrototypeBuildStrategy as RuntimeDbscanPrototypeBuildStrategy,
+)
+from methods.prototype.building.build_strategies import (
+    KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
+)
+from methods.prototype.building.build_strategies import (
+    PrototypeBuildRequest,
+)
+from methods.prototype.building.build_strategies import (
+    SinglePrototypeBuildStrategy as RuntimeSinglePrototypeBuildStrategy,
+)
 from scripts.experiments.prototype_strategy.models import (
     PrototypeBuildStrategy,
     PrototypeIndex,
     PrototypeVector,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.services.prototypes.build_strategies import (
-    DbscanPrototypeBuildStrategy as RuntimeDbscanPrototypeBuildStrategy,
-)
-from shared.src.services.prototypes.build_strategies import (
-    KMeansPrototypeBuildStrategy as RuntimeKMeansPrototypeBuildStrategy,
-)
-from shared.src.services.prototypes.build_strategies import (
-    PrototypeBuildRequest,
-)
-from shared.src.services.prototypes.build_strategies import (
-    SinglePrototypeBuildStrategy as RuntimeSinglePrototypeBuildStrategy,
-)
 
 _EXPERIMENT_BUILT_AT = datetime(1970, 1, 1, tzinfo=timezone.utc)
 

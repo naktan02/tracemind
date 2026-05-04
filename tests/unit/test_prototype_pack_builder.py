@@ -6,10 +6,10 @@ from datetime import datetime, timezone
 
 import pytest
 
+from methods.prototype.building.pack_builder import PrototypePackBuilder
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
 )
-from shared.src.services.prototypes.prototype_pack_builder import PrototypePackBuilder
 
 
 def test_build_creates_mean_centroids_for_each_category() -> None:

@@ -10,6 +10,10 @@ SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
+LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
+    SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
+    SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
+)
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 
@@ -67,6 +71,18 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
         ),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_prototype_builder_core_stays_in_methods_layer() -> None:
+    existing_paths = [
+        _relative_repo_path(path)
+        for path in LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS
+        if path.exists()
+    ]
+    assert not existing_paths, (
+        "prototype builder 알고리즘 core는 methods/prototype/building에 둔다. "
+        f"legacy shared paths={sorted(str(path) for path in existing_paths)}"
+    )
 
 
 def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:

@@ -5,27 +5,28 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass, field, replace
 
-from main_server.src.services.federation.assets.prototypes.models import (
+from methods.prototype.building.build_strategies import (
+    PrototypeBuildRequest,
+    PrototypeBuildStrategy,
+    SinglePrototypeBuildStrategy,
+)
+from shared.src.domain.services.clock import Clock, SystemUtcClock
+
+from .models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
     ReferencePrototypeSourceRow,
     StoredReferencePrototypeRebuildRequest,
 )
-from main_server.src.services.federation.assets.prototypes.publication_strategies import (
+from .publication_strategies import (
     InMemoryPrototypePublicationStrategy,
     PrototypePublicationStrategy,
     ReferenceRebuildPrototypePublicationStrategy,
 )
-from main_server.src.services.federation.assets.prototypes.stored_input_rebuild_service import (
+from .stored_input_rebuild_service import (
     PrototypeRebuildInputRepositoryProtocol,
     StoredReferencePrototypeRebuildService,
-)
-from shared.src.domain.services.clock import Clock, SystemUtcClock
-from shared.src.services.prototypes.build_strategies import (
-    PrototypeBuildRequest,
-    PrototypeBuildStrategy,
-    SinglePrototypeBuildStrategy,
 )
 
 __all__ = [

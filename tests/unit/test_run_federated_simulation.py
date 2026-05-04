@@ -14,6 +14,9 @@ from main_server.src.services.federation.rounds.boundary.models import (
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.prototype.building.build_strategies import (
+    SinglePrototypeBuildStrategy,
+)
 from scripts.experiments.federated_simulation import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
@@ -46,9 +49,6 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
 )
 from shared.src.domain.value_objects import EmbeddingAdapterSpec
-from shared.src.services.prototypes.build_strategies import (
-    SinglePrototypeBuildStrategy,
-)
 
 
 class _StaticEmbeddingAdapter:

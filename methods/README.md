@@ -50,12 +50,8 @@ research
   next-state 계산 core
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
 - `methods/federated_ssl/`: FL SSL method descriptor와 조합 metadata
+- `methods/prototype/building/`: prototype pack builder와 single/kmeans/dbscan
+  생성 전략
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
-
-Prototype pack 생성 전략은 현재
-`shared/src/services/prototypes/build_strategies.py`의 단일 표면을 쓴다.
-single/kmeans/dbscan처럼 pack contract와 publication runtime이 함께 소비하는
-builder는 별도 methods 표면을 만들지 않는다. 같은 알고리즘 표면을 두 군데로
-쪼개야 할 만큼 change axis가 커질 때만 재검토한다.
