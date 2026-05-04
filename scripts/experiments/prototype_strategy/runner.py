@@ -20,7 +20,7 @@ from scripts.experiments.prototype_strategy.models import (
 )
 from scripts.experiments.prototype_strategy.projection import ProjectionService
 from scripts.experiments.prototype_strategy.scoring import (
-    PrototypeScoringRuntimeMixin,
+    PrototypeScoringConfigMixin,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
 from shared.src.domain.services import EmbeddingAdapter
@@ -47,7 +47,7 @@ class StrategySelectionPolicy:
 
 
 @dataclass(slots=True, kw_only=True)
-class PrototypeExperimentRunner(PrototypeScoringRuntimeMixin):
+class PrototypeExperimentRunner(PrototypeScoringConfigMixin):
     """train/validation/test 흐름 전체를 오케스트레이션한다."""
 
     projection_service: ProjectionService

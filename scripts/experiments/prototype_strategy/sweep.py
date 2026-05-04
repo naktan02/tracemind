@@ -18,7 +18,7 @@ from scripts.experiments.prototype_strategy.models import (
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_strategy.scoring import (
-    PrototypeScoringRuntimeMixin,
+    PrototypeScoringConfigMixin,
 )
 from scripts.experiments.prototype_strategy.strategies import (
     build_requested_strategy,
@@ -81,7 +81,7 @@ class ThresholdPolicySelectionPolicy:
 
 
 @dataclass(slots=True, kw_only=True)
-class ThresholdPolicyExperimentRunner(PrototypeScoringRuntimeMixin):
+class ThresholdPolicyExperimentRunner(PrototypeScoringConfigMixin):
     """선택된 prototype 전략 위에서 static threshold policy를 비교한다."""
 
     selection_policy: ThresholdPolicySelectionPolicy = field(
@@ -153,9 +153,7 @@ class ThresholdPolicyExperimentRunner(PrototypeScoringRuntimeMixin):
             policy_evaluations=sorted_evaluations,
         )
         evaluation_payload = {
-            "evaluations": [
-                evaluation.to_dict() for evaluation in sorted_evaluations
-            ]
+            "evaluations": [evaluation.to_dict() for evaluation in sorted_evaluations]
         }
         dump_json(
             request.output_dir / "validation" / "policy_evaluations.json",
@@ -220,9 +218,7 @@ def _confidence_threshold_or_floor(artifact: ThresholdArtifact) -> float:
     classwise = artifact.parameters.get("confidence_threshold_by_label")
     if isinstance(classwise, dict) and classwise:
         numeric_values = [
-            float(item)
-            for item in classwise.values()
-            if isinstance(item, (int, float))
+            float(item) for item in classwise.values() if isinstance(item, (int, float))
         ]
         if numeric_values:
             return sum(numeric_values) / len(numeric_values)

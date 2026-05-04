@@ -372,8 +372,8 @@ class PseudoLabelAcceptancePolicy(Protocol):
   - `methods/ssl/base.py`
   - `methods/ssl/registry.py`
   - `methods/ssl/fixmatch/fixmatch.py`
-- agent 학습 loop:
-  - `agent/src/services/training/query_classifier_adaptation/training.py`
+- query classifier adaptation 학습 loop:
+  - `methods/adaptation/query_classifier_adaptation/training.py`
 - scripts family runner:
   - `scripts/experiments/lora_classifier/query_ssl/common.py`
   - `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`

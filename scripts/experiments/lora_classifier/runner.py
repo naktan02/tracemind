@@ -6,10 +6,10 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from scripts.labeled_query_rows import LabeledQueryRow
-from scripts.runtime_adapters.query_lora_runtime import (
-    train_query_lora_classifier,
+from methods.adaptation.query_classifier_adaptation.training import (
+    train_classifier as train_query_lora_classifier,
 )
+from scripts.labeled_query_rows import LabeledQueryRow
 
 from .artifacts import write_run_artifacts
 from .common import (

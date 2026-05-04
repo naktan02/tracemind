@@ -130,7 +130,7 @@ Reddit Labeled Data
 | pseudo-label bootstrap entrypoint | `scripts/experiments/train_lora_bootstrap_classifier_teacher.py` |
 | pseudo-label self-training entrypoint | `scripts/experiments/train_lora_pseudo_label_classifier.py` |
 | FixMatch entrypoint | `scripts/experiments/train_lora_fixmatch.py` |
-| trainer core | `agent/src/services/training/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
+| trainer core | `methods/adaptation/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
 

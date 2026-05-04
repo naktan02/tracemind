@@ -85,7 +85,8 @@
 - single-view query adaptation dataset에서 weak/strong source row를 만드는
   multiview preparation service와 JSONL export helper가 들어갔다.
 - multiview preparation은 augmentation recipe를 고정하지 않고 pluggable augmenter hook으로 연다.
-- supervised baseline 학습 코어를 `agent/src/services/training/query_classifier_adaptation/`로 옮기고,
+- supervised baseline 학습 코어를
+  `methods/adaptation/query_classifier_adaptation/`로 옮기고,
   scripts는 entrypoint/artifact layer로 얇게 정리했다.
 - canonical supervised baseline entrypoint는 `scripts/experiments/train_lora_classifier.py`로,
   concrete helper는 `scripts/experiments/lora_classifier/runner.py`와

@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
+from methods.prototype.scoring.policies import MaxCosineScorePolicy
+from methods.prototype.scoring.similarity import score_prototype_categories
 from scripts.classification_report import (
     build_confusion_matrix,
     safe_divide,
     summarize_per_category,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
-from scripts.runtime_adapters.prototype_scoring_runtime import score_prototype_mapping
 
 
 def predict_label(scores: dict[str, float]) -> tuple[str, float, float]:
@@ -33,10 +34,15 @@ def evaluate_rows(
     top_1_scores: list[float] = []
     true_scores: list[float] = []
     margins: list[float] = []
+    score_policy = MaxCosineScorePolicy()
 
     for row, embedding in zip(rows, embeddings, strict=True):
         actual_label = row["mapped_label_4"]
-        scores = score_prototype_mapping(embedding=embedding, prototypes=prototypes)
+        scores = score_prototype_categories(
+            embedding=embedding,
+            prototypes=prototypes,
+            policy=score_policy,
+        )
         predicted_label, top_1_score, margin = predict_label(scores)
 
         actual_labels.append(actual_label)

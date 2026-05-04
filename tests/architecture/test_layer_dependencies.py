@@ -17,6 +17,9 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
 )
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
+LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
+    AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
+)
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 
@@ -105,6 +108,19 @@ def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:
         forbidden_prefixes=("agent.src", "main_server.src", "research", "scripts"),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_query_classifier_adaptation_core_stays_in_methods_layer() -> None:
+    existing_paths = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC)
+    ]
+    assert not existing_paths, (
+        "query classifier adaptation 학습 scaffold는 "
+        "methods/adaptation/query_classifier_adaptation에 둔다. "
+        "agent는 local runtime/API와 private state만 소유한다. "
+        f"legacy paths={sorted(str(path) for path in existing_paths)}"
+    )
 
 
 def test_agent_layer_does_not_import_main_server_or_scripts() -> None:

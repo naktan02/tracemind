@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import pytest
+
 from scripts.experiments.prototype_strategy.evaluation import (
     evaluate_global_confidence_threshold,
 )
@@ -105,6 +107,13 @@ def test_prototype_index_scorer_can_switch_to_top_k_mean_policy() -> None:
     assert scores["alert"] == 0.5
 
 
+def test_prototype_index_scorer_rejects_non_prototype_backend() -> None:
+    with pytest.raises(ValueError, match="only supports 'prototype_similarity'"):
+        build_prototype_index_scorer(
+            scorer_backend_name="classifier_head_logits",
+        )
+
+
 def test_prototype_index_scorer_accepts_canonical_scoring_config() -> None:
     scorer = build_prototype_index_scorer(
         config=PrototypeScoringConfig(
@@ -143,6 +152,31 @@ def test_prototype_index_scorer_accepts_canonical_scoring_config() -> None:
     assert scores["alert"] == 0.5
 
 
+def test_prototype_index_scorer_uses_default_policy_when_config_is_null() -> None:
+    scorer = build_prototype_index_scorer(
+        scorer_backend_name=None,
+        score_policy_name=None,
+    )
+
+    scores = scorer.score(
+        [1.0, 0.0],
+        PrototypeIndex(
+            strategy_name="single",
+            categories={
+                "alert": [
+                    PrototypeVector(
+                        prototype_id="p1",
+                        centroid=[1.0, 0.0],
+                        member_count=1,
+                    )
+                ]
+            },
+        ),
+    )
+
+    assert scores["alert"] == 1.0
+
+
 def test_fixmatch_policy_builds_threshold_candidates() -> None:
     policy = FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
     predictions = (
@@ -174,12 +208,8 @@ def test_fixmatch_policy_builds_threshold_candidates() -> None:
 
     assert len(evaluations) == 2
     assert evaluations[0].policy_name == "fixmatch_fixed_confidence"
-    assert (
-        evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.8
-    )
-    assert (
-        evaluations[1].threshold_artifact.parameters["confidence_threshold"] == 0.95
-    )
+    assert evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.8
+    assert evaluations[1].threshold_artifact.parameters["confidence_threshold"] == 0.95
 
 
 def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> None:
@@ -320,8 +350,9 @@ def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
     assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
 
 
-def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met(
-) -> None:
+def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met() -> (
+    None
+):
     policy = ThresholdPolicySelectionPolicy(minimum_accepted_ratio=0.5)
 
     def evaluation(

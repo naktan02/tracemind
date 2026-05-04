@@ -135,7 +135,9 @@ Embedding
   USB core mapping은 `methods/ssl/fixmatch/fixmatch.py`가 소유한다.
   algorithm 선택 seam은 `methods/ssl/base.py`와
   `methods/ssl/registry.py`에 두며,
-  trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
+  trainer loop는
+  `methods/adaptation/query_classifier_adaptation/training.py`의
+  `train_query_ssl_classifier(...)`가 공유한다.
   PEFT adapter 생성은 `methods/adaptation/peft/registry.py`에서
   `lora.peft_adapter_name`으로 선택한다. 현재 활성 builder는 `lora`, `rslora`이며
   DoRA/IA3는 실제 구현이 붙을 때 별도 builder로 추가한다.

@@ -10,19 +10,27 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
+from methods.adaptation.query_classifier_adaptation.data import (
+    build_dataloader as build_query_lora_dataloader,
+)
+from methods.adaptation.query_classifier_adaptation.data import (
+    build_label_index as build_query_lora_label_index,
+)
+from methods.adaptation.query_classifier_adaptation.modeling import (
+    build_model as build_query_lora_model,
+)
+from methods.adaptation.query_classifier_adaptation.training import (
+    evaluate_classifier as evaluate_query_lora_classifier,
+)
+from methods.adaptation.query_classifier_adaptation.training import (
+    set_seed as set_query_lora_seed,
+)
 from scripts.classification_report import (
     render_confusion_table,
     render_per_category_table,
 )
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name
-from scripts.runtime_adapters.query_lora_runtime import (
-    build_query_lora_dataloader,
-    build_query_lora_label_index,
-    build_query_lora_model,
-    evaluate_query_lora_classifier,
-    set_query_lora_seed,
-)
 
 from .initial_checkpoint import resolve_query_adaptation_initial_checkpoint
 

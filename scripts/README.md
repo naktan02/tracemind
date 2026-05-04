@@ -31,7 +31,8 @@
 
 원칙:
 
-- production/runtime에서 재사용해야 하는 코어는 `shared`, `agent`, `main_server`로 올린다.
+- 알고리즘/실험 계산 코어는 `methods`로 올리고, production/runtime에서
+  재사용해야 하는 서비스 코어는 `shared`, `agent`, `main_server`로 올린다.
 - `scripts`는 그 코어를 조합해서 실행하는 entrypoint와 experiment 전용 helper만 둔다.
 - `scripts`는 `agent.src`, `main_server.src` 내부를 직접 import하지 않는다. 필요한 경우 역할이 드러나는 함수형 bridge를 `scripts/runtime_adapters/`에 둔다.
 - `scripts/prototypes/lib` 같은 compatibility indirection은 유지하지 않는다.
@@ -652,7 +653,7 @@ canonical 경로:
 - scripts baseline runner: `scripts/experiments/lora_classifier/runner.py`
 - FixMatch entrypoint: `scripts/experiments/train_lora_fixmatch.py`
 - Query SSL consistency runner: `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
-- agent 학습 코어: `agent/src/services/training/query_classifier_adaptation/`
+- query classifier adaptation 학습 코어: `methods/adaptation/query_classifier_adaptation/`
 - Query SSL objective 코어: `methods/ssl/`
 - PEFT adapter builder: `methods/adaptation/`
 - USB FixMatch core mapping: `methods/ssl/fixmatch/fixmatch.py`
