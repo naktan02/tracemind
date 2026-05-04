@@ -16,6 +16,9 @@ from agent.src.services.training.execution.local_training_service import (
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
 )
+from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+)
 from scripts.experiments.federated_simulation.evaluation import (
     build_training_examples,
 )
@@ -38,18 +41,6 @@ from shared.src.domain.entities.training.shared_adapter_state import (
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from .registry import register_federated_ssl_method
-
-FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
-    name="fedavg_pseudo_label",
-    implementation_status="active_runtime",
-    client_trainer_name="local_training_service",
-    pseudo_labeler_name="agent_pseudo_label_selection",
-    view_generator_name="training_example_backend",
-    server_aggregator_name="round_runtime_aggregation_backend",
-    round_policy_name="round_active_pair_only",
-    requires_custom_client_runtime=False,
-    requires_custom_server_runtime=False,
-)
 
 
 @dataclass(frozen=True, slots=True)

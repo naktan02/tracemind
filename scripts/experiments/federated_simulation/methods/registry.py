@@ -4,6 +4,8 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+
 from .base import FederatedSslMethodDescriptor, FederatedSslMethodRuntime
 
 FederatedSslMethodFactory = Callable[[], FederatedSslMethodRuntime]
@@ -42,7 +44,12 @@ def resolve_federated_ssl_method(name: str) -> FederatedSslMethodDescriptor:
             f"Choose one of {sorted(_REGISTERED_METHODS)} or add the method "
             f"descriptor first: {name}"
         )
-    descriptor, _factory = registered_method
+    descriptor = resolve_federated_ssl_method_descriptor(name)
+    registered_descriptor, _factory = registered_method
+    if registered_descriptor != descriptor:
+        raise ValueError(
+            f"Federated SSL method descriptor drift between methods and scripts: {name}"
+        )
     return descriptor
 
 

@@ -88,9 +88,12 @@ python -m scripts.experiments.run_federated_simulation \
 - `federated_run_preset=standard`는 `10 clients`, `50 rounds`를 main budget으로
   쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
 - `federated_ssl_method=fedavg_pseudo_label`는 현재 구현된 baseline method다.
-- 후보 논문 method는 확정 전까지 이 package에 구현 파일을 만들지 않는다.
-  실제 method core는 `agent` local runtime과 필요한 경우 `main_server` round/aggregation
-  경계에 둔다.
+- method descriptor source of truth는 `methods/federated_ssl/`이다.
+  이 package의 `methods/` 하위 모듈은 descriptor를 simulation runtime으로 연결하는
+  adapter만 둔다.
+- 후보 논문 method는 확정 전까지 descriptor/config/runtime 파일을 미리 만들지 않는다.
+  실제 method core는 `agent` local runtime, `methods`, 필요한 경우 `main_server`
+  round/aggregation 경계에 둔다.
 - `report.track=fl_ssl_main_comparison`은 중앙 SSL control과 분리된
   `reports/fl_ssl_main_comparison.report.json`을 남긴다. 현재 report shape는
   entrypoint-local section이므로 별도 Hydra group이 아니다.

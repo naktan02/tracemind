@@ -159,6 +159,8 @@ Raw Event / Local Signal
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |
+| FL SSL method descriptor | `methods/federated_ssl/*` |
+| FL simulation runtime adapter | `scripts/experiments/federated_simulation/methods/*` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 

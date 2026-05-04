@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 from typing import Protocol
 
@@ -14,6 +13,7 @@ from agent.src.services.training.execution.local_training_service import (
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
 )
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from scripts.experiments.federated_simulation.models import (
     FederatedTrainingTaskConfig,
 )
@@ -25,21 +25,6 @@ from shared.src.domain.entities.training.shared_adapter_state import (
     SharedAdapterState,
 )
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
-
-
-@dataclass(frozen=True, slots=True)
-class FederatedSslMethodDescriptor:
-    """FL SSL method가 사용하는 runtime 조합을 설명한다."""
-
-    name: str
-    implementation_status: str
-    client_trainer_name: str
-    pseudo_labeler_name: str
-    view_generator_name: str
-    server_aggregator_name: str
-    round_policy_name: str
-    requires_custom_client_runtime: bool
-    requires_custom_server_runtime: bool
 
 
 class FederatedSslMethodRuntime(Protocol):

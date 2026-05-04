@@ -395,9 +395,9 @@ python -m scripts.experiments.run_federated_simulation \
 - `federated_shard_policy=dirichlet_alpha03`는 FL SSL main split,
   `dirichlet_alpha01`은 stress split이다.
 - `federated_ssl_method=fedavg_pseudo_label`는 현재 active runtime baseline이다.
-- `federated_ssl_method`는 descriptor만이 아니라
-  `scripts/experiments/federated_simulation/methods/base.py`의
-  `FederatedSslMethodRuntime` 조합을 선택한다.
+- `federated_ssl_method`의 descriptor source of truth는
+  `methods/federated_ssl/`이고, simulation runtime adapter는
+  `scripts/experiments/federated_simulation/methods/`가 붙인다.
   현재 baseline은 round open, client example build, local trainer를 기존 pseudo-label
   self-training runtime으로 연결한다.
 - 후보 논문 method는 확정 전까지 config/파일을 미리 추가하지 않는다.
