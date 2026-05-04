@@ -521,6 +521,3 @@ def _new_conversation_id() -> str:
 
 def _new_message_id(role: str) -> str:
     return f"child-support-{role}-{uuid.uuid4().hex}"
-
-
-__all__ = ["ChildSupportCoachService"]

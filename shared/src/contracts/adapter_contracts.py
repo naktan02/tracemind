@@ -197,7 +197,9 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
         updated_at: datetime,
     ) -> "ClassifierHeadAdapterStatePayload":
         """0으로 초기화된 선형 classifier head 상태를 만든다."""
-        normalized_labels = tuple(sorted({str(label) for label in labels if str(label)}))
+        normalized_labels = tuple(
+            sorted({str(label) for label in labels if str(label)})
+        )
         if not normalized_labels:
             raise ValueError("labels must not be empty.")
         if embedding_dim <= 0:
@@ -209,9 +211,7 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
             model_revision=model_revision,
             training_scope=training_scope,
             updated_at=updated_at,
-            label_weights={
-                label: [0.0] * embedding_dim for label in normalized_labels
-            },
+            label_weights={label: [0.0] * embedding_dim for label in normalized_labels},
             label_biases={label: 0.0 for label in normalized_labels},
         )
 
@@ -300,9 +300,7 @@ class DiagonalScaleAdapterUpdatePayload(SharedAdapterUpdatePayload):
     전역 차원 보정량이며, 특정 prototype 좌표로 직접 이동시키는 값은 아니다.
     """
 
-    dimension_deltas: list[float] = Field(
-        description="차원별 scale에 더할 delta 벡터."
-    )
+    dimension_deltas: list[float] = Field(description="차원별 scale에 더할 delta 벡터.")
     mean_confidence: float = Field(
         ge=0.0,
         le=1.0,
@@ -461,9 +459,9 @@ def _load_payload_data(path: Path) -> dict[str, object]:
 def load_shared_adapter_state_payload(path: Path) -> SharedAdapterStatePayload:
     """JSON 파일에서 shared adapter state payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(
-        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
-    ).strip().lower()
+    adapter_kind = (
+        str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
+    )
     payload_type = _STATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter state kind: {adapter_kind}")
@@ -481,9 +479,9 @@ def dump_shared_adapter_state_payload(
 def load_shared_adapter_update_payload(path: Path) -> SharedAdapterUpdatePayload:
     """JSON 파일에서 shared adapter update payload를 읽는다."""
     data = _load_payload_data(path)
-    adapter_kind = str(
-        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
-    ).strip().lower()
+    adapter_kind = (
+        str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
+    )
     payload_type = _UPDATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter update kind: {adapter_kind}")
@@ -663,45 +661,3 @@ register_shared_adapter_payload_family(
     state_payload_type=ClassifierHeadAdapterStatePayload,
     update_payload_type=ClassifierHeadAdapterUpdatePayload,
 )
-
-
-__all__ = [
-    "AdapterKind",
-    "CLASSIFIER_HEAD_DELTA_V1",
-    "CLASSIFIER_HEAD_STATE_V1",
-    "ClassifierHeadAdapterStatePayload",
-    "ClassifierHeadAdapterUpdatePayload",
-    "ClassifierHeadDelta",
-    "ClassifierHeadDeltaPayload",
-    "ClassifierHeadDeltaSchemaVersion",
-    "ClassifierHeadState",
-    "ClassifierHeadStatePayload",
-    "ClassifierHeadStateSchemaVersion",
-    "DiagonalScaleAdapterStatePayload",
-    "DiagonalScaleAdapterUpdatePayload",
-    "SharedAdapterStatePayload",
-    "SharedAdapterUpdatePayload",
-    "VECTOR_ADAPTER_DELTA_V1",
-    "VECTOR_ADAPTER_STATE_V1",
-    "VectorAdapterDelta",
-    "VectorAdapterDeltaPayload",
-    "VectorAdapterDeltaSchemaVersion",
-    "VectorAdapterState",
-    "VectorAdapterStatePayload",
-    "VectorAdapterStateSchemaVersion",
-    "dump_shared_adapter_state_payload",
-    "dump_shared_adapter_update_payload",
-    "dump_vector_adapter_delta_payload",
-    "dump_vector_adapter_state_payload",
-    "load_shared_adapter_state_payload",
-    "load_shared_adapter_update_payload",
-    "load_vector_adapter_delta_payload",
-    "load_vector_adapter_state_payload",
-    "make_classifier_head_delta_payload",
-    "make_diagonal_delta_payload",
-    "make_identity_state_payload",
-    "make_zero_classifier_head_state_payload",
-    "register_shared_adapter_payload_family",
-    "register_shared_adapter_state_payload_type",
-    "register_shared_adapter_update_payload_type",
-]

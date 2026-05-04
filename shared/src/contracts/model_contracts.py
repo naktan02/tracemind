@@ -105,15 +105,3 @@ def dump_model_manifest_payload(path: Path, payload: ModelManifest) -> None:
         json.dumps(payload.model_dump(mode="json"), indent=2, ensure_ascii=True) + "\n",
         encoding="utf-8",
     )
-
-
-__all__ = [
-    "ArtifactKind",
-    "MODEL_MANIFEST_V1",
-    "ModelManifest",
-    "ModelManifestPayload",
-    "ModelManifestSchemaVersion",
-    "dump_model_manifest_payload",
-    "load_model_manifest_payload",
-    "make_embedding_manifest",
-]

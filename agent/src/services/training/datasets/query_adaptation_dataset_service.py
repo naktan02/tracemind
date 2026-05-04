@@ -24,9 +24,7 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
 
 _T = TypeVar("_T")
 _MetadataScalar = str | int | float | bool
-_SUPPORTED_LABEL_POLICY_NAMES = frozenset(
-    {"pseudo_label_only", "prefer_manual_label"}
-)
+_SUPPORTED_LABEL_POLICY_NAMES = frozenset({"pseudo_label_only", "prefer_manual_label"})
 
 
 @dataclass(slots=True)
@@ -275,12 +273,3 @@ def _coerce_metadata_scalar(value: object) -> _MetadataScalar:
     if isinstance(value, str):
         return value
     return str(value)
-
-
-__all__ = [
-    "QueryAdaptationDataset",
-    "QueryAdaptationDatasetConfig",
-    "QueryAdaptationDatasetExample",
-    "QueryAdaptationDatasetProvenance",
-    "QueryAdaptationDatasetService",
-]

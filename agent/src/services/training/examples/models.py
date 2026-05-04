@@ -49,6 +49,3 @@ class EmbeddedTrainingExample:
         """selection 결과와 training example 재매칭에 쓰는 key."""
 
         return self.evidence_scored_event.query_id
-
-
-__all__ = ["EmbeddedTrainingExample"]

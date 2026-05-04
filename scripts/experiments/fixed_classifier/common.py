@@ -79,9 +79,3 @@ def prepare_fixed_classifier_run_context(
         created_at=created_at,
         embedding_spec=instantiate(cfg.embedding.spec),
     )
-
-
-__all__ = [
-    "FixedClassifierRunContext",
-    "prepare_fixed_classifier_run_context",
-]

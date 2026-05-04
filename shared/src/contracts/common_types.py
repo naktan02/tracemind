@@ -25,6 +25,3 @@ class TrainingTaskType(StrEnum):
 
     PSEUDO_LABEL_SELF_TRAINING = "pseudo_label_self_training"
     FEEDBACK_SUPERVISED = "feedback_supervised"
-
-
-__all__ = ["TrainingScope", "TrainingTaskType"]

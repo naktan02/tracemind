@@ -45,9 +45,3 @@ def write_query_buffer_selection_diagnostics(
         candidates_path=candidates_path,
         summary_path=summary_path,
     )
-
-
-__all__ = [
-    "QueryBufferSelectionDiagnosticsArtifacts",
-    "write_query_buffer_selection_diagnostics",
-]

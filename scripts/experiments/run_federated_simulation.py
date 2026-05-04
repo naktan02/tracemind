@@ -20,7 +20,9 @@ from scripts.experiments.federated_simulation import (
     FederatedValidationConfig,
     load_jsonl_rows,
     run_simulation,
-    split_rows_for_federation,
+)
+from scripts.experiments.federated_simulation import (
+    split_rows_for_federation as split_rows_for_federation,
 )
 from scripts.run_artifacts import build_run_dir
 from scripts.runtime_adapters.federated_server_runtime import (
@@ -30,13 +32,6 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-
-__all__ = [
-    "load_jsonl_rows",
-    "main",
-    "run_simulation",
-    "split_rows_for_federation",
-]
 
 
 def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:

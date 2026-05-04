@@ -179,12 +179,8 @@ class QueryBufferSelectionSummary:
             "accepted_label_counts": dict(sorted(self.accepted_label_counts.items())),
             "locale_counts": dict(sorted(self.locale_counts.items())),
             "source_type_counts": dict(sorted(self.source_type_counts.items())),
-            "model_revision_counts": dict(
-                sorted(self.model_revision_counts.items())
-            ),
-            "confidence_kind_counts": dict(
-                sorted(self.confidence_kind_counts.items())
-            ),
+            "model_revision_counts": dict(sorted(self.model_revision_counts.items())),
+            "confidence_kind_counts": dict(sorted(self.confidence_kind_counts.items())),
             "evidence_backend_name_counts": dict(
                 sorted(self.evidence_backend_name_counts.items())
             ),
@@ -261,8 +257,7 @@ class QueryBufferSelectionDiagnosticsService:
             record = record_by_query_id.get(query_id)
             if record is None:
                 raise ValueError(
-                    "Missing QueryBufferRecord for selection diagnostics: "
-                    f"{query_id}."
+                    f"Missing QueryBufferRecord for selection diagnostics: {query_id}."
                 )
             evidence = evidence_by_query_id.get(query_id)
 
@@ -275,9 +270,7 @@ class QueryBufferSelectionDiagnosticsService:
             confidence_threshold = selection_context.confidence_threshold
             margin_threshold = selection_context.margin_threshold
             max_examples = selection_context.max_examples
-            pseudo_label_algorithm_name = (
-                selection_context.pseudo_label_algorithm_name
-            )
+            pseudo_label_algorithm_name = selection_context.pseudo_label_algorithm_name
             evidence_backend_name = selection_context.evidence_backend_name
 
             trace_rows.append(
@@ -350,8 +343,7 @@ class QueryBufferSelectionDiagnosticsService:
                     candidate_metadata={
                         str(key): _coerce_metadata_scalar(value)
                         for key, value in candidate.metadata.items()
-                        if str(key)
-                        not in SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS
+                        if str(key) not in SELECTION_CONTEXT_COMPATIBILITY_METADATA_KEYS
                     },
                     query_buffer_metadata={
                         str(key): _coerce_metadata_scalar(value)
@@ -385,9 +377,7 @@ class QueryBufferSelectionDiagnosticsService:
                 if pseudo_label_algorithm_name is None
                 else pseudo_label_algorithm_name
             ] += 1
-            confidence_threshold_counts[
-                _stringify_count_key(confidence_threshold)
-            ] += 1
+            confidence_threshold_counts[_stringify_count_key(confidence_threshold)] += 1
             margin_threshold_counts[_stringify_count_key(margin_threshold)] += 1
             max_examples_counts[_stringify_count_key(max_examples)] += 1
             task_id_counts[_stringify_count_key(candidate.task_id)] += 1
@@ -461,8 +451,7 @@ def _coerce_metadata_scalar(value: object) -> _MetadataScalar:
     if isinstance(value, str):
         return value
     raise TypeError(
-        "Selection diagnostics metadata must be a scalar value, "
-        f"got {type(value)!r}."
+        f"Selection diagnostics metadata must be a scalar value, got {type(value)!r}."
     )
 
 
@@ -507,14 +496,3 @@ def _summarize_scalar_values(
         maximum=max(values),
         mean=fsum(values) / len(values),
     )
-
-
-__all__ = [
-    "QUERY_BUFFER_SELECTION_SUMMARY_SCHEMA_VERSION",
-    "QUERY_BUFFER_SELECTION_TRACE_SCHEMA_VERSION",
-    "QueryBufferSelectionDiagnostics",
-    "QueryBufferSelectionDiagnosticsService",
-    "QueryBufferSelectionScalarStats",
-    "QueryBufferSelectionSummary",
-    "QueryBufferSelectionTraceRow",
-]

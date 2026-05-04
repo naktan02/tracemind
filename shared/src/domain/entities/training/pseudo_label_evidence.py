@@ -29,6 +29,3 @@ class PseudoLabelEvidence:
     raw_scores: dict[str, float] = field(default_factory=dict)
     label_distribution: dict[str, float] | None = None
     metadata: dict[str, str | int | float | bool] = field(default_factory=dict)
-
-
-__all__ = ["PSEUDO_LABEL_EVIDENCE_V1", "PseudoLabelEvidence"]

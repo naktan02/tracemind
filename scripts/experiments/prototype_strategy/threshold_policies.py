@@ -230,8 +230,7 @@ class ClasswiseStaticConfidencePolicy:
     source_paper: PaperReference = field(
         default_factory=lambda: PaperReference(
             title=(
-                "Class-Imbalanced Semi-Supervised Learning with Adaptive "
-                "Thresholding"
+                "Class-Imbalanced Semi-Supervised Learning with Adaptive Thresholding"
             ),
             url="https://proceedings.mlr.press/v162/guo22e.html",
             venue="ICML",
@@ -388,11 +387,3 @@ def _group_predictions_by_predicted_label(
         label: tuple(label_predictions)
         for label, label_predictions in sorted(buckets.items())
     }
-
-
-__all__ = [
-    "ClasswiseStaticConfidencePolicy",
-    "FixMatchFixedConfidencePolicy",
-    "StaticThresholdPolicy",
-    "ValidationTargetErrorConfidencePolicy",
-]

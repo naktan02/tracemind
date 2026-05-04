@@ -32,9 +32,7 @@ CLASSIFIER_HEAD_FAMILY_METADATA = SharedAdapterFamilyMetadata(
     family_name=AdapterKind.CLASSIFIER_HEAD.value,
     adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
     canonical_update_payload_format=UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,
-    accepted_update_payload_formats=(
-        UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,
-    ),
+    accepted_update_payload_formats=(UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,),
 )
 
 _SHARED_ADAPTER_FAMILY_METADATA_REGISTRY: tuple[SharedAdapterFamilyMetadata, ...] = (
@@ -47,11 +45,3 @@ def list_shared_adapter_family_metadata() -> tuple[SharedAdapterFamilyMetadata, 
     """등록된 shared adapter family 메타데이터를 반환한다."""
 
     return _SHARED_ADAPTER_FAMILY_METADATA_REGISTRY
-
-
-__all__ = [
-    "CLASSIFIER_HEAD_FAMILY_METADATA",
-    "DIAGONAL_SCALE_FAMILY_METADATA",
-    "SharedAdapterFamilyMetadata",
-    "list_shared_adapter_family_metadata",
-]

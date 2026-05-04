@@ -625,20 +625,3 @@ def run_fixed_embedding_classifier(
     print(f"manifest={outputs['manifest']}")
     print(f"report_json={outputs['report_json']}")
     return outputs
-
-
-__all__ = [
-    "FixedClassifierPrediction",
-    "TrainedFixedClassifier",
-    "batched_rows",
-    "build_label_index",
-    "embed_rows",
-    "evaluate_classifier",
-    "labels_to_tensor",
-    "load_fixed_classifier_artifacts",
-    "predict_fixed_classifier_rows",
-    "run_fixed_embedding_classifier",
-    "train_classifier_head",
-    "train_fixed_embedding_classifier",
-    "write_fixed_classifier_artifacts",
-]

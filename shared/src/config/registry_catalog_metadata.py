@@ -21,9 +21,7 @@ class RegistryCatalogEntry:
     supported_adapter_kinds: tuple[str, ...] = ()
     accepted_payload_formats: tuple[str, ...] = ()
     tags: tuple[str, ...] = ()
-    metadata: Mapping[str, RegistryCatalogMetadataScalar] = field(
-        default_factory=dict
-    )
+    metadata: Mapping[str, RegistryCatalogMetadataScalar] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -57,10 +55,3 @@ def dedupe_registry_catalog_entries(
             ),
         )
     )
-
-
-__all__ = [
-    "RegistryCatalogEntry",
-    "RegistryCatalogMetadataScalar",
-    "dedupe_registry_catalog_entries",
-]

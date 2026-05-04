@@ -154,10 +154,3 @@ def _coerce_metadata_scalar(value: object) -> str | int | float | bool:
     if isinstance(value, str):
         return value
     return str(value)
-
-
-__all__ = [
-    "QUERY_BUFFER_PROJECTION_BACKEND_NAME",
-    "build_query_buffer_evidence",
-    "build_query_buffer_evidences",
-]

@@ -12,6 +12,3 @@ class EmbeddingAdapter(Protocol):
     def embed_texts(self, texts: Sequence[str]) -> list[list[float]]:
         """텍스트 목록을 임베딩한다."""
         ...
-
-
-__all__ = ["EmbeddingAdapter"]

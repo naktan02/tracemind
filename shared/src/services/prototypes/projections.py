@@ -41,9 +41,3 @@ def project_category_centroids_by_largest_cluster(
         )
         centroids[category] = list(representative.centroid)
     return centroids
-
-
-__all__ = [
-    "project_category_centroids_by_largest_cluster",
-    "require_single_category_centroids",
-]

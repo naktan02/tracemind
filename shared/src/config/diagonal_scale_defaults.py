@@ -44,9 +44,7 @@ def _validate_allowed_keys(
         return
     unexpected_keys = sorted(key for key in source if key not in allowed_keys)
     if unexpected_keys:
-        raise ValueError(
-            f"Unsupported {config_name} key(s): {unexpected_keys}."
-        )
+        raise ValueError(f"Unsupported {config_name} key(s): {unexpected_keys}.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -111,12 +109,3 @@ class DiagonalScaleHeuristicTrainingBackendConfig:
 DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG = (
     DiagonalScaleHeuristicTrainingBackendConfig()
 )
-
-
-__all__ = [
-    "DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG",
-    "DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS",
-    "DiagonalScaleConfigScalar",
-    "DiagonalScaleHeuristicTrainingBackendConfig",
-    "TRAINING_BACKEND_EXTRA_SCOPE",
-]

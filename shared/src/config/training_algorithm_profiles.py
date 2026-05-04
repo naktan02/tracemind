@@ -70,9 +70,7 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE = TrainingAlgorithmProfile(
 
 _TRAINING_ALGORITHM_PROFILE_REGISTRY: dict[str, TrainingAlgorithmProfile] = {
     PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME: PROTOTYPE_PSEUDO_LABEL_V1_PROFILE,
-    PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME: (
-        PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE
-    ),
+    PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME: (PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE),
 }
 
 
@@ -103,16 +101,3 @@ def expand_training_objective_mapping(
     merged = dict(profile.objective_mapping)
     merged.update(raw)
     return merged
-
-
-__all__ = [
-    "PROTOTYPE_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING",
-    "PROTOTYPE_PSEUDO_LABEL_V1_PROFILE",
-    "PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME",
-    "PROTOTYPE_TOP1_CONFIDENCE_V1_OBJECTIVE_MAPPING",
-    "PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE",
-    "PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME",
-    "TrainingAlgorithmProfile",
-    "expand_training_objective_mapping",
-    "get_training_algorithm_profile",
-]

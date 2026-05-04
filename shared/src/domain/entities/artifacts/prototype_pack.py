@@ -44,10 +44,3 @@ class SinglePrototypePack:
 # Backward-compatible aliases for legacy imports.
 CategoryPrototype = SingleCategoryPrototype
 PrototypePack = SinglePrototypePack
-
-__all__ = [
-    "CategoryPrototype",
-    "PrototypePack",
-    "SingleCategoryPrototype",
-    "SinglePrototypePack",
-]

@@ -31,12 +31,8 @@ TRAINING_TASK_V1 = "training_task.v1"
 TRAINING_UPDATE_ENVELOPE_V1 = "training_update_envelope.v1"
 DECISION_FEEDBACK_SIGNAL_V1 = "decision_feedback_signal.v1"
 TrainingTaskSchemaVersion: TypeAlias = Literal["training_task.v1"]
-TrainingUpdateEnvelopeSchemaVersion: TypeAlias = Literal[
-    "training_update_envelope.v1"
-]
-DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal[
-    "decision_feedback_signal.v1"
-]
+TrainingUpdateEnvelopeSchemaVersion: TypeAlias = Literal["training_update_envelope.v1"]
+DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal["decision_feedback_signal.v1"]
 
 
 class UpdatePayloadFormat(StrEnum):
@@ -54,6 +50,7 @@ class FeedbackSignalType(StrEnum):
     SELF_REPORT = "self_report"
     SUPPORT_ACTION = "support_action"
     DELAYED_OUTCOME = "delayed_outcome"
+
 
 TrainingConfigScalar = str | int | float | bool
 DEFAULT_TRAINING_BACKEND_NAME = str(
@@ -117,8 +114,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
     loss_name: str | None = Field(
         default=None,
         description=(
-            "학습 objective의 loss 함수 식별자. "
-            "backend 선택과는 독립적인 의미 축이다."
+            "학습 objective의 loss 함수 식별자. backend 선택과는 독립적인 의미 축이다."
         ),
     )
     confidence_threshold: float | None = Field(
@@ -211,9 +207,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
             score_policy_name=_optional_str(source.get("score_policy_name")),
             score_top_k=_optional_positive_int(source.get("score_top_k")),
             pseudo_label_algorithm_name=pseudo_label_algorithm_name,
-            acceptance_policy_name=_optional_str(
-                source.get("acceptance_policy_name")
-            ),
+            acceptance_policy_name=_optional_str(source.get("acceptance_policy_name")),
             privacy_guard_name=_optional_str(source.get("privacy_guard_name")),
             extras={
                 key: value
@@ -264,9 +258,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
         if self.score_top_k is not None:
             result["score_top_k"] = self.score_top_k
         if self.pseudo_label_algorithm_name is not None:
-            result["pseudo_label_algorithm_name"] = (
-                self.pseudo_label_algorithm_name
-            )
+            result["pseudo_label_algorithm_name"] = self.pseudo_label_algorithm_name
         if self.acceptance_policy_name is not None:
             result["acceptance_policy_name"] = self.acceptance_policy_name
         if self.privacy_guard_name is not None:
@@ -293,9 +285,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
         }
         if scoped:
             return scoped
-        return {
-            key: value for key, value in self.extras.items() if key in legacy_keys
-        }
+        return {key: value for key, value in self.extras.items() if key in legacy_keys}
 
     @property
     def loss(self) -> str:
@@ -398,9 +388,7 @@ class SecureAggregationConfigPayload(BaseModel):
             aggregation_backend_name=_optional_str(
                 source.get("aggregation_backend_name")
             ),
-            encryption_scheme_name=_optional_str(
-                source.get("encryption_scheme_name")
-            ),
+            encryption_scheme_name=_optional_str(source.get("encryption_scheme_name")),
             key_ref=_optional_str(source.get("key_ref")),
             ciphertext_format=_optional_str(source.get("ciphertext_format")),
             extras={
@@ -421,15 +409,18 @@ class SecureAggregationConfigPayload(BaseModel):
     def _normalize_required(self) -> "SecureAggregationConfigPayload":
         if self.required:
             return self
-        if any(
-            value is not None
-            for value in (
-                self.aggregation_backend_name,
-                self.encryption_scheme_name,
-                self.key_ref,
-                self.ciphertext_format,
+        if (
+            any(
+                value is not None
+                for value in (
+                    self.aggregation_backend_name,
+                    self.encryption_scheme_name,
+                    self.key_ref,
+                    self.ciphertext_format,
+                )
             )
-        ) or self.extras:
+            or self.extras
+        ):
             self.required = True
         return self
 
@@ -542,9 +533,7 @@ class TrainingTaskPayload(BaseModel):
         secure_aggregation = data.get("secure_aggregation")
         if secure_aggregation is None:
             if legacy_required is not None:
-                data["secure_aggregation"] = {
-                    "required": bool(legacy_required)
-                }
+                data["secure_aggregation"] = {"required": bool(legacy_required)}
             return data
         if legacy_required is None or not isinstance(secure_aggregation, Mapping):
             return data
@@ -837,38 +826,3 @@ TrainingSelectionPolicy = TrainingSelectionPolicyPayload
 TrainingTask = TrainingTaskPayload
 TrainingUpdateEnvelope = TrainingUpdateEnvelopePayload
 DecisionFeedbackSignal = DecisionFeedbackSignalPayload
-
-
-__all__ = [
-    "ClientMetricKeys",
-    "DECISION_FEEDBACK_SIGNAL_V1",
-    "DecisionFeedbackSignal",
-    "DecisionFeedbackSignalPayload",
-    "DecisionFeedbackSignalSchemaVersion",
-    "FeedbackSignalType",
-    "SecureAggregationConfig",
-    "SecureAggregationConfigPayload",
-    "SecureAggregationSubmission",
-    "SecureAggregationSubmissionPayload",
-    "TRAINING_TASK_V1",
-    "TRAINING_UPDATE_ENVELOPE_V1",
-    "TrainingConfigScalar",
-    "TrainingObjectiveConfig",
-    "TrainingObjectiveConfigPayload",
-    "TrainingSelectionPolicy",
-    "TrainingSelectionPolicyPayload",
-    "TrainingTask",
-    "TrainingTaskPayload",
-    "TrainingTaskSchemaVersion",
-    "TrainingUpdateEnvelope",
-    "TrainingUpdateEnvelopePayload",
-    "TrainingUpdateEnvelopeSchemaVersion",
-    "UpdatePayloadFormat",
-    "dump_decision_feedback_signal_payload",
-    "dump_training_task_payload",
-    "dump_training_update_envelope_payload",
-    "load_decision_feedback_signal_payload",
-    "load_training_task_payload",
-    "load_training_update_envelope_payload",
-    "make_training_update_envelope",
-]

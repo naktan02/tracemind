@@ -197,10 +197,3 @@ def _resolve_query_adaptation_run_id(
     if trainer_version:
         return trainer_version
     return generated_at.strftime("query_adapt_lora_%Y_%m_%d_%H%M%S")
-
-
-__all__ = [
-    "PreparedQueryAdaptationSupervisedRun",
-    "prepare_query_adaptation_supervised_run",
-    "run_query_adaptation_supervised_baseline",
-]
