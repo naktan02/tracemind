@@ -48,6 +48,12 @@ class WellbeingTimeseriesService:
             summaries = self.repository.list_summaries_since(
                 cutoff=now - timedelta(days=days - 1),
             )
+            if not summaries:
+                latest_summary = self.repository.load_latest_summary()
+                if latest_summary is not None:
+                    summaries = self.repository.list_summaries_since(
+                        cutoff=latest_summary.computed_at - timedelta(days=days - 1),
+                    )
             if summaries:
                 return WellbeingSignalTimeseriesPayload(
                     computed_at=now,
