@@ -40,4 +40,4 @@ def build_query_ssl_algorithm(
 
 
 # Built-in algorithms self-register via decorators when imported.
-from .fixmatch import algorithm as _fixmatch_algorithm  # noqa: E402,F401
+from .fixmatch import fixmatch as _fixmatch_algorithm  # noqa: E402,F401

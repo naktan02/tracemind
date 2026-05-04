@@ -40,7 +40,7 @@
 | Privacy Guard | agent | DiagonalScaleClipOnlyPrivacyGuard, ClassifierHeadClipOnlyPrivacyGuard | `agent/src/services/training/execution/privacy_guard_service.py` |
 | Pseudo-label Acceptance Policy | agent | Top1MarginThresholdAcceptancePolicy, Top1ConfidenceOnlyAcceptancePolicy | `agent/src/services/training/acceptance_policies/` |
 | Pseudo-label Selection Hook | agent/scripts | `top1_margin_threshold`, `top1_confidence_only` | `agent/src/services/training/ssl/hooks/pseudo_label_selection/`, `conf/pseudo_label_algorithm/` |
-| Query SSL Algorithm | agent/scripts | `fixmatch` | `agent/src/services/training/query_ssl_algorithms/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
+| Query SSL Algorithm | methods/scripts | `fixmatch` | `methods/ssl/`, `scripts/experiments/lora_classifier/query_ssl/`, `conf/query_ssl_method/`, `conf/query_source/` |
 | Query SSL Augmenter | agent/scripts | `nllb_backtranslation`, `precomputed_usb_candidates` | `agent/src/services/backtranslation_service.py`, `scripts/experiments/lora_classifier/query_ssl/augmentation.py`, `conf/query_ssl_augmenter/` |
 | PEFT Adapter Builder | agent/scripts | `lora`, `rslora` | `agent/src/services/training/peft_adapters/`, `conf/lora/` |
 | Scoring Policy | agent | MaxCosineScorePolicy | `agent/src/services/inference/scoring_policies.py` |
@@ -352,10 +352,11 @@ class PseudoLabelAcceptancePolicy(Protocol):
 - `fixmatch`
 
 **구성 위치:**
-- agent 코어:
-  - `agent/src/services/training/query_ssl_algorithms/base.py`
-  - `agent/src/services/training/query_ssl_algorithms/registry.py`
-  - `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`
+- method 코어:
+  - `methods/ssl/base.py`
+  - `methods/ssl/registry.py`
+  - `methods/ssl/fixmatch/fixmatch.py`
+- agent 학습 loop:
   - `agent/src/services/training/query_classifier_adaptation/training.py`
 - scripts family runner:
   - `scripts/experiments/lora_classifier/query_ssl/common.py`
@@ -365,9 +366,9 @@ class PseudoLabelAcceptancePolicy(Protocol):
   - `conf/query_source/*.yaml`
 
 **교체 절차:**
-1. `query_ssl_algorithms/<algorithm_name>/` 아래에 algorithm core를 구현한다
+1. `methods/ssl/<algorithm_name>/` 아래에 algorithm core를 구현한다
 2. algorithm adapter가 `QuerySslAlgorithm`를 만족하게 만든다
-3. `algorithms/registry.py`에 `algorithm_name`으로 등록한다
+3. `methods/ssl/registry.py`에 `algorithm_name`으로 등록한다
 4. `train_query_ssl_classifier(...)` 공통 loop에는 새 objective만 주입한다
 5. scripts에서는 `query_ssl_method=<preset>`과 `query_source=<preset>`으로 선택한다
 6. scripts runner의 `QuerySslAlgorithmAdapter` registry에 loader/preparation wiring을 추가한다

@@ -36,6 +36,8 @@ research
 
 ## 진행 상태
 
-이 디렉터리는 1단계 scaffold다. 활성 구현은 아직 기존 위치에 남아 있으며,
-다음 단계부터 FixMatch, LoRA/PEFT, FedAvg 계산 core, prototype method를
-작은 단위로 옮긴다.
+현재 활성 구현:
+
+- `methods/ssl/fixmatch/`: USB 스타일 FixMatch objective core
+
+다음 단계부터 LoRA/PEFT, FedAvg 계산 core, prototype method를 작은 단위로 옮긴다.

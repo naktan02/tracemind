@@ -95,9 +95,6 @@
 - `training/training/ssl/hooks/pseudo_label_selection/`
   - query-domain adaptation 실험에서 재사용하는 pseudo-label selection 알고리즘 구현
   - 현재 agent selection과 bootstrap teacher pseudo-labeling이 같은 코어를 공유한다
-- `training/query_ssl_algorithms/fixmatch/algorithm.py`
-  - USB `FixMatch` 수식 코어를 query adaptation trainer에 옮긴 구현
-  - weak view pseudo-label/mask, strong view consistency CE를 같은 파일에서 닫는다
 - `language/backtranslation_service.py`
   - 운영 translation 코어와 같은 층에서 재사용하는 backtranslation service
   - strict USB NLP input용 `aug_0`, `aug_1` strong candidate 생성에 재사용한다

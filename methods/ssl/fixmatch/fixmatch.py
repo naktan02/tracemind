@@ -1,4 +1,4 @@
-"""USB FixMatch core를 TraceMind query adaptation trainer에 맞게 옮긴 구현."""
+"""USB FixMatch core를 TraceMind reusable SSL method로 옮긴 구현."""
 
 from __future__ import annotations
 

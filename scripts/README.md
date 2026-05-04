@@ -649,9 +649,9 @@ canonical 경로:
 - FixMatch entrypoint: `scripts/experiments/train_lora_fixmatch.py`
 - Query SSL consistency runner: `scripts/experiments/lora_classifier/query_ssl/consistency_runner.py`
 - agent 학습 코어: `agent/src/services/training/query_classifier_adaptation/`
-- Query SSL objective 코어: `agent/src/services/training/query_ssl_algorithms/`
+- Query SSL objective 코어: `methods/ssl/`
 - PEFT adapter builder: `agent/src/services/training/peft_adapters/`
-- USB FixMatch core mapping: `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`
+- USB FixMatch core mapping: `methods/ssl/fixmatch/fixmatch.py`
 - teacher bootstrap entrypoint: `scripts/experiments/train_lora_bootstrap_classifier_teacher.py`
 - teacher bootstrap helper: `scripts/experiments/lora_classifier/bootstrap_runner.py`
 - pseudo-label entrypoint: `scripts/experiments/train_lora_pseudo_label_classifier.py`
@@ -690,7 +690,7 @@ canonical 경로:
   `train_query_ssl_classifier(...)` 공통 loop와 algorithm adapter로 둔다.
 - scripts 쪽 실행 껍데기는 `query_ssl/common.py`와 `query_ssl/consistency_runner.py`로 나눠
   family 공통 scaffolding과 `query_ssl_method.algorithm_name`별 scripts wiring을 분리한다.
-- algorithm core 선택은 `agent/src/services/training/query_ssl_algorithms/registry.py`에서
+- algorithm core 선택은 `methods/ssl/registry.py`에서
   `algorithm_name`으로 수행한다.
 - 현재 `FixMatch`는 `text + aug_0 + aug_1` canonical unlabeled shape를 쓰고,
   `query_ssl_augmenter`가 strict USB형 strong candidate를 먼저 준비한다.

@@ -13,9 +13,7 @@ from agent.src.services.training.query_classifier_adaptation.data import (
 from agent.src.services.training.query_classifier_adaptation.training import (
     train_query_ssl_classifier,
 )
-from agent.src.services.training.query_ssl_algorithms.registry import (
-    build_query_ssl_algorithm,
-)
+from methods.ssl.registry import build_query_ssl_algorithm
 from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from ..artifacts import write_run_artifacts

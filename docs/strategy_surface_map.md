@@ -121,9 +121,9 @@ Embedding
   현재 `FixMatch`의 algorithm/source source of truth는
   `conf/query_ssl_method/`, `conf/query_source/`,
   `conf/query_ssl_augmenter/`이고,
-  USB core mapping은 `agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py`가 소유한다.
-  algorithm 선택 seam은 `agent/src/services/training/query_ssl_algorithms/base.py`와
-  `agent/src/services/training/query_ssl_algorithms/registry.py`에 두며,
+  USB core mapping은 `methods/ssl/fixmatch/fixmatch.py`가 소유한다.
+  algorithm 선택 seam은 `methods/ssl/base.py`와
+  `methods/ssl/registry.py`에 두며,
   trainer loop는 `train_query_ssl_classifier(...)`가 공유한다.
   PEFT adapter 생성은 `agent/src/services/training/peft_adapters/registry.py`에서
   `lora.peft_adapter_name`으로 선택한다. 현재 활성 builder는 `lora`, `rslora`이며
@@ -149,9 +149,9 @@ Embedding
 - [agent/src/services/training/acceptance_policies/__init__.py](../agent/src/services/training/acceptance_policies/__init__.py)
 - [agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py](../agent/src/services/training/ssl/hooks/pseudo_label_selection/registry.py)
 - [conf/pseudo_label_algorithm/margin_threshold_v1.yaml](../conf/pseudo_label_algorithm/margin_threshold_v1.yaml)
-- [agent/src/services/training/query_ssl_algorithms/base.py](../agent/src/services/training/query_ssl_algorithms/base.py)
-- [agent/src/services/training/query_ssl_algorithms/registry.py](../agent/src/services/training/query_ssl_algorithms/registry.py)
-- [agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py](../agent/src/services/training/query_ssl_algorithms/fixmatch/algorithm.py)
+- [methods/ssl/base.py](../methods/ssl/base.py)
+- [methods/ssl/registry.py](../methods/ssl/registry.py)
+- [methods/ssl/fixmatch/fixmatch.py](../methods/ssl/fixmatch/fixmatch.py)
 - [conf/query_ssl_method/fixmatch_usb_v1.yaml](../conf/query_ssl_method/fixmatch_usb_v1.yaml)
 - [conf/query_source/dataset_default.yaml](../conf/query_source/dataset_default.yaml)
 - [agent/src/services/training/execution/privacy_guard_service.py](../agent/src/services/training/execution/privacy_guard_service.py)

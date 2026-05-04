@@ -11,8 +11,8 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from agent.src.services.training.query_ssl_algorithms.base import QuerySslAlgorithm
-from agent.src.services.training.query_ssl_algorithms.fixmatch.algorithm import (
+from methods.ssl.base import QuerySslAlgorithm
+from methods.ssl.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
 )
