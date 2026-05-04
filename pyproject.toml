@@ -60,6 +60,8 @@ include = [
     "main_server",
     "main_server.src",
     "main_server.src.*",
+    "methods",
+    "methods.*",
     "shared",
     "shared.src",
     "shared.src.*",

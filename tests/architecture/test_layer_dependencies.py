@@ -7,6 +7,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_SRC = REPO_ROOT / "shared" / "src"
+METHODS_SRC = REPO_ROOT / "methods"
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 
@@ -14,7 +15,9 @@ TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 
 
 def _iter_python_files(root: Path) -> list[Path]:
-    return sorted(path for path in root.rglob("*.py") if "__pycache__" not in path.parts)
+    return sorted(
+        path for path in root.rglob("*.py") if "__pycache__" not in path.parts
+    )
 
 
 def _collect_absolute_imports(path: Path) -> set[str]:
@@ -55,7 +58,21 @@ def _format_violations(violations: list[tuple[Path, str]]) -> str:
 def test_shared_layer_does_not_import_runtime_layers() -> None:
     violations = _find_forbidden_imports(
         root=SHARED_SRC,
-        forbidden_prefixes=("agent.src", "main_server.src", "scripts"),
+        forbidden_prefixes=(
+            "agent.src",
+            "main_server.src",
+            "methods",
+            "research",
+            "scripts",
+        ),
+    )
+    assert not violations, _format_violations(violations)
+
+
+def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC,
+        forbidden_prefixes=("agent.src", "main_server.src", "research", "scripts"),
     )
     assert not violations, _format_violations(violations)
 
@@ -63,7 +80,7 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
 def test_agent_layer_does_not_import_main_server_or_scripts() -> None:
     violations = _find_forbidden_imports(
         root=AGENT_SRC,
-        forbidden_prefixes=("main_server.src", "scripts"),
+        forbidden_prefixes=("main_server.src", "research", "scripts"),
     )
     assert not violations, _format_violations(violations)
 
@@ -71,7 +88,7 @@ def test_agent_layer_does_not_import_main_server_or_scripts() -> None:
 def test_main_server_layer_does_not_import_scripts() -> None:
     violations = _find_forbidden_imports(
         root=MAIN_SERVER_SRC,
-        forbidden_prefixes=("scripts",),
+        forbidden_prefixes=("research", "scripts"),
     )
     assert not violations, _format_violations(violations)
 
@@ -85,5 +102,6 @@ def test_main_server_agent_imports_are_limited_to_documented_exceptions() -> Non
     assert actual_exception_paths == TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS, (
         "main_server -> agent 직접 의존은 현재 없어야 한다.\n"
         f"actual={sorted(str(path) for path in actual_exception_paths)}\n"
-        f"expected={sorted(str(path) for path in TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS)}"
+        "expected="
+        f"{sorted(str(path) for path in TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS)}"
     )
