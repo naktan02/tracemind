@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Any, Protocol
 
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

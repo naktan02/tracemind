@@ -91,5 +91,5 @@ Chrome extension manifest는 `public/manifest.json`을 source로 사용한다.
 - shared `wellbeing_signal` 또는 `family_access` contract를 바꾼 뒤에는 repo root에서 아래를 다시 실행한다.
 
 ```bash
-./.venv/bin/python scripts/generate_family_extension_types.py
+./.venv/bin/python scripts/codegen/generate_family_extension_types.py
 ```

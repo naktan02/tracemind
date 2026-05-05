@@ -9,7 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, cast
 
-from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
+from scripts.io.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 QUERY_ADAPTATION_MULTIVIEW_EXPORT_SCHEMA_VERSION = (
     "query_adaptation_multiview_export.v1"

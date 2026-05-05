@@ -28,7 +28,7 @@
 - 이 앱은 Hydra 파일 본문을 직접 수정하지 않는다.
 - catalog가 노출한 typed field와 run-local override patch만 덧씌워 preview/run surface를 만든다.
 - [src/types.ts](/home/jmgjmg102/tracemind_server/apps/experiment_web/src/types.ts)는 generated file이다.
-- backend payload/contract를 바꾼 뒤에는 repo root에서 `./.venv/bin/python scripts/generate_experiment_web_types.py`를 다시 실행한다.
+- backend payload/contract를 바꾼 뒤에는 repo root에서 `./.venv/bin/python scripts/codegen/generate_experiment_web_types.py`를 다시 실행한다.
 - 사용 순서는 `탭 선택 -> 저장된 실험 비교 -> 새 조합 편집 -> 저장/실행`으로 본다.
 - 중앙 적응의 `적응 데이터 소스`와 `초기 체크포인트`는 정적 Hydra preset뿐 아니라
   `data/processed/**` 아래 기존 생성 artifact도 선택지로 보여준다.

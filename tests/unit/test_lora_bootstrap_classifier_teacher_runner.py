@@ -10,7 +10,7 @@ from omegaconf import OmegaConf
 from scripts.experiments.query_lora_ssl.bootstrap_runner import (
     run_fixed_classifier_teacher_lora_student_bootstrap,
 )
-from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
+from scripts.io.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (

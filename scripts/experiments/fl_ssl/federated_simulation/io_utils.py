@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 
 def load_jsonl_rows(path: str | Path) -> list[LabeledQueryRow]:

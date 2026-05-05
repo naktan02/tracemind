@@ -9,7 +9,7 @@ from typing import Any
 from methods.adaptation.query_classifier_adaptation.training import (
     train_classifier as train_query_lora_classifier,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 
 from .artifacts import write_run_artifacts
 from .common import (

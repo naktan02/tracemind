@@ -7,11 +7,6 @@ from collections.abc import Sequence
 
 import numpy as np
 
-from scripts.classification_report import (
-    build_confusion_matrix,
-    safe_divide,
-    summarize_per_category,
-)
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     EvaluationMetrics,
     PrototypeIndex,
@@ -20,7 +15,12 @@ from scripts.experiments.prototype_analysis.prototype_strategy.models import (
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeIndexScorer,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
+from scripts.reporting.classification_report import (
+    build_confusion_matrix,
+    safe_divide,
+    summarize_per_category,
+)
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 

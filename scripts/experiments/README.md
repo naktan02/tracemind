@@ -86,13 +86,13 @@
 
 ## 공통 helper
 
-- `scripts/labeled_query_rows.py`
+- `scripts/io/labeled_query_rows.py`
   - shared canonical labeled row contract를 실험층에서 다시 노출하는 wrapper
-- `scripts/query_buffer_selection_diagnostics.py`
+- `scripts/reporting/query_buffer_selection_diagnostics.py`
   - query-buffer selection summary/trace dump 저장 helper
-- `scripts/run_artifacts.py`
+- `scripts/artifacts/run_artifacts.py`
   - run 출력 디렉터리 생성 helper
-- `scripts/classification_report.py`
+- `scripts/reporting/classification_report.py`
   - shared canonical confusion matrix/per-category metric helper wrapper
 
 ## 먼저 읽을 파일

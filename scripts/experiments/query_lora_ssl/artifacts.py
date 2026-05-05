@@ -10,7 +10,7 @@ from typing import Any
 
 import torch
 
-from scripts.run_artifacts import build_run_dir
+from scripts.artifacts.run_artifacts import build_run_dir
 
 
 def write_run_artifacts(

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
     build_federated_training_examples,

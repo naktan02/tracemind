@@ -20,7 +20,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationEvaluation,
     SimulationResult,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import (
     ModelManifest,
     dump_model_manifest_payload,

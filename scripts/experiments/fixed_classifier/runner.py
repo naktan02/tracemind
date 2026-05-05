@@ -13,15 +13,15 @@ import torch
 from omegaconf import DictConfig
 from torch import nn
 
-from scripts.classification_report import (
+from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.io.labeled_query_rows import LabeledQueryRow
+from scripts.reporting.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
     render_per_category_table,
     safe_divide,
     summarize_per_category,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
-from scripts.run_artifacts import build_run_dir
 from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
     resolve_runtime_device_name,

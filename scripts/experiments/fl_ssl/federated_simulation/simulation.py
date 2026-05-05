@@ -37,7 +37,7 @@ from scripts.experiments.fl_ssl.federated_simulation.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from scripts.generate_experiment_web_types import render_experiment_web_types
+from scripts.codegen.generate_experiment_web_types import render_experiment_web_types
 
 
 def test_experiment_web_types_are_in_sync_with_backend_contracts() -> None:

@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from scripts.experiments.query_lora_ssl.query_ssl.consistency_runner import (
     run_fixmatch_lora_baseline,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (

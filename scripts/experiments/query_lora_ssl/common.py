@@ -25,11 +25,11 @@ from methods.adaptation.query_classifier_adaptation.training import (
 from methods.adaptation.query_classifier_adaptation.training import (
     set_seed as set_query_lora_seed,
 )
-from scripts.classification_report import (
+from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.reporting.classification_report import (
     render_confusion_table,
     render_per_category_table,
 )
-from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name
 
 from .initial_checkpoint import resolve_query_adaptation_initial_checkpoint

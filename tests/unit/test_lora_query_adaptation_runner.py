@@ -17,7 +17,7 @@ from scripts.experiments.query_lora_ssl.query_adaptation_runner import (
     prepare_query_adaptation_supervised_run,
     run_query_adaptation_supervised_baseline,
 )
-from scripts.labeled_query_rows import load_labeled_query_rows
+from scripts.io.labeled_query_rows import load_labeled_query_rows
 
 
 def _build_dataset(

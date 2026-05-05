@@ -10,13 +10,13 @@ import hydra
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
-from scripts.classification_report import (  # noqa: E402
+from scripts.artifacts.run_artifacts import build_run_dir  # noqa: E402
+from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
+from scripts.prototypes.io import load_jsonl  # noqa: E402
+from scripts.reporting.classification_report import (  # noqa: E402
     render_confusion_table,
     render_per_category_table,
 )
-from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
-from scripts.prototypes.io import load_jsonl  # noqa: E402
-from scripts.run_artifacts import build_run_dir  # noqa: E402
 from scripts.runtime_adapters.embedding_runtime import (  # noqa: E402
     create_embedding_adapter,
 )

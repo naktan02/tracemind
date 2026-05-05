@@ -10,7 +10,7 @@ from math import fsum
 from pathlib import Path
 from typing import Any
 
-from scripts.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
+from scripts.io.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
 
 QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION = "query_adaptation_lora_export.v1"
 QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION = "query_adaptation_dataset_summary.v1"

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.classification_report import (
+from scripts.reporting.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
     render_per_category_table,

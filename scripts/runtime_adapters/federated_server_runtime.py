@@ -54,7 +54,7 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.prototype.building.base import PrototypeBuildStrategy
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadState,
     VectorAdapterState,

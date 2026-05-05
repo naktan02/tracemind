@@ -14,7 +14,7 @@ from methods.adaptation.query_classifier_adaptation.training import (
     train_query_ssl_classifier as train_query_ssl_lora_classifier,
 )
 from methods.ssl.registry import build_query_ssl_algorithm
-from scripts.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 from ..artifacts import write_run_artifacts
 from .augmentation import (

@@ -10,7 +10,7 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 
 from .query_adaptation_io import (
     QueryAdaptationLoraExportArtifacts,

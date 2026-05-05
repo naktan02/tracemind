@@ -6,7 +6,7 @@ import json
 import random
 from pathlib import Path
 
-from scripts.labeled_query_rows import (
+from scripts.io.labeled_query_rows import (
     LabeledQueryRow,
     count_labeled_query_rows_by_label,
     dump_labeled_query_rows,

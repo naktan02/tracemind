@@ -4,12 +4,12 @@ from __future__ import annotations
 
 from methods.prototype.scoring.policies import MaxCosineScorePolicy
 from methods.prototype.scoring.similarity import score_prototype_categories
-from scripts.classification_report import (
+from scripts.io.labeled_query_rows import LabeledQueryRow
+from scripts.reporting.classification_report import (
     build_confusion_matrix,
     safe_divide,
     summarize_per_category,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
 
 
 def predict_label(scores: dict[str, float]) -> tuple[str, float, float]:

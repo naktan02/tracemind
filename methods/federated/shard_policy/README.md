@@ -13,7 +13,7 @@
 
 - dataset file IO
 - simulation report/artifact 저장
-- `scripts.labeled_query_rows` 같은 entrypoint-local row shape
+- `scripts.io.labeled_query_rows` 같은 entrypoint-local row shape
 - Hydra config loading
 
 위 실행 glue는 `scripts/experiments/fl_ssl/federated_simulation/`에 남긴다.

@@ -8,11 +8,11 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scripts.labeled_query_rows import (
+from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.io.labeled_query_rows import (
     LabeledQueryRow,
     load_labeled_query_rows,
 )
-from scripts.run_artifacts import build_run_dir
 
 
 def load_jsonl_rows(path: str | Path) -> list[LabeledQueryRow]:

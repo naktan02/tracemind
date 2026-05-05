@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.labeled_query_rows import (
+from scripts.io.labeled_query_rows import (
     LabeledQueryRow,
     dump_labeled_query_rows,
     load_labeled_query_rows,

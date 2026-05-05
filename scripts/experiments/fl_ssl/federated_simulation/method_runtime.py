@@ -17,7 +17,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.task_config import (
     build_round_open_request,
 )
-from scripts.labeled_query_rows import LabeledQueryRow
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_local_training_service,
 )

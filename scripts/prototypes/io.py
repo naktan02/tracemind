@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.labeled_query_rows import (
+from scripts.io.labeled_query_rows import (
     LabeledQueryRow,
     group_labeled_query_rows_by_label,
     load_labeled_query_rows,

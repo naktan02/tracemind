@@ -10,6 +10,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io_utils import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
@@ -21,7 +22,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedValidationConfig,
 )
 from scripts.experiments.fl_ssl.federated_simulation.simulation import run_simulation
-from scripts.run_artifacts import build_run_dir
 from scripts.runtime_adapters.federated_server_runtime import (
     build_federated_training_task_config,
 )
