@@ -28,9 +28,7 @@ def register_shared_adapter_training_backend(
 
     registered_backend = (factory, catalog_entry)
     for backend_name in backend_names:
-        _TRAINING_BACKEND_REGISTRY[
-            backend_name.strip().lower()
-        ] = registered_backend
+        _TRAINING_BACKEND_REGISTRY[backend_name.strip().lower()] = registered_backend
 
 
 def build_shared_adapter_training_backend(
@@ -54,13 +52,13 @@ def list_registered_shared_adapter_training_backend_names() -> tuple[str, ...]:
     return tuple(sorted(_TRAINING_BACKEND_REGISTRY))
 
 
-def list_shared_adapter_training_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_shared_adapter_training_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 training backend catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(
-        catalog_entry
-        for _factory, catalog_entry in _TRAINING_BACKEND_REGISTRY.values()
+        catalog_entry for _factory, catalog_entry in _TRAINING_BACKEND_REGISTRY.values()
     )
 
 

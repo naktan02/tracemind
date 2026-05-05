@@ -136,6 +136,7 @@ def _get_translation_model_id(service: TranslationService) -> str | None:
     model_id = getattr(adapter, "model_id", None)
     return model_id if isinstance(model_id, str) else None
 
+
 def make_query_event(
     text: str,
     locale: str = "ko",

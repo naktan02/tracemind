@@ -184,4 +184,3 @@ def test_run_fixed_embedding_classifier_wires_prepared_context_and_artifacts(
         captured["artifact_kwargs"]["output_dir_root"]
         == prepared_context.output_dir_root
     )
-

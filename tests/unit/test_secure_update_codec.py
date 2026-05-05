@@ -53,8 +53,7 @@ def test_noop_secure_update_codec_passes_plaintext_when_not_required() -> None:
     envelope = _envelope()
 
     assert (
-        codec.encode_for_submission(envelope=envelope, training_task=task)
-        is envelope
+        codec.encode_for_submission(envelope=envelope, training_task=task) is envelope
     )
     assert codec.decode_submission(envelope=envelope, training_task=task) is envelope
 

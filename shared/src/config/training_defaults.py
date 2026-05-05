@@ -251,6 +251,4 @@ def build_default_secure_aggregation_config(
 ) -> SecureAggregationConfig:
     """공용 기본 secure aggregation config를 조립한다."""
 
-    return DEFAULT_TRAINING_PROFILE.build_secure_aggregation_config(
-        overrides=overrides
-    )
+    return DEFAULT_TRAINING_PROFILE.build_secure_aggregation_config(overrides=overrides)

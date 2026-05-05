@@ -10,7 +10,10 @@ from scripts.datasets.lib.split import build_split_artifacts
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Split a labeled query set JSONL into stratified train/validation JSONL files."
+        description=(
+            "Split a labeled query set JSONL into stratified "
+            "train/validation JSONL files."
+        )
     )
     parser.add_argument(
         "--input-jsonl",

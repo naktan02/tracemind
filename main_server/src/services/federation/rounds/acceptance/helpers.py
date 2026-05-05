@@ -32,13 +32,11 @@ def validate_update_context(
         )
     if update.task_id != record.training_task.task_id:
         raise RoundValidationError(
-            "Update task_id does not match the active training task: "
-            f"{update.task_id}"
+            f"Update task_id does not match the active training task: {update.task_id}"
         )
     if update.model_id != record.active_manifest.model_id:
         raise RoundValidationError(
-            "Update model_id does not match the active manifest: "
-            f"{update.model_id}"
+            f"Update model_id does not match the active manifest: {update.model_id}"
         )
     if update.base_model_revision != record.active_manifest.model_revision:
         raise RoundValidationError(

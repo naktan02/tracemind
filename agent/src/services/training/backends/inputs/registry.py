@@ -44,9 +44,9 @@ def register_training_example_backend(
 
     registered_backend = (factory, catalog_entry)
     for backend_name in backend_names:
-        _TRAINING_EXAMPLE_BACKEND_REGISTRY[
-            backend_name.strip().lower()
-        ] = registered_backend
+        _TRAINING_EXAMPLE_BACKEND_REGISTRY[backend_name.strip().lower()] = (
+            registered_backend
+        )
 
 
 def build_training_example_backend(
@@ -70,8 +70,7 @@ def list_registered_training_example_backend_names() -> tuple[str, ...]:
     return tuple(sorted(_TRAINING_EXAMPLE_BACKEND_REGISTRY))
 
 
-def list_training_example_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_training_example_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     """등록된 example backend catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(

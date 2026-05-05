@@ -74,12 +74,9 @@ class ProjectionService:
             )
             prototype_points_path: Path | None = None
             if prototype_points:
-                prototype_points_path = (
-                    output_dir
-                    / (
-                        f"train_{reducer_name}."
-                        f"{prototype_index.strategy_name}_prototypes.jsonl"
-                    )
+                prototype_points_path = output_dir / (
+                    f"train_{reducer_name}."
+                    f"{prototype_index.strategy_name}_prototypes.jsonl"
                 )
                 dump_jsonl(prototype_points_path, prototype_points)
 
@@ -97,12 +94,8 @@ class ProjectionService:
                     if prototype_index is not None
                     else "label"
                 )
-                visual_center_points_path = (
-                    output_dir
-                    / (
-                        f"train_{reducer_name}."
-                        f"{visual_center_suffix}_visual_centers.jsonl"
-                    )
+                visual_center_points_path = output_dir / (
+                    f"train_{reducer_name}.{visual_center_suffix}_visual_centers.jsonl"
                 )
                 dump_jsonl(visual_center_points_path, visual_center_points)
 
@@ -164,10 +157,7 @@ class ProjectionService:
 
         projected = reducer.transform(
             np.asarray(
-                [
-                    prototype.centroid
-                    for _, prototype in indexed_prototypes
-                ],
+                [prototype.centroid for _, prototype in indexed_prototypes],
                 dtype=np.float64,
             )
         )

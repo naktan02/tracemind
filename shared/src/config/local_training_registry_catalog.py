@@ -137,15 +137,15 @@ NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
 )
 
 
-def list_shared_adapter_training_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_shared_adapter_training_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """Agent local training backend catalog entry 목록."""
 
     return (DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,)
 
 
-def list_training_example_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_training_example_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     """Agent training example backend catalog entry 목록."""
 
     return dedupe_registry_catalog_entries(
@@ -156,8 +156,9 @@ def list_training_example_backend_catalog_entries(
     )
 
 
-def list_pseudo_label_evidence_backend_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_pseudo_label_evidence_backend_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """Agent pseudo-label evidence backend catalog entry 목록."""
 
     return (PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY,)
@@ -174,8 +175,9 @@ def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     )
 
 
-def list_pseudo_label_acceptance_policy_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_pseudo_label_acceptance_policy_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """Agent pseudo-label acceptance policy catalog entry 목록."""
 
     return dedupe_registry_catalog_entries(
@@ -186,8 +188,9 @@ def list_pseudo_label_acceptance_policy_catalog_entries(
     )
 
 
-def list_shared_adapter_privacy_guard_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_shared_adapter_privacy_guard_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """Agent privacy guard catalog entry 목록."""
 
     return dedupe_registry_catalog_entries(

@@ -68,12 +68,14 @@ def test_initial_checkpoint_resolves_lora_manifest_paths(tmp_path: Path) -> None
 
     assert resolved.cfg.initial_adapter_dir == str(adapter_dir)
     assert resolved.cfg.initial_classifier_path == str(classifier_path)
-    assert resolved.extra_manifest["query_adaptation_initial_checkpoint"][
-        "resolved_kind"
-    ] == "lora_classifier_manifest"
-    assert resolved.extra_manifest["query_adaptation_initial_checkpoint"][
-        "reference_id"
-    ] == "seed_lora_v1"
+    assert (
+        resolved.extra_manifest["query_adaptation_initial_checkpoint"]["resolved_kind"]
+        == "lora_classifier_manifest"
+    )
+    assert (
+        resolved.extra_manifest["query_adaptation_initial_checkpoint"]["reference_id"]
+        == "seed_lora_v1"
+    )
 
 
 def test_initial_checkpoint_resolves_fixed_classifier_manifest_model_path(
@@ -104,12 +106,14 @@ def test_initial_checkpoint_resolves_fixed_classifier_manifest_model_path(
 
     assert resolved.cfg.initial_adapter_dir == ""
     assert resolved.cfg.initial_classifier_path == str(classifier_path)
-    assert resolved.extra_manifest["query_adaptation_initial_checkpoint"][
-        "resolved_kind"
-    ] == "fixed_classifier_manifest"
-    assert resolved.extra_manifest["query_adaptation_initial_checkpoint"][
-        "reference_id"
-    ] == "clf_seed_v1"
+    assert (
+        resolved.extra_manifest["query_adaptation_initial_checkpoint"]["resolved_kind"]
+        == "fixed_classifier_manifest"
+    )
+    assert (
+        resolved.extra_manifest["query_adaptation_initial_checkpoint"]["reference_id"]
+        == "clf_seed_v1"
+    )
 
 
 def test_initial_checkpoint_required_without_paths_raises() -> None:

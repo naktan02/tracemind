@@ -38,6 +38,10 @@ from shared.src.contracts.training_contracts import (
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
+SharedAdapterStateRepository = (
+    shared_adapter_state_repository_module.SharedAdapterStateRepository
+)
+
 
 @dataclass(slots=True)
 class RoundPublication:
@@ -47,6 +51,7 @@ class RoundPublication:
     next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
+
 
 @dataclass(slots=True)
 class RoundPublicationRequest:
@@ -66,12 +71,8 @@ class RoundManagerService:
     adapter_family: SharedAdapterRoundFamily = field(
         default_factory=DiagonalScaleRoundFamily
     )
-    artifact_repository: (
-        shared_adapter_state_repository_module.SharedAdapterStateRepository
-    ) = field(
-        default_factory=(
-            shared_adapter_state_repository_module.SharedAdapterStateRepository
-        )
+    artifact_repository: SharedAdapterStateRepository = field(
+        default_factory=SharedAdapterStateRepository
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -141,8 +142,7 @@ class RoundManagerService:
             translation_model_id=request.base_manifest.translation_model_id,
             translation_model_revision=request.base_manifest.translation_model_revision,
             notes=(
-                "round_active_pair_only published from "
-                f"{request.updates[0].round_id}"
+                f"round_active_pair_only published from {request.updates[0].round_id}"
             ),
         )
         return RoundPublication(
@@ -196,10 +196,7 @@ class RoundManagerService:
     @staticmethod
     def _resolve_secure_aggregation(
         source: (
-            SecureAggregationConfig
-            | Mapping[str, TrainingConfigScalar]
-            | bool
-            | None
+            SecureAggregationConfig | Mapping[str, TrainingConfigScalar] | bool | None
         ),
     ) -> SecureAggregationConfig:
         if isinstance(source, SecureAggregationConfig):

@@ -143,14 +143,10 @@ def round_open_request_from_payload(
         learning_rate=payload.learning_rate,
         max_steps=payload.max_steps,
         objective_config=(
-            payload.objective_config
-            if payload.objective_config is not None
-            else None
+            payload.objective_config if payload.objective_config is not None else None
         ),
         selection_policy=(
-            payload.selection_policy
-            if payload.selection_policy is not None
-            else None
+            payload.selection_policy if payload.selection_policy is not None else None
         ),
         secure_aggregation=(
             payload.secure_aggregation

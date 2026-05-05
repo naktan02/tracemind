@@ -15,7 +15,10 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--dataset-id",
         required=True,
-        help="HuggingFace dataset identifier (e.g. ourafla/Mental-Health_Text-Classification_Dataset).",
+        help=(
+            "HuggingFace dataset identifier "
+            "(e.g. ourafla/Mental-Health_Text-Classification_Dataset)."
+        ),
     )
     parser.add_argument(
         "--split",

@@ -15,7 +15,6 @@ from shared.src.contracts.prototype_contracts import (
     load_prototype_pack_payload,
 )
 
-
 AGENT_ROOT = Path(__file__).resolve().parents[3]
 
 

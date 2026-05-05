@@ -49,7 +49,7 @@ description: Thin TraceMind router for experiment intent alignment, method compa
 
 - 한국어 응답, 주석, 설명 문서를 기본으로 한다.
 - `shared/src/contracts/`와 `shared/src/domain/entities/`가 계약 source of truth다.
-- 실험 설정 source of truth는 `scripts/conf/` Hydra config group이다.
+- 실험 설정 source of truth는 루트 `conf/` Hydra config group이다.
 - seed baseline, central SSL control, FL SSL non-IID main comparison, runtime translation을 섞지 않는다.
 - Web/app은 contract/API consumer이며 도메인 의미를 재정의하지 않는다.
 - Codex subagent는 사용자가 명시적으로 요청한 경우에만 쓴다.

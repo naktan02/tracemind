@@ -5,8 +5,8 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from main_server.src.infrastructure.repositories.prototype_build_state_repository import (
-    PrototypeBuildStateRepository,
+from main_server.src.infrastructure.repositories import (
+    prototype_build_state_repository as build_state_repository_module,
 )
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
@@ -18,8 +18,8 @@ from shared.src.contracts.prototype_build_state_contracts import (
 class PrototypeBuildStateService:
     """Prototype build state의 저장과 조회를 담당한다."""
 
-    repository: PrototypeBuildStateRepository = field(
-        default_factory=PrototypeBuildStateRepository
+    repository: build_state_repository_module.PrototypeBuildStateRepository = field(
+        default_factory=build_state_repository_module.PrototypeBuildStateRepository
     )
 
     def publish_state(self, payload: SinglePrototypeBuildStatePayload) -> Path:

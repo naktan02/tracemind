@@ -81,7 +81,6 @@ class DiagonalScaleRoundFamily:
             )
         if state.adapter_kind != self.adapter_kind:
             raise ValueError(
-                "State adapter_kind does not match family: "
-                f"{state.adapter_kind}"
+                f"State adapter_kind does not match family: {state.adapter_kind}"
             )
         return state

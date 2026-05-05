@@ -232,8 +232,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     assert summary["accepted_hidden_label_accuracy"] == 1.0
     assert summary["pseudo_label_algorithm"]["preset_name"] == "margin_threshold_test"
     assert (
-        summary["pseudo_label_algorithm"]["algorithm_name"]
-        == "top1_margin_threshold"
+        summary["pseudo_label_algorithm"]["algorithm_name"] == "top1_margin_threshold"
     )
 
 

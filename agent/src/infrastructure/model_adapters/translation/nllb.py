@@ -57,8 +57,7 @@ class NllbTranslationAdapter:
         translations: list[str] = []
         for start_index in range(0, len(texts), self.batch_size):
             batch_texts = [
-                str(text)
-                for text in texts[start_index : start_index + self.batch_size]
+                str(text) for text in texts[start_index : start_index + self.batch_size]
             ]
             tokenizer.src_lang = self.source_lang
             encoded = tokenizer(
@@ -68,8 +67,7 @@ class NllbTranslationAdapter:
                 return_tensors="pt",
             )
             encoded = {
-                key: value.to(self._resolved_device)
-                for key, value in encoded.items()
+                key: value.to(self._resolved_device) for key, value in encoded.items()
             }
             generation_config = None
             if getattr(model, "generation_config", None) is not None:

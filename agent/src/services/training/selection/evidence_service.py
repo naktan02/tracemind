@@ -28,9 +28,7 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
 class PseudoLabelEvidenceService:
     """TrainingTask와 ScoredEvent를 evidence 계층으로 연결한다."""
 
-    default_profile: TrainingDefaultsProfile = field(
-        default=DEFAULT_TRAINING_PROFILE
-    )
+    default_profile: TrainingDefaultsProfile = field(default=DEFAULT_TRAINING_PROFILE)
     default_backend: PseudoLabelEvidenceBackend = field(
         default_factory=PrototypeSimilarityEvidenceBackend
     )

@@ -192,13 +192,13 @@ def list_registered_shared_adapter_privacy_guard_names() -> tuple[str, ...]:
     return tuple(sorted(_PRIVACY_GUARD_REGISTRY))
 
 
-def list_shared_adapter_privacy_guard_catalog_entries(
-) -> tuple[RegistryCatalogEntry, ...]:
+def list_shared_adapter_privacy_guard_catalog_entries() -> tuple[
+    RegistryCatalogEntry, ...
+]:
     """등록된 privacy guard catalog entry를 canonical item 기준으로 반환한다."""
 
     return dedupe_registry_catalog_entries(
-        catalog_entry
-        for _factory, catalog_entry in _PRIVACY_GUARD_REGISTRY.values()
+        catalog_entry for _factory, catalog_entry in _PRIVACY_GUARD_REGISTRY.values()
     )
 
 

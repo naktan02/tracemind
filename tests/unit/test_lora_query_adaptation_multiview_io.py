@@ -102,8 +102,7 @@ def test_write_query_adaptation_multiview_dataset_writes_summary_and_manifest(
 
     summary = json.loads(outputs.summary_path.read_text(encoding="utf-8"))
     assert (
-        summary["schema_version"]
-        == QUERY_ADAPTATION_MULTIVIEW_SUMMARY_SCHEMA_VERSION
+        summary["schema_version"] == QUERY_ADAPTATION_MULTIVIEW_SUMMARY_SCHEMA_VERSION
     )
     assert summary["row_count"] == 2
     assert summary["augmenter_name_counts"] == {"identity_multiview": 2}

@@ -193,23 +193,20 @@ def _build_summary_text(
 ) -> str:
     if low_data:
         return (
-            "최근 데이터가 아직 충분하지 않아 "
-            "현재 상태를 보수적으로 해석하고 있습니다."
+            "최근 데이터가 아직 충분하지 않아 현재 상태를 보수적으로 해석하고 있습니다."
         )
     mapping = {
         WellbeingSignalLevel.LOW: (
             "최근 전체 상태가 비교적 안정적으로 유지되고 있습니다."
         ),
         WellbeingSignalLevel.MODERATE: (
-            "최근 전체 상태에 평소와 다른 변화가 보여 "
-            "조금 더 지켜볼 필요가 있습니다."
+            "최근 전체 상태에 평소와 다른 변화가 보여 조금 더 지켜볼 필요가 있습니다."
         ),
         WellbeingSignalLevel.HIGH: (
             "최근 전체 상태가 평소보다 높게 나타나 주의가 필요합니다."
         ),
         WellbeingSignalLevel.VERY_HIGH: (
-            "최근 전체 상태가 높은 수준으로 나타나 "
-            "빠른 확인과 대화가 필요합니다."
+            "최근 전체 상태가 높은 수준으로 나타나 빠른 확인과 대화가 필요합니다."
         ),
     }
     return mapping[signal_level]
@@ -233,8 +230,7 @@ def _build_action_tip(
             "오늘은 사용 시간을 줄이고 바로 짧은 대화를 시도해 보세요."
         ),
         WellbeingSignalLevel.VERY_HIGH: (
-            "혼자 두지 말고 바로 대화를 시도하며 "
-            "가까운 보호자가 함께 확인해 주세요."
+            "혼자 두지 말고 바로 대화를 시도하며 가까운 보호자가 함께 확인해 주세요."
         ),
     }
     return mapping[signal_level]
