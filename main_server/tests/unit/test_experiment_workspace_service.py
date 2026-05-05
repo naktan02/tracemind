@@ -57,7 +57,7 @@ def test_experiment_workspace_service_saves_and_reloads_workspace(
     assert saved.resolved_plan is not None
     assert (
         saved.resolved_plan.script_path
-        == "scripts/experiments/train_softmax_classifier.py"
+        == "scripts/experiments/central_classifier_seed/train_softmax_classifier.py"
     )
 
     recent = service.list_workspaces()

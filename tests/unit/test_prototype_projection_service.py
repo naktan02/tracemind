@@ -7,11 +7,13 @@ import json
 import numpy as np
 import pytest
 
-from scripts.experiments.prototype_strategy.models import (
+from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,
     PrototypeVector,
 )
-from scripts.experiments.prototype_strategy.projection import ProjectionService
+from scripts.experiments.prototype_analysis.prototype_strategy.projection import (
+    ProjectionService,
+)
 
 
 def _row(query_id: str, label: str) -> dict[str, str]:

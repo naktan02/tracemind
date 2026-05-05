@@ -69,7 +69,7 @@ def test_resolved_experiment_plan_payload_round_trips_json(tmp_path: Path) -> No
         track_name="central_adaptation",
         entrypoint_name="train_lora_fixmatch",
         job_config_path="conf/entrypoints/central_ssl_control/train_lora_fixmatch.yaml",
-        script_path="scripts/experiments/train_lora_fixmatch.py",
+        script_path="scripts/experiments/central_ssl_control/train_lora_fixmatch.py",
         base_default_groups=(
             "execution_context/dataset_asset=ourafla",
             "execution_context/runtime_env=gpu_online",
@@ -82,7 +82,7 @@ def test_resolved_experiment_plan_payload_round_trips_json(tmp_path: Path) -> No
             "uv",
             "run",
             "python",
-            "scripts/experiments/train_lora_fixmatch.py",
+            "scripts/experiments/central_ssl_control/train_lora_fixmatch.py",
             "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
             "query_ssl_method.temperature=0.7",
         ),

@@ -66,7 +66,7 @@
 - [methods/prototype/building/kmeans.py](../../methods/prototype/building/kmeans.py)
 - [methods/prototype/building/dbscan.py](../../methods/prototype/building/dbscan.py)
 - [methods/prototype/building/pack_builder.py](../../methods/prototype/building/pack_builder.py)
-- [scripts/experiments/prototype_strategy/strategies.py](../../scripts/experiments/prototype_strategy/strategies.py)
+- [scripts/experiments/prototype_analysis/prototype_strategy/strategies.py](../../scripts/experiments/prototype_analysis/prototype_strategy/strategies.py)
 - 운영 artifact builder로 열 때만 [conf/strategy_axes/prototype/build_strategy/](../../conf/strategy_axes/prototype/build_strategy/)
 
 작업 순서:
@@ -152,7 +152,7 @@
 
 - [methods/prototype/scoring/](../../methods/prototype/scoring/)
 - [agent/src/services/inference/scoring_backends.py](../../agent/src/services/inference/scoring_backends.py)
-- 필요 시 [scripts/experiments/prototype_strategy/scoring.py](../../scripts/experiments/prototype_strategy/scoring.py)
+- 필요 시 [scripts/experiments/prototype_analysis/prototype_strategy/scoring.py](../../scripts/experiments/prototype_analysis/prototype_strategy/scoring.py)
 
 작업 순서:
 

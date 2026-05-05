@@ -61,17 +61,17 @@ class ExperimentCatalogSource:
         if job_config_path.startswith("conf/entrypoints/central_classifier_seed/"):
             return job_config_path.replace(
                 "conf/entrypoints/central_classifier_seed/",
-                "scripts/experiments/",
+                "scripts/experiments/central_classifier_seed/",
             ).replace(".yaml", ".py")
         if job_config_path.startswith("conf/entrypoints/central_ssl_control/"):
             return job_config_path.replace(
                 "conf/entrypoints/central_ssl_control/",
-                "scripts/experiments/",
+                "scripts/experiments/central_ssl_control/",
             ).replace(".yaml", ".py")
         if job_config_path.startswith("conf/entrypoints/fl_ssl/"):
             return job_config_path.replace(
                 "conf/entrypoints/fl_ssl/",
-                "scripts/experiments/",
+                "scripts/experiments/fl_ssl/",
             ).replace(".yaml", ".py")
         if job_config_path.startswith("conf/entrypoints/prototype_pack/"):
             return job_config_path.replace(
@@ -87,7 +87,7 @@ class ExperimentCatalogSource:
             return (
                 job_config_path.replace(
                     "conf/entrypoints/prototype_analysis/",
-                    "scripts/experiments/",
+                    "scripts/experiments/prototype_analysis/",
                 )
                 .replace("prototype_strategy.yaml", "prototype_strategy_experiment.py")
                 .replace(".yaml", ".py")

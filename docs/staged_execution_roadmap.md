@@ -88,8 +88,8 @@
 - supervised baseline 학습 코어를
   `methods/adaptation/query_classifier_adaptation/`로 옮기고,
   scripts는 entrypoint/artifact layer로 얇게 정리했다.
-- canonical supervised baseline entrypoint는 `scripts/experiments/train_lora_classifier.py`로,
-  concrete helper는 `scripts/experiments/lora_classifier/runner.py`와
+- canonical supervised baseline entrypoint는 `scripts/experiments/central_ssl_control/train_lora_classifier.py`로,
+  concrete helper는 `scripts/experiments/query_lora_ssl/runner.py`와
   `query_adaptation_runner.py` direct import 기준으로 정리했다.
 - 첫 pseudo-label bootstrap entrypoint로
   `train_lora_bootstrap_classifier_teacher.py`를 추가했고,

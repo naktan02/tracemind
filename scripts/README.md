@@ -8,9 +8,9 @@ runtime/service adapter는 `agent/`와 `main_server/`가 소유한다.
 
 - `scripts/datasets/`: dataset asset 생성용 CLI.
 - `scripts/prototypes/`: prototype pack 생성, 평가, publication 보조 CLI.
-- `scripts/experiments/`: 중앙 classifier/SSL control, prototype analysis, FL SSL simulation entrypoint.
-- `scripts/experiments/federated_simulation/`: FL SSL synthetic harness와 artifact dump.
-- `scripts/experiments/lora_classifier/`: central SSL control runner와 query-domain adaptation IO.
+- `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 harness.
+- `scripts/experiments/fl_ssl/federated_simulation/`: FL SSL synthetic harness와 artifact dump.
+- `scripts/experiments/query_lora_ssl/`: 중앙/FL에서 공유 가능한 query-domain LoRA SSL harness와 adaptation IO.
 - `scripts/runtime_adapters/`: scripts가 불가피하게 agent/main_server runtime을 재사용할 때 쓰는 명시 bridge.
 - `scripts/run_artifacts.py`: run output 경로 helper.
 - `scripts/generate_*_types.py`: app type 생성 entrypoint.
@@ -74,38 +74,38 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py
 중앙 classifier seed:
 
 ```bash
-uv run python scripts/experiments/train_softmax_classifier.py
+uv run python scripts/experiments/central_classifier_seed/train_softmax_classifier.py
 ```
 
 중앙 LoRA supervised control:
 
 ```bash
-uv run python scripts/experiments/train_lora_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 ```
 
 중앙 LoRA pseudo-label control:
 
 ```bash
-uv run python scripts/experiments/train_lora_pseudo_label_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py
 ```
 
 중앙 LoRA FixMatch control:
 
 ```bash
-uv run python scripts/experiments/train_lora_fixmatch.py
+uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py
 ```
 
 FL SSL simulation smoke:
 
 ```bash
-uv run python scripts/experiments/run_federated_simulation.py \
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   track_presets/fl_ssl/simulation_preset=smoke
 ```
 
 Prototype strategy analysis:
 
 ```bash
-uv run python scripts/experiments/prototype_strategy_experiment.py
+uv run python scripts/experiments/prototype_analysis/prototype_strategy_experiment.py
 ```
 
 Type generation:

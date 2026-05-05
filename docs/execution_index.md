@@ -42,12 +42,13 @@ Seed / central SSL:
 1. relevant `conf/**`
 2. `docs/contracts/query_buffer_v1.md`
 3. `docs/contracts/central_lora_classifier_trainer_contract.md`
-4. `scripts/experiments/train_lora_classifier.py`
-5. `scripts/experiments/train_lora_pseudo_label_classifier.py`
-6. `scripts/experiments/train_lora_fixmatch.py`
-7. `methods/adaptation/query_classifier_adaptation/*`
-8. `methods/ssl/*`
-9. `methods/adaptation/*`
+4. `scripts/experiments/central_ssl_control/train_lora_classifier.py`
+5. `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py`
+6. `scripts/experiments/central_ssl_control/train_lora_fixmatch.py`
+7. `scripts/experiments/query_lora_ssl/*`
+8. `methods/adaptation/query_classifier_adaptation/*`
+9. `methods/ssl/*`
+10. `methods/adaptation/*`
 
 Agent runtime:
 

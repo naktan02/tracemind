@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.lora_classifier.query_ssl.augmentation import (
+from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
     prepare_fixmatch_unlabeled_rows,
 )
 from scripts.labeled_query_rows import LabeledQueryRow
@@ -71,7 +71,7 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
     rows = [_row("u1", "I feel anxious today.")]
 
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.augmentation."
+        "scripts.experiments.query_lora_ssl.query_ssl.augmentation."
         "build_nllb_backtranslation_candidate_pairs",
         lambda _cfg, *, texts: _FakeBacktranslationAugmenter().build_candidate_pairs(
             texts=texts
@@ -96,7 +96,7 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
     assert prepared.summary_path.exists()
 
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_ssl.augmentation."
+        "scripts.experiments.query_lora_ssl.query_ssl.augmentation."
         "build_nllb_backtranslation_candidate_pairs",
         lambda _cfg, *, texts: (_ for _ in ()).throw(
             AssertionError("cache hit should skip regeneration")

@@ -9,45 +9,61 @@
 - Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
 
 전략 축 전체와 현재 override 가능 여부는
-[docs/strategy_surface_map.md](....docs/strategy_surface_map.md)를
+[docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)를
 먼저 보는 편이 빠르다.
+
+## 구조
+
+- `central_classifier_seed/`
+  - 중앙 fixed embedding + classifier seed entrypoint를 둔다.
+- `central_ssl_control/`
+  - pooled/offline 중앙 SSL control entrypoint만 둔다.
+  - LoRA SSL 구현체 자체를 소유하지 않는다.
+- `fl_ssl/`
+  - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
+- `prototype_analysis/`
+  - prototype 전략 비교와 threshold sweep entrypoint/harness를 둔다.
+- `fixed_classifier/`
+  - fixed embedding classifier seed 학습과 artifact IO helper를 둔다.
+- `query_lora_ssl/`
+  - 중앙 SSL control과 FL client-local SSL에서 공유 가능한 LoRA 기반 query SSL harness를 둔다.
 
 ## 직접 실행하는 entrypoint
 
-- `prototype_strategy_experiment.py`
-  - single/kmeans/dbscan prototype 전략 비교
-- `prototype_threshold_sweep.py`
-  - 선택된 prototype 전략 위에서 threshold policy 비교
-- `run_federated_simulation.py`
-  - agent/main_server 코어를 조합한 synthetic FL loop
+- `prototype_analysis/prototype_strategy_experiment.py`
+  - single/kmeans/dbscan prototype 전략 비교.
+- `prototype_analysis/prototype_threshold_sweep.py`
+  - 선택된 prototype 전략 위에서 threshold policy 비교.
+- `fl_ssl/run_federated_simulation.py`
+  - agent/main_server 코어를 조합한 synthetic FL loop.
   - runtime/task/validation/report shape는
     `conf/entrypoints/fl_ssl/run_federated_simulation.yaml` 안의
     `round_runtime`, `training_task`, `validation`, `report` section이다.
-- `train_softmax_classifier.py`
-  - 고정 임베딩 위 linear classifier baseline
-- `train_lora_classifier.py`
-  - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint
-- `train_lora_fixmatch.py`
-  - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint
+- `central_classifier_seed/train_softmax_classifier.py`
+  - 고정 임베딩 위 linear classifier baseline.
+- `central_ssl_control/train_lora_classifier.py`
+  - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint.
+- `central_ssl_control/train_lora_fixmatch.py`
+  - USB `FixMatch` core를 같은 LoRA scaffold에 얹는 consistency baseline entrypoint.
   - method/source/augmentation/initial checkpoint source of truth는
     `strategy_axes/ssl/consistency_method`,
     `track_presets/central_ssl_control/query_source`,
     `strategy_axes/ssl/augmentation`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
-- `train_lora_bootstrap_classifier_teacher.py`
+- `central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
   - 첫 pseudo-label 진입에서 `fixed embedding + classifier` teacher로 unlabeled pool에 pseudo-label을 붙이고,
-    `LoRA + classifier` student를 학습하는 bootstrap entrypoint
+    `LoRA + classifier` student를 학습하는 bootstrap entrypoint.
   - selection rule source of truth는 `conf/strategy_axes/ssl/pseudo_label_selection/*.yaml`이다.
   - student initial checkpoint source of truth는 `conf/strategy_axes/adaptation/initial_checkpoint/*.yaml`이다.
-- `train_lora_pseudo_label_classifier.py`
-  - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint
+- `central_ssl_control/train_lora_pseudo_label_classifier.py`
+  - 첫 bootstrap 이후 same-family `pseudo-label self-training`을 실행하는 entrypoint.
   - 현재 helper는 offline union retraining 경로를 포함하지만,
     central canonical 비교 규약은 `seed checkpoint 1회 생성 -> 이후 new accepted query-derived rows only continual adaptation`으로 본다.
   - 실험 표면에서는 bootstrap과 같은
     `strategy_axes/ssl/pseudo_label_selection` selector를 공유하고,
     산출물 manifest에 해당 preset을 provenance로 남긴다.
   - warm-start provenance는 `query_adaptation_initial_checkpoint` 축으로 함께 남긴다.
-- `lora_classifier/`
+- `query_lora_ssl/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runner.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
@@ -83,7 +99,7 @@
 
 ## `scripts/prototypes`와의 차이
 
-- `scripts/experiments/prototype_*`
+- `scripts/experiments/prototype_analysis/*`
   - prototype 전략이나 threshold 정책을 비교하는 연구형 실험 레일
 - `scripts/prototypes/*`
   - prototype pack을 실제로 seed/evaluate/pull/activate/report 하는
@@ -93,36 +109,36 @@
 
 ### prototype 전략 실험을 보고 싶을 때
 
-1. `prototype_strategy_experiment.py`
-2. `prototype_strategy/README.md`
+1. `prototype_analysis/prototype_strategy_experiment.py`
+2. `prototype_analysis/prototype_strategy/README.md`
 
 ### federated simulation을 보고 싶을 때
 
-1. `run_federated_simulation.py`
-2. `federated_simulation/README.md`
+1. `fl_ssl/run_federated_simulation.py`
+2. `fl_ssl/federated_simulation/README.md`
 
 ### seed / adaptation classifier를 보고 싶을 때
 
-1. `train_softmax_classifier.py`
-2. `train_lora_classifier.py`
-3. `train_lora_fixmatch.py`
-4. `train_lora_bootstrap_classifier_teacher.py`
-5. `train_lora_pseudo_label_classifier.py`
-6. `lora_classifier/runner.py`
-7. 필요하면 `lora_classifier/query_ssl/consistency_runner.py`, `lora_classifier/query_adaptation_runner.py`, `lora_classifier/bootstrap_runner.py`, `lora_classifier/pseudo_label_runner.py`
+1. `central_classifier_seed/train_softmax_classifier.py`
+2. `central_ssl_control/train_lora_classifier.py`
+3. `central_ssl_control/train_lora_fixmatch.py`
+4. `central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
+5. `central_ssl_control/train_lora_pseudo_label_classifier.py`
+6. `query_lora_ssl/runner.py`
+7. 필요하면 `query_lora_ssl/query_ssl/consistency_runner.py`, `query_lora_ssl/query_adaptation_runner.py`, `query_lora_ssl/bootstrap_runner.py`, `query_lora_ssl/pseudo_label_runner.py`
 
 ## warm-start 재실행 요약
 
 중앙 비교를 다시 돌릴 때는 아래 순서를 기준으로 본다.
 
-1. `train_lora_classifier.py`
+1. `central_ssl_control/train_lora_classifier.py`
    - labeled seed subset으로 supervised LoRA seed manifest를 먼저 만든다.
-2. `train_lora_bootstrap_classifier_teacher.py`
+2. `central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
    - 기존 fixed classifier teacher로 pseudo-label을 붙이되,
      student는 `strategy_axes/adaptation/initial_checkpoint=required`와
      `query_adaptation_initial_checkpoint.manifest_path=<supervised_lora_manifest>`로
      같은 initial checkpoint에서 warm-start한다.
-3. `train_lora_fixmatch.py`
+3. `central_ssl_control/train_lora_fixmatch.py`
    - 같은 supervised LoRA seed manifest에서 warm-start하고,
      `strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1`로
      strict USB형 `text + aug_0 + aug_1` input을 생성한다.

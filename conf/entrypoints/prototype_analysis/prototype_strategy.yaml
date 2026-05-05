@@ -16,9 +16,9 @@ projection_reducers:
   - umap
 
 runner:
-  _target_: scripts.experiments.prototype_strategy.runner.PrototypeExperimentRunner
+  _target_: scripts.experiments.prototype_analysis.prototype_strategy.runner.PrototypeExperimentRunner
   projection_service:
-    _target_: scripts.experiments.prototype_strategy.projection.ProjectionService
+    _target_: scripts.experiments.prototype_analysis.prototype_strategy.projection.ProjectionService
     seed: 42
     sample_size: 5000
   confidence_threshold: 0.6

@@ -128,10 +128,11 @@ Reddit Labeled Data
 
 | 책임 | 파일 |
 |---|---|
-| LoRA supervised entrypoint | `scripts/experiments/train_lora_classifier.py` |
-| pseudo-label bootstrap entrypoint | `scripts/experiments/train_lora_bootstrap_classifier_teacher.py` |
-| pseudo-label self-training entrypoint | `scripts/experiments/train_lora_pseudo_label_classifier.py` |
-| FixMatch entrypoint | `scripts/experiments/train_lora_fixmatch.py` |
+| LoRA supervised entrypoint | `scripts/experiments/central_ssl_control/train_lora_classifier.py` |
+| pseudo-label bootstrap entrypoint | `scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py` |
+| pseudo-label self-training entrypoint | `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py` |
+| FixMatch entrypoint | `scripts/experiments/central_ssl_control/train_lora_fixmatch.py` |
+| 중앙/FL 공통 LoRA SSL harness | `scripts/experiments/query_lora_ssl/*` |
 | trainer core | `methods/adaptation/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
@@ -167,7 +168,7 @@ Raw Event / Local Signal
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |
 | FL SSL method descriptor | `methods/federated_ssl/*` |
-| FL simulation runtime adapter | `scripts/experiments/federated_simulation/method_runtime.py` |
+| FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 | prototype scoring core | `methods/prototype/scoring/*` |

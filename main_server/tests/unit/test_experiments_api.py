@@ -167,7 +167,8 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     fixmatch_entrypoint = _find_item(central_entrypoints, "train_lora_fixmatch")
     assert fixmatch_entrypoint.compile_support == "entrypoint"
     assert (
-        fixmatch_entrypoint.script_path == "scripts/experiments/train_lora_fixmatch.py"
+        fixmatch_entrypoint.script_path
+        == "scripts/experiments/central_ssl_control/train_lora_fixmatch.py"
     )
 
     federated_aggregations = _find_section(
@@ -319,7 +320,10 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
         service=compiler_service,
     )
 
-    assert plan.script_path == "scripts/experiments/train_lora_fixmatch.py"
+    assert (
+        plan.script_path
+        == "scripts/experiments/central_ssl_control/train_lora_fixmatch.py"
+    )
     assert plan.selection_default_groups == (
         "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
         "strategy_axes/adaptation/peft_adapter=default",
@@ -447,7 +451,7 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
         service=compiler_service,
     )
 
-    assert plan.script_path == "scripts/experiments/run_federated_simulation.py"
+    assert plan.script_path == "scripts/experiments/fl_ssl/run_federated_simulation.py"
     assert plan.selection_default_groups == (
         "strategy_axes/fl/client_training_profile=prototype_pseudo_label_v1",
     )

@@ -12,7 +12,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.experiments.lora_classifier.query_adaptation_io import (
+from scripts.experiments.query_lora_ssl.query_adaptation_io import (
     QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION,
     QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION,
     build_labeled_rows_from_query_adaptation_dataset,

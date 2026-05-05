@@ -172,37 +172,37 @@ uv run python scripts/datasets/run_dataset_pipeline.py
 Fixed classifier seed:
 
 ```bash
-uv run python scripts/experiments/train_softmax_classifier.py
+uv run python scripts/experiments/central_classifier_seed/train_softmax_classifier.py
 ```
 
 LoRA supervised baseline:
 
 ```bash
-uv run python scripts/experiments/train_lora_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 ```
 
 Pseudo-label bootstrap:
 
 ```bash
-uv run python scripts/experiments/train_lora_bootstrap_classifier_teacher.py
+uv run python scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/train_lora_fixmatch.py
+uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py
 ```
 
 FL simulation:
 
 ```bash
-uv run python scripts/experiments/run_federated_simulation.py
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py
 ```
 
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/train_lora_classifier.py --cfg job
+uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py --cfg job
 ```
 
 ## 7. Runtime Profiles

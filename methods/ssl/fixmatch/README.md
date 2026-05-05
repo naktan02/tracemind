@@ -16,5 +16,5 @@
 - Hydra config loading
 - run artifact 저장
 
-위 실행 조립은 `scripts/experiments/lora_classifier/query_ssl/`와 해당
+위 실행 조립은 `scripts/experiments/query_lora_ssl/query_ssl/`와 해당
 entrypoint가 담당한다.

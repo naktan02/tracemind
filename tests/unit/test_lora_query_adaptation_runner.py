@@ -13,7 +13,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.experiments.lora_classifier.query_adaptation_runner import (
+from scripts.experiments.query_lora_ssl.query_adaptation_runner import (
     prepare_query_adaptation_supervised_run,
     run_query_adaptation_supervised_baseline,
 )
@@ -138,7 +138,7 @@ def test_run_query_adaptation_supervised_baseline_calls_existing_runner(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.lora_classifier.query_adaptation_runner."
+        "scripts.experiments.query_lora_ssl.query_adaptation_runner."
         "run_supervised_lora_baseline",
         _fake_runner,
     )

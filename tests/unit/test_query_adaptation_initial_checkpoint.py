@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from scripts.experiments.lora_classifier.initial_checkpoint import (
+from scripts.experiments.query_lora_ssl.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
 )
 

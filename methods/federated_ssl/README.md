@@ -15,4 +15,4 @@ method descriptor와 composition metadata를 둔다.
 - simulation loop와 artifact/report 저장
 - `LocalTrainingService`, `RoundOpenRequest` 같은 runtime 객체 생성
 
-위 실행 glue는 `scripts/experiments/federated_simulation/`에 남긴다.
+위 실행 glue는 `scripts/experiments/fl_ssl/federated_simulation/`에 남긴다.

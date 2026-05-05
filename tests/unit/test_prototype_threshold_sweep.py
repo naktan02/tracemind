@@ -4,27 +4,25 @@ from __future__ import annotations
 
 import pytest
 
-from scripts.experiments.prototype_strategy.evaluation import (
+from scripts.experiments.prototype_analysis.prototype_strategy import (
+    threshold_policies,
+)
+from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     evaluate_global_confidence_threshold,
 )
-from scripts.experiments.prototype_strategy.models import (
+from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,
     PrototypeVector,
     ScoredPrediction,
     ThresholdArtifact,
     ThresholdPolicyEvaluation,
 )
-from scripts.experiments.prototype_strategy.scoring import (
+from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeScoringConfig,
     build_prototype_index_scorer,
 )
-from scripts.experiments.prototype_strategy.sweep import (
+from scripts.experiments.prototype_analysis.prototype_strategy.sweep import (
     ThresholdPolicySelectionPolicy,
-)
-from scripts.experiments.prototype_strategy.threshold_policies import (
-    ClasswiseStaticConfidencePolicy,
-    FixMatchFixedConfidencePolicy,
-    ValidationTargetErrorConfidencePolicy,
 )
 
 
@@ -178,7 +176,7 @@ def test_prototype_index_scorer_uses_default_policy_when_config_is_null() -> Non
 
 
 def test_fixmatch_policy_builds_threshold_candidates() -> None:
-    policy = FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
+    policy = threshold_policies.FixMatchFixedConfidencePolicy(thresholds=(0.8, 0.95))
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -213,7 +211,9 @@ def test_fixmatch_policy_builds_threshold_candidates() -> None:
 
 
 def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> None:
-    policy = ValidationTargetErrorConfidencePolicy(target_errors=(0.1,))
+    policy = threshold_policies.ValidationTargetErrorConfidencePolicy(
+        target_errors=(0.1,)
+    )
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -286,7 +286,7 @@ def test_target_error_policy_selects_maximum_coverage_feasible_threshold() -> No
 
 
 def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
-    policy = ClasswiseStaticConfidencePolicy(target_errors=(0.1,))
+    policy = threshold_policies.ClasswiseStaticConfidencePolicy(target_errors=(0.1,))
     predictions = (
         ScoredPrediction(
             actual_label="anxiety",
@@ -374,7 +374,7 @@ def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met
         return ThresholdPolicyEvaluation(
             policy_name=policy_name,
             candidate_name=f"confidence={confidence_threshold:.2f}",
-            source_paper=FixMatchFixedConfidencePolicy().source_paper,
+            source_paper=threshold_policies.FixMatchFixedConfidencePolicy().source_paper,
             selection_params={"confidence_threshold": confidence_threshold},
             threshold_artifact=ThresholdArtifact(
                 threshold_kind="global_confidence",
