@@ -9,13 +9,12 @@ from typing import Any
 from methods.adaptation.query_classifier_adaptation.training import (
     train_classifier as train_query_lora_classifier,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
-
-from .artifacts import write_run_artifacts
-from .common import (
+from scripts.experiments.query_lora_ssl.harness.common import (
     evaluate_supervised_lora_run_context,
     prepare_supervised_lora_run_context,
 )
+from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
+from scripts.io.labeled_query_rows import LabeledQueryRow
 
 
 def run_supervised_lora_baseline(

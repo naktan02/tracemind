@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.query_ssl.consistency_runner import (
+from scripts.experiments.query_lora_ssl.runners.consistency import (
     run_fixmatch_lora_baseline,
 )
 

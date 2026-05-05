@@ -13,7 +13,7 @@ from agent.src.services.training.datasets.query_adaptation_dataset_service impor
     QueryAdaptationDatasetExample,
     QueryAdaptationDatasetProvenance,
 )
-from scripts.experiments.query_lora_ssl.pseudo_label_runner import (
+from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     prepare_pseudo_label_self_training_run,
     run_pseudo_label_self_training,
 )
@@ -184,7 +184,7 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.pseudo_label_runner."
+        "scripts.experiments.query_lora_ssl.runners.pseudo_label."
         "run_supervised_lora_baseline",
         _fake_runner,
     )

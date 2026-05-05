@@ -9,13 +9,12 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
-
-from ..common import (
+from scripts.experiments.query_lora_ssl.harness.common import (
     LoraLabeledRunContext,
     evaluate_lora_run_context,
     prepare_labeled_lora_run_context,
 )
+from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 
 @dataclass(slots=True)

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.pseudo_label_runner import (
+from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
 

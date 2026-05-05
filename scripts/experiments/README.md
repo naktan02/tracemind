@@ -71,24 +71,24 @@
   - warm-start provenance는 `query_adaptation_initial_checkpoint` 축으로 함께 남긴다.
 - `query_lora_ssl/`
   - query-domain LoRA scaffold의 helper 모듈
-  - `runner.py`가 canonical supervised baseline runner다.
+  - `runners/supervised.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
-  - `query_ssl/consistency_runner.py`가 USB FixMatch를 포함한 consistency family runner다.
+  - `runners/consistency.py`가 USB FixMatch를 포함한 consistency family runner다.
   - `query_ssl/augmentation.py`가 strict USB NLP `text + aug_0 + aug_1` preparation/cache를 담당한다.
-  - `query_adaptation_runner.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
-  - `pseudo_label_runner.py`는 현재 offline union retraining helper를 제공한다.
-  - `bootstrap_runner.py`의 teacher pseudo-label selection은
+  - `runners/query_adaptation.py`는 query adaptation dataset을 baseline runner에 연결하는 wrapper다.
+  - `runners/pseudo_label.py`는 현재 offline union retraining helper를 제공한다.
+  - `runners/bootstrap_teacher.py`의 teacher pseudo-label selection은
     `methods/ssl/hooks/`의 selection hook을 재사용한다.
   - bootstrap 실험에서 선택 규칙 preset은
     `strategy_axes/fl/client_training_profile`이 아니라
     `strategy_axes/ssl/pseudo_label_selection` selector로 고른다.
   - central canonical 비교 규약에서는 same initial checkpoint에서 출발해
     new accepted query-derived rows only continual adaptation으로 해석한다.
-  - `query_adaptation_io.py`는 agent-local adaptation dataset을 현재 JSONL 입력 shape로 export한다.
-  - `query_adaptation_multiview_io.py`는 필요 시 multiview dataset을 같은 JSONL shape로 export한다.
+  - `io/query_adaptation.py`는 agent-local adaptation dataset을 현재 JSONL 입력 shape로 export한다.
+  - `io/query_adaptation_multiview.py`는 필요 시 multiview dataset을 같은 JSONL shape로 export한다.
   - export는 `source_row.query_id`를 single source of truth로 쓰고, locale은 typed provenance에서 읽는다.
   - export는 JSONL/manifest와 함께 dataset summary JSON도 남긴다.
-  - `query_adaptation_runner.py`는 labeled row를 메모리에서 바로 baseline runner에 넘기고, export 산출물은 trace/audit 용도로 함께 남긴다.
+  - `runners/query_adaptation.py`는 labeled row를 메모리에서 바로 baseline runner에 넘기고, export 산출물은 trace/audit 용도로 함께 남긴다.
 
 ## 공통 helper
 
@@ -130,8 +130,8 @@
 3. `central_ssl_control/train_lora_fixmatch.py`
 4. `central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
 5. `central_ssl_control/train_lora_pseudo_label_classifier.py`
-6. `query_lora_ssl/runner.py`
-7. 필요하면 `query_lora_ssl/query_ssl/consistency_runner.py`, `query_lora_ssl/query_adaptation_runner.py`, `query_lora_ssl/bootstrap_runner.py`, `query_lora_ssl/pseudo_label_runner.py`
+6. `query_lora_ssl/runners/supervised.py`
+7. 필요하면 `query_lora_ssl/runners/consistency.py`, `query_lora_ssl/runners/query_adaptation.py`, `query_lora_ssl/runners/bootstrap_teacher.py`, `query_lora_ssl/runners/pseudo_label.py`
 
 ## warm-start 재실행 요약
 

@@ -10,14 +10,15 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.io.labeled_query_rows import LabeledQueryRow
-
-from .query_adaptation_io import (
+from scripts.experiments.query_lora_ssl.io.query_adaptation import (
     QueryAdaptationLoraExportArtifacts,
     build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_lora_dataset,
 )
-from .runner import run_supervised_lora_baseline
+from scripts.experiments.query_lora_ssl.runners.supervised import (
+    run_supervised_lora_baseline,
+)
+from scripts.io.labeled_query_rows import LabeledQueryRow
 
 
 @dataclass(slots=True)

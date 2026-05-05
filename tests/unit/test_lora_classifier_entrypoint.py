@@ -7,7 +7,9 @@ def test_train_lora_classifier_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module(
         "scripts.experiments.central_ssl_control.train_lora_classifier"
     )
-    runner = importlib.import_module("scripts.experiments.query_lora_ssl.runner")
+    runner = importlib.import_module(
+        "scripts.experiments.query_lora_ssl.runners.supervised"
+    )
 
     assert (
         entrypoint.run_supervised_lora_baseline is runner.run_supervised_lora_baseline
@@ -19,7 +21,7 @@ def test_train_lora_pseudo_label_classifier_entrypoint_imports_direct_runner() -
         "scripts.experiments.central_ssl_control.train_lora_pseudo_label_classifier"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.pseudo_label_runner"
+        "scripts.experiments.query_lora_ssl.runners.pseudo_label"
     )
 
     assert (
@@ -33,7 +35,7 @@ def test_train_lora_fixmatch_entrypoint_imports_direct_runner() -> None:
         "scripts.experiments.central_ssl_control.train_lora_fixmatch"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.query_ssl.consistency_runner"
+        "scripts.experiments.query_lora_ssl.runners.consistency"
     )
 
     assert entrypoint.run_fixmatch_lora_baseline is runner.run_fixmatch_lora_baseline
@@ -46,7 +48,7 @@ def test_train_lora_bootstrap_classifier_teacher_entrypoint_imports_direct_runne
         "scripts.experiments.central_ssl_control.train_lora_bootstrap_classifier_teacher"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner"
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher"
     )
 
     assert (

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.bootstrap_runner import (
+from scripts.experiments.query_lora_ssl.runners.bootstrap_teacher import (
     run_fixed_classifier_teacher_lora_student_bootstrap,
 )
 

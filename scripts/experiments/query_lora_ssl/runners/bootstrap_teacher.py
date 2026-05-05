@@ -24,14 +24,17 @@ from scripts.experiments.fixed_classifier.runner import (
     train_fixed_embedding_classifier,
     write_fixed_classifier_artifacts,
 )
+from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
+    resolve_pseudo_label_algorithm,
+)
+from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
+    run_pseudo_label_self_training,
+)
 from scripts.io.labeled_query_rows import (
     LabeledQueryRow,
     dump_labeled_query_rows,
     load_labeled_query_rows,
 )
-
-from .pseudo_label_algorithm_config import resolve_pseudo_label_algorithm
-from .pseudo_label_runner import run_pseudo_label_self_training
 
 TEACHER_PREDICTION_TRACE_SCHEMA_VERSION = "fixed_classifier_teacher_trace.v1"
 TEACHER_PREDICTION_SUMMARY_SCHEMA_VERSION = "fixed_classifier_teacher_summary.v1"

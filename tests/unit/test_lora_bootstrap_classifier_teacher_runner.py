@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.bootstrap_runner import (
+from scripts.experiments.query_lora_ssl.runners.bootstrap_teacher import (
     run_fixed_classifier_teacher_lora_student_bootstrap,
 )
 from scripts.io.labeled_query_rows import LabeledQueryRow, dump_labeled_query_rows
@@ -104,7 +104,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner.instantiate",
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher.instantiate",
         lambda _spec: SimpleNamespace(
             backend="transformers_mxbai",
             model_id="mixedbread-ai/mxbai-embed-large-v1",
@@ -114,14 +114,14 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "train_fixed_embedding_classifier",
         lambda **_kwargs: SimpleNamespace(
             categories=["anxiety", "depression", "normal", "suicidal"]
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "write_fixed_classifier_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_teacher",
@@ -131,7 +131,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         },
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **_kwargs: [
             SimpleNamespace(
@@ -192,7 +192,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         _fake_student_runner,
     )
@@ -256,7 +256,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
     )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner.instantiate",
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher.instantiate",
         lambda _spec: SimpleNamespace(
             backend="transformers_mxbai",
             model_id="mixedbread-ai/mxbai-embed-large-v1",
@@ -266,14 +266,14 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "train_fixed_embedding_classifier",
         lambda **_kwargs: SimpleNamespace(
             categories=["anxiety", "depression", "normal", "suicidal"]
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "write_fixed_classifier_artifacts",
         lambda **_kwargs: {
             "output_dir": "runs/fake_teacher",
@@ -283,7 +283,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         },
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **kwargs: [
             SimpleNamespace(
@@ -306,7 +306,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         ],
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         lambda **_kwargs: {
             "output_dir": "runs/fake_student",
@@ -336,7 +336,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "load_fixed_classifier_artifacts",
         lambda **_kwargs: (
             SimpleNamespace(categories=["anxiety", "depression", "normal", "suicidal"]),
@@ -348,7 +348,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **_kwargs: [
             SimpleNamespace(
@@ -376,7 +376,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.bootstrap_runner."
+        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         _fake_student_runner,
     )

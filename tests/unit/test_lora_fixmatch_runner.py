@@ -3,7 +3,7 @@ from __future__ import annotations
 import torch
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.query_ssl.consistency_runner import (
+from scripts.experiments.query_lora_ssl.runners.consistency import (
     run_fixmatch_lora_baseline,
 )
 from scripts.io.labeled_query_rows import LabeledQueryRow
@@ -153,7 +153,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.common.build_query_lora_model",
+        "scripts.experiments.query_lora_ssl.harness.common.build_query_lora_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -161,12 +161,12 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.query_ssl.consistency_runner."
+        "scripts.experiments.query_lora_ssl.runners.consistency."
         "train_query_ssl_lora_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.common.evaluate_query_lora_classifier",
+        "scripts.experiments.query_lora_ssl.harness.common.evaluate_query_lora_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -179,7 +179,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         },
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.query_ssl.consistency_runner.write_run_artifacts",
+        "scripts.experiments.query_lora_ssl.runners.consistency.write_run_artifacts",
         _fake_write_run_artifacts,
     )
 

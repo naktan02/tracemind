@@ -14,21 +14,20 @@ from methods.adaptation.query_classifier_adaptation.training import (
     train_query_ssl_classifier as train_query_ssl_lora_classifier,
 )
 from methods.ssl.registry import build_query_ssl_algorithm
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
-
-from ..artifacts import write_run_artifacts
-from .augmentation import (
+from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
+from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
     PreparedQuerySslUnlabeledRows,
     build_query_ssl_augmenter_manifest,
     prepare_usb_multiview_unlabeled_rows,
 )
-from .common import (
+from scripts.experiments.query_lora_ssl.query_ssl.common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
     build_query_ssl_method_parameters,
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
+from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 
 @dataclass(frozen=True, slots=True)
