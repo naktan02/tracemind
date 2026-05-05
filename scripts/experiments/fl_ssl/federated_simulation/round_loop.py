@@ -1,0 +1,215 @@
+"""FL simulation round 실행 단계."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Any
+
+from scripts.experiments.fl_ssl.federated_simulation.artifacts import (
+    save_model_manifest,
+    save_prototype_pack,
+    save_selection_diagnostics,
+)
+from scripts.experiments.fl_ssl.federated_simulation.evaluation import (
+    evaluate_simulation_validation,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow_models import (
+    ActiveSimulationState,
+    BootstrappedSimulation,
+    ClientRoundExecution,
+    RoundExecution,
+)
+from scripts.experiments.fl_ssl.federated_simulation.method_runtime import (
+    FederatedSslSimulationRuntime,
+)
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    ClientRoundSummary,
+    FederatedClientShard,
+    SimulationRoundSummary,
+    SimulationRunRequest,
+)
+from scripts.runtime_adapters.federated_agent_runtime import (
+    build_federated_scoring_service,
+    run_federated_local_training,
+)
+from scripts.runtime_adapters.federated_server_runtime import SimulationServerRuntime
+from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
+from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+
+
+def run_one_round(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
+    round_index: int,
+) -> RoundExecution:
+    """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
+
+    round_id = f"round_{round_index:04d}"
+    round_record = bootstrapped.server_runtime.open_round(
+        ssl_method_runtime.build_round_open_request(
+            active_manifest=active.manifest,
+            round_id=round_id,
+            training_task_config=request.training_task_config,
+        )
+    )
+    training_task = round_record.training_task
+    training_scoring_service = build_federated_scoring_service(
+        objective_config=training_task.objective_config,
+        similarity_name=request.validation_config.similarity_name,
+        shared_state=active.adapter_state,
+    )
+
+    client_executions = tuple(
+        _run_client_round(
+            request=request,
+            bootstrapped=bootstrapped,
+            active=active,
+            ssl_method_runtime=ssl_method_runtime,
+            round_id=round_id,
+            shard=shard,
+            training_task=training_task,
+            training_scoring_service=training_scoring_service,
+        )
+        for shard in bootstrapped.dataset_split.client_shards
+    )
+    update_count = sum(
+        1 for execution in client_executions if execution.update_submitted
+    )
+    if update_count == 0:
+        return RoundExecution(active=active, summary=None)
+
+    next_model_revision = f"sim_rev_{round_index:04d}"
+    next_prototype_version = f"proto_sim_{round_index:04d}"
+    next_active = _finalize_round_publication(
+        request=request,
+        bootstrapped=bootstrapped,
+        round_id=round_id,
+        next_model_revision=next_model_revision,
+        next_prototype_version=next_prototype_version,
+    )
+    validation = evaluate_simulation_validation(
+        request=request,
+        adapter=bootstrapped.adapter,
+        active=next_active,
+        rows=request.validation_rows,
+        objective_config=training_task.objective_config,
+    )
+    return RoundExecution(
+        active=next_active,
+        summary=SimulationRoundSummary(
+            round_id=round_id,
+            model_revision=next_model_revision,
+            prototype_version=next_prototype_version,
+            update_count=update_count,
+            validation=validation,
+            clients=tuple(execution.summary for execution in client_executions),
+        ),
+    )
+
+
+def _run_client_round(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
+    round_id: str,
+    shard: FederatedClientShard,
+    training_task: Any,
+    training_scoring_service: Any,
+) -> ClientRoundExecution:
+    training_examples = ssl_method_runtime.build_training_examples(
+        rows=shard.rows,
+        adapter=bootstrapped.adapter,
+        adapter_state=active.adapter_state,
+        prototype_pack=active.prototype_pack,
+        model_id=request.model_id,
+        scoring_service=training_scoring_service,
+        objective_config=training_task.objective_config,
+    )
+    local_training_service = ssl_method_runtime.build_local_training_service(
+        client_state_root=request.output_dir / "agents" / shard.client_id
+    )
+    local_result = run_federated_local_training(
+        local_training_service=local_training_service,
+        training_examples=training_examples,
+        training_task=training_task,
+        model_manifest=active.manifest,
+    )
+    save_selection_diagnostics(
+        output_dir=request.output_dir,
+        round_id=round_id,
+        client_id=shard.client_id,
+        rows=shard.rows,
+        training_examples=training_examples,
+        selection_result=local_result.selection_result,
+        diagnostics_config=request.diagnostics_config,
+    )
+    update_submitted = _accept_client_update(
+        server_runtime=bootstrapped.server_runtime,
+        round_id=round_id,
+        update_envelope=local_result.update_envelope,
+        update_payload=local_result.update_payload,
+    )
+    return ClientRoundExecution(
+        summary=ClientRoundSummary(
+            client_id=shard.client_id,
+            candidate_count=local_result.selection_result.total_count,
+            accepted_count=local_result.selection_result.accepted_count,
+            update_generated=update_submitted,
+        ),
+        update_submitted=update_submitted,
+    )
+
+
+def _accept_client_update(
+    *,
+    server_runtime: SimulationServerRuntime,
+    round_id: str,
+    update_envelope: TrainingUpdateEnvelope | None,
+    update_payload: Any | None,
+) -> bool:
+    if update_envelope is None:
+        return False
+    if update_payload is None:
+        raise ValueError("Update envelope exists without update payload.")
+    server_runtime.accept_update(
+        round_id,
+        update_envelope,
+        update_payload,
+    )
+    return True
+
+
+def _finalize_round_publication(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    round_id: str,
+    next_model_revision: str,
+    next_prototype_version: str,
+) -> ActiveSimulationState:
+    finalized_round = bootstrapped.server_runtime.finalize_round(
+        round_id=round_id,
+        next_model_revision=next_model_revision,
+        next_prototype_version=next_prototype_version,
+    )
+    if finalized_round.publication is None:
+        raise ValueError("Finalized simulation round must contain publication.")
+    active_manifest = finalized_round.publication.next_manifest
+    active_state = bootstrapped.server_runtime.load_active_state(active_manifest)
+    save_model_manifest(request.output_dir, active_manifest)
+    if finalized_round.publication.prototype_pack_ref is None:
+        raise ValueError("Simulation finalize must publish a prototype pack reference.")
+    active_prototype = load_prototype_pack_payload(
+        Path(finalized_round.publication.prototype_pack_ref)
+    )
+    save_prototype_pack(request.output_dir, active_prototype)
+    return ActiveSimulationState(
+        manifest=active_manifest,
+        adapter_state=active_state,
+        prototype_pack=active_prototype,
+    )

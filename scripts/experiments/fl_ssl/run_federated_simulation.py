@@ -20,8 +20,11 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedSslMethodConfig,
     FederatedTrainingTaskConfig,
     FederatedValidationConfig,
+    SimulationRunRequest,
 )
-from scripts.experiments.fl_ssl.federated_simulation.simulation import run_simulation
+from scripts.experiments.fl_ssl.federated_simulation.simulation import (
+    run_simulation_request,
+)
 from scripts.runtime_adapters.federated_server_runtime import (
     build_federated_training_task_config,
 )
@@ -72,7 +75,7 @@ def main(cfg: DictConfig) -> None:
     embedding_spec = instantiate(cfg.embedding.spec)
     prototype_build_strategy = instantiate(cfg.prototype_builder)
 
-    result = run_simulation(
+    request = SimulationRunRequest(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
         output_dir=output_dir,
@@ -103,6 +106,7 @@ def main(cfg: DictConfig) -> None:
         ssl_method_config=FederatedSslMethodConfig(**_to_plain_dict(cfg.ssl_method)),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
     )
+    result = run_simulation_request(request)
 
     print(f"output_dir={output_dir}")
     print(f"initial_model_revision={result.initial_model_revision}")

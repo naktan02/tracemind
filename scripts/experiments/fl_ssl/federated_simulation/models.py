@@ -3,14 +3,18 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any, Protocol
 
+from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 @dataclass(slots=True)
@@ -172,3 +176,28 @@ class FederatedRoundRuntimeConfig:
     adapter_family_name: str
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
+
+
+@dataclass(slots=True)
+class SimulationRunRequest:
+    """FL SSL simulation 한 번을 실행하는 typed request."""
+
+    train_rows: list[LabeledQueryRow]
+    validation_rows: list[LabeledQueryRow]
+    output_dir: Path
+    client_count: int
+    rounds: int
+    bootstrap_ratio: float
+    seed: int
+    embedding_spec: EmbeddingAdapterSpec
+    model_id: str
+    training_scope: str
+    round_runtime_config: FederatedRoundRuntimeConfig
+    prototype_build_strategy: PrototypeBuildStrategy
+    shard_policy: FederatedShardPolicyConfig
+    training_task_config: FederatedTrainingTaskConfig
+    validation_config: FederatedValidationConfig
+    prototype_rebuild_config: FederatedPrototypeRebuildConfig
+    diagnostics_config: FederatedDiagnosticsConfig
+    ssl_method_config: FederatedSslMethodConfig
+    report_config: FederatedReportConfig | None = None

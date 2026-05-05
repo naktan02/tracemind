@@ -23,8 +23,13 @@ from shared.src.contracts.training_contracts import (
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
+from .flow_models import ActiveSimulationState
 from .io_utils import parse_created_at
-from .models import FederatedValidationConfig, SimulationEvaluation
+from .models import (
+    FederatedValidationConfig,
+    SimulationEvaluation,
+    SimulationRunRequest,
+)
 
 
 def build_training_examples(
@@ -133,6 +138,32 @@ def build_validation_scoring_service(
         objective_config=build_default_training_objective_config(overrides=overrides),
         similarity_name=validation_config.similarity_name,
         shared_state=shared_state,
+    )
+
+
+def evaluate_simulation_validation(
+    *,
+    request: SimulationRunRequest,
+    adapter: EmbeddingAdapter,
+    active: ActiveSimulationState,
+    rows: list[LabeledQueryRow],
+    objective_config: TrainingObjectiveConfig | None,
+) -> SimulationEvaluation:
+    """FL simulation request 기준 validation row를 평가한다."""
+
+    return evaluate_rows(
+        rows=rows,
+        adapter=adapter,
+        adapter_state=active.adapter_state,
+        prototype_pack=active.prototype_pack,
+        model_id=request.model_id,
+        scoring_service=build_validation_scoring_service(
+            request.validation_config,
+            shared_state=active.adapter_state,
+        ),
+        confidence_threshold=request.validation_config.confidence_threshold,
+        margin_threshold=request.validation_config.margin_threshold,
+        objective_config=objective_config,
     )
 
 

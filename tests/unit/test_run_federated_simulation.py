@@ -27,16 +27,18 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
     FederatedValidationConfig,
+    SimulationRunRequest,
 )
 from scripts.experiments.fl_ssl.federated_simulation.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
+from scripts.experiments.fl_ssl.federated_simulation.simulation import (
+    run_simulation,
+    run_simulation_request,
+)
 from scripts.experiments.fl_ssl.federated_simulation.task_config import (
     build_round_open_request,
-)
-from scripts.experiments.fl_ssl.run_federated_simulation import (
-    run_simulation,
 )
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
@@ -497,6 +499,66 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         == "client_update_envelopes"
     )
     assert report["metrics"]["client_validation"]["evaluated_client_count"] > 0
+
+
+def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("d1", "sad sad", "depression"),
+        _row("d2", "sad sad", "depression"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+        _row("s1", "die die", "suicidal"),
+        _row("s2", "die die", "suicidal"),
+    ]
+    validation_rows = [
+        _row("va", "panic panic", "anxiety"),
+        _row("vd", "sad sad", "depression"),
+        _row("vn", "calm calm", "normal"),
+        _row("vs", "die die", "suicidal"),
+    ]
+    request = SimulationRunRequest(
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        output_dir=tmp_path / "simulation_request",
+        client_count=2,
+        rounds=0,
+        bootstrap_ratio=0.5,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="tracemind-embed-sim",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
+    )
+
+    result = run_simulation_request(request)
+
+    assert result.initial_model_revision == "sim_rev_0000"
+    assert result.initial_prototype_version == "proto_sim_0000"
+    assert result.rounds == ()
+    assert result.final_validation == result.initial_validation
+    assert len(result.client_evaluations) == 2
 
 
 def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
