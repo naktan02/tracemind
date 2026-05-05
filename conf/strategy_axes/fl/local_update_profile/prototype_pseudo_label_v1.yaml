@@ -1,21 +1,18 @@
-# @package training_algorithm_profile
+# @package local_update_profile
 
 # 현재는 agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
-# 이름은 client_training_profile이지만 FedAvg baseline의 runtime pair를 맞추기 위해
-# adapter_family_name과 aggregation_backend_name도 함께 둔다.
-algorithm_profile_name: prototype_top1_confidence_v1
+# adapter family와 aggregation backend는 round_runtime_profile이 따로 소유한다.
+algorithm_profile_name: prototype_pseudo_label_v1
 training_scope: adapter_only
-adapter_family_name: diagonal_scale
-aggregation_backend_name: fedavg
 training_backend_name: diagonal_scale_heuristic
 confidence_threshold: 0.6
-margin_threshold: 0.0
+margin_threshold: 0.02
 example_generation_backend_name: prototype_rescore
 evidence_backend_name: prototype_similarity_evidence
 scorer_backend_name: prototype_similarity
 score_policy_name: max_cosine
 score_top_k: null
-pseudo_label_algorithm_name: top1_confidence_only
-acceptance_policy_name: top1_confidence_only
+pseudo_label_algorithm_name: top1_margin_threshold
+acceptance_policy_name: top1_margin_threshold
 privacy_guard_name: diagonal_scale_clip_only
 evidence_backend_temperature: 1.0

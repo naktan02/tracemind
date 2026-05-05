@@ -241,11 +241,21 @@ def test_experiment_catalog_api_exposes_runtime_compatibility_metadata() -> None
     profiles = _find_section(
         payload,
         track_name="federated_runtime",
-        section_name="training_algorithm_profiles",
+        section_name="local_update_profiles",
     )
     baseline = _find_item(profiles, "prototype_pseudo_label_v1")
     assert FEDERATED_SIMULATION_RUNTIME_PATH in baseline.supported_runtime_paths
     assert AGENT_LIVE_STORED_EVENT_RUNTIME_PATH in baseline.supported_runtime_paths
+    assert baseline.family_name == "diagonal_scale"
+
+    round_profiles = _find_section(
+        payload,
+        track_name="federated_runtime",
+        section_name="round_runtime_profiles",
+    )
+    round_profile = _find_item(round_profiles, "fedavg_diagonal_scale")
+    assert round_profile.metadata["adapter_family_name"] == "diagonal_scale"
+    assert round_profile.metadata["aggregation_backend_name"] == "fedavg"
 
     example_backends = _find_section(
         payload,
@@ -439,8 +449,8 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
             entrypoint_name="run_federated_simulation",
             selections=(
                 WorkspaceSelectionPayload(
-                    slot_name="training_algorithm_profile",
-                    section_name="training_algorithm_profiles",
+                    slot_name="local_update_profile",
+                    section_name="local_update_profiles",
                     core_method_name="prototype_pseudo_label_v1",
                     variant_profile_name="prototype_pseudo_label_v1",
                     family_name="diagonal_scale",
@@ -453,7 +463,7 @@ def test_experiment_compile_api_builds_federated_preview() -> None:
 
     assert plan.script_path == "scripts/experiments/fl_ssl/run_federated_simulation.py"
     assert plan.selection_default_groups == (
-        "strategy_axes/fl/client_training_profile=prototype_pseudo_label_v1",
+        "strategy_axes/fl/local_update_profile=prototype_pseudo_label_v1",
     )
     assert plan.hydra_overrides == ("training_task.local_epochs=2",)
     assert any("simulation participant" in warning for warning in plan.warnings)

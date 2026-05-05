@@ -439,8 +439,27 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
         ),
         CustomSectionSpec(
             build_section=lambda context: (
-                fl_catalog_sections.build_training_algorithm_profile_section(context)
+                fl_catalog_sections.build_local_update_profile_section(context)
             )
+        ),
+        ConfigGroupSectionSpec(
+            section_name="round_runtime_profiles",
+            display_name="라운드 런타임 프로필",
+            description="FL server round의 adapter family와 aggregation 조합입니다.",
+            relative_dir="conf/strategy_axes/fl/round_runtime_profile",
+            item_kind="round_runtime_profile",
+            family_name="round_runtime",
+            preset_group="round_runtime_profile",
+            selector_group="strategy_axes/fl/round_runtime_profile",
+            supported_runtime_paths=(
+                FEDERATED_SIMULATION_RUNTIME_PATH,
+                MAIN_SERVER_ROUND_RUNTIME_PATH,
+            ),
+            metadata_keys=(
+                "adapter_family_name",
+                "aggregation_backend_name",
+                "classifier_head_bootstrap_logit_scale",
+            ),
         ),
         CustomSectionSpec(
             build_section=lambda context: (

@@ -60,13 +60,12 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 
 ## 바로 조절 가능한 실험 축
 
-- `training_algorithm_profile`
-  - `strategy_axes/fl/client_training_profile`에서 compose된다.
-  - 이름은 client profile이지만 현재는 agent local update를 만드는
-    training/evidence/scoring/privacy 조합 profile이다.
-  - FedAvg pseudo-label baseline에서는 local update family와 server aggregation
-    backend가 함께 움직이므로 `adapter_family_name`, `aggregation_backend_name`도
-    이 profile에서 온다.
+- `local_update_profile`
+  - `strategy_axes/fl/local_update_profile`에서 compose된다.
+  - agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
+- `round_runtime_profile`
+  - `strategy_axes/fl/round_runtime_profile`에서 compose된다.
+  - server round runtime의 adapter family와 aggregation backend 조합을 소유한다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
   - method identity/report metadata/custom runtime 필요 여부만 표현한다.
@@ -99,15 +98,14 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   track_presets/fl_ssl/simulation_preset=standard \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label \
-  strategy_axes/fl/client_training_profile=prototype_top1_confidence_v1 \
+  strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1 \
   training_task.objective.privacy_guard_name=noop
 ```
 
 주의:
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
-  현재 기본값은 `training_algorithm_profile`에서 파생되며, future method에서
-  client step과 server step이 독립적으로 바뀌면 별도 group으로 분리한다.
+  기본값은 `round_runtime_profile`에서 파생된다.
 - FL SSL main split은 `track_presets/fl_ssl/simulation_preset=standard`와
   `strategy_axes/fl/shard_policy=dirichlet_alpha03`를 기본 조합으로 본다.
   stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.

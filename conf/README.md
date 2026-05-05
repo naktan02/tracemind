@@ -34,8 +34,9 @@ conf/
 │   │   ├── peft_adapter/
 │   │   └── transformer_backbone/
 │   ├── fl/
-│   │   ├── client_training_profile/
+│   │   ├── local_update_profile/
 │   │   ├── method_descriptor/
+│   │   ├── round_runtime_profile/
 │   │   └── shard_policy/
 │   ├── prototype/
 │   │   └── build_strategy/
@@ -67,14 +68,14 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.ssl_method`로 compose된다.
   - 논문 method identity, report role, custom runtime 필요 여부를 설명한다.
   - 실제 local update 계산 조합을 단독으로 소유하지 않는다.
-- `strategy_axes/fl/client_training_profile`
-  - `cfg.training_algorithm_profile`로 compose된다.
-  - 이름은 client profile이지만 현재는 agent local update를 만드는
-    training/evidence/scoring/privacy 조합 profile이다.
-  - 현재 FedAvg pseudo-label baseline에서는 `adapter_family_name`과
-    `aggregation_backend_name`도 이 profile에서 파생된다.
-  - future method에서 client step과 server step이 독립적으로 바뀌면
-    이 값을 `round_runtime` 또는 별도 group으로 분리한다.
+- `strategy_axes/fl/local_update_profile`
+  - `cfg.local_update_profile`로 compose된다.
+  - agent local update를 만드는 training/evidence/scoring/privacy 조합을 소유한다.
+  - adapter family나 aggregation backend를 소유하지 않는다.
+- `strategy_axes/fl/round_runtime_profile`
+  - `cfg.round_runtime_profile`로 compose된다.
+  - server round runtime의 adapter family, aggregation backend, bootstrap runtime
+    knob를 소유한다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.

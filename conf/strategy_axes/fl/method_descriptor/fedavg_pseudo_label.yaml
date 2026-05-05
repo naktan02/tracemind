@@ -8,7 +8,7 @@ implementation_status: active_runtime
 client_step:
   owner: agent
   task_type: pseudo_label_self_training
-  uses_training_algorithm_profile: true
+  uses_local_update_profile: true
   custom_method_runtime_required: false
 server_step:
   owner: main_server

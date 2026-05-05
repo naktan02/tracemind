@@ -63,7 +63,8 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | FL SSL descriptor | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*` | simulation/runtime metadata |
-| FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `strategy_axes/fl/client_training_profile` -> `cfg.training_algorithm_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
+| FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
+| FL round-runtime profile | `fedavg_diagonal_scale` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*`, main_server adapter | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server family wiring | 활성 runtime |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
@@ -71,13 +72,9 @@ central fixed embedding + classifier seed
 
 주의:
 
-- `strategy_axes/fl/client_training_profile`이라는 폴더명은 현재 backward-compatible
-  selector 이름이다. compose 후 field는 `training_algorithm_profile`이며,
-  pure client-only preset이 아니라 local update를 만들기 위한 runtime profile이다.
-- 현재 FedAvg pseudo-label baseline에서는 profile의 `adapter_family_name`,
-  `aggregation_backend_name`이 `round_runtime.*` 기본값으로 흘러간다.
-  future method에서 client step과 server step이 독립적으로 바뀌면 별도 config
-  group으로 분리한다.
+- `local_update_profile`은 agent local update policy를 소유하고,
+  `round_runtime_profile`은 server round의 adapter family와 aggregation backend를
+  소유한다. local objective와 aggregation/backend 조합은 독립적으로 override한다.
 
 ## Prototype 축
 

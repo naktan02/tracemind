@@ -7,7 +7,8 @@ defaults:
   - /track_presets/fl_ssl/simulation_preset: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
-  - /strategy_axes/fl/client_training_profile: prototype_pseudo_label_v1
+  - /strategy_axes/fl/local_update_profile: prototype_pseudo_label_v1
+  - /strategy_axes/fl/round_runtime_profile: fedavg_diagonal_scale
   - /strategy_axes/prototype/build_strategy: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
@@ -28,13 +29,12 @@ prototype_rebuild:
 diagnostics:
   dump_dir_name: selection_dumps
 
-# `training_algorithm_profile`은 현재 FL pseudo-label local update profile이다.
-# FedAvg baseline에서는 local update family와 server aggregation backend가 함께
-# 움직이므로 round runtime 기본값도 이 profile에서 파생한다.
+# `local_update_profile`은 agent local SSL update 정책을 소유한다.
+# `round_runtime_profile`은 server round에서 공유할 adapter family와 aggregation backend를 소유한다.
 round_runtime:
-  adapter_family_name: ${training_algorithm_profile.adapter_family_name}
-  aggregation_backend_name: ${training_algorithm_profile.aggregation_backend_name}
-  classifier_head_bootstrap_logit_scale: 8.0
+  adapter_family_name: ${round_runtime_profile.adapter_family_name}
+  aggregation_backend_name: ${round_runtime_profile.aggregation_backend_name}
+  classifier_head_bootstrap_logit_scale: ${round_runtime_profile.classifier_head_bootstrap_logit_scale}
 
 training_task:
   local_epochs: 1
@@ -44,19 +44,19 @@ training_task:
   min_required_examples: ${federated_run_preset.min_required_examples}
   gradient_clip_norm: 0.5
   objective:
-    algorithm_profile_name: ${training_algorithm_profile.algorithm_profile_name}
-    training_backend_name: ${training_algorithm_profile.training_backend_name}
-    confidence_threshold: ${training_algorithm_profile.confidence_threshold}
-    margin_threshold: ${training_algorithm_profile.margin_threshold}
-    example_generation_backend_name: ${training_algorithm_profile.example_generation_backend_name}
-    evidence_backend_name: ${training_algorithm_profile.evidence_backend_name}
-    scorer_backend_name: ${training_algorithm_profile.scorer_backend_name}
-    score_policy_name: ${training_algorithm_profile.score_policy_name}
-    score_top_k: ${training_algorithm_profile.score_top_k}
-    pseudo_label_algorithm_name: ${training_algorithm_profile.pseudo_label_algorithm_name}
-    acceptance_policy_name: ${training_algorithm_profile.acceptance_policy_name}
-    privacy_guard_name: ${training_algorithm_profile.privacy_guard_name}
-    evidence_backend.temperature: ${training_algorithm_profile.evidence_backend_temperature}
+    algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
+    training_backend_name: ${local_update_profile.training_backend_name}
+    confidence_threshold: ${local_update_profile.confidence_threshold}
+    margin_threshold: ${local_update_profile.margin_threshold}
+    example_generation_backend_name: ${local_update_profile.example_generation_backend_name}
+    evidence_backend_name: ${local_update_profile.evidence_backend_name}
+    scorer_backend_name: ${local_update_profile.scorer_backend_name}
+    score_policy_name: ${local_update_profile.score_policy_name}
+    score_top_k: ${local_update_profile.score_top_k}
+    pseudo_label_algorithm_name: ${local_update_profile.pseudo_label_algorithm_name}
+    acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
+    privacy_guard_name: ${local_update_profile.privacy_guard_name}
+    evidence_backend.temperature: ${local_update_profile.evidence_backend_temperature}
   selection_policy:
     max_examples: ${federated_run_preset.max_examples}
 

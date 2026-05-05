@@ -44,18 +44,17 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
-def build_training_algorithm_profile_section(
+def build_local_update_profile_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """Hydra training profile preset을 runtime compatibility와 함께 노출한다."""
+    """Hydra local update profile preset을 runtime compatibility와 함께 노출한다."""
 
     items: list[CatalogItemPayload] = []
-    for path in context.iter_yaml_files(
-        "conf/strategy_axes/fl/client_training_profile"
-    ):
+    for path in context.iter_yaml_files("conf/strategy_axes/fl/local_update_profile"):
         raw = context.load_yaml_mapping(path)
         profile_name = string_or_none(raw.get("algorithm_profile_name")) or path.stem
         objective_config = TrainingObjectiveConfig.from_mapping(raw)
+        adapter_kind = _resolve_training_profile_adapter_kind(objective_config)
         training_task = context.build_catalog_training_task(
             string_or_none(raw.get("training_scope")) or "adapter_only",
             objective_config,
@@ -67,34 +66,30 @@ def build_training_algorithm_profile_section(
             CatalogItemPayload(
                 item_name=profile_name,
                 display_name=profile_name,
-                item_kind="training_algorithm_profile",
-                family_name=string_or_none(raw.get("adapter_family_name")),
+                item_kind="local_update_profile",
+                family_name=adapter_kind,
                 core_method_name=profile_name,
                 variant_profile_name=profile_name,
-                preset_group="training_algorithm_profile",
+                preset_group="local_update_profile",
                 source_of_truth=context.relative_repo_path(path),
                 source_kind="hydra_config_group",
                 compile_support="preset_selector",
-                supported_adapter_kinds=(
-                    string_or_none(raw.get("adapter_family_name")) or "",
-                )
-                if raw.get("adapter_family_name") is not None
-                else (),
+                supported_adapter_kinds=() if adapter_kind is None else (adapter_kind,),
                 supported_runtime_paths=tuple(runtime_paths),
                 declared_fields=declared_fields(raw),
                 override_fields=extract_override_fields(raw),
                 metadata={
                     **extract_scalar_metadata(raw),
-                    "selector_group": "strategy_axes/fl/client_training_profile",
+                    "selector_group": "strategy_axes/fl/local_update_profile",
                 },
             )
         )
     return CatalogSectionPayload(
-        section_name="training_algorithm_profiles",
-        display_name="학습 알고리즘 프로필",
-        item_kind="training_algorithm_profile",
-        description="현재 FL objective/aggregation 조합 preset입니다.",
-        source_of_truth="conf/strategy_axes/fl/client_training_profile",
+        section_name="local_update_profiles",
+        display_name="로컬 업데이트 프로필",
+        item_kind="local_update_profile",
+        description="agent local update objective/runtime 조합 preset입니다.",
+        source_of_truth="conf/strategy_axes/fl/local_update_profile",
         source_kind="hydra_config_group",
         items=tuple(items),
     )
@@ -279,6 +274,21 @@ def _resolve_training_profile_runtime_paths(
     ):
         runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
     return tuple(runtime_paths)
+
+
+def _resolve_training_profile_adapter_kind(
+    objective_config: TrainingObjectiveConfig,
+) -> str | None:
+    """Local training backend registry에서 profile의 adapter kind를 계산한다."""
+
+    try:
+        training_backend = _find_catalog_entry(
+            list_shared_adapter_training_backend_catalog_entries(),
+            objective_config.training_backend_name,
+        )
+        return _resolve_single_adapter_kind(training_backend)
+    except ValueError:
+        return None
 
 
 def _is_local_training_runtime_catalog_compatible(

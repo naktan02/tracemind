@@ -47,8 +47,8 @@ def test_workspace_manifest_payload_round_trips_json(tmp_path: Path) -> None:
         entrypoint_name="run_federated_simulation",
         selections=(
             WorkspaceSelectionPayload(
-                slot_name="training_algorithm_profile",
-                section_name="training_algorithm_profiles",
+                slot_name="local_update_profile",
+                section_name="local_update_profiles",
                 variant_profile_name="prototype_pseudo_label_v1",
                 family_name="diagonal_scale",
             ),

@@ -324,9 +324,12 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.federated_run_preset.name == "smoke"
-    assert cfg.training_algorithm_profile.algorithm_profile_name == (
+    assert cfg.local_update_profile.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
     )
+    assert cfg.round_runtime_profile.name == "fedavg_diagonal_scale"
+    assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
+    assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
     assert cfg.training_task.objective.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
@@ -354,20 +357,23 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.ssl_method.name == "fedavg_pseudo_label"
-    assert cfg.ssl_method.client_step.uses_training_algorithm_profile is True
+    assert cfg.ssl_method.client_step.uses_local_update_profile is True
     assert cfg.ssl_method.client_step.custom_method_runtime_required is False
     assert cfg.ssl_method.server_step.custom_round_policy_required is False
+    assert "training_algorithm_profile" not in cfg
+    assert "adapter_family_name" not in cfg.local_update_profile
+    assert "aggregation_backend_name" not in cfg.local_update_profile
     assert (
         cfg.training_task.objective.algorithm_profile_name
-        == cfg.training_algorithm_profile.algorithm_profile_name
+        == cfg.local_update_profile.algorithm_profile_name
     )
     assert (
         cfg.round_runtime.adapter_family_name
-        == cfg.training_algorithm_profile.adapter_family_name
+        == cfg.round_runtime_profile.adapter_family_name
     )
     assert (
         cfg.round_runtime.aggregation_backend_name
-        == cfg.training_algorithm_profile.aggregation_backend_name
+        == cfg.round_runtime_profile.aggregation_backend_name
     )
     assert cfg.report.seed_count == 3
 
@@ -411,7 +417,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/client_training_profile=prototype_top1_confidence_v1",
+                "strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.example_generation_backend_name=prototype_rescore",
                 "training_task.objective.evidence_backend_name=prototype_similarity_evidence",
