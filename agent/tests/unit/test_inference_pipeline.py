@@ -19,6 +19,7 @@ from agent.src.services.inference.pipeline_service import (
 )
 from agent.src.services.language.preprocess_service import PreprocessService
 from shared.src.contracts.adapter_contracts import make_identity_state_payload
+from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 
 # ---------------------------------------------------------- #
@@ -125,6 +126,7 @@ def _make_pipeline(
     *,
     with_translation: bool = False,
     shared_adapter_provider=None,
+    local_adapter_provider=None,
 ) -> InferencePipelineService:
     """모킹된 서비스들로 파이프라인을 조립한다."""
     embedding_service = MagicMock()
@@ -154,6 +156,7 @@ def _make_pipeline(
         prototype_provider=prototype_provider,
         event_repository=repo,
         shared_adapter_provider=shared_adapter_provider,
+        local_adapter_provider=local_adapter_provider,
         query_buffer_repository=query_buffer_repo,
         preprocess_service=PreprocessService(),
         translation_service=translation_service,
@@ -248,6 +251,12 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     )
     shared_adapter_provider = MagicMock()
     shared_adapter_provider.get_active_state.return_value = shared_state
+    shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
+        model_id="test-embed",
+        model_revision="global_rev_001",
+        prototype_version="proto_001",
+        artifact_ref="shared_adapter_state::global_rev_001",
+    )
     pipeline = _make_pipeline(
         tmp_path,
         shared_adapter_provider=shared_adapter_provider,
@@ -265,6 +274,49 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
         result.query_buffer_record.metadata["shared_model_revision"] == "global_rev_001"
     )
     assert result.query_buffer_record.metadata["adapter_kind"] == "diagonal_scale"
+
+
+def test_pipeline_can_apply_future_local_adapter_after_shared_state(
+    tmp_path: Path,
+) -> None:
+    """local state가 있으면 inference에만 shared 이후 순서로 적용한다."""
+    shared_state = make_identity_state_payload(
+        model_id="test-embed",
+        model_revision="global_rev_001",
+        embedding_dim=3,
+    )
+    shared_adapter_provider = MagicMock()
+    shared_adapter_provider.get_active_state.return_value = shared_state
+    shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
+        model_id="test-embed",
+        model_revision="global_rev_001",
+        prototype_version="proto_001",
+        artifact_ref="shared_adapter_state::global_rev_001",
+    )
+    local_state = MagicMock()
+    local_state.adapter_kind = "local_fake"
+    local_state.model_revision = "local_rev_001"
+    local_state.apply.return_value = [0.9, 0.8, 0.7]
+    local_adapter_provider = MagicMock()
+    local_adapter_provider.get_active_state.return_value = local_state
+    pipeline = _make_pipeline(
+        tmp_path,
+        shared_adapter_provider=shared_adapter_provider,
+        local_adapter_provider=local_adapter_provider,
+    )
+    event = _make_query_event(text="I feel anxious", locale="en")
+
+    result = pipeline.process(event)
+
+    local_state.apply.assert_called_once()
+    score_embedding = pipeline.scoring_service.score.call_args.args[0]
+    assert score_embedding == [0.9, 0.8, 0.7]
+    assert result.query_buffer_record is not None
+    assert result.query_buffer_record.model_revision == "global_rev_001"
+    assert (
+        result.query_buffer_record.metadata["local_adapter_revision"] == "local_rev_001"
+    )
+    assert result.query_buffer_record.metadata["local_adapter_kind"] == "local_fake"
 
 
 def test_pipeline_batch_processes_multiple_events(tmp_path: Path) -> None:

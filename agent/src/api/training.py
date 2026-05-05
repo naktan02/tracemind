@@ -11,6 +11,9 @@ from pydantic import BaseModel, ConfigDict, Field
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
+from agent.src.services.assets.adapters.composition_service import (
+    AdapterCompositionService,
+)
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
 from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
 from agent.src.services.assets.shared_adapters.runtime_service import (
@@ -244,8 +247,11 @@ def run_current_task(
             shared_adapter_sync_service.pull_current(
                 server_base_url=request.server_base_url
             )
-            active_manifest = shared_adapter_runtime_service.get_active_manifest()
-            active_state = shared_adapter_runtime_service.get_active_state()
+            adapter_context = AdapterCompositionService(
+                shared_adapter_provider=shared_adapter_runtime_service,
+            ).get_context(require_shared=True)
+            active_manifest = adapter_context.require_shared_manifest()
+            active_state = adapter_context.require_shared_state()
         except FileNotFoundError as error:
             return RunCurrentTaskResponse(
                 status="no_active_shared_state",

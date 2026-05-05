@@ -26,6 +26,8 @@
   - prototype artifact 동기화/로컬 runtime helper
 - `assets/shared_adapters/`
   - 서버 current shared adapter state 동기화/로컬 runtime helper
+- `assets/adapters/`
+  - global shared state와 future agent-private local state의 조합 경계
 - `language/`
   - preprocess, translation, backtranslation helper
 - `wellbeing/`
@@ -60,7 +62,8 @@
 1. `federation/rounds/round_client.py`
 2. `federation/rounds/runtime_service.py`
 3. `assets/shared_adapters/sync_service.py`
-4. `training/execution/local_training_service.py`
+4. `assets/adapters/composition_service.py`
+5. `training/execution/local_training_service.py`
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 

@@ -19,12 +19,17 @@ from agent.src.infrastructure.repositories.query_buffer_repository import (
 from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
+from agent.src.services.assets.adapters.composition_service import (
+    AdapterCompositionService,
+    AdapterRuntimeContext,
+    LocalAdapterRuntimeProvider,
+    SharedAdapterRuntimeProvider,
+)
 from agent.src.services.inference.embedding_service import EmbeddingService
 from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.preprocess_service import PreprocessService
 from agent.src.services.language.translation_service import TranslationService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
-from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
 class PrototypeProvider(Protocol):
@@ -32,14 +37,6 @@ class PrototypeProvider(Protocol):
 
     def get_active_prototypes(self) -> dict[str, tuple[list[float], ...]]:
         """category → 복수 prototype 벡터 매핑을 반환한다."""
-        ...
-
-
-class SharedAdapterProvider(Protocol):
-    """활성 shared adapter state 조회 인터페이스."""
-
-    def get_active_state(self) -> SharedAdapterState:
-        """현재 agent에 캐시된 active shared adapter state를 반환한다."""
         ...
 
 
@@ -65,7 +62,9 @@ class InferencePipelineService:
     scoring_service: ScoringService
     prototype_provider: PrototypeProvider
     event_repository: ScoredEventRepository
-    shared_adapter_provider: SharedAdapterProvider | None = None
+    adapter_composition_service: AdapterCompositionService | None = None
+    shared_adapter_provider: SharedAdapterRuntimeProvider | None = None
+    local_adapter_provider: LocalAdapterRuntimeProvider | None = None
     query_buffer_repository: QueryBufferRepository | None = None
     preprocess_service: PreprocessService = field(default_factory=PreprocessService)
     translation_service: TranslationService | None = None
@@ -96,16 +95,12 @@ class InferencePipelineService:
         base_embedding = embeddings[0]
 
         prototypes = self.prototype_provider.get_active_prototypes()
-        active_shared_state = self._load_active_shared_state()
-        scoring_embedding = (
-            active_shared_state.apply(base_embedding)
-            if active_shared_state is not None
-            else base_embedding
-        )
+        adapter_context = self._load_adapter_context()
+        scoring_embedding = adapter_context.apply_for_inference(base_embedding)
         category_scores = self.scoring_service.score(
             scoring_embedding,
             prototypes,
-            shared_state=active_shared_state,
+            shared_state=adapter_context.shared_state,
         )
 
         scored_event = ScoredEvent(
@@ -127,20 +122,12 @@ class InferencePipelineService:
                 "scorer_backend_name": self.scoring_service.backend_name,
                 "was_translated": needs_translation,
             }
-            if active_shared_state is not None:
-                metadata.update(
-                    {
-                        "adapter_kind": active_shared_state.adapter_kind,
-                        "shared_model_revision": active_shared_state.model_revision,
-                    }
-                )
+            metadata.update(adapter_context.query_buffer_metadata())
             query_buffer_record = build_query_buffer_record(
                 event=event,
                 scored_event=scored_event,
-                model_revision=(
-                    active_shared_state.model_revision
-                    if active_shared_state is not None
-                    else self.model_revision
+                model_revision=adapter_context.model_revision_for_record(
+                    self.model_revision
                 ),
                 confidence_kind=self.scoring_service.confidence_kind,
                 metadata=metadata,
@@ -159,10 +146,13 @@ class InferencePipelineService:
         """여러 QueryEvent를 순서대로 처리한다."""
         return [self.process(event) for event in events]
 
-    def _load_active_shared_state(self) -> SharedAdapterState | None:
-        if self.shared_adapter_provider is None:
-            return None
-        return self.shared_adapter_provider.get_active_state()
+    def _load_adapter_context(self) -> AdapterRuntimeContext:
+        if self.adapter_composition_service is not None:
+            return self.adapter_composition_service.get_context()
+        return AdapterCompositionService(
+            shared_adapter_provider=self.shared_adapter_provider,
+            local_adapter_provider=self.local_adapter_provider,
+        ).get_context()
 
 
 def _get_translation_model_id(service: TranslationService) -> str | None:
