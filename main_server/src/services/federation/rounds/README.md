@@ -44,6 +44,8 @@
   - training task 생성, aggregation 결과 publication
 - `round_lifecycle_service.py`
   - open/update/finalize orchestration
+- `active_manifest_service.py`
+  - 서버 current `ModelManifest` 저장/활성화
 - `families/`
   - adapter family별 state/update/payload 해석과 aggregation wiring
 - `aggregation/`

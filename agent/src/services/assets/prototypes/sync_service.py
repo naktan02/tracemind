@@ -12,6 +12,7 @@ from agent.src.infrastructure.repositories.prototype_pack_repository import (
 from shared.src.contracts.prototype_contracts import (
     CurrentPrototypePackResponse,
     PrototypePackActivationPointer,
+    PrototypePackPayload,
 )
 
 
@@ -43,3 +44,22 @@ class PrototypeSyncService:
         current = CurrentPrototypePackResponse.model_validate(payload)
         self.repository.save_pack(current.pack)
         return self.repository.set_active(current.pack.prototype_version)
+
+    def pull_version(
+        self,
+        *,
+        server_base_url: str,
+        prototype_version: str,
+    ) -> PrototypePackActivationPointer:
+        with self._client(server_base_url) as client:
+            response = client.get(f"/api/v1/prototypes/{prototype_version}")
+            if response.status_code == 404:
+                raise FileNotFoundError(
+                    f"Prototype pack not found on server: {prototype_version}"
+                )
+            response.raise_for_status()
+            payload = response.json()
+
+        pack = PrototypePackPayload.model_validate(payload)
+        self.repository.save_pack(pack)
+        return self.repository.set_active(pack.prototype_version)

@@ -33,6 +33,7 @@ from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
 )
+from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     ClientMetricKeys,
@@ -55,7 +56,7 @@ class LocalTrainingResult:
 
     selection_result: PseudoLabelSelectionResult
     update_envelope: TrainingUpdateEnvelope | None = None
-    update_payload: SharedAdapterUpdate | None = None
+    update_payload: SharedAdapterUpdatePayload | None = None
 
 
 @dataclass(slots=True)
@@ -152,11 +153,12 @@ class LocalTrainingService:
             update=update_payload,
             training_task=request.training_task,
         )
+        submission_payload = backend.to_payload(protected_update.update)
 
         update_id = f"update_{request.training_task.round_id}_{uuid4().hex[:12]}"
-        payload_path = self.repository.save_shared_adapter_update(
+        self.repository.save_shared_adapter_update(
             update_id,
-            backend.to_payload(protected_update.update),
+            submission_payload,
         )
         update_envelope = TrainingUpdateEnvelope(
             schema_version="training_update_envelope.v1",
@@ -166,7 +168,7 @@ class LocalTrainingService:
             model_id=request.model_manifest.model_id,
             base_model_revision=request.model_manifest.model_revision,
             training_scope=request.training_task.training_scope,
-            payload_ref=str(payload_path),
+            payload_ref=f"client-submission::{update_id}",
             payload_format=backend.payload_format,
             example_count=len(accepted_examples),
             client_metrics=self._build_client_metrics(
@@ -187,7 +189,7 @@ class LocalTrainingService:
         return LocalTrainingResult(
             selection_result=selection_result,
             update_envelope=update_envelope,
-            update_payload=protected_update.update,
+            update_payload=submission_payload,
         )
 
     def _resolve_backend(

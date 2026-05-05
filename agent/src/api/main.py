@@ -36,6 +36,12 @@ from agent.src.infrastructure.repositories.wellbeing_snapshot_repository import 
 )
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
 from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from agent.src.services.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.services.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRuntimeService,
@@ -108,6 +114,8 @@ def create_app(
     wellbeing_settings_repository: WellbeingSettingsRepository | None = None,
     prototype_runtime_service: PrototypeRuntimeService | None = None,
     prototype_sync_service: PrototypeSyncService | None = None,
+    shared_adapter_runtime_service: SharedAdapterRuntimeService | None = None,
+    shared_adapter_sync_service: SharedAdapterSyncService | None = None,
     child_support_coach_service: ChildSupportCoachService | None = None,
     child_support_llm_provider: ChildSupportLlmProvider | None = None,
     round_client_factory: RoundClientFactory | None = None,
@@ -149,6 +157,12 @@ def create_app(
         prototype_runtime_service or PrototypeRuntimeService()
     )
     app.state.prototype_sync_service = prototype_sync_service or PrototypeSyncService()
+    app.state.shared_adapter_runtime_service = (
+        shared_adapter_runtime_service or SharedAdapterRuntimeService()
+    )
+    app.state.shared_adapter_sync_service = (
+        shared_adapter_sync_service or SharedAdapterSyncService()
+    )
     app.state.wellbeing_projection_service = WellbeingSignalProjectionService(
         scored_event_repository=app.state.scored_event_repository,
         snapshot_repository=app.state.wellbeing_snapshot_repository,

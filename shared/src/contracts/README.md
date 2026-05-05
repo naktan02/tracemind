@@ -21,6 +21,17 @@
 
 ## 주요 파일
 
+### `model_contracts.py`
+
+서버가 배포하는 전역 model/shared-adapter manifest를 정의한다.
+
+- `ModelManifest`
+  - `model_id`, `model_revision`, `artifact_ref`, `prototype_version`,
+    `training_scope`를 묶은 현재 전역 shared artifact 설명
+  - main server가 revision별 manifest와 active pointer를 소유한다
+  - round open 요청자는 manifest를 제출하지 않고, 서버 current manifest를
+    기준으로 training task가 생성된다
+
 ### `adapter_contracts.py`
 
 Shared adapter 상태와 update payload를 정의한다.
@@ -33,6 +44,11 @@ Shared adapter 상태와 update payload를 정의한다.
 - `ClassifierHeadAdapterStatePayload`
   - classifier-head concrete 구현
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
+- `CurrentSharedAdapterStatePayload`
+  - 서버 current `ModelManifest`와 실제 `SharedAdapterStatePayload`를 함께
+    내려주는 agent sync payload
+  - `artifact_ref`는 서버 내부 참조일 수 있으므로 agent는 이 payload의
+    inline `state`를 로컬 캐시에 저장해 사용한다
 - `SharedAdapterUpdatePayload`
   - agent가 서버로 올리는 shared adapter update 공통 필드
 - `DiagonalScaleAdapterUpdatePayload`
@@ -51,8 +67,12 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
   - 서버가 agent에 내려주는 학습 task
   - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
 - `TrainingUpdateEnvelopePayload`
-  - agent가 올리는 update 메타데이터 봉투
-  - 실제 파라미터 payload는 `payload_ref`가 가리키는 별도 파일에 있음
+  - 서버가 수락/저장한 update 메타데이터 봉투
+  - `payload_ref`는 서버가 저장한 update payload 참조를 가리킴
+- `TrainingUpdateSubmissionPayload`
+  - agent가 서버에 제출하는 update 요청
+  - `envelope`과 inline `update_payload`를 함께 보내며, 서버는 payload를
+    server-owned storage에 저장한 뒤 envelope의 `payload_ref`를 덮어씀
 - `DecisionFeedbackSignalPayload`
   - pseudo-label, 사용자 피드백, 후속 결과 등 로컬 학습용 signal 단위 계약
 

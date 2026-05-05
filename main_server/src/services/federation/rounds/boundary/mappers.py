@@ -12,10 +12,9 @@ from shared.src.contracts.training_contracts import (
 
 from .models import (
     RoundFinalizeRequest,
-    RoundOpenRequest,
+    RoundOpenDraftRequest,
     RoundPublicationSummary,
     RoundRecord,
-    RoundTaskConfig,
     RoundUpdateAcceptance,
 )
 from .payloads import (
@@ -132,11 +131,11 @@ def round_record_from_payload(payload: RoundRecordPayload) -> RoundRecord:
     )
 
 
-def round_open_request_from_payload(
+def round_open_draft_request_from_payload(
     payload: RoundOpenRequestPayload,
-) -> RoundOpenRequest:
-    """API payload를 domain open request로 변환한다."""
-    return RoundTaskConfig(
+) -> RoundOpenDraftRequest:
+    """API payload를 active manifest 없는 open draft로 변환한다."""
+    return RoundOpenDraftRequest(
         task_type=payload.task_type,
         local_epochs=payload.local_epochs,
         batch_size=payload.batch_size,
@@ -157,8 +156,6 @@ def round_open_request_from_payload(
         gradient_clip_norm=payload.gradient_clip_norm,
         deadline_at=payload.deadline_at,
         notes=payload.notes,
-    ).to_round_open_request(
-        active_manifest=model_manifest_from_payload(payload.active_manifest),
         round_id=payload.round_id,
         task_id=payload.task_id,
     )

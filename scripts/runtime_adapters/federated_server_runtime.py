@@ -8,6 +8,9 @@ from pathlib import Path
 from typing import Any
 
 from main_server.src.infrastructure.repositories import (
+    model_manifest_repository as model_manifest_repo,
+)
+from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as build_state_repo,
 )
 from main_server.src.infrastructure.repositories import (
@@ -18,6 +21,9 @@ from main_server.src.infrastructure.repositories import (
 )
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as adapter_state_repo,
+)
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as adapter_update_repo,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.assets.prototypes import (
@@ -38,9 +44,12 @@ from main_server.src.services.federation.assets.prototypes import (
 from main_server.src.services.federation.assets.prototypes import (
     stored_input_rebuild_service as stored_rebuild_service_module,
 )
+from main_server.src.services.federation.rounds.active_manifest_service import (
+    ActiveModelManifestService,
+)
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
-    RoundOpenRequest,
+    RoundOpenDraftRequest,
     RoundRecord,
     RoundTaskConfig,
 )
@@ -57,6 +66,7 @@ from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadState,
+    SharedAdapterUpdatePayload,
     VectorAdapterState,
 )
 from shared.src.contracts.model_contracts import ModelManifest
@@ -65,7 +75,10 @@ from shared.src.contracts.prototype_contracts import (
     extract_category_centroids,
     load_prototype_pack_payload,
 )
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import (
+    TrainingUpdateEnvelope,
+    make_training_update_submission,
+)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
@@ -144,6 +157,14 @@ class SimulationServerRuntime:
             round_repository=RoundRepository(
                 state_root=output_dir / "main_server" / "rounds"
             ),
+            update_payload_repository=adapter_update_repo.SharedAdapterUpdateRepository(
+                state_root=output_dir / "main_server" / "shared_adapter_updates"
+            ),
+            active_manifest_service=ActiveModelManifestService(
+                manifest_repository=model_manifest_repo.ModelManifestRepository(
+                    state_root=output_dir / "main_server" / "model_manifests"
+                )
+            ),
             round_manager_service=round_manager,
             prototype_rebuild_runtime_service=stored_rebuild_service,
         )
@@ -202,7 +223,15 @@ class SimulationServerRuntime:
 
         return self.state_repository.save_shared_adapter_state(state)
 
-    def open_round(self, request: RoundOpenRequest) -> RoundRecord:
+    def activate_manifest(self, manifest: ModelManifest) -> ModelManifest:
+        """simulation bootstrap manifest를 main_server current로 활성화한다."""
+
+        return self.lifecycle_service.active_manifest_service.save_and_activate(
+            manifest,
+            activated_at=manifest.published_at,
+        )
+
+    def open_round(self, request: RoundOpenDraftRequest) -> RoundRecord:
         """main_server round lifecycle을 통해 round를 연다."""
 
         return self.lifecycle_service.open_round(request)
@@ -211,10 +240,17 @@ class SimulationServerRuntime:
         self,
         round_id: str,
         update_envelope: TrainingUpdateEnvelope,
+        update_payload: SharedAdapterUpdatePayload,
     ) -> None:
         """main_server round lifecycle에 client update를 제출한다."""
 
-        self.lifecycle_service.accept_update(round_id, update_envelope)
+        self.lifecycle_service.accept_update_submission(
+            round_id,
+            make_training_update_submission(
+                envelope=update_envelope,
+                update_payload=update_payload,
+            ),
+        )
 
     def finalize_round(
         self,
@@ -446,7 +482,19 @@ def build_round_open_request(
 ) -> Any:
     """simulation task template을 canonical round open request로 변환한다."""
 
-    return training_task_config.to_round_open_request(
-        active_manifest=active_manifest,
+    del active_manifest
+    return RoundOpenDraftRequest(
         round_id=round_id,
+        task_type=training_task_config.task_type,
+        local_epochs=training_task_config.local_epochs,
+        batch_size=training_task_config.batch_size,
+        learning_rate=training_task_config.learning_rate,
+        max_steps=training_task_config.max_steps,
+        objective_config=training_task_config.objective_config,
+        selection_policy=training_task_config.selection_policy,
+        secure_aggregation=training_task_config.secure_aggregation,
+        min_required_examples=training_task_config.min_required_examples,
+        gradient_clip_norm=training_task_config.gradient_clip_norm,
+        deadline_at=training_task_config.deadline_at,
+        notes=training_task_config.notes,
     )

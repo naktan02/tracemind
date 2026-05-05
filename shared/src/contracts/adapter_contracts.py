@@ -23,24 +23,29 @@ from __future__ import annotations
 
 import json
 import math
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import BaseModel, ConfigDict, Field, model_validator
+from pydantic import BaseModel, ConfigDict, Field, SerializeAsAny, model_validator
 
 from .common_types import TrainingScope
+from .model_contracts import ModelManifestPayload
 
 VECTOR_ADAPTER_STATE_V1 = "vector_adapter_state.v1"
 VECTOR_ADAPTER_DELTA_V1 = "vector_adapter_delta.v1"
 CLASSIFIER_HEAD_STATE_V1 = "classifier_head_state.v1"
 CLASSIFIER_HEAD_DELTA_V1 = "classifier_head_delta.v1"
+CURRENT_SHARED_ADAPTER_STATE_V1 = "current_shared_adapter_state.v1"
 VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
 VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
 ClassifierHeadStateSchemaVersion: TypeAlias = Literal["classifier_head_state.v1"]
 ClassifierHeadDeltaSchemaVersion: TypeAlias = Literal["classifier_head_delta.v1"]
+CurrentSharedAdapterStateSchemaVersion: TypeAlias = Literal[
+    "current_shared_adapter_state.v1"
+]
 
 
 class AdapterKind(StrEnum):
@@ -401,6 +406,51 @@ class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
         return math.sqrt(squared_weight_norm + squared_bias_norm)
 
 
+class CurrentSharedAdapterStatePayload(BaseModel):
+    """서버 current manifest와 실제 shared adapter state를 함께 내려주는 payload.
+
+    `ModelManifest.artifact_ref`는 서버 내부 참조일 수 있으므로 agent가 직접
+    해석하지 않는다. Agent는 이 payload의 `state`를 로컬 캐시에 저장하고
+    `manifest`를 같은 revision의 메타데이터로 함께 보관한다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: CurrentSharedAdapterStateSchemaVersion = Field(
+        default=CURRENT_SHARED_ADAPTER_STATE_V1,
+        description="Current shared adapter state 응답 contract 버전.",
+    )
+    manifest: ModelManifestPayload = Field(
+        description="서버가 current로 활성화한 model manifest."
+    )
+    state: SerializeAsAny[SharedAdapterStatePayload] = Field(
+        description="manifest revision이 가리키는 실제 shared adapter state."
+    )
+
+    @model_validator(mode="before")
+    @classmethod
+    def _parse_state_payload(cls, source: object) -> object:
+        if not isinstance(source, Mapping):
+            return source
+        data = dict(source)
+        raw_state = data.get("state")
+        if isinstance(raw_state, Mapping):
+            data["state"] = parse_shared_adapter_state_payload(raw_state)
+        return data
+
+    @model_validator(mode="after")
+    def _validate_manifest_state_alignment(
+        self,
+    ) -> "CurrentSharedAdapterStatePayload":
+        if self.manifest.model_id != self.state.model_id:
+            raise ValueError("Current shared state model_id must match manifest.")
+        if self.manifest.model_revision != self.state.model_revision:
+            raise ValueError("Current shared state model_revision must match manifest.")
+        if self.manifest.training_scope != self.state.training_scope:
+            raise ValueError("Current shared state training_scope must match manifest.")
+        return self
+
+
 VectorAdapterStatePayload = DiagonalScaleAdapterStatePayload
 VectorAdapterDeltaPayload = DiagonalScaleAdapterUpdatePayload
 VectorAdapterState = VectorAdapterStatePayload
@@ -458,7 +508,16 @@ def _load_payload_data(path: Path) -> dict[str, object]:
 
 def load_shared_adapter_state_payload(path: Path) -> SharedAdapterStatePayload:
     """JSON 파일에서 shared adapter state payload를 읽는다."""
-    data = _load_payload_data(path)
+    return parse_shared_adapter_state_payload(_load_payload_data(path))
+
+
+def parse_shared_adapter_state_payload(
+    source: Mapping[str, object] | SharedAdapterStatePayload,
+) -> SharedAdapterStatePayload:
+    """mapping 또는 payload instance를 registered state payload로 정규화한다."""
+    if isinstance(source, SharedAdapterStatePayload):
+        return source
+    data = dict(source)
     adapter_kind = (
         str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
     )
@@ -478,7 +537,16 @@ def dump_shared_adapter_state_payload(
 
 def load_shared_adapter_update_payload(path: Path) -> SharedAdapterUpdatePayload:
     """JSON 파일에서 shared adapter update payload를 읽는다."""
-    data = _load_payload_data(path)
+    return parse_shared_adapter_update_payload(_load_payload_data(path))
+
+
+def parse_shared_adapter_update_payload(
+    source: Mapping[str, object] | SharedAdapterUpdatePayload,
+) -> SharedAdapterUpdatePayload:
+    """mapping 또는 payload instance를 registered update payload로 정규화한다."""
+    if isinstance(source, SharedAdapterUpdatePayload):
+        return source
+    data = dict(source)
     adapter_kind = (
         str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
     )
@@ -648,6 +716,19 @@ def make_classifier_head_delta_payload(
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
         label_counts=label_counts or {},
+    )
+
+
+def make_current_shared_adapter_state_payload(
+    *,
+    manifest: ModelManifestPayload,
+    state: SharedAdapterStatePayload,
+) -> CurrentSharedAdapterStatePayload:
+    """서버 current manifest/state pair payload를 만든다."""
+    return CurrentSharedAdapterStatePayload(
+        schema_version=CURRENT_SHARED_ADAPTER_STATE_V1,
+        manifest=manifest,
+        state=state,
     )
 
 

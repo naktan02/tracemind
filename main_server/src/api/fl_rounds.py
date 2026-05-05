@@ -7,11 +7,12 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 
 from main_server.src.services.federation.rounds.boundary.mappers import (
+    model_manifest_from_payload,
+    model_manifest_to_payload,
     round_finalize_request_from_payload,
-    round_open_request_from_payload,
+    round_open_draft_request_from_payload,
     round_record_to_payload,
     round_update_acceptance_to_payload,
-    training_update_from_payload,
 )
 from main_server.src.services.federation.rounds.boundary.payloads import (
     RoundFinalizeRequestPayload,
@@ -24,7 +25,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
     RoundValidationError,
 )
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelopePayload
+from shared.src.contracts.adapter_contracts import CurrentSharedAdapterStatePayload
+from shared.src.contracts.model_contracts import ModelManifestPayload
+from shared.src.contracts.training_contracts import TrainingUpdateSubmissionPayload
 
 router = APIRouter(prefix="/api/v1/fl/rounds", tags=["fl-rounds"])
 
@@ -59,6 +62,48 @@ def get_current_round(service: RoundServiceDep) -> RoundRecordPayload:
         ) from error
 
 
+@router.get("/active-manifest/current", response_model=ModelManifestPayload)
+def get_active_model_manifest(service: RoundServiceDep) -> ModelManifestPayload:
+    try:
+        return model_manifest_to_payload(
+            service.active_manifest_service.get_active_manifest()
+        )
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+
+@router.post(
+    "/active-manifest",
+    response_model=ModelManifestPayload,
+    status_code=status.HTTP_201_CREATED,
+)
+def activate_model_manifest(
+    request: ModelManifestPayload,
+    service: RoundServiceDep,
+) -> ModelManifestPayload:
+    return model_manifest_to_payload(
+        service.active_manifest_service.save_and_activate(
+            model_manifest_from_payload(request)
+        )
+    )
+
+
+@router.get("/active-state/current", response_model=CurrentSharedAdapterStatePayload)
+def get_active_shared_adapter_state(
+    service: RoundServiceDep,
+) -> CurrentSharedAdapterStatePayload:
+    try:
+        return service.get_current_shared_adapter_state()
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
+
+
 @router.post("", response_model=RoundRecordPayload, status_code=status.HTTP_201_CREATED)
 def open_round(
     request: RoundOpenRequestPayload,
@@ -66,8 +111,13 @@ def open_round(
 ) -> RoundRecordPayload:
     try:
         return round_record_to_payload(
-            service.open_round(round_open_request_from_payload(request))
+            service.open_round(round_open_draft_request_from_payload(request))
         )
+    except FileNotFoundError as error:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(error),
+        ) from error
     except RoundValidationError as error:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -98,12 +148,12 @@ def get_round(round_id: str, service: RoundServiceDep) -> RoundRecordPayload:
 )
 def accept_update(
     round_id: str,
-    request: TrainingUpdateEnvelopePayload,
+    request: TrainingUpdateSubmissionPayload,
     service: RoundServiceDep,
 ) -> RoundUpdateAcceptancePayload:
     try:
         return round_update_acceptance_to_payload(
-            service.accept_update(round_id, training_update_from_payload(request))
+            service.accept_update_submission(round_id, request)
         )
     except FileNotFoundError as error:
         raise HTTPException(

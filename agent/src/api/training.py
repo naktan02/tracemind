@@ -12,6 +12,13 @@ from agent.src.infrastructure.repositories.scored_event_repository import (
     ScoredEventRepository,
 )
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.prototypes.sync_service import PrototypeSyncService
+from agent.src.services.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from agent.src.services.assets.shared_adapters.sync_service import (
+    SharedAdapterSyncService,
+)
 from agent.src.services.federation.rounds.round_client import RoundClient
 from agent.src.services.federation.rounds.runtime_service import (
     FederationRunResult,
@@ -105,6 +112,39 @@ def get_prototype_runtime_service(request: Request) -> PrototypeRuntimeService:
     return service
 
 
+def get_prototype_sync_service(request: Request) -> PrototypeSyncService:
+    """app.state에서 PrototypeSyncService를 읽는다."""
+    service = getattr(request.app.state, "prototype_sync_service", None)
+    if service is None:
+        raise RuntimeError(
+            "PrototypeSyncService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.prototype_sync_service를 설정하세요."
+        )
+    return service
+
+
+def get_shared_adapter_runtime_service(request: Request) -> SharedAdapterRuntimeService:
+    """app.state에서 SharedAdapterRuntimeService를 읽는다."""
+    service = getattr(request.app.state, "shared_adapter_runtime_service", None)
+    if service is None:
+        raise RuntimeError(
+            "SharedAdapterRuntimeService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.shared_adapter_runtime_service를 설정하세요."
+        )
+    return service
+
+
+def get_shared_adapter_sync_service(request: Request) -> SharedAdapterSyncService:
+    """app.state에서 SharedAdapterSyncService를 읽는다."""
+    service = getattr(request.app.state, "shared_adapter_sync_service", None)
+    if service is None:
+        raise RuntimeError(
+            "SharedAdapterSyncService가 app.state에 설정되지 않았습니다. "
+            "앱 생성 시 app.state.shared_adapter_sync_service를 설정하세요."
+        )
+    return service
+
+
 def get_round_client_factory(request: Request) -> RoundClientFactory:
     """app.state에서 RoundClient factory를 읽는다."""
     factory = getattr(request.app.state, "round_client_factory", None)
@@ -137,6 +177,18 @@ ProtoServiceDep = Annotated[
     PrototypeRuntimeService,
     Depends(get_prototype_runtime_service),
 ]
+PrototypeSyncServiceDep = Annotated[
+    PrototypeSyncService,
+    Depends(get_prototype_sync_service),
+]
+SharedAdapterRuntimeServiceDep = Annotated[
+    SharedAdapterRuntimeService,
+    Depends(get_shared_adapter_runtime_service),
+]
+SharedAdapterSyncServiceDep = Annotated[
+    SharedAdapterSyncService,
+    Depends(get_shared_adapter_sync_service),
+]
 RoundClientFactoryDep = Annotated[RoundClientFactory, Depends(get_round_client_factory)]
 FederationRuntimeFactoryDep = Annotated[
     FederationRuntimeServiceFactory,
@@ -158,6 +210,9 @@ def run_current_task(
     request: RunCurrentTaskRequest,
     repo: ScoredEventRepoDep,
     proto_service: ProtoServiceDep,
+    proto_sync_service: PrototypeSyncServiceDep,
+    shared_adapter_runtime_service: SharedAdapterRuntimeServiceDep,
+    shared_adapter_sync_service: SharedAdapterSyncServiceDep,
     round_client_factory: RoundClientFactoryDep,
     runtime_factory: FederationRuntimeFactoryDep,
 ) -> RunCurrentTaskResponse:
@@ -185,14 +240,44 @@ def run_current_task(
                 message=str(error),
             )
 
+        try:
+            shared_adapter_sync_service.pull_current(
+                server_base_url=request.server_base_url
+            )
+            active_manifest = shared_adapter_runtime_service.get_active_manifest()
+            active_state = shared_adapter_runtime_service.get_active_state()
+        except FileNotFoundError as error:
+            return RunCurrentTaskResponse(
+                status="no_active_shared_state",
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=str(error),
+            )
+        if active_manifest.model_revision != task_payload.model_revision:
+            return RunCurrentTaskResponse(
+                status="stale_shared_state",
+                round_id=task_payload.round_id,
+                task_id=task_payload.task_id,
+                message=(
+                    "로컬 shared adapter revision이 task revision과 다릅니다: "
+                    f"{active_manifest.model_revision} != "
+                    f"{task_payload.model_revision}"
+                ),
+            )
+
         stored_events = repo.get_recent_stored(days=request.scored_event_days)
         try:
+            proto_sync_service.pull_version(
+                server_base_url=request.server_base_url,
+                prototype_version=active_manifest.prototype_version,
+            )
             active_pack = proto_service.get_active_pack()
         except FileNotFoundError:
             training_examples = ()
         else:
             scoring_service = ScoringService.from_objective_config(
-                task_payload.objective_config
+                task_payload.objective_config,
+                shared_state=active_state,
             )
             training_example_service = TrainingExampleService.from_objective_config(
                 task_payload.objective_config
@@ -203,6 +288,7 @@ def run_current_task(
                         stored_events=stored_events,
                         prototype_pack=active_pack,
                         scoring_service=scoring_service,
+                        adapter_state=active_state,
                     )
                 )
             )
@@ -210,7 +296,7 @@ def run_current_task(
         service = runtime_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(
             training_examples=training_examples,
-            model_manifest=None,
+            model_manifest=active_manifest,
             agent_id=request.agent_id,
             task_payload=task_payload,
         )

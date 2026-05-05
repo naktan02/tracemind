@@ -18,7 +18,8 @@ from shared.src.contracts.model_contracts import ModelManifest, make_embedding_m
 from shared.src.contracts.training_contracts import (
     TrainingTask,
     TrainingTaskPayload,
-    TrainingUpdateEnvelopePayload,
+    TrainingUpdateSubmissionPayload,
+    make_training_update_submission,
 )
 
 
@@ -123,8 +124,8 @@ class FederationRuntimeService:
                 ),
             )
 
-        envelope_payload = _envelope_to_payload(local_result)
-        self.round_client.upload_update(round_id, envelope_payload)
+        submission_payload = _result_to_submission(local_result)
+        self.round_client.upload_update(round_id, submission_payload)
         self._completed_task_ids.add(task_id)
 
         return FederationRunResult(
@@ -142,14 +143,21 @@ class FederationRuntimeService:
         self._completed_task_ids.clear()
 
 
-def _envelope_to_payload(result: LocalTrainingResult) -> TrainingUpdateEnvelopePayload:
-    """LocalTrainingResult에서 서버 업로드용 payload를 만든다."""
+def _result_to_submission(
+    result: LocalTrainingResult,
+) -> TrainingUpdateSubmissionPayload:
+    """LocalTrainingResult에서 서버 업로드용 submission payload를 만든다."""
     envelope = result.update_envelope
-    if envelope is None:
+    update_payload = result.update_payload
+    if envelope is None or update_payload is None:
         raise ValueError(
-            "update_envelope이 없는 result를 payload로 변환할 수 없습니다."
+            "update_envelope/update_payload가 없는 result를 submission으로 "
+            "변환할 수 없습니다."
         )
-    return envelope
+    return make_training_update_submission(
+        envelope=envelope,
+        update_payload=update_payload,
+    )
 
 
 def _task_from_payload(payload: TrainingTaskPayload) -> TrainingTask:

@@ -6,6 +6,9 @@ from dataclasses import dataclass, field, replace
 from typing import TYPE_CHECKING
 from uuid import uuid4
 
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
+)
 from main_server.src.services.federation.rounds.acceptance.errors import (
     RoundConflictError,
     RoundValidationError,
@@ -16,8 +19,12 @@ from main_server.src.services.federation.rounds.acceptance.models import (
 from main_server.src.services.federation.rounds.acceptance.policies import (
     StrictRoundUpdateAcceptancePolicy,
 )
+from main_server.src.services.federation.rounds.active_manifest_service import (
+    ActiveModelManifestService,
+)
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
+    RoundOpenDraftRequest,
     RoundOpenRequest,
     RoundPublicationSummary,
     RoundRecord,
@@ -28,7 +35,11 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
 )
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.contracts.adapter_contracts import (
+    CurrentSharedAdapterStatePayload,
+    make_current_shared_adapter_state_payload,
+)
+from shared.src.contracts.training_contracts import TrainingUpdateSubmission
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
@@ -47,6 +58,10 @@ if TYPE_CHECKING:
         RoundRepository,
     )
 
+SharedAdapterUpdateRepository = (
+    shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+
 
 def _build_round_repository() -> RoundRepository:
     from main_server.src.infrastructure.repositories.round_repository import (
@@ -56,11 +71,25 @@ def _build_round_repository() -> RoundRepository:
     return RoundRepository()
 
 
+def _build_update_payload_repository() -> SharedAdapterUpdateRepository:
+    return SharedAdapterUpdateRepository()
+
+
+def _build_active_manifest_service() -> ActiveModelManifestService:
+    return ActiveModelManifestService()
+
+
 @dataclass(slots=True)
 class RoundLifecycleService:
     """active round open/update/finalize 전이를 조정한다."""
 
     round_repository: RoundRepository = field(default_factory=_build_round_repository)
+    update_payload_repository: SharedAdapterUpdateRepository = field(
+        default_factory=_build_update_payload_repository
+    )
+    active_manifest_service: ActiveModelManifestService = field(
+        default_factory=_build_active_manifest_service
+    )
     round_manager_service: RoundManagerService = field(
         default_factory=RoundManagerService
     )
@@ -75,7 +104,7 @@ class RoundLifecycleService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
-    def open_round(self, request: RoundOpenRequest) -> RoundRecord:
+    def open_round(self, request: RoundOpenDraftRequest) -> RoundRecord:
         active_pointer = self.round_repository.load_active_pointer()
         if active_pointer is not None:
             active_round = self.round_repository.load_round(active_pointer.round_id)
@@ -85,19 +114,25 @@ class RoundLifecycleService:
                 )
             self.round_repository.clear_active(expected_round_id=active_round.round_id)
 
-        self._validate_open_request(request)
+        active_manifest = self.active_manifest_service.get_active_manifest()
         round_id = request.round_id or f"round_{uuid4().hex[:8]}"
         if self.round_repository.has_round(round_id):
             raise RoundConflictError(f"Round already exists: {round_id}")
+        resolved_request = request.to_round_open_request(
+            active_manifest=active_manifest,
+            round_id=round_id,
+            task_id=request.task_id,
+        )
+        self._validate_open_request(resolved_request)
 
         created_at = self.clock.now()
         training_task = self.round_manager_service.create_training_task(
-            replace(request, round_id=round_id)
+            resolved_request
         )
         record = RoundRecord(
             round_id=round_id,
             status=RoundStatus.OPEN,
-            active_manifest=request.active_manifest,
+            active_manifest=active_manifest,
             training_task=training_task,
             created_at=created_at,
             updated_at=created_at,
@@ -115,27 +150,52 @@ class RoundLifecycleService:
             raise FileNotFoundError("No active round is registered.")
         return self.round_repository.load_round(active_pointer.round_id)
 
-    def accept_update(
+    def get_current_shared_adapter_state(self) -> CurrentSharedAdapterStatePayload:
+        """서버 current manifest와 실제 shared adapter state를 함께 반환한다."""
+
+        active_manifest = self.active_manifest_service.get_active_manifest()
+        artifact_repository = self.round_manager_service.artifact_repository
+        state_payload = artifact_repository.load_shared_adapter_state_from_ref(
+            active_manifest.artifact_ref
+        )
+        return make_current_shared_adapter_state_payload(
+            manifest=active_manifest,
+            state=state_payload,
+        )
+
+    def accept_update_submission(
         self,
         round_id: str,
-        update: TrainingUpdateEnvelope,
+        submission: TrainingUpdateSubmission,
     ) -> RoundUpdateAcceptance:
+        """inline update payload submission을 서버 저장소에 저장하고 수락한다."""
+
         record = self.round_repository.load_round(round_id)
         if record.status != RoundStatus.OPEN:
             raise RoundConflictError(f"Round is not open: {round_id}")
 
         accepted_at = self.clock.now()
-        decoded_update = self.secure_update_codec.decode_submission(
-            envelope=update,
+        decoded_envelope = self.secure_update_codec.decode_submission(
+            envelope=submission.envelope,
             training_task=record.training_task,
+        )
+        server_payload_path = self.update_payload_repository.path_for_update(
+            decoded_envelope.update_id
+        )
+        server_owned_envelope = decoded_envelope.model_copy(
+            update={"payload_ref": str(server_payload_path)}
         )
         decision = self.update_acceptance_policy.evaluate(
             record=record,
-            update=decoded_update,
+            update=server_owned_envelope,
             accepted_at=accepted_at,
         )
         updated_record = record
         if not decision.is_idempotent:
+            self.update_payload_repository.save_shared_adapter_update(
+                decision.update_envelope.update_id,
+                submission.update_payload,
+            )
             updated_record = replace(
                 record,
                 updates=record.updates + (decision.update_envelope,),
@@ -209,6 +269,10 @@ class RoundLifecycleService:
         )
         self.round_repository.save_round(finalized_record)
         self.round_repository.clear_active(expected_round_id=round_id)
+        self.active_manifest_service.save_and_activate(
+            publication.next_manifest,
+            activated_at=finalized_at,
+        )
         return finalized_record
 
     @staticmethod

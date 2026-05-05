@@ -5,13 +5,22 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from main_server.src.infrastructure.repositories import (
+    model_manifest_repository as model_manifest_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.services.federation.rounds.acceptance.models import (
     RoundUpdateAcceptancePolicy,
 )
 from main_server.src.services.federation.rounds.acceptance.policies import (
     StrictRoundUpdateAcceptancePolicy,
+)
+from main_server.src.services.federation.rounds.active_manifest_service import (
+    ActiveModelManifestService,
 )
 from main_server.src.services.federation.rounds.families.registry import (
     build_shared_adapter_round_family,
@@ -38,6 +47,11 @@ if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
     )
+
+SharedAdapterUpdateRepository = (
+    shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
 
 
 def build_round_manager_service_from_config(
@@ -71,6 +85,9 @@ def build_round_lifecycle_service_from_config(
     config: ServerRoundRuntimeConfig,
     *,
     round_repository: RoundRepository | None = None,
+    update_payload_repository: SharedAdapterUpdateRepository | None = None,
+    model_manifest_repository: ModelManifestRepository | None = None,
+    active_manifest_service: ActiveModelManifestService | None = None,
     artifact_repository: (
         shared_adapter_state_repository_module.SharedAdapterStateRepository | None
     ) = None,
@@ -89,6 +106,18 @@ def build_round_lifecycle_service_from_config(
     effective_clock = clock or SystemUtcClock()
     return RoundLifecycleService(
         round_repository=round_repository or RoundRepository(),
+        update_payload_repository=(
+            update_payload_repository or SharedAdapterUpdateRepository()
+        ),
+        active_manifest_service=(
+            active_manifest_service
+            or ActiveModelManifestService(
+                manifest_repository=(
+                    model_manifest_repository or ModelManifestRepository()
+                ),
+                clock=effective_clock,
+            )
+        ),
         round_manager_service=build_round_manager_service_from_config(
             config,
             artifact_repository=artifact_repository,

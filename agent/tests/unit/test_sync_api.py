@@ -14,7 +14,15 @@ from agent.src.api.main import app
 from agent.src.infrastructure.repositories.prototype_pack_repository import (
     PrototypePackRepository,
 )
+from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
+    SharedAdapterStateRepository,
+)
 from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntimeService
+from agent.src.services.assets.shared_adapters.runtime_service import (
+    SharedAdapterRuntimeService,
+)
+from shared.src.contracts.adapter_contracts import make_identity_state_payload
+from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 
 
@@ -54,6 +62,30 @@ def test_sync_api_reads_current_local_pack(tmp_path: Path) -> None:
     assert response.prototype_version == payload.prototype_version
 
 
+def test_sync_api_reads_current_local_shared_adapter_state(tmp_path: Path) -> None:
+    repository = SharedAdapterStateRepository(state_root=tmp_path / "shared_states")
+    repository.save_current(
+        manifest=make_embedding_manifest(
+            model_id="model",
+            model_revision="rev_001",
+            prototype_version="proto_001",
+            artifact_ref="/server/state/rev_001.json",
+        ),
+        state=make_identity_state_payload(
+            model_id="model",
+            model_revision="rev_001",
+            embedding_dim=2,
+        ),
+    )
+
+    response = sync_api.get_current_local_shared_adapter_state(
+        runtime_service=SharedAdapterRuntimeService(repository=repository)
+    )
+
+    assert response.manifest.model_revision == "rev_001"
+    assert response.state.model_revision == "rev_001"
+
+
 def test_sync_api_maps_remote_errors_to_http_exceptions() -> None:
     sync_service = MagicMock()
     sync_service.pull_current.side_effect = RuntimeError("connection reset")
@@ -72,3 +104,5 @@ def test_sync_router_is_registered_on_agent_app() -> None:
 
     assert "/api/v1/sync/prototypes/current" in route_paths
     assert "/api/v1/sync/prototypes/pull" in route_paths
+    assert "/api/v1/sync/shared-adapters/current" in route_paths
+    assert "/api/v1/sync/shared-adapters/pull" in route_paths

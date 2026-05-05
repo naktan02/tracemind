@@ -49,11 +49,16 @@ class ScoringService:
         self,
         embedding: Sequence[float],
         prototypes: Mapping[str, Sequence[float] | Sequence[Sequence[float]]],
+        *,
+        shared_state: SharedAdapterState | None = None,
     ) -> dict[str, float]:
+        effective_shared_state = (
+            shared_state if shared_state is not None else self.shared_state
+        )
         return self.backend.score(
             embedding,
             prototypes,
-            shared_state=self.shared_state,
+            shared_state=effective_shared_state,
         )
 
     @property

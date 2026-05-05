@@ -56,12 +56,14 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | `IngestEventResponse` | `agent/src/api/ingest.py` |
 | `QueryEvent` | `shared/src/domain/entities/inference/events.py` |
 
-### Prototype Sync
+### Agent Sync
 
 | Method | Path | 역할 | Source |
 |---|---|---|---|
 | GET | `/api/v1/sync/prototypes/current` | agent local active prototype pack 조회 | `agent/src/api/sync.py` |
 | POST | `/api/v1/sync/prototypes/pull` | main server의 current prototype pack을 local로 pull | `agent/src/api/sync.py` |
+| GET | `/api/v1/sync/shared-adapters/current` | agent local active shared adapter state 조회 | `agent/src/api/sync.py` |
+| POST | `/api/v1/sync/shared-adapters/pull` | main server의 current shared adapter state를 local로 pull | `agent/src/api/sync.py` |
 
 ### Training
 
@@ -120,9 +122,12 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | Method | Path | 역할 | Source |
 |---|---|---|---|
 | GET | `/api/v1/fl/rounds/current` | 현재 active round 조회 | `main_server/src/api/fl_rounds.py` |
-| POST | `/api/v1/fl/rounds` | 새 round open | `main_server/src/api/fl_rounds.py` |
+| GET | `/api/v1/fl/rounds/active-manifest/current` | 서버 current model manifest 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/active-manifest` | 초기/수동 model manifest 활성화 | `main_server/src/api/fl_rounds.py` |
+| GET | `/api/v1/fl/rounds/active-state/current` | 서버 current manifest와 shared adapter state 조회 | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds` | 서버 current manifest 기준 새 round open | `main_server/src/api/fl_rounds.py` |
 | GET | `/api/v1/fl/rounds/{round_id}` | 특정 round 조회 | `main_server/src/api/fl_rounds.py` |
-| POST | `/api/v1/fl/rounds/{round_id}/updates` | agent update envelope accept | `main_server/src/api/fl_rounds.py` |
+| POST | `/api/v1/fl/rounds/{round_id}/updates` | agent update submission accept | `main_server/src/api/fl_rounds.py` |
 | POST | `/api/v1/fl/rounds/{round_id}/finalize` | round finalize와 aggregation/publication | `main_server/src/api/fl_rounds.py` |
 
 주요 payload:
@@ -132,7 +137,9 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `RoundOpenRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
-| `TrainingUpdateEnvelopePayload` | `shared/src/contracts/training_contracts.py` |
+| `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
+| `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contracts.py` |
+| `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
 
 ### Prototype Packs
 

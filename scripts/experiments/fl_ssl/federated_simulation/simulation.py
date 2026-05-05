@@ -181,6 +181,7 @@ def run_simulation(
         notes="round_active_pair_only bootstrap manifest",
     )
     save_model_manifest(output_dir, active_manifest)
+    server_runtime.activate_manifest(active_manifest)
 
     initial_validation = evaluate_rows(
         rows=validation_rows,
@@ -243,9 +244,12 @@ def run_simulation(
                 diagnostics_config=diagnostics_config,
             )
             if local_result.update_envelope is not None:
+                if local_result.update_payload is None:
+                    raise ValueError("Update envelope exists without update payload.")
                 server_runtime.accept_update(
                     round_id,
                     local_result.update_envelope,
+                    local_result.update_payload,
                 )
                 updates.append(local_result.update_envelope)
             client_summaries.append(

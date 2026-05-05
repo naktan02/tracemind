@@ -9,6 +9,9 @@ from pathlib import Path
 import pytest
 
 from main_server.src.infrastructure.repositories import (
+    model_manifest_repository as model_manifest_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
 from main_server.src.infrastructure.repositories import (
@@ -19,6 +22,9 @@ from main_server.src.infrastructure.repositories import (
 )
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
 from main_server.src.services.federation.assets.prototypes import (
@@ -46,6 +52,9 @@ from main_server.src.services.federation.rounds.acceptance.policies import (
 from main_server.src.services.federation.rounds.acceptance.trust_policies import (
     SingleSubmissionPerAgentTrustPolicy,
 )
+from main_server.src.services.federation.rounds.active_manifest_service import (
+    ActiveModelManifestService,
+)
 from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationResult,
     SharedAdapterAggregationBackend,
@@ -56,7 +65,7 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
 )
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
-    RoundOpenRequest,
+    RoundOpenDraftRequest,
     RoundStatus,
 )
 from main_server.src.services.federation.rounds.families.models import (
@@ -87,11 +96,14 @@ from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterUpdatePayload,
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
-    dump_shared_adapter_update_payload,
     register_shared_adapter_payload_family,
 )
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import (
+    TrainingUpdateEnvelope,
+    TrainingUpdateSubmission,
+    make_training_update_submission,
+)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
@@ -109,6 +121,10 @@ ReferenceRebuildPrototypePublicationStrategy = (
 )
 StoredReferencePrototypeRebuildService = (
     stored_rebuild_service_module.StoredReferencePrototypeRebuildService
+)
+ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
+SharedAdapterUpdateRepository = (
+    shared_adapter_update_repository_module.SharedAdapterUpdateRepository
 )
 
 
@@ -306,11 +322,24 @@ def _build_service(
     )
     service = RoundLifecycleService(
         round_repository=round_repository,
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=tmp_path / "server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=tmp_path / "model_manifests"
+            ),
+            clock=FixedClock(fixed_time),
+        ),
         round_manager_service=RoundManagerService(
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
         ),
         clock=FixedClock(fixed_time),
+    )
+    service.active_manifest_service.save_and_activate(
+        active_manifest,
+        activated_at=fixed_time,
     )
     return service, active_manifest, round_repository
 
@@ -323,23 +352,20 @@ def _build_update(
     update_id: str = "update_001",
     base_model_revision: str = "rev_000",
     agent_id: str | None = None,
-) -> TrainingUpdateEnvelope:
-    payload_path = tmp_path / "updates" / f"{update_id}.json"
-    dump_shared_adapter_update_payload(
-        payload_path,
-        DiagonalScaleAdapterUpdatePayload(
-            schema_version="vector_adapter_delta.v1",
-            adapter_kind="diagonal_scale",
-            model_id="tracemind-embed",
-            base_model_revision=base_model_revision,
-            training_scope="adapter_only",
-            dimension_deltas=[0.05, -0.02],
-            example_count=3,
-            mean_confidence=0.8,
-            mean_margin=0.15,
-        ),
+) -> TrainingUpdateSubmission:
+    del tmp_path
+    update_payload = DiagonalScaleAdapterUpdatePayload(
+        schema_version="vector_adapter_delta.v1",
+        adapter_kind="diagonal_scale",
+        model_id="tracemind-embed",
+        base_model_revision=base_model_revision,
+        training_scope="adapter_only",
+        dimension_deltas=[0.05, -0.02],
+        example_count=3,
+        mean_confidence=0.8,
+        mean_margin=0.15,
     )
-    return TrainingUpdateEnvelope(
+    envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
         update_id=update_id,
         round_id=round_id,
@@ -347,27 +373,26 @@ def _build_update(
         model_id="tracemind-embed",
         base_model_revision=base_model_revision,
         training_scope="adapter_only",
-        payload_ref=str(payload_path),
+        payload_ref=f"client-submission::{update_id}",
         payload_format="diagonal_scale_update",
         example_count=3,
         client_metrics={"mean_loss": 0.2},
         agent_id=agent_id,
     )
+    return make_training_update_submission(
+        envelope=envelope,
+        update_payload=update_payload,
+    )
 
 
 def test_round_lifecycle_opens_round_and_sets_active_pointer(tmp_path: Path) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, round_repository = _build_service(
+    service, _active_manifest, round_repository = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
 
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
 
     assert record.status == RoundStatus.OPEN
     assert record.training_task.round_id == "round_0001"
@@ -384,50 +409,40 @@ def test_round_lifecycle_opens_round_and_sets_active_pointer(tmp_path: Path) -> 
 
 def test_round_lifecycle_rejects_duplicate_update_id(tmp_path: Path) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, _ = _build_service(
+    service, _active_manifest, _ = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
         task_id=record.training_task.task_id,
     )
 
-    acceptance = service.accept_update(record.round_id, update)
+    acceptance = service.accept_update_submission(record.round_id, update)
 
     assert acceptance.update_count == 1
     with pytest.raises(RoundConflictError):
-        service.accept_update(record.round_id, update)
+        service.accept_update_submission(record.round_id, update)
 
 
 def test_round_lifecycle_can_accept_idempotent_duplicate_update(tmp_path: Path) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, round_repository = _build_service(
+    service, _active_manifest, round_repository = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     service.update_acceptance_policy = IdempotentRoundUpdateAcceptancePolicy()
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
         task_id=record.training_task.task_id,
     )
 
-    first = service.accept_update(record.round_id, update)
-    second = service.accept_update(record.round_id, update)
+    first = service.accept_update_submission(record.round_id, update)
+    second = service.accept_update_submission(record.round_id, update)
 
     assert first.idempotent is False
     assert second.idempotent is True
@@ -439,19 +454,14 @@ def test_round_lifecycle_can_split_agent_trust_policy_from_network_policy(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, _ = _build_service(
+    service, _active_manifest, _ = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     service.update_acceptance_policy = StrictRoundUpdateAcceptancePolicy(
         trust_policy=SingleSubmissionPerAgentTrustPolicy()
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     first_update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
@@ -467,24 +477,19 @@ def test_round_lifecycle_can_split_agent_trust_policy_from_network_policy(
         agent_id="agent_alpha",
     )
 
-    service.accept_update(record.round_id, first_update)
+    service.accept_update_submission(record.round_id, first_update)
 
     with pytest.raises(RoundConflictError):
-        service.accept_update(record.round_id, second_update)
+        service.accept_update_submission(record.round_id, second_update)
 
 
 def test_round_lifecycle_rejects_base_revision_mismatch(tmp_path: Path) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, _ = _build_service(
+    service, _active_manifest, _ = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     bad_update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
@@ -494,27 +499,24 @@ def test_round_lifecycle_rejects_base_revision_mismatch(tmp_path: Path) -> None:
     )
 
     with pytest.raises(RoundValidationError):
-        service.accept_update(record.round_id, bad_update)
+        service.accept_update_submission(record.round_id, bad_update)
 
 
-def test_round_lifecycle_finalizes_and_clears_active_pointer(tmp_path: Path) -> None:
+def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
+    tmp_path: Path,
+) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, round_repository = _build_service(
+    service, _active_manifest, round_repository = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
         task_id=record.training_task.task_id,
     )
-    service.accept_update(record.round_id, update)
+    service.accept_update_submission(record.round_id, update)
 
     finalized = service.finalize_round(
         record.round_id,
@@ -530,28 +532,27 @@ def test_round_lifecycle_finalizes_and_clears_active_pointer(tmp_path: Path) -> 
     assert finalized.publication.next_manifest.model_revision == "rev_001"
     assert finalized.publication.next_manifest.prototype_version == "proto_001"
     assert round_repository.load_active_pointer() is None
+    assert (
+        service.active_manifest_service.get_active_manifest().model_revision
+        == "rev_001"
+    )
     with pytest.raises(FileNotFoundError):
         service.get_current_round()
 
 
 def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest, _ = _build_service(
+    service, _active_manifest, _ = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
         task_id=record.training_task.task_id,
     )
-    service.accept_update(record.round_id, update)
+    service.accept_update_submission(record.round_id, update)
     service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
@@ -561,7 +562,7 @@ def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:
     )
 
     with pytest.raises(RoundConflictError):
-        service.accept_update(record.round_id, update)
+        service.accept_update_submission(record.round_id, update)
 
 
 def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
@@ -656,6 +657,15 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     )
     service = RoundLifecycleService(
         round_repository=round_repository,
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=tmp_path / "server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=tmp_path / "model_manifests"
+            ),
+            clock=FixedClock(fixed_time),
+        ),
         round_manager_service=RoundManagerService(
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
@@ -663,18 +673,17 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         prototype_rebuild_runtime_service=prototype_rebuild_runtime_service,
         clock=FixedClock(fixed_time),
     )
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
+    service.active_manifest_service.save_and_activate(
+        active_manifest,
+        activated_at=fixed_time,
     )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
         tmp_path=tmp_path,
         round_id=record.round_id,
         task_id=record.training_task.task_id,
     )
-    service.accept_update(record.round_id, update)
+    service.accept_update_submission(record.round_id, update)
 
     finalized = service.finalize_round(
         record.round_id,
@@ -734,43 +743,50 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     )
     service = RoundLifecycleService(
         round_repository=round_repository,
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=tmp_path / "server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=tmp_path / "model_manifests"
+            ),
+            clock=FixedClock(fixed_time),
+        ),
         round_manager_service=round_manager_service,
         clock=FixedClock(fixed_time),
     )
+    service.active_manifest_service.save_and_activate(
+        active_manifest,
+        activated_at=fixed_time,
+    )
 
-    record = service.open_round(
-        RoundOpenRequest(
-            active_manifest=active_manifest,
-            round_id="round_0001",
-        )
-    )
-    payload_path = tmp_path / "updates" / "custom_update.json"
-    dump_shared_adapter_update_payload(
-        payload_path,
-        _TestShiftUpdatePayload(
-            model_id="tracemind-embed",
-            base_model_revision="rev_000",
-            training_scope="adapter_only",
-            example_count=4,
-            created_at=fixed_time,
-            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
-            shift_delta=0.3,
-        ),
-    )
-    update = TrainingUpdateEnvelope(
-        schema_version="training_update_envelope.v1",
-        update_id="custom_update_001",
-        round_id=record.round_id,
-        task_id=record.training_task.task_id,
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update_payload = _TestShiftUpdatePayload(
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        payload_ref=str(payload_path),
-        payload_format=TEST_SHIFT_PAYLOAD_FORMAT,
         example_count=4,
-        client_metrics={"test_shift_norm": 0.3},
+        created_at=fixed_time,
+        adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+        shift_delta=0.3,
     )
-    service.accept_update(record.round_id, update)
+    update = make_training_update_submission(
+        envelope=TrainingUpdateEnvelope(
+            schema_version="training_update_envelope.v1",
+            update_id="custom_update_001",
+            round_id=record.round_id,
+            task_id=record.training_task.task_id,
+            model_id="tracemind-embed",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            payload_ref="client-submission::custom_update_001",
+            payload_format=TEST_SHIFT_PAYLOAD_FORMAT,
+            example_count=4,
+            client_metrics={"test_shift_norm": 0.3},
+        ),
+        update_payload=update_payload,
+    )
+    service.accept_update_submission(record.round_id, update)
 
     finalized = service.finalize_round(
         record.round_id,
@@ -785,6 +801,10 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     assert finalized.publication.aggregated_metrics["mean_shift_delta"] == 0.3
     assert finalized.publication.next_manifest.model_revision == "rev_001"
     assert round_repository.load_active_pointer() is None
+    assert (
+        service.active_manifest_service.get_active_manifest().model_revision
+        == "rev_001"
+    )
 
     next_state_payload = state_repository.load_shared_adapter_state_from_ref(
         finalized.publication.next_manifest.artifact_ref

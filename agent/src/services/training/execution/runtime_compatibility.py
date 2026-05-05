@@ -67,7 +67,7 @@ def validate_live_agent_stored_event_runtime(
     scorer_backend_name = (
         objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
     )
-    scorer_backend = build_scoring_backend(
+    build_scoring_backend(
         scorer_backend_name,
         objective_config=objective,
         similarity_name=similarity_name,
@@ -83,11 +83,6 @@ def validate_live_agent_stored_event_runtime(
         unsupported_reasons.append(
             "stored-event 재구성을 지원하지 않는 example backend="
             f"{training_example_backend.backend_name}"
-        )
-    if scorer_backend.requires_shared_state:
-        unsupported_reasons.append(
-            "현재 live agent 경로에서 active shared_state fetch가 없는 scorer backend="
-            f"{scorer_backend.backend_name}"
         )
     if unsupported_reasons:
         raise ValueError(

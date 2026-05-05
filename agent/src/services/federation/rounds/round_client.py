@@ -8,10 +8,11 @@ from dataclasses import dataclass, field
 
 import httpx
 
+from shared.src.contracts.adapter_contracts import CurrentSharedAdapterStatePayload
 from shared.src.contracts.fl_round_contracts import ActiveRoundPayload
 from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,
-    TrainingUpdateEnvelopePayload,
+    TrainingUpdateSubmissionPayload,
 )
 
 RoundHttpClientFactory = Callable[[], AbstractContextManager[httpx.Client]]
@@ -61,16 +62,27 @@ class RoundClient:
             return None
         return record.training_task
 
+    def fetch_current_shared_adapter_state(
+        self,
+    ) -> CurrentSharedAdapterStatePayload | None:
+        """서버 current shared adapter state를 가져온다."""
+        with self._client() as client:
+            response = client.get("/api/v1/fl/rounds/active-state/current")
+            if response.status_code == 404:
+                return None
+            response.raise_for_status()
+            return CurrentSharedAdapterStatePayload.model_validate(response.json())
+
     def upload_update(
         self,
         round_id: str,
-        envelope: TrainingUpdateEnvelopePayload,
+        submission: TrainingUpdateSubmissionPayload,
     ) -> dict:
-        """update envelope을 서버에 업로드하고 수락 응답을 반환한다."""
+        """update submission을 서버에 업로드하고 수락 응답을 반환한다."""
         with self._client() as client:
             response = client.post(
                 f"/api/v1/fl/rounds/{round_id}/updates",
-                json=envelope.model_dump(mode="json"),
+                json=submission.model_dump(mode="json"),
             )
             response.raise_for_status()
             return response.json()

@@ -61,6 +61,15 @@ class ActiveRoundPointerPayload(BaseModel):
     activated_at: datetime
 
 
+class ActiveModelManifestPointerPayload(BaseModel):
+    """현재 active model manifest 포인터."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    model_revision: str
+    activated_at: datetime
+
+
 class RoundTaskConfigPayload(BaseModel):
     """round task template API payload."""
 
@@ -94,7 +103,6 @@ class RoundOpenRequestPayload(RoundTaskConfigPayload):
 
     model_config = ConfigDict(extra="forbid")
 
-    active_manifest: ModelManifestPayload
     round_id: str | None = None
     task_id: str | None = None
 
@@ -150,5 +158,22 @@ def dump_active_round_pointer_payload(
 def load_active_round_pointer_payload(path: Path) -> ActiveRoundPointerPayload:
     """JSON 파일에서 active round 포인터를 읽는다."""
     return ActiveRoundPointerPayload.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+
+def dump_active_model_manifest_pointer_payload(
+    path: Path,
+    payload: ActiveModelManifestPointerPayload,
+) -> None:
+    """active model manifest 포인터를 JSON 파일로 기록한다."""
+    _dump_payload(path, payload)
+
+
+def load_active_model_manifest_pointer_payload(
+    path: Path,
+) -> ActiveModelManifestPointerPayload:
+    """JSON 파일에서 active model manifest 포인터를 읽는다."""
+    return ActiveModelManifestPointerPayload.model_validate_json(
         path.read_text(encoding="utf-8")
     )

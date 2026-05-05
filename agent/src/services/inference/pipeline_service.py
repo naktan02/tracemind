@@ -24,6 +24,7 @@ from agent.src.services.inference.scoring_service import ScoringService
 from agent.src.services.language.preprocess_service import PreprocessService
 from agent.src.services.language.translation_service import TranslationService
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
+from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
 class PrototypeProvider(Protocol):
@@ -31,6 +32,14 @@ class PrototypeProvider(Protocol):
 
     def get_active_prototypes(self) -> dict[str, tuple[list[float], ...]]:
         """category → 복수 prototype 벡터 매핑을 반환한다."""
+        ...
+
+
+class SharedAdapterProvider(Protocol):
+    """활성 shared adapter state 조회 인터페이스."""
+
+    def get_active_state(self) -> SharedAdapterState:
+        """현재 agent에 캐시된 active shared adapter state를 반환한다."""
         ...
 
 
@@ -56,6 +65,7 @@ class InferencePipelineService:
     scoring_service: ScoringService
     prototype_provider: PrototypeProvider
     event_repository: ScoredEventRepository
+    shared_adapter_provider: SharedAdapterProvider | None = None
     query_buffer_repository: QueryBufferRepository | None = None
     preprocess_service: PreprocessService = field(default_factory=PreprocessService)
     translation_service: TranslationService | None = None
@@ -83,10 +93,20 @@ class InferencePipelineService:
             translation_model_id = None
 
         embeddings = self.embedding_service.embed_batch([text_for_embedding])
-        embedding = embeddings[0]
+        base_embedding = embeddings[0]
 
         prototypes = self.prototype_provider.get_active_prototypes()
-        category_scores = self.scoring_service.score(embedding, prototypes)
+        active_shared_state = self._load_active_shared_state()
+        scoring_embedding = (
+            active_shared_state.apply(base_embedding)
+            if active_shared_state is not None
+            else base_embedding
+        )
+        category_scores = self.scoring_service.score(
+            scoring_embedding,
+            prototypes,
+            shared_state=active_shared_state,
+        )
 
         scored_event = ScoredEvent(
             query_id=event.query_id,
@@ -98,25 +118,37 @@ class InferencePipelineService:
         )
         # base_embedding을 함께 저장한다.
         # 학습 시 재임베딩 없이 EmbeddedTrainingExample 조립에 사용한다.
-        self.event_repository.save(scored_event, base_embedding=list(embedding))
+        self.event_repository.save(scored_event, base_embedding=list(base_embedding))
         query_buffer_record = None
         if self.query_buffer_repository is not None:
+            metadata = {
+                "embedding_model_id": self.embedding_model_id,
+                "translation_model_id": translation_model_id,
+                "scorer_backend_name": self.scoring_service.backend_name,
+                "was_translated": needs_translation,
+            }
+            if active_shared_state is not None:
+                metadata.update(
+                    {
+                        "adapter_kind": active_shared_state.adapter_kind,
+                        "shared_model_revision": active_shared_state.model_revision,
+                    }
+                )
             query_buffer_record = build_query_buffer_record(
                 event=event,
                 scored_event=scored_event,
-                model_revision=self.model_revision,
+                model_revision=(
+                    active_shared_state.model_revision
+                    if active_shared_state is not None
+                    else self.model_revision
+                ),
                 confidence_kind=self.scoring_service.confidence_kind,
-                metadata={
-                    "embedding_model_id": self.embedding_model_id,
-                    "translation_model_id": translation_model_id,
-                    "scorer_backend_name": self.scoring_service.backend_name,
-                    "was_translated": needs_translation,
-                },
+                metadata=metadata,
             )
             self.query_buffer_repository.save(query_buffer_record)
         return InferencePipelineResult(
             scored_event=scored_event,
-            base_embedding=list(embedding),
+            base_embedding=list(base_embedding),
             was_translated=needs_translation,
             query_buffer_record=query_buffer_record,
         )
@@ -126,6 +158,11 @@ class InferencePipelineService:
     ) -> list[InferencePipelineResult]:
         """여러 QueryEvent를 순서대로 처리한다."""
         return [self.process(event) for event in events]
+
+    def _load_active_shared_state(self) -> SharedAdapterState | None:
+        if self.shared_adapter_provider is None:
+            return None
+        return self.shared_adapter_provider.get_active_state()
 
 
 def _get_translation_model_id(service: TranslationService) -> str | None:

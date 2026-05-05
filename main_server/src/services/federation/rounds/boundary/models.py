@@ -107,8 +107,16 @@ class RoundTaskConfig:
 
 
 @dataclass(slots=True, kw_only=True)
+class RoundOpenDraftRequest(RoundTaskConfig):
+    """active manifest를 아직 붙이지 않은 새 round open 요청."""
+
+    round_id: str | None = None
+    task_id: str | None = None
+
+
+@dataclass(slots=True, kw_only=True)
 class RoundOpenRequest(RoundTaskConfig):
-    """새 round open 요청."""
+    """서버 active manifest로 resolve된 새 round open 요청."""
 
     active_manifest: ModelManifest
     round_id: str | None = None

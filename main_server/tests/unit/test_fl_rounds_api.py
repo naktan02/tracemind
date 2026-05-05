@@ -11,12 +11,17 @@ from fastapi import HTTPException
 import main_server.src.api.fl_rounds as fl_rounds_api
 from main_server.src.api.main import app
 from main_server.src.infrastructure.repositories import (
+    model_manifest_repository as model_manifest_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
+)
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.rounds.boundary.mappers import (
-    model_manifest_to_payload,
-    training_update_to_payload,
+from main_server.src.services.federation.rounds.active_manifest_service import (
+    ActiveModelManifestService,
 )
 from main_server.src.services.federation.rounds.boundary.payloads import (
     RoundFinalizeRequestPayload,
@@ -32,11 +37,19 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
-    dump_shared_adapter_update_payload,
 )
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import (
+    TrainingUpdateEnvelope,
+    TrainingUpdateSubmission,
+    make_training_update_submission,
+)
 from shared.src.domain.services.clock import FixedClock
+
+ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
+SharedAdapterUpdateRepository = (
+    shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
 
 
 def _build_service(
@@ -75,11 +88,24 @@ def _build_service(
     )
     service = RoundLifecycleService(
         round_repository=round_repository,
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=tmp_path / "server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=tmp_path / "model_manifests"
+            ),
+            clock=FixedClock(fixed_time),
+        ),
         round_manager_service=RoundManagerService(
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
         ),
         clock=FixedClock(fixed_time),
+    )
+    service.active_manifest_service.save_and_activate(
+        active_manifest,
+        activated_at=fixed_time,
     )
     return service, active_manifest
 
@@ -90,23 +116,20 @@ def _build_update(
     round_id: str,
     task_id: str,
     update_id: str = "update_001",
-) -> TrainingUpdateEnvelope:
-    payload_path = tmp_path / "updates" / f"{update_id}.json"
-    dump_shared_adapter_update_payload(
-        payload_path,
-        DiagonalScaleAdapterUpdatePayload(
-            schema_version="vector_adapter_delta.v1",
-            adapter_kind="diagonal_scale",
-            model_id="tracemind-embed",
-            base_model_revision="rev_000",
-            training_scope="adapter_only",
-            dimension_deltas=[0.05, -0.02],
-            example_count=3,
-            mean_confidence=0.8,
-            mean_margin=0.15,
-        ),
+) -> TrainingUpdateSubmission:
+    del tmp_path
+    update_payload = DiagonalScaleAdapterUpdatePayload(
+        schema_version="vector_adapter_delta.v1",
+        adapter_kind="diagonal_scale",
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        dimension_deltas=[0.05, -0.02],
+        example_count=3,
+        mean_confidence=0.8,
+        mean_margin=0.15,
     )
-    return TrainingUpdateEnvelope(
+    envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
         update_id=update_id,
         round_id=round_id,
@@ -114,10 +137,14 @@ def _build_update(
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        payload_ref=str(payload_path),
+        payload_ref=f"client-submission::{update_id}",
         payload_format="diagonal_scale_update",
         example_count=3,
         client_metrics={"mean_loss": 0.2},
+    )
+    return make_training_update_submission(
+        envelope=envelope,
+        update_payload=update_payload,
     )
 
 
@@ -125,13 +152,12 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest = _build_service(
+    service, _active_manifest = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     open_response = fl_rounds_api.open_round(
         RoundOpenRequestPayload(
-            active_manifest=model_manifest_to_payload(active_manifest),
             round_id="round_0001",
         ),
         service=service,
@@ -139,6 +165,9 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
 
     assert open_response.status == "open"
     task_id = open_response.training_task.task_id
+    current_state = fl_rounds_api.get_active_shared_adapter_state(service=service)
+    assert current_state.manifest.model_revision == "rev_000"
+    assert current_state.state.model_revision == "rev_000"
 
     update = _build_update(
         tmp_path=tmp_path,
@@ -147,7 +176,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     )
     update_response = fl_rounds_api.accept_update(
         "round_0001",
-        training_update_to_payload(update),
+        update,
         service=service,
     )
 
@@ -168,6 +197,8 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     assert finalize_response.status == "finalized"
     assert finalize_response.publication is not None
     assert finalize_response.publication.next_manifest.model_revision == "rev_001"
+    active_manifest_response = fl_rounds_api.get_active_model_manifest(service=service)
+    assert active_manifest_response.model_revision == "rev_001"
 
     with pytest.raises(HTTPException) as error_info:
         fl_rounds_api.get_current_round(service=service)
@@ -178,13 +209,12 @@ def test_fl_rounds_api_rejects_duplicate_update_id(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, active_manifest = _build_service(
+    service, _active_manifest = _build_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
     open_response = fl_rounds_api.open_round(
         RoundOpenRequestPayload(
-            active_manifest=model_manifest_to_payload(active_manifest),
             round_id="round_0001",
         ),
         service=service,
@@ -195,17 +225,15 @@ def test_fl_rounds_api_rejects_duplicate_update_id(
         round_id="round_0001",
         task_id=task_id,
     )
-    payload = training_update_to_payload(update)
-
     first_response = fl_rounds_api.accept_update(
         "round_0001",
-        payload,
+        update,
         service=service,
     )
     assert first_response.update_count == 1
 
     with pytest.raises(HTTPException) as error_info:
-        fl_rounds_api.accept_update("round_0001", payload, service=service)
+        fl_rounds_api.accept_update("round_0001", update, service=service)
     assert error_info.value.status_code == 409
 
 
@@ -213,6 +241,9 @@ def test_fl_rounds_router_is_registered_on_main_app() -> None:
     route_paths = {route.path for route in app.routes}
 
     assert "/api/v1/fl/rounds/current" in route_paths
+    assert "/api/v1/fl/rounds/active-manifest/current" in route_paths
+    assert "/api/v1/fl/rounds/active-manifest" in route_paths
+    assert "/api/v1/fl/rounds/active-state/current" in route_paths
     assert "/api/v1/fl/rounds" in route_paths
     assert "/api/v1/fl/rounds/{round_id}" in route_paths
     assert "/api/v1/fl/rounds/{round_id}/updates" in route_paths
@@ -220,20 +251,7 @@ def test_fl_rounds_router_is_registered_on_main_app() -> None:
 
 
 def test_round_open_request_payload_uses_shared_task_runtime_defaults() -> None:
-    payload = RoundOpenRequestPayload(
-        active_manifest=ModelManifest(
-            schema_version="model_manifest.v1",
-            model_id="tracemind-embed",
-            model_revision="rev_000",
-            published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-            artifact_kind="shared_adapter_state",
-            artifact_ref="/tmp/rev_000.json",
-            prototype_version="proto_000",
-            training_scope="adapter_only",
-            training_enabled=True,
-            compatible_task_types=("pseudo_label_self_training",),
-        )
-    )
+    payload = RoundOpenRequestPayload()
 
     assert payload.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
     assert payload.batch_size == DEFAULT_TRAINING_PROFILE.batch_size

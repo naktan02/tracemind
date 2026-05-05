@@ -7,8 +7,10 @@
 1. `TrainingTaskPayload`
    - 서버가 agent에 내려주는 "이번 라운드에서 어떻게 학습할지" 지시문
 2. `TrainingUpdateEnvelopePayload`
-   - agent가 서버에 올리는 update 메타데이터 봉투
-3. `DecisionFeedbackSignalPayload`
+   - 서버가 수락/저장한 update 메타데이터 봉투
+3. `TrainingUpdateSubmissionPayload`
+   - agent가 서버에 제출하는 envelope + inline update payload
+4. `DecisionFeedbackSignalPayload`
    - 로컬에서 생성된 feedback/pseudo-label/사용자 신호 단위 계약
 """
 
@@ -21,17 +23,33 @@ from enum import StrEnum
 from pathlib import Path
 from typing import Literal, TypeAlias
 
-from pydantic import AliasChoices, BaseModel, ConfigDict, Field, model_validator
+from pydantic import (
+    AliasChoices,
+    BaseModel,
+    ConfigDict,
+    Field,
+    SerializeAsAny,
+    field_validator,
+    model_validator,
+)
 
 from shared.src.config.training_default_values import DEFAULT_TRAINING_OBJECTIVE_MAPPING
+from shared.src.contracts.adapter_contracts import (
+    SharedAdapterUpdatePayload,
+    parse_shared_adapter_update_payload,
+)
 
 from .common_types import TrainingScope, TrainingTaskType
 
 TRAINING_TASK_V1 = "training_task.v1"
 TRAINING_UPDATE_ENVELOPE_V1 = "training_update_envelope.v1"
+TRAINING_UPDATE_SUBMISSION_V1 = "training_update_submission.v1"
 DECISION_FEEDBACK_SIGNAL_V1 = "decision_feedback_signal.v1"
 TrainingTaskSchemaVersion: TypeAlias = Literal["training_task.v1"]
 TrainingUpdateEnvelopeSchemaVersion: TypeAlias = Literal["training_update_envelope.v1"]
+TrainingUpdateSubmissionSchemaVersion: TypeAlias = Literal[
+    "training_update_submission.v1"
+]
 DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal["decision_feedback_signal.v1"]
 
 
@@ -550,10 +568,11 @@ class TrainingTaskPayload(BaseModel):
 
 
 class TrainingUpdateEnvelopePayload(BaseModel):
-    """로컬 agent가 중앙에 보내는 update envelope payload.
+    """서버가 수락/저장한 update envelope payload.
 
-    실제 파라미터 delta는 `payload_ref`가 가리키는 파일에 있고,
-    이 envelope은 round/task/revision/metrics 같은 메타데이터를 담는다.
+    이 envelope은 round/task/revision/metrics 같은 메타데이터와 서버가
+    저장한 update payload 참조를 담는다. Agent가 서버에 제출할 때는
+    `TrainingUpdateSubmissionPayload`로 실제 update payload를 함께 보낸다.
     """
 
     model_config = ConfigDict(extra="forbid")
@@ -573,7 +592,10 @@ class TrainingUpdateEnvelopePayload(BaseModel):
         description="예: adapter_only 같은 학습 범위."
     )
     payload_ref: str = Field(
-        description="실제 adapter update payload 파일 경로 또는 참조값."
+        description=(
+            "서버가 저장한 adapter update payload 참조. "
+            "pre-submission 단계의 agent-local ref는 서버가 신뢰하지 않는다."
+        )
     )
     payload_format: str = Field(
         description="예: diagonal_scale_update 같은 update payload 포맷 식별자."
@@ -625,6 +647,57 @@ class TrainingUpdateEnvelopePayload(BaseModel):
         default=None,
         description="운영 메모 또는 디버깅용 설명.",
     )
+
+
+class TrainingUpdateSubmissionPayload(BaseModel):
+    """Agent가 서버에 제출하는 update 요청 payload.
+
+    `envelope`은 metadata를 담고, `update_payload`는 실제 adapter update를
+    inline으로 담는다. 서버는 수신한 update payload를 server-owned storage에
+    저장한 뒤 envelope의 `payload_ref`를 서버 참조로 덮어쓴다.
+    """
+
+    model_config = ConfigDict(extra="forbid")
+
+    schema_version: TrainingUpdateSubmissionSchemaVersion = Field(
+        default=TRAINING_UPDATE_SUBMISSION_V1,
+        description="Update submission contract 버전.",
+    )
+    envelope: TrainingUpdateEnvelopePayload = Field(
+        description="Round/task/update metadata envelope."
+    )
+    update_payload: SerializeAsAny[SharedAdapterUpdatePayload] = Field(
+        description="실제 shared adapter update payload."
+    )
+
+    @field_validator("update_payload", mode="before")
+    @classmethod
+    def _parse_update_payload(cls, value: object) -> SharedAdapterUpdatePayload:
+        if isinstance(value, SharedAdapterUpdatePayload):
+            return value
+        if isinstance(value, Mapping):
+            return parse_shared_adapter_update_payload(value)
+        raise ValueError("update_payload must be a shared adapter update payload.")
+
+    @model_validator(mode="after")
+    def _validate_envelope_alignment(self) -> "TrainingUpdateSubmissionPayload":
+        update_payload = self.update_payload
+        envelope = self.envelope
+        if update_payload.model_id != envelope.model_id:
+            raise ValueError("Submission update_payload.model_id must match envelope.")
+        if update_payload.base_model_revision != envelope.base_model_revision:
+            raise ValueError(
+                "Submission update_payload.base_model_revision must match envelope."
+            )
+        if update_payload.training_scope != envelope.training_scope:
+            raise ValueError(
+                "Submission update_payload.training_scope must match envelope."
+            )
+        if update_payload.example_count != envelope.example_count:
+            raise ValueError(
+                "Submission update_payload.example_count must match envelope."
+            )
+        return self
 
 
 class DecisionFeedbackSignalPayload(BaseModel):
@@ -739,6 +812,23 @@ def dump_training_update_envelope_payload(
     _dump_payload(path, payload)
 
 
+def load_training_update_submission_payload(
+    path: Path,
+) -> TrainingUpdateSubmissionPayload:
+    """JSON 파일에서 update submission payload를 읽는다."""
+    return TrainingUpdateSubmissionPayload.model_validate_json(
+        path.read_text(encoding="utf-8")
+    )
+
+
+def dump_training_update_submission_payload(
+    path: Path,
+    payload: TrainingUpdateSubmissionPayload,
+) -> None:
+    """update submission payload를 JSON 파일로 기록한다."""
+    _dump_payload(path, payload)
+
+
 def load_decision_feedback_signal_payload(
     path: Path,
 ) -> DecisionFeedbackSignalPayload:
@@ -782,8 +872,9 @@ def make_training_update_envelope(
 ) -> TrainingUpdateEnvelopePayload:
     """TrainingUpdateEnvelopePayload를 만드는 표준 factory.
 
-    round_id, task_id, model 식별자, payload 경로, 예시 수, 메트릭만
-    지정하면 나머지는 기본값으로 채워진다.
+    round_id, task_id, model 식별자, payload 참조, 예시 수, 메트릭만
+    지정하면 나머지는 기본값으로 채워진다. 서버에 제출할 때는 이 envelope을
+    `TrainingUpdateSubmissionPayload`의 `envelope` 필드로 감싼다.
 
     >>> import uuid
     >>> env = make_training_update_envelope(
@@ -791,7 +882,7 @@ def make_training_update_envelope(
     ...     task_id="task_abc",
     ...     model_id="bg-m3",
     ...     base_model_revision="rev_001",
-    ...     payload_ref="/state/updates/delta_001.json",
+    ...     payload_ref="client-submission::delta_001",
     ...     example_count=10,
     ...     client_metrics={"mean_confidence": 0.85},
     ... )
@@ -819,10 +910,25 @@ def make_training_update_envelope(
     )
 
 
+def make_training_update_submission(
+    *,
+    envelope: TrainingUpdateEnvelopePayload,
+    update_payload: SharedAdapterUpdatePayload,
+) -> TrainingUpdateSubmissionPayload:
+    """inline update payload를 담은 server submission payload를 만든다."""
+
+    return TrainingUpdateSubmissionPayload(
+        schema_version=TRAINING_UPDATE_SUBMISSION_V1,
+        envelope=envelope,
+        update_payload=update_payload,
+    )
+
+
 TrainingObjectiveConfig = TrainingObjectiveConfigPayload
 SecureAggregationConfig = SecureAggregationConfigPayload
 SecureAggregationSubmission = SecureAggregationSubmissionPayload
 TrainingSelectionPolicy = TrainingSelectionPolicyPayload
 TrainingTask = TrainingTaskPayload
 TrainingUpdateEnvelope = TrainingUpdateEnvelopePayload
+TrainingUpdateSubmission = TrainingUpdateSubmissionPayload
 DecisionFeedbackSignal = DecisionFeedbackSignalPayload

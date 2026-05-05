@@ -178,10 +178,11 @@ def test_local_training_service_creates_update_from_top_candidates(
     assert result.update_payload.label_counts == {"anxiety": 1}
     assert result.update_payload.adapter_kind == "diagonal_scale"
     assert result.update_envelope.payload_format == "diagonal_scale_update"
-    assert Path(result.update_envelope.payload_ref).exists()
     assert (
-        Path(result.update_envelope.payload_ref).parent.name == "shared_adapter_updates"
+        result.update_envelope.payload_ref
+        == f"client-submission::{result.update_envelope.update_id}"
     )
+    assert repository.path_for_update(result.update_envelope.update_id).exists()
     assert result.update_envelope.clipped is False
     assert candidates["q1"].selection_context is not None
     assert candidates["q2"].selection_context is not None

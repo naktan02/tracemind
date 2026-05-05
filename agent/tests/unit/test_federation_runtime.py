@@ -16,8 +16,15 @@ from agent.src.services.federation.rounds.runtime_service import (
 from agent.src.services.training.execution.local_training_service import (
     LocalTrainingResult,
 )
-from agent.src.services.training.selection.pseudo_label_service import PseudoLabelSelectionResult
-from shared.src.contracts.model_contracts import ModelManifest
+from agent.src.services.training.selection.pseudo_label_service import (
+    PseudoLabelSelectionResult,
+)
+from shared.src.contracts.adapter_contracts import (
+    make_current_shared_adapter_state_payload,
+    make_diagonal_delta_payload,
+    make_identity_state_payload,
+)
+from shared.src.contracts.model_contracts import ModelManifest, make_embedding_manifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfigPayload,
     TrainingSelectionPolicyPayload,
@@ -126,9 +133,7 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
             "batch_size": 8,
             "learning_rate": 1e-2,
             "max_steps": 10,
-            "objective_config": {
-                "training_backend_name": "diagonal_scale_heuristic"
-            },
+            "objective_config": {"training_backend_name": "diagonal_scale_heuristic"},
             "selection_policy": {},
         },
         "created_at": "2026-03-29T00:00:00Z",
@@ -141,6 +146,34 @@ def test_round_client_fetch_current_task_returns_none_when_status_not_open() -> 
     result = client.fetch_current_task()
 
     assert result is None
+
+
+def test_round_client_fetches_current_shared_adapter_state() -> None:
+    state = make_identity_state_payload(
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        embedding_dim=2,
+    )
+    manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        prototype_version="proto_000",
+        artifact_ref="/server/state/rev_000.json",
+    )
+    payload = make_current_shared_adapter_state_payload(
+        manifest=manifest,
+        state=state,
+    )
+    client = RoundClient(
+        server_base_url="http://localhost:8000",
+        _transport=_transport_with_json(payload.model_dump(mode="json")),
+    )
+
+    current = client.fetch_current_shared_adapter_state()
+
+    assert current is not None
+    assert current.manifest.model_revision == "rev_000"
+    assert current.state.embedding_dim == 2
 
 
 # ─── FederationRuntimeService 테스트 ─────────────────────────────────────────
@@ -306,9 +339,17 @@ def test_federation_runtime_uploads_update_and_marks_completed(
         feedback_signals=(),
     )
     local_service = MagicMock()
+    update_payload = make_diagonal_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        dimension_deltas=[0.01, -0.01],
+        example_count=3,
+        mean_confidence=0.85,
+    )
     local_service.run_task.return_value = LocalTrainingResult(
         selection_result=selection,
         update_envelope=envelope,
+        update_payload=update_payload,
     )
     service = FederationRuntimeService(
         round_client=client,
@@ -326,6 +367,9 @@ def test_federation_runtime_uploads_update_and_marks_completed(
     # 완료 task_id가 기록돼야 한다.
     assert "task_001" in service._completed_task_ids
     client.upload_update.assert_called_once()
+    submission = client.upload_update.call_args.args[1]
+    assert submission.envelope.update_id == "update_abc"
+    assert submission.update_payload.example_count == 3
 
 
 def test_federation_runtime_clear_completed_resets_state() -> None:
