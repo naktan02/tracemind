@@ -4,12 +4,14 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from datetime import datetime
-from pathlib import Path
 from typing import Mapping
 from uuid import uuid4
 
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as shared_adapter_state_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
@@ -25,7 +27,6 @@ from shared.src.config.training_defaults import (
     build_default_training_objective_config,
     build_default_training_selection_policy,
 )
-from shared.src.contracts.adapter_contracts import load_shared_adapter_update_payload
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -40,6 +41,9 @@ from shared.src.domain.services.clock import Clock, SystemUtcClock
 
 SharedAdapterStateRepository = (
     shared_adapter_state_repository_module.SharedAdapterStateRepository
+)
+SharedAdapterUpdateRepository = (
+    shared_adapter_update_repository_module.SharedAdapterUpdateRepository
 )
 
 
@@ -73,6 +77,9 @@ class RoundManagerService:
     )
     artifact_repository: SharedAdapterStateRepository = field(
         default_factory=SharedAdapterStateRepository
+    )
+    update_payload_repository: SharedAdapterUpdateRepository = field(
+        default_factory=SharedAdapterUpdateRepository
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
@@ -123,16 +130,19 @@ class RoundManagerService:
             next_model_revision=next_revision,
             aggregated_at=effective_published_at,
         )
-        artifact_path = self.artifact_repository.save_shared_adapter_state(
-            self.adapter_family.state_to_payload(aggregation.next_state)
+        next_state_payload = self.adapter_family.state_to_payload(
+            aggregation.next_state
         )
+        self.artifact_repository.save_shared_adapter_state(next_state_payload)
         next_manifest = ModelManifest(
             schema_version=request.base_manifest.schema_version,
             model_id=request.base_manifest.model_id,
             model_revision=aggregation.next_state.model_revision,
             published_at=effective_published_at,
             artifact_kind="shared_adapter_state",
-            artifact_ref=str(artifact_path),
+            artifact_ref=self.artifact_repository.ref_for_revision(
+                aggregation.next_state.model_revision
+            ),
             prototype_version=request.next_prototype_version,
             training_scope=request.base_manifest.training_scope,
             training_enabled=request.base_manifest.training_enabled,
@@ -165,7 +175,9 @@ class RoundManagerService:
         return state
 
     def _load_update_payload(self, update: TrainingUpdateEnvelope):
-        payload = load_shared_adapter_update_payload(Path(update.payload_ref))
+        payload = self.update_payload_repository.load_shared_adapter_update_from_ref(
+            update.payload_ref
+        )
         if update.payload_format not in self.adapter_family.accepted_update_formats:
             raise ValueError(
                 "Unsupported payload_format for adapter_kind "

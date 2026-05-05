@@ -594,6 +594,7 @@ class TrainingUpdateEnvelopePayload(BaseModel):
     payload_ref: str = Field(
         description=(
             "서버가 저장한 adapter update payload 참조. "
+            "서버 밖에서는 파일 경로로 해석하지 않는 opaque ref다. "
             "pre-submission 단계의 agent-local ref는 서버가 신뢰하지 않는다."
         )
     )

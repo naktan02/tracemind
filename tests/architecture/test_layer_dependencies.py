@@ -201,6 +201,30 @@ def test_main_server_agent_imports_are_limited_to_documented_exceptions() -> Non
     )
 
 
+def test_round_services_do_not_interpret_server_refs_as_paths() -> None:
+    """server-owned ref 해석은 repository 계층에만 둔다."""
+
+    forbidden_snippets = (
+        "Path(update.payload_ref)",
+        "Path(base_manifest.artifact_ref)",
+        "Path(request.base_manifest.artifact_ref)",
+        "load_shared_adapter_update_payload(Path(",
+    )
+    service_root = MAIN_SERVER_SRC / "services" / "federation" / "rounds"
+    violations: list[tuple[Path, str]] = []
+    for path in _iter_python_files(service_root):
+        text = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in text:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "payload_ref/artifact_ref는 opaque server-owned ref로 다룬다. "
+        "파일 경로 compatibility는 infrastructure repository 안에만 둔다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_scripts_runtime_imports_stay_behind_documented_bridges() -> None:
     violations = _find_forbidden_imports(
         root=SCRIPTS_SRC,

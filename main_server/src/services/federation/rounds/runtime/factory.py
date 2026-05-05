@@ -60,6 +60,7 @@ def build_round_manager_service_from_config(
     artifact_repository: (
         shared_adapter_state_repository_module.SharedAdapterStateRepository | None
     ) = None,
+    update_payload_repository: SharedAdapterUpdateRepository | None = None,
     clock: Clock | None = None,
 ) -> RoundManagerService:
     """server-owned runtime config로 RoundManagerService를 조립한다."""
@@ -76,6 +77,9 @@ def build_round_manager_service_from_config(
         artifact_repository=(
             artifact_repository
             or shared_adapter_state_repository_module.SharedAdapterStateRepository()
+        ),
+        update_payload_repository=(
+            update_payload_repository or SharedAdapterUpdateRepository()
         ),
         clock=effective_clock,
     )
@@ -104,11 +108,12 @@ def build_round_lifecycle_service_from_config(
     )
 
     effective_clock = clock or SystemUtcClock()
+    effective_update_payload_repository = (
+        update_payload_repository or SharedAdapterUpdateRepository()
+    )
     return RoundLifecycleService(
         round_repository=round_repository or RoundRepository(),
-        update_payload_repository=(
-            update_payload_repository or SharedAdapterUpdateRepository()
-        ),
+        update_payload_repository=effective_update_payload_repository,
         active_manifest_service=(
             active_manifest_service
             or ActiveModelManifestService(
@@ -121,6 +126,7 @@ def build_round_lifecycle_service_from_config(
         round_manager_service=build_round_manager_service_from_config(
             config,
             artifact_repository=artifact_repository,
+            update_payload_repository=effective_update_payload_repository,
             clock=effective_clock,
         ),
         prototype_rebuild_runtime_service=prototype_rebuild_runtime_service,

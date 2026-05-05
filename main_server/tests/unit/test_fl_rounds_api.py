@@ -63,7 +63,7 @@ def _build_service(
             state_root=tmp_path / "shared_states"
         )
     )
-    state_path = state_repository.save_shared_adapter_state(
+    state_repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
             adapter_kind="diagonal_scale",
@@ -80,7 +80,7 @@ def _build_service(
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
-        artifact_ref=str(state_path),
+        artifact_ref=state_repository.ref_for_revision("rev_000"),
         prototype_version="proto_000",
         training_scope="adapter_only",
         training_enabled=True,
@@ -181,6 +181,11 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     )
 
     assert update_response.update_count == 1
+    accepted_update = service.get_round("round_0001").updates[0]
+    assert (
+        accepted_update.payload_ref
+        == service.update_payload_repository.ref_for_update("update_001")
+    )
 
     current_response = fl_rounds_api.get_current_round(service=service)
     assert current_response.round_id == "round_0001"

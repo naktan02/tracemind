@@ -74,7 +74,7 @@ def make_embedding_manifest(
     ...     model_id="bg-m3",
     ...     model_revision="rev_001",
     ...     prototype_version="proto_v1",
-    ...     artifact_ref="/state/shared_adapter_states/versions/rev_001.json",
+    ...     artifact_ref="shared_adapter_state::rev_001",
     ... )
     """
     return ModelManifest(

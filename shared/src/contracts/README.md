@@ -29,6 +29,8 @@
   - `model_id`, `model_revision`, `artifact_ref`, `prototype_version`,
     `training_scope`를 묶은 현재 전역 shared artifact 설명
   - main server가 revision별 manifest와 active pointer를 소유한다
+  - `artifact_ref`는 server-owned opaque ref이며, 파일 경로 해석은
+    main server repository 내부 compatibility로만 처리한다
   - round open 요청자는 manifest를 제출하지 않고, 서버 current manifest를
     기준으로 training task가 생성된다
 
@@ -68,7 +70,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
   - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
 - `TrainingUpdateEnvelopePayload`
   - 서버가 수락/저장한 update 메타데이터 봉투
-  - `payload_ref`는 서버가 저장한 update payload 참조를 가리킴
+  - `payload_ref`는 서버가 저장한 update payload의 opaque ref를 가리킴
+  - `payload_ref`를 파일 경로로 직접 해석하지 않고, main server repository가
+    ref 해석과 legacy path fallback을 담당한다
 - `TrainingUpdateSubmissionPayload`
   - agent가 서버에 제출하는 update 요청
   - `envelope`과 inline `update_payload`를 함께 보내며, 서버는 payload를

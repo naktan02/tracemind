@@ -366,7 +366,7 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
             model_revision="rev_000",
             published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
             artifact_kind="shared_adapter_state",
-            artifact_ref="/tmp/rev_000.json",
+            artifact_ref="shared_adapter_state::rev_000",
             prototype_version="proto_000",
             training_scope="adapter_only",
             training_enabled=True,

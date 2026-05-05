@@ -218,10 +218,11 @@ class SimulationServerRuntime:
             built_at=built_at,
         )
 
-    def save_shared_adapter_state(self, state: SharedAdapterState) -> Path:
-        """simulation용 main_server state repository에 active state를 저장한다."""
+    def save_shared_adapter_state(self, state: SharedAdapterState) -> str:
+        """simulation용 state를 저장하고 server-owned opaque ref를 반환한다."""
 
-        return self.state_repository.save_shared_adapter_state(state)
+        self.state_repository.save_shared_adapter_state(state)
+        return self.state_repository.ref_for_revision(state.model_revision)
 
     def activate_manifest(self, manifest: ModelManifest) -> ModelManifest:
         """simulation bootstrap manifest를 main_server current로 활성화한다."""

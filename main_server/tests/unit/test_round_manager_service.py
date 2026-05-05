@@ -8,6 +8,9 @@ from pathlib import Path
 from main_server.src.infrastructure.repositories import (  # noqa: E402
     shared_adapter_state_repository as shared_adapter_state_repository_module,
 )
+from main_server.src.infrastructure.repositories import (  # noqa: E402
+    shared_adapter_update_repository as shared_adapter_update_repository_module,
+)
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
 )
@@ -22,7 +25,6 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
-    dump_shared_adapter_update_payload,
 )
 from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifest,
@@ -37,7 +39,12 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     repository = shared_adapter_state_repository_module.SharedAdapterStateRepository(
         state_root=tmp_path / "shared_states"
     )
-    base_state_path = repository.save_shared_adapter_state(
+    update_repository = (
+        shared_adapter_update_repository_module.SharedAdapterUpdateRepository(
+            state_root=tmp_path / "updates"
+        )
+    )
+    repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
             adapter_kind="diagonal_scale",
@@ -48,10 +55,8 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
             updated_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         )
     )
-    update_one_path = tmp_path / "updates" / "u1.json"
-    update_two_path = tmp_path / "updates" / "u2.json"
-    dump_shared_adapter_update_payload(
-        update_one_path,
+    update_repository.save_shared_adapter_update(
+        "u1",
         DiagonalScaleAdapterUpdatePayload(
             schema_version="vector_adapter_delta.v1",
             adapter_kind="diagonal_scale",
@@ -64,8 +69,8 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
             mean_margin=0.2,
         ),
     )
-    dump_shared_adapter_update_payload(
-        update_two_path,
+    update_repository.save_shared_adapter_update(
+        "u2",
         DiagonalScaleAdapterUpdatePayload(
             schema_version="vector_adapter_delta.v1",
             adapter_kind="diagonal_scale",
@@ -79,7 +84,10 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
         ),
     )
 
-    service = RoundManagerService(artifact_repository=repository)
+    service = RoundManagerService(
+        artifact_repository=repository,
+        update_payload_repository=update_repository,
+    )
     publication = service.publish_next_pair(
         RoundPublicationRequest(
             base_manifest=ModelManifest(
@@ -88,7 +96,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                 model_revision="rev_000",
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
-                artifact_ref=str(base_state_path),
+                artifact_ref=repository.ref_for_revision("rev_000"),
                 prototype_version="proto_000",
                 training_scope="adapter_only",
                 training_enabled=True,
@@ -103,7 +111,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                     model_id="tracemind-embed",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
-                    payload_ref=str(update_one_path),
+                    payload_ref=update_repository.ref_for_update("u1"),
                     payload_format="diagonal_scale_update",
                     example_count=2,
                     client_metrics={"mean_loss": 0.1},
@@ -116,7 +124,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
                     model_id="tracemind-embed",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
-                    payload_ref=str(update_two_path),
+                    payload_ref=update_repository.ref_for_update("u2"),
                     payload_format="diagonal_scale_update",
                     example_count=1,
                     client_metrics={"mean_loss": 0.2},
@@ -130,7 +138,15 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     assert publication.next_manifest.model_revision == "rev_001"
     assert publication.next_manifest.prototype_version == "proto_001"
     assert publication.next_manifest.artifact_kind == "shared_adapter_state"
-    assert Path(publication.next_manifest.artifact_ref).exists()
+    assert publication.next_manifest.artifact_ref == repository.ref_for_revision(
+        "rev_001"
+    )
+    assert (
+        repository.load_shared_adapter_state_from_ref(
+            publication.next_manifest.artifact_ref
+        ).model_revision
+        == "rev_001"
+    )
     assert publication.next_state.dimension_scales[0] == 1.08
     assert publication.next_state.dimension_scales[1] == 0.9733333333333334
     assert publication.aggregated_metrics["example_count"] == 3.0
@@ -246,7 +262,12 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     repository = shared_adapter_state_repository_module.SharedAdapterStateRepository(
         state_root=tmp_path / "shared_states"
     )
-    base_state_path = repository.save_shared_adapter_state(
+    update_repository = (
+        shared_adapter_update_repository_module.SharedAdapterUpdateRepository(
+            state_root=tmp_path / "updates"
+        )
+    )
+    repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
             adapter_kind="diagonal_scale",
@@ -257,9 +278,8 @@ def test_round_manager_uses_injected_clock_for_publication_time(
             updated_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         )
     )
-    update_path = tmp_path / "updates" / "u1.json"
-    dump_shared_adapter_update_payload(
-        update_path,
+    update_repository.save_shared_adapter_update(
+        "u1",
         DiagonalScaleAdapterUpdatePayload(
             schema_version="vector_adapter_delta.v1",
             adapter_kind="diagonal_scale",
@@ -275,6 +295,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     fixed_time = datetime(2026, 3, 30, 15, 0, tzinfo=timezone.utc)
     service = RoundManagerService(
         artifact_repository=repository,
+        update_payload_repository=update_repository,
         clock=FixedClock(fixed_time),
     )
 
@@ -286,7 +307,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                 model_revision="rev_000",
                 published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
-                artifact_ref=str(base_state_path),
+                artifact_ref=repository.ref_for_revision("rev_000"),
                 prototype_version="proto_000",
                 training_scope="adapter_only",
                 training_enabled=True,
@@ -301,7 +322,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
                     model_id="tracemind-embed",
                     base_model_revision="rev_000",
                     training_scope="adapter_only",
-                    payload_ref=str(update_path),
+                    payload_ref=update_repository.ref_for_update("u1"),
                     payload_format="diagonal_scale_update",
                     example_count=2,
                     client_metrics={"mean_loss": 0.1},

@@ -163,7 +163,7 @@ def run_simulation(
         validation_config,
         shared_state=initial_state,
     )
-    initial_state_path = server_runtime.save_shared_adapter_state(initial_state)
+    initial_state_ref = server_runtime.save_shared_adapter_state(initial_state)
     save_prototype_pack(output_dir, active_prototype)
     active_manifest = ModelManifest(
         schema_version="model_manifest.v1",
@@ -171,7 +171,7 @@ def run_simulation(
         model_revision=initial_model_revision,
         published_at=now,
         artifact_kind="shared_adapter_state",
-        artifact_ref=str(initial_state_path),
+        artifact_ref=initial_state_ref,
         prototype_version=initial_prototype_version,
         training_scope=training_scope,
         training_enabled=True,

@@ -297,7 +297,7 @@ def _build_service(
             state_root=tmp_path / "shared_states"
         )
     )
-    state_path = state_repository.save_shared_adapter_state(
+    state_repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
             adapter_kind="diagonal_scale",
@@ -314,7 +314,7 @@ def _build_service(
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
-        artifact_ref=str(state_path),
+        artifact_ref=state_repository.ref_for_revision("rev_000"),
         prototype_version="proto_000",
         training_scope="adapter_only",
         training_enabled=True,
@@ -517,6 +517,11 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
         task_id=record.training_task.task_id,
     )
     service.accept_update_submission(record.round_id, update)
+    accepted_update = round_repository.load_round(record.round_id).updates[0]
+    assert (
+        accepted_update.payload_ref
+        == service.update_payload_repository.ref_for_update("update_001")
+    )
 
     finalized = service.finalize_round(
         record.round_id,
@@ -530,6 +535,10 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
     assert finalized.finalized_at == fixed_time
     assert finalized.publication is not None
     assert finalized.publication.next_manifest.model_revision == "rev_001"
+    assert (
+        finalized.publication.next_manifest.artifact_ref
+        == service.round_manager_service.artifact_repository.ref_for_revision("rev_001")
+    )
     assert finalized.publication.next_manifest.prototype_version == "proto_001"
     assert round_repository.load_active_pointer() is None
     assert (
@@ -575,7 +584,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
             state_root=tmp_path / "shared_states"
         )
     )
-    state_path = state_repository.save_shared_adapter_state(
+    state_repository.save_shared_adapter_state(
         DiagonalScaleAdapterStatePayload(
             schema_version="vector_adapter_state.v1",
             adapter_kind="diagonal_scale",
@@ -649,7 +658,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
-        artifact_ref=str(state_path),
+        artifact_ref=state_repository.ref_for_revision("rev_000"),
         prototype_version="proto_000",
         training_scope="adapter_only",
         training_enabled=True,
@@ -711,7 +720,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
             state_root=tmp_path / "shared_states"
         )
     )
-    state_path = state_repository.save_shared_adapter_state(
+    state_repository.save_shared_adapter_state(
         _TestShiftStatePayload(
             model_id="tracemind-embed",
             model_revision="rev_000",
@@ -727,7 +736,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
-        artifact_ref=str(state_path),
+        artifact_ref=state_repository.ref_for_revision("rev_000"),
         prototype_version="proto_000",
         training_scope="adapter_only",
         training_enabled=True,

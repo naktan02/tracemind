@@ -42,6 +42,8 @@
   - server-owned runtime config, compatibility, factory wiring
 - `round_manager_service.py`
   - training task 생성, aggregation 결과 publication
+  - `artifact_ref`/`payload_ref`는 파일 경로가 아니라 server-owned ref로 다루고,
+    실제 저장소 해석은 infrastructure repository에 위임
 - `round_lifecycle_service.py`
   - open/update/finalize orchestration
 - `active_manifest_service.py`

@@ -35,6 +35,9 @@ from main_server.src.infrastructure.repositories import (
     model_manifest_repository as model_manifest_repository_module,
 )
 from main_server.src.infrastructure.repositories import (
+    shared_adapter_state_repository as shared_adapter_state_repository_module,
+)
+from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
@@ -43,6 +46,9 @@ from main_server.src.services.federation.rounds.active_manifest_service import (
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
+)
+from main_server.src.services.federation.rounds.round_manager_service import (
+    RoundManagerService,
 )
 from shared.src.contracts.adapter_contracts import (
     dump_vector_adapter_state_payload,
@@ -67,6 +73,9 @@ MODEL_REVISION = "rev_test_001"
 EMBEDDING_DIM = 8  # 테스트용 소형 차원
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+SharedAdapterStateRepository = (
+    shared_adapter_state_repository_module.SharedAdapterStateRepository
 )
 ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
 
@@ -113,6 +122,9 @@ def delta_payload():
 @pytest.fixture()
 def round_service(state_root: Path, artifact_root: Path) -> RoundLifecycleService:
     """격리된 state_root를 사용하는 RoundLifecycleService."""
+    state_repository = SharedAdapterStateRepository(
+        state_root=artifact_root / "shared_states"
+    )
     return RoundLifecycleService(
         round_repository=RoundRepository(state_root=state_root),
         update_payload_repository=SharedAdapterUpdateRepository(
@@ -122,6 +134,9 @@ def round_service(state_root: Path, artifact_root: Path) -> RoundLifecycleServic
             manifest_repository=ModelManifestRepository(
                 state_root=artifact_root / "model_manifests"
             )
+        ),
+        round_manager_service=RoundManagerService(
+            artifact_repository=state_repository,
         ),
     )
 
@@ -165,13 +180,21 @@ def round_client(server_client: TestClient) -> RoundClient:
 # ------------------------------------------------------------------ #
 
 
-def _active_manifest_payload(base_state_path: Path) -> dict:
+def _active_manifest_payload(round_service: RoundLifecycleService) -> dict:
     """active manifest 등록 요청 payload dict."""
+    state_repository = round_service.round_manager_service.artifact_repository
+    state_repository.save_shared_adapter_state(
+        make_identity_state_payload(
+            model_id=MODEL_ID,
+            model_revision=MODEL_REVISION,
+            embedding_dim=EMBEDDING_DIM,
+        )
+    )
     manifest = make_embedding_manifest(
         model_id=MODEL_ID,
         model_revision=MODEL_REVISION,
         prototype_version="proto_test",
-        artifact_ref=str(base_state_path),
+        artifact_ref=state_repository.ref_for_revision(MODEL_REVISION),
     )
     return manifest.model_dump(mode="json")
 
@@ -183,12 +206,12 @@ def _open_round_payload() -> dict:
 
 def _activate_manifest(
     server_client: httpx.Client,
-    base_state_path: Path,
+    round_service: RoundLifecycleService,
 ) -> dict:
     """서버 active manifest를 bootstrap한다."""
     response = server_client.post(
         "/api/v1/fl/rounds/active-manifest",
-        json=_active_manifest_payload(base_state_path),
+        json=_active_manifest_payload(round_service),
     )
     assert response.status_code == 201
     return response.json()
@@ -226,10 +249,10 @@ def test_server_health(server_client: httpx.Client) -> None:
 @pytest.mark.integration
 def test_round_open_returns_open_status(
     server_client: httpx.Client,
-    base_state_path: Path,
+    round_service: RoundLifecycleService,
 ) -> None:
     """round open API가 open 상태 record를 반환한다."""
-    _activate_manifest(server_client, base_state_path)
+    _activate_manifest(server_client, round_service)
     r = server_client.post(
         "/api/v1/fl/rounds",
         json=_open_round_payload(),
@@ -259,10 +282,10 @@ def test_round_open_requires_active_manifest(server_client: httpx.Client) -> Non
 def test_agent_fetches_task_from_open_round(
     round_client: RoundClient,
     server_client: httpx.Client,
-    base_state_path: Path,
+    round_service: RoundLifecycleService,
 ) -> None:
     """RoundClient가 open round의 training task를 가져온다."""
-    _activate_manifest(server_client, base_state_path)
+    _activate_manifest(server_client, round_service)
     r = server_client.post(
         "/api/v1/fl/rounds",
         json=_open_round_payload(),
@@ -294,9 +317,10 @@ def test_insufficient_examples_when_round_open(
     round_client: RoundClient,
     server_client: httpx.Client,
     base_state_path: Path,
+    round_service: RoundLifecycleService,
 ) -> None:
     """round가 열려 있어도 예시 없으면 INSUFFICIENT_EXAMPLES를 반환한다."""
-    _activate_manifest(server_client, base_state_path)
+    _activate_manifest(server_client, round_service)
     server_client.post("/api/v1/fl/rounds", json=_open_round_payload())
 
     service = FederationRuntimeService(round_client=round_client)
@@ -311,12 +335,11 @@ def test_insufficient_examples_when_round_open(
 def test_full_round_lifecycle(
     server_client: httpx.Client,
     round_service: RoundLifecycleService,
-    base_state_path: Path,
     artifact_root: Path,
     delta_payload,
 ) -> None:
     """round 생성 → update 업로드 → finalize 전체 흐름이 정상 작동한다."""
-    _activate_manifest(server_client, base_state_path)
+    _activate_manifest(server_client, round_service)
     r = server_client.get("/api/v1/fl/rounds/active-state/current")
     assert r.status_code == 200
     assert r.json()["state"]["model_revision"] == MODEL_REVISION
@@ -352,10 +375,16 @@ def test_full_round_lifecycle(
     assert r.status_code == 202
     assert r.json()["update_count"] >= 1
     accepted_update = round_service.get_round(round_id).updates[0]
-    accepted_payload_ref = Path(accepted_update.payload_ref)
-    assert accepted_payload_ref.exists()
-    assert accepted_payload_ref.is_relative_to(artifact_root / "server_updates")
-    assert accepted_payload_ref != Path(envelope.payload_ref)
+    assert (
+        accepted_update.payload_ref
+        == round_service.update_payload_repository.ref_for_update(
+            accepted_update.update_id
+        )
+    )
+    assert accepted_update.payload_ref != envelope.payload_ref
+    round_service.update_payload_repository.load_shared_adapter_update_from_ref(
+        accepted_update.payload_ref
+    )
 
     # 3. finalize
     r = server_client.post(
@@ -367,6 +396,9 @@ def test_full_round_lifecycle(
     assert final["status"] == "finalized"
     assert final["publication"] is not None
     assert final["publication"]["update_count"] == 1
+    assert final["publication"]["next_manifest"]["artifact_ref"].startswith(
+        "shared_adapter_state::"
+    )
     next_revision = final["publication"]["next_manifest"]["model_revision"]
     r = server_client.get("/api/v1/fl/rounds/active-manifest/current")
     assert r.status_code == 200

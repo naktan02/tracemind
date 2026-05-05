@@ -20,7 +20,7 @@ def test_current_shared_adapter_state_parses_registered_state_payload() -> None:
         model_id="model",
         model_revision="rev_001",
         prototype_version="proto_001",
-        artifact_ref="/server/state/rev_001.json",
+        artifact_ref="shared_adapter_state::rev_001",
     )
     payload = make_current_shared_adapter_state_payload(
         manifest=manifest,
@@ -46,7 +46,7 @@ def test_current_shared_adapter_state_rejects_revision_mismatch() -> None:
         model_id="model",
         model_revision="rev_manifest",
         prototype_version="proto_001",
-        artifact_ref="/server/state/rev_manifest.json",
+        artifact_ref="shared_adapter_state::rev_manifest",
     )
 
     try:

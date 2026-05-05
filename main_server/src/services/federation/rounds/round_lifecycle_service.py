@@ -104,6 +104,13 @@ class RoundLifecycleService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
+    def __post_init__(self) -> None:
+        """수락 저장소와 finalize 로딩 저장소를 같은 서버 저장소로 맞춘다."""
+
+        self.round_manager_service.update_payload_repository = (
+            self.update_payload_repository
+        )
+
     def open_round(self, request: RoundOpenDraftRequest) -> RoundRecord:
         active_pointer = self.round_repository.load_active_pointer()
         if active_pointer is not None:
@@ -179,11 +186,11 @@ class RoundLifecycleService:
             envelope=submission.envelope,
             training_task=record.training_task,
         )
-        server_payload_path = self.update_payload_repository.path_for_update(
+        server_payload_ref = self.update_payload_repository.ref_for_update(
             decoded_envelope.update_id
         )
         server_owned_envelope = decoded_envelope.model_copy(
-            update={"payload_ref": str(server_payload_path)}
+            update={"payload_ref": server_payload_ref}
         )
         decision = self.update_acceptance_policy.evaluate(
             record=record,
