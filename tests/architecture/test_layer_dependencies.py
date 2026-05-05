@@ -9,6 +9,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
 AGENT_SRC = REPO_ROOT / "agent" / "src"
+AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
@@ -177,6 +178,14 @@ def test_agent_layer_does_not_import_main_server_or_scripts() -> None:
         forbidden_prefixes=("main_server.src", "research", "scripts"),
     )
     assert not violations, _format_violations(violations)
+
+
+def test_agent_does_not_keep_unused_hydra_conf_tree() -> None:
+    assert not AGENT_CONF.exists(), (
+        "agent runtime 설정은 agent/conf Hydra tree로 두지 않는다. "
+        "실험 조합은 루트 conf/, production runtime은 agent/src/config 또는 "
+        "typed service wiring에서 소유한다."
+    )
 
 
 def test_main_server_layer_does_not_import_scripts() -> None:

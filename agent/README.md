@@ -16,6 +16,7 @@ prototype scoring은 bootstrap/comparison 경로로 유지한다.
 
 모델 교체 시작점:
 
-- embedding model: `agent/conf/embedding/*.yaml`
-- translation model: `agent/conf/translation/*.yaml`
+- 실험/스크립트 embedding preset: `conf/execution_context/embedding_adapter/*.yaml`
+- agent embedding adapter factory: `agent/src/infrastructure/model_adapters/embedding/factory.py`
+- backtranslation runtime: `agent/src/services/language/backtranslation_service.py`
 - 실제 추론 파이프라인 조립: `agent/src/services/inference/pipeline_service.py`
