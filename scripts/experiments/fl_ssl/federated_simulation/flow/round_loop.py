@@ -5,22 +5,22 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Any
 
-from scripts.experiments.fl_ssl.federated_simulation.artifacts import (
-    save_model_manifest,
-    save_prototype_pack,
-    save_selection_diagnostics,
-)
-from scripts.experiments.fl_ssl.federated_simulation.evaluation import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
-from scripts.experiments.fl_ssl.federated_simulation.flow_models import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
+    FederatedSslSimulationRuntime,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
     ClientRoundExecution,
     RoundExecution,
 )
-from scripts.experiments.fl_ssl.federated_simulation.method_runtime import (
-    FederatedSslSimulationRuntime,
+from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
+    save_model_manifest,
+    save_prototype_pack,
+    save_selection_diagnostics,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,

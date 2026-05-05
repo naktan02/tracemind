@@ -4,24 +4,24 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from scripts.experiments.fl_ssl.federated_simulation.artifacts import (
-    save_model_manifest,
-    save_prototype_pack,
-)
-from scripts.experiments.fl_ssl.federated_simulation.evaluation import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
-from scripts.experiments.fl_ssl.federated_simulation.flow_models import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
+    split_rows_for_federation,
+    split_rows_into_client_shards,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
+)
+from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
+    save_model_manifest,
+    save_prototype_pack,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     SimulationRunRequest,
-)
-from scripts.experiments.fl_ssl.federated_simulation.sharding import (
-    split_rows_for_federation,
-    split_rows_into_client_shards,
 )
 from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 from scripts.runtime_adapters.federated_server_runtime import (

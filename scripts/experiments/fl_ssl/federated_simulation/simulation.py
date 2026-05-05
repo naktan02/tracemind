@@ -6,12 +6,18 @@ from pathlib import Path
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.prototype.building.base import PrototypeBuildStrategy
-from scripts.experiments.fl_ssl.federated_simulation.bootstrap import (
-    bootstrap_simulation,
-)
-from scripts.experiments.fl_ssl.federated_simulation.method_runtime import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
     build_federated_ssl_simulation_runtime,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.bootstrap import (
+    bootstrap_simulation,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.result_builder import (
+    build_simulation_result,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
+    run_one_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
@@ -25,10 +31,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
-from scripts.experiments.fl_ssl.federated_simulation.result_builder import (
-    build_simulation_result,
-)
-from scripts.experiments.fl_ssl.federated_simulation.round_loop import run_one_round
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 

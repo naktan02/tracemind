@@ -11,7 +11,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.artifacts.run_artifacts import build_run_dir
-from scripts.experiments.fl_ssl.federated_simulation.io_utils import load_jsonl_rows
+from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from scripts.experiments.fl_ssl.federated_simulation.artifacts import (
-    save_simulation_report,
-)
-from scripts.experiments.fl_ssl.federated_simulation.evaluation import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_validation_scoring_service,
     evaluate_rows,
 )
-from scripts.experiments.fl_ssl.federated_simulation.flow_models import (
+from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
+)
+from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
+    save_simulation_report,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,

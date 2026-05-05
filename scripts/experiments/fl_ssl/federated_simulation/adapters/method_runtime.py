@@ -8,14 +8,14 @@ from typing import Any, Protocol
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.experiments.fl_ssl.federated_simulation.evaluation import (
+from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_training_examples,
+)
+from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import (
+    build_round_open_request,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedTrainingTaskConfig,
-)
-from scripts.experiments.fl_ssl.federated_simulation.task_config import (
-    build_round_open_request,
 )
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
