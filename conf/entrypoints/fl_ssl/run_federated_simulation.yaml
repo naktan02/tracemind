@@ -28,6 +28,9 @@ prototype_rebuild:
 diagnostics:
   dump_dir_name: selection_dumps
 
+# `training_algorithm_profile`은 현재 FL pseudo-label local update profile이다.
+# FedAvg baseline에서는 local update family와 server aggregation backend가 함께
+# 움직이므로 round runtime 기본값도 이 profile에서 파생한다.
 round_runtime:
   adapter_family_name: ${training_algorithm_profile.adapter_family_name}
   aggregation_backend_name: ${training_algorithm_profile.aggregation_backend_name}
@@ -69,6 +72,8 @@ report:
   schema_version: federated_simulation_report.v1
   track: fl_ssl_main_comparison
   table_role: main_comparison
+  # 아래 split/seed 값은 report protocol metadata다.
+  # 실제 seed sweep과 labeled/unlabeled split 강제는 별도 runner에서 닫는다.
   labeled_ratio: 0.1
   unlabeled_ratio: 0.9
   seed_count: 3

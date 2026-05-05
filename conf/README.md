@@ -59,6 +59,33 @@ conf/
 - strategy axis는 실제로 교체 가능한 계산/정책 축이다.
 - track preset은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 옵션 묶음이다.
 
+## FL SSL config contract
+
+FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는다.
+
+- `strategy_axes/fl/method_descriptor`
+  - `cfg.ssl_method`로 compose된다.
+  - 논문 method identity, report role, custom runtime 필요 여부를 설명한다.
+  - 실제 local update 계산 조합을 단독으로 소유하지 않는다.
+- `strategy_axes/fl/client_training_profile`
+  - `cfg.training_algorithm_profile`로 compose된다.
+  - 이름은 client profile이지만 현재는 agent local update를 만드는
+    training/evidence/scoring/privacy 조합 profile이다.
+  - 현재 FedAvg pseudo-label baseline에서는 `adapter_family_name`과
+    `aggregation_backend_name`도 이 profile에서 파생된다.
+  - future method에서 client step과 server step이 독립적으로 바뀌면
+    이 값을 `round_runtime` 또는 별도 group으로 분리한다.
+- `strategy_axes/fl/shard_policy`
+  - `cfg.shard_policy`로 compose된다.
+  - non-IID client split 방식만 소유한다.
+- `track_presets/fl_ssl/simulation_preset`
+  - client 수, round budget, output dir 같은 track 실행 budget을 소유한다.
+  - method semantics나 local update policy를 소유하지 않는다.
+- `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
+  - 현재 report protocol metadata다.
+  - labeled/unlabeled pool split 강제와 seed sweep 실행은 별도 runner/sweep에서
+    닫아야 하며, 이 필드만으로 실행이 강제됐다고 보지 않는다.
+
 ## 정리 기준
 
 - 새 실행 시작점은 `entrypoints/<track_or_stage>/` 아래에 둔다.

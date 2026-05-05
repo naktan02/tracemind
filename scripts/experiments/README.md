@@ -39,6 +39,12 @@
   - runtime/task/validation/report shape는
     `conf/entrypoints/fl_ssl/run_federated_simulation.yaml` 안의
     `round_runtime`, `training_task`, `validation`, `report` section이다.
+  - `strategy_axes/fl/client_training_profile`은 compose 후
+    `training_algorithm_profile`로 들어가며, 현재는 client-only preset이 아니라
+    local update backend, scoring/evidence, privacy, runtime pair 기본값을 묶은
+    FL local-update profile이다.
+  - `strategy_axes/fl/method_descriptor`는 method identity/report metadata를
+    소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central_classifier_seed/train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline.
 - `central_ssl_control/train_lora_classifier.py`

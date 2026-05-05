@@ -349,6 +349,29 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.report.unlabeled_ratio == 0.9
 
 
+def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
+
+    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert cfg.ssl_method.client_step.uses_training_algorithm_profile is True
+    assert cfg.ssl_method.client_step.custom_method_runtime_required is False
+    assert cfg.ssl_method.server_step.custom_round_policy_required is False
+    assert (
+        cfg.training_task.objective.algorithm_profile_name
+        == cfg.training_algorithm_profile.algorithm_profile_name
+    )
+    assert (
+        cfg.round_runtime.adapter_family_name
+        == cfg.training_algorithm_profile.adapter_family_name
+    )
+    assert (
+        cfg.round_runtime.aggregation_backend_name
+        == cfg.training_algorithm_profile.aggregation_backend_name
+    )
+    assert cfg.report.seed_count == 3
+
+
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
