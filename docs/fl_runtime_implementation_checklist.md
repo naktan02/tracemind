@@ -95,6 +95,22 @@ source of truth로 본다.
 - [ ] backward-compatible manifest/version 정책 확인.
 - [ ] architecture guard와 integration smoke 추가.
 
+## LoRA-classifier 검증 게이트
+
+- [x] unit: payload parse/serialize, training algorithm profile, LoRA config snapshot.
+- [x] unit: `LoraTextClassifier` 1-batch train/eval step.
+- [x] unit: `lora_classifier.fedavg` inline delta shape/version과 artifact-only 거부.
+- [x] smoke: `hash_debug + cpu_local` baseline `2 clients / 1 round / 1 seed`.
+- [x] small: `hash_debug + cpu_local` baseline `3 clients / 2 rounds / 1 seed`.
+- [x] LoRA bootstrap: `lora_pseudo_label_v1 + fedavg_lora_classifier`
+  `2 clients / 0 rounds / 1 seed`.
+- [ ] LoRA smoke: `2 clients / 1 round / 1 seed`.
+  현재 agent는 artifact-ref LoRA update만 만들고, server `lora_classifier.fedavg`는
+  materializer/loader 없는 artifact-only 집계를 의도적으로 거부한다. 실제
+  1-round smoke는 agent LoRA artifact materialization 또는 inline train-step delta
+  생산이 붙은 뒤 실행한다.
+- [ ] standard 전 runtime trace: GPU memory, update size, round time.
+
 ## 완료 기준
 
 - raw text와 개인 해석 상태는 agent-local boundary에 남는다.
