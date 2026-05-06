@@ -5,6 +5,8 @@ from __future__ import annotations
 import pytest
 from hydra import compose, initialize_config_module
 
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+
 
 @pytest.mark.parametrize(
     "config_name",
@@ -376,6 +378,24 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         == cfg.round_runtime_profile.aggregation_backend_name
     )
     assert cfg.report.seed_count == 3
+
+
+def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
+
+    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+
+    assert cfg.ssl_method.implementation_status == descriptor.implementation_status
+    assert cfg.ssl_method.client_step.task_type == descriptor.local_step.step_name
+    assert (
+        cfg.ssl_method.client_step.custom_method_runtime_required
+        is descriptor.runtime_capabilities.requires_custom_client_runtime
+    )
+    assert (
+        cfg.ssl_method.server_step.custom_round_policy_required
+        is descriptor.runtime_capabilities.requires_custom_server_runtime
+    )
 
 
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:

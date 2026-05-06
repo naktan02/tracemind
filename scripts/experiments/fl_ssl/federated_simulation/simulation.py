@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 from pathlib import Path
+from typing import Any
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
@@ -117,6 +119,19 @@ def _build_validated_ssl_runtime(
 ) -> FederatedSslSimulationRuntime:
     ssl_method_runtime = build_federated_ssl_simulation_runtime(ssl_method_config.name)
     ssl_method_descriptor = ssl_method_runtime.descriptor
+    _require_ssl_method_config_matches_descriptor(
+        ssl_method_config,
+        ssl_method_descriptor,
+    )
+    return ssl_method_runtime
+
+
+def _require_ssl_method_config_matches_descriptor(
+    ssl_method_config: FederatedSslMethodConfig,
+    ssl_method_descriptor: FederatedSslMethodDescriptor,
+) -> None:
+    """Hydra method config가 methods spec과 다른 의미를 갖지 않게 막는다."""
+
     if ssl_method_config.implementation_status != (
         ssl_method_descriptor.implementation_status
     ):
@@ -124,4 +139,40 @@ def _build_validated_ssl_runtime(
             "ssl_method implementation_status must match the registered "
             f"descriptor for {ssl_method_config.name}."
         )
-    return ssl_method_runtime
+    _require_mapping_value(
+        ssl_method_config.client_step,
+        key="task_type",
+        expected=ssl_method_descriptor.local_step.step_name,
+        context=f"ssl_method.client_step for {ssl_method_config.name}",
+    )
+    _require_mapping_value(
+        ssl_method_config.client_step,
+        key="custom_method_runtime_required",
+        expected=(
+            ssl_method_descriptor.runtime_capabilities.requires_custom_client_runtime
+        ),
+        context=f"ssl_method.client_step for {ssl_method_config.name}",
+    )
+    _require_mapping_value(
+        ssl_method_config.server_step,
+        key="custom_round_policy_required",
+        expected=(
+            ssl_method_descriptor.runtime_capabilities.requires_custom_server_runtime
+        ),
+        context=f"ssl_method.server_step for {ssl_method_config.name}",
+    )
+
+
+def _require_mapping_value(
+    mapping: dict[str, object],
+    *,
+    key: str,
+    expected: Any,
+    context: str,
+) -> None:
+    actual = mapping.get(key)
+    if actual != expected:
+        raise ValueError(
+            f"{context}.{key} must match the registered method descriptor: "
+            f"{actual!r} != {expected!r}."
+        )

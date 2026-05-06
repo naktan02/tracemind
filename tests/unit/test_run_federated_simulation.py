@@ -37,6 +37,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
+    _build_validated_ssl_runtime,
     run_simulation,
     run_simulation_request,
 )
@@ -213,10 +214,12 @@ def _default_ssl_method_config() -> FederatedSslMethodConfig:
         client_step={
             "owner": "agent",
             "task_type": "pseudo_label_self_training",
+            "custom_method_runtime_required": False,
         },
         server_step={
             "owner": "main_server",
             "aggregation_backend_name": "fedavg",
+            "custom_round_policy_required": False,
         },
         report_tags=["baseline", "fedavg", "pseudo_label"],
     )
@@ -401,6 +404,14 @@ def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")
+
+
+def test_federated_ssl_runtime_rejects_method_config_descriptor_drift() -> None:
+    ssl_method_config = _default_ssl_method_config()
+    ssl_method_config.client_step["task_type"] = "supervised_mix_local_training"
+
+    with pytest.raises(ValueError, match="ssl_method.client_step.*task_type"):
+        _build_validated_ssl_runtime(ssl_method_config)
 
 
 def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:
