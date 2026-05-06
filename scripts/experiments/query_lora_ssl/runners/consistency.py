@@ -7,11 +7,11 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from methods.adaptation.lora_classifier.training import (
+    train_query_ssl_classifier as train_query_ssl_lora_classifier,
+)
 from methods.adaptation.query_classifier_adaptation.data import (
     build_multiview_dataloader as build_query_lora_multiview_dataloader,
-)
-from methods.adaptation.query_classifier_adaptation.training import (
-    train_query_ssl_classifier as train_query_ssl_lora_classifier,
 )
 from methods.ssl.registry import build_query_ssl_algorithm
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts

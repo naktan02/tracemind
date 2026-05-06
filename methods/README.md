@@ -41,6 +41,8 @@ agent / main_server / scripts
   selection hook
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
+- `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +
+  classifier head scaffold와 학습/평가 loop
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산
 - `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별
   next-state 계산 core

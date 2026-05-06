@@ -48,9 +48,10 @@ Seed / central SSL:
 5. `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py`
 6. `scripts/experiments/central_ssl_control/train_lora_fixmatch.py`
 7. `scripts/experiments/query_lora_ssl/*`
-8. `methods/adaptation/query_classifier_adaptation/*`
-9. `methods/ssl/*`
-10. `methods/adaptation/*`
+8. `methods/adaptation/lora_classifier/*`
+9. `methods/adaptation/query_classifier_adaptation/*`
+10. `methods/ssl/*`
+11. `methods/adaptation/*`
 
 Agent runtime:
 

@@ -7,8 +7,10 @@
 - `diagonal_scale/`: diagonal-scale heuristic local update 계산 core
 - `peft/`: PEFT adapter builder protocol과 registry
 - `lora/`: LoRA/RSLoRA builder core
+- `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
+  재사용 scaffold
 - `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의
-  token-batch 학습 scaffold
+  token-batch 입력 glue와 기존 import compatibility shim
 
 rank, alpha, target module 같은 실행 파라미터는 code folder가 아니라 config에서
 선택한다.
