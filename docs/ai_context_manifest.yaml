@@ -46,6 +46,9 @@ active_entrypoints:
   - docs/operations/local-runbook.md
   - docs/quality/test-strategy.md
   - docs/governance/document-governance.md
+  - methods/README.md
+  - conf/README.md
+  - scripts/README.md
 
 task_routes:
   contract_change:
@@ -91,6 +94,8 @@ task_routes:
       - AGENTS.md
       - docs/strategy_surface_map.md
       - docs/contracts/strategy_addition_playbook.md
+      - methods/README.md
+      - conf/README.md
       - relevant path-specific AGENTS.md
     conditional_read:
       - docs/contracts/algorithm_extension_guide.md when protocol details are needed
@@ -137,7 +142,10 @@ task_routes:
       - AGENTS.md
       - docs/AGENTS.md
       - docs/execution_index.md
+      - docs/architecture/system-overview.md
       - docs/project_execution_plan.md
+      - methods/README.md
+      - conf/README.md
     verify:
       - duplicate guidance is reduced
       - notes stay archive-only

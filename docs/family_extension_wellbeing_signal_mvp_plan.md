@@ -141,7 +141,7 @@ Setup
 - parent 로그인 중: `/parent`만 보인다
 - unlock route는 탭이 아니라 진입 흐름으로만 사용한다
 
-## 현재 구현 완료 범위
+## MVP 구현 표면
 
 1. `wellbeing_signal` shared contract
 2. `family_access` shared contract
@@ -160,7 +160,7 @@ Setup
 15. 마음 도움 범위 제한 redirect
 16. 실제 관측 wellbeing summary 기반 선제 발화 gate
 
-## 아직 하지 않는 것
+## 보류 범위
 
 1. 원격 agent 페어링/선택
 2. 별도 부모 웹 대시보드
@@ -171,7 +171,7 @@ Setup
 7. child/parent별 세션 정책 세분화
 8. 선제 발화 빈도 제한과 부모 opt-in 알림 경계
 
-## 다음 우선순위
+## 후속 후보
 
 현재 MVP는 한번 멈추고 실제 사용 흐름을 보는 단계까지 왔다.
 

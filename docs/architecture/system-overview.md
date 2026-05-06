@@ -32,9 +32,10 @@ central fixed embedding + classifier seed
 |---|---|---|
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
 | Methods | SSL, adaptation, prototype, FL aggregation의 교체 가능한 계산 core | `methods/*` |
+| Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication, experiment workspace backend | `main_server/src/api/*`, `main_server/src/services/*` |
-| Scripts | dataset/prototype/classifier/LoRA/FL simulation 실행 조합 | `scripts/experiments/*`, `scripts/prototypes/*`, `conf/*` |
+| Scripts | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/prototypes/*` |
 | Apps | developer experiment UI와 family extension UI shell | `apps/experiment_web/*`, `apps/family_extension/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 
@@ -180,6 +181,7 @@ Raw Event / Local Signal
 |---|---|---|
 | `shared/` | 공통 contract, domain entity, canonical 계산 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
 | `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
+| `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | 서버 round orchestration과 aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication, experiment workspace backend | raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
 | `scripts/` | Hydra 기반 실험 entrypoint, sweep, report, compatibility wrapper | 운영 후보 알고리즘 코어를 먼저 만들고 나중에 복사하지 않는다 |

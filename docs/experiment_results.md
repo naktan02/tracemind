@@ -71,11 +71,11 @@ Purpose:
 
 FL smoke에서 확인한 대표 산출물:
 
-- `main_server/model_manifests/sim_rev_0000.json`
-- `main_server/model_manifests/sim_rev_0001.json`
-- `main_server/prototype_packs/proto_sim_0000.json`
-- `main_server/prototype_packs/proto_sim_0001.json`
-- `agents/agent_01/shared_adapter_updates/update_round_0001_08779ed1233e.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0000.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0001.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0000.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0001.json`
+- `runs/federated_simulation_smoke/20260331T155147Z/agents/agent_01/shared_adapter_updates/update_round_0001_08779ed1233e.json`
 
 ## 현재 권장안
 

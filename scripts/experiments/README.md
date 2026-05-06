@@ -4,7 +4,8 @@
 
 원칙:
 
-- 운영 후보 로직은 `shared`, `agent`, `main_server`에 둔다.
+- 운영 후보 algorithm/method core는 `methods`에 둔다.
+- 공통 contract/domain은 `shared`, runtime adapter는 `agent`와 `main_server`에 둔다.
 - 이 디렉터리는 그 코어를 조합하는 실험 CLI와 실험 전용 helper만 둔다.
 - Hydra entrypoint config는 `conf/entrypoints/**/*.yaml`이 source of truth다.
 
@@ -152,14 +153,14 @@
      local labeled loss를 끄는 `unlabeled-only` ablation을 돌릴 수 있다.
 
 현재 바로 복사해서 쓸 명령은 `scripts/README.md`의
-`현재 warm-start 재실행 레시피` 절에 정리해 둔다.
+중앙 LoRA/SSL 실행 명령과 각 entrypoint의 `--cfg job` preview를 기준으로 본다.
 
 ## 주의할 점
 
 - 이 디렉터리의 helper는 실험용 canonical shape를 만들 수는 있지만,
   `shared` 계약의 source of truth를 대체하지는 않는다.
 - 실험에서 잘 된 로직을 운영 경로로 올릴 때는 해당 소유 경계
-  (`shared/agent/main_server`)로 옮겨야 한다.
+  (`methods`, `shared`, `agent`, `main_server`, 필요 시 `conf`)로 옮겨야 한다.
 - config에 field가 있다고 곧바로 runtime 구현이 있다는 뜻은 아니다.
   secure aggregation/encryption 계열은 현재 typed contract는 있지만
   실제 runtime은 아직 붙지 않았다.

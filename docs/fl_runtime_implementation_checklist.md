@@ -11,7 +11,7 @@ source of truth로 본다.
 - `scripts`는 synthetic simulation, benchmark, evaluation harness로만 남긴다.
 - 알고리즘 계산 core는 `methods`, 계약은 `shared`에 둔다.
 
-## 현재 구현됨
+## 구현 표면
 
 - main_server round 생성, 조회, update ingest, finalize, publication.
 - agent round client와 local training service.
@@ -21,7 +21,7 @@ source of truth로 본다.
 - FL simulation harness와 artifact/report dump.
 - architecture guard로 `scripts -> agent/main_server` 직접 import 제한.
 
-## 아직 약한 지점
+## 약한 경계
 
 - classifier-first baseline의 live agent path 확장.
 - FedMatch/FedLGMatch/(FL)^2 같은 FL SSL method 실제 구현.

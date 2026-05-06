@@ -19,9 +19,11 @@ agent 로컬 runtime, server orchestration, 실험층을 역할별로 분리해 
 | 구성요소 | 역할 |
 |---|---|
 | `shared/` | agent, main_server, scripts가 함께 읽는 contract와 canonical rule |
+| `methods/` | SSL, adaptation, prototype, federated aggregation의 재사용 계산 core |
+| `conf/` | Hydra 실행 조합과 strategy/runtime 파라미터 |
 | `agent/` | 로컬 추론, query buffer, local training, wellbeing/family output |
 | `main_server/` | FL round lifecycle, aggregation, artifact publication, experiment workspace backend |
-| `scripts/` | dataset/prototype/classifier/LoRA/FL simulation 실행 조합 |
+| `scripts/` | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper |
 | `apps/` | experiment web과 family extension UI shell |
 | `tests/` | package unit, cross-boundary integration/e2e, architecture guard |
 
@@ -79,6 +81,8 @@ curl http://127.0.0.1:8001/api/v1/system/health
 - agent 경로: [agent/src/services/README.md](agent/src/services/README.md)
 - main_server 경로: [main_server/src/services/README.md](main_server/src/services/README.md)
 - round orchestration 경로: [main_server/src/services/federation/rounds/README.md](main_server/src/services/federation/rounds/README.md)
+- method core 경로: [methods/README.md](methods/README.md)
+- Hydra config 경로: [conf/README.md](conf/README.md)
 - experiment 경로: [scripts/experiments/README.md](scripts/experiments/README.md)
 
 ## Documentation Map

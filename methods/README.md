@@ -34,9 +34,7 @@ agent / main_server / scripts
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
 `main_server`, `scripts`를 import하지 않는다.
 
-## 진행 상태
-
-현재 활성 구현:
+## 하위 패키지 지도
 
 - `methods/ssl/fixmatch/`: USB 스타일 FixMatch objective core
 - `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
@@ -53,3 +51,6 @@ agent / main_server / scripts
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산
 - `methods/prototype/evidence/`: prototype score를 pseudo-label evidence로 정규화
 - `methods/prototype/training_inputs/`: prototype single/multiview input view 계산
+
+구현 상태와 기본 선택값은 `docs/strategy_surface_map.md`와 `conf/README.md`를
+기준으로 본다. 이 문서는 `methods/`의 책임 경계만 설명한다.

@@ -24,6 +24,8 @@
 | AI 작업 라우팅 | `docs/ai_context_manifest.yaml` |
 | 읽기 순서와 문서 지도 | `docs/execution_index.md` |
 | 시스템 구조와 코드 경계 | `docs/architecture/system-overview.md` |
+| algorithm/method core 경계 | `methods/README.md`, `methods/**/README.md` |
+| Hydra config group 경계 | `conf/README.md` |
 | 활성 연구/시스템 계획 | `docs/project_execution_plan.md` |
 | staged phase map | `docs/staged_execution_roadmap.md` |
 | API endpoint 표면 | `docs/api/api-surface.md`, `agent/src/api/*`, `main_server/src/api/*` |
@@ -58,7 +60,7 @@
 | shared payload 변경 | contract file, `shared/src/contracts/README.md`, 관련 `docs/contracts/*`, tests |
 | local run command, dependency, GPU/runtime profile 변경 | `docs/operations/local-runbook.md`, `README.md`, 필요 시 `AGENTS.md` |
 | 테스트 구조나 quality gate 변경 | `docs/quality/test-strategy.md`, `tests/AGENTS.md` |
-| script/Hydra config source 변경 | `scripts/README.md`, `docs/execution_index.md`, 관련 tests |
+| script/Hydra config source 변경 | `scripts/README.md`, `conf/README.md`, `docs/execution_index.md`, 관련 tests |
 | UI consumer contract 변경 | app code, generated type tests, `docs/api/api-surface.md` |
 | 의미 있는 설계 결정 | `docs/notes/decisions/YYYY-MM-DD-*.md`, 필요 시 active docs 요약 |
 | incident 또는 flaky/debug 절차 | `docs/notes/incidents/YYYY-MM-DD-*.md`, 필요 시 runbook 요약 |

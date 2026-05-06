@@ -1,8 +1,9 @@
 # Query Classifier Adaptation
 
 이 패키지는 query-domain classifier adaptation method scaffold의 데이터 로더,
-모델 조립, 학습 루프를 소유한다. 현재 구현은 frozen text backbone에 PEFT adapter와
-classifier head를 얹지만, PEFT adapter 자체는 이 패키지의 소유물이 아니다.
+모델 조립, 학습 루프를 소유한다. 이 scaffold는 frozen text backbone에 PEFT
+adapter와 classifier head를 얹는 구조지만, PEFT adapter 자체는 이 패키지의
+소유물이 아니다.
 
 범위:
 

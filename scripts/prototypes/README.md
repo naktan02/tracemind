@@ -9,7 +9,7 @@ prototype artifact 작업 entrypoint를 모은다.
 - 즉 `seed / evaluate / pull / activate / report`처럼 이미 정해진
   prototype pack을 만들고 검증하고 배포 상태를 다루는 workflow가 주된 역할이다.
 - `어떤 prototype 전략이 더 좋은지`를 비교하는 연구형 실험은
-  `scripts/experiments/prototype_*`가 맡는다.
+  `scripts/experiments/prototype_analysis/`가 맡는다.
 - 둘 다 prototype을 다루지만, 이 폴더는 `artifact 작업`, experiments는
   `비교 실험`이라는 점이 경계다.
 
@@ -60,11 +60,11 @@ python -m scripts.prototypes.seed_prototypes \
 ## newcomer 메모
 
 - embedding backend를 더 추가하고 싶으면
-  [agent/src/infrastructure/model_adapters/embedding/factory.py](....agent/src/infrastructure/model_adapters/embedding/factory.py)를
+  [agent/src/infrastructure/model_adapters/embedding/factory.py](../../agent/src/infrastructure/model_adapters/embedding/factory.py)를
   먼저 본다.
 - prototype pack의 translation 관련 필드 의미는
-  [docs/contracts/prototype_pack_v1.md](....docs/contracts/prototype_pack_v1.md)를
+  [docs/contracts/prototype_pack_v1.md](../../docs/contracts/prototype_pack_v1.md)를
   같이 보는 편이 빠르다.
 - 현재 전략 축 전체 상태는
-  [docs/strategy_surface_map.md](....docs/strategy_surface_map.md)에
+  [docs/strategy_surface_map.md](../../docs/strategy_surface_map.md)에
   요약돼 있다.

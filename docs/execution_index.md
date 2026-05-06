@@ -22,6 +22,8 @@ central fixed embedding + classifier seed
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
+| `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
+| `conf/README.md` | Hydra config group과 strategy/runtime 축 |
 
 ## Research Docs
 
@@ -72,7 +74,7 @@ Apps:
 ## Start Checklist
 
 1. 요청이 seed, central SSL control, FL SSL non-IID, runtime translation 중 어디인지 구분한다.
-2. 변경 소유 경계가 `shared`, `agent`, `main_server`, `scripts`, `apps`, `docs` 중 어디인지 정한다.
+2. 변경 소유 경계가 `shared`, `methods`, `conf`, `agent`, `main_server`, `scripts`, `apps`, `docs` 중 어디인지 정한다.
 3. 전략/알고리즘 추가라면 `docs/strategy_surface_map.md`를 먼저 확인한다.
 4. SSL 논문 비교라면 중앙 control과 FL main comparison을 분리한다.
 5. `docs/notes/**`는 archive-only로 둔다.

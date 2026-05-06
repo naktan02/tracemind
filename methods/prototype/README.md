@@ -9,7 +9,7 @@ prototype pack을 만들지는 `building/`이 소유한다.
 Prototype 분석 실험 runner나 sweep은 `scripts/` 또는 `research/analysis/`가
 소유한다.
 
-현재 활성 구현:
+## 하위 패키지 지도
 
 - `building/`: single-centroid exact builder와 kmeans/dbscan multi-prototype
   build strategy
