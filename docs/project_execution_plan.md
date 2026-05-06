@@ -34,6 +34,15 @@ central fixed embedding + classifier seed
 - 중앙 SSL은 FL client partition 없는 control table이다. seed full replay 기본값이 아니다.
 - 중앙 canonical 규약은 `seed checkpoint 1회 생성 -> new accepted query-derived rows only continual adaptation`이다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL SSL non-IID 메인 비교군이다.
+- FL SSL에서 `LoRA + classifier`를 shared family로 승격할 때의 canonical family
+  이름은 `lora_classifier`로 둔다. `classifier_head`에 LoRA 옵션을 섞거나
+  bare `lora` family로 head 의미를 숨기지 않는다.
+- `lora_classifier`의 1차 범위는 FL simulation research path이고, live
+  `agent`/`main_server` runtime translation은 2차 범위다.
+- `lora_classifier` 비교의 고정 조건은 `mxbai_encoder`, tokenizer, LoRA
+  `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
+  checkpoint, label schema, non-IID split, seed, metric으로 둔다. 이 중 하나를
+  바꾸면 method 비교가 아니라 scaffold 비교로 기록한다.
 - FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `3 seeds`로 고정한다.
 - FL SSL stress split은 같은 조건에서 Dirichlet label-skew `alpha=0.1`로 둔다.
 - 각 client pool은 기본적으로 `10% labeled / 90% unlabeled`로 나눈다.
@@ -98,7 +107,10 @@ Runtime translation:
 
 - FL SSL winner를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 넣지 않는다.
 - 필요한 shared family와 state/update payload를 먼저 정의한다.
-- 현재 1순위 translation 후보는 `lora` family + classifier다.
+- 현재 1순위 translation 후보는 `lora_classifier` family다.
+- `lora_classifier` state/update payload는 LoRA adapter state와 classifier head
+  state를 함께 표현해야 하며, LoRA weight는 inline JSON vector만 가정하지 않고
+  artifact-ref 기반 전송/집계 경로를 열어 둔다.
 
 ## Source Of Truth
 
@@ -149,10 +161,12 @@ Runtime translation:
 5. FL SSL main comparison smoke를 `strategy_axes/fl/shard_policy=dirichlet_alpha03`와
    `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`로 실행해 report를 확인한다.
 6. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
-7. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
+7. `lora_classifier` family를 먼저 FL simulation research path에 얇게 열고,
+   contract와 aggregation shape를 smoke로 확인한다.
+8. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
    경계에 구현한다.
-8. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
-9. winner를 `lora` family 또는 현실적인 fallback family로 translation 한다.
+9. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
+10. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 
@@ -165,8 +179,10 @@ Runtime translation:
 ## User Decisions Still Needed
 
 1. query buffer raw text retention 기본값.
-2. LoRA target module/rank/alpha/dropout.
-3. FL 범위를 `lora` family/head에서 어디까지 열지.
+2. LoRA target module/rank/alpha/dropout 변경 여부. 기본 비교 scaffold는
+   `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`로 고정한다.
+3. FL 범위를 `lora_classifier` family에서 LoRA adapter, classifier head,
+   aggregation artifact까지 어디까지 열지.
 4. private adapter/head 도입 시점.
 5. secure aggregation과 DP 도입 시점.
 6. multi-prototype runtime 확장 여부.

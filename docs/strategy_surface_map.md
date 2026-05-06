@@ -67,6 +67,7 @@ central fixed embedding + classifier seed
 | FL round-runtime profile | `fedavg_diagonal_scale` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*`, main_server adapter | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server family wiring | 활성 runtime |
+| Planned LoRA-classifier family | `lora_classifier` | future `strategy_axes/fl/round_runtime_profile` | `shared` payload + `methods` LoRA/classifier core | 결정 고정 |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
 
@@ -93,4 +94,10 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
 - Prototype translation provenance는 pack/build state metadata이며 번역 실행 knob가 아니다.
 - Central SSL control의 `acceptance_policy_name`은 일부 runtime compatibility field로 남아 있다.
 - Multi-prototype runtime은 실험 분석에는 가능하지만 v1 active runtime 기본값은 아니다.
-- LoRA family의 FL runtime translation은 winner 확정 후 shared payload와 adapter state부터 설계한다.
+- `lora_classifier`는 FL simulation research path를 1차 범위로 열고, live
+  `agent`/`main_server` runtime translation은 2차 범위로 둔다.
+- `lora_classifier`는 기존 `classifier_head` family의 옵션이 아니다. LoRA
+  adapter state와 classifier head state를 함께 표현하는 별도 family로 설계한다.
+- `lora_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
+  `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
+  checkpoint, label schema, split, seed, metric을 고정한다.

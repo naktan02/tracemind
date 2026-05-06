@@ -25,7 +25,8 @@ source of truth로 본다.
 
 - classifier-first baseline의 live agent path 확장.
 - FedMatch/FedLGMatch/(FL)^2 같은 FL SSL method 실제 구현.
-- LoRA family의 FL runtime translation payload와 aggregation.
+- `lora_classifier` family의 FL simulation research path, runtime translation
+  payload와 aggregation.
 - learned scorer artifact lifecycle.
 - secure aggregation/DP runtime.
 - long-running multi-agent integration smoke 안정화.
@@ -81,6 +82,7 @@ source of truth로 본다.
 
 ## Phase 5. Runtime Translation
 
+- [ ] `lora_classifier` simulation family의 state/update shape를 먼저 smoke 검증.
 - [ ] winner method가 요구하는 shared family/state/update payload 정의.
 - [ ] agent adapter 구현.
 - [ ] main_server aggregation/publication adapter 구현.
