@@ -193,12 +193,62 @@ class FederatedSslMethodConfig:
 
 
 @dataclass(slots=True)
+class FederatedLoraClassifierRuntimeConfig:
+    """LoRA-classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
+
+    backbone_model_id: str
+    backbone_revision: str
+    tokenizer_model_id: str
+    tokenizer_revision: str
+    pooling: str
+    max_length: int
+    task_prefix: str
+    peft_adapter_name: str
+    rank: int
+    alpha: int
+    dropout: float
+    bias: str
+    target_modules: str
+    use_rslora: bool
+    artifact_format: str = "simulation_lora_classifier_state_ref"
+    lora_adapter_artifact_ref: str | None = None
+    classifier_head_artifact_ref: str | None = None
+
+    def backbone_payload(self) -> dict[str, str | int]:
+        """shared lora_classifier state에 넣을 backbone/tokenizer snapshot."""
+
+        return {
+            "backbone_model_id": self.backbone_model_id,
+            "backbone_revision": self.backbone_revision,
+            "tokenizer_model_id": self.tokenizer_model_id,
+            "tokenizer_revision": self.tokenizer_revision,
+            "pooling": self.pooling,
+            "max_length": self.max_length,
+            "task_prefix": self.task_prefix,
+        }
+
+    def lora_config_payload(self) -> dict[str, str | int | float | bool]:
+        """shared lora_classifier state에 넣을 LoRA config snapshot."""
+
+        return {
+            "peft_adapter_name": self.peft_adapter_name,
+            "rank": self.rank,
+            "alpha": self.alpha,
+            "dropout": self.dropout,
+            "bias": self.bias,
+            "target_modules": self.target_modules,
+            "use_rslora": self.use_rslora,
+        }
+
+
+@dataclass(slots=True)
 class FederatedRoundRuntimeConfig:
     """simulation이 사용할 shared family / aggregation backend 설정."""
 
     adapter_family_name: str
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
+    lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
 
 
 @dataclass(slots=True)

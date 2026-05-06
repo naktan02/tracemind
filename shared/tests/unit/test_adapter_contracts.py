@@ -250,6 +250,25 @@ def test_generic_shared_adapter_loader_dispatches_lora_classifier_payloads(
     assert loaded_update.l2_norm() == pytest.approx(1.25)
 
 
+def test_lora_classifier_state_applies_identity_normalization_for_simulation(
+    fixed_utc_time,
+) -> None:
+    state = make_lora_classifier_state_payload(
+        model_id="mxbai-lora-classifier",
+        model_revision="rev_lora_001",
+        training_scope="adapter_only",
+        updated_at=fixed_utc_time,
+        backbone=_lora_backbone_mapping(),
+        lora_config=_lora_config_mapping(),
+        label_schema=["anxiety", "normal"],
+    )
+
+    assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
+
+    with pytest.raises(ValueError, match="norm must be non-zero"):
+        state.apply([0.0, 0.0])
+
+
 def test_lora_classifier_update_supports_inline_delta_without_artifact_ref(
     fixed_utc_time,
 ) -> None:

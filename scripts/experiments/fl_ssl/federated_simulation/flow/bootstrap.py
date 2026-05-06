@@ -67,7 +67,7 @@ def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulatio
     initial_prototype_version = "proto_sim_0000"
     now = datetime.now(timezone.utc)
     initial_state = build_initial_shared_state(
-        adapter_family_name=request.round_runtime_config.adapter_family_name,
+        round_runtime_config=request.round_runtime_config,
         model_id=request.model_id,
         model_revision=initial_model_revision,
         training_scope=request.training_scope,

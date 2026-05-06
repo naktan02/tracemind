@@ -4,6 +4,8 @@ defaults:
   - /execution_context/dataset_asset: ourafla
   - /execution_context/embedding_adapter: mxbai
   - /execution_context/runtime_env: gpu_local
+  - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
+  - /strategy_axes/adaptation/peft_adapter: default
   - /track_presets/fl_ssl/simulation_preset: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
@@ -46,6 +48,24 @@ round_runtime:
   adapter_family_name: ${round_runtime_profile.adapter_family_name}
   aggregation_backend_name: ${round_runtime_profile.aggregation_backend_name}
   classifier_head_bootstrap_logit_scale: ${round_runtime_profile.classifier_head_bootstrap_logit_scale}
+  lora_classifier:
+    backbone_model_id: ${paper_backbone.model_id}
+    backbone_revision: ${paper_backbone.revision}
+    tokenizer_model_id: ${paper_backbone.tokenizer_model_id}
+    tokenizer_revision: ${paper_backbone.tokenizer_revision}
+    pooling: ${paper_backbone.pooling}
+    max_length: ${paper_backbone.max_length}
+    task_prefix: ${paper_backbone.task_prefix}
+    peft_adapter_name: ${lora.peft_adapter_name}
+    rank: ${lora.rank}
+    alpha: ${lora.alpha}
+    dropout: ${lora.dropout}
+    bias: ${lora.bias}
+    target_modules: ${lora.target_modules}
+    use_rslora: ${lora.use_rslora}
+    artifact_format: simulation_lora_classifier_state_ref
+    lora_adapter_artifact_ref: null
+    classifier_head_artifact_ref: null
 
 training_task:
   local_epochs: 1
@@ -68,6 +88,24 @@ training_task:
     acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
     evidence_backend.temperature: ${local_update_profile.evidence_backend_temperature}
+    "lora_classifier.backbone_model_id": ${round_runtime.lora_classifier.backbone_model_id}
+    "lora_classifier.backbone_revision": ${round_runtime.lora_classifier.backbone_revision}
+    "lora_classifier.tokenizer_model_id": ${round_runtime.lora_classifier.tokenizer_model_id}
+    "lora_classifier.tokenizer_revision": ${round_runtime.lora_classifier.tokenizer_revision}
+    "lora_classifier.pooling": ${round_runtime.lora_classifier.pooling}
+    "lora_classifier.max_length": ${round_runtime.lora_classifier.max_length}
+    "lora_classifier.task_prefix": ${round_runtime.lora_classifier.task_prefix}
+    "lora_classifier.peft_adapter_name": ${round_runtime.lora_classifier.peft_adapter_name}
+    "lora_classifier.rank": ${round_runtime.lora_classifier.rank}
+    "lora_classifier.alpha": ${round_runtime.lora_classifier.alpha}
+    "lora_classifier.dropout": ${round_runtime.lora_classifier.dropout}
+    "lora_classifier.bias": ${round_runtime.lora_classifier.bias}
+    "lora_classifier.target_modules": ${round_runtime.lora_classifier.target_modules}
+    "lora_classifier.use_rslora": ${round_runtime.lora_classifier.use_rslora}
+    "lora_classifier.delta_format": agent_local_artifact_ref
+    "lora_classifier.artifact_ref_prefix": agent-local://lora_classifier
+    "lora_classifier.text_metadata_keys": strong_text,training_text,raw_text,text,weak_text
+    "lora_classifier.label_schema": anxiety,depression,normal,suicidal
   selection_policy:
     max_examples: ${federated_run_preset.max_examples}
 

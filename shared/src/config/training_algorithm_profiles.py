@@ -12,6 +12,7 @@ TrainingAlgorithmScalar = str | int | float | bool
 
 PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME = "prototype_pseudo_label_v1"
 PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME = "prototype_top1_confidence_v1"
+LORA_PSEUDO_LABEL_V1_PROFILE_NAME = "lora_pseudo_label_v1"
 
 
 def _freeze_mapping(
@@ -50,6 +51,22 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_OBJECTIVE_MAPPING = _freeze_mapping(
     }
 )
 
+LORA_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING = _freeze_mapping(
+    {
+        "algorithm_profile_name": LORA_PSEUDO_LABEL_V1_PROFILE_NAME,
+        "training_backend_name": "lora_classifier_trainer",
+        "confidence_threshold": 0.6,
+        "margin_threshold": 0.02,
+        "example_generation_backend_name": "prototype_rescore",
+        "evidence_backend_name": "prototype_similarity_evidence",
+        "scorer_backend_name": "prototype_similarity",
+        "score_policy_name": "max_cosine",
+        "pseudo_label_algorithm_name": "top1_margin_threshold",
+        "acceptance_policy_name": "top1_margin_threshold",
+        "privacy_guard_name": "noop",
+    }
+)
+
 PROTOTYPE_PSEUDO_LABEL_V1_PROFILE = TrainingAlgorithmProfile(
     profile_name=PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME,
     objective_mapping=PROTOTYPE_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING,
@@ -68,9 +85,19 @@ PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE = TrainingAlgorithmProfile(
     ),
 )
 
+LORA_PSEUDO_LABEL_V1_PROFILE = TrainingAlgorithmProfile(
+    profile_name=LORA_PSEUDO_LABEL_V1_PROFILE_NAME,
+    objective_mapping=LORA_PSEUDO_LABEL_V1_OBJECTIVE_MAPPING,
+    description=(
+        "LoRA-classifier trainer와 기존 prototype pseudo-label selection을 "
+        "조합하는 FL simulation profile."
+    ),
+)
+
 _TRAINING_ALGORITHM_PROFILE_REGISTRY: dict[str, TrainingAlgorithmProfile] = {
     PROTOTYPE_PSEUDO_LABEL_V1_PROFILE_NAME: PROTOTYPE_PSEUDO_LABEL_V1_PROFILE,
     PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE_NAME: (PROTOTYPE_TOP1_CONFIDENCE_V1_PROFILE),
+    LORA_PSEUDO_LABEL_V1_PROFILE_NAME: LORA_PSEUDO_LABEL_V1_PROFILE,
 }
 
 

@@ -1,0 +1,18 @@
+# @package local_update_profile
+
+# LoRA-classifier family 위에서 기존 prototype pseudo-label selection을 사용한다.
+# raw text는 agent-local training example metadata로만 흐르고 shared update에는 넣지 않는다.
+algorithm_profile_name: lora_pseudo_label_v1
+training_scope: adapter_only
+training_backend_name: lora_classifier_trainer
+confidence_threshold: 0.6
+margin_threshold: 0.02
+example_generation_backend_name: prototype_rescore
+evidence_backend_name: prototype_similarity_evidence
+scorer_backend_name: prototype_similarity
+score_policy_name: max_cosine
+score_top_k: null
+pseudo_label_algorithm_name: top1_margin_threshold
+acceptance_policy_name: top1_margin_threshold
+privacy_guard_name: noop
+evidence_backend_temperature: 1.0

@@ -15,6 +15,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_r
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
+    FederatedLoraClassifierRuntimeConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
@@ -59,6 +60,14 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
     )
 
 
+def _build_lora_classifier_runtime_config(
+    cfg: DictConfig,
+) -> FederatedLoraClassifierRuntimeConfig | None:
+    if "lora_classifier" not in cfg or cfg.lora_classifier is None:
+        return None
+    return FederatedLoraClassifierRuntimeConfig(**_to_plain_dict(cfg.lora_classifier))
+
+
 def build_simulation_request_from_config(
     cfg: DictConfig,
     *,
@@ -67,6 +76,15 @@ def build_simulation_request_from_config(
 ) -> SimulationRunRequest:
     embedding_spec = instantiate(cfg.embedding.spec)
     prototype_build_strategy = instantiate(cfg.prototype_builder)
+    training_task_config = _build_training_task_config(cfg.training_task)
+    round_runtime_config = FederatedRoundRuntimeConfig(
+        adapter_family_name=str(cfg.round_runtime.adapter_family_name),
+        aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
+        classifier_head_bootstrap_logit_scale=float(
+            cfg.round_runtime.classifier_head_bootstrap_logit_scale
+        ),
+        lora_classifier=_build_lora_classifier_runtime_config(cfg.round_runtime),
+    )
     return SimulationRunRequest(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
@@ -78,16 +96,10 @@ def build_simulation_request_from_config(
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
         training_scope=str(cfg.local_update_profile.training_scope),
-        round_runtime_config=FederatedRoundRuntimeConfig(
-            adapter_family_name=str(cfg.round_runtime.adapter_family_name),
-            aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
-            classifier_head_bootstrap_logit_scale=float(
-                cfg.round_runtime.classifier_head_bootstrap_logit_scale
-            ),
-        ),
+        round_runtime_config=round_runtime_config,
         prototype_build_strategy=prototype_build_strategy,
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
-        training_task_config=_build_training_task_config(cfg.training_task),
+        training_task_config=training_task_config,
         validation_config=FederatedValidationConfig(**_to_plain_dict(cfg.validation)),
         prototype_rebuild_config=FederatedPrototypeRebuildConfig(
             **_to_plain_dict(cfg.prototype_rebuild)

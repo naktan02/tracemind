@@ -76,6 +76,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.round_runtime_profile`로 compose된다.
   - server round runtime의 adapter family, aggregation backend, bootstrap runtime
     knob를 소유한다.
+  - `fedavg_lora_classifier`는 기존 `fedavg_pseudo_label` method descriptor와
+    조합 가능한 LoRA-classifier server family profile이다. backbone/LoRA 세부
+    값은 `strategy_axes/adaptation/transformer_backbone`과
+    `strategy_axes/adaptation/peft_adapter`에서 온다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.

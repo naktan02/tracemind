@@ -371,6 +371,22 @@ class LoraClassifierAdapterStatePayload(SharedAdapterStatePayload):
     def labels(self) -> tuple[str, ...]:
         return tuple(self.label_schema)
 
+    def apply(self, embedding: Sequence[float]) -> list[float]:
+        """prototype 기반 simulation 경로에서는 고정 embedding을 정규화해 통과시킨다.
+
+        실제 LoRA + classifier 추론은 raw text/tokenized batch와 server artifact를
+        요구하므로 이 메서드에서 재현하지 않는다. 이 경로는 prototype rebuild와
+        pseudo-label selection처럼 `SharedAdapterState.apply`를 요구하는 기존
+        simulation mechanism과의 compatibility만 담당한다.
+        """
+        vector = [float(value) for value in embedding]
+        if not vector:
+            raise ValueError("LoRA-classifier input embedding must not be empty.")
+        norm = math.sqrt(sum(value * value for value in vector))
+        if norm == 0.0:
+            raise ValueError("LoRA-classifier input embedding norm must be non-zero.")
+        return [value / norm for value in vector]
+
 
 class SharedAdapterUpdatePayload(BaseModel):
     """로컬 학습이 생성한 shared adapter update payload 공통 필드.

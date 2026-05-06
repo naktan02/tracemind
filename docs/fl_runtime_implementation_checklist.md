@@ -90,6 +90,8 @@ source of truth로 본다.
 - [x] main_server aggregation/publication adapter scaffold 구현. inline delta FedAvg는
   검증하고 artifact-ref-only update는 materializer가 붙기 전까지 거부한다.
 - [ ] main_server LoRA artifact materializer/loader 구현.
+- [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
+  `fedavg_lora_classifier` round-runtime profile을 선택할 수 있게 연결한다.
 - [ ] backward-compatible manifest/version 정책 확인.
 - [ ] architecture guard와 integration smoke 추가.
 

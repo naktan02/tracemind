@@ -362,6 +362,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
+    assert cfg.paper_backbone.name == "mxbai_encoder"
+    assert cfg.lora.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
     )
@@ -416,6 +418,37 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
     assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
+
+
+def test_federated_simulation_supports_lora_classifier_profiles() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/local_update_profile=lora_pseudo_label_v1",
+                "strategy_axes/fl/round_runtime_profile=fedavg_lora_classifier",
+            ],
+        )
+
+    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
+    assert cfg.round_runtime_profile.name == "fedavg_lora_classifier"
+    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert cfg.round_runtime.aggregation_backend_name == "fedavg"
+    assert cfg.training_task.objective.training_backend_name == (
+        "lora_classifier_trainer"
+    )
+    assert cfg.training_task.objective.privacy_guard_name == "noop"
+    assert cfg.training_task.objective["lora_classifier.backbone_model_id"] == (
+        "mixedbread-ai/mxbai-embed-large-v1"
+    )
+    assert cfg.training_task.objective["lora_classifier.rank"] == 8
+    assert cfg.training_task.objective["lora_classifier.alpha"] == 16
+    assert cfg.training_task.objective["lora_classifier.delta_format"] == (
+        "agent_local_artifact_ref"
+    )
+    assert "adapter_family_name" not in cfg.local_update_profile
+    assert "aggregation_backend_name" not in cfg.local_update_profile
 
 
 def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:

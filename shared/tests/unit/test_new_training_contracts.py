@@ -202,8 +202,22 @@ def test_training_objective_config_can_expand_algorithm_profile_only() -> None:
     assert config.margin_threshold == 0.0
 
 
-def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback(
-) -> None:
+def test_training_objective_config_can_expand_lora_algorithm_profile() -> None:
+    config = TrainingObjectiveConfig.from_mapping(
+        {"algorithm_profile_name": "lora_pseudo_label_v1"}
+    )
+
+    assert config.algorithm_profile_name == "lora_pseudo_label_v1"
+    assert config.training_backend_name == "lora_classifier_trainer"
+    assert config.example_generation_backend_name == "prototype_rescore"
+    assert config.scorer_backend_name == "prototype_similarity"
+    assert config.pseudo_label_algorithm_name == "top1_margin_threshold"
+    assert config.privacy_guard_name == "noop"
+
+
+def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback() -> (
+    None
+):
     config = TrainingObjectiveConfig.from_mapping(
         {
             "training_backend_name": "diagonal_scale_heuristic",

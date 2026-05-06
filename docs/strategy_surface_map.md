@@ -63,8 +63,8 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
-| FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
-| FL round-runtime profile | `fedavg_diagonal_scale` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
+| FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
+| FL round-runtime profile | `fedavg_diagonal_scale`, `fedavg_lora_classifier` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*`, main_server adapter | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server family wiring | 활성 runtime / server aggregation scaffold |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
@@ -107,3 +107,8 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
 - Server `lora_classifier.fedavg`는 inline LoRA parameter delta와 classifier-head
   delta의 FedAvg shape/version을 검증한다. Artifact-ref-only update 집계는 실제
   artifact materializer/loader가 붙기 전까지 명시적으로 거부한다.
+- FL simulation은 `local_update_profile=lora_pseudo_label_v1`와
+  `round_runtime_profile=fedavg_lora_classifier` 조합을 compose할 수 있다. 이
+  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지하고, 실제 1-round
+  LoRA weight 집계는 artifact materializer/loader 또는 inline train-step delta가
+  붙은 뒤 실행한다.

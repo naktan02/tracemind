@@ -35,6 +35,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 from scripts.io.labeled_query_rows import LabeledQueryRow
+from scripts.runtime_adapters.federated_agent_runtime import (
+    resolve_federated_training_backend_adapter_kind,
+)
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
@@ -92,6 +95,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
     ssl_method_runtime = _build_validated_ssl_runtime(request.ssl_method_config)
+    _require_local_update_matches_round_family(request)
     bootstrapped = bootstrap_simulation(request)
     active = bootstrapped.active
     round_summaries: list[SimulationRoundSummary] = []
@@ -114,6 +118,25 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
         bootstrapped=bootstrapped,
         active=active,
         round_summaries=round_summaries,
+    )
+
+
+def _require_local_update_matches_round_family(
+    request: SimulationRunRequest,
+) -> None:
+    """local trainer가 생산하는 adapter kind와 server family를 조기에 맞춘다."""
+
+    local_adapter_kind = resolve_federated_training_backend_adapter_kind(
+        objective_config=request.training_task_config.objective_config,
+    )
+    round_adapter_family = request.round_runtime_config.adapter_family_name
+    if local_adapter_kind.strip().lower() == round_adapter_family.strip().lower():
+        return
+    raise ValueError(
+        "FL simulation local_update_profile and round_runtime_profile must target "
+        "the same adapter family: "
+        f"local_update_adapter_kind={local_adapter_kind}, "
+        f"round_adapter_family={round_adapter_family}."
     )
 
 
