@@ -59,31 +59,22 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
     )
 
 
-@hydra.main(
-    version_base=None,
-    config_path="../../../conf",
-    config_name="entrypoints/fl_ssl/run_federated_simulation",
-)
-def main(cfg: DictConfig) -> None:
-    created_at = datetime.now(timezone.utc)
-    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
-    output_dir = build_run_dir(
-        cfg.federated_run_preset.output_dir,
-        run_id=run_id,
-        created_at=created_at,
-    )
-    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
+def build_simulation_request_from_config(
+    cfg: DictConfig,
+    *,
+    output_dir: Path,
+    seed: int | None = None,
+) -> SimulationRunRequest:
     embedding_spec = instantiate(cfg.embedding.spec)
     prototype_build_strategy = instantiate(cfg.prototype_builder)
-
-    request = SimulationRunRequest(
+    return SimulationRunRequest(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
         output_dir=output_dir,
         client_count=int(cfg.federated_run_preset.client_count),
         rounds=int(cfg.federated_run_preset.rounds),
         bootstrap_ratio=float(cfg.federated_run_preset.bootstrap_ratio),
-        seed=int(cfg.seed),
+        seed=int(cfg.seed if seed is None else seed),
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
         training_scope=str(cfg.local_update_profile.training_scope),
@@ -110,31 +101,71 @@ def main(cfg: DictConfig) -> None:
         ),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
     )
-    result = run_simulation_request(request)
 
-    print(f"output_dir={output_dir}")
-    print(f"initial_model_revision={result.initial_model_revision}")
-    print(f"initial_prototype_version={result.initial_prototype_version}")
-    print(
-        "initial_validation="
-        f"accuracy:{result.initial_validation.top1_accuracy:.4f},"
-        f"accepted_ratio:{result.initial_validation.accepted_ratio:.4f}"
-    )
+
+def render_simulation_result_lines(
+    *,
+    output_dir: Path,
+    result,
+) -> list[str]:
+    lines = [
+        f"output_dir={output_dir}",
+        f"initial_model_revision={result.initial_model_revision}",
+        f"initial_prototype_version={result.initial_prototype_version}",
+        (
+            "initial_validation="
+            f"accuracy:{result.initial_validation.top1_accuracy:.4f},"
+            f"accepted_ratio:{result.initial_validation.accepted_ratio:.4f}"
+        ),
+    ]
     if result.rounds:
         last_round = result.rounds[-1]
-        print(f"final_model_revision={last_round.model_revision}")
-        print(f"final_prototype_version={last_round.prototype_version}")
-        print(
-            "final_validation="
-            f"accuracy:{result.final_validation.top1_accuracy:.4f},"
-            f"accepted_ratio:{result.final_validation.accepted_ratio:.4f}"
+        lines.extend(
+            [
+                f"final_model_revision={last_round.model_revision}",
+                f"final_prototype_version={last_round.prototype_version}",
+                (
+                    "final_validation="
+                    f"accuracy:{result.final_validation.top1_accuracy:.4f},"
+                    f"accepted_ratio:{result.final_validation.accepted_ratio:.4f}"
+                ),
+                f"round_count={len(result.rounds)}",
+            ]
         )
-        print(f"round_count={len(result.rounds)}")
     else:
-        print("round_count=0")
-        print("note=no client updates satisfied the pseudo-label selection criteria.")
+        lines.extend(
+            [
+                "round_count=0",
+                "note=no client updates satisfied the pseudo-label selection criteria.",
+            ]
+        )
     if result.report_path is not None:
-        print(f"report_json={result.report_path}")
+        lines.append(f"report_json={result.report_path}")
+    return lines
+
+
+@hydra.main(
+    version_base=None,
+    config_path="../../../conf",
+    config_name="entrypoints/fl_ssl/run_federated_simulation",
+)
+def main(cfg: DictConfig) -> None:
+    created_at = datetime.now(timezone.utc)
+    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
+    output_dir = build_run_dir(
+        cfg.federated_run_preset.output_dir,
+        run_id=run_id,
+        created_at=created_at,
+    )
+    (output_dir / "logs").mkdir(parents=True, exist_ok=True)
+    result = run_simulation_request(
+        build_simulation_request_from_config(
+            cfg,
+            output_dir=output_dir,
+        )
+    )
+    for line in render_simulation_result_lines(output_dir=output_dir, result=result):
+        print(line)
 
 
 if __name__ == "__main__":

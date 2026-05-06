@@ -44,6 +44,9 @@ central fixed embedding + classifier seed
 - FL SSL report는 `fl_ssl_main_comparison` track으로 저장하고 중앙 SSL control report와 같은 ranking으로 합치지 않는다.
 - 현재 FL SSL method 축의 활성 baseline은 `fedavg_pseudo_label`이다.
 - FedMatch/FedLGMatch/(FL)^2 같은 논문 method 구현은 후보 비교 후 확정된 method부터 연다.
+- FL SSL smoke/main/sweep 실행 기본 runtime은 `execution_context/runtime_env=gpu_local`,
+  embedding adapter는 `mxbai`다. `gpu_online`은 cache warm-up/최초 다운로드용이고,
+  `cpu_local`과 `hash_debug`는 wiring smoke나 단위 검증용으로만 사용한다.
 - 시스템 v1 baseline은 `embedding -> global classifier -> local interpretation`이다.
 - `v2`에서만 private adapter/head 기반 표현 개인화를 연다.
 
@@ -88,6 +91,8 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
 - method selection: `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
+- runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
+  성능 숫자나 논문 비교 근거로 쓰지 않는다.
 
 Runtime translation:
 

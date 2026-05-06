@@ -73,6 +73,8 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
 - `shard_policy`
 - `federated_run_preset`
+- `seed_sweep.seeds`
+- `seed_sweep.output_dir`
 - `client_pool_split.labeled_ratio`
 - `client_pool_split.unlabeled_ratio`
 - `round_runtime.adapter_family_name`
@@ -105,6 +107,14 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   training_task.objective.privacy_guard_name=noop
 ```
 
+Seed sweep:
+
+```bash
+python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
+  track_presets/fl_ssl/simulation_preset=standard \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03
+```
+
 주의:
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
@@ -130,8 +140,9 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
 - `client_pool_split`은 각 client shard 안에서 `10% labeled / 90% unlabeled`
   pool을 deterministic하게 나눈다. 현재 `fedavg_pseudo_label` baseline은
   `unlabeled` partition만 pseudo-label training 후보로 사용한다.
-- `3 seeds`는 아직 report protocol metadata다. seed sweep 실행은 후속 runner/sweep에서
-  강제한다.
+- `seed_sweep.seeds` 기본값은 `[42, 43, 44]`이며 `report.seed_count=3`과
+  일치해야 한다. seed sweep runner는 seed별 report와
+  `reports/fl_ssl_seed_sweep.summary.json`을 남긴다.
 - `weak_strong_pair` example backend는 source row에 weak/strong view가 이미 있어야 한다.
   현재 기본 JSONL row shape는 그 view를 따로 저장하지 않으므로, 별도 multiview row 공급이 없으면
   `prototype_rescore`를 계속 써야 한다.

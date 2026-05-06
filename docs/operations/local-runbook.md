@@ -199,6 +199,17 @@ FL simulation:
 uv run python scripts/experiments/fl_ssl/run_federated_simulation.py
 ```
 
+FL SSL seed sweep:
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py
+```
+
+FL SSL은 별도 override가 없으면 `gpu_local + mxbai` 기준으로 실행한다.
+`gpu_online`은 cache warm-up/최초 다운로드용이고, `cpu_local + hash_debug` 조합은
+entrypoint wiring smoke나 빠른 디버그 용도다. 성능 숫자, report 비교, 논문 판단에는
+GPU/mxbai 실행 결과만 사용한다.
+
 Hydra 설정 preview:
 
 ```bash
@@ -217,7 +228,9 @@ uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py -
 | `auto_local` | GPU가 있으면 GPU, 없으면 CPU, local cache만 사용 |
 | `auto_online` | 자동 device 선택, online download 허용 |
 
-기본 실험 문서는 `execution_context/dataset_asset=ourafla`, `execution_context/embedding_adapter=mxbai`, `execution_context/runtime_env=gpu_online`을 기준으로 본다.
+반복 실험과 논문 비교는 `execution_context/dataset_asset=ourafla`,
+`execution_context/embedding_adapter=mxbai`, `execution_context/runtime_env=gpu_local`을
+기준으로 본다. cache가 없을 때만 `gpu_online`으로 먼저 준비한다.
 
 ## 8. GPU Preflight
 

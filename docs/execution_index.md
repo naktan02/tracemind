@@ -79,3 +79,6 @@ Apps:
 3. 전략/알고리즘 추가라면 `docs/strategy_surface_map.md`를 먼저 확인한다.
 4. SSL 논문 비교라면 중앙 control과 FL main comparison을 분리한다.
 5. `docs/notes/**`는 archive-only로 둔다.
+6. FL SSL smoke/main/sweep은 기본적으로 `gpu_local + mxbai`로 실행한다.
+   `gpu_online`은 cache warm-up/최초 다운로드용이고, `cpu_local + hash_debug`는
+   entrypoint wiring smoke나 빠른 단위 검증에만 쓴다.

@@ -104,6 +104,18 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   track_presets/fl_ssl/simulation_preset=smoke
 ```
 
+FL SSL seed sweep:
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
+  track_presets/fl_ssl/simulation_preset=standard \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03
+```
+
+FL SSL 실험 기본값은 `execution_context/runtime_env=gpu_local`과
+`execution_context/embedding_adapter=mxbai`다. `gpu_online`은 cache warm-up/최초
+다운로드용이고, `cpu_local + hash_debug`는 entrypoint wiring smoke나 빠른 디버그에만 쓴다.
+
 Prototype strategy analysis:
 
 ```bash

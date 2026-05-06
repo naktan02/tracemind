@@ -82,6 +82,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `track_presets/fl_ssl/simulation_preset`
   - client 수, round budget, output dir 같은 track 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
+- `seed_sweep`
+  - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
+  - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.
@@ -89,8 +92,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     training 후보로 사용한다.
 - `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
   - ratio 값은 `client_pool_split`에서 파생된 report protocol field다.
-  - seed sweep 실행은 별도 runner/sweep에서 닫아야 하며, `seed_count`만으로
-    실행이 강제됐다고 보지 않는다.
+  - `seed_count`는 `seed_sweep` runner에서 실행 seed 수와 일치하는지 검증한다.
 
 ## 정리 기준
 

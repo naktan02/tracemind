@@ -3,7 +3,7 @@
 defaults:
   - /execution_context/dataset_asset: ourafla
   - /execution_context/embedding_adapter: mxbai
-  - /execution_context/runtime_env: gpu_online
+  - /execution_context/runtime_env: gpu_local
   - /track_presets/fl_ssl/simulation_preset: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
@@ -18,6 +18,13 @@ train_jsonl: ${dataset.train_jsonl}
 validation_jsonl: ${dataset.validation_jsonl}
 published_model_id: tracemind-embed-sim
 seed: 42
+
+seed_sweep:
+  output_dir: runs/federated_simulation_seed_sweep
+  seeds:
+    - 42
+    - 43
+    - 44
 
 prototype_rebuild:
   embedding_backend: simulation

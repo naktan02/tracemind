@@ -13,6 +13,7 @@ import pytest
         "scripts.experiments.prototype_analysis.prototype_strategy_experiment",
         "scripts.experiments.prototype_analysis.prototype_threshold_sweep",
         "scripts.experiments.fl_ssl.run_federated_simulation",
+        "scripts.experiments.fl_ssl.run_federated_seed_sweep",
         "scripts.experiments.central_classifier_seed.train_softmax_classifier",
         "scripts.experiments.central_ssl_control.train_lora_fixmatch",
         "scripts.experiments.central_ssl_control.train_lora_pseudo_label_classifier",

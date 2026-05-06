@@ -370,6 +370,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
     assert cfg.federated_run_preset.client_count == 4
     assert cfg.federated_run_preset.rounds == 3
+    assert cfg.runtime.name == "gpu_local"
+    assert cfg.runtime.local_files_only is True
+    assert cfg.seed_sweep.output_dir == "runs/federated_simulation_seed_sweep"
+    assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
     assert cfg.ssl_method.name == "fedavg_pseudo_label"
@@ -410,6 +414,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     )
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
+    assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
 
 

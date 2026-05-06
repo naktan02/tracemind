@@ -66,6 +66,7 @@ source of truth로 본다.
 - [x] runtime core를 쓰는 FL SSL smoke.
 - [x] artifact dump와 report.
 - [x] method descriptor와 shard policy config.
+- [x] seed sweep runner와 summary report.
 - [ ] 논문 method 비교군 추가.
 
 완료 기준: 같은 split/seed/budget에서 method별 report를 재현할 수 있다.
