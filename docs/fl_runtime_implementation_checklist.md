@@ -82,9 +82,11 @@ source of truth로 본다.
 
 ## Phase 5. Runtime Translation
 
-- [ ] `lora_classifier` simulation family의 state/update shape를 먼저 smoke 검증.
+- [x] `lora_classifier` simulation family의 state/update shape를 먼저 smoke 검증.
 - [ ] winner method가 요구하는 shared family/state/update payload 정의.
-- [ ] agent adapter 구현.
+- [x] agent local trainer scaffold 구현. raw text는 agent-local 입력으로만 쓰고
+  update payload에는 artifact ref와 통계만 남긴다.
+- [ ] agent LoRA artifact materialization 구현.
 - [ ] main_server aggregation/publication adapter 구현.
 - [ ] backward-compatible manifest/version 정책 확인.
 - [ ] architecture guard와 integration smoke 추가.

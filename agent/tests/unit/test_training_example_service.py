@@ -151,6 +151,8 @@ def test_training_example_service_builds_scored_examples_from_source_rows() -> N
     assert examples[0].base_embedding == [1.0, 0.0]
     assert examples[0].embedding == [1.0, 0.0]
     assert examples[0].scored_event.category_scores["anxiety"] == 1.0
+    assert examples[0].metadata["raw_text"] == "panic panic"
+    assert examples[0].metadata["training_text"] == "panic panic"
     assert examples[1].scored_event.query_id == "q2"
     assert examples[1].scored_event.category_scores["normal"] == 1.0
 
@@ -283,6 +285,9 @@ def test_weak_strong_pair_backend_builds_multiview_examples() -> None:
     )
     assert example.metadata["selection_view"] == "weak"
     assert example.metadata["update_view"] == "strong"
+    assert example.metadata["raw_text"] == "panic panic"
+    assert example.metadata["training_text"] == "panic strong"
+    assert example.metadata["strong_text"] == "panic strong"
 
 
 def test_weak_strong_pair_backend_rejects_stored_event_rebuild() -> None:

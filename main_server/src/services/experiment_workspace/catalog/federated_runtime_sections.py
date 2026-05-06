@@ -146,10 +146,7 @@ def build_training_backend_section(
         source_module_name="agent.src.services.training.backends.training.registry",
         entries=list_shared_adapter_training_backend_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-        ),
+        runtime_path_resolver=_resolve_training_backend_runtime_paths,
     )
 
 
@@ -272,6 +269,15 @@ def _resolve_training_profile_runtime_paths(
     if bool(example_backend.metadata.get("supports_stored_event_rebuild")) and (
         not bool(scorer_backend.metadata.get("requires_shared_state"))
     ):
+        runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
+    return tuple(runtime_paths)
+
+
+def _resolve_training_backend_runtime_paths(
+    entry: RegistryCatalogEntry,
+) -> tuple[str, ...]:
+    runtime_paths = [FEDERATED_SIMULATION_RUNTIME_PATH]
+    if bool(entry.metadata.get("supports_live_stored_event_runtime", True)):
         runtime_paths.append(AGENT_LIVE_STORED_EVENT_RUNTIME_PATH)
     return tuple(runtime_paths)
 

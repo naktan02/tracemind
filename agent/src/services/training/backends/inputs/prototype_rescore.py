@@ -22,6 +22,7 @@ from .base import ANY_ADAPTER_KIND, PROTOTYPE_RESCORE_BACKEND_NAME
 from .models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
+    TrainingExampleSource,
 )
 
 
@@ -50,7 +51,14 @@ class PrototypeRescoringTrainingExampleBackend:
             model_id=request.model_id,
             scorer=request.scoring_service,
         )
-        return tuple(_to_embedded_example(input_item) for input_item in inputs)
+        return tuple(
+            _to_embedded_example(input_item=input_item, source_row=source_row)
+            for source_row, input_item in zip(
+                request.source_rows,
+                inputs,
+                strict=True,
+            )
+        )
 
     def build_examples_from_stored_events(
         self,
@@ -78,14 +86,28 @@ class PrototypeRescoringTrainingExampleBackend:
             prototype_pack=request.prototype_pack,
             scorer=request.scoring_service,
         )
-        return tuple(_to_embedded_example(input_item) for input_item in inputs)
+        return tuple(
+            _to_embedded_example(input_item=input_item, source_row=None)
+            for input_item in inputs
+        )
 
 
 def _to_embedded_example(
     input_item: PrototypeSingleViewTrainingInput,
+    *,
+    source_row: TrainingExampleSource | None,
 ) -> EmbeddedTrainingExample:
+    metadata: dict[str, str] = {}
+    if source_row is not None:
+        metadata = {
+            "raw_text": source_row.text,
+            "training_text": source_row.text,
+        }
+        if source_row.translated_text is not None:
+            metadata["translated_text"] = source_row.translated_text
     return EmbeddedTrainingExample(
         scored_event=input_item.scored_event,
         embedding=list(input_item.embedding),
         base_embedding=list(input_item.base_embedding),
+        metadata=metadata,
     )

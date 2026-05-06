@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from shared.src.config.local_training_registry_catalog import (
     DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+    LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
 )
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -12,6 +13,7 @@ from shared.src.config.registry_catalog_metadata import (
 
 from .base import SharedAdapterTrainingBackend, TrainingBackendFactory
 from .diagonal_scale_heuristic import DiagonalScaleHeuristicTrainingBackend
+from .lora_classifier_trainer import LoraClassifierTrainingBackend
 
 _TRAINING_BACKEND_REGISTRY: dict[
     str,
@@ -67,4 +69,9 @@ register_shared_adapter_training_backend(
     "synthetic_vector_adapter",
     factory=DiagonalScaleHeuristicTrainingBackend.from_objective_config,
     catalog_entry=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+)
+register_shared_adapter_training_backend(
+    "lora_classifier_trainer",
+    factory=LoraClassifierTrainingBackend.from_objective_config,
+    catalog_entry=LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
 )

@@ -199,6 +199,10 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
         == "agent/src/services/training/backends/training/diagonal_scale_heuristic.py"
     )
     assert diagonal_training.metadata["payload_format"] == "diagonal_scale_update"
+    lora_training = _find_item(training_backends, "lora_classifier_trainer")
+    assert lora_training.family_name == "lora_classifier"
+    assert lora_training.metadata["requires_raw_text"] is True
+    assert lora_training.supported_runtime_paths == (FEDERATED_SIMULATION_RUNTIME_PATH,)
 
     example_backends = _find_section(
         payload,

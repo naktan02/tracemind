@@ -10,6 +10,7 @@ from __future__ import annotations
 from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
+    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -34,6 +35,29 @@ DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
         "payload_format": (
             DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
         )
+    },
+)
+
+LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name="lora_classifier_trainer",
+    display_name="lora_classifier_trainer",
+    implementation_module=(
+        "agent.src.services.training.backends.training.lora_classifier_trainer"
+    ),
+    core_method_name="lora_classifier_trainer",
+    family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+    supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
+    accepted_payload_formats=(
+        LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format,
+    ),
+    tags=("requires_raw_text", "artifact_ref_update"),
+    metadata={
+        "payload_format": (
+            LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format
+        ),
+        "requires_raw_text": True,
+        "produces_artifact_refs": True,
+        "supports_live_stored_event_runtime": False,
     },
 )
 
@@ -142,7 +166,12 @@ def list_shared_adapter_training_backend_catalog_entries() -> tuple[
 ]:
     """Agent local training backend catalog entry 목록."""
 
-    return (DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,)
+    return dedupe_registry_catalog_entries(
+        (
+            DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+            LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+        )
+    )
 
 
 def list_training_example_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:

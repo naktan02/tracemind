@@ -17,6 +17,7 @@ from .base import ANY_ADAPTER_KIND, WEAK_STRONG_PAIR_BACKEND_NAME
 from .models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
+    TrainingExampleSource,
 )
 
 
@@ -48,7 +49,14 @@ class WeakStrongPairTrainingExampleBackend:
             scorer=request.scoring_service,
             backend_name=self.backend_name,
         )
-        return tuple(_to_embedded_example(input_item) for input_item in inputs)
+        return tuple(
+            _to_embedded_example(input_item=input_item, source_row=source_row)
+            for source_row, input_item in zip(
+                request.source_rows,
+                inputs,
+                strict=True,
+            )
+        )
 
     def build_examples_from_stored_events(
         self,
@@ -63,7 +71,22 @@ class WeakStrongPairTrainingExampleBackend:
 
 def _to_embedded_example(
     input_item: PrototypeWeakStrongTrainingInput,
+    *,
+    source_row: TrainingExampleSource,
 ) -> EmbeddedTrainingExample:
+    metadata = dict(input_item.metadata)
+    metadata.update(
+        {
+            "raw_text": source_row.text,
+            "training_text": source_row.strong_text or source_row.text,
+        }
+    )
+    if source_row.weak_text is not None:
+        metadata["weak_text"] = source_row.weak_text
+    if source_row.strong_text is not None:
+        metadata["strong_text"] = source_row.strong_text
+    if source_row.translated_text is not None:
+        metadata["translated_text"] = source_row.translated_text
     return EmbeddedTrainingExample(
         scored_event=input_item.weak_scored_event,
         embedding=list(input_item.strong_embedding),
@@ -74,5 +97,5 @@ def _to_embedded_example(
         strong_scored_event=input_item.strong_scored_event,
         strong_embedding=list(input_item.strong_embedding),
         strong_base_embedding=list(input_item.strong_base_embedding),
-        metadata=dict(input_item.metadata),
+        metadata=metadata,
     )

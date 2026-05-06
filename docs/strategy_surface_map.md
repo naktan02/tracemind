@@ -49,7 +49,7 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
-| Training backend | `diagonal_scale_heuristic` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/diagonal_scale/*`, agent backend | 활성 runtime |
+| Training backend | `diagonal_scale_heuristic`, `lora_classifier_trainer` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/diagonal_scale/*`, `methods/adaptation/lora_classifier/*`, agent backend | 활성 runtime / FL simulation scaffold |
 | Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*`, agent backend | 활성 runtime |
 | Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*`, agent backend | 활성 runtime |
 | Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, agent backend | 활성 runtime |
@@ -101,3 +101,7 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
 - `lora_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, split, seed, metric을 고정한다.
+- Agent `lora_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
+  source row metadata 또는 translated text에서 agent-local raw text를 읽고,
+  shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
+  live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.

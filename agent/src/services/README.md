@@ -136,10 +136,15 @@
   - adapter update 생성 backend adapter와 registry wiring
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core
+- `methods/adaptation/lora_classifier/`
+  - LoRA + classifier scaffold core. Agent의 `lora_classifier_trainer`는
+    raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 
 ## 전략 추가 시 출발점
 
 - training backend 추가: `methods/adaptation/<family>/`와 `training/backends/training/`
+  - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를
+    같은 backend 내부에서 섞지 않는다.
 - example-generation backend 추가: `methods/prototype/training_inputs/`,
   `training/backends/inputs/`, `training/examples/service.py`
 - scorer backend 추가: `inference/scoring_backends.py`
