@@ -42,7 +42,10 @@ def main(cfg: DictConfig) -> None:
     prototypes = extract_category_prototypes(payload)
     spec_cfg = OmegaConf.create(
         {
-            "_target_": "shared.src.domain.value_objects.EmbeddingAdapterSpec",
+            "_target_": (
+                "shared.src.domain.value_objects.embedding_adapter_spec."
+                "EmbeddingAdapterSpec"
+            ),
             "backend": cfg.embedding.backend,
             "model_id": (
                 payload.embedding_model_id

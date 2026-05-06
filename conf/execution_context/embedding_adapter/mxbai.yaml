@@ -8,7 +8,7 @@ cache_dir: hf_cache
 task_prefix: ""
 hash_dim: 256
 spec:
-  _target_: shared.src.domain.value_objects.EmbeddingAdapterSpec
+  _target_: shared.src.domain.value_objects.embedding_adapter_spec.EmbeddingAdapterSpec
   backend: ${embedding.backend}
   model_id: ${embedding.model_id}
   revision: ${embedding.revision}

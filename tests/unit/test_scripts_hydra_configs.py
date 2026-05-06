@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import pytest
 from hydra import compose, initialize_config_module
+from hydra.utils import instantiate
 
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 @pytest.mark.parametrize(
@@ -46,6 +48,33 @@ def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is False
     assert cfg.prototype_builder.name == "single"
+
+
+@pytest.mark.parametrize(
+    ("embedding_override", "expected_backend"),
+    [
+        ("execution_context/embedding_adapter=mxbai", "transformers_mxbai"),
+        ("execution_context/embedding_adapter=hash_debug", "hash_debug"),
+    ],
+)
+def test_embedding_adapter_spec_config_instantiates(
+    embedding_override: str,
+    expected_backend: str,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                embedding_override,
+                "execution_context/runtime_env=cpu_local",
+            ],
+        )
+
+    embedding_spec = instantiate(cfg.embedding.spec)
+
+    assert isinstance(embedding_spec, EmbeddingAdapterSpec)
+    assert embedding_spec.backend == expected_backend
+    assert embedding_spec.device == "cpu"
 
 
 def test_seed_prototypes_supports_short_builder_override() -> None:
