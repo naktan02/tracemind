@@ -184,6 +184,13 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert fedavg.core_method_name == "fedavg"
     assert fedavg.compile_support == "metadata_only"
     assert fedavg.compile_blocker_reason is not None
+    lora_fedavg = _find_item(
+        federated_aggregations,
+        "lora_classifier.fedavg",
+        family_name="lora_classifier",
+    )
+    assert lora_fedavg.core_method_name == "fedavg"
+    assert lora_fedavg.metadata["requires_inline_or_materialized_artifacts"] is True
 
     training_backends = _find_section(
         payload,

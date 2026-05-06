@@ -52,6 +52,8 @@
   - adapter family별 state/update/payload 해석과 aggregation wiring
 - `aggregation/`
   - server-owned aggregation backend registry와 methods core adapter
+  - `lora_classifier.fedavg`는 inline delta smoke 경로를 집계하고,
+    artifact-ref-only update는 artifact materializer가 붙기 전까지 거부한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 

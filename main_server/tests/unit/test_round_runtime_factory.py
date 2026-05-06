@@ -168,6 +168,19 @@ def test_round_runtime_config_builds_registered_family_and_backend() -> None:
     )
 
 
+def test_round_runtime_config_builds_lora_classifier_family() -> None:
+    service = build_round_manager_service_from_config(
+        ServerRoundRuntimeConfig(
+            adapter_family_name="lora_classifier",
+            aggregation_backend_name="fedavg",
+        )
+    )
+
+    assert service.adapter_family.adapter_kind == "lora_classifier"
+    assert service.adapter_family.aggregation_backend.adapter_kind == "lora_classifier"
+    assert service.adapter_family.accepted_update_formats == ("lora_classifier_update",)
+
+
 def test_round_runtime_config_rejects_incompatible_family_backend() -> None:
     with pytest.raises(ValueError):
         build_round_manager_service_from_config(

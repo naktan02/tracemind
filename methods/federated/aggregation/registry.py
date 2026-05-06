@@ -11,9 +11,13 @@ from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
 from methods.federated.aggregation.fedavg.diagonal_scale_fedavg import (
     compute_diagonal_scale_fedavg,
 )
+from methods.federated.aggregation.fedavg.lora_classifier_fedavg import (
+    compute_lora_classifier_fedavg,
+)
 from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
+    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 
 _FEDERATED_AGGREGATION_METHOD_REGISTRY: dict[
@@ -94,4 +98,11 @@ register_federated_aggregation_method(
     implementation_module=compute_classifier_head_fedavg.__module__,
     core_function_name=compute_classifier_head_fedavg.__name__,
     aliases=("classifier_head_fedavg",),
+)
+register_federated_aggregation_method(
+    adapter_kind=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+    method_name="fedavg",
+    implementation_module=compute_lora_classifier_fedavg.__module__,
+    core_function_name=compute_lora_classifier_fedavg.__name__,
+    aliases=("lora_classifier_fedavg",),
 )

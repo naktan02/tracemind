@@ -10,6 +10,9 @@ from main_server.src.services.federation.rounds.aggregation.classifier_head impo
 from main_server.src.services.federation.rounds.aggregation.diagonal_scale import (
     DiagonalScaleAggregationService,
 )
+from main_server.src.services.federation.rounds.aggregation.lora_classifier import (
+    LoraClassifierFedAvgAggregationService,
+)
 from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationBackendFactory,
     SharedAdapterAggregationBackend,
@@ -20,6 +23,7 @@ from methods.federated.aggregation.registry import (
 from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
+    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -38,6 +42,10 @@ _DIAGONAL_SCALE_FEDAVG_SPEC = get_federated_aggregation_method_spec(
 )
 _CLASSIFIER_HEAD_FEDAVG_SPEC = get_federated_aggregation_method_spec(
     adapter_kind=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    method_name="fedavg",
+)
+_LORA_CLASSIFIER_FEDAVG_SPEC = get_federated_aggregation_method_spec(
+    adapter_kind=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
     method_name="fedavg",
 )
 
@@ -132,5 +140,23 @@ register_shared_adapter_aggregation_backend(
         family_name=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
         supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
         metadata={"adapter_kind": CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind},
+    ),
+)
+register_shared_adapter_aggregation_backend(
+    LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+    "fedavg",
+    "lora_classifier_fedavg",
+    factory=LoraClassifierFedAvgAggregationService.from_mapping,
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind}.fedavg",
+        display_name="fedavg",
+        implementation_module=_LORA_CLASSIFIER_FEDAVG_SPEC.implementation_module,
+        core_method_name=_LORA_CLASSIFIER_FEDAVG_SPEC.method_name,
+        family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+        supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
+        metadata={
+            "adapter_kind": LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+            "requires_inline_or_materialized_artifacts": True,
+        },
     ),
 )

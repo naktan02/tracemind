@@ -7,6 +7,7 @@ from collections.abc import Mapping
 from shared.src.config.adapter_family_metadata import (
     CLASSIFIER_HEAD_FAMILY_METADATA,
     DIAGONAL_SCALE_FAMILY_METADATA,
+    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 
 from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
@@ -15,6 +16,7 @@ from ..aggregation.registry import (
 )
 from .classifier_head import ClassifierHeadRoundFamily
 from .diagonal_scale import DiagonalScaleRoundFamily
+from .lora_classifier import LoraClassifierRoundFamily
 from .models import RoundFamilyFactory, SharedAdapterRoundFamily
 
 _ROUND_FAMILY_REGISTRY: dict[str, RoundFamilyFactory] = {}
@@ -71,6 +73,19 @@ def _build_classifier_head_round_family(
     )
 
 
+def _build_lora_classifier_round_family(
+    aggregation_backend_name: str,
+    aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] | None,
+) -> SharedAdapterRoundFamily:
+    return LoraClassifierRoundFamily(
+        aggregation_backend=build_shared_adapter_aggregation_backend(
+            adapter_kind=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+            backend_name=aggregation_backend_name,
+            overrides=aggregation_backend_overrides,
+        )
+    )
+
+
 register_shared_adapter_round_family(
     DIAGONAL_SCALE_FAMILY_METADATA.family_name,
     factory=_build_diagonal_scale_round_family,
@@ -78,4 +93,8 @@ register_shared_adapter_round_family(
 register_shared_adapter_round_family(
     CLASSIFIER_HEAD_FAMILY_METADATA.family_name,
     factory=_build_classifier_head_round_family,
+)
+register_shared_adapter_round_family(
+    LORA_CLASSIFIER_FAMILY_METADATA.family_name,
+    factory=_build_lora_classifier_round_family,
 )

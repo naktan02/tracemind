@@ -66,8 +66,7 @@ central fixed embedding + classifier seed
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | FL round-runtime profile | `fedavg_diagonal_scale` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*`, main_server adapter | 활성 runtime |
-| Adapter family | `diagonal_scale`, `classifier_head` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server family wiring | 활성 runtime |
-| Planned LoRA-classifier family | `lora_classifier` | future `strategy_axes/fl/round_runtime_profile` | `shared` payload + `methods` LoRA/classifier core | shared contract |
+| Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server family wiring | 활성 runtime / server aggregation scaffold |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
 
@@ -105,3 +104,6 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
   source row metadata 또는 translated text에서 agent-local raw text를 읽고,
   shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
+- Server `lora_classifier.fedavg`는 inline LoRA parameter delta와 classifier-head
+  delta의 FedAvg shape/version을 검증한다. Artifact-ref-only update 집계는 실제
+  artifact materializer/loader가 붙기 전까지 명시적으로 거부한다.

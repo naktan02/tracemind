@@ -87,7 +87,9 @@ source of truth로 본다.
 - [x] agent local trainer scaffold 구현. raw text는 agent-local 입력으로만 쓰고
   update payload에는 artifact ref와 통계만 남긴다.
 - [ ] agent LoRA artifact materialization 구현.
-- [ ] main_server aggregation/publication adapter 구현.
+- [x] main_server aggregation/publication adapter scaffold 구현. inline delta FedAvg는
+  검증하고 artifact-ref-only update는 materializer가 붙기 전까지 거부한다.
+- [ ] main_server LoRA artifact materializer/loader 구현.
 - [ ] backward-compatible manifest/version 정책 확인.
 - [ ] architecture guard와 integration smoke 추가.
 

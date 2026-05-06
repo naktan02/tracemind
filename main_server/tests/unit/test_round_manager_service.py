@@ -14,6 +14,9 @@ from main_server.src.infrastructure.repositories import (  # noqa: E402
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
 )
+from main_server.src.services.federation.rounds.families.registry import (  # noqa: E402
+    build_shared_adapter_round_family,
+)
 from main_server.src.services.federation.rounds.round_manager_service import (  # noqa: E402
     RoundManagerService,
     RoundPublicationRequest,
@@ -25,6 +28,9 @@ from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
+    LoraClassifierState,
+    make_lora_classifier_delta_payload,
+    make_lora_classifier_state_payload,
 )
 from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifest,
@@ -150,6 +156,114 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     assert publication.next_state.dimension_scales[0] == 1.08
     assert publication.next_state.dimension_scales[1] == 0.9733333333333334
     assert publication.aggregated_metrics["example_count"] == 3.0
+
+
+def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> None:
+    repository = shared_adapter_state_repository_module.SharedAdapterStateRepository(
+        state_root=tmp_path / "shared_states"
+    )
+    update_repository = (
+        shared_adapter_update_repository_module.SharedAdapterUpdateRepository(
+            state_root=tmp_path / "updates"
+        )
+    )
+    repository.save_shared_adapter_state(
+        make_lora_classifier_state_payload(
+            model_id="tracemind-lora",
+            model_revision="rev_000",
+            training_scope="adapter_only",
+            backbone=_lora_backbone(),
+            lora_config=_lora_config(),
+            label_schema=("anxiety", "normal"),
+            lora_adapter_artifact_ref="shared://rev_000/lora_adapter",
+            classifier_head_artifact_ref="shared://rev_000/classifier_head",
+            updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+        )
+    )
+    update_repository.save_shared_adapter_update(
+        "u_lora_1",
+        make_lora_classifier_delta_payload(
+            model_id="tracemind-lora",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            backbone=_lora_backbone(),
+            lora_config=_lora_config(),
+            label_schema=("anxiety", "normal"),
+            example_count=2,
+            lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
+            classifier_head_weight_deltas={
+                "anxiety": [0.2, -0.1],
+                "normal": [-0.2, 0.1],
+            },
+            classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+            delta_format="inline_delta",
+            mean_confidence=0.9,
+            mean_margin=0.2,
+        ),
+    )
+    service = RoundManagerService(
+        adapter_family=build_shared_adapter_round_family(
+            "lora_classifier",
+            aggregation_backend_name="fedavg",
+            aggregation_backend_overrides={
+                "artifact_ref_prefix": "server-aggregate://test_lora"
+            },
+        ),
+        artifact_repository=repository,
+        update_payload_repository=update_repository,
+    )
+
+    publication = service.publish_next_pair(
+        RoundPublicationRequest(
+            base_manifest=ModelManifest(
+                schema_version="model_manifest.v1",
+                model_id="tracemind-lora",
+                model_revision="rev_000",
+                published_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+                artifact_kind="shared_adapter_state",
+                artifact_ref=repository.ref_for_revision("rev_000"),
+                prototype_version="proto_000",
+                training_scope="adapter_only",
+                training_enabled=True,
+                compatible_task_types=("pseudo_label_self_training",),
+            ),
+            updates=[
+                TrainingUpdateEnvelope(
+                    schema_version="training_update_envelope.v1",
+                    update_id="u_lora_1",
+                    round_id="round_0001",
+                    task_id="task_001",
+                    model_id="tracemind-lora",
+                    base_model_revision="rev_000",
+                    training_scope="adapter_only",
+                    payload_ref=update_repository.ref_for_update("u_lora_1"),
+                    payload_format="lora_classifier_update",
+                    example_count=2,
+                    client_metrics={"mean_loss": 0.1},
+                )
+            ],
+            next_model_revision="rev_001",
+            next_prototype_version="proto_001",
+        )
+    )
+
+    assert isinstance(publication.next_state, LoraClassifierState)
+    assert publication.next_manifest.model_revision == "rev_001"
+    assert publication.next_manifest.artifact_ref == repository.ref_for_revision(
+        "rev_001"
+    )
+    assert publication.next_state.lora_adapter_artifact_ref == (
+        "server-aggregate://test_lora/rev_001/lora_adapter"
+    )
+    assert publication.next_state.classifier_head_artifact_ref == (
+        "server-aggregate://test_lora/rev_001/classifier_head"
+    )
+    loaded = repository.load_shared_adapter_state_from_ref(
+        publication.next_manifest.artifact_ref
+    )
+    assert isinstance(loaded, LoraClassifierState)
+    assert loaded.model_revision == "rev_001"
+    assert publication.aggregated_metrics["example_count"] == 2.0
 
 
 def test_round_manager_sets_default_policy_names_on_training_task() -> None:
@@ -335,3 +449,27 @@ def test_round_manager_uses_injected_clock_for_publication_time(
 
     assert publication.next_manifest.published_at == fixed_time
     assert publication.next_state.updated_at == fixed_time
+
+
+def _lora_backbone() -> dict[str, str | int]:
+    return {
+        "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "backbone_revision": "main",
+        "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "tokenizer_revision": "main",
+        "pooling": "mean",
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+
+def _lora_config() -> dict[str, str | int | float | bool]:
+    return {
+        "peft_adapter_name": "lora",
+        "rank": 8,
+        "alpha": 16,
+        "dropout": 0.1,
+        "bias": "none",
+        "target_modules": "all-linear",
+        "use_rslora": False,
+    }

@@ -20,6 +20,10 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_vector_mappings,
     weighted_average_vectors,
 )
+from methods.federated.aggregation.fedavg.lora_classifier_fedavg import (
+    LoraClassifierFedAvgUpdate,
+    compute_lora_classifier_fedavg,
+)
 from methods.federated.aggregation.registry import (
     get_federated_aggregation_method_spec,
 )
@@ -159,6 +163,65 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
     assert second_weight_deltas["normal"] == [-0.1, -0.2]
 
 
+def test_lora_classifier_fedavg_averages_lora_and_head_deltas() -> None:
+    result = compute_lora_classifier_fedavg(
+        label_schema=("anxiety", "normal"),
+        updates=[
+            LoraClassifierFedAvgUpdate(
+                lora_parameter_deltas={
+                    "encoder.q_proj.lora_A": [0.2, 0.4],
+                    "encoder.q_proj.lora_B": [0.1, -0.1],
+                },
+                classifier_head_weight_deltas={
+                    "anxiety": [0.2, -0.1],
+                    "normal": [-0.2, 0.1],
+                },
+                classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+                example_count=2,
+                mean_confidence=0.9,
+                mean_margin=0.3,
+                delta_l2_norm=0.5,
+            ),
+            LoraClassifierFedAvgUpdate(
+                lora_parameter_deltas={
+                    "encoder.q_proj.lora_A": [0.0, 0.1],
+                    "encoder.q_proj.lora_B": [0.2, 0.2],
+                },
+                classifier_head_weight_deltas={
+                    "anxiety": [0.1, 0.2],
+                    "normal": [-0.1, -0.2],
+                },
+                classifier_head_bias_deltas={"anxiety": 0.02},
+                example_count=1,
+                mean_confidence=0.6,
+                mean_margin=None,
+                delta_l2_norm=0.2,
+            ),
+        ],
+    )
+
+    assert result.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.13333333333333333, 0.3]
+    )
+    assert result.lora_parameter_deltas["encoder.q_proj.lora_B"] == pytest.approx(
+        [0.13333333333333333, 0.0]
+    )
+    assert result.classifier_head_weight_deltas["anxiety"] == pytest.approx(
+        [0.16666666666666666, 0.0]
+    )
+    assert result.classifier_head_weight_deltas["normal"] == pytest.approx(
+        [-0.16666666666666666, 0.0]
+    )
+    assert result.classifier_head_bias_deltas["anxiety"] == pytest.approx(0.04)
+    assert result.classifier_head_bias_deltas["normal"] == pytest.approx(
+        -0.03333333333333333
+    )
+    assert result.aggregated_metrics["example_count"] == 3.0
+    assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
+    assert result.aggregated_metrics["mean_delta_l2_norm"] == pytest.approx(0.4)
+    assert result.update_count == 2
+
+
 def test_federated_aggregation_method_registry_points_to_methods_core() -> None:
     spec = get_federated_aggregation_method_spec(
         adapter_kind="diagonal_scale",
@@ -168,3 +231,14 @@ def test_federated_aggregation_method_registry_points_to_methods_core() -> None:
     assert spec.method_name == "fedavg"
     assert spec.implementation_module.endswith("diagonal_scale_fedavg")
     assert spec.core_function_name == "compute_diagonal_scale_fedavg"
+
+
+def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
+    spec = get_federated_aggregation_method_spec(
+        adapter_kind="lora_classifier",
+        method_name="fedavg",
+    )
+
+    assert spec.method_name == "fedavg"
+    assert spec.implementation_module.endswith("lora_classifier_fedavg")
+    assert spec.core_function_name == "compute_lora_classifier_fedavg"
