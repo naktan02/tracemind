@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
+from typing import Literal
 
 from shared.src.contracts.prototype_build_state_contracts import (
     SinglePrototypeBuildStatePayload,
@@ -14,13 +15,23 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
+SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND = "server_reference"
+
 
 @dataclass(slots=True)
-class ReferencePrototypeSourceRow:
-    """reference rebuild용 canonical row 표현."""
+class ServerReferencePrototypeSourceRow:
+    """서버 소유 reference rebuild row 표현."""
 
     text: str
     category: str
+    source_kind: Literal["server_reference"] = SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND
+
+    def __post_init__(self) -> None:
+        if self.source_kind != SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND:
+            raise ValueError(
+                "Prototype rebuild reference rows must be server-owned reference "
+                "rows. Agent query/raw text must stay agent-local."
+            )
 
 
 @dataclass(slots=True, frozen=True)
@@ -29,7 +40,7 @@ class PrototypeRebuildInputRecord:
 
     input_id: str
     embedding_spec: EmbeddingAdapterSpec
-    rows: tuple[ReferencePrototypeSourceRow, ...]
+    rows: tuple[ServerReferencePrototypeSourceRow, ...]
     mapping_version: str
     normalize_embeddings: bool = True
     translation_model_id: str | None = None
@@ -54,7 +65,10 @@ class StoredReferencePrototypeRebuildRequest:
 class ReferencePrototypeRebuildRequest:
     """reference row 기반 prototype rebuild 요청."""
 
-    rows: tuple[ReferencePrototypeSourceRow, ...] | list[ReferencePrototypeSourceRow]
+    rows: (
+        tuple[ServerReferencePrototypeSourceRow, ...]
+        | list[ServerReferencePrototypeSourceRow]
+    )
     adapter: EmbeddingAdapter
     adapter_state: SharedAdapterState
     prototype_version: str

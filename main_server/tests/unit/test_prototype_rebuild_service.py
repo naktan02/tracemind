@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from pathlib import Path
 
+import pytest
+from pydantic import ValidationError
+
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
@@ -53,7 +56,7 @@ PrototypePackService = pack_service_module.PrototypePackService
 PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
 PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
 ReferencePrototypeRebuildRequest = prototype_models.ReferencePrototypeRebuildRequest
-ReferencePrototypeSourceRow = prototype_models.ReferencePrototypeSourceRow
+ServerReferencePrototypeSourceRow = prototype_models.ServerReferencePrototypeSourceRow
 ReferenceRebuildPrototypePublicationStrategy = (
     publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
 )
@@ -248,27 +251,27 @@ def test_rebuild_service_rebuilds_from_reference_rows_with_builder_strategy() ->
     result = service.rebuild_from_reference_rows(
         ReferencePrototypeRebuildRequest(
             rows=(
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_2",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_b_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_b_2",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="normal_1",
                     category="normal",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="normal_2",
                     category="normal",
                 ),
@@ -313,11 +316,11 @@ def test_rebuild_service_applies_reference_row_metadata_override() -> None:
     result = service.rebuild_from_reference_rows(
         ReferencePrototypeRebuildRequest(
             rows=(
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_1",
                     category="anxiety",
                 ),
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text="cluster_a_2",
                     category="anxiety",
                 ),
@@ -358,8 +361,8 @@ def test_rebuild_input_repository_saves_and_loads_active_input(tmp_path: Path) -
             hash_dim=8,
         ),
         rows=(
-            ReferencePrototypeSourceRow(text="alpha", category="anxiety"),
-            ReferencePrototypeSourceRow(text="beta", category="normal"),
+            ServerReferencePrototypeSourceRow(text="alpha", category="anxiety"),
+            ServerReferencePrototypeSourceRow(text="beta", category="normal"),
         ),
         mapping_version="ourafla_to_4cat.v1",
         required_categories=("anxiety", "normal"),
@@ -376,6 +379,30 @@ def test_rebuild_input_repository_saves_and_loads_active_input(tmp_path: Path) -
     assert loaded.embedding_spec.backend == "hash_debug"
     assert tuple(row.text for row in loaded.rows) == ("alpha", "beta")
     assert loaded.required_categories == ("anxiety", "normal")
+
+
+def test_server_reference_row_rejects_agent_query_source_kind() -> None:
+    with pytest.raises(ValueError, match="Agent query/raw text"):
+        ServerReferencePrototypeSourceRow(
+            text="agent raw query",
+            category="anxiety",
+            source_kind="query_buffer",  # type: ignore[arg-type]
+        )
+
+
+def test_rebuild_input_payload_rejects_query_buffer_source_kind() -> None:
+    row_payload = (
+        prototype_rebuild_input_repository_module.PrototypeRebuildInputRowPayload
+    )
+
+    with pytest.raises(ValidationError):
+        row_payload.model_validate(
+            {
+                "text": "agent raw query",
+                "category": "anxiety",
+                "source_kind": "query_buffer",
+            }
+        )
 
 
 def test_stored_reference_rebuild_service_rebuilds_from_active_input(
@@ -396,9 +423,15 @@ def test_stored_reference_rebuild_service_rebuilds_from_active_input(
                 hash_dim=8,
             ),
             rows=(
-                ReferencePrototypeSourceRow(text="cluster_a_1", category="anxiety"),
-                ReferencePrototypeSourceRow(text="cluster_a_2", category="anxiety"),
-                ReferencePrototypeSourceRow(text="normal_1", category="normal"),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_1",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_2",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(text="normal_1", category="normal"),
             ),
             mapping_version="ourafla_to_4cat.v1",
         )

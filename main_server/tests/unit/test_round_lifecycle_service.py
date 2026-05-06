@@ -115,7 +115,7 @@ PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateServi
 PrototypePackService = pack_service_module.PrototypePackService
 PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
 PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
-ReferencePrototypeSourceRow = prototype_models.ReferencePrototypeSourceRow
+ServerReferencePrototypeSourceRow = prototype_models.ServerReferencePrototypeSourceRow
 ReferenceRebuildPrototypePublicationStrategy = (
     publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
 )
@@ -610,9 +610,15 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
                 hash_dim=8,
             ),
             rows=(
-                ReferencePrototypeSourceRow(text="cluster_a_1", category="anxiety"),
-                ReferencePrototypeSourceRow(text="cluster_a_2", category="anxiety"),
-                ReferencePrototypeSourceRow(text="normal_1", category="normal"),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_1",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(
+                    text="cluster_a_2",
+                    category="anxiety",
+                ),
+                ServerReferencePrototypeSourceRow(text="normal_1", category="normal"),
             ),
             mapping_version="ourafla_to_4cat.v1",
         )

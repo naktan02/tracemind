@@ -56,8 +56,9 @@ Agent runtime:
 
 1. `agent/src/services/README.md`
 2. `agent/src/services/inference/pipeline_service.py`
-3. `agent/src/services/training/execution/local_training_service.py`
-4. `agent/src/services/federation/rounds/runtime_service.py`
+3. `agent/src/services/training/execution/agent_training_task_runner_service.py`
+4. `agent/src/services/training/execution/local_training_service.py`
+5. `agent/src/services/federation/rounds/runtime_service.py`
 
 Main server FL:
 

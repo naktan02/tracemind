@@ -87,7 +87,7 @@ PrototypeBuildStateService = build_state_service_module.PrototypeBuildStateServi
 PrototypePackService = pack_service_module.PrototypePackService
 PrototypeRebuildInputRecord = prototype_models.PrototypeRebuildInputRecord
 PrototypeRebuildService = rebuild_service_module.PrototypeRebuildService
-ReferencePrototypeSourceRow = prototype_models.ReferencePrototypeSourceRow
+ServerReferencePrototypeSourceRow = prototype_models.ServerReferencePrototypeSourceRow
 ReferenceRebuildPrototypePublicationStrategy = (
     publication_strategy_module.ReferenceRebuildPrototypePublicationStrategy
 )
@@ -294,7 +294,7 @@ def store_prototype_rebuild_input(
             input_id=input_id,
             embedding_spec=embedding_spec,
             rows=tuple(
-                ReferencePrototypeSourceRow(
+                ServerReferencePrototypeSourceRow(
                     text=str(row["text"]),
                     category=str(row["mapped_label_4"]),
                 )

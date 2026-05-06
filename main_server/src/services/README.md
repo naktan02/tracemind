@@ -26,13 +26,17 @@
 
 1. `federation/assets/prototypes/prototype_rebuild_service.py`
 2. `federation/assets/prototypes/stored_input_rebuild_service.py`
-3. `federation/assets/prototypes/publication_strategies.py`
+3. `federation/assets/prototypes/models.py`
+4. `infrastructure/repositories/prototype_rebuild_input_repository.py`
+5. `federation/assets/prototypes/publication_strategies.py`
 
 ## 경계 원칙
 
 - federation round orchestration은 `federation/rounds/`가 소유한다.
 - prototype pack/build-state 생성과 publication은
   `federation/assets/prototypes/`가 소유한다.
+- prototype rebuild input row는 `ServerReferencePrototypeSourceRow`로 표현되는
+  server-owned reference만 허용한다. agent raw/query text는 이 경로로 승격하지 않는다.
 - 개발자 실험 웹용 catalog/compile/workspace/run surface는
   `experiment_workspace/`가 소유한다.
 - 공용 계약은 `shared/src/contracts/`를 기준으로 읽는다.

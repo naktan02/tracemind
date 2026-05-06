@@ -72,6 +72,11 @@ Agent app은 `agent/src/api/main.py`에서 router를 조합한다.
 | POST | `/api/v1/training/run-current-task` | server active task를 읽어 local training 후 update upload | `agent/src/api/training.py` |
 | GET | `/api/v1/training/status` | server active task 존재 여부 조회 | `agent/src/api/training.py` |
 
+`run-current-task` route는 HTTP 요청/응답 변환만 맡고, active task 조회부터
+shared/prototype sync, example build, update upload까지의 실행 흐름은
+`agent/src/services/training/execution/agent_training_task_runner_service.py`가
+소유한다.
+
 주요 payload:
 
 | Payload | Source |

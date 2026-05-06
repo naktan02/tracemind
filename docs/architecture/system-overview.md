@@ -172,6 +172,8 @@ Raw Event / Local Signal
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
+| agent current-task application flow | `agent/src/services/training/execution/agent_training_task_runner_service.py` |
+| server-owned prototype rebuild input | `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py` |
 | prototype scoring core | `methods/prototype/scoring/*` |
 | prototype evidence core | `methods/prototype/evidence/*` |
 

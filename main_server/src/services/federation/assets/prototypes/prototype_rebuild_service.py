@@ -22,7 +22,7 @@ from .models import (
     ReferencePrototypeRebuildRequest,
 )
 from .models import (
-    ReferencePrototypeSourceRow as ReferencePrototypeSourceRow,
+    ServerReferencePrototypeSourceRow as ServerReferencePrototypeSourceRow,
 )
 from .models import (
     StoredReferencePrototypeRebuildRequest as StoredReferencePrototypeRebuildRequest,

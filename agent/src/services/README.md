@@ -60,10 +60,11 @@
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
 1. `federation/rounds/round_client.py`
-2. `federation/rounds/runtime_service.py`
-3. `assets/shared_adapters/sync_service.py`
-4. `assets/adapters/composition_service.py`
-5. `training/execution/local_training_service.py`
+2. `training/execution/agent_training_task_runner_service.py`
+3. `federation/rounds/runtime_service.py`
+4. `assets/shared_adapters/sync_service.py`
+5. `assets/adapters/composition_service.py`
+6. `training/execution/local_training_service.py`
 
 ### 4. 가족용 확장 출력 surface를 보고 싶을 때
 
@@ -118,6 +119,9 @@
   - local training과 federation이 공유하는 example DTO
 - `training/execution/runtime_compatibility.py`
   - training/example/scorer/privacy 조합 검증
+- `training/execution/agent_training_task_runner_service.py`
+  - active task 조회, shared/prototype sync, example build, update upload까지의
+    agent application flow 소유
 - `training/examples/service.py`
   - raw row 또는 stored event를 `EmbeddedTrainingExample`으로 변환
 - `training/backends/inputs/`
