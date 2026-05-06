@@ -58,6 +58,7 @@ class UpdatePayloadFormat(StrEnum):
 
     DIAGONAL_SCALE_UPDATE = "diagonal_scale_update"
     CLASSIFIER_HEAD_UPDATE = "classifier_head_update"
+    LORA_CLASSIFIER_UPDATE = "lora_classifier_update"
     LEGACY_VECTOR_ADAPTER_DELTA = "vector_adapter_delta"
 
 

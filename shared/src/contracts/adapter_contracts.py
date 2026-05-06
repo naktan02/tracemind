@@ -3,19 +3,21 @@
 이 모듈은 시스템/FL runtime에서 "서버와 agent 사이에 어떤 shared state/update를
 주고받는가"를 정의하는 source of truth다.
 
-현재 concrete family는 둘이다.
+현재 concrete family는 셋이다.
 
 1. `diagonal_scale`
    - 임베딩 각 차원에 곱하는 scale 벡터를 공유하는 adapter family
 2. `classifier_head`
    - 고정 임베딩 위 category별 선형 분류 head를 공유하는 family
+3. `lora_classifier`
+   - frozen backbone 위 LoRA adapter와 classifier head를 함께 공유하는 family
 
 주의:
 
 - 이 모듈은 현재 시스템/FL runtime 계약을 다룬다.
 - 논문 트랙의 `central LoRA classifier` trainer가 이 payload를 그대로
   재사용해야 한다는 의미는 아니다.
-- 다만 이후 시스템 FL translation에서 `lora` family를 열 때는 이 모듈이
+- 다만 이후 시스템 FL translation에서 `lora_classifier` family를 열 때는 이 모듈이
   canonical state/update payload source of truth가 된다.
 """
 
@@ -38,11 +40,15 @@ VECTOR_ADAPTER_STATE_V1 = "vector_adapter_state.v1"
 VECTOR_ADAPTER_DELTA_V1 = "vector_adapter_delta.v1"
 CLASSIFIER_HEAD_STATE_V1 = "classifier_head_state.v1"
 CLASSIFIER_HEAD_DELTA_V1 = "classifier_head_delta.v1"
+LORA_CLASSIFIER_STATE_V1 = "lora_classifier_state.v1"
+LORA_CLASSIFIER_DELTA_V1 = "lora_classifier_delta.v1"
 CURRENT_SHARED_ADAPTER_STATE_V1 = "current_shared_adapter_state.v1"
 VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
 VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
 ClassifierHeadStateSchemaVersion: TypeAlias = Literal["classifier_head_state.v1"]
 ClassifierHeadDeltaSchemaVersion: TypeAlias = Literal["classifier_head_delta.v1"]
+LoraClassifierStateSchemaVersion: TypeAlias = Literal["lora_classifier_state.v1"]
+LoraClassifierDeltaSchemaVersion: TypeAlias = Literal["lora_classifier_delta.v1"]
 CurrentSharedAdapterStateSchemaVersion: TypeAlias = Literal[
     "current_shared_adapter_state.v1"
 ]
@@ -53,6 +59,7 @@ class AdapterKind(StrEnum):
 
     DIAGONAL_SCALE = "diagonal_scale"
     CLASSIFIER_HEAD = "classifier_head"
+    LORA_CLASSIFIER = "lora_classifier"
 
 
 class SharedAdapterStatePayload(BaseModel):
@@ -251,6 +258,120 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
         }
 
 
+class LoraClassifierBackbonePayload(BaseModel):
+    """LoRA-classifier가 결합되는 frozen text backbone/tokenizer 식별자."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    backbone_model_id: str = Field(description="Frozen backbone model id.")
+    backbone_revision: str = Field(description="Frozen backbone revision.")
+    tokenizer_model_id: str = Field(description="Tokenizer model id.")
+    tokenizer_revision: str = Field(description="Tokenizer revision.")
+    pooling: str = Field(
+        default="mean",
+        description="Classifier head 입력 벡터를 만들 때 쓰는 pooling 방식.",
+    )
+    max_length: int = Field(
+        gt=0,
+        description="Tokenizer truncation/padding 기준 max_length.",
+    )
+    task_prefix: str = Field(
+        default="",
+        description="Embedding/query 입력 앞에 붙이는 task prefix.",
+    )
+
+
+class LoraClassifierConfigPayload(BaseModel):
+    """LoRA/RSLoRA adapter config snapshot."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    peft_adapter_name: str = Field(
+        default="lora",
+        description="PEFT adapter builder 이름. 예: lora, rslora.",
+    )
+    rank: int = Field(gt=0, description="LoRA rank.")
+    alpha: int = Field(gt=0, description="LoRA scaling alpha.")
+    dropout: float = Field(
+        ge=0.0,
+        le=1.0,
+        description="LoRA dropout 비율.",
+    )
+    bias: str = Field(default="none", description="PEFT bias config.")
+    target_modules: str | list[str] = Field(
+        description="LoRA를 삽입할 backbone module selector."
+    )
+    use_rslora: bool = Field(
+        default=False,
+        description="RSLoRA scaling 사용 여부.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_target_modules(self) -> "LoraClassifierConfigPayload":
+        if isinstance(self.target_modules, str):
+            if not self.target_modules.strip():
+                raise ValueError("target_modules must not be empty.")
+            self.target_modules = self.target_modules.strip()
+            return self
+        normalized = tuple(
+            str(value).strip() for value in self.target_modules if str(value).strip()
+        )
+        if not normalized:
+            raise ValueError("target_modules must not be empty.")
+        self.target_modules = list(normalized)
+        return self
+
+
+class LoraClassifierAdapterStatePayload(SharedAdapterStatePayload):
+    """LoRA adapter와 classifier head를 함께 배포하는 shared family 상태.
+
+    이 payload는 raw text나 client-local query state를 포함하지 않는다. 서버가
+    배포할 shared artifact의 식별자와 scaffold metadata만 담는다.
+    """
+
+    schema_version: LoraClassifierStateSchemaVersion = Field(
+        default=LORA_CLASSIFIER_STATE_V1,
+        description="LoRA-classifier state payload contract 버전.",
+    )
+    adapter_kind: str = Field(
+        default=AdapterKind.LORA_CLASSIFIER.value,
+        description="Adapter family discriminator.",
+    )
+    backbone: LoraClassifierBackbonePayload = Field(
+        description="Frozen backbone/tokenizer snapshot."
+    )
+    lora_config: LoraClassifierConfigPayload = Field(
+        description="LoRA/RSLoRA adapter config snapshot."
+    )
+    label_schema: list[str] = Field(description="Classifier head label 순서.")
+    lora_adapter_artifact_ref: str | None = Field(
+        default=None,
+        description="서버가 소유한 LoRA adapter artifact ref.",
+    )
+    classifier_head_artifact_ref: str | None = Field(
+        default=None,
+        description="서버가 소유한 classifier head artifact ref.",
+    )
+    artifact_format: str = Field(
+        default="artifact_ref",
+        description="LoRA/classifier weight 저장 방식 식별자.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_lora_classifier_state(
+        self,
+    ) -> "LoraClassifierAdapterStatePayload":
+        self.label_schema = _normalize_label_schema(self.label_schema)
+        if not self.artifact_format.strip():
+            raise ValueError("artifact_format must not be empty.")
+        self.artifact_format = self.artifact_format.strip()
+        return self
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        return tuple(self.label_schema)
+
+
 class SharedAdapterUpdatePayload(BaseModel):
     """로컬 학습이 생성한 shared adapter update payload 공통 필드.
 
@@ -406,6 +527,138 @@ class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
         return math.sqrt(squared_weight_norm + squared_bias_norm)
 
 
+class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
+    """LoRA-classifier family update payload.
+
+    LoRA weight delta는 커질 수 있으므로 artifact ref 기반을 canonical 경로로
+    열어 둔다. 작은 smoke나 deterministic unit 검증은 optional inline delta를
+    쓸 수 있지만, runtime은 둘 중 어떤 표현이 들어왔는지 명시적으로 확인해야 한다.
+    """
+
+    schema_version: LoraClassifierDeltaSchemaVersion = Field(
+        default=LORA_CLASSIFIER_DELTA_V1,
+        description="LoRA-classifier update payload contract 버전.",
+    )
+    adapter_kind: str = Field(
+        default=AdapterKind.LORA_CLASSIFIER.value,
+        description="Adapter family discriminator.",
+    )
+    backbone: LoraClassifierBackbonePayload = Field(
+        description="Frozen backbone/tokenizer snapshot."
+    )
+    lora_config: LoraClassifierConfigPayload = Field(
+        description="LoRA/RSLoRA adapter config snapshot."
+    )
+    label_schema: list[str] = Field(description="Classifier head label 순서.")
+    lora_delta_artifact_ref: str | None = Field(
+        default=None,
+        description="서버가 해석할 LoRA adapter delta artifact ref.",
+    )
+    classifier_head_delta_artifact_ref: str | None = Field(
+        default=None,
+        description="서버가 해석할 classifier head delta artifact ref.",
+    )
+    lora_parameter_deltas: dict[str, list[float]] | None = Field(
+        default=None,
+        description=(
+            "선택적 inline LoRA parameter delta. 큰 update의 기본 경로가 아니다."
+        ),
+    )
+    classifier_head_weight_deltas: dict[str, list[float]] | None = Field(
+        default=None,
+        description="선택적 inline classifier head weight delta.",
+    )
+    classifier_head_bias_deltas: dict[str, float] = Field(
+        default_factory=dict,
+        description="선택적 inline classifier head bias delta.",
+    )
+    delta_format: str = Field(
+        default="artifact_ref",
+        description="Update weight 표현 방식 식별자.",
+    )
+    mean_confidence: float | None = Field(
+        default=None,
+        ge=0.0,
+        le=1.0,
+        description="Update에 반영된 accepted example들의 평균 confidence.",
+    )
+    mean_margin: float | None = Field(
+        default=None,
+        description="Accepted example들의 평균 top1-top2 margin.",
+    )
+    label_counts: dict[str, int] = Field(
+        default_factory=dict,
+        description="Accepted example의 pseudo-label 분포. drift 관찰용 메타데이터다.",
+    )
+    delta_l2_norm: float | None = Field(
+        default=None,
+        ge=0.0,
+        description="Artifact 기반 update가 보고한 전체 delta L2 norm.",
+    )
+
+    @model_validator(mode="after")
+    def _validate_lora_classifier_delta(
+        self,
+    ) -> "LoraClassifierAdapterUpdatePayload":
+        self.label_schema = _normalize_label_schema(self.label_schema)
+        self.delta_format = self.delta_format.strip()
+        if not self.delta_format:
+            raise ValueError("delta_format must not be empty.")
+        if not self._has_update_material():
+            raise ValueError(
+                "LoRA-classifier update requires artifact refs or inline deltas."
+            )
+        if self.classifier_head_weight_deltas is not None:
+            _validate_label_vector_mapping(
+                self.classifier_head_weight_deltas,
+                labels=tuple(self.label_schema),
+                field_name="classifier_head_weight_deltas",
+            )
+            self.classifier_head_bias_deltas = _normalize_label_scalar_mapping(
+                self.classifier_head_bias_deltas,
+                labels=tuple(self.label_schema),
+                field_name="classifier_head_bias_deltas",
+            )
+        if self.lora_parameter_deltas is not None:
+            _validate_non_empty_vector_mapping(
+                self.lora_parameter_deltas,
+                field_name="lora_parameter_deltas",
+            )
+        return self
+
+    def _has_update_material(self) -> bool:
+        return any(
+            (
+                self.lora_delta_artifact_ref,
+                self.classifier_head_delta_artifact_ref,
+                self.lora_parameter_deltas,
+                self.classifier_head_weight_deltas,
+                self.classifier_head_bias_deltas,
+            )
+        )
+
+    @property
+    def labels(self) -> tuple[str, ...]:
+        return tuple(self.label_schema)
+
+    def l2_norm(self) -> float:
+        """Inline delta가 있으면 계산하고, artifact 기반이면 reported norm을 쓴다."""
+        if self.delta_l2_norm is not None:
+            return self.delta_l2_norm
+        squared_norm = 0.0
+        if self.lora_parameter_deltas is not None:
+            squared_norm += _squared_vector_mapping_norm(self.lora_parameter_deltas)
+        if self.classifier_head_weight_deltas is not None:
+            squared_norm += _squared_vector_mapping_norm(
+                self.classifier_head_weight_deltas
+            )
+        squared_norm += sum(
+            float(value) * float(value)
+            for value in self.classifier_head_bias_deltas.values()
+        )
+        return math.sqrt(squared_norm)
+
+
 class CurrentSharedAdapterStatePayload(BaseModel):
     """서버 current manifest와 실제 shared adapter state를 함께 내려주는 payload.
 
@@ -451,6 +704,63 @@ class CurrentSharedAdapterStatePayload(BaseModel):
         return self
 
 
+def _normalize_label_schema(labels: Sequence[str]) -> list[str]:
+    normalized = [str(label).strip() for label in labels if str(label).strip()]
+    if not normalized:
+        raise ValueError("label_schema must not be empty.")
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("label_schema must not contain duplicates.")
+    return normalized
+
+
+def _validate_non_empty_vector_mapping(
+    values: Mapping[str, Sequence[float]],
+    *,
+    field_name: str,
+) -> None:
+    if not values:
+        raise ValueError(f"{field_name} must not be empty.")
+    for key, vector in values.items():
+        if not str(key).strip():
+            raise ValueError(f"{field_name} keys must not be empty.")
+        if not vector:
+            raise ValueError(f"{field_name} vectors must not be empty.")
+
+
+def _validate_label_vector_mapping(
+    values: Mapping[str, Sequence[float]],
+    *,
+    labels: Sequence[str],
+    field_name: str,
+) -> None:
+    _validate_non_empty_vector_mapping(values, field_name=field_name)
+    if set(values) != set(labels):
+        raise ValueError(f"{field_name} keys must match label_schema.")
+    dims = {len(vector) for vector in values.values()}
+    if len(dims) != 1:
+        raise ValueError(f"{field_name} vectors must share one dimension.")
+
+
+def _normalize_label_scalar_mapping(
+    values: Mapping[str, float],
+    *,
+    labels: Sequence[str],
+    field_name: str,
+) -> dict[str, float]:
+    extra_labels = set(values) - set(labels)
+    if extra_labels:
+        raise ValueError(
+            f"{field_name} includes unknown labels: {sorted(extra_labels)}"
+        )
+    return {label: float(values.get(label, 0.0)) for label in labels}
+
+
+def _squared_vector_mapping_norm(values: Mapping[str, Sequence[float]]) -> float:
+    return sum(
+        float(value) * float(value) for vector in values.values() for value in vector
+    )
+
+
 VectorAdapterStatePayload = DiagonalScaleAdapterStatePayload
 VectorAdapterDeltaPayload = DiagonalScaleAdapterUpdatePayload
 VectorAdapterState = VectorAdapterStatePayload
@@ -459,6 +769,10 @@ ClassifierHeadStatePayload = ClassifierHeadAdapterStatePayload
 ClassifierHeadDeltaPayload = ClassifierHeadAdapterUpdatePayload
 ClassifierHeadState = ClassifierHeadStatePayload
 ClassifierHeadDelta = ClassifierHeadDeltaPayload
+LoraClassifierStatePayload = LoraClassifierAdapterStatePayload
+LoraClassifierDeltaPayload = LoraClassifierAdapterUpdatePayload
+LoraClassifierState = LoraClassifierStatePayload
+LoraClassifierDelta = LoraClassifierDeltaPayload
 
 _STATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterStatePayload]] = {}
 _UPDATE_PAYLOAD_TYPES: dict[str, type[SharedAdapterUpdatePayload]] = {}
@@ -719,6 +1033,84 @@ def make_classifier_head_delta_payload(
     )
 
 
+def make_lora_classifier_state_payload(
+    *,
+    model_id: str,
+    model_revision: str,
+    backbone: LoraClassifierBackbonePayload | Mapping[str, object],
+    lora_config: LoraClassifierConfigPayload | Mapping[str, object],
+    label_schema: Sequence[str],
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
+    lora_adapter_artifact_ref: str | None = None,
+    classifier_head_artifact_ref: str | None = None,
+    artifact_format: str = "artifact_ref",
+    updated_at: datetime | None = None,
+) -> LoraClassifierAdapterStatePayload:
+    """LoRA-classifier state payload를 만드는 표준 factory."""
+
+    return LoraClassifierAdapterStatePayload(
+        schema_version=LORA_CLASSIFIER_STATE_V1,
+        adapter_kind=AdapterKind.LORA_CLASSIFIER.value,
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        updated_at=updated_at or datetime.now(tz=timezone.utc),
+        backbone=backbone,
+        lora_config=lora_config,
+        label_schema=list(label_schema),
+        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        classifier_head_artifact_ref=classifier_head_artifact_ref,
+        artifact_format=artifact_format,
+    )
+
+
+def make_lora_classifier_delta_payload(
+    *,
+    model_id: str,
+    base_model_revision: str,
+    backbone: LoraClassifierBackbonePayload | Mapping[str, object],
+    lora_config: LoraClassifierConfigPayload | Mapping[str, object],
+    label_schema: Sequence[str],
+    example_count: int,
+    training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
+    lora_delta_artifact_ref: str | None = None,
+    classifier_head_delta_artifact_ref: str | None = None,
+    lora_parameter_deltas: dict[str, list[float]] | None = None,
+    classifier_head_weight_deltas: dict[str, list[float]] | None = None,
+    classifier_head_bias_deltas: dict[str, float] | None = None,
+    delta_format: str = "artifact_ref",
+    mean_confidence: float | None = None,
+    mean_margin: float | None = None,
+    label_counts: dict[str, int] | None = None,
+    delta_l2_norm: float | None = None,
+    created_at: datetime | None = None,
+) -> LoraClassifierAdapterUpdatePayload:
+    """LoRA-classifier update payload를 만드는 표준 factory."""
+
+    return LoraClassifierAdapterUpdatePayload(
+        schema_version=LORA_CLASSIFIER_DELTA_V1,
+        adapter_kind=AdapterKind.LORA_CLASSIFIER.value,
+        model_id=model_id,
+        base_model_revision=base_model_revision,
+        training_scope=training_scope,
+        example_count=example_count,
+        created_at=created_at or datetime.now(tz=timezone.utc),
+        backbone=backbone,
+        lora_config=lora_config,
+        label_schema=list(label_schema),
+        lora_delta_artifact_ref=lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
+        lora_parameter_deltas=lora_parameter_deltas,
+        classifier_head_weight_deltas=classifier_head_weight_deltas,
+        classifier_head_bias_deltas=classifier_head_bias_deltas or {},
+        delta_format=delta_format,
+        mean_confidence=mean_confidence,
+        mean_margin=mean_margin,
+        label_counts=label_counts or {},
+        delta_l2_norm=delta_l2_norm,
+    )
+
+
 def make_current_shared_adapter_state_payload(
     *,
     manifest: ModelManifestPayload,
@@ -741,4 +1133,9 @@ register_shared_adapter_payload_family(
     AdapterKind.CLASSIFIER_HEAD.value,
     state_payload_type=ClassifierHeadAdapterStatePayload,
     update_payload_type=ClassifierHeadAdapterUpdatePayload,
+)
+register_shared_adapter_payload_family(
+    AdapterKind.LORA_CLASSIFIER.value,
+    state_payload_type=LoraClassifierAdapterStatePayload,
+    update_payload_type=LoraClassifierAdapterUpdatePayload,
 )

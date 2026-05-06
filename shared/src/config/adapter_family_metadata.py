@@ -35,9 +35,17 @@ CLASSIFIER_HEAD_FAMILY_METADATA = SharedAdapterFamilyMetadata(
     accepted_update_payload_formats=(UpdatePayloadFormat.CLASSIFIER_HEAD_UPDATE.value,),
 )
 
+LORA_CLASSIFIER_FAMILY_METADATA = SharedAdapterFamilyMetadata(
+    family_name=AdapterKind.LORA_CLASSIFIER.value,
+    adapter_kind=AdapterKind.LORA_CLASSIFIER.value,
+    canonical_update_payload_format=UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value,
+    accepted_update_payload_formats=(UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value,),
+)
+
 _SHARED_ADAPTER_FAMILY_METADATA_REGISTRY: tuple[SharedAdapterFamilyMetadata, ...] = (
     DIAGONAL_SCALE_FAMILY_METADATA,
     CLASSIFIER_HEAD_FAMILY_METADATA,
+    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 
 

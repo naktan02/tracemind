@@ -46,6 +46,11 @@ Shared adapter 상태와 update payload를 정의한다.
 - `ClassifierHeadAdapterStatePayload`
   - classifier-head concrete 구현
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
+- `LoraClassifierAdapterStatePayload`
+  - LoRA-classifier concrete 구현
+  - frozen backbone/tokenizer, LoRA config, label schema, LoRA adapter artifact ref,
+    classifier head artifact ref를 함께 설명한다
+  - raw text나 agent-local query state는 포함하지 않는다
 - `CurrentSharedAdapterStatePayload`
   - 서버 current `ModelManifest`와 실제 `SharedAdapterStatePayload`를 함께
     내려주는 agent sync payload
@@ -60,6 +65,15 @@ Shared adapter 상태와 update payload를 정의한다.
 - `ClassifierHeadAdapterUpdatePayload`
   - classifier-head concrete 구현
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
+- `LoraClassifierAdapterUpdatePayload`
+  - LoRA-classifier update concrete 구현
+  - `base_model_revision`, `example_count`, backbone/tokenizer, LoRA config,
+    label schema를 포함한다
+  - LoRA/classifier update weight는 큰 artifact가 될 수 있으므로
+    `lora_delta_artifact_ref`, `classifier_head_delta_artifact_ref`를 기본 경로로
+    열어 둔다
+  - 작은 smoke나 deterministic 단위 검증에는 선택적 inline delta 필드를 쓸 수
+    있지만, runtime은 artifact-ref와 inline delta를 명시적으로 구분해야 한다
 
 ### `training_contracts.py`
 
@@ -170,13 +184,13 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 
 - `adapter_kind`
   - adapter family discriminator
-  - 예: `diagonal_scale`, `classifier_head`
+  - 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
 - `payload_format`
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
   - 현재 시스템 runtime에서는 주로 `adapter_only`, `head_only`
-  - future `lora` family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
+  - `lora_classifier` family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
   - `full_encoder`는 upper-bound 또는 미래 확장 값으로 남아 있지만, 현재 시스템 FL 기본 경로는 아니다
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision
@@ -185,6 +199,8 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 추가 원칙:
 
 - `classifier_head` family는 전역 class evidence를 제공하는 shared head로 해석한다.
+- `lora_classifier` family는 기존 `classifier_head`의 옵션이 아니라, LoRA
+  adapter state와 classifier head state를 함께 배포/집계하는 별도 family다.
 - 로컬 개인화와 최종 판단은 이 계약 파일이 아니라 agent 로컬 runtime 계층이 소유한다.
 
 ## 현재 diagonal scale adapter 의미
