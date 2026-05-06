@@ -29,6 +29,10 @@ prototype_rebuild:
 diagnostics:
   dump_dir_name: selection_dumps
 
+client_pool_split:
+  labeled_ratio: 0.1
+  unlabeled_ratio: 0.9
+
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
 # `round_runtime_profile`은 server round에서 공유할 adapter family와 aggregation backend를 소유한다.
 round_runtime:
@@ -72,10 +76,8 @@ report:
   schema_version: federated_simulation_report.v1
   track: fl_ssl_main_comparison
   table_role: main_comparison
-  # 아래 split/seed 값은 report protocol metadata다.
-  # 실제 seed sweep과 labeled/unlabeled split 강제는 별도 runner에서 닫는다.
-  labeled_ratio: 0.1
-  unlabeled_ratio: 0.9
+  labeled_ratio: ${client_pool_split.labeled_ratio}
+  unlabeled_ratio: ${client_pool_split.unlabeled_ratio}
   seed_count: 3
   primary_metrics:
     - macro_f1

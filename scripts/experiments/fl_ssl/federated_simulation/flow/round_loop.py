@@ -28,6 +28,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
+from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
     run_federated_local_training,
@@ -121,8 +122,9 @@ def _run_client_round(
     training_task: Any,
     training_scoring_service: Any,
 ) -> ClientRoundExecution:
+    training_rows = _resolve_client_training_rows(shard)
     training_examples = ssl_method_runtime.build_training_examples(
-        rows=shard.rows,
+        rows=training_rows,
         adapter=bootstrapped.adapter,
         adapter_state=active.adapter_state,
         prototype_pack=active.prototype_pack,
@@ -143,7 +145,7 @@ def _run_client_round(
         output_dir=request.output_dir,
         round_id=round_id,
         client_id=shard.client_id,
-        rows=shard.rows,
+        rows=training_rows,
         training_examples=training_examples,
         selection_result=local_result.selection_result,
         diagnostics_config=request.diagnostics_config,
@@ -163,6 +165,14 @@ def _run_client_round(
         ),
         update_submitted=update_submitted,
     )
+
+
+def _resolve_client_training_rows(
+    shard: FederatedClientShard,
+) -> list[LabeledQueryRow]:
+    if shard.client_pool_split_enforced:
+        return list(shard.unlabeled_rows)
+    return list(shard.rows)
 
 
 def _accept_client_update(

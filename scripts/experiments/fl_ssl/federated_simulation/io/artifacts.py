@@ -11,6 +11,8 @@ from typing import Any
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
+    FederatedClientPoolSplitConfig,
+    FederatedDatasetSplit,
     FederatedDiagnosticsConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
@@ -189,7 +191,9 @@ def save_simulation_report(
     bootstrap_ratio: float,
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
+    dataset_split: FederatedDatasetSplit,
     ssl_method_config: FederatedSslMethodConfig,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None,
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
@@ -208,7 +212,9 @@ def save_simulation_report(
                 bootstrap_ratio=bootstrap_ratio,
                 seed=seed,
                 shard_policy=shard_policy,
+                dataset_split=dataset_split,
                 ssl_method_config=ssl_method_config,
+                client_pool_split_config=client_pool_split_config,
                 training_task_config=training_task_config,
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
@@ -231,7 +237,9 @@ def _build_simulation_report_payload(
     bootstrap_ratio: float,
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
+    dataset_split: FederatedDatasetSplit,
     ssl_method_config: FederatedSslMethodConfig,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None,
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
@@ -252,11 +260,11 @@ def _build_simulation_report_payload(
             "bootstrap_ratio": bootstrap_ratio,
             "shard_policy": _shard_policy_to_payload(shard_policy),
             "ssl_method": _ssl_method_to_payload(ssl_method_config),
-            "labeled_unlabeled_split": {
-                "labeled_ratio": report_config.labeled_ratio,
-                "unlabeled_ratio": report_config.unlabeled_ratio,
-                "status": "protocol_metadata_pending_method_runner_enforcement",
-            },
+            "labeled_unlabeled_split": _client_pool_split_to_payload(
+                dataset_split=dataset_split,
+                client_pool_split_config=client_pool_split_config,
+                report_config=report_config,
+            ),
             "local_update_budget": {
                 "local_epochs": training_task_config.local_epochs,
                 "batch_size": training_task_config.batch_size,
@@ -419,6 +427,43 @@ def _ssl_method_to_payload(
     }
 
 
+def _client_pool_split_to_payload(
+    *,
+    dataset_split: FederatedDatasetSplit,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None,
+    report_config: FederatedReportConfig,
+) -> dict[str, object]:
+    total_rows = sum(len(shard.rows) for shard in dataset_split.client_shards)
+    labeled_count = sum(
+        len(shard.labeled_rows) for shard in dataset_split.client_shards
+    )
+    unlabeled_count = sum(
+        len(shard.unlabeled_rows) for shard in dataset_split.client_shards
+    )
+    return {
+        "labeled_ratio": report_config.labeled_ratio,
+        "unlabeled_ratio": report_config.unlabeled_ratio,
+        "status": (
+            "enforced_by_client_pool_split"
+            if client_pool_split_config is not None
+            else "not_configured"
+        ),
+        "actual_labeled_count": labeled_count,
+        "actual_unlabeled_count": unlabeled_count,
+        "actual_labeled_ratio": _safe_ratio(labeled_count, total_rows),
+        "actual_unlabeled_ratio": _safe_ratio(unlabeled_count, total_rows),
+        "clients": [
+            {
+                "client_id": shard.client_id,
+                "total_count": len(shard.rows),
+                "labeled_count": len(shard.labeled_rows),
+                "unlabeled_count": len(shard.unlabeled_rows),
+            }
+            for shard in dataset_split.client_shards
+        ],
+    }
+
+
 def _config_to_mapping(value: object) -> dict[str, object]:
     if value is None:
         return {}
@@ -441,3 +486,9 @@ def _population_variance(values: list[float]) -> float | None:
         return None
     mean = sum(values) / len(values)
     return sum((value - mean) ** 2 for value in values) / len(values)
+
+
+def _safe_ratio(numerator: int, denominator: int) -> float | None:
+    if denominator <= 0:
+        return None
+    return numerator / denominator

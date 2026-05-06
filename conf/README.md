@@ -82,10 +82,15 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `track_presets/fl_ssl/simulation_preset`
   - client 수, round budget, output dir 같은 track 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
+- `client_pool_split`
+  - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
+    나눈다.
+  - 현재 `fedavg_pseudo_label` baseline은 `unlabeled` partition만 pseudo-label
+    training 후보로 사용한다.
 - `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
-  - 현재 report protocol metadata다.
-  - labeled/unlabeled pool split 강제와 seed sweep 실행은 별도 runner/sweep에서
-    닫아야 하며, 이 필드만으로 실행이 강제됐다고 보지 않는다.
+  - ratio 값은 `client_pool_split`에서 파생된 report protocol field다.
+  - seed sweep 실행은 별도 runner/sweep에서 닫아야 하며, `seed_count`만으로
+    실행이 강제됐다고 보지 않는다.
 
 ## 정리 기준
 

@@ -44,6 +44,7 @@ def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulatio
         client_count=request.client_count,
         seed=request.seed,
         shard_policy=request.shard_policy,
+        client_pool_split_config=request.client_pool_split_config,
     )
     validation_client_shards = split_rows_into_client_shards(
         request.validation_rows,

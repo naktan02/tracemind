@@ -379,6 +379,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.ssl_method.server_step.aggregation_backend_name == "fedavg"
     assert cfg.report.track == "fl_ssl_main_comparison"
     assert cfg.report.table_role == "main_comparison"
+    assert cfg.client_pool_split.labeled_ratio == 0.1
+    assert cfg.client_pool_split.unlabeled_ratio == 0.9
     assert cfg.report.labeled_ratio == 0.1
     assert cfg.report.unlabeled_ratio == 0.9
 
@@ -406,6 +408,8 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         cfg.round_runtime.aggregation_backend_name
         == cfg.round_runtime_profile.aggregation_backend_name
     )
+    assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
+    assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
     assert cfg.report.seed_count == 3
 
 

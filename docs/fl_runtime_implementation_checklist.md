@@ -74,7 +74,7 @@ source of truth로 본다.
 
 - [ ] `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds` main run.
 - [ ] Dirichlet `alpha=0.1` stress run.
-- [ ] `10% labeled / 90% unlabeled` client pool 고정.
+- [x] `10% labeled / 90% unlabeled` client pool 고정.
 - [ ] macro-F1, worst-client macro-F1, ECE, communication cost report.
 - [ ] 중앙 SSL control table과 FL SSL ranking 분리.
 

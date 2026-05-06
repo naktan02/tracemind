@@ -13,6 +13,7 @@ from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
@@ -104,6 +105,9 @@ def main(cfg: DictConfig) -> None:
             **_to_plain_dict(cfg.diagnostics)
         ),
         ssl_method_config=FederatedSslMethodConfig(**_to_plain_dict(cfg.ssl_method)),
+        client_pool_split_config=FederatedClientPoolSplitConfig(
+            **_to_plain_dict(cfg.client_pool_split)
+        ),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
     )
     result = run_simulation_request(request)

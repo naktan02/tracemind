@@ -28,6 +28,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import
     build_round_open_request,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
@@ -204,6 +205,10 @@ def _default_report_config() -> FederatedReportConfig:
     )
 
 
+def _default_client_pool_split_config() -> FederatedClientPoolSplitConfig:
+    return FederatedClientPoolSplitConfig(labeled_ratio=0.1, unlabeled_ratio=0.9)
+
+
 def _default_ssl_method_config() -> FederatedSslMethodConfig:
     return FederatedSslMethodConfig(
         schema_version="federated_ssl_method.v1",
@@ -266,6 +271,39 @@ def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() ->
     assert bootstrap_ids
     assert client_ids
     assert bootstrap_ids.isdisjoint(client_ids)
+
+
+def test_split_rows_for_federation_enforces_client_pool_split() -> None:
+    rows = [_row(f"a{index}", "panic panic", "anxiety") for index in range(12)] + [
+        _row(f"n{index}", "calm calm", "normal") for index in range(12)
+    ]
+
+    split = split_rows_for_federation(
+        rows,
+        bootstrap_ratio=0.25,
+        client_count=2,
+        seed=42,
+        shard_policy=FederatedShardPolicyConfig(
+            name="label_dominant",
+            dominant_ratio=0.5,
+            client_id_prefix="agent",
+        ),
+        client_pool_split_config=FederatedClientPoolSplitConfig(
+            labeled_ratio=0.25,
+            unlabeled_ratio=0.75,
+        ),
+    )
+
+    for shard in split.client_shards:
+        labeled_ids = {row["query_id"] for row in shard.labeled_rows}
+        unlabeled_ids = {row["query_id"] for row in shard.unlabeled_rows}
+        all_ids = {row["query_id"] for row in shard.rows}
+
+        assert shard.client_pool_split_enforced is True
+        assert labeled_ids
+        assert unlabeled_ids
+        assert labeled_ids.isdisjoint(unlabeled_ids)
+        assert labeled_ids | unlabeled_ids == all_ids
 
 
 def test_split_rows_for_federation_supports_configurable_dominant_ratio() -> None:
@@ -468,6 +506,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
         ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
         report_config=_default_report_config(),
     )
 
@@ -501,6 +540,14 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["protocol"]["round_budget"] == 1
     assert report["protocol"]["ssl_method"]["name"] == "fedavg_pseudo_label"
     assert report["protocol"]["ssl_method"]["method_role"] == "baseline"
+    assert report["protocol"]["labeled_unlabeled_split"]["status"] == (
+        "enforced_by_client_pool_split"
+    )
+    assert (
+        report["protocol"]["labeled_unlabeled_split"]["actual_labeled_count"]
+        + report["protocol"]["labeled_unlabeled_split"]["actual_unlabeled_count"]
+        > 0
+    )
     assert report["protocol"]["local_update_budget"]["local_epochs"] == 1
     assert report["metrics"]["primary"]["macro_f1"] == (
         result.final_validation.macro_f1
@@ -561,6 +608,7 @@ def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
         ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     result = run_simulation_request(request)
@@ -634,6 +682,7 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
         ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     assert result.rounds

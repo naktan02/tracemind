@@ -73,6 +73,8 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
 - `shard_policy`
 - `federated_run_preset`
+- `client_pool_split.labeled_ratio`
+- `client_pool_split.unlabeled_ratio`
 - `round_runtime.adapter_family_name`
 - `round_runtime.aggregation_backend_name`
 - `round_runtime.classifier_head_bootstrap_logit_scale`
@@ -125,9 +127,11 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
 - report는 global validation `macro_f1`, client validation shard 기준
   `worst_client_macro_f1`, ECE, client update envelope 수 기반 communication
   cost proxy, per-client macro-F1 variance를 포함한다.
-- 현재 `10% labeled / 90% unlabeled`, `3 seeds`는 paper protocol metadata로
-  고정돼 있지만, labeled/unlabeled pool 분리와 seed sweep 실행은 후속 method
-  runner/sweep에서 강제한다.
+- `client_pool_split`은 각 client shard 안에서 `10% labeled / 90% unlabeled`
+  pool을 deterministic하게 나눈다. 현재 `fedavg_pseudo_label` baseline은
+  `unlabeled` partition만 pseudo-label training 후보로 사용한다.
+- `3 seeds`는 아직 report protocol metadata다. seed sweep 실행은 후속 runner/sweep에서
+  강제한다.
 - `weak_strong_pair` example backend는 source row에 weak/strong view가 이미 있어야 한다.
   현재 기본 JSONL row shape는 그 view를 따로 저장하지 않으므로, 별도 multiview row 공급이 없으면
   `prototype_rescore`를 계속 써야 한다.

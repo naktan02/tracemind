@@ -22,6 +22,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     run_one_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
     FederatedReportConfig,
@@ -57,6 +58,7 @@ def run_simulation(
     prototype_rebuild_config: FederatedPrototypeRebuildConfig,
     diagnostics_config: FederatedDiagnosticsConfig,
     ssl_method_config: FederatedSslMethodConfig,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None = None,
     report_config: FederatedReportConfig | None = None,
 ) -> SimulationResult:
     """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
@@ -80,6 +82,7 @@ def run_simulation(
         prototype_rebuild_config=prototype_rebuild_config,
         diagnostics_config=diagnostics_config,
         ssl_method_config=ssl_method_config,
+        client_pool_split_config=client_pool_split_config,
         report_config=report_config,
     )
     return run_simulation_request(request)

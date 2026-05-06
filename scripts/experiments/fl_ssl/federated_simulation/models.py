@@ -23,6 +23,9 @@ class FederatedClientShard:
 
     client_id: str
     rows: list[LabeledQueryRow]
+    labeled_rows: list[LabeledQueryRow] = field(default_factory=list)
+    unlabeled_rows: list[LabeledQueryRow] = field(default_factory=list)
+    client_pool_split_enforced: bool = False
 
 
 @dataclass(slots=True)
@@ -155,6 +158,26 @@ class FederatedReportConfig:
 
 
 @dataclass(slots=True)
+class FederatedClientPoolSplitConfig:
+    """client별 local labeled/unlabeled pool 분할 설정."""
+
+    labeled_ratio: float
+    unlabeled_ratio: float
+
+    def __post_init__(self) -> None:
+        if not 0.0 <= self.labeled_ratio <= 1.0:
+            raise ValueError("client_pool_split.labeled_ratio must be between 0 and 1.")
+        if not 0.0 <= self.unlabeled_ratio <= 1.0:
+            raise ValueError(
+                "client_pool_split.unlabeled_ratio must be between 0 and 1."
+            )
+        if abs((self.labeled_ratio + self.unlabeled_ratio) - 1.0) > 1e-9:
+            raise ValueError(
+                "client_pool_split labeled_ratio and unlabeled_ratio must sum to 1."
+            )
+
+
+@dataclass(slots=True)
 class FederatedSslMethodConfig:
     """FL SSL method 선택과 report metadata 설정."""
 
@@ -200,4 +223,5 @@ class SimulationRunRequest:
     prototype_rebuild_config: FederatedPrototypeRebuildConfig
     diagnostics_config: FederatedDiagnosticsConfig
     ssl_method_config: FederatedSslMethodConfig
+    client_pool_split_config: FederatedClientPoolSplitConfig | None = None
     report_config: FederatedReportConfig | None = None
