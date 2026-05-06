@@ -68,7 +68,8 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - server round runtime의 adapter family와 aggregation backend 조합을 소유한다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
-  - method identity/report metadata/custom runtime 필요 여부만 표현한다.
+  - method identity/report metadata와 `methods/federated_ssl/` method spec을
+    선택한다.
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
 - `shard_policy`
 - `federated_run_preset`
@@ -112,8 +113,8 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
 - `track_presets/fl_ssl/simulation_preset=standard`는 `10 clients`, `50 rounds`를 main budget으로
   쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
 - `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
-- method descriptor source of truth는 `methods/federated_ssl/`이다.
-  이 package의 `adapters/method_runtime.py`는 descriptor를 simulation runtime으로 연결하는
+- method spec source of truth는 `methods/federated_ssl/`이다.
+  이 package의 `adapters/method_runtime.py`는 method spec을 simulation runtime으로 연결하는
   adapter만 둔다.
 - 후보 논문 method는 확정 전까지 descriptor/config/runtime 파일을 미리 만들지 않는다.
   실제 method core는 `agent` local runtime, `methods`, 필요한 경우 `main_server`

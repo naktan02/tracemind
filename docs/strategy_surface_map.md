@@ -62,7 +62,7 @@ central fixed embedding + classifier seed
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
-| FL SSL descriptor | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*` | simulation/runtime metadata |
+| FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | FL round-runtime profile | `fedavg_diagonal_scale` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*`, main_server adapter | 활성 runtime |

@@ -118,9 +118,14 @@ def build_federated_ssl_simulation_runtime(
 ) -> FederatedSslSimulationRuntime:
     """method descriptor를 기본 simulation runtime adapter로 변환한다."""
     descriptor = resolve_federated_ssl_method_descriptor(name)
+    if not descriptor.runtime_capabilities.simulation_supported:
+        raise NotImplementedError(
+            "Federated SSL method is not available in simulation runtime: "
+            f"{descriptor.name}"
+        )
     if (
-        descriptor.requires_custom_client_runtime
-        or descriptor.requires_custom_server_runtime
+        descriptor.runtime_capabilities.requires_custom_client_runtime
+        or descriptor.runtime_capabilities.requires_custom_server_runtime
     ):
         raise NotImplementedError(
             "Federated SSL method requires a custom simulation runtime: "

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from methods.federated_ssl.base import FederatedSslRequiredViews
 from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
 )
@@ -18,12 +19,19 @@ def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
 
     assert descriptor is FEDAVG_PSEUDO_LABEL_DESCRIPTOR
     assert descriptor.implementation_status == "active_runtime"
+    assert descriptor.required_views.view_names == ("single_view",)
     assert descriptor.client_trainer_name == "local_training_service"
     assert descriptor.pseudo_labeler_name == "ssl_pseudo_label_selection_hook"
     assert descriptor.view_generator_name == "training_example_backend"
     assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
+    assert descriptor.server_step.server_aggregate_hint == (
+        "use_round_runtime_aggregation_backend"
+    )
     assert descriptor.requires_custom_client_runtime is False
     assert descriptor.requires_custom_server_runtime is False
+    assert descriptor.runtime_capabilities.simulation_supported is True
+    assert descriptor.runtime_capabilities.live_agent_supported is True
+    assert descriptor.runtime_capabilities.live_server_supported is True
 
 
 def test_federated_ssl_descriptor_registry_rejects_unwired_method() -> None:
@@ -37,3 +45,17 @@ def test_federated_ssl_descriptor_registry_lists_unique_descriptors() -> None:
     )
 
     assert descriptors == (FEDAVG_PSEUDO_LABEL_DESCRIPTOR,)
+
+
+def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:
+    with pytest.raises(ValueError, match="view_names must not be empty"):
+        FederatedSslRequiredViews(
+            view_names=(),
+            view_generator_name="training_example_backend",
+        )
+
+    with pytest.raises(ValueError, match="view_names must be unique"):
+        FederatedSslRequiredViews(
+            view_names=("single_view", "single_view"),
+            view_generator_name="training_example_backend",
+        )
