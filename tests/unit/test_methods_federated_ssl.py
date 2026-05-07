@@ -4,8 +4,16 @@ from __future__ import annotations
 
 import pytest
 
-from methods.federated_ssl.base import FederatedSslRequiredViews
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.common.registry import MethodRegistry
+from methods.federated_ssl import registry as federated_ssl_registry
+from methods.federated_ssl.base import (
+    FederatedSslLocalStepSpec,
+    FederatedSslMethodDescriptor,
+    FederatedSslRequiredViews,
+    FederatedSslRuntimeCapabilities,
+    FederatedSslServerStepSpec,
+)
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
 )
 from methods.federated_ssl.registry import (
@@ -45,6 +53,62 @@ def test_federated_ssl_descriptor_registry_lists_unique_descriptors() -> None:
     )
 
     assert descriptors == (FEDAVG_PSEUDO_LABEL_DESCRIPTOR,)
+
+
+def test_federated_ssl_registry_supports_test_only_method_extension(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    isolated_registry = MethodRegistry[FederatedSslMethodDescriptor](
+        item_label="test federated SSL method descriptor"
+    )
+    monkeypatch.setattr(
+        federated_ssl_registry,
+        "_FEDERATED_SSL_METHOD_DESCRIPTORS",
+        isolated_registry,
+    )
+    monkeypatch.setattr(
+        federated_ssl_registry,
+        "_BUILTIN_FEDERATED_SSL_METHODS_LOADED",
+        True,
+    )
+
+    dummy_descriptor = FederatedSslMethodDescriptor(
+        name="dummy_federated_ssl_method",
+        implementation_status="test_only",
+        required_views=FederatedSslRequiredViews(
+            view_names=("single_view",),
+            view_generator_name="test_view_generator",
+        ),
+        local_step=FederatedSslLocalStepSpec(
+            step_name="dummy_local_step",
+            client_trainer_name="dummy_client_trainer",
+            pseudo_labeler_name="dummy_pseudo_labeler",
+        ),
+        server_step=FederatedSslServerStepSpec(
+            server_aggregator_name="dummy_aggregator",
+            round_policy_name="dummy_round_policy",
+            server_aggregate_hint="dummy_aggregate_hint",
+        ),
+        runtime_capabilities=FederatedSslRuntimeCapabilities(
+            simulation_supported=True,
+            live_agent_supported=False,
+            live_server_supported=False,
+        ),
+    )
+
+    federated_ssl_registry.register_federated_ssl_method_descriptor(
+        "dummy_federated_ssl_method"
+    )(dummy_descriptor)
+
+    assert (
+        federated_ssl_registry.resolve_federated_ssl_method_descriptor(
+            "dummy_federated_ssl_method"
+        )
+        is dummy_descriptor
+    )
+    assert federated_ssl_registry.list_federated_ssl_method_descriptors() == (
+        dummy_descriptor,
+    )
 
 
 def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:
