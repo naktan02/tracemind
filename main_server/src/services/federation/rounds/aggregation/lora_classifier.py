@@ -22,6 +22,11 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .diagonal_scale_defaults import AggregationConfigScalar
 from .models import AggregationResult
+from .runtime_adapter import (
+    require_base_adapter_kind,
+    require_update_matches_base,
+    select_non_empty_updates,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,17 +96,13 @@ class LoraClassifierFedAvgAggregationService:
                 "LoraClassifierFedAvgAggregationService expects "
                 f"LoraClassifierState as the base state, got {type(base_state)!r}."
             )
-        if base_state.adapter_kind != self.adapter_kind:
-            raise ValueError(
-                "Base state adapter_kind does not match the LoRA-classifier "
-                f"aggregator: {base_state.adapter_kind}"
-            )
+        require_base_adapter_kind(
+            base_state=base_state,
+            adapter_kind=self.adapter_kind,
+            context="LoRA-classifier",
+        )
 
-        valid_updates = [
-            payload for payload in update_payloads if payload.example_count > 0
-        ]
-        if not valid_updates:
-            raise ValueError("At least one non-empty update payload is required.")
+        valid_updates = select_non_empty_updates(update_payloads)
 
         method_updates = [
             self._to_method_update(base_state=base_state, payload=payload)
@@ -150,17 +151,12 @@ class LoraClassifierFedAvgAggregationService:
                 "LoraClassifierFedAvgAggregationService expects "
                 f"LoraClassifierDelta updates, got {type(payload)!r}."
             )
-        if payload.adapter_kind != self.adapter_kind:
-            raise ValueError(
-                "Update adapter_kind does not match the LoRA-classifier "
-                f"aggregator: {payload.adapter_kind}"
-            )
-        if payload.model_id != base_state.model_id:
-            raise ValueError("All update payloads must match the base model_id.")
-        if payload.base_model_revision != base_state.model_revision:
-            raise ValueError("All update payloads must match the base model revision.")
-        if payload.training_scope != base_state.training_scope:
-            raise ValueError("All update payloads must match the training scope.")
+        require_update_matches_base(
+            payload=payload,
+            base_state=base_state,
+            adapter_kind=self.adapter_kind,
+            context="LoRA-classifier",
+        )
         if _payload_snapshot(payload.backbone) != _payload_snapshot(
             base_state.backbone
         ):
