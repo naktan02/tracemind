@@ -39,6 +39,19 @@ description: Use when adding or replacing an adapter family, aggregation backend
 5. config source of truth를 한 군데에만 둔다.
 6. 관련 테스트와 문서를 같이 닫는다.
 
+## 설계 스타일
+
+전략 추가는 raw registry entry를 늘리는 작업으로 끝내지 않는다. 바뀌는 축에 따라
+아래 패턴을 조합한다.
+
+- method identity와 capability가 중요하면 descriptor를 둔다.
+- tensor objective의 일부만 바뀌면 hook 또는 hook bundle을 둔다.
+- local/server/runtime 조합이 바뀌면 typed profile과 compatibility validator를 둔다.
+- runtime framework 차이는 adapter에 두고, strategy 의미는 `methods/` 또는 계약
+  가까이에 둔다.
+- 단일 implementation 전용 helper는 method-local module에 두고, 두 개 이상 전략에서
+  의미가 안정되면 공통 module로 승격한다.
+
 ## 체크리스트
 
 - 전략 축이 다른 이유로 바뀌는 로직과 섞이지 않는가

@@ -70,6 +70,24 @@ description: Use when a project needs a reusable engineering style that prioriti
 19. 검증 가능한 구조를 선호한다.
    - 좋은 구조는 테스트, dump, compose, lint, 실행 결과로 검증 가능해야 한다.
 
+## 선호하는 설계 스타일
+
+패턴 이름을 적용했다는 사실은 설계 품질의 증거가 아니다. 좋은 구조는 변화 축마다
+맞는 패턴을 제한된 책임으로 조합해서, 새 implementation 추가 시 수정 위치를
+예측 가능하게 만든다.
+
+- Registry는 lookup과 명시적 builtin wiring까지만 맡긴다.
+- Descriptor는 identity, capability, required surface 같은 안정 metadata를 맡긴다.
+- Hook은 알고리즘 내부에서 한 지점만 교체되는 objective/policy 조각에 쓴다.
+- Profile은 여러 strategy 축의 실행 조합을 typed structure로 해석한다.
+- Compatibility validator는 실행 중간이 아니라 resolve/bootstrap 전에 실패하게 한다.
+- Runtime adapter는 IO, framework, orchestration 차이를 core 의미에서 분리한다.
+
+예를 들어 “새 method 추가 비용을 낮춘다”는 목표는 `Registry` 하나로 해결하지 않는다.
+`Descriptor + Registry + Hook bundle + Profile + Compatibility Validator + Runtime
+Adapter`처럼 여러 작은 패턴이 각자의 책임을 지도록 조합한다. 공통 hook이나 helper는
+처음부터 끌어올리지 말고, 두 개 이상 implementation에서 의미가 안정될 때 승격한다.
+
 ## 패턴 선택 기준
 
 패턴 자체를 목적처럼 쓰지 않는다. 아래 기준은 출발점일 뿐이며, 필요하면 조합해서 쓴다.
