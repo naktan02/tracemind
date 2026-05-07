@@ -9,6 +9,8 @@ from shared.src.domain.entities.training.pseudo_label_evidence import (
     PseudoLabelEvidence,
 )
 
+from .registry import register_pseudo_label_selection_hook
+
 
 @dataclass(frozen=True, slots=True)
 class PseudoLabelSelectionConfig:
@@ -65,6 +67,7 @@ def build_pseudo_label_selection_decision(
     )
 
 
+@register_pseudo_label_selection_hook("top1_confidence_only")
 @dataclass(slots=True)
 class FixedConfidencePseudoLabelSelectionHook:
     """Top1 confidence threshold만 보는 selection hook."""
@@ -83,6 +86,7 @@ class FixedConfidencePseudoLabelSelectionHook:
         )
 
 
+@register_pseudo_label_selection_hook("top1_margin_threshold")
 @dataclass(slots=True)
 class MarginThresholdPseudoLabelSelectionHook:
     """Top1 confidence와 top1-top2 margin을 함께 보는 selection hook."""

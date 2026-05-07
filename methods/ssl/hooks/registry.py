@@ -3,14 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
-from methods.ssl.hooks.selection import (
-    FixedConfidencePseudoLabelSelectionHook,
-    MarginThresholdPseudoLabelSelectionHook,
-    PseudoLabelSelectionHook,
-)
+if TYPE_CHECKING:
+    from methods.ssl.hooks.selection import PseudoLabelSelectionHook
 
-PseudoLabelSelectionHookFactory = Callable[[], PseudoLabelSelectionHook]
+PseudoLabelSelectionHookFactory = Callable[[], "PseudoLabelSelectionHook"]
 
 _PSEUDO_LABEL_SELECTION_HOOK_REGISTRY: dict[str, PseudoLabelSelectionHookFactory] = {}
 
@@ -35,6 +33,7 @@ def build_pseudo_label_selection_hook(
 ) -> PseudoLabelSelectionHook:
     """hook 이름으로 selection hook 구현을 생성한다."""
 
+    _ensure_builtin_ssl_hooks_loaded()
     normalized_name = hook_name.strip().lower()
     factory = _PSEUDO_LABEL_SELECTION_HOOK_REGISTRY.get(normalized_name)
     if factory is not None:
@@ -42,9 +41,7 @@ def build_pseudo_label_selection_hook(
     raise ValueError(f"Unsupported pseudo-label selection hook: {hook_name}.")
 
 
-register_pseudo_label_selection_hook("top1_confidence_only")(
-    FixedConfidencePseudoLabelSelectionHook
-)
-register_pseudo_label_selection_hook("top1_margin_threshold")(
-    MarginThresholdPseudoLabelSelectionHook
-)
+def _ensure_builtin_ssl_hooks_loaded() -> None:
+    from methods.ssl.hooks.builtin_loader import load_builtin_ssl_hooks
+
+    load_builtin_ssl_hooks()
