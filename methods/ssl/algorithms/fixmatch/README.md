@@ -1,6 +1,7 @@
 # FixMatch
 
-`methods/ssl/fixmatch/`는 USB 스타일 FixMatch objective core를 소유한다.
+`methods/ssl/algorithms/fixmatch/`는 USB 스타일 FixMatch objective core를
+소유한다.
 
 ## 책임
 

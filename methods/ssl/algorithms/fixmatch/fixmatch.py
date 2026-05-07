@@ -3,21 +3,25 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import torch
 from torch import Tensor
 from torch.nn import functional as F
 
-from ..base import QuerySslStepOutput, TextBatchClassifier
-from ..common import (
+from ...base import QuerySslRequiredViews, QuerySslStepOutput, TextBatchClassifier
+from ...common import (
     compute_prob,
-    consistency_cross_entropy_loss,
 )
-from ..hooks.masking import build_fixed_threshold_mask
-from ..hooks.pseudo_labeling import build_pseudo_label_from_probs
-from ..registry import register_query_ssl_algorithm
+from ...hooks.consistency import CrossEntropyConsistencyLossHook
+from ...hooks.masking import FixedThresholdMaskingHook
+from ...hooks.objective import SslObjectiveHooks
+from ...hooks.pseudo_labeling import (
+    HardOrSoftPseudoLabelingHook,
+    PseudoLabelingConfig,
+)
+from ...registry import register_query_ssl_algorithm
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,11 +60,22 @@ class FixMatchStepOutput:
         return {"util_ratio": self.util_ratio}
 
 
+def build_fixmatch_objective_hooks() -> SslObjectiveHooks:
+    """FixMatch baseline의 tensor-level hook 조합을 만든다."""
+
+    return SslObjectiveHooks(
+        pseudo_labeling=HardOrSoftPseudoLabelingHook(),
+        masking=FixedThresholdMaskingHook(),
+        consistency_loss=CrossEntropyConsistencyLossHook(),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class FixMatchAlgorithm:
     """FixMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
     config: FixMatchConfig
+    hooks: SslObjectiveHooks = field(default_factory=build_fixmatch_objective_hooks)
     algorithm_name: str = "fixmatch"
 
     @property
@@ -93,6 +108,7 @@ class FixMatchAlgorithm:
             labeled_batch=labeled_batch,
             unlabeled_batch=unlabeled_batch,
             config=self.config,
+            hooks=self.hooks,
         )
 
 
@@ -102,6 +118,7 @@ def compute_fixmatch_step(
     labeled_batch: dict[str, Tensor] | None,
     unlabeled_batch: dict[str, Tensor],
     config: FixMatchConfig,
+    hooks: SslObjectiveHooks | None = None,
 ) -> FixMatchStepOutput:
     """USB `semilearn/algorithms/fixmatch/fixmatch.py::train_step` 핵심."""
 
@@ -126,16 +143,19 @@ def compute_fixmatch_step(
             logits_x_lb, labeled_batch["labels"], reduction="mean"
         )
     probs_x_ulb_w = compute_prob(logits_x_ulb_w.detach())
-    mask = build_fixed_threshold_mask(
+    effective_hooks = hooks or build_fixmatch_objective_hooks()
+    mask = effective_hooks.masking.build_mask(
         probs_x_ulb_w=probs_x_ulb_w,
         p_cutoff=config.p_cutoff,
     )
-    pseudo_label = build_pseudo_label_from_probs(
+    pseudo_label = effective_hooks.pseudo_labeling.generate_targets(
         probs_x_ulb_w=probs_x_ulb_w,
-        use_hard_label=config.hard_label,
-        temperature=config.temperature,
+        config=PseudoLabelingConfig(
+            use_hard_label=config.hard_label,
+            temperature=config.temperature,
+        ),
     )
-    unsup_loss = consistency_cross_entropy_loss(
+    unsup_loss = effective_hooks.consistency_loss.compute_loss(
         logits=logits_x_ulb_s,
         targets=pseudo_label,
         mask=mask,
@@ -149,7 +169,15 @@ def compute_fixmatch_step(
     )
 
 
-@register_query_ssl_algorithm("fixmatch")
+@register_query_ssl_algorithm(
+    "fixmatch",
+    display_name="FixMatch",
+    required_views=QuerySslRequiredViews(
+        view_names=("weak_text", "strong_text"),
+        view_builder_name="usb_multiview",
+    ),
+    default_uses_labeled_batches=True,
+)
 def build_fixmatch_algorithm(parameters: Mapping[str, Any]) -> FixMatchAlgorithm:
     """Hydra method parameter mapping으로 FixMatch algorithm을 만든다."""
 

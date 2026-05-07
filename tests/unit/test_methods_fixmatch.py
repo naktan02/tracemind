@@ -5,7 +5,7 @@ from __future__ import annotations
 import torch
 from torch import nn
 
-from methods.ssl.fixmatch.fixmatch import (
+from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
     compute_fixmatch_step,

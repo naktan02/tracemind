@@ -40,7 +40,7 @@ central fixed embedding + classifier seed
 | 축 | 현재 값 | 선택 위치 | core | 상태 |
 |---|---|---|---|---|
 | Pseudo-label selection | `fixed_confidence_095`, `margin_threshold_v1` | `strategy_axes/ssl/pseudo_label_selection` | `methods/ssl/hooks/*` | 활성/중앙 control |
-| Consistency method | `fixmatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/fixmatch/*` | 중앙 control |
+| Consistency method | `fixmatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/fixmatch/*` | 중앙 control |
 | SSL augmentation | `precomputed_usb_candidates_v1`, `backtranslation_nllb_en_de_fr_usb_v1` | `strategy_axes/ssl/augmentation` | scripts runner + agent bridge | 중앙 control |
 | Query classifier adaptation | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/lora_classifier/*` + query data glue | 중앙 control |
 | PEFT adapter | `lora`, `rslora` | `strategy_axes/adaptation/peft_adapter` | `methods/adaptation/*` | 중앙 control seam |

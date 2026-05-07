@@ -12,7 +12,7 @@ from torch import nn
 from torch.utils.data import DataLoader
 
 from methods.ssl.base import QuerySslAlgorithm
-from methods.ssl.fixmatch.fixmatch import (
+from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
 )

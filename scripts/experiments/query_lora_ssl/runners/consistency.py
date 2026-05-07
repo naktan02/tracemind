@@ -2,8 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -13,7 +12,8 @@ from methods.adaptation.lora_classifier.training import (
 from methods.adaptation.query_classifier_adaptation.data import (
     build_multiview_dataloader as build_query_lora_multiview_dataloader,
 )
-from methods.ssl.registry import build_query_ssl_algorithm
+from methods.ssl.base import QuerySslAlgorithmDescriptor
+from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
 from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
     PreparedQuerySslUnlabeledRows,
@@ -30,49 +30,6 @@ from scripts.experiments.query_lora_ssl.query_ssl.common import (
 from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 
 
-@dataclass(frozen=True, slots=True)
-class QuerySslAlgorithmAdapter:
-    """Query SSL algorithm별 scripts wiring."""
-
-    algorithm_name: str
-    trainer_version_prefix: str
-    prepare_unlabeled_rows: Callable[
-        [list[LabeledQueryRow], str | Path | None],
-        PreparedQuerySslUnlabeledRows,
-    ]
-    build_unlabeled_loader: Callable[[QuerySslRunContext], Any]
-    train: Callable[
-        [QuerySslRunContext, Any],
-        tuple[Any, list[dict[str, Any]], dict[str, Any]],
-    ]
-
-
-QuerySslAlgorithmAdapterFactory = Callable[[Any], QuerySslAlgorithmAdapter]
-ConsistencyMethodAdapter = QuerySslAlgorithmAdapter
-
-_QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY: dict[str, QuerySslAlgorithmAdapterFactory] = {}
-
-
-def register_query_ssl_algorithm_adapter(
-    *algorithm_names: str,
-    factory: QuerySslAlgorithmAdapterFactory,
-) -> None:
-    """query_ssl_method.algorithm_name별 scripts adapter를 등록한다."""
-
-    for algorithm_name in algorithm_names:
-        _QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY[algorithm_name.strip().lower()] = factory
-
-
-def build_query_ssl_algorithm_adapter(cfg) -> QuerySslAlgorithmAdapter:
-    """Hydra query_ssl_method에서 scripts adapter를 선택한다."""
-
-    algorithm_name = str(cfg.query_ssl_method.algorithm_name)
-    factory = _QUERY_SSL_ALGORITHM_ADAPTER_REGISTRY.get(algorithm_name.strip().lower())
-    if factory is None:
-        raise ValueError(f"Unsupported query SSL algorithm adapter: {algorithm_name}.")
-    return factory(cfg)
-
-
 def run_query_ssl_lora_baseline(
     cfg,
     *,
@@ -87,7 +44,9 @@ def run_query_ssl_lora_baseline(
 
     return run_consistency_query_ssl_lora_baseline(
         cfg=cfg,
-        adapter=build_query_ssl_algorithm_adapter(cfg),
+        descriptor=resolve_query_ssl_algorithm_descriptor(
+            str(cfg.query_ssl_method.algorithm_name)
+        ),
         train_rows=train_rows,
         unlabeled_rows=unlabeled_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -100,7 +59,7 @@ def run_query_ssl_lora_baseline(
 def run_consistency_query_ssl_lora_baseline(
     cfg,
     *,
-    adapter: QuerySslAlgorithmAdapter,
+    descriptor: QuerySslAlgorithmDescriptor,
     train_rows: list[LabeledQueryRow] | None = None,
     unlabeled_rows: list[LabeledQueryRow] | None = None,
     eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
@@ -118,9 +77,11 @@ def run_consistency_query_ssl_lora_baseline(
         raw_unlabeled_rows = load_labeled_query_rows(Path(str(cfg.unlabeled_jsonl)))
     else:
         raw_unlabeled_rows = list(unlabeled_rows)
-    prepared_unlabeled_rows = adapter.prepare_unlabeled_rows(
-        raw_unlabeled_rows,
-        getattr(cfg, "unlabeled_jsonl", None),
+    prepared_unlabeled_rows = _prepare_unlabeled_rows(
+        cfg=cfg,
+        descriptor=descriptor,
+        rows=raw_unlabeled_rows,
+        source_jsonl=getattr(cfg, "unlabeled_jsonl", None),
     )
 
     context = prepare_query_ssl_run_context(
@@ -130,11 +91,30 @@ def run_consistency_query_ssl_lora_baseline(
         eval_rows_by_name=eval_rows_by_name,
         selection_set_name=selection_set_name,
         categories_override=categories_override,
-        trainer_version_prefix=adapter.trainer_version_prefix,
-        algorithm_name=adapter.algorithm_name,
+        trainer_version_prefix=_build_trainer_version_prefix(descriptor),
+        algorithm_name=descriptor.display_name,
     )
-    unlabeled_loader = adapter.build_unlabeled_loader(context)
-    model, history, best_selection_report = adapter.train(context, unlabeled_loader)
+    unlabeled_loader = _build_unlabeled_loader(
+        cfg=cfg,
+        descriptor=descriptor,
+        context=context,
+    )
+    algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
+    model, history, best_selection_report = train_query_ssl_lora_classifier(
+        model=context.model,
+        train_loader=context.train_loader,
+        unlabeled_loader=unlabeled_loader,
+        selection_loader=context.selection_loader,
+        categories=context.categories,
+        device=context.training_device,
+        epochs=int(cfg.epochs),
+        learning_rate=float(cfg.learning_rate),
+        classifier_learning_rate=float(cfg.classifier_learning_rate),
+        weight_decay=float(cfg.weight_decay),
+        max_grad_norm=float(cfg.max_grad_norm),
+        log_every_steps=int(cfg.log_every_steps),
+        algorithm=algorithm,
+    )
     results = evaluate_query_ssl_run_context(
         model=model,
         eval_loaders=context.eval_loaders,
@@ -190,9 +170,17 @@ def run_fixmatch_lora_baseline(
 ) -> dict[str, str]:
     """USB FixMatch core를 Query SSL runner 위에서 실행한다."""
 
+    descriptor = resolve_query_ssl_algorithm_descriptor(
+        str(cfg.query_ssl_method.algorithm_name)
+    )
+    if descriptor.algorithm_name.strip().lower() != "fixmatch":
+        raise ValueError(
+            "run_fixmatch_lora_baseline requires "
+            "query_ssl_method.algorithm_name=fixmatch."
+        )
     return run_consistency_query_ssl_lora_baseline(
         cfg=cfg,
-        adapter=_build_fixmatch_adapter(cfg),
+        descriptor=descriptor,
         train_rows=train_rows,
         unlabeled_rows=unlabeled_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -202,30 +190,33 @@ def run_fixmatch_lora_baseline(
     )
 
 
-def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
-    algorithm_name = str(cfg.query_ssl_method.algorithm_name)
-    if algorithm_name.strip().lower() != "fixmatch":
-        raise ValueError(
-            "run_fixmatch_lora_baseline requires "
-            "query_ssl_method.algorithm_name=fixmatch."
-        )
-    algorithm = build_query_ssl_algorithm(
-        algorithm_name="fixmatch",
-        parameters=build_query_ssl_method_parameters(cfg),
-    )
-
-    def _prepare_unlabeled_rows(
-        rows: list[LabeledQueryRow],
-        source_jsonl: str | Path | None,
-    ) -> PreparedQuerySslUnlabeledRows:
+def _prepare_unlabeled_rows(
+    *,
+    cfg,
+    descriptor: QuerySslAlgorithmDescriptor,
+    rows: list[LabeledQueryRow],
+    source_jsonl: str | Path | None,
+) -> PreparedQuerySslUnlabeledRows:
+    if descriptor.required_views.view_builder_name == "usb_multiview":
         return prepare_usb_multiview_unlabeled_rows(
             cfg,
             rows=rows,
             source_jsonl=source_jsonl,
-            algorithm_name="FixMatch",
+            algorithm_name=descriptor.display_name,
         )
+    raise ValueError(
+        "Unsupported Query SSL view builder: "
+        f"{descriptor.required_views.view_builder_name}."
+    )
 
-    def _build_unlabeled_loader(context: QuerySslRunContext):
+
+def _build_unlabeled_loader(
+    *,
+    cfg,
+    descriptor: QuerySslAlgorithmDescriptor,
+    context: QuerySslRunContext,
+):
+    if descriptor.required_views.view_builder_name == "usb_multiview":
         return build_query_lora_multiview_dataloader(
             rows=context.effective_unlabeled_rows,
             tokenizer=context.tokenizer,
@@ -234,34 +225,11 @@ def _build_fixmatch_adapter(cfg) -> ConsistencyMethodAdapter:
             task_prefix=str(cfg.paper_backbone.task_prefix),
             shuffle=True,
         )
-
-    def _train(
-        context: QuerySslRunContext,
-        unlabeled_loader,
-    ) -> tuple[Any, list[dict[str, Any]], dict[str, Any]]:
-        return train_query_ssl_lora_classifier(
-            model=context.model,
-            train_loader=context.train_loader,
-            unlabeled_loader=unlabeled_loader,
-            selection_loader=context.selection_loader,
-            categories=context.categories,
-            device=context.training_device,
-            epochs=int(cfg.epochs),
-            learning_rate=float(cfg.learning_rate),
-            classifier_learning_rate=float(cfg.classifier_learning_rate),
-            weight_decay=float(cfg.weight_decay),
-            max_grad_norm=float(cfg.max_grad_norm),
-            log_every_steps=int(cfg.log_every_steps),
-            algorithm=algorithm,
-        )
-
-    return QuerySslAlgorithmAdapter(
-        algorithm_name="FixMatch",
-        trainer_version_prefix="lora_fixmatch",
-        prepare_unlabeled_rows=_prepare_unlabeled_rows,
-        build_unlabeled_loader=_build_unlabeled_loader,
-        train=_train,
+    raise ValueError(
+        "Unsupported Query SSL view builder: "
+        f"{descriptor.required_views.view_builder_name}."
     )
 
 
-register_query_ssl_algorithm_adapter("fixmatch", factory=_build_fixmatch_adapter)
+def _build_trainer_version_prefix(descriptor: QuerySslAlgorithmDescriptor) -> str:
+    return f"lora_{descriptor.algorithm_name.strip().lower()}"

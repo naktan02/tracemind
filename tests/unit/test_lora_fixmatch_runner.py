@@ -5,6 +5,7 @@ from omegaconf import OmegaConf
 
 from scripts.experiments.query_lora_ssl.runners.consistency import (
     run_fixmatch_lora_baseline,
+    run_query_ssl_lora_baseline,
 )
 from scripts.io.labeled_query_rows import LabeledQueryRow
 
@@ -220,6 +221,87 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         captured["extra_manifest"]["query_ssl_augmenter_preparation"]["mode"]
         == "precomputed_usb_candidates"
     )
+
+
+def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _DummyModel:
+        pass
+
+    class _DummyTokenizer:
+        def __call__(self, texts, **_kwargs):
+            batch = len(texts)
+            return {
+                "input_ids": torch.ones((batch, 2), dtype=torch.long),
+                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
+            }
+
+    def _fake_train_query_ssl_classifier(**kwargs):
+        captured["algorithm"] = kwargs["algorithm"]
+        return (
+            kwargs["model"],
+            [{"epoch": 1, "train_loss": 0.1}],
+            {
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+        )
+
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.harness.common.build_query_lora_model",
+        lambda **_kwargs: (
+            _DummyModel(),
+            _DummyTokenizer(),
+            {"parameter_counts": {"trainable": 10, "total": 20}},
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.runners.consistency."
+        "train_query_ssl_lora_classifier",
+        _fake_train_query_ssl_classifier,
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.harness.common.evaluate_query_lora_classifier",
+        lambda **_kwargs: {
+            "loss": 0.1,
+            "accuracy_top_1": 0.8,
+            "rows_total": 2,
+            "mean_true_label_probability": 0.75,
+            "mean_top_1_probability": 0.85,
+            "mean_margin_top1_top2": 0.4,
+            "confusion_matrix": {},
+            "per_category": {},
+        },
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.runners.consistency.write_run_artifacts",
+        lambda **_kwargs: {
+            "output_dir": "runs/fake_fixmatch",
+            "report_json": "runs/fake_fixmatch/report.json",
+        },
+    )
+
+    run_query_ssl_lora_baseline(
+        cfg=_build_cfg(),
+        train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
+        unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
+        eval_rows_by_name={
+            "validation": [_labeled_row("v1", "anxiety", "검증")],
+            "test": [_labeled_row("t1", "depression", "테스트")],
+        },
+    )
+
+    assert captured["algorithm"].algorithm_name == "fixmatch"
+    assert captured["algorithm"].uses_labeled_batches is True
 
 
 def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
