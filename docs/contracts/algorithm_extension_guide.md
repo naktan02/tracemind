@@ -10,6 +10,8 @@
 - scripts는 Hydra entrypoint와 실험 harness만 담당한다.
 - agent/main_server는 production/runtime adapter로 선택된 core를 호출한다.
 - shared는 contract, domain entity, canonical payload 해석만 담당한다.
+- 새 method/algorithm 추가 때문에 agent/main_server에 method-specific 파일을 만들지
+  않는다. runtime 파일은 capability 이름으로 확장한다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
@@ -45,6 +47,7 @@
 - DTO, manifest, update payload, canonical enum은 `shared/`.
 - raw text, local state, local model execution, privacy guard runtime은 `agent/`.
 - round lifecycle, update acceptance, publication, repository는 `main_server/`.
+- method identity, local objective, server/round policy 의미는 `methods/`.
 - Hydra compose, sweep, report, artifact dump는 `scripts/`.
 - UI type generation과 API consumer shell은 `apps/`.
 

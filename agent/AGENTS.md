@@ -22,6 +22,13 @@
 - payload shape를 바꾸기 전에 `shared` contract를 먼저 고친다.
 - 로컬 heuristic, scorer, example generation, training backend는 서로 다른
   변화 축으로 보고 섞지 않는다.
+- 새 method/algorithm을 추가하기 위해 `agent`에 method-specific backend 파일을
+  추가하지 않는다. `agent`의 backend/runtime adapter는 raw text 접근, private
+  state, artifact materialization, payload upload 같은 로컬 실행 capability만
+  소유한다.
+- local objective, pseudo-label algorithm, SSL hook, adaptation 계산 core는
+  `methods/`에 둔다. `agent`는 선택된 core를 실행 가능한 local task로 변환하는
+  port/adapter 역할만 맡는다.
 - 관측 가능성이 부족하면 파라미터 튜닝보다 dump/trace/summary를 먼저 만든다.
 
 ## 테스트 규칙

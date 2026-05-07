@@ -51,6 +51,12 @@ module을 명시적으로 import해서 decorator 등록을 실행한다. 새 met
 새 method를 추가하기 위해 `scripts`, `agent`, `main_server` core를 넓게 수정해야
 하면 method seam이 충분히 깊지 않은 신호로 본다.
 
+특히 `agent`와 `main_server`에는 method 이름을 가진 파일을 추가하지 않는다.
+예외는 새 method가 아니라 새 runtime capability가 생긴 경우다. 이때도 파일명과
+interface는 `raw_text_local_update`, `artifact_ref_materializer`,
+`round_state_exchange`처럼 capability 이름을 사용하고, FedMatch/FedLGMatch 같은
+method identity와 정책 의미는 method-local module에 남긴다.
+
 ## Hook과 helper
 
 Tensor-level SSL objective 조각은 `methods/ssl/hooks/`의 공통 hook을 먼저 본다.

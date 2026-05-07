@@ -21,7 +21,7 @@
 
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
-| 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` + runtime owner |
+| 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` core + capability runtime adapter |
 | 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
@@ -45,7 +45,8 @@
 3. concrete 구현을 추가한다.
    - 구현은 해당 소유 경계 파일에 넣는다.
 4. thin registry wiring에 등록한다.
-   - `register_*()` 함수 호출을 빠뜨리면 이름만 추가해도 조립되지 않는다.
+   - 새 코드에서는 구현 module 옆 decorator와 convention/config 기반 import trigger를 우선한다.
+   - `registry.py` 하단에 concrete 등록 block을 계속 누적하지 않는다.
 5. compatibility와 default를 분리해서 다룬다.
    - 새 구현을 추가하는 것과 기본 선택값을 바꾸는 것은 다른 작업이다.
 6. unit test를 같은 경계에서 닫는다.
@@ -95,19 +96,20 @@
 보통 수정 파일:
 
 - [methods/adaptation/](../../methods/adaptation/)
-- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- [agent/src/services/training/backends/training/registry.py](../../agent/src/services/training/backends/training/registry.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
 
 작업 순서:
 
 1. 재사용 가능한 update 계산은 `methods/adaptation/<adapter_family>/`에 추가한다.
-2. `SharedAdapterTrainingBackend` Protocol을 만족하는 agent adapter 클래스를 추가한다.
-3. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
-4. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
-5. `register_shared_adapter_training_backend(...)`에 이름을 등록한다.
-6. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
-7. 기본값까지 바꾸려면 `DEFAULT_TRAINING_PROFILE` 계열을 수정한다.
+2. agent에는 method-specific 파일을 추가하지 말고 local runtime capability adapter만 둔다.
+3. `SharedAdapterTrainingBackend` Protocol을 만족하는 adapter가 필요하면 capability 이름을 쓴다.
+4. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
+5. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
+6. 구현 module 옆 decorator와 convention/config 기반 import trigger로 registry에 연결한다.
+7. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
+8. 기본값까지 바꾸려면 Hydra profile source of truth와 compatibility facade 범위를 확인한다.
 
 보통 건드리지 않는 것:
 
@@ -127,7 +129,7 @@
 보통 수정 파일:
 
 - [methods/prototype/training_inputs/](../../methods/prototype/training_inputs/)
-- [agent/src/services/training/backends/inputs/__init__.py](../../agent/src/services/training/backends/inputs/__init__.py)
+- [agent/src/services/training/backends/inputs/registry.py](../../agent/src/services/training/backends/inputs/registry.py)
 - [agent/src/services/training/examples/service.py](../../agent/src/services/training/examples/service.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 
@@ -136,7 +138,7 @@
 1. 재사용 가능한 prototype input view 계산은 `methods/prototype/training_inputs/`에 추가한다.
 2. `TrainingExampleBackend` 구현 클래스를 추가한다.
 3. `supported_adapter_kinds`를 정확히 적는다.
-4. `register_training_example_backend(...)`로 등록한다.
+4. 구현 module 옆 decorator와 convention/config 기반 import trigger로 등록한다.
 5. `resolve_training_example_backend(...)` 경로에서 현재 training backend와 호환되는지 확인한다.
 6. stored event 경로와 raw row 경로를 둘 다 테스트한다.
 
@@ -151,14 +153,15 @@
 보통 수정 파일:
 
 - [methods/prototype/scoring/](../../methods/prototype/scoring/)
-- [agent/src/services/inference/scoring_backends.py](../../agent/src/services/inference/scoring_backends.py)
+- [agent/src/services/inference/scoring_backends/](../../agent/src/services/inference/scoring_backends/)
 - 필요 시 [scripts/experiments/prototype_analysis/prototype_strategy/scoring.py](../../scripts/experiments/prototype_analysis/prototype_strategy/scoring.py)
 
 작업 순서:
 
 1. scorer backend를 추가할지, 기존 backend 안의 policy만 추가할지 먼저 나눈다.
 2. prototype score 계산/policy는 `methods/prototype/scoring/`에 추가한다.
-3. backend면 `register_scoring_backend(...)`, policy면 `register_prototype_score_policy(...)`에 등록한다.
+3. backend면 구현 module 옆 decorator와 convention/config 기반 import trigger로 등록하고, policy면
+   `methods/prototype/scoring/` registry 규칙을 따른다.
 4. backend면 `confidence_kind`를 같이 선언해 pipeline/query buffer가 이름 분기 없이 읽게 한다.
 5. `supported_adapter_kinds`가 달라지면 runtime validation에서 조합이 통과하는지 확인한다.
 6. 실험에서도 같은 축을 쓸 거면 `prototype_strategy/scoring.py`도 같이 맞춘다.
@@ -219,6 +222,7 @@
 1. 새 state/update payload를 `shared`에 정의한다.
 2. family metadata를 추가해 canonical `family_name`, `adapter_kind`, payload format을 정한다.
 3. agent training backend와 privacy guard가 새 `adapter_kind`를 생산/소비하게 한다.
+   단, method-specific 의미는 agent에 두지 않고 capability adapter로만 연결한다.
 4. example backend, scorer, acceptance policy가 새 family를 지원하는지 확인한다.
 5. server aggregation backend를 추가한다.
 6. round family builder에 라우팅을 연결한다.

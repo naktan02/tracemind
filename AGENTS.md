@@ -43,6 +43,12 @@ Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
 - `agent/`와 `main_server/`는 production/runtime adapter로 선택된 core를 호출한다.
 - `shared/`는 contract, domain entity, canonical payload 해석만 소유한다.
 
+새 method/algorithm 추가의 기본 변경 위치는 `methods/`와 `conf/`다. `agent`와
+`main_server`에 `fedmatch_*`, `freematch_*`, `<method>_server_policy` 같은
+method-specific 파일을 추가하지 않는다. 새 runtime capability가 정말 필요하면
+method 이름이 아니라 capability 이름의 port/adapter를 추가하고, method identity,
+local objective, server/round policy 의미는 `methods/`에 둔다.
+
 ## Source Of Truth
 
 1. `shared/src/contracts/*.py`, `shared/src/domain/entities/*`

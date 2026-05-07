@@ -40,6 +40,7 @@ active_entrypoints:
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
   - docs/architecture/pattern-integrity-refactor-backlog.md
+  - docs/architecture/method-owned-runtime-refactor-plan.md
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/central_lora_classifier_trainer_contract.md
   - docs/fl_runtime_implementation_checklist.md
@@ -72,6 +73,7 @@ task_routes:
       - docs/execution_index.md
       - plan.md
       - docs/project_execution_plan.md
+      - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
       - scripts/AGENTS.md
@@ -95,6 +97,7 @@ task_routes:
       - AGENTS.md
       - docs/strategy_surface_map.md
       - docs/contracts/strategy_addition_playbook.md
+      - docs/architecture/method-owned-runtime-refactor-plan.md
       - methods/README.md
       - conf/README.md
       - relevant path-specific AGENTS.md
@@ -111,6 +114,7 @@ task_routes:
       - agent/AGENTS.md
       - main_server/AGENTS.md
       - docs/fl_runtime_implementation_checklist.md
+      - docs/architecture/method-owned-runtime-refactor-plan.md
     verify:
       - stale processes are checked first
       - dump, trace, or summary exists before tuning
@@ -144,6 +148,7 @@ task_routes:
       - docs/AGENTS.md
       - docs/execution_index.md
       - docs/architecture/system-overview.md
+      - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/project_execution_plan.md
       - methods/README.md
       - conf/README.md

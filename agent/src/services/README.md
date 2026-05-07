@@ -83,8 +83,9 @@
 
 ## 파일 역할 빠른 맵
 
-- `inference/scoring_backends.py`
+- `inference/scoring_backends/`
   - scorer backend registry와 agent runtime adapter 구현
+  - backend 구현 옆 catalog entry와 decorator 등록을 둔다
 - `methods/prototype/scoring/`
   - prototype similarity와 score 집계 policy core
 - `training/selection/pseudo_label_service.py`
@@ -133,9 +134,12 @@
 - `training/acceptance_policies/`
   - evidence 기반 pseudo-label acceptance 정책 구현
 - `training/backends/training/`
-  - adapter update 생성 backend adapter와 registry wiring
+  - adapter update 생성 runtime adapter와 registry wiring
   - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
     decorator가 소유한다
+  - method identity를 소유하지 않는다. 새 FL SSL method 때문에 여기에 method별
+    backend 파일을 늘리면 안 되고, 필요한 경우 `methods/`의 local update core를
+    실행하는 capability adapter만 둔다.
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core
 - `methods/adaptation/lora_classifier/`
@@ -144,14 +148,22 @@
 
 ## 전략 추가 시 출발점
 
-- training backend 추가: `methods/adaptation/<family>/`와 `training/backends/training/`
-  - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를
-    같은 backend 내부에서 섞지 않는다.
+- local update/adaptation 계산 추가: `methods/adaptation/<family>/`
+  - `agent`에는 raw text 접근, local artifact materialization, payload upload 같은
+    runtime capability adapter만 둔다.
+  - fixed embedding을 쓰는 family와 raw text/tokenized batch를 쓰는 family를 같은
+    adapter 내부에서 섞지 않는다.
 - example-generation backend 추가: `methods/prototype/training_inputs/`,
   `training/backends/inputs/`, `training/examples/service.py`
-- scorer backend 추가: `inference/scoring_backends.py`
+- scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
+  추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - prototype score policy 추가: `methods/prototype/scoring/`
 - privacy guard 추가: `training/execution/privacy_guard_service.py`
+
+FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
+않는다. 해당 method의 local objective, hook, selection/threshold 의미는
+`methods/`가 소유하고, `agent`는 선택된 method core를 local data와 contract
+payload에 연결한다.
 
 확장 전에 `shared/src/contracts/README.md`,
 `docs/contracts/algorithm_extension_guide.md`,

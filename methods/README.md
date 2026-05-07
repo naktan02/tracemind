@@ -10,6 +10,7 @@
 - adapter family별 local update 계산 방식
 - federated aggregation의 순수 계산 core
 - FL-SSL composition에서 재사용되는 method 조립 규칙
+- FL SSL method별 local objective, server policy, round policy 의미
 - prototype scoring/evidence 같은 local inference/training 공통 mechanism
 - prototype 기반 학습 input view 계산
 
@@ -33,6 +34,12 @@ agent / main_server / scripts
 
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
 `main_server`, `scripts`를 import하지 않는다.
+
+새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
+만든다. `agent`와 `main_server`에 method 이름을 가진 runtime 파일을 늘리는 방식은
+framework seam이 얕다는 신호로 본다. 두 runtime 계층은 raw text 접근, private
+state, artifact repository, round lifecycle, publication처럼 실행 환경 차이를
+core interface로 변환하는 adapter만 소유한다.
 
 ## 하위 패키지 지도
 

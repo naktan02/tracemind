@@ -18,6 +18,7 @@ central fixed embedding + classifier seed
 | `plan.md` | 연구 비전과 global/local 경계 |
 | `docs/project_execution_plan.md` | active decision, phase, next step |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
+| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 리팩터링 계획 |
 | `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 리팩터링 후보와 우선순위 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
@@ -57,16 +58,18 @@ Seed / central SSL:
 Agent runtime:
 
 1. `agent/src/services/README.md`
-2. `agent/src/services/inference/pipeline_service.py`
-3. `agent/src/services/training/execution/agent_training_task_runner_service.py`
-4. `agent/src/services/training/execution/local_training_service.py`
-5. `agent/src/services/federation/rounds/runtime_service.py`
+2. `docs/architecture/method-owned-runtime-refactor-plan.md`
+3. `agent/src/services/inference/pipeline_service.py`
+4. `agent/src/services/training/execution/agent_training_task_runner_service.py`
+5. `agent/src/services/training/execution/local_training_service.py`
+6. `agent/src/services/federation/rounds/runtime_service.py`
 
 Main server FL:
 
 1. `main_server/src/services/README.md`
-2. `main_server/src/services/federation/rounds/round_lifecycle_service.py`
-3. `main_server/src/services/federation/rounds/round_manager_service.py`
+2. `docs/architecture/method-owned-runtime-refactor-plan.md`
+3. `main_server/src/services/federation/rounds/round_lifecycle_service.py`
+4. `main_server/src/services/federation/rounds/round_manager_service.py`
 
 Apps:
 

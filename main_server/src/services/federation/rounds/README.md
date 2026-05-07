@@ -54,6 +54,8 @@
   - server-owned aggregation backend registry와 methods core adapter
   - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
     decorator가 소유한다
+  - adapter family별 payload/state materialization만 맡고 FedMatch/FedLGMatch 같은
+    method-specific server policy를 소유하지 않는다
   - `lora_classifier.fedavg`는 inline delta smoke 경로를 집계하고,
     artifact-ref-only update는 artifact materializer가 붙기 전까지 거부한다
 - `acceptance/`
@@ -65,6 +67,13 @@
   계산은 `methods/federated/aggregation/`
 - adapter family 추가: `families/` + `shared/src/contracts/adapter_contract_families/`
 - server runtime 기본 축 변경: `runtime/config.py`
+
+새 FL SSL method가 round별 state exchange, client weighting, pseudo-label statistics,
+server-side calibration을 요구하면 먼저
+`methods/federated_ssl/<method>/server_policy.py` 또는 `round_policy.py`에 의미를
+둔다. `main_server`에는 그 policy를 실행하기 위한 generic runtime capability만
+추가한다. method 이름을 가진 server 파일이 늘어나면 runtime adapter가 method
+framework 역할을 흡수하고 있다는 신호다.
 
 새 family나 backend를 추가할 때는
 `docs/contracts/algorithm_extension_guide.md`와

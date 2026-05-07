@@ -32,6 +32,7 @@ description: Use when adding or replacing an adapter family, aggregation backend
      `docs/contracts/algorithm_extension_guide.md`
 3. 소유 경계를 먼저 정한다.
    - canonical rule은 `shared`
+   - method/algorithm 계산 core와 policy 의미는 `methods`
    - local runtime은 `agent`
    - orchestration은 `main_server`
    - experiment wrapper는 `scripts`
@@ -49,19 +50,22 @@ description: Use when adding or replacing an adapter family, aggregation backend
 - local/server/runtime 조합이 바뀌면 typed profile과 compatibility validator를 둔다.
 - runtime framework 차이는 adapter에 두고, strategy 의미는 `methods/` 또는 계약
   가까이에 둔다.
+- `agent`와 `main_server` adapter는 method-specific 파일로 확장하지 않는다. 새 method가
+  필요한 의미는 `methods/`에 두고, runtime 계층에는 capability 이름의 port/adapter만 둔다.
 - 단일 implementation 전용 helper는 method-local module에 두고, 두 개 이상 전략에서
   의미가 안정되면 공통 module로 승격한다.
 
 ## Registration 규칙
 
 - registry primitive는 저장, 정규화, 조회, catalog 노출만 맡긴다.
-- 새 strategy 구현을 추가할 때 concrete import와 등록 목록은 implementation-local decorator
-  또는 explicit builtin loader로 둔다.
+- 새 strategy 구현은 implementation-local decorator나 explicit factory function으로 자기
+  metadata를 구현 옆에 둔다.
 - `registry.py` 하단에 concrete implementation을 계속 추가하는 방식은 새 코드의 기본값으로
   쓰지 않는다. 기존 파일이 그런 구조라면 compatibility로 보고, 단계 리팩터링에서 loader로
   분리한다.
-- decorator를 쓸 때도 자동 plugin discovery처럼 동작하게 만들지 않는다. builtin import 목록은
-  명시적으로 유지한다.
+- `builtin_loader.py`에 concrete module 목록만 옮기는 것은 transitional step이다. 최종 구조는
+  name-to-module convention, config-declared module path, package manifest 중 하나로 import
+  trigger를 작게 유지한다.
 - strategy metadata는 registry가 아니라 descriptor, catalog entry, config, contract 중
   의미에 맞는 source of truth가 소유한다.
 
@@ -71,4 +75,5 @@ description: Use when adding or replacing an adapter family, aggregation backend
 - raw registry를 핵심 도메인 추상화로 남용하지 않는가
 - producer/consumer가 같은 discriminator와 payload를 보는가
 - 새 implementation 추가가 기존 구현 파괴 없이 확장으로 보이는가
-- registration 방식이 decorator, explicit loader, compatibility facade 중 무엇인지 명확한가
+- registration 방식이 decorator, convention/config import, compatibility facade 중 무엇인지 명확한가
+- runtime adapter가 algorithm/method identity를 흡수하지 않는가

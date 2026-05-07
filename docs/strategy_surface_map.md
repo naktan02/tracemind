@@ -49,12 +49,12 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
-| Training backend | `diagonal_scale_heuristic`, `lora_classifier_trainer` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/diagonal_scale/*`, `methods/adaptation/lora_classifier/*`, agent backend | 활성 runtime / FL simulation scaffold |
-| Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*`, agent backend | 활성 runtime |
-| Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*`, agent backend | 활성 runtime |
-| Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, agent backend | 활성 runtime |
+| Training backend | `diagonal_scale_heuristic`, `lora_classifier_trainer` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | 활성 runtime / FL simulation scaffold |
+| Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*` core + agent runtime adapter | 활성 runtime |
+| Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*` core + agent runtime adapter | 활성 runtime |
+| Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*` core + agent runtime adapter | 활성 runtime |
 | Score policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` | `methods/prototype/scoring/policies.py` | 활성 runtime |
-| Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | agent training policy | 활성 runtime |
+| Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `methods/ssl/hooks/selection.py` + agent compatibility metadata | 활성 runtime |
 | Privacy guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | agent privacy service | 활성 runtime |
 
 ## FL/서버 축
@@ -72,9 +72,13 @@ central fixed embedding + classifier seed
 
 주의:
 
-- `local_update_profile`은 agent local update policy를 소유하고,
-  `round_runtime_profile`은 server round의 adapter family와 aggregation backend를
-  소유한다. local objective와 aggregation/backend 조합은 독립적으로 override한다.
+- `local_update_profile`은 local update 실행 조합 preset이고,
+  `round_runtime_profile`은 server round의 adapter family와 aggregation backend 실행
+  조합 preset이다. method-specific local objective와 server policy 의미는 profile이
+  아니라 `methods/`의 descriptor/policy module이 소유한다.
+- method identity와 local/server policy 의미는 `methods/`가 소유한다. `agent`와
+  `main_server`의 backend/adapter는 선택된 core를 runtime data, artifact, contract
+  payload에 연결하는 capability다.
 
 ## Prototype 축
 

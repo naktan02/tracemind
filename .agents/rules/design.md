@@ -107,6 +107,17 @@ trigger: always_on
 27. runtime orchestration과 algorithm 의미를 분리한다.
     - entrypoint, runner, UI, runtime adapter가 algorithm/method 의미를 흡수하지 않게 한다.
     - algorithm/method identity와 계산 의미는 core Module 가까이에 둔다.
+28. runtime adapter는 capability 이름으로 확장한다.
+    - 새 method/algorithm 때문에 runtime 계층에 method 이름을 가진 파일이 늘어나면
+      잘못된 seam으로 본다.
+    - runtime 계층은 storage, private state, artifact materialization, transport,
+      lifecycle 같은 실행 capability를 소유하고, method identity와 policy 의미는
+      algorithm core 계층에 둔다.
+29. catalog snapshot과 implementation registration을 구분한다.
+    - cross-layer UI/server catalog가 필요하다는 이유로 implementation metadata를
+      공통 계층 중앙 파일에 계속 누적하지 않는다.
+    - 공통 계층은 catalog entry schema와 안정 snapshot contract를 소유하고,
+      implementation-local module은 자기 registration metadata를 소유한다.
 
 ## 설계 순서
 
@@ -139,11 +150,12 @@ trigger: always_on
 소유해야 할 책임, 허용 dependency, side effect, 확장 방식이 코드에서 드러나야 한다.
 
 - `Registry` primitive 파일은 저장, 정규화, 조회, 중복 방지, catalog 노출만 맡긴다.
-  concrete implementation import와 builtin 등록 목록은 별도 `builtin_loader.py` 또는
-  implementation-local decorator + 명시적 builtin import로 분리한다.
+  concrete implementation import와 중앙 등록 목록을 직접 소유하지 않는다.
+  구현 옆 decorator를 쓰더라도 import trigger는 name-to-module convention,
+  config-declared module path, package manifest 중 하나로 작게 유지한다.
 - `registry.py` 맨 아래에 concrete class를 import해서 여러 `register_*()`를 직접 호출하는
-  구조는 기본적으로 smell이다. 그 파일이 의도적으로 `builtin_loader` 역할을 하는 경우에만
-  허용하고, 그 이름과 문서에 역할을 드러낸다.
+  구조는 기본적으로 smell이다. `builtin_loader.py`에 concrete module 목록만 옮기는 것도
+  최종 구조가 아니라 transitional smell로 본다.
 - `Decorator` 등록은 implementation 옆의 local source of truth가 필요하고 import 순서를
   명시적으로 통제할 수 있을 때만 쓴다. canonical contract나 shared payload를 자동
   discovery하는 용도로 남용하지 않는다.
@@ -155,6 +167,9 @@ trigger: always_on
   만들면 경계가 깨진 것이다.
 - `Adapter`는 외부/runtime/framework 차이를 core Interface로 변환한다. 알고리즘 선택,
   method 의미, policy 판단을 adapter에 넣지 않는다.
+- runtime adapter 파일명과 Interface는 method 이름이 아니라 capability 이름을 사용한다.
+  예를 들어 `fedmatch_server_policy_adapter`보다 `round_state_exchange_adapter`가
+  낫다. FedMatch라는 의미는 method-local module에 남긴다.
 - `Policy`는 판단을 맡고 mechanism은 실행을 맡는다. policy 안에서 IO, 학습, aggregation 같은
   실행 절차가 커지면 분리한다.
 - `Hook`은 한 알고리즘 내부의 교체 가능한 objective/policy 조각이다. runtime diagnostics,
@@ -170,8 +185,10 @@ pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로
 
 패턴별 책임은 제한한다.
 
-- `Registry`는 lookup과 명시적 builtin wiring을 담당한다. 도메인 의미나 실행 조합을
+- `Registry`는 lookup과 duplicate guard를 담당한다. 도메인 의미, 실행 조합, builtin 목록을
   registry에 숨기지 않는다.
+- `Catalog`는 discovery와 display를 위한 snapshot/metadata 표면이다. implementation
+  registration source of truth가 되면 중앙 registry smell과 같은 문제가 된다.
 - `Descriptor`는 identity, capability, required surface, ownership hint처럼 안정적인
   metadata를 소유한다.
 - `Profile`은 여러 strategy 축의 실행 조합을 typed structure로 해석하고 drift를 막는다.

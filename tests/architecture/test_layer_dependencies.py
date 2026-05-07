@@ -32,6 +32,18 @@ LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
 )
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
+RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
+    "fedavg_pseudo_label",
+    "fedmatch",
+    "fedlgmatch",
+    "fl2",
+    "fixmatch",
+    "freematch",
+    "flexmatch",
+    "comatch",
+    "mixtext",
+    "rdrop",
+)
 
 
 def _iter_python_files(root: Path) -> list[Path]:
@@ -207,6 +219,26 @@ def test_main_server_agent_imports_are_limited_to_documented_exceptions() -> Non
         f"actual={sorted(str(path) for path in actual_exception_paths)}\n"
         "expected="
         f"{sorted(str(path) for path in TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS)}"
+    )
+
+
+def test_runtime_layers_do_not_define_method_specific_modules() -> None:
+    violations: list[Path] = []
+    for root in (AGENT_SRC, MAIN_SERVER_SRC):
+        for path in _iter_python_files(root):
+            relative_path = _relative_repo_path(path)
+            normalized_path = str(relative_path).lower()
+            if any(
+                method_fragment in normalized_path
+                for method_fragment in RUNTIME_LAYER_METHOD_NAME_FRAGMENTS
+            ):
+                violations.append(relative_path)
+
+    assert not violations, (
+        "agent/main_server는 method-specific module을 소유하지 않는다. "
+        "새 method 의미는 methods/에 두고 runtime 계층은 capability 이름의 "
+        "port/adapter만 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
