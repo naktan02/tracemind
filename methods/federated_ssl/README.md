@@ -26,3 +26,5 @@ adapter만 둔다.
 새 method의 descriptor는 `methods/federated_ssl/<method>/descriptor.py`가
 소유한다. `registry.py`는 자동 파일 스캔을 하지 않고, built-in method module을
 명시적으로 import해서 decorator 등록을 실행한다.
+
+새 method 추가 절차는 `NEW_METHOD.md`를 먼저 따른다.
