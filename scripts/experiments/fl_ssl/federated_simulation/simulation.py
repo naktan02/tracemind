@@ -7,6 +7,10 @@ from typing import Any
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.compatibility import (
+    FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_profile_compatibility,
+)
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
@@ -95,7 +99,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
     ssl_method_runtime = _build_validated_ssl_runtime(request.ssl_method_config)
-    _require_local_update_matches_round_family(request)
+    _require_fl_profile_compatibility(request, ssl_method_runtime.descriptor)
     bootstrapped = bootstrap_simulation(request)
     active = bootstrapped.active
     round_summaries: list[SimulationRoundSummary] = []
@@ -121,22 +125,25 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     )
 
 
-def _require_local_update_matches_round_family(
+def _require_fl_profile_compatibility(
     request: SimulationRunRequest,
+    ssl_method_descriptor: FederatedSslMethodDescriptor,
 ) -> None:
-    """local trainer가 생산하는 adapter kind와 server family를 조기에 맞춘다."""
+    """method/local update/round runtime 조합을 bootstrap 전에 검증한다."""
 
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
-    round_adapter_family = request.round_runtime_config.adapter_family_name
-    if local_adapter_kind.strip().lower() == round_adapter_family.strip().lower():
-        return
-    raise ValueError(
-        "FL simulation local_update_profile and round_runtime_profile must target "
-        "the same adapter family: "
-        f"local_update_adapter_kind={local_adapter_kind}, "
-        f"round_adapter_family={round_adapter_family}."
+    validate_federated_ssl_profile_compatibility(
+        FederatedSslProfileCompatibilityContext(
+            method_descriptor=ssl_method_descriptor,
+            local_update_profile=request.local_update_profile,
+            local_update_adapter_kind=local_adapter_kind,
+            round_adapter_family_name=request.round_runtime_config.adapter_family_name,
+            round_aggregation_backend_name=(
+                request.round_runtime_config.aggregation_backend_name
+            ),
+        )
     )
 
 
