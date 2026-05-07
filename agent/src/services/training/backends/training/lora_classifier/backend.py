@@ -9,15 +9,15 @@ from agent.src.services.training.backends.training.base import AcceptedTrainingE
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainExecutor,
 )
-from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
-from shared.src.config.registry_catalog_metadata import (
-    RegistryCatalogEntry,
-)
 from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
     SharedAdapterUpdatePayload,
 )
+from shared.src.contracts.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.registry_catalog_metadata import (
+    RegistryCatalogEntry,
+)
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingTask,

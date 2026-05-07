@@ -7,7 +7,7 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 
 from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
 

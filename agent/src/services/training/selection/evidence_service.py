@@ -13,7 +13,7 @@ from agent.src.services.training.backends.evidence.prototype_similarity import (
 from agent.src.services.training.backends.evidence.registry import (
     build_pseudo_label_evidence_backend,
 )
-from shared.src.config.training_defaults import (
+from methods.federated_ssl.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     TrainingDefaultsProfile,
 )

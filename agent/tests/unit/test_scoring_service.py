@@ -21,7 +21,7 @@ from agent.src.services.inference.scoring_backends.registry import (
 )
 from agent.src.services.inference.scoring_service import ScoringService
 from methods.prototype.scoring.policies import TopKMeanCosineScorePolicy
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 

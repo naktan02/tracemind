@@ -12,7 +12,7 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_vectors,
 )
 from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 
 
 @dataclass(frozen=True, slots=True)

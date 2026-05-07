@@ -14,7 +14,7 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_vector_mappings,
 )
 from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
+from shared.src.contracts.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
 
 
 @dataclass(frozen=True, slots=True)

@@ -31,8 +31,8 @@ from agent.src.services.training.backends.training.registry import (
 from agent.src.services.training.examples.service import (
     TrainingExampleService,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig

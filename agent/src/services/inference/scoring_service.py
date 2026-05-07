@@ -16,7 +16,7 @@ from agent.src.services.inference.scoring_backends.prototype_similarity import (
 from agent.src.services.inference.scoring_backends.registry import (
     build_scoring_backend,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 

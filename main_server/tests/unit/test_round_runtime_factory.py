@@ -37,7 +37,7 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_manager_service_from_config,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,

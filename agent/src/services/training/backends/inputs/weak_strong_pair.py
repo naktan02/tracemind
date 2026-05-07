@@ -12,7 +12,7 @@ from methods.prototype.training_inputs.examples import (
     build_prototype_weak_strong_inputs,
     require_weak_strong_texts,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import ANY_ADAPTER_KIND, WEAK_STRONG_PAIR_BACKEND_NAME

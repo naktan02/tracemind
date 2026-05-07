@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingTaskPayload,

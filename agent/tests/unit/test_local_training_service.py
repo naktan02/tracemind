@@ -25,7 +25,7 @@ from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,

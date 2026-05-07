@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from main_server.src.services.experiment_workspace.catalog import (
+    local_training_registry_snapshot as local_catalog,
+)
 from main_server.src.services.experiment_workspace.catalog.build_context import (
     ExperimentCatalogBuildContext,
 )
@@ -27,20 +30,11 @@ from main_server.src.services.experiment_workspace.payloads import (
 from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
-from shared.src.config.adapter_family_metadata import (
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.adapter_family_metadata import (
     list_shared_adapter_family_metadata,
 )
-from shared.src.config.local_training_registry_catalog import (
-    ANY_ADAPTER_KIND,
-    list_pseudo_label_acceptance_policy_catalog_entries,
-    list_pseudo_label_evidence_backend_catalog_entries,
-    list_scoring_backend_catalog_entries,
-    list_shared_adapter_privacy_guard_catalog_entries,
-    list_shared_adapter_training_backend_catalog_entries,
-    list_training_example_backend_catalog_entries,
-)
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
@@ -144,7 +138,9 @@ def build_training_backend_section(
         item_kind="training_backend",
         description="로컬 accepted example을 update payload로 바꾸는 backend.",
         source_module_name="agent.src.services.training.backends.training.registry",
-        entries=list_shared_adapter_training_backend_catalog_entries(),
+        entries=(
+            local_catalog.list_shared_adapter_training_backend_catalog_entries()
+        ),
         source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=_resolve_training_backend_runtime_paths,
     )
@@ -161,7 +157,7 @@ def build_training_example_backend_section(
         item_kind="example_generation_backend",
         description="source row 또는 stored event를 학습 예시로 재구성하는 backend.",
         source_module_name="agent.src.services.training.backends.inputs.registry",
-        entries=list_training_example_backend_catalog_entries(),
+        entries=local_catalog.list_training_example_backend_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=context.resolve_example_generation_runtime_paths,
     )
@@ -178,7 +174,7 @@ def build_evidence_backend_section(
         item_kind="evidence_backend",
         description="ScoredEvent를 pseudo-label evidence로 정규화하는 backend.",
         source_module_name="agent.src.services.training.backends.evidence.registry",
-        entries=list_pseudo_label_evidence_backend_catalog_entries(),
+        entries=local_catalog.list_pseudo_label_evidence_backend_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -200,7 +196,7 @@ def build_scoring_backend_section(
             "embedding/prototype/shared_state로 category score를 계산하는 backend."
         ),
         source_module_name="agent.src.services.inference.scoring_backends.registry",
-        entries=list_scoring_backend_catalog_entries(),
+        entries=local_catalog.list_scoring_backend_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=context.resolve_scoring_backend_runtime_paths,
     )
@@ -217,7 +213,9 @@ def build_acceptance_policy_section(
         item_kind="acceptance_policy",
         description="pseudo-label evidence를 accepted candidate로 해석하는 정책.",
         source_module_name="agent.src.services.training.acceptance_policies.registry",
-        entries=list_pseudo_label_acceptance_policy_catalog_entries(),
+        entries=(
+            local_catalog.list_pseudo_label_acceptance_policy_catalog_entries()
+        ),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -239,7 +237,7 @@ def build_privacy_guard_section(
         source_module_name=(
             "agent.src.services.training.execution.privacy_guards.registry"
         ),
-        entries=list_shared_adapter_privacy_guard_catalog_entries(),
+        entries=local_catalog.list_shared_adapter_privacy_guard_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -259,12 +257,12 @@ def _resolve_training_profile_runtime_paths(
 
     runtime_paths.append(MAIN_SERVER_ROUND_RUNTIME_PATH)
     example_backend = _find_catalog_entry(
-        list_training_example_backend_catalog_entries(),
+        local_catalog.list_training_example_backend_catalog_entries(),
         objective_config.example_generation_backend_name
         or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
     )
     scorer_backend = _find_catalog_entry(
-        list_scoring_backend_catalog_entries(),
+        local_catalog.list_scoring_backend_catalog_entries(),
         objective_config.scorer_backend_name
         or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
     )
@@ -291,7 +289,7 @@ def _resolve_training_profile_adapter_kind(
 
     try:
         training_backend = _find_catalog_entry(
-            list_shared_adapter_training_backend_catalog_entries(),
+            local_catalog.list_shared_adapter_training_backend_catalog_entries(),
             objective_config.training_backend_name,
         )
         return _resolve_single_adapter_kind(training_backend)
@@ -306,13 +304,13 @@ def _is_local_training_runtime_catalog_compatible(
 
     try:
         training_backend = _find_catalog_entry(
-            list_shared_adapter_training_backend_catalog_entries(),
+            local_catalog.list_shared_adapter_training_backend_catalog_entries(),
             objective_config.training_backend_name,
         )
         adapter_kind = _resolve_single_adapter_kind(training_backend)
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                list_training_example_backend_catalog_entries(),
+                local_catalog.list_training_example_backend_catalog_entries(),
                 objective_config.example_generation_backend_name
                 or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
             ),
@@ -320,7 +318,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                list_pseudo_label_evidence_backend_catalog_entries(),
+                local_catalog.list_pseudo_label_evidence_backend_catalog_entries(),
                 objective_config.evidence_backend_name
                 or DEFAULT_TRAINING_PROFILE.evidence_backend_name,
             ),
@@ -328,7 +326,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                list_scoring_backend_catalog_entries(),
+                local_catalog.list_scoring_backend_catalog_entries(),
                 objective_config.scorer_backend_name
                 or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
             ),
@@ -336,7 +334,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                list_pseudo_label_acceptance_policy_catalog_entries(),
+                local_catalog.list_pseudo_label_acceptance_policy_catalog_entries(),
                 objective_config.acceptance_policy_name
                 or DEFAULT_TRAINING_PROFILE.acceptance_policy_name,
             ),
@@ -344,7 +342,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                list_shared_adapter_privacy_guard_catalog_entries(),
+                local_catalog.list_shared_adapter_privacy_guard_catalog_entries(),
                 objective_config.privacy_guard_name
                 or DEFAULT_TRAINING_PROFILE.privacy_guard_name,
             ),
@@ -370,7 +368,7 @@ def _resolve_single_adapter_kind(entry: RegistryCatalogEntry) -> str:
     concrete_adapter_kinds = tuple(
         adapter_kind
         for adapter_kind in entry.supported_adapter_kinds
-        if adapter_kind != ANY_ADAPTER_KIND
+        if adapter_kind != local_catalog.ANY_ADAPTER_KIND
     )
     if len(concrete_adapter_kinds) != 1:
         raise ValueError(
@@ -390,7 +388,7 @@ def _require_catalog_adapter_kind_support(
     )
     normalized_adapter_kind = adapter_kind.strip().lower()
     if (
-        ANY_ADAPTER_KIND in normalized_supported
+        local_catalog.ANY_ADAPTER_KIND in normalized_supported
         or normalized_adapter_kind in normalized_supported
     ):
         return

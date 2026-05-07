@@ -7,12 +7,12 @@ from datetime import datetime, timezone
 
 import pytest
 
+from methods.adaptation.diagonal_scale.config import (
+    DiagonalScaleHeuristicTrainingBackendConfig,
+)
 from methods.adaptation.diagonal_scale.heuristic_update import (
     build_diagonal_scale_client_metrics,
     build_diagonal_scale_heuristic_update,
-)
-from shared.src.config.diagonal_scale_defaults import (
-    DiagonalScaleHeuristicTrainingBackendConfig,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (

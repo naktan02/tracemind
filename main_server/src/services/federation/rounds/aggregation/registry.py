@@ -10,7 +10,7 @@ from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationBackendFactory,
     SharedAdapterAggregationBackend,
 )
-from shared.src.config.registry_catalog_metadata import (
+from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )

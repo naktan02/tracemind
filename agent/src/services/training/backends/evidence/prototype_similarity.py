@@ -8,7 +8,7 @@ from methods.prototype.evidence.helpers import (
     build_ranked_evidence,
     rank_category_scores,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_evidence import (

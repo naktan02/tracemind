@@ -7,7 +7,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
 
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (

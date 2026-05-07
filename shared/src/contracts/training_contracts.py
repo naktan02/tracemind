@@ -33,7 +33,6 @@ from pydantic import (
     model_validator,
 )
 
-from shared.src.config.training_default_values import DEFAULT_TRAINING_OBJECTIVE_MAPPING
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     parse_shared_adapter_update_payload,
@@ -72,9 +71,7 @@ class FeedbackSignalType(StrEnum):
 
 
 TrainingConfigScalar = str | int | float | bool
-DEFAULT_TRAINING_BACKEND_NAME = str(
-    DEFAULT_TRAINING_OBJECTIVE_MAPPING["training_backend_name"]
-)
+DEFAULT_TRAINING_BACKEND_NAME = "diagonal_scale_heuristic"
 
 
 class ClientMetricKeys:
@@ -192,11 +189,7 @@ class TrainingObjectiveConfigPayload(BaseModel):
         """Mapping 입력을 canonical objective config로 정규화한다."""
         if source is None:
             return cls()
-        from shared.src.config.training_algorithm_profiles import (
-            expand_training_objective_mapping,
-        )
-
-        source = expand_training_objective_mapping(source)
+        source = dict(source)
         backend_name = source.get(
             "training_backend_name",
             source.get("loss", DEFAULT_TRAINING_BACKEND_NAME),

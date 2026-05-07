@@ -59,8 +59,9 @@ selection hook 중복 제거, method-specific runtime guard를 닫았다. 단,
 - acceptance policy는 SSL selection hook과 중복 판단을 하지 않고 metadata/compatibility
   역할로 축소한다.
 - evidence/input/scoring registry는 implementation-local registration으로 정리한다.
-- `shared/src/config/local_training_registry_catalog.py`는 implementation source of
-  truth가 아니라 workspace/catalog compatibility snapshot으로 낮춘다.
+- local training registry catalog snapshot은 `shared`가 아니라 `main_server`
+  experiment workspace catalog가 소유한다. implementation source of truth는 각
+  runtime adapter 옆 registry metadata다.
 - `agent` local update backend는 method identity를 소유하지 않는 runtime adapter로
   명명/문서화한다.
 - architecture guard로 `agent`/`main_server` method-specific runtime module 추가를 막는다.
@@ -228,8 +229,8 @@ server 의미가 round lifecycle로 새지 않게 하는 것이다.
 
 - 새 method 때문에 `agent/src/**/<method>*.py`를 만들지 않는다.
 - 새 method 때문에 `main_server/src/**/<method>*.py`를 만들지 않는다.
-- `shared/src/config/*catalog*.py`를 implementation registration source of truth로 키우지
-  않는다.
+- `shared/src/config`를 새 source of truth로 되살리지 않는다. shared에는 contract,
+  domain entity, canonical payload 해석만 둔다.
 - runtime adapter가 threshold, server weighting, pseudo-label objective 같은 method
   policy를 판단하지 않는다.
 - scripts runner가 algorithm-specific registry를 새로 소유하지 않는다.

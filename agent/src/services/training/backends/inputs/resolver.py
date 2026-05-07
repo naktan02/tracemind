@@ -8,7 +8,7 @@ from agent.src.services.training.backends.training.base import (
 from agent.src.services.training.backends.training.registry import (
     build_shared_adapter_training_backend,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import TrainingExampleBackend

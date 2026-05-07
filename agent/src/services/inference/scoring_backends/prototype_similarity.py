@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from methods.prototype.scoring.base import PrototypeScorePolicy
 from methods.prototype.scoring.policies import (
     MaxCosineScorePolicy,
     build_prototype_score_policy,
 )
 from methods.prototype.scoring.similarity import score_prototype_categories
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 

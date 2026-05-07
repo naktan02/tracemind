@@ -1,6 +1,6 @@
-"""공용 local training raw default 값 묶음.
+"""FL SSL local training raw default 값 묶음.
 
-contract/payload builder에 의존하지 않는 canonical 기본값만 둔다.
+contract/payload builder에 의존하지 않는 compatibility 기본값만 둔다.
 """
 
 from __future__ import annotations
@@ -9,7 +9,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from shared.src.config.diagonal_scale_defaults import (
+from methods.adaptation.diagonal_scale.config import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
 

@@ -7,8 +7,7 @@ from collections.abc import Sequence
 from datetime import datetime
 from typing import Protocol
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
-from shared.src.config.diagonal_scale_defaults import (
+from methods.adaptation.diagonal_scale.config import (
     DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS,
     TRAINING_BACKEND_EXTRA_SCOPE,
     DiagonalScaleHeuristicTrainingBackendConfig,
@@ -17,6 +16,7 @@ from shared.src.contracts.adapter_contracts import (
     VECTOR_ADAPTER_DELTA_V1,
     VectorAdapterDelta,
 )
+from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     ClientMetricKeys,

@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
+from methods.federated_ssl.training_defaults import (
+    build_default_training_objective_config,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
@@ -19,9 +22,6 @@ from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
     build_federated_training_examples,
     select_federated_pseudo_labels,
-)
-from shared.src.config.training_defaults import (
-    build_default_training_objective_config,
 )
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (

@@ -1,4 +1,4 @@
-"""논문/알고리즘 단위 objective profile registry."""
+"""FL SSL objective profile compatibility registry."""
 
 from __future__ import annotations
 
@@ -6,7 +6,9 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from shared.src.config.training_default_values import DEFAULT_TRAINING_OBJECTIVE_MAPPING
+from methods.federated_ssl.training_default_values import (
+    DEFAULT_TRAINING_OBJECTIVE_MAPPING,
+)
 
 TrainingAlgorithmScalar = str | int | float | bool
 

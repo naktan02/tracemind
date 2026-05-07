@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from shared.src.config.adapter_family_metadata import (
+from shared.src.contracts.adapter_family_metadata import (
     list_shared_adapter_family_metadata,
 )
 from shared.src.contracts.adapter_contracts import (

@@ -6,13 +6,13 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from methods.prototype.scoring.base import PrototypeScorePolicy
 from methods.prototype.scoring.policies import build_prototype_score_policy
 from methods.prototype.scoring.similarity import score_prototype_categories
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 
 DEFAULT_PROTOTYPE_SIMILARITY_NAME = "cosine"
 PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME = "prototype_similarity"

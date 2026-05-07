@@ -10,6 +10,15 @@
 
 `docs/contracts/*`는 배경과 설계 이유를 설명하는 보조 문서이고, 실제 필드 의미와 포맷은 이 폴더 파일이 기준이다.
 
+중요한 경계:
+
+- `shared`는 방법론 구현, 실행 profile, 기본 조합값, runtime catalog를 소유하지 않는다.
+- adapter family 이름을 가진 파일은 payload parse/serialize 계약일 때만 허용한다.
+- 새 FL SSL method나 local objective를 추가하기 위해 `shared` 파일을 고치는 흐름은
+  잘못된 경계로 본다.
+- 새 adapter family처럼 state/update payload shape 자체가 바뀌는 경우에만
+  `shared/src/contracts/adapter_contract_families/`를 확장한다.
+
 현재 활성 계획 기준:
 
 - 초기 seed baseline은 `central + fixed embedding + classifier`다.

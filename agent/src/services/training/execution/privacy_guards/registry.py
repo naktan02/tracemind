@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from agent.src.services.runtime_registry import RuntimeRegistry
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 
 from .base import PrivacyGuardFactory, SharedAdapterPrivacyGuard
 

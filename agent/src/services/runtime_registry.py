@@ -10,7 +10,7 @@ from agent.src.services.runtime_registry_imports import (
     import_runtime_module_for_name,
     import_runtime_package_modules,
 )
-from shared.src.config.registry_catalog_metadata import (
+from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )

@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from shared.src.config.diagonal_scale_defaults import (
+from methods.adaptation.diagonal_scale.config import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
-from shared.src.config.training_default_values import (
+from methods.federated_ssl.training_default_values import (
     DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
 )
-from shared.src.config.training_defaults import (
+from methods.federated_ssl.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE,
     build_default_secure_aggregation_config,

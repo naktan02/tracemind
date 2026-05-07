@@ -160,7 +160,7 @@ def _resolve_example_generation_backend_name(
     *,
     objective_config: Any | None,
 ) -> str:
-    from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+    from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 
     if objective_config is None:
         return DEFAULT_TRAINING_PROFILE.example_generation_backend_name

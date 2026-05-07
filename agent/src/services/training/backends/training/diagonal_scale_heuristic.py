@@ -5,24 +5,24 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
+from methods.adaptation.diagonal_scale.config import (
+    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
+    DiagonalScaleHeuristicTrainingBackendConfig,
+)
 from methods.adaptation.diagonal_scale.heuristic_update import (
     build_diagonal_scale_client_metrics,
     build_diagonal_scale_heuristic_config,
     build_diagonal_scale_heuristic_update,
 )
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
-from shared.src.config.diagonal_scale_defaults import (
-    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
-    DiagonalScaleHeuristicTrainingBackendConfig,
-)
-from shared.src.config.registry_catalog_metadata import (
-    RegistryCatalogEntry,
-)
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
 )
+from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.registry_catalog_metadata import (
+    RegistryCatalogEntry,
+)
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingTask,

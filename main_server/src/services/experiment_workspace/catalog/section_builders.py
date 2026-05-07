@@ -22,10 +22,10 @@ from main_server.src.services.experiment_workspace.payloads import (
     CatalogItemPayload,
     CatalogSectionPayload,
 )
-from shared.src.config.adapter_family_metadata import (
+from shared.src.contracts.adapter_family_metadata import (
     SharedAdapterFamilyMetadata,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 
 LoadYamlMapping = Callable[[Path], dict[str, object]]
 IterYamlFiles = Callable[[str], tuple[Path, ...]]
@@ -205,7 +205,7 @@ def build_adapter_family_section(
     """shared adapter family metadata를 별도 section으로 노출한다."""
 
     source_of_truth = source_of_truth_for_module(
-        "shared.src.config.adapter_family_metadata"
+        "shared.src.contracts.adapter_family_metadata"
     )
     items = tuple(
         CatalogItemPayload(

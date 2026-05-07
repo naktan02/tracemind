@@ -40,6 +40,9 @@ from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
     resolve_federated_ssl_method_descriptor,
 )
+from methods.federated_ssl.training_algorithm_profiles import (
+    expand_training_objective_mapping,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
@@ -202,6 +205,31 @@ def test_local_update_profile_validates_training_objective_drift() -> None:
             objective_config=drifted_objective,
             local_update_profile=profile,
         )
+
+
+def test_training_algorithm_profile_expands_prototype_profile_mapping() -> None:
+    mapping = expand_training_objective_mapping(
+        {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+    )
+
+    assert mapping["training_backend_name"] == "diagonal_scale_heuristic"
+    assert mapping["example_generation_backend_name"] == "prototype_rescore"
+    assert mapping["evidence_backend_name"] == "prototype_similarity_evidence"
+    assert mapping["pseudo_label_algorithm_name"] == "top1_confidence_only"
+    assert mapping["acceptance_policy_name"] == "top1_confidence_only"
+    assert mapping["margin_threshold"] == 0.0
+
+
+def test_training_algorithm_profile_expands_lora_profile_mapping() -> None:
+    mapping = expand_training_objective_mapping(
+        {"algorithm_profile_name": "lora_pseudo_label_v1"}
+    )
+
+    assert mapping["training_backend_name"] == "lora_classifier_trainer"
+    assert mapping["example_generation_backend_name"] == "prototype_rescore"
+    assert mapping["scorer_backend_name"] == "prototype_similarity"
+    assert mapping["pseudo_label_algorithm_name"] == "top1_margin_threshold"
+    assert mapping["privacy_guard_name"] == "noop"
 
 
 def test_fl_profile_compatibility_rejects_adapter_family_drift() -> None:

@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import VectorAdapterDelta
+from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,

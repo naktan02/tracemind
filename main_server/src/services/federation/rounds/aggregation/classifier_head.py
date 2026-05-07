@@ -13,12 +13,12 @@ from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
     ClassifierHeadFedAvgUpdate,
     compute_classifier_head_fedavg,
 )
-from shared.src.config.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
     ClassifierHeadState,
 )
+from shared.src.contracts.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,

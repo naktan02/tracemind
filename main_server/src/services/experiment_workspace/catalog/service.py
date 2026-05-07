@@ -21,13 +21,13 @@ from main_server.src.services.experiment_workspace.catalog.tracks import (
 from main_server.src.services.experiment_workspace.payloads import (
     ExperimentCatalogPayload,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.config.training_defaults import (
+from methods.federated_ssl.training_defaults import (
     DEFAULT_TRAINING_PROFILE,
     build_default_secure_aggregation_config,
     build_default_training_selection_policy,
 )
 from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingTaskPayload,

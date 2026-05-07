@@ -13,8 +13,8 @@ from methods.prototype.training_inputs.examples import (
     build_prototype_rescore_inputs,
     build_prototype_rescore_inputs_from_stored_events,
 )
-from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.common_types import TrainingScope
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import (
     IdentitySharedAdapterState,

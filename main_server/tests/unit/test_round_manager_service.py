@@ -21,10 +21,10 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
     RoundManagerService,
     RoundPublicationRequest,
 )
-from shared.src.config.diagonal_scale_defaults import (  # noqa: E402
+from methods.adaptation.diagonal_scale.config import (  # noqa: E402
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,

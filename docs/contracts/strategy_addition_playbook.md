@@ -22,7 +22,7 @@
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` core + capability runtime adapter |
-| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `shared/src/config/*` 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
+| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `conf/`, `methods/federated_ssl/training_defaults.py`, 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
 
 판별 기준은 단순하다.
@@ -98,7 +98,7 @@
 - [methods/adaptation/](../../methods/adaptation/)
 - [agent/src/services/training/backends/training/registry.py](../../agent/src/services/training/backends/training/registry.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
-- 기본값을 바꿀 때만 [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
+- 기본값을 바꿀 때만 [methods/federated_ssl/training_defaults.py](../../methods/federated_ssl/training_defaults.py)
 
 작업 순서:
 
@@ -209,7 +209,7 @@
 보통 수정 파일:
 
 - [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
-- [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
+- [shared/src/contracts/adapter_family_metadata.py](../../shared/src/contracts/adapter_family_metadata.py)
 - [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
 - [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
@@ -238,7 +238,7 @@
 ### 기본값만 바꾸는 경우
 
 - local training 기본 전략:
-  - [shared/src/config/training_defaults.py](../../shared/src/config/training_defaults.py)
+  - [methods/federated_ssl/training_defaults.py](../../methods/federated_ssl/training_defaults.py)
 - server round runtime 기본 aggregation:
   - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:
@@ -246,7 +246,8 @@
 
 원칙:
 
-- 공용 local training 기본값은 `shared`
+- local training 기본 profile/default는 `methods/federated_ssl`
+- 실제 실험 실행값의 source of truth는 `conf/`
 - server-owned round runtime 기본값은 `main_server`
 - 실험 preset 기본값은 `conf`
 

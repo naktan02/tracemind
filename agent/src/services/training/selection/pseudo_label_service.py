@@ -10,6 +10,10 @@ from agent.src.services.training.acceptance_policies.base import (
 from agent.src.services.training.acceptance_policies.top1 import (
     Top1MarginThresholdAcceptancePolicy,
 )
+from methods.federated_ssl.training_defaults import (
+    DEFAULT_TRAINING_PROFILE,
+    TrainingDefaultsProfile,
+)
 from methods.ssl.hooks.registry import (
     build_pseudo_label_selection_hook,
 )
@@ -17,10 +21,6 @@ from methods.ssl.hooks.selection import (
     MarginThresholdPseudoLabelSelectionHook,
     PseudoLabelSelectionConfig,
     PseudoLabelSelectionHook,
-)
-from shared.src.config.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
-    TrainingDefaultsProfile,
 )
 from shared.src.contracts.training_contracts import (
     DecisionFeedbackSignal,

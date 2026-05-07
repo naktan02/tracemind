@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from shared.src.config.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadAdapterStatePayload,
     ClassifierHeadAdapterUpdatePayload,
@@ -13,6 +12,7 @@ from shared.src.contracts.adapter_contracts import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
 )
+from shared.src.contracts.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,

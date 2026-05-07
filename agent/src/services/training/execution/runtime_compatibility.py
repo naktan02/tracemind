@@ -29,7 +29,7 @@ from agent.src.services.training.execution.privacy_guards.base import (
 from agent.src.services.training.execution.privacy_guards.registry import (
     build_shared_adapter_privacy_guard,
 )
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingTask
 
 ANY_ADAPTER_KIND = "*"

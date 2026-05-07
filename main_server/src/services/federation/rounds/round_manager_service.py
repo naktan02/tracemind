@@ -22,7 +22,7 @@ from main_server.src.services.federation.rounds.families.diagonal_scale import (
 from main_server.src.services.federation.rounds.families.models import (
     SharedAdapterRoundFamily,
 )
-from shared.src.config.training_defaults import (
+from methods.federated_ssl.training_defaults import (
     build_default_secure_aggregation_config,
     build_default_training_objective_config,
     build_default_training_selection_policy,

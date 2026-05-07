@@ -1,7 +1,7 @@
-"""공용 local training 기본 profile과 builder.
+"""FL SSL local training 기본 profile과 builder.
 
-계약 파일은 필드 의미와 validation을 소유하고,
-이 모듈은 운영/실험에서 재사용하는 canonical default profile을 소유한다.
+계약 파일은 필드 의미와 validation을 소유하고, 이 모듈은 FL SSL runtime과
+실험 compatibility가 재사용하는 default profile facade를 소유한다.
 """
 
 from __future__ import annotations
@@ -10,7 +10,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from shared.src.config.training_default_values import (
+from methods.federated_ssl.training_default_values import (
     DEFAULT_TRAINING_OBJECTIVE_MAPPING,
     DEFAULT_TRAINING_SECURE_AGGREGATION_MAPPING,
     DEFAULT_TRAINING_SELECTION_MAPPING,

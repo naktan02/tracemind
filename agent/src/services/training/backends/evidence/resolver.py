@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import PseudoLabelEvidenceBackend

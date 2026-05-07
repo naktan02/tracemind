@@ -141,6 +141,9 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
             "margin_threshold": 0.03,
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
             "score_policy_name": "topk_mean_cosine",
             "score_top_k": 2,
             "pseudo_label_algorithm_name": "top1_confidence_only",
@@ -161,12 +164,7 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     assert config.pseudo_label_algorithm_name == "top1_confidence_only"
     assert config.acceptance_policy_name == "top1_confidence_only"
     assert config.privacy_guard_name == "noop"
-    assert config.extras == {
-        "training_backend.delta_scale_multiplier": 10.0,
-        "training_backend.max_abs_delta": 0.05,
-        "training_backend.minimum_effective_scale": 0.0001,
-        "temperature": 0.8,
-    }
+    assert config.extras == {"temperature": 0.8}
     assert config.to_mapping() == {
         "training_backend_name": "diagonal_scale_heuristic",
         "algorithm_profile_name": "prototype_pseudo_label_v1",
@@ -181,38 +179,37 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
         "pseudo_label_algorithm_name": "top1_confidence_only",
         "acceptance_policy_name": "top1_confidence_only",
         "privacy_guard_name": "noop",
-        "training_backend.delta_scale_multiplier": 10.0,
-        "training_backend.max_abs_delta": 0.05,
-        "training_backend.minimum_effective_scale": 0.0001,
         "temperature": 0.8,
     }
 
 
-def test_training_objective_config_can_expand_algorithm_profile_only() -> None:
+def test_training_objective_config_preserves_algorithm_profile_without_expansion() -> (
+    None
+):
     config = TrainingObjectiveConfig.from_mapping(
         {"algorithm_profile_name": "prototype_top1_confidence_v1"}
     )
 
     assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
     assert config.training_backend_name == "diagonal_scale_heuristic"
-    assert config.example_generation_backend_name == "prototype_rescore"
-    assert config.evidence_backend_name == "prototype_similarity_evidence"
-    assert config.pseudo_label_algorithm_name == "top1_confidence_only"
-    assert config.acceptance_policy_name == "top1_confidence_only"
-    assert config.margin_threshold == 0.0
+    assert config.example_generation_backend_name is None
+    assert config.evidence_backend_name is None
+    assert config.pseudo_label_algorithm_name is None
+    assert config.acceptance_policy_name is None
+    assert config.margin_threshold is None
 
 
-def test_training_objective_config_can_expand_lora_algorithm_profile() -> None:
+def test_training_objective_config_does_not_expand_lora_algorithm_profile() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {"algorithm_profile_name": "lora_pseudo_label_v1"}
     )
 
     assert config.algorithm_profile_name == "lora_pseudo_label_v1"
-    assert config.training_backend_name == "lora_classifier_trainer"
-    assert config.example_generation_backend_name == "prototype_rescore"
-    assert config.scorer_backend_name == "prototype_similarity"
-    assert config.pseudo_label_algorithm_name == "top1_margin_threshold"
-    assert config.privacy_guard_name == "noop"
+    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.example_generation_backend_name is None
+    assert config.scorer_backend_name is None
+    assert config.pseudo_label_algorithm_name is None
+    assert config.privacy_guard_name is None
 
 
 def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback() -> (
