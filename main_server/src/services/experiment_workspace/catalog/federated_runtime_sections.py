@@ -236,7 +236,9 @@ def build_privacy_guard_section(
         display_name="보호 장치",
         item_kind="privacy_guard",
         description="local update 보호 계층 registry.",
-        source_module_name="agent.src.services.training.execution.privacy_guard_service",
+        source_module_name=(
+            "agent.src.services.training.execution.privacy_guards.registry"
+        ),
         entries=list_shared_adapter_privacy_guard_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(

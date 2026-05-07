@@ -164,7 +164,7 @@
 - scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
   추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - prototype score policy 추가: `methods/prototype/scoring/`
-- privacy guard 추가: `training/execution/privacy_guard_service.py`
+- privacy guard 추가: `training/execution/privacy_guards/`
 
 FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
 않는다. 해당 method의 local objective, hook, selection/threshold 의미는

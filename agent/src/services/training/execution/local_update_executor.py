@@ -16,9 +16,13 @@ from agent.src.services.training.backends.training.base import (
 from agent.src.services.training.backends.training.registry import (
     build_shared_adapter_training_backend,
 )
-from agent.src.services.training.execution.privacy_guard_service import (
-    NoOpSharedAdapterPrivacyGuard,
+from agent.src.services.training.execution.privacy_guards.base import (
     SharedAdapterPrivacyGuard,
+)
+from agent.src.services.training.execution.privacy_guards.noop import (
+    NoOpSharedAdapterPrivacyGuard,
+)
+from agent.src.services.training.execution.privacy_guards.registry import (
     build_shared_adapter_privacy_guard,
 )
 from agent.src.services.training.selection.pseudo_label_service import (

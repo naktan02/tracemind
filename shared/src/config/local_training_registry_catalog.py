@@ -147,7 +147,10 @@ TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY = RegistryCatalogEntry(
 DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_clip_only",
     display_name="diagonal_scale_clip_only",
-    implementation_module="agent.src.services.training.execution.privacy_guard_service",
+    implementation_module=(
+        "agent.src.services.training.execution.privacy_guards."
+        "diagonal_scale_clip_only"
+    ),
     core_method_name="diagonal_scale_clip_only",
     family_name="privacy_guard",
     supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
@@ -155,7 +158,10 @@ DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
 CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_clip_only",
     display_name="classifier_head_clip_only",
-    implementation_module="agent.src.services.training.execution.privacy_guard_service",
+    implementation_module=(
+        "agent.src.services.training.execution.privacy_guards."
+        "classifier_head_clip_only"
+    ),
     core_method_name="classifier_head_clip_only",
     family_name="privacy_guard",
     supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
@@ -163,7 +169,9 @@ CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
 NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="noop",
     display_name="noop",
-    implementation_module="agent.src.services.training.execution.privacy_guard_service",
+    implementation_module=(
+        "agent.src.services.training.execution.privacy_guards.noop"
+    ),
     core_method_name="noop",
     family_name="privacy_guard",
     supported_adapter_kinds=(ANY_ADAPTER_KIND,),

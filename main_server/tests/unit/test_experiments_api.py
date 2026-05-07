@@ -230,7 +230,10 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     dp_clip = _find_item(privacy_guards, "classifier_head_clip_only")
     assert (
         dp_clip.source_of_truth
-        == "agent/src/services/training/execution/privacy_guard_service.py"
+        == (
+            "agent/src/services/training/execution/privacy_guards/"
+            "classifier_head_clip_only.py"
+        )
     )
 
     federated_presets = _find_section(

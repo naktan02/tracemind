@@ -211,7 +211,7 @@
 - [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
 - [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
 - [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
-- [agent/src/services/training/execution/privacy_guard_service.py](../../agent/src/services/training/execution/privacy_guard_service.py)
+- [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
 - [main_server/src/services/federation/rounds/families/registry.py](../../main_server/src/services/federation/rounds/families/registry.py)
