@@ -11,6 +11,7 @@ from methods.federated.aggregation.fedavg.lora_classifier_fedavg import (
     compute_lora_classifier_fedavg,
 )
 from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
     LoraClassifierState,
@@ -22,6 +23,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .diagonal_scale_defaults import AggregationConfigScalar
 from .models import AggregationResult
+from .registry import register_shared_adapter_aggregation_backend
 from .runtime_adapter import (
     require_base_adapter_kind,
     require_update_matches_base,
@@ -218,3 +220,28 @@ def _slug_ref_part(value: str) -> str:
 def _require_non_empty_str(value: str, *, field_name: str) -> None:
     if not value.strip():
         raise ValueError(f"{field_name} must not be empty.")
+
+
+@register_shared_adapter_aggregation_backend(
+    LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+    "fedavg",
+    "lora_classifier_fedavg",
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind}.fedavg",
+        display_name="fedavg",
+        implementation_module=compute_lora_classifier_fedavg.__module__,
+        core_method_name="fedavg",
+        family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+        supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
+        metadata={
+            "adapter_kind": LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+            "requires_inline_or_materialized_artifacts": True,
+        },
+    ),
+)
+def build_lora_classifier_fedavg_aggregation_backend(
+    overrides: Mapping[str, AggregationConfigScalar] | None,
+) -> LoraClassifierFedAvgAggregationService:
+    """registry용 LoRA-classifier FedAvg backend factory."""
+
+    return LoraClassifierFedAvgAggregationService.from_mapping(overrides)

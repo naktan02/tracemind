@@ -2,28 +2,11 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 
-from main_server.src.services.federation.rounds.aggregation.classifier_head import (
-    ClassifierHeadFedAvgAggregationService,
-)
-from main_server.src.services.federation.rounds.aggregation.diagonal_scale import (
-    DiagonalScaleAggregationService,
-)
-from main_server.src.services.federation.rounds.aggregation.lora_classifier import (
-    LoraClassifierFedAvgAggregationService,
-)
 from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationBackendFactory,
     SharedAdapterAggregationBackend,
-)
-from methods.federated.aggregation.registry import (
-    get_federated_aggregation_method_spec,
-)
-from shared.src.config.adapter_family_metadata import (
-    CLASSIFIER_HEAD_FAMILY_METADATA,
-    DIAGONAL_SCALE_FAMILY_METADATA,
-    LORA_CLASSIFIER_FAMILY_METADATA,
 )
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -36,35 +19,32 @@ _AGGREGATION_BACKEND_REGISTRY: dict[
     tuple[str, str],
     tuple[AggregationBackendFactory, RegistryCatalogEntry],
 ] = {}
-_DIAGONAL_SCALE_FEDAVG_SPEC = get_federated_aggregation_method_spec(
-    adapter_kind=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-    method_name="fedavg",
-)
-_CLASSIFIER_HEAD_FEDAVG_SPEC = get_federated_aggregation_method_spec(
-    adapter_kind=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
-    method_name="fedavg",
-)
-_LORA_CLASSIFIER_FEDAVG_SPEC = get_federated_aggregation_method_spec(
-    adapter_kind=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-    method_name="fedavg",
-)
 
 
 def register_shared_adapter_aggregation_backend(
     adapter_kind: str,
     *backend_names: str,
-    factory: AggregationBackendFactory,
     catalog_entry: RegistryCatalogEntry,
-) -> None:
-    """adapter family별 aggregation backend를 얇은 wiring registry에 등록한다."""
+    factory: AggregationBackendFactory | None = None,
+) -> (
+    Callable[[AggregationBackendFactory], AggregationBackendFactory]
+    | AggregationBackendFactory
+):
+    """aggregation backend factory 옆에서 runtime wiring을 등록한다."""
 
-    normalized_adapter_kind = adapter_kind.strip().lower()
-    registered_backend = (factory, catalog_entry)
-    for backend_name in backend_names:
-        normalized_backend_name = backend_name.strip().lower()
-        _AGGREGATION_BACKEND_REGISTRY[
-            (normalized_adapter_kind, normalized_backend_name)
-        ] = registered_backend
+    def _decorator(factory: AggregationBackendFactory) -> AggregationBackendFactory:
+        normalized_adapter_kind = adapter_kind.strip().lower()
+        registered_backend = (factory, catalog_entry)
+        for backend_name in backend_names:
+            normalized_backend_name = backend_name.strip().lower()
+            _AGGREGATION_BACKEND_REGISTRY[
+                (normalized_adapter_kind, normalized_backend_name)
+            ] = registered_backend
+        return factory
+
+    if factory is not None:
+        return _decorator(factory)
+    return _decorator
 
 
 def build_shared_adapter_aggregation_backend(
@@ -75,6 +55,7 @@ def build_shared_adapter_aggregation_backend(
 ) -> SharedAdapterAggregationBackend:
     """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
 
+    _ensure_builtin_shared_adapter_aggregation_backends_loaded()
     normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
     registered_backend = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
     if registered_backend is not None:
@@ -92,6 +73,7 @@ def list_registered_shared_adapter_aggregation_backends(
 ) -> tuple[tuple[str, str], ...]:
     """등록된 aggregation backend 키를 정렬된 tuple로 반환한다."""
 
+    _ensure_builtin_shared_adapter_aggregation_backends_loaded()
     normalized_adapter_kind = None
     if adapter_kind is not None:
         normalized_adapter_kind = adapter_kind.strip().lower()
@@ -106,57 +88,16 @@ def list_shared_adapter_aggregation_backend_catalog_entries() -> tuple[
 ]:
     """등록된 aggregation backend catalog entry를 canonical item 기준으로 반환한다."""
 
+    _ensure_builtin_shared_adapter_aggregation_backends_loaded()
     return dedupe_registry_catalog_entries(
         catalog_entry
         for _factory, catalog_entry in _AGGREGATION_BACKEND_REGISTRY.values()
     )
 
 
-register_shared_adapter_aggregation_backend(
-    DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-    "fedavg",
-    "diagonal_scale_fedavg",
-    factory=DiagonalScaleAggregationService.from_mapping,
-    catalog_entry=RegistryCatalogEntry(
-        item_name=f"{DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind}.fedavg",
-        display_name="fedavg",
-        implementation_module=_DIAGONAL_SCALE_FEDAVG_SPEC.implementation_module,
-        core_method_name=_DIAGONAL_SCALE_FEDAVG_SPEC.method_name,
-        family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-        supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
-        metadata={"adapter_kind": DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind},
-    ),
-)
-register_shared_adapter_aggregation_backend(
-    CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
-    "fedavg",
-    "classifier_head_fedavg",
-    factory=lambda overrides: ClassifierHeadFedAvgAggregationService(),
-    catalog_entry=RegistryCatalogEntry(
-        item_name=f"{CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind}.fedavg",
-        display_name="fedavg",
-        implementation_module=_CLASSIFIER_HEAD_FEDAVG_SPEC.implementation_module,
-        core_method_name=_CLASSIFIER_HEAD_FEDAVG_SPEC.method_name,
-        family_name=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
-        supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
-        metadata={"adapter_kind": CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind},
-    ),
-)
-register_shared_adapter_aggregation_backend(
-    LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-    "fedavg",
-    "lora_classifier_fedavg",
-    factory=LoraClassifierFedAvgAggregationService.from_mapping,
-    catalog_entry=RegistryCatalogEntry(
-        item_name=f"{LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind}.fedavg",
-        display_name="fedavg",
-        implementation_module=_LORA_CLASSIFIER_FEDAVG_SPEC.implementation_module,
-        core_method_name=_LORA_CLASSIFIER_FEDAVG_SPEC.method_name,
-        family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-        supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
-        metadata={
-            "adapter_kind": LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-            "requires_inline_or_materialized_artifacts": True,
-        },
-    ),
-)
+def _ensure_builtin_shared_adapter_aggregation_backends_loaded() -> None:
+    from main_server.src.services.federation.rounds.aggregation.builtin_loader import (
+        load_builtin_shared_adapter_aggregation_backends,
+    )
+
+    load_builtin_shared_adapter_aggregation_backends()

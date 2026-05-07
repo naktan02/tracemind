@@ -52,6 +52,8 @@
   - adapter family별 state/update/payload 해석과 aggregation wiring
 - `aggregation/`
   - server-owned aggregation backend registry와 methods core adapter
+  - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
+    decorator가 소유한다
   - `lora_classifier.fedavg`는 inline delta smoke 경로를 집계하고,
     artifact-ref-only update는 artifact materializer가 붙기 전까지 거부한다
 - `acceptance/`
@@ -61,7 +63,7 @@
 
 - aggregation backend 추가: server adapter/wiring은 `aggregation/`, 순수 method
   계산은 `methods/federated/aggregation/`
-- adapter family 추가: `families/` + `shared/src/contracts/adapter_contracts.py`
+- adapter family 추가: `families/` + `shared/src/contracts/adapter_contract_families/`
 - server runtime 기본 축 변경: `runtime/config.py`
 
 새 family나 backend를 추가할 때는

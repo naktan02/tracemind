@@ -11,6 +11,7 @@ from methods.federated.aggregation.fedavg.diagonal_scale_fedavg import (
     compute_diagonal_scale_fedavg,
 )
 from shared.src.config.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
     VectorAdapterState,
@@ -22,6 +23,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .diagonal_scale_defaults import DEFAULT_DIAGONAL_SCALE_FEDAVG_AGGREGATION_CONFIG
 from .models import AggregationConfig, AggregationResult
+from .registry import register_shared_adapter_aggregation_backend
 from .runtime_adapter import (
     require_base_adapter_kind,
     require_update_matches_base,
@@ -115,3 +117,25 @@ class DiagonalScaleAggregationService:
             aggregated_metrics=method_result.aggregated_metrics,
             update_count=method_result.update_count,
         )
+
+
+@register_shared_adapter_aggregation_backend(
+    DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    "fedavg",
+    "diagonal_scale_fedavg",
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind}.fedavg",
+        display_name="fedavg",
+        implementation_module=compute_diagonal_scale_fedavg.__module__,
+        core_method_name="fedavg",
+        family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+        supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
+        metadata={"adapter_kind": DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind},
+    ),
+)
+def build_diagonal_scale_fedavg_aggregation_backend(
+    overrides,
+) -> DiagonalScaleAggregationService:
+    """registry용 diagonal-scale FedAvg backend factory."""
+
+    return DiagonalScaleAggregationService.from_mapping(overrides)

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -14,6 +14,7 @@ from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
     compute_classifier_head_fedavg,
 )
 from shared.src.config.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
     ClassifierHeadState,
@@ -23,6 +24,8 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
+from .diagonal_scale_defaults import AggregationConfigScalar
+from .registry import register_shared_adapter_aggregation_backend
 from .runtime_adapter import (
     require_base_adapter_kind,
     require_update_matches_base,
@@ -113,3 +116,26 @@ class ClassifierHeadFedAvgAggregationService:
             aggregated_metrics=method_result.aggregated_metrics,
             update_count=method_result.update_count,
         )
+
+
+@register_shared_adapter_aggregation_backend(
+    CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    "fedavg",
+    "classifier_head_fedavg",
+    catalog_entry=RegistryCatalogEntry(
+        item_name=f"{CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind}.fedavg",
+        display_name="fedavg",
+        implementation_module=compute_classifier_head_fedavg.__module__,
+        core_method_name="fedavg",
+        family_name=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+        supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
+        metadata={"adapter_kind": CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind},
+    ),
+)
+def build_classifier_head_fedavg_aggregation_backend(
+    overrides: Mapping[str, AggregationConfigScalar] | None,
+) -> ClassifierHeadFedAvgAggregationService:
+    """registry용 classifier-head FedAvg backend factory."""
+
+    del overrides
+    return ClassifierHeadFedAvgAggregationService()
