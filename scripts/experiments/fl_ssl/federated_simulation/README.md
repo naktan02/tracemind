@@ -45,8 +45,11 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
    - validation scoring과 training example 재구성
 10. `adapters/sharding.py`
    - `methods/federated/shard_policy/`의 row adapter
-11. `io/artifacts.py`
-   - selection dump, manifest, prototype pack 저장
+11. `io/`
+   - `artifacts.py`: 기존 import path를 유지하는 compatibility facade
+   - `run_artifact_writer.py`: prototype pack과 model manifest 저장
+   - `selection_diagnostics_writer.py`: selection diagnostics 저장
+   - `simulation_report_builder.py`: simulation report payload 조립과 저장
 
 ## 파일 역할
 
@@ -59,7 +62,7 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
 - `adapters/`
   - method descriptor, round task config, sharding, validation scorer 연결
 - `io/`
-  - JSONL row load, selection dump, manifest/prototype/report 저장
+  - JSONL row load, artifact facade, artifact writer, diagnostics writer, report builder
 
 `flow/`는 FL simulation 전용이다. 중앙 SSL과 공유될 수 있는 algorithm core나
 contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`, `shared/`,
