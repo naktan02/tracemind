@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import copy
 import random
 from collections.abc import Iterator, Mapping
 from typing import Any
@@ -11,15 +10,17 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from methods.ssl.base import QuerySslAlgorithm
+from methods.adaptation.common.checkpointing import BestModelCheckpoint
+from methods.adaptation.common.classification_evaluation import (
+    build_classification_evaluation_report,
+)
 from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
 )
+from methods.ssl.base import QuerySslAlgorithm
 from shared.src.domain.services.classification_report import (
-    build_confusion_matrix,
     safe_divide,
-    summarize_per_category,
 )
 
 from .modeling import LoraTextClassifier
@@ -76,46 +77,16 @@ def evaluate_classifier(
             top_1_probs.extend(top_values[:, 0].cpu().tolist())
             margins.extend((top_values[:, 0] - top_values[:, 1]).cpu().tolist())
 
-    correct = sum(
-        1
-        for actual, predicted in zip(actual_labels, predicted_labels, strict=True)
-        if actual == predicted
-    )
-    confusion_matrix = build_confusion_matrix(
+    return build_classification_evaluation_report(
         categories=categories,
         actual_labels=actual_labels,
         predicted_labels=predicted_labels,
-    )
-    per_category = summarize_per_category(
-        categories=categories,
-        actual_labels=actual_labels,
-        predicted_labels=predicted_labels,
-        primary_values=true_probs,
+        true_probs=true_probs,
         top_1_values=top_1_probs,
         margins=margins,
-        primary_metric_key="mean_true_label_probability",
-        top_1_metric_key="mean_top_1_probability",
+        total_loss=total_loss,
+        total_rows=total_rows,
     )
-    return {
-        "rows_total": total_rows,
-        "loss": round(safe_divide(total_loss, total_rows), 6),
-        "accuracy_top_1": round(safe_divide(correct, total_rows), 6),
-        "correct_top_1": correct,
-        "mean_true_label_probability": round(
-            safe_divide(sum(true_probs), len(true_probs)),
-            6,
-        ),
-        "mean_top_1_probability": round(
-            safe_divide(sum(top_1_probs), len(top_1_probs)),
-            6,
-        ),
-        "mean_margin_top1_top2": round(
-            safe_divide(sum(margins), len(margins)),
-            6,
-        ),
-        "confusion_matrix": confusion_matrix,
-        "per_category": per_category,
-    }
 
 
 def build_optimizer(
@@ -177,9 +148,7 @@ def train_classifier(
     )
     criterion = nn.CrossEntropyLoss()
     history: list[dict[str, Any]] = []
-    best_state_dict: dict[str, torch.Tensor] | None = None
-    best_selection_report: dict[str, Any] | None = None
-    best_accuracy = -1.0
+    best_checkpoint = BestModelCheckpoint()
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -232,18 +201,12 @@ def train_classifier(
             flush=True,
         )
 
-        accuracy = float(selection_report["accuracy_top_1"])
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_state_dict = copy.deepcopy(model.state_dict())
-            best_selection_report = selection_report
+        best_checkpoint.update(model=model, selection_report=selection_report)
 
-    if best_state_dict is None or best_selection_report is None:
-        raise RuntimeError(
-            "LoRA classifier training did not produce a best checkpoint."
-        )
-
-    model.load_state_dict(best_state_dict)
+    best_selection_report = best_checkpoint.restore_best(
+        model=model,
+        error_message="LoRA classifier training did not produce a best checkpoint.",
+    )
     return model, history, best_selection_report
 
 
@@ -365,9 +328,7 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
     history: list[dict[str, Any]] = []
-    best_state_dict: dict[str, torch.Tensor] | None = None
-    best_selection_report: dict[str, Any] | None = None
-    best_accuracy = -1.0
+    best_checkpoint = BestModelCheckpoint()
 
     for epoch in range(1, epochs + 1):
         model.train()
@@ -466,18 +427,14 @@ def train_query_ssl_classifier(
             flush=True,
         )
 
-        accuracy = float(selection_report["accuracy_top_1"])
-        if accuracy > best_accuracy:
-            best_accuracy = accuracy
-            best_state_dict = copy.deepcopy(model.state_dict())
-            best_selection_report = selection_report
+        best_checkpoint.update(model=model, selection_report=selection_report)
 
-    if best_state_dict is None or best_selection_report is None:
-        raise RuntimeError(
+    best_selection_report = best_checkpoint.restore_best(
+        model=model,
+        error_message=(
             f"{algorithm.algorithm_name} training did not produce a best checkpoint."
-        )
-
-    model.load_state_dict(best_state_dict)
+        ),
+    )
     return model, history, best_selection_report
 
 
