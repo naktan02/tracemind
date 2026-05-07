@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -10,7 +11,14 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.training.backends.training.lora_classifier import (
+    config as lora_config,
+)
+from agent.src.services.training.backends.training.lora_classifier import (
+    row_extractor,
+)
 from agent.src.services.training.backends.training.lora_classifier_trainer import (
+    LoraClassifierTrainArtifacts,
     LoraClassifierTrainingBackend,
 )
 from agent.src.services.training.backends.training.registry import (
@@ -34,6 +42,31 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
+
+
+class _RecordingLoraTrainExecutor:
+    def __init__(self) -> None:
+        self.label_schema: tuple[str, ...] | None = None
+
+    def train(
+        self,
+        *,
+        training_task: TrainingTask,
+        model_manifest: ModelManifest,
+        rows: Sequence[row_extractor.LoraClassifierTrainingRow],
+        label_schema: tuple[str, ...],
+        config: lora_config.LoraClassifierTrainingBackendConfig,
+        created_at: datetime,
+    ) -> LoraClassifierTrainArtifacts:
+        del training_task, model_manifest, rows, config, created_at
+        self.label_schema = label_schema
+        return LoraClassifierTrainArtifacts(
+            lora_delta_artifact_ref="agent-local://custom/lora_delta",
+            classifier_head_delta_artifact_ref=(
+                "agent-local://custom/classifier_head_delta"
+            ),
+            delta_l2_norm=2.5,
+        )
 
 
 def _build_manifest() -> ModelManifest:
@@ -178,6 +211,28 @@ def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None
             accepted_examples=(_example(raw_text=None, translated_text=None),),
             created_at=datetime(2026, 4, 21, tzinfo=timezone.utc),
         )
+
+
+def test_lora_classifier_train_executor_receives_resolved_label_schema() -> None:
+    executor = _RecordingLoraTrainExecutor()
+    backend = LoraClassifierTrainingBackend(
+        train_executor=executor,
+    )
+
+    update = backend.build_update(
+        training_task=_build_task(),
+        model_manifest=_build_manifest(),
+        accepted_examples=(_example(),),
+        created_at=datetime(2026, 4, 21, 12, 30, tzinfo=timezone.utc),
+    )
+
+    assert executor.label_schema == ("anxiety", "depression", "normal")
+    assert update.label_schema == ["anxiety", "depression", "normal"]
+    assert update.lora_delta_artifact_ref == "agent-local://custom/lora_delta"
+    assert update.classifier_head_delta_artifact_ref == (
+        "agent-local://custom/classifier_head_delta"
+    )
+    assert update.l2_norm() == 2.5
 
 
 def test_lora_classifier_training_backend_is_registered() -> None:
