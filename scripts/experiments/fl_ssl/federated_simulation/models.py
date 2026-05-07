@@ -7,6 +7,7 @@ from pathlib import Path
 from typing import Any, Protocol
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -275,3 +276,4 @@ class SimulationRunRequest:
     ssl_method_config: FederatedSslMethodConfig
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None
     report_config: FederatedReportConfig | None = None
+    local_update_profile: LocalUpdateProfile | None = None

@@ -13,13 +13,22 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimeCapabilities,
     FederatedSslServerStepSpec,
 )
+from methods.federated_ssl.compatibility import (
+    FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_profile_compatibility,
+)
 from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+)
+from methods.federated_ssl.local_update_profile import (
+    LocalUpdateProfile,
+    require_training_objective_matches_local_update_profile,
 )
 from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
     resolve_federated_ssl_method_descriptor,
 )
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
 def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
@@ -122,4 +131,80 @@ def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:
         FederatedSslRequiredViews(
             view_names=("single_view", "single_view"),
             view_generator_name="training_example_backend",
+        )
+
+
+def test_local_update_profile_validates_training_objective_drift() -> None:
+    profile = LocalUpdateProfile.from_mapping(
+        {
+            "algorithm_profile_name": "prototype_pseudo_label_v1",
+            "training_scope": "adapter_only",
+            "training_backend_name": "diagonal_scale_heuristic",
+            "confidence_threshold": 0.6,
+            "margin_threshold": 0.02,
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "score_top_k": None,
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "diagonal_scale_clip_only",
+            "evidence_backend_temperature": 1.0,
+        }
+    )
+    objective = TrainingObjectiveConfig.from_mapping(
+        {
+            **profile.to_training_objective_mapping(),
+            "adapter_family_specific.extra": "kept",
+        }
+    )
+
+    require_training_objective_matches_local_update_profile(
+        objective_config=objective,
+        local_update_profile=profile,
+    )
+
+    drifted_objective = TrainingObjectiveConfig.from_mapping(
+        {
+            **profile.to_training_objective_mapping(),
+            "privacy_guard_name": "noop",
+        }
+    )
+    with pytest.raises(ValueError, match="local_update_profile"):
+        require_training_objective_matches_local_update_profile(
+            objective_config=drifted_objective,
+            local_update_profile=profile,
+        )
+
+
+def test_fl_profile_compatibility_rejects_adapter_family_drift() -> None:
+    profile = LocalUpdateProfile.from_mapping(
+        {
+            "algorithm_profile_name": "prototype_pseudo_label_v1",
+            "training_scope": "adapter_only",
+            "training_backend_name": "diagonal_scale_heuristic",
+            "confidence_threshold": 0.6,
+            "margin_threshold": 0.02,
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "score_top_k": None,
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "diagonal_scale_clip_only",
+            "evidence_backend_temperature": 1.0,
+        }
+    )
+
+    with pytest.raises(ValueError, match="local_update_profile.*round_runtime_profile"):
+        validate_federated_ssl_profile_compatibility(
+            FederatedSslProfileCompatibilityContext(
+                method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+                local_update_profile=profile,
+                local_update_adapter_kind="diagonal_scale",
+                round_adapter_family_name="lora_classifier",
+                round_aggregation_backend_name="fedavg",
+            )
         )

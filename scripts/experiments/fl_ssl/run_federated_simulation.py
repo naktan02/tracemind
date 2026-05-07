@@ -10,6 +10,10 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.local_update_profile import (
+    LocalUpdateProfile,
+    require_training_objective_matches_local_update_profile,
+)
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -43,9 +47,18 @@ def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:
     return raw
 
 
-def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
+def _build_training_task_config(
+    cfg: DictConfig,
+    *,
+    local_update_profile: LocalUpdateProfile,
+) -> FederatedTrainingTaskConfig:
     objective_config = _to_plain_dict(cfg.objective)
     selection_policy = _to_plain_dict(cfg.selection_policy)
+    training_objective = TrainingObjectiveConfig.from_mapping(objective_config)
+    require_training_objective_matches_local_update_profile(
+        objective_config=training_objective,
+        local_update_profile=local_update_profile,
+    )
     return build_federated_training_task_config(
         local_epochs=int(cfg.local_epochs),
         batch_size=int(cfg.batch_size),
@@ -55,7 +68,7 @@ def _build_training_task_config(cfg: DictConfig) -> FederatedTrainingTaskConfig:
         gradient_clip_norm=(
             None if cfg.gradient_clip_norm is None else float(cfg.gradient_clip_norm)
         ),
-        objective_config=TrainingObjectiveConfig.from_mapping(objective_config),
+        objective_config=training_objective,
         selection_policy=TrainingSelectionPolicy.from_mapping(selection_policy),
     )
 
@@ -76,7 +89,13 @@ def build_simulation_request_from_config(
 ) -> SimulationRunRequest:
     embedding_spec = instantiate(cfg.embedding.spec)
     prototype_build_strategy = instantiate(cfg.prototype_builder)
-    training_task_config = _build_training_task_config(cfg.training_task)
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        _to_plain_dict(cfg.local_update_profile)
+    )
+    training_task_config = _build_training_task_config(
+        cfg.training_task,
+        local_update_profile=local_update_profile,
+    )
     round_runtime_config = FederatedRoundRuntimeConfig(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
@@ -95,7 +114,7 @@ def build_simulation_request_from_config(
         seed=int(cfg.seed if seed is None else seed),
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
-        training_scope=str(cfg.local_update_profile.training_scope),
+        training_scope=local_update_profile.training_scope,
         round_runtime_config=round_runtime_config,
         prototype_build_strategy=prototype_build_strategy,
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
@@ -112,6 +131,7 @@ def build_simulation_request_from_config(
             **_to_plain_dict(cfg.client_pool_split)
         ),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
+        local_update_profile=local_update_profile,
     )
 
 
