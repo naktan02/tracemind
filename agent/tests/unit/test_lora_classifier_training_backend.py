@@ -11,17 +11,19 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.backends.training.lora_classifier import (
+from methods.adaptation.lora_classifier import (
     config as lora_config,
 )
-from agent.src.services.training.backends.training.lora_classifier import (
+from methods.adaptation.lora_classifier import (
     row_extractor,
 )
-from agent.src.services.training.backends.training.lora_classifier_trainer import (
+from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainArtifacts,
+)
+from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from agent.src.services.training.backends.training.registry import (
+from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
     list_registered_shared_adapter_training_backend_names,
     list_shared_adapter_training_backend_catalog_entries,

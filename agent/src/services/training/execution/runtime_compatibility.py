@@ -17,17 +17,17 @@ from agent.src.services.training.backends.evidence.resolver import (
 from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
 )
-from agent.src.services.training.backends.training.base import (
-    SharedAdapterTrainingBackend,
-)
-from agent.src.services.training.backends.training.registry import (
-    build_shared_adapter_training_backend,
-)
 from agent.src.services.training.execution.privacy_guards.base import (
     SharedAdapterPrivacyGuard,
 )
 from agent.src.services.training.execution.privacy_guards.registry import (
     build_shared_adapter_privacy_guard,
+)
+from methods.adaptation.local_update_backend import (
+    SharedAdapterTrainingBackend,
+)
+from methods.adaptation.local_update_registry import (
+    build_shared_adapter_training_backend,
 )
 from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingTask

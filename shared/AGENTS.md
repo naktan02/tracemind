@@ -23,6 +23,9 @@ domain entity의 source of truth다.
   테스트, 문서까지 같은 턴에서 닫는다.
 - 실험 편의를 위한 로직을 `shared`에 넣지 않는다. 안정적으로 공유되는 규칙만
   둔다.
+- 방법론 구현, 실행 profile, runtime catalog, training backend, server policy는
+  `shared`에 두지 않는다. adapter family 이름이 붙은 파일도 payload 계약일 때만
+  허용한다.
 
 ## 테스트 규칙
 

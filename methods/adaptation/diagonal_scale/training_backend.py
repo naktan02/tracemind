@@ -14,6 +14,10 @@ from methods.adaptation.diagonal_scale.heuristic_update import (
     build_diagonal_scale_heuristic_config,
     build_diagonal_scale_heuristic_update,
 )
+from methods.adaptation.local_update_backend import AcceptedTrainingExample
+from methods.adaptation.local_update_registry import (
+    register_shared_adapter_training_backend,
+)
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
@@ -31,14 +35,11 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from .base import AcceptedTrainingExample
-from .registry import register_shared_adapter_training_backend
-
 DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_heuristic",
     display_name="diagonal_scale_heuristic",
     implementation_module=(
-        "agent.src.services.training.backends.training.diagonal_scale_heuristic"
+        "methods.adaptation.diagonal_scale.training_backend"
     ),
     core_method_name="diagonal_scale_heuristic",
     family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,

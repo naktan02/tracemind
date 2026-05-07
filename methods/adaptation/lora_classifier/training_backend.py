@@ -5,7 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from agent.src.services.training.backends.training.base import AcceptedTrainingExample
+from methods.adaptation.local_update_backend import AcceptedTrainingExample
+from methods.adaptation.local_update_registry import (
+    register_shared_adapter_training_backend,
+)
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainExecutor,
 )
@@ -26,7 +29,6 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from ..registry import register_shared_adapter_training_backend
 from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
@@ -39,7 +41,7 @@ LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     display_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     implementation_module=(
-        "agent.src.services.training.backends.training.lora_classifier.backend"
+        "methods.adaptation.lora_classifier.training_backend"
     ),
     core_method_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,

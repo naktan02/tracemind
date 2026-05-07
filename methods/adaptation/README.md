@@ -2,9 +2,16 @@
 
 `methods/adaptation/`은 학습 adapter 적용 core를 둔다.
 
+local update backend의 concrete 구현은 `methods/adaptation/<family>/training_backend.py`
+에 둔다. `agent/src/services/training/backends/training/`은 compatibility facade만
+남기며, 새 adaptation family나 backend를 추가하기 위해 agent training 폴더에
+method-specific 파일을 만들지 않는다.
+
 ## 하위 패키지 지도
 
 - `diagonal_scale/`: diagonal-scale heuristic local update 계산 core
+- `local_update_backend.py`: agent가 호출하는 local update backend port
+- `local_update_registry.py`: method-owned local update backend lookup/catalog facade
 - `peft/`: PEFT adapter builder protocol과 registry
 - `lora/`: LoRA/RSLoRA builder core
 - `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head

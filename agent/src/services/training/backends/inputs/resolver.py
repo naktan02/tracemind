@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from agent.src.services.training.backends.training.base import (
+from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
 )
-from agent.src.services.training.backends.training.registry import (
+from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
 from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE

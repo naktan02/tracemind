@@ -1,4 +1,4 @@
-"""Training backend base types."""
+"""Local update backend protocol for adaptation methods."""
 
 from __future__ import annotations
 
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 
 class AcceptedTrainingExample(Protocol):
-    """로컬 학습 backend가 필요로 하는 최소 accepted example shape."""
+    """Local update backend가 필요로 하는 accepted example 최소 surface."""
 
     update_embedding: list[float]
     update_scored_event: "ScoredEvent"
@@ -32,7 +32,7 @@ class AcceptedTrainingExample(Protocol):
 
 
 class SharedAdapterTrainingBackend(Protocol):
-    """채택된 로컬 예시를 shared adapter update로 바꾸는 backend 인터페이스."""
+    """Accepted local examples를 shared adapter update로 바꾸는 backend."""
 
     backend_name: str
     payload_format: str

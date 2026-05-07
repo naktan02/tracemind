@@ -140,17 +140,14 @@
 - `training/acceptance_policies/`
   - evidence 기반 pseudo-label acceptance 정책 구현
 - `training/backends/training/`
-  - adapter update 생성 runtime adapter와 registry wiring
-  - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
-    decorator가 소유한다
-  - method identity를 소유하지 않는다. 새 FL SSL method 때문에 여기에 method별
-    backend 파일을 늘리면 안 되고, 필요한 경우 `methods/`의 local update core를
-    실행하는 capability adapter만 둔다.
+  - methods-owned local update backend registry compatibility facade
+  - concrete backend 파일을 두지 않는다
+  - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core
 - `methods/adaptation/lora_classifier/`
-  - LoRA + classifier scaffold core. Agent의 `lora_classifier_trainer`는
-    raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
+  - LoRA + classifier scaffold와 local update backend core
+  - raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 
 ## 전략 추가 시 출발점
 

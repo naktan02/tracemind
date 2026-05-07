@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from agent.src.services.training.backends.training.base import AcceptedTrainingExample
+from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainExecutor,

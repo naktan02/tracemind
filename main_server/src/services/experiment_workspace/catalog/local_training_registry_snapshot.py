@@ -28,7 +28,7 @@ DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_heuristic",
     display_name="diagonal_scale_heuristic",
     implementation_module=(
-        "agent.src.services.training.backends.training.diagonal_scale_heuristic"
+        "methods.adaptation.diagonal_scale.training_backend"
     ),
     core_method_name="diagonal_scale_heuristic",
     family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
@@ -47,7 +47,7 @@ LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="lora_classifier_trainer",
     display_name="lora_classifier_trainer",
     implementation_module=(
-        "agent.src.services.training.backends.training.lora_classifier_trainer"
+        "methods.adaptation.lora_classifier.training_backend"
     ),
     core_method_name="lora_classifier_trainer",
     family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,

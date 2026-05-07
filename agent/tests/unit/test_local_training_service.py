@@ -17,7 +17,7 @@ from agent.src.services.inference.scoring_backends.registry import (
 from agent.src.services.training.backends.inputs import (
     registry as training_example_backend_registry,
 )
-from agent.src.services.training.backends.training.registry import (
+from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
 from agent.src.services.training.execution.local_training_service import (

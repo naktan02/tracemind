@@ -8,9 +8,6 @@ from datetime import datetime
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.backends.training.base import (
-    SharedAdapterTrainingBackend,
-)
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
 )
@@ -30,6 +27,9 @@ from agent.src.services.training.execution.runtime_compatibility import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
     PseudoLabelSelectionService,
+)
+from methods.adaptation.local_update_backend import (
+    SharedAdapterTrainingBackend,
 )
 from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
 from shared.src.contracts.model_contracts import ModelManifest

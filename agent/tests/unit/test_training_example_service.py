@@ -25,7 +25,7 @@ from agent.src.services.training.backends.inputs.prototype_rescore import (
 from agent.src.services.training.backends.inputs.weak_strong_pair import (
     WeakStrongPairTrainingExampleBackend,
 )
-from agent.src.services.training.backends.training.registry import (
+from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
 from agent.src.services.training.examples.service import (

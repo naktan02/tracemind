@@ -96,20 +96,22 @@
 보통 수정 파일:
 
 - [methods/adaptation/](../../methods/adaptation/)
-- [agent/src/services/training/backends/training/registry.py](../../agent/src/services/training/backends/training/registry.py)
+- [methods/adaptation/local_update_backend.py](../../methods/adaptation/local_update_backend.py)
+- [methods/adaptation/local_update_registry.py](../../methods/adaptation/local_update_registry.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - 기본값을 바꿀 때만 [methods/federated_ssl/training_defaults.py](../../methods/federated_ssl/training_defaults.py)
 
 작업 순서:
 
 1. 재사용 가능한 update 계산은 `methods/adaptation/<adapter_family>/`에 추가한다.
-2. agent에는 method-specific 파일을 추가하지 말고 local runtime capability adapter만 둔다.
-3. `SharedAdapterTrainingBackend` Protocol을 만족하는 adapter가 필요하면 capability 이름을 쓴다.
-4. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
-5. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
-6. 구현 module 옆 decorator와 convention/config 기반 import trigger로 registry에 연결한다.
-7. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
-8. 기본값까지 바꾸려면 Hydra profile source of truth와 compatibility facade 범위를 확인한다.
+2. concrete backend는 `methods/adaptation/<family>/training_backend.py`에 둔다.
+3. agent에는 method-specific 파일을 추가하지 말고 local runtime capability adapter만 둔다.
+4. `SharedAdapterTrainingBackend` Protocol을 만족하는 adapter가 필요하면 capability 이름을 쓴다.
+5. backend가 objective별 설정을 읽어야 하면 `from_objective_config(...)`를 둔다.
+6. backend instance 재사용이 설정에 따라 달라지면 `matches_objective_config(...)`를 구현한다.
+7. 구현 module 옆 decorator와 convention/config 기반 import trigger로 registry에 연결한다.
+8. 새 backend가 기존 example/scorer/privacy 조합과 다르면 compatibility를 확인한다.
+9. 기본값까지 바꾸려면 Hydra profile source of truth와 compatibility facade 범위를 확인한다.
 
 보통 건드리지 않는 것:
 
@@ -210,7 +212,7 @@
 
 - [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
 - [shared/src/contracts/adapter_family_metadata.py](../../shared/src/contracts/adapter_family_metadata.py)
-- [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
+- [methods/adaptation/<family>/training_backend.py](../../methods/adaptation/)
 - [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)

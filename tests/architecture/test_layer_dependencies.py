@@ -251,22 +251,38 @@ def test_local_training_service_uses_update_executor_not_concrete_backends() -> 
         / "local_training_service.py"
     )
     imports = _collect_absolute_imports(path)
-    allowed_backend_imports = {
-        "agent.src.services.training.backends.training.base",
-    }
     violations = sorted(
         imported_module
         for imported_module in imports
         if imported_module.startswith(
             "agent.src.services.training.backends.training."
         )
-        and imported_module not in allowed_backend_imports
     )
     assert not violations, (
         "LocalTrainingService는 selection orchestration만 맡고 update 생성은 "
         "LocalUpdateExecutor port를 통해 호출한다. concrete training backend나 "
         "training backend registry를 직접 import하지 않는다.\n"
         f"{chr(10).join(f'- {module}' for module in violations)}"
+    )
+
+
+def test_agent_training_backend_package_is_registry_facade_only() -> None:
+    package_root = AGENT_SRC / "services" / "training" / "backends" / "training"
+    allowed_files = {
+        package_root / "__init__.py",
+        package_root / "registry.py",
+    }
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if path not in allowed_files
+    ]
+
+    assert not violations, (
+        "agent training backend package는 methods-owned local update backend registry "
+        "facade만 둔다. concrete local update backend는 "
+        "methods/adaptation/<family>/training_backend.py에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 

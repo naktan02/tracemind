@@ -203,7 +203,7 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     )
     assert (
         diagonal_training.source_of_truth
-        == "agent/src/services/training/backends/training/diagonal_scale_heuristic.py"
+        == "methods/adaptation/diagonal_scale/training_backend.py"
     )
     assert diagonal_training.metadata["payload_format"] == "diagonal_scale_update"
     lora_training = _find_item(training_backends, "lora_classifier_trainer")

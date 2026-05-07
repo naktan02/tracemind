@@ -9,12 +9,12 @@
 - `VectorAdapterDelta` 생성
 - diagonal-scale update metric 추출
 - backend-specific objective extras를 method config로 정규화
+- `diagonal_scale_heuristic` local update backend registration
 
 ## 제외
 
 - agent-local query buffer와 raw text 접근
 - local artifact 저장
-- training backend registry wiring
 - privacy guard, secure update codec, update upload
 
 위 runtime glue는 `agent/src/services/training/`과 `agent/src/services/federation/`에
