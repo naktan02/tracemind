@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
+from methods.ssl.hooks.consistency import CrossEntropyConsistencyLossHook
 from methods.ssl.hooks.masking import FixedThresholdMaskingHook
 from methods.ssl.hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
@@ -69,6 +70,25 @@ def test_fixed_threshold_masking_hook_builds_usb_style_mask() -> None:
 
     assert hook.hook_name == "fixed_threshold"
     assert torch.equal(mask, torch.tensor([1.0, 0.0], dtype=torch.float32))
+
+
+def test_cross_entropy_consistency_hook_applies_masked_ce() -> None:
+    import torch
+
+    logits = torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32)
+    targets = torch.tensor([0, 0], dtype=torch.long)
+    mask = torch.tensor([1.0, 0.0], dtype=torch.float32)
+    hook = CrossEntropyConsistencyLossHook()
+
+    loss = hook.compute_loss(logits=logits, targets=targets, mask=mask)
+    expected = torch.nn.functional.cross_entropy(
+        logits,
+        targets,
+        reduction="none",
+    )
+
+    assert hook.hook_name == "cross_entropy_consistency"
+    assert torch.isclose(loss, (expected * mask).mean())
 
 
 def test_margin_threshold_selection_hook_requires_margin_cutoff() -> None:
