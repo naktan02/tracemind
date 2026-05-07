@@ -2,18 +2,14 @@
 
 from __future__ import annotations
 
-from shared.src.config.local_training_registry_catalog import (
-    DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
-    LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
-)
+from collections.abc import Callable
+
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
 
 from .base import SharedAdapterTrainingBackend, TrainingBackendFactory
-from .diagonal_scale_heuristic import DiagonalScaleHeuristicTrainingBackend
-from .lora_classifier_trainer import LoraClassifierTrainingBackend
 
 _TRAINING_BACKEND_REGISTRY: dict[
     str,
@@ -23,14 +19,25 @@ _TRAINING_BACKEND_REGISTRY: dict[
 
 def register_shared_adapter_training_backend(
     *backend_names: str,
-    factory: TrainingBackendFactory,
     catalog_entry: RegistryCatalogEntry,
-) -> None:
-    """얇은 wiring registry에 backend factory를 등록한다."""
+    factory: TrainingBackendFactory | None = None,
+) -> (
+    Callable[[TrainingBackendFactory], TrainingBackendFactory]
+    | TrainingBackendFactory
+):
+    """training backend factory 옆에서 runtime wiring을 등록한다."""
 
-    registered_backend = (factory, catalog_entry)
-    for backend_name in backend_names:
-        _TRAINING_BACKEND_REGISTRY[backend_name.strip().lower()] = registered_backend
+    def _decorator(factory: TrainingBackendFactory) -> TrainingBackendFactory:
+        registered_backend = (factory, catalog_entry)
+        for backend_name in backend_names:
+            _TRAINING_BACKEND_REGISTRY[backend_name.strip().lower()] = (
+                registered_backend
+            )
+        return factory
+
+    if factory is not None:
+        return _decorator(factory)
+    return _decorator
 
 
 def build_shared_adapter_training_backend(
@@ -40,6 +47,7 @@ def build_shared_adapter_training_backend(
 ) -> SharedAdapterTrainingBackend:
     """backend 이름으로 로컬 학습 backend를 생성한다."""
 
+    _ensure_builtin_shared_adapter_training_backends_loaded()
     normalized_name = backend_name.strip().lower()
     registered_backend = _TRAINING_BACKEND_REGISTRY.get(normalized_name)
     if registered_backend is not None:
@@ -51,6 +59,7 @@ def build_shared_adapter_training_backend(
 def list_registered_shared_adapter_training_backend_names() -> tuple[str, ...]:
     """등록된 로컬 training backend 이름을 정렬된 tuple로 반환한다."""
 
+    _ensure_builtin_shared_adapter_training_backends_loaded()
     return tuple(sorted(_TRAINING_BACKEND_REGISTRY))
 
 
@@ -59,19 +68,15 @@ def list_shared_adapter_training_backend_catalog_entries() -> tuple[
 ]:
     """등록된 training backend catalog entry를 canonical item 기준으로 반환한다."""
 
+    _ensure_builtin_shared_adapter_training_backends_loaded()
     return dedupe_registry_catalog_entries(
         catalog_entry for _factory, catalog_entry in _TRAINING_BACKEND_REGISTRY.values()
     )
 
 
-register_shared_adapter_training_backend(
-    "diagonal_scale_heuristic",
-    "synthetic_vector_adapter",
-    factory=DiagonalScaleHeuristicTrainingBackend.from_objective_config,
-    catalog_entry=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
-)
-register_shared_adapter_training_backend(
-    "lora_classifier_trainer",
-    factory=LoraClassifierTrainingBackend.from_objective_config,
-    catalog_entry=LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
-)
+def _ensure_builtin_shared_adapter_training_backends_loaded() -> None:
+    from agent.src.services.training.backends.training.builtin_loader import (
+        load_builtin_shared_adapter_training_backends,
+    )
+
+    load_builtin_shared_adapter_training_backends()

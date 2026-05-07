@@ -7,6 +7,9 @@ from datetime import datetime
 
 from agent.src.services.training.backends.training.base import AcceptedTrainingExample
 from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
+from shared.src.config.local_training_registry_catalog import (
+    LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+)
 from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
     SharedAdapterUpdatePayload,
@@ -20,6 +23,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
+from ..registry import register_shared_adapter_training_backend
 from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
@@ -93,3 +97,15 @@ class LoraClassifierTrainingBackend:
         return self.config == build_lora_classifier_training_backend_config(
             objective_config
         )
+
+
+@register_shared_adapter_training_backend(
+    "lora_classifier_trainer",
+    catalog_entry=LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+)
+def build_lora_classifier_training_backend(
+    objective_config: TrainingObjectiveConfig | None,
+) -> LoraClassifierTrainingBackend:
+    """registry용 LoRA-classifier training backend factory."""
+
+    return LoraClassifierTrainingBackend.from_objective_config(objective_config)

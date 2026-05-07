@@ -134,6 +134,8 @@
   - evidence 기반 pseudo-label acceptance 정책 구현
 - `training/backends/training/`
   - adapter update 생성 backend adapter와 registry wiring
+  - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
+    decorator가 소유한다
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core
 - `methods/adaptation/lora_classifier/`

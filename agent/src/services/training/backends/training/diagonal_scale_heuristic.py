@@ -15,6 +15,9 @@ from shared.src.config.diagonal_scale_defaults import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
     DiagonalScaleHeuristicTrainingBackendConfig,
 )
+from shared.src.config.local_training_registry_catalog import (
+    DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+)
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
@@ -29,6 +32,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 from .base import AcceptedTrainingExample
+from .registry import register_shared_adapter_training_backend
 
 
 @dataclass(slots=True)
@@ -87,3 +91,18 @@ class DiagonalScaleHeuristicTrainingBackend:
         objective_config: TrainingObjectiveConfig | None,
     ) -> bool:
         return self.config == build_diagonal_scale_heuristic_config(objective_config)
+
+
+@register_shared_adapter_training_backend(
+    "diagonal_scale_heuristic",
+    "synthetic_vector_adapter",
+    catalog_entry=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+)
+def build_diagonal_scale_heuristic_training_backend(
+    objective_config: TrainingObjectiveConfig | None,
+) -> DiagonalScaleHeuristicTrainingBackend:
+    """registry용 diagonal-scale heuristic backend factory."""
+
+    return DiagonalScaleHeuristicTrainingBackend.from_objective_config(
+        objective_config
+    )
