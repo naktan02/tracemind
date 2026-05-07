@@ -41,7 +41,7 @@
      `prototype_builder`, `adapter_family` 중 무엇인지 먼저 적는다.
 2. contract 변경이 필요한지 판별한다.
    - 새 payload shape가 없으면 `shared/src/contracts/`는 건드리지 않는다.
-   - 새 family면 `shared/src/contracts/adapter_contracts.py`부터 본다.
+   - 새 family면 `shared/src/contracts/adapter_contract_families/`부터 본다.
 3. concrete 구현을 추가한다.
    - 구현은 해당 소유 경계 파일에 넣는다.
 4. thin registry wiring에 등록한다.
@@ -112,7 +112,7 @@
 보통 건드리지 않는 것:
 
 - `main_server` aggregation
-- `shared/src/contracts/adapter_contracts.py`
+- `shared/src/contracts/adapter_contract_families/`
 
 우선 볼 테스트:
 
@@ -190,7 +190,7 @@
 보통 건드리지 않는 것:
 
 - `agent` local runtime
-- `shared/src/contracts/adapter_contracts.py`
+- `shared/src/contracts/adapter_contract_families/`
 
 우선 볼 테스트:
 
@@ -205,7 +205,7 @@
 
 보통 수정 파일:
 
-- [shared/src/contracts/adapter_contracts.py](../../shared/src/contracts/adapter_contracts.py)
+- [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
 - [shared/src/config/adapter_family_metadata.py](../../shared/src/config/adapter_family_metadata.py)
 - [agent/src/services/training/backends/training/__init__.py](../../agent/src/services/training/backends/training/__init__.py)
 - [agent/src/services/training/execution/privacy_guard_service.py](../../agent/src/services/training/execution/privacy_guard_service.py)

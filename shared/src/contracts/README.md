@@ -34,9 +34,19 @@
   - round open 요청자는 manifest를 제출하지 않고, 서버 current manifest를
     기준으로 training task가 생성된다
 
-### `adapter_contracts.py`
+### `adapter_contracts.py` and `adapter_contract_families/`
 
 Shared adapter 상태와 update payload를 정의한다.
+
+기존 import path `shared.src.contracts.adapter_contracts`는 compatibility facade로
+유지한다. 실제 family별 구현은 `adapter_contract_families/base.py`,
+`adapter_contract_families/diagonal_scale.py`,
+`adapter_contract_families/classifier_head.py`,
+`adapter_contract_families/lora_classifier.py`,
+`adapter_contract_families/registry.py`,
+`adapter_contract_families/builtin_loader.py`, `adapter_contract_families/io.py`,
+`adapter_contract_families/factories.py`로 나뉜다. Registry는 lookup helper만
+소유하고 builtin family 연결은 `builtin_loader.py`의 명시 목록이 담당한다.
 
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드
