@@ -216,7 +216,6 @@
 - [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
-- [main_server/src/services/federation/rounds/families/registry.py](../../main_server/src/services/federation/rounds/families/registry.py)
 - [main_server/src/services/federation/rounds/boundary/mappers.py](../../main_server/src/services/federation/rounds/boundary/mappers.py)
 
 작업 순서:
@@ -227,7 +226,8 @@
    단, method-specific 의미는 agent에 두지 않고 capability adapter로만 연결한다.
 4. example backend, scorer, acceptance policy가 새 family를 지원하는지 확인한다.
 5. server aggregation backend를 추가한다.
-6. round family builder에 라우팅을 연결한다.
+6. shared adapter family metadata와 aggregation backend만으로 generic round family runtime이
+   조립되는지 확인한다. `main_server/.../families/`에 family-specific 파일을 추가하지 않는다.
 7. payload 변환과 publication 경로를 점검한다.
 
 이 경우는 producer와 consumer가 함께 바뀌므로

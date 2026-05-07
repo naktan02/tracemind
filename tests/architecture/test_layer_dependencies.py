@@ -286,6 +286,27 @@ def test_agent_training_backend_package_is_registry_facade_only() -> None:
     )
 
 
+def test_main_server_round_family_package_has_no_concrete_family_modules() -> None:
+    package_root = MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "families"
+    allowed_files = {
+        package_root / "__init__.py",
+        package_root / "models.py",
+        package_root / "registry.py",
+    }
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if path not in allowed_files
+    ]
+
+    assert not violations, (
+        "main_server round family package는 shared adapter family metadata와 "
+        "aggregation backend를 generic runtime으로 조합한다. concrete family "
+        "module은 추가하지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_round_services_do_not_interpret_server_refs_as_paths() -> None:
     """server-owned ref 해석은 repository 계층에만 둔다."""
 

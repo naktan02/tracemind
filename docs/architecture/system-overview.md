@@ -172,7 +172,7 @@ Raw Event / Local Signal
 | FedAvg method core | `methods/federated/aggregation/fedavg/*` |
 | FL SSL method descriptor | `methods/federated_ssl/*` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
-| adapter family wiring | `main_server/src/services/federation/rounds/families/*` |
+| adapter family wiring | `main_server/src/services/federation/rounds/families/registry.py`, `families/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 | agent current-task application flow | `agent/src/services/training/execution/agent_training_task_runner_service.py` |
 | server-owned prototype rebuild input | `main_server/src/infrastructure/repositories/prototype_rebuild_input_repository.py` |

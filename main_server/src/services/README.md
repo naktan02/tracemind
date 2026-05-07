@@ -40,3 +40,6 @@
 - 개발자 실험 웹용 catalog/compile/workspace/run surface는
   `experiment_workspace/`가 소유한다.
 - 공용 계약은 `shared/src/contracts/`를 기준으로 읽는다.
+- 새 adapter family나 FL SSL method 때문에 `federation/rounds/families/`에
+  family/method-specific 파일을 추가하지 않는다. 이 폴더는 shared contract
+  metadata와 aggregation backend를 조합하는 generic runtime seam만 둔다.

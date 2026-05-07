@@ -16,11 +16,11 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenRequest,
 )
-from main_server.src.services.federation.rounds.families.diagonal_scale import (
-    DiagonalScaleRoundFamily,
-)
 from main_server.src.services.federation.rounds.families.models import (
     SharedAdapterRoundFamily,
+)
+from main_server.src.services.federation.rounds.families.registry import (
+    build_shared_adapter_round_family,
 )
 from methods.federated_ssl.training_defaults import (
     build_default_secure_aggregation_config,
@@ -73,7 +73,10 @@ class RoundManagerService:
     """라운드용 task를 만들고 새 model/prototype pair를 발행한다."""
 
     adapter_family: SharedAdapterRoundFamily = field(
-        default_factory=DiagonalScaleRoundFamily
+        default_factory=lambda: build_shared_adapter_round_family(
+            "diagonal_scale",
+            aggregation_backend_name="fedavg",
+        )
     )
     artifact_repository: SharedAdapterStateRepository = field(
         default_factory=SharedAdapterStateRepository

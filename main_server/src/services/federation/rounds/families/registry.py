@@ -2,11 +2,20 @@
 
 from __future__ import annotations
 
-import importlib
 from collections.abc import Callable, Mapping
 
+from shared.src.contracts.adapter_family_metadata import (
+    SharedAdapterFamilyMetadata,
+    list_shared_adapter_family_metadata,
+)
+
 from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
-from .models import RoundFamilyFactory, SharedAdapterRoundFamily
+from ..aggregation.registry import build_shared_adapter_aggregation_backend
+from .models import (
+    RoundFamilyFactory,
+    SharedAdapterRoundFamily,
+    SharedAdapterRoundFamilyRuntime,
+)
 
 _ROUND_FAMILY_REGISTRY: dict[str, RoundFamilyFactory] = {}
 
@@ -39,25 +48,30 @@ def build_shared_adapter_round_family(
     """adapter family와 aggregation backend 이름으로 서버 조합 객체를 만든다."""
 
     normalized_family_name = family_name.strip().lower()
-    _import_round_family_module_by_convention(normalized_family_name)
     factory = _ROUND_FAMILY_REGISTRY.get(normalized_family_name)
     if factory is not None:
         return factory(aggregation_backend_name, aggregation_backend_overrides)
-    raise ValueError(f"Unsupported shared adapter family: {family_name}.")
+    family_metadata = _resolve_shared_adapter_family_metadata(normalized_family_name)
+    return SharedAdapterRoundFamilyRuntime(
+        adapter_kind=family_metadata.adapter_kind,
+        accepted_update_formats=family_metadata.accepted_update_payload_formats,
+        aggregation_backend=build_shared_adapter_aggregation_backend(
+            adapter_kind=family_metadata.adapter_kind,
+            backend_name=aggregation_backend_name,
+            overrides=aggregation_backend_overrides,
+        ),
+    )
 
 
-def _import_round_family_module_by_convention(normalized_family_name: str) -> None:
-    """family name과 module name이 같은 builtin family를 필요할 때 import한다."""
-
-    module_name = normalized_family_name.replace("-", "_")
-    try:
-        importlib.import_module(
-            f"main_server.src.services.federation.rounds.families.{module_name}"
-        )
-    except ModuleNotFoundError as error:
-        expected_module = (
-            "main_server.src.services.federation.rounds.families."
-            f"{module_name}"
-        )
-        if error.name != expected_module:
-            raise
+def _resolve_shared_adapter_family_metadata(
+    normalized_family_name: str,
+) -> SharedAdapterFamilyMetadata:
+    for family_metadata in list_shared_adapter_family_metadata():
+        if (
+            family_metadata.family_name.strip().lower() == normalized_family_name
+            or family_metadata.adapter_kind.strip().lower() == normalized_family_name
+        ):
+            return family_metadata
+    raise ValueError(
+        f"Unsupported shared adapter family: {normalized_family_name}."
+    )

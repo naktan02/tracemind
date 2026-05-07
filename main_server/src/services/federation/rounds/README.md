@@ -49,7 +49,9 @@
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
 - `families/`
-  - adapter family별 state/update/payload 해석과 aggregation wiring
+  - shared adapter family contract metadata를 generic round runtime으로 연결
+  - concrete family별 파일을 두지 않고 `shared/src/contracts/adapter_family_metadata.py`
+    와 aggregation backend 조합으로 해석한다
 - `aggregation/`
   - server-owned aggregation backend registry와 methods core adapter
   - registry는 lookup/catalog만 맡고 backend factory 등록은 각 backend module 옆
@@ -65,7 +67,8 @@
 
 - aggregation backend 추가: server adapter/wiring은 `aggregation/`, 순수 method
   계산은 `methods/federated/aggregation/`
-- adapter family 추가: `families/` + `shared/src/contracts/adapter_contract_families/`
+- adapter family 추가: `shared/src/contracts/adapter_contract_families/` +
+  aggregation backend. `families/`에 family-specific 파일을 추가하지 않는다.
 - server runtime 기본 축 변경: `runtime/config.py`
 
 새 FL SSL method가 round별 state exchange, client weighting, pseudo-label statistics,
