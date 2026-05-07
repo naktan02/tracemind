@@ -8,8 +8,8 @@ from agent.src.services.training.backends.training.lora_classifier import (
 from agent.src.services.training.backends.training.lora_classifier import (
     config as _config,
 )
-from agent.src.services.training.backends.training.lora_classifier import (
-    train_executor as _train_executor,
+from methods.adaptation.lora_classifier import (
+    local_update as _local_update,
 )
 
 LoraClassifierTrainingBackend = _backend.LoraClassifierTrainingBackend
@@ -22,8 +22,8 @@ LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = _config.LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE
 build_lora_classifier_training_backend_config = (
     _config.build_lora_classifier_training_backend_config
 )
-LoraClassifierTrainArtifacts = _train_executor.LoraClassifierTrainArtifacts
-LoraClassifierTrainExecutor = _train_executor.LoraClassifierTrainExecutor
+LoraClassifierTrainArtifacts = _local_update.LoraClassifierTrainArtifacts
+LoraClassifierTrainExecutor = _local_update.LoraClassifierTrainExecutor
 NotImplementedLoraClassifierTrainExecutor = (
-    _train_executor.NotImplementedLoraClassifierTrainExecutor
+    _local_update.NotImplementedLoraClassifierTrainExecutor
 )

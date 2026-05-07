@@ -3,21 +3,13 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
 
 from agent.src.services.training.backends.training.base import AcceptedTrainingExample
+from methods.adaptation.lora_classifier.local_update import (
+    LoraClassifierTrainingRow,
+)
 
 from .config import LoraClassifierTrainingBackendConfig
-
-
-@dataclass(frozen=True, slots=True)
-class LoraClassifierTrainingRow:
-    """Payload 생성 전에만 쓰는 agent-local raw-text 학습 row."""
-
-    text: str
-    label: str
-    confidence: float
-    margin: float
 
 
 def build_lora_classifier_training_row(

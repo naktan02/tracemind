@@ -6,6 +6,9 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from agent.src.services.training.backends.training.base import AcceptedTrainingExample
+from methods.adaptation.lora_classifier.local_update import (
+    LoraClassifierTrainExecutor,
+)
 from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -31,7 +34,6 @@ from .config import (
 )
 from .metrics import build_lora_classifier_client_metrics
 from .payload_builder import build_lora_classifier_delta_update
-from .train_executor import LoraClassifierTrainExecutor
 
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
