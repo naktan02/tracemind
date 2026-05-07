@@ -358,6 +358,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.local_update_profile.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
     )
+    assert cfg.fl_profile.name == "fedavg_pseudo_label_diagonal_scale_v1"
+    assert cfg.fl_profile.method_name == "fedavg_pseudo_label"
+    assert cfg.fl_profile.local_update_profile_name == "prototype_pseudo_label_v1"
+    assert cfg.fl_profile.round_runtime_profile_name == "fedavg_diagonal_scale"
     assert cfg.round_runtime_profile.name == "fedavg_diagonal_scale"
     assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
@@ -449,6 +453,25 @@ def test_federated_simulation_supports_lora_classifier_profiles() -> None:
     )
     assert "adapter_family_name" not in cfg.local_update_profile
     assert "aggregation_backend_name" not in cfg.local_update_profile
+
+
+def test_federated_simulation_supports_high_level_fl_profile() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/experiment_profile=fedavg_pseudo_label_lora_classifier_v1",
+            ],
+        )
+
+    assert cfg.fl_profile.name == "fedavg_pseudo_label_lora_classifier_v1"
+    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
+    assert cfg.round_runtime_profile.name == "fedavg_lora_classifier"
+    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert cfg.training_task.objective.training_backend_name == (
+        "lora_classifier_trainer"
+    )
 
 
 def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:

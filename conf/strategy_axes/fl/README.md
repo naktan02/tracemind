@@ -11,6 +11,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 | `method_descriptor/` | `ssl_method` | FedAvg, FedMatch 같은 FL SSL method identity와 report metadata |
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime_profile/` | `round_runtime_profile` | server round의 adapter family와 aggregation backend 조합 |
+| `experiment_profile/` | `fl_profile` | method/local update/round runtime 축을 함께 고르는 compose preset |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
 
 ## `local_update_profile`와 `round_runtime_profile`
@@ -37,3 +38,11 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다. 먼저
 `methods/federated_ssl/` descriptor와 필요한 `agent`, `main_server`, `methods`
 runtime seam을 구현한 뒤 이 config group을 연다.
+
+## `experiment_profile`
+
+`experiment_profile`은 실행값의 source of truth가 아니라 compose preset이다. 예를 들어
+`fedavg_pseudo_label_lora_classifier_v1`은 `method_descriptor`,
+`local_update_profile`, `round_runtime_profile`을 함께 고르는 좁은 시작점이다.
+실제 threshold, LoRA rank, round 수 같은 실행 파라미터는 계속 Hydra config leaf에
+남긴다.
