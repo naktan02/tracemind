@@ -242,6 +242,34 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
     )
 
 
+def test_local_training_service_uses_update_executor_not_concrete_backends() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training"
+        / "execution"
+        / "local_training_service.py"
+    )
+    imports = _collect_absolute_imports(path)
+    allowed_backend_imports = {
+        "agent.src.services.training.backends.training.base",
+    }
+    violations = sorted(
+        imported_module
+        for imported_module in imports
+        if imported_module.startswith(
+            "agent.src.services.training.backends.training."
+        )
+        and imported_module not in allowed_backend_imports
+    )
+    assert not violations, (
+        "LocalTrainingService는 selection orchestration만 맡고 update 생성은 "
+        "LocalUpdateExecutor port를 통해 호출한다. concrete training backend나 "
+        "training backend registry를 직접 import하지 않는다.\n"
+        f"{chr(10).join(f'- {module}' for module in violations)}"
+    )
+
+
 def test_round_services_do_not_interpret_server_refs_as_paths() -> None:
     """server-owned ref 해석은 repository 계층에만 둔다."""
 
