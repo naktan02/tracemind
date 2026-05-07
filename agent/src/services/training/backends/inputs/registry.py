@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from agent.src.services.runtime_registry_imports import (
+    import_runtime_module_for_name,
+    import_runtime_package_modules,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -53,8 +57,11 @@ def build_training_example_backend(
 ) -> TrainingExampleBackend:
     """backend 이름과 objective config로 training example backend를 조립한다."""
 
-    _ensure_builtin_training_example_backends_loaded()
     normalized_name = backend_name.strip().lower()
+    import_runtime_module_for_name(
+        package_name="agent.src.services.training.backends.inputs",
+        registered_name=normalized_name,
+    )
     registered_backend = _TRAINING_EXAMPLE_BACKEND_REGISTRY.get(normalized_name)
     if registered_backend is not None:
         factory, _catalog_entry = registered_backend
@@ -65,23 +72,19 @@ def build_training_example_backend(
 def list_registered_training_example_backend_names() -> tuple[str, ...]:
     """등록된 training example backend 이름을 정렬된 tuple로 반환한다."""
 
-    _ensure_builtin_training_example_backends_loaded()
+    import_runtime_package_modules(
+        package_name="agent.src.services.training.backends.inputs"
+    )
     return tuple(sorted(_TRAINING_EXAMPLE_BACKEND_REGISTRY))
 
 
 def list_training_example_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     """등록된 example backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    _ensure_builtin_training_example_backends_loaded()
+    import_runtime_package_modules(
+        package_name="agent.src.services.training.backends.inputs"
+    )
     return dedupe_registry_catalog_entries(
         catalog_entry
         for _factory, catalog_entry in _TRAINING_EXAMPLE_BACKEND_REGISTRY.values()
     )
-
-
-def _ensure_builtin_training_example_backends_loaded() -> None:
-    from agent.src.services.training.backends.inputs.builtin_loader import (
-        load_builtin_training_example_backends,
-    )
-
-    load_builtin_training_example_backends()

@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
+from agent.src.services.runtime_registry_imports import (
+    import_runtime_module_for_name,
+    import_runtime_package_modules,
+)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
@@ -47,8 +51,11 @@ def build_shared_adapter_training_backend(
 ) -> SharedAdapterTrainingBackend:
     """backend 이름으로 로컬 학습 backend를 생성한다."""
 
-    _ensure_builtin_shared_adapter_training_backends_loaded()
     normalized_name = backend_name.strip().lower()
+    import_runtime_module_for_name(
+        package_name="agent.src.services.training.backends.training",
+        registered_name=normalized_name,
+    )
     registered_backend = _TRAINING_BACKEND_REGISTRY.get(normalized_name)
     if registered_backend is not None:
         factory, _catalog_entry = registered_backend
@@ -59,7 +66,9 @@ def build_shared_adapter_training_backend(
 def list_registered_shared_adapter_training_backend_names() -> tuple[str, ...]:
     """등록된 로컬 training backend 이름을 정렬된 tuple로 반환한다."""
 
-    _ensure_builtin_shared_adapter_training_backends_loaded()
+    import_runtime_package_modules(
+        package_name="agent.src.services.training.backends.training"
+    )
     return tuple(sorted(_TRAINING_BACKEND_REGISTRY))
 
 
@@ -68,15 +77,9 @@ def list_shared_adapter_training_backend_catalog_entries() -> tuple[
 ]:
     """등록된 training backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    _ensure_builtin_shared_adapter_training_backends_loaded()
+    import_runtime_package_modules(
+        package_name="agent.src.services.training.backends.training"
+    )
     return dedupe_registry_catalog_entries(
         catalog_entry for _factory, catalog_entry in _TRAINING_BACKEND_REGISTRY.values()
     )
-
-
-def _ensure_builtin_shared_adapter_training_backends_loaded() -> None:
-    from agent.src.services.training.backends.training.builtin_loader import (
-        load_builtin_shared_adapter_training_backends,
-    )
-
-    load_builtin_shared_adapter_training_backends()

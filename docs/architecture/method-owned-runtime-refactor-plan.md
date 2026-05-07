@@ -73,11 +73,14 @@ selection hook 중복 제거, method-specific runtime guard를 닫았다. 단,
 
 ### Batch 1.5. Builtin Loader 제거
 
+상태: 진행 중. `agent` local runtime registries는 `builtin_loader.py`를 제거하고
+package-local convention import helper로 전환했다.
+
 `builtin_loader.py`는 registry 하단 등록 block을 제거하기 위한 중간 발판이다. 최종
 구조에서는 concrete module 목록을 loader에 계속 누적하지 않는다.
 
-- `agent` acceptance/evidence/input/scoring/training registry의 import trigger를
-  convention 또는 config-declared module path로 바꾼다.
+- 완료: `agent` acceptance/evidence/input/scoring/training registry의 import trigger를
+  convention 기반 package-local import로 바꿨다.
 - `main_server` aggregation registry의 import trigger를 adapter_kind/backend_name
   convention 또는 manifest로 바꾼다.
 - `methods/federated/aggregation`과 `methods/ssl/hooks`의 import trigger를
