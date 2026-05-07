@@ -39,6 +39,7 @@ active_entrypoints:
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
+  - docs/architecture/pattern-integrity-refactor-backlog.md
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/central_lora_classifier_trainer_contract.md
   - docs/fl_runtime_implementation_checklist.md

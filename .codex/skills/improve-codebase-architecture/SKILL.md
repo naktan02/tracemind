@@ -25,6 +25,7 @@ Key principles (see [LANGUAGE.md](LANGUAGE.md) for the full list):
 - **Deletion test**: imagine deleting the module. If complexity vanishes, it was a pass-through. If complexity reappears across N callers, it was earning its keep.
 - **The interface is the test surface.**
 - **One adapter = hypothetical seam. Two adapters = real seam.**
+- **Pattern integrity**: a pattern name is not an interface. For each Registry, Adapter, Hook, Builder, Writer, Policy, Profile, or Facade, check the owned responsibility, allowed dependencies, side effects, and extension path.
 
 This skill is _informed_ by the project's domain model. The domain language gives names to good seams; ADRs record decisions the skill should not re-litigate.
 
@@ -41,6 +42,7 @@ Then use the Agent tool with `subagent_type=Explore` to walk the codebase. Don't
 - Where have pure functions been extracted just for testability, but the real bugs hide in how they're called (no **locality**)?
 - Where do tightly-coupled modules leak across their seams?
 - Which parts of the codebase are untested, or hard to test through their current interface?
+- Where does a pattern file absorb the wrong responsibility, such as a registry importing concrete implementations, an adapter making domain decisions, a builder writing artifacts, or a facade hiding validation?
 
 Apply the **deletion test** to anything you suspect is shallow: would deleting it concentrate complexity, or just move it? A "yes, concentrates" is the signal you want.
 

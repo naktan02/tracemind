@@ -76,7 +76,9 @@ description: Use when a project needs a reusable engineering style that prioriti
 맞는 패턴을 제한된 책임으로 조합해서, 새 implementation 추가 시 수정 위치를
 예측 가능하게 만든다.
 
-- Registry는 lookup과 명시적 builtin wiring까지만 맡긴다.
+- Registry primitive 파일은 저장, 정규화, 조회, 중복 방지, catalog 노출만 맡긴다.
+  concrete implementation import와 builtin 등록 목록은 별도 builtin loader 또는
+  implementation-local decorator + 명시적 builtin import로 분리한다.
 - Descriptor는 identity, capability, required surface 같은 안정 metadata를 맡긴다.
 - Hook은 알고리즘 내부에서 한 지점만 교체되는 objective/policy 조각에 쓴다.
 - Profile은 여러 strategy 축의 실행 조합을 typed structure로 해석한다.
@@ -87,6 +89,25 @@ description: Use when a project needs a reusable engineering style that prioriti
 `Descriptor + Registry + Hook bundle + Profile + Compatibility Validator + Runtime
 Adapter`처럼 여러 작은 패턴이 각자의 책임을 지도록 조합한다. 공통 hook이나 helper는
 처음부터 끌어올리지 말고, 두 개 이상 implementation에서 의미가 안정될 때 승격한다.
+
+## 패턴 무결성 Guard
+
+패턴을 도입하거나 리뷰할 때 아래를 먼저 확인한다.
+
+- `registry.py`가 concrete class를 import하고 파일 하단에서 여러 `register_*()`를 직접
+  호출하면 smell로 본다. 그 파일이 builtin loader라면 이름과 문서가 그렇게 보여야 한다.
+- Decorator 등록은 구현 옆에서 registration source of truth를 표현할 때만 쓴다. import
+  순서를 통제하는 explicit builtin loader 없이 자동 discovery처럼 쓰지 않는다.
+- Facade는 compatibility를 유지하는 얇은 표면이다. business rule, factory 조합,
+  validation이 facade에 들어가면 core 경계가 흐려진다.
+- Builder는 canonical object/payload 생성까지만 맡기고, Writer/Exporter는 저장과
+  serialization만 맡긴다.
+- Adapter는 runtime/framework/외부 시스템 차이를 core Interface로 변환한다. algorithm
+  identity, policy 판단, method 의미를 adapter가 흡수하면 잘못된 seam이다.
+- Hook은 objective나 policy의 한 교체 지점이다. diagnostics, evidence selection,
+  artifact IO 같은 다른 변화 축과 합치지 않는다.
+- Profile은 실행 조합이며 실행값의 source of truth가 아니다. source of truth는 config나
+  contract에 남긴다.
 
 ## 패턴 선택 기준
 

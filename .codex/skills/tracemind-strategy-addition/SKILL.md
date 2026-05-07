@@ -52,9 +52,23 @@ description: Use when adding or replacing an adapter family, aggregation backend
 - 단일 implementation 전용 helper는 method-local module에 두고, 두 개 이상 전략에서
   의미가 안정되면 공통 module로 승격한다.
 
+## Registration 규칙
+
+- registry primitive는 저장, 정규화, 조회, catalog 노출만 맡긴다.
+- 새 strategy 구현을 추가할 때 concrete import와 등록 목록은 implementation-local decorator
+  또는 explicit builtin loader로 둔다.
+- `registry.py` 하단에 concrete implementation을 계속 추가하는 방식은 새 코드의 기본값으로
+  쓰지 않는다. 기존 파일이 그런 구조라면 compatibility로 보고, 단계 리팩터링에서 loader로
+  분리한다.
+- decorator를 쓸 때도 자동 plugin discovery처럼 동작하게 만들지 않는다. builtin import 목록은
+  명시적으로 유지한다.
+- strategy metadata는 registry가 아니라 descriptor, catalog entry, config, contract 중
+  의미에 맞는 source of truth가 소유한다.
+
 ## 체크리스트
 
 - 전략 축이 다른 이유로 바뀌는 로직과 섞이지 않는가
 - raw registry를 핵심 도메인 추상화로 남용하지 않는가
 - producer/consumer가 같은 discriminator와 payload를 보는가
 - 새 implementation 추가가 기존 구현 파괴 없이 확장으로 보이는가
+- registration 방식이 decorator, explicit loader, compatibility facade 중 무엇인지 명확한가

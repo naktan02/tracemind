@@ -132,6 +132,42 @@ trigger: always_on
 - 횡단 기능 추가면 `Decorator`
 - 단순 구현체 조회면 `Registry`
 
+## 패턴 무결성 규칙
+
+패턴을 도입할 때는 이름보다 역할 경계를 먼저 검증한다. "Registry를 썼다",
+"Adapter를 만들었다", "Builder로 뺐다"는 설계 품질의 증거가 아니다. 패턴마다
+소유해야 할 책임, 허용 dependency, side effect, 확장 방식이 코드에서 드러나야 한다.
+
+- `Registry` primitive 파일은 저장, 정규화, 조회, 중복 방지, catalog 노출만 맡긴다.
+  concrete implementation import와 builtin 등록 목록은 별도 `builtin_loader.py` 또는
+  implementation-local decorator + 명시적 builtin import로 분리한다.
+- `registry.py` 맨 아래에 concrete class를 import해서 여러 `register_*()`를 직접 호출하는
+  구조는 기본적으로 smell이다. 그 파일이 의도적으로 `builtin_loader` 역할을 하는 경우에만
+  허용하고, 그 이름과 문서에 역할을 드러낸다.
+- `Decorator` 등록은 implementation 옆의 local source of truth가 필요하고 import 순서를
+  명시적으로 통제할 수 있을 때만 쓴다. canonical contract나 shared payload를 자동
+  discovery하는 용도로 남용하지 않는다.
+- `Facade`는 compatibility와 public surface 유지용이다. domain 의미, factory 조합,
+  validation을 facade에 숨기지 않는다. 프로젝트가 `__init__.py`를 marker로 쓰는 규칙이면
+  package-level export 대신 명시적 `.py` facade를 둔다.
+- `Builder`는 canonical object/payload를 만들고, `Writer`/`Exporter`는 저장 위치와
+  serialization을 맡긴다. builder가 파일 경로 정책까지 소유하거나 writer가 schema 의미를
+  만들면 경계가 깨진 것이다.
+- `Adapter`는 외부/runtime/framework 차이를 core Interface로 변환한다. 알고리즘 선택,
+  method 의미, policy 판단을 adapter에 넣지 않는다.
+- `Policy`는 판단을 맡고 mechanism은 실행을 맡는다. policy 안에서 IO, 학습, aggregation 같은
+  실행 절차가 커지면 분리한다.
+- `Hook`은 한 알고리즘 내부의 교체 가능한 objective/policy 조각이다. runtime diagnostics,
+  evidence selection, artifact IO 같은 다른 변화 축과 합치지 않는다.
+- `Profile`은 실행 조합을 표현하고 검증 가능한 typed structure로 해석한다. 실행값의
+  source of truth를 Python default hint나 descriptor metadata로 옮기지 않는다.
+- `Validator`는 조합 불일치를 bootstrap/resolve 시점에 실패하게 한다. runtime 중간에서
+  우연히 터지는 검증은 framework seam이 아니다.
+
+패턴을 적용한 뒤에는 삭제 테스트와 두 번째 구현 테스트를 함께 본다. 패턴 파일을 지웠을 때
+복잡도가 caller 여러 곳으로 다시 퍼지면 깊은 Module이고, 그냥 한 단계 호출만 줄면 얕은
+pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로 seam을 검증한다.
+
 패턴별 책임은 제한한다.
 
 - `Registry`는 lookup과 명시적 builtin wiring을 담당한다. 도메인 의미나 실행 조합을
