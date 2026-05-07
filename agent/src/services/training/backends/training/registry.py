@@ -4,21 +4,15 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from agent.src.services.runtime_registry_imports import (
-    import_runtime_module_for_name,
-    import_runtime_package_modules,
-)
-from shared.src.config.registry_catalog_metadata import (
-    RegistryCatalogEntry,
-    dedupe_registry_catalog_entries,
-)
+from agent.src.services.runtime_registry import RuntimeRegistry
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 
 from .base import SharedAdapterTrainingBackend, TrainingBackendFactory
 
-_TRAINING_BACKEND_REGISTRY: dict[
-    str,
-    tuple[TrainingBackendFactory, RegistryCatalogEntry],
-] = {}
+_TRAINING_BACKEND_REGISTRY = RuntimeRegistry[TrainingBackendFactory](
+    package_name="agent.src.services.training.backends.training",
+    item_kind="local training backend",
+)
 
 
 def register_shared_adapter_training_backend(
@@ -31,17 +25,11 @@ def register_shared_adapter_training_backend(
 ):
     """training backend factory 옆에서 runtime wiring을 등록한다."""
 
-    def _decorator(factory: TrainingBackendFactory) -> TrainingBackendFactory:
-        registered_backend = (factory, catalog_entry)
-        for backend_name in backend_names:
-            _TRAINING_BACKEND_REGISTRY[backend_name.strip().lower()] = (
-                registered_backend
-            )
-        return factory
-
-    if factory is not None:
-        return _decorator(factory)
-    return _decorator
+    return _TRAINING_BACKEND_REGISTRY.register(
+        *backend_names,
+        catalog_entry=catalog_entry,
+        factory=factory,
+    )
 
 
 def build_shared_adapter_training_backend(
@@ -51,25 +39,14 @@ def build_shared_adapter_training_backend(
 ) -> SharedAdapterTrainingBackend:
     """backend 이름으로 로컬 학습 backend를 생성한다."""
 
-    normalized_name = backend_name.strip().lower()
-    import_runtime_module_for_name(
-        package_name="agent.src.services.training.backends.training",
-        registered_name=normalized_name,
-    )
-    registered_backend = _TRAINING_BACKEND_REGISTRY.get(normalized_name)
-    if registered_backend is not None:
-        factory, _catalog_entry = registered_backend
-        return factory(objective_config)
-    raise ValueError(f"Unsupported local training backend: {backend_name}.")
+    factory, _catalog_entry = _TRAINING_BACKEND_REGISTRY.get(backend_name)
+    return factory(objective_config)
 
 
 def list_registered_shared_adapter_training_backend_names() -> tuple[str, ...]:
     """등록된 로컬 training backend 이름을 정렬된 tuple로 반환한다."""
 
-    import_runtime_package_modules(
-        package_name="agent.src.services.training.backends.training"
-    )
-    return tuple(sorted(_TRAINING_BACKEND_REGISTRY))
+    return _TRAINING_BACKEND_REGISTRY.list_names()
 
 
 def list_shared_adapter_training_backend_catalog_entries() -> tuple[
@@ -77,9 +54,4 @@ def list_shared_adapter_training_backend_catalog_entries() -> tuple[
 ]:
     """등록된 training backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    import_runtime_package_modules(
-        package_name="agent.src.services.training.backends.training"
-    )
-    return dedupe_registry_catalog_entries(
-        catalog_entry for _factory, catalog_entry in _TRAINING_BACKEND_REGISTRY.values()
-    )
+    return _TRAINING_BACKEND_REGISTRY.list_catalog_entries()
