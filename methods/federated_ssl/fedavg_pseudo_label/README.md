@@ -7,6 +7,9 @@ method descriptor다.
 
 - `descriptor.py`: method identity, required views, runtime capability, local/server
   hint를 소유한다.
+- `local_objective.py`: client local pseudo-label objective 의미를 소유한다.
+- `server_policy.py`: server aggregation policy hint를 소유한다.
+- `round_policy.py`: round별 method policy hint를 소유한다.
 - `fedavg_pseudo_label.py`: builtin registry wiring만 담당한다.
 
 Hydra config loading, client training service 생성, round request 조립,

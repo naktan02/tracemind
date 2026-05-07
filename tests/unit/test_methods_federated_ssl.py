@@ -20,6 +20,18 @@ from methods.federated_ssl.compatibility import (
 from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
 )
+from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+    descriptor as fedavg_pseudo_label_descriptor,
+)
+from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+    local_objective as fedavg_pseudo_label_local_objective,
+)
+from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+    round_policy as fedavg_pseudo_label_round_policy,
+)
+from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+    server_policy as fedavg_pseudo_label_server_policy,
+)
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
@@ -49,6 +61,20 @@ def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
     assert descriptor.runtime_capabilities.simulation_supported is True
     assert descriptor.runtime_capabilities.live_agent_supported is True
     assert descriptor.runtime_capabilities.live_server_supported is True
+
+
+def test_fedavg_pseudo_label_exposes_method_local_policy_seams() -> None:
+    assert fedavg_pseudo_label_descriptor is FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    assert fedavg_pseudo_label_local_objective.objective_name == (
+        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.local_step.step_name
+    )
+    assert fedavg_pseudo_label_server_policy.policy_name == (
+        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.server_step.server_aggregator_name
+    )
+    assert fedavg_pseudo_label_round_policy.policy_name == (
+        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.server_step.round_policy_name
+    )
+    assert fedavg_pseudo_label_round_policy.custom_round_policy_required is False
 
 
 def test_federated_ssl_descriptor_registry_rejects_unwired_method() -> None:

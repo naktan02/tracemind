@@ -185,3 +185,24 @@ class FederatedSslMethod(Protocol):
     """registry에 올릴 수 있는 FL SSL method module surface."""
 
     descriptor: FederatedSslMethodDescriptor
+
+
+class FederatedSslLocalObjective(Protocol):
+    """client local objective 의미를 method-local module이 설명하는 surface."""
+
+    objective_name: str
+    trainer_hint: str
+
+
+class FederatedSslServerPolicy(Protocol):
+    """method-specific server policy surface."""
+
+    policy_name: str
+    aggregation_hint: str
+
+
+class FederatedSslRoundPolicy(Protocol):
+    """method-specific round policy surface."""
+
+    policy_name: str
+    custom_round_policy_required: bool

@@ -9,6 +9,15 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimeCapabilities,
     FederatedSslServerStepSpec,
 )
+from methods.federated_ssl.fedavg_pseudo_label.local_objective import (
+    FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE,
+)
+from methods.federated_ssl.fedavg_pseudo_label.round_policy import (
+    FEDAVG_PSEUDO_LABEL_ROUND_POLICY,
+)
+from methods.federated_ssl.fedavg_pseudo_label.server_policy import (
+    FEDAVG_PSEUDO_LABEL_SERVER_POLICY,
+)
 
 FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
     name="fedavg_pseudo_label",
@@ -18,18 +27,22 @@ FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
         view_generator_name="training_example_backend",
     ),
     local_step=FederatedSslLocalStepSpec(
-        step_name="pseudo_label_self_training",
-        client_trainer_name="local_training_service",
-        pseudo_labeler_name="ssl_pseudo_label_selection_hook",
+        step_name=FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.objective_name,
+        client_trainer_name=FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.trainer_hint,
+        pseudo_labeler_name=(FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.pseudo_labeler_hint),
     ),
     server_step=FederatedSslServerStepSpec(
-        server_aggregator_name="round_runtime_aggregation_backend",
-        round_policy_name="round_active_pair_only",
-        server_aggregate_hint="use_round_runtime_aggregation_backend",
+        server_aggregator_name=FEDAVG_PSEUDO_LABEL_SERVER_POLICY.policy_name,
+        round_policy_name=FEDAVG_PSEUDO_LABEL_ROUND_POLICY.policy_name,
+        server_aggregate_hint=FEDAVG_PSEUDO_LABEL_SERVER_POLICY.aggregation_hint,
     ),
     runtime_capabilities=FederatedSslRuntimeCapabilities(
         simulation_supported=True,
         live_agent_supported=True,
         live_server_supported=True,
+        requires_custom_server_runtime=(
+            FEDAVG_PSEUDO_LABEL_SERVER_POLICY.custom_server_runtime_required
+            or FEDAVG_PSEUDO_LABEL_ROUND_POLICY.custom_round_policy_required
+        ),
     ),
 )
