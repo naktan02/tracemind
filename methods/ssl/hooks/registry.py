@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -9,6 +11,15 @@ if TYPE_CHECKING:
     from methods.ssl.hooks.selection import PseudoLabelSelectionHook
 
 PseudoLabelSelectionHookFactory = Callable[[], "PseudoLabelSelectionHook"]
+_SSL_HOOKS_PACKAGE = "methods.ssl.hooks"
+_SKIPPED_SSL_HOOK_MODULES = frozenset(
+    {
+        "base",
+        "builtin_loader",
+        "objective",
+        "registry",
+    }
+)
 
 _PSEUDO_LABEL_SELECTION_HOOK_REGISTRY: dict[str, PseudoLabelSelectionHookFactory] = {}
 
@@ -33,7 +44,7 @@ def build_pseudo_label_selection_hook(
 ) -> PseudoLabelSelectionHook:
     """hook 이름으로 selection hook 구현을 생성한다."""
 
-    _ensure_builtin_ssl_hooks_loaded()
+    _import_ssl_hook_modules()
     normalized_name = hook_name.strip().lower()
     factory = _PSEUDO_LABEL_SELECTION_HOOK_REGISTRY.get(normalized_name)
     if factory is not None:
@@ -41,7 +52,13 @@ def build_pseudo_label_selection_hook(
     raise ValueError(f"Unsupported pseudo-label selection hook: {hook_name}.")
 
 
-def _ensure_builtin_ssl_hooks_loaded() -> None:
-    from methods.ssl.hooks.builtin_loader import load_builtin_ssl_hooks
+def _import_ssl_hook_modules() -> None:
+    package = importlib.import_module(_SSL_HOOKS_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
 
-    load_builtin_ssl_hooks()
+    for module_info in pkgutil.iter_modules(package_paths):
+        if module_info.name in _SKIPPED_SSL_HOOK_MODULES:
+            continue
+        importlib.import_module(f"{_SSL_HOOKS_PACKAGE}.{module_info.name}")
