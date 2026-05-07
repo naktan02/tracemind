@@ -8,6 +8,8 @@
 - FedAvg 같은 method-level 가중 평균 산술
 - adapter family별 next-state 값 계산
 - 빈 update, total weight 0, key/dimension mismatch 같은 method-level validation
+- method metadata registration은 core function 옆 decorator가 소유하고,
+  `builtin_loader.py`는 builtin method module import만 담당
 
 ## 제외
 

@@ -13,6 +13,8 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_scalars,
     weighted_average_vector_mappings,
 )
+from methods.federated.aggregation.registry import register_federated_aggregation_method
+from shared.src.config.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,6 +39,11 @@ class ClassifierHeadFedAvgResult:
     update_count: int
 
 
+@register_federated_aggregation_method(
+    adapter_kind=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    method_name="fedavg",
+    aliases=("classifier_head_fedavg",),
+)
 def compute_classifier_head_fedavg(
     *,
     base_label_weights: Mapping[str, Sequence[float]],
