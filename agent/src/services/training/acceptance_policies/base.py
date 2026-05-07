@@ -5,10 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
-from shared.src.domain.entities.training.pseudo_label_evidence import (
-    PseudoLabelEvidence,
-)
-
 
 @dataclass(slots=True)
 class AcceptanceDecision:
@@ -25,16 +21,8 @@ class AcceptanceDecision:
 
 
 class PseudoLabelAcceptancePolicy(Protocol):
-    """Evidence를 pseudo-label 후보로 해석하는 정책."""
+    """Agent runtime compatibility가 보는 pseudo-label acceptance metadata."""
 
     policy_name: str
+    selection_hook_name: str
     supported_adapter_kinds: tuple[str, ...]
-
-    def evaluate(
-        self,
-        *,
-        evidence: PseudoLabelEvidence,
-        confidence_threshold: float,
-        margin_threshold: float,
-    ) -> AcceptanceDecision:
-        """Evidence를 해석해 acceptance 결과를 만든다."""

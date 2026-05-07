@@ -7,8 +7,8 @@ from datetime import datetime
 
 from agent.src.services.training.backends.training.base import AcceptedTrainingExample
 from shared.src.config.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
-from shared.src.config.local_training_registry_catalog import (
-    LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+from shared.src.config.registry_catalog_metadata import (
+    RegistryCatalogEntry,
 )
 from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
@@ -32,6 +32,29 @@ from .config import (
 from .metrics import build_lora_classifier_client_metrics
 from .payload_builder import build_lora_classifier_delta_update
 from .train_executor import LoraClassifierTrainExecutor
+
+LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+    display_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+    implementation_module=(
+        "agent.src.services.training.backends.training.lora_classifier.backend"
+    ),
+    core_method_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+    family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
+    supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
+    accepted_payload_formats=(
+        LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format,
+    ),
+    tags=("requires_raw_text", "artifact_ref_update"),
+    metadata={
+        "payload_format": (
+            LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format
+        ),
+        "requires_raw_text": True,
+        "produces_artifact_refs": True,
+        "supports_live_stored_event_runtime": False,
+    },
+)
 
 
 @dataclass(slots=True)

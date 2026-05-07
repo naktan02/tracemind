@@ -5,12 +5,16 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from agent.src.services.inference.scoring_backends import (
-    PrototypeSimilarityScoringBackend,
-    ScoringBackend,
-    build_scoring_backend,
+from agent.src.services.inference.scoring_backends.base import ScoringBackend
+from agent.src.services.inference.scoring_backends.helpers import (
     resolve_scoring_backend_name,
     resolve_scoring_confidence_kind,
+)
+from agent.src.services.inference.scoring_backends.prototype_similarity import (
+    PrototypeSimilarityScoringBackend,
+)
+from agent.src.services.inference.scoring_backends.registry import (
+    build_scoring_backend,
 )
 from shared.src.config.training_defaults import DEFAULT_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig

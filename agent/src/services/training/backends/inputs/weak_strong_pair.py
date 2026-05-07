@@ -12,12 +12,25 @@ from methods.prototype.training_inputs.examples import (
     build_prototype_weak_strong_inputs,
     require_weak_strong_texts,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import ANY_ADAPTER_KIND, WEAK_STRONG_PAIR_BACKEND_NAME
 from .models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
+)
+from .registry import register_training_example_backend
+
+WEAK_STRONG_PAIR_EXAMPLE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=WEAK_STRONG_PAIR_BACKEND_NAME,
+    display_name=WEAK_STRONG_PAIR_BACKEND_NAME,
+    implementation_module="agent.src.services.training.backends.inputs.weak_strong_pair",
+    core_method_name=WEAK_STRONG_PAIR_BACKEND_NAME,
+    family_name="example_generation",
+    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
+    metadata={"supports_stored_event_rebuild": False},
 )
 
 
@@ -99,3 +112,16 @@ def _to_embedded_example(
         strong_base_embedding=list(input_item.strong_base_embedding),
         metadata=metadata,
     )
+
+
+@register_training_example_backend(
+    WEAK_STRONG_PAIR_BACKEND_NAME,
+    catalog_entry=WEAK_STRONG_PAIR_EXAMPLE_BACKEND_CATALOG_ENTRY,
+)
+def build_weak_strong_pair_training_example_backend(
+    objective_config: TrainingObjectiveConfig,
+) -> WeakStrongPairTrainingExampleBackend:
+    """registry용 weak/strong pair example backend factory."""
+
+    del objective_config
+    return WeakStrongPairTrainingExampleBackend()

@@ -4,20 +4,12 @@ from __future__ import annotations
 
 from collections.abc import Callable
 
-from shared.src.config.local_training_registry_catalog import (
-    TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY,
-    TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY,
-)
 from shared.src.config.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
 
 from .base import PseudoLabelAcceptancePolicy
-from .top1 import (
-    Top1ConfidenceOnlyAcceptancePolicy,
-    Top1MarginThresholdAcceptancePolicy,
-)
 
 AcceptancePolicyFactory = Callable[[], PseudoLabelAcceptancePolicy]
 
@@ -29,14 +21,25 @@ _ACCEPTANCE_POLICY_REGISTRY: dict[
 
 def register_pseudo_label_acceptance_policy(
     *policy_names: str,
-    factory: AcceptancePolicyFactory,
     catalog_entry: RegistryCatalogEntry,
-) -> None:
-    """얇은 wiring registry에 pseudo-label acceptance policy를 등록한다."""
+    factory: AcceptancePolicyFactory | None = None,
+) -> (
+    Callable[[AcceptancePolicyFactory], AcceptancePolicyFactory]
+    | AcceptancePolicyFactory
+):
+    """acceptance policy metadata factory 옆에서 runtime wiring을 등록한다."""
 
-    registered_policy = (factory, catalog_entry)
-    for policy_name in policy_names:
-        _ACCEPTANCE_POLICY_REGISTRY[policy_name.strip().lower()] = registered_policy
+    def _decorator(factory: AcceptancePolicyFactory) -> AcceptancePolicyFactory:
+        registered_policy = (factory, catalog_entry)
+        for policy_name in policy_names:
+            _ACCEPTANCE_POLICY_REGISTRY[policy_name.strip().lower()] = (
+                registered_policy
+            )
+        return factory
+
+    if factory is not None:
+        return _decorator(factory)
+    return _decorator
 
 
 def build_pseudo_label_acceptance_policy(
@@ -44,6 +47,7 @@ def build_pseudo_label_acceptance_policy(
 ) -> PseudoLabelAcceptancePolicy:
     """정책 이름으로 acceptance policy를 생성한다."""
 
+    _ensure_builtin_pseudo_label_acceptance_policies_loaded()
     normalized_name = policy_name.strip().lower()
     registered_policy = _ACCEPTANCE_POLICY_REGISTRY.get(normalized_name)
     if registered_policy is not None:
@@ -55,6 +59,7 @@ def build_pseudo_label_acceptance_policy(
 def list_registered_pseudo_label_acceptance_policy_names() -> tuple[str, ...]:
     """등록된 acceptance policy 이름을 정렬된 tuple로 반환한다."""
 
+    _ensure_builtin_pseudo_label_acceptance_policies_loaded()
     return tuple(sorted(_ACCEPTANCE_POLICY_REGISTRY))
 
 
@@ -63,19 +68,16 @@ def list_pseudo_label_acceptance_policy_catalog_entries() -> tuple[
 ]:
     """등록된 acceptance policy catalog entry를 canonical item 기준으로 반환한다."""
 
+    _ensure_builtin_pseudo_label_acceptance_policies_loaded()
     return dedupe_registry_catalog_entries(
         catalog_entry
         for _factory, catalog_entry in _ACCEPTANCE_POLICY_REGISTRY.values()
     )
 
 
-register_pseudo_label_acceptance_policy(
-    "top1_margin_threshold",
-    factory=Top1MarginThresholdAcceptancePolicy,
-    catalog_entry=TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY,
-)
-register_pseudo_label_acceptance_policy(
-    "top1_confidence_only",
-    factory=Top1ConfidenceOnlyAcceptancePolicy,
-    catalog_entry=TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY,
-)
+def _ensure_builtin_pseudo_label_acceptance_policies_loaded() -> None:
+    from agent.src.services.training.acceptance_policies.builtin_loader import (
+        load_builtin_pseudo_label_acceptance_policies,
+    )
+
+    load_builtin_pseudo_label_acceptance_policies()

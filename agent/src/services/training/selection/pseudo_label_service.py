@@ -88,6 +88,14 @@ class PseudoLabelSelectionService:
                 "configured default objective profile."
             )
         if (
+            self.default_policy.selection_hook_name
+            != self.default_pseudo_label_algorithm_name
+        ):
+            raise ValueError(
+                "Default pseudo-label acceptance policy does not point to the "
+                "configured default selection hook."
+            )
+        if (
             self.default_pseudo_label_algorithm_name
             != self.default_selection_hook.hook_name
         ):

@@ -11,7 +11,9 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.inference.scoring_backends import register_scoring_backend
+from agent.src.services.inference.scoring_backends.registry import (
+    register_scoring_backend,
+)
 from agent.src.services.training.backends.inputs import (
     registry as training_example_backend_registry,
 )

@@ -13,7 +13,9 @@ from methods.prototype.training_inputs.examples import (
     build_prototype_rescore_inputs,
     build_prototype_rescore_inputs_from_stored_events,
 )
+from shared.src.config.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.common_types import TrainingScope
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import (
     IdentitySharedAdapterState,
 )
@@ -23,6 +25,18 @@ from .models import (
     StoredEventTrainingExampleBuildRequest,
     TrainingExampleBuildRequest,
     TrainingExampleSource,
+)
+from .registry import register_training_example_backend
+
+PROTOTYPE_RESCORE_EXAMPLE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=PROTOTYPE_RESCORE_BACKEND_NAME,
+    display_name=PROTOTYPE_RESCORE_BACKEND_NAME,
+    implementation_module="agent.src.services.training.backends.inputs.prototype_rescore",
+    core_method_name=PROTOTYPE_RESCORE_BACKEND_NAME,
+    family_name="example_generation",
+    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
+    tags=("supports_stored_event_rebuild",),
+    metadata={"supports_stored_event_rebuild": True},
 )
 
 
@@ -111,3 +125,16 @@ def _to_embedded_example(
         base_embedding=list(input_item.base_embedding),
         metadata=metadata,
     )
+
+
+@register_training_example_backend(
+    PROTOTYPE_RESCORE_BACKEND_NAME,
+    catalog_entry=PROTOTYPE_RESCORE_EXAMPLE_BACKEND_CATALOG_ENTRY,
+)
+def build_prototype_rescoring_training_example_backend(
+    objective_config: TrainingObjectiveConfig,
+) -> PrototypeRescoringTrainingExampleBackend:
+    """registry용 prototype-rescore example backend factory."""
+
+    del objective_config
+    return PrototypeRescoringTrainingExampleBackend()

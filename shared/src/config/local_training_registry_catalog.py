@@ -1,8 +1,13 @@
-"""Agent-owned local training registry catalog metadata.
+"""Compatibility catalog snapshot for agent-owned local training registries.
 
-이 모듈은 registry 구현체를 import하지 않고 catalog에 필요한 정적 metadata만
-소유한다. `main_server` catalog는 이 metadata를 읽고, `agent` registry는 같은
-entry를 wiring에 사용해 source-of-truth 중복을 줄인다.
+`main_server` workspace catalog는 architecture guard상 `agent` 구현을 직접 import할
+수 없으므로 이 snapshot을 읽는다. Agent runtime registry wiring의 catalog entry는
+각 implementation module 옆에 둔다. 이 파일은 long-term source of truth가 아니라
+cross-layer catalog compatibility facade다.
+
+새 experiment-only backend나 method-specific runtime을 여기에 추가하지 않는다. 새 항목이
+필요하면 먼저 implementation-local catalog entry와 runtime capability 경계를 정하고,
+workspace UI/catalog 노출이 필요한 stable 항목만 snapshot으로 반영한다.
 """
 
 from __future__ import annotations
@@ -95,7 +100,9 @@ PROTOTYPE_SIMILARITY_EVIDENCE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="prototype_similarity",
     display_name="prototype_similarity",
-    implementation_module="agent.src.services.inference.scoring_backends",
+    implementation_module=(
+        "agent.src.services.inference.scoring_backends.prototype_similarity"
+    ),
     core_method_name="prototype_similarity",
     family_name="scoring",
     supported_adapter_kinds=(ANY_ADAPTER_KIND,),
@@ -107,7 +114,9 @@ PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_logits",
     display_name="classifier_head_logits",
-    implementation_module="agent.src.services.inference.scoring_backends",
+    implementation_module=(
+        "agent.src.services.inference.scoring_backends.classifier_head_logits"
+    ),
     core_method_name="classifier_head_logits",
     family_name="scoring",
     supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),

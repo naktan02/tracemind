@@ -4,18 +4,18 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
-from agent.src.services.inference.scoring_backends import build_scoring_backend
+from agent.src.services.inference.scoring_backends.registry import build_scoring_backend
 from agent.src.services.training.acceptance_policies.base import (
     PseudoLabelAcceptancePolicy,
 )
 from agent.src.services.training.acceptance_policies.registry import (
     build_pseudo_label_acceptance_policy,
 )
-from agent.src.services.training.backends.evidence.registry import (
+from agent.src.services.training.backends.evidence.resolver import (
     resolve_pseudo_label_evidence_backend,
 )
-from agent.src.services.training.backends.inputs import (
-    registry as training_example_backend_registry,
+from agent.src.services.training.backends.inputs.resolver import (
+    resolve_training_example_backend,
 )
 from agent.src.services.training.backends.training.base import (
     SharedAdapterTrainingBackend,
@@ -58,9 +58,7 @@ def validate_live_agent_stored_event_runtime(
         objective.training_backend_name,
         objective_config=objective,
     )
-    training_example_backend = (
-        training_example_backend_registry.resolve_training_example_backend
-    )(
+    training_example_backend = resolve_training_example_backend(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
@@ -113,9 +111,7 @@ def validate_local_training_runtime(
             objective_config=objective,
         )
     )
-    training_example_backend = (
-        training_example_backend_registry.resolve_training_example_backend
-    )(
+    training_example_backend = resolve_training_example_backend(
         objective_config=objective,
         training_backend=resolved_training_backend,
     )
@@ -136,6 +132,17 @@ def validate_local_training_runtime(
     resolved_acceptance_policy = acceptance_policy or (
         build_pseudo_label_acceptance_policy(acceptance_policy_name)
     )
+    pseudo_label_algorithm_name = (
+        objective.pseudo_label_algorithm_name
+        or DEFAULT_TRAINING_PROFILE.pseudo_label_algorithm_name
+    )
+    if resolved_acceptance_policy.selection_hook_name != pseudo_label_algorithm_name:
+        raise ValueError(
+            "Incompatible acceptance policy: "
+            f"{resolved_acceptance_policy.policy_name} maps to "
+            f"{resolved_acceptance_policy.selection_hook_name}, but objective uses "
+            f"pseudo_label_algorithm_name={pseudo_label_algorithm_name}."
+        )
     privacy_guard_name = objective.privacy_guard_name or default_privacy_guard_name
     resolved_privacy_guard = privacy_guard or build_shared_adapter_privacy_guard(
         privacy_guard_name

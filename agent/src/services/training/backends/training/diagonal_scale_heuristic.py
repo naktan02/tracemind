@@ -15,8 +15,8 @@ from shared.src.config.diagonal_scale_defaults import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
     DiagonalScaleHeuristicTrainingBackendConfig,
 )
-from shared.src.config.local_training_registry_catalog import (
-    DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
+from shared.src.config.registry_catalog_metadata import (
+    RegistryCatalogEntry,
 )
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
@@ -33,6 +33,25 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .base import AcceptedTrainingExample
 from .registry import register_shared_adapter_training_backend
+
+DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name="diagonal_scale_heuristic",
+    display_name="diagonal_scale_heuristic",
+    implementation_module=(
+        "agent.src.services.training.backends.training.diagonal_scale_heuristic"
+    ),
+    core_method_name="diagonal_scale_heuristic",
+    family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
+    accepted_payload_formats=(
+        DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format,
+    ),
+    metadata={
+        "payload_format": (
+            DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
+        )
+    },
+)
 
 
 @dataclass(slots=True)

@@ -136,7 +136,7 @@ def build_aggregation_backend_section(
 def build_training_backend_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """agent local training backend registry를 FL runtime catalog에 노출한다."""
+    """agent local training capability snapshot을 FL runtime catalog에 노출한다."""
 
     return build_registry_section(
         section_name="training_backends",
@@ -153,7 +153,7 @@ def build_training_backend_section(
 def build_training_example_backend_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """training example backend registry를 FL runtime catalog에 노출한다."""
+    """training example capability snapshot을 FL runtime catalog에 노출한다."""
 
     return build_registry_section(
         section_name="example_generation_backends",
@@ -170,7 +170,7 @@ def build_training_example_backend_section(
 def build_evidence_backend_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """pseudo-label evidence backend registry를 FL runtime catalog에 노출한다."""
+    """pseudo-label evidence capability snapshot을 FL runtime catalog에 노출한다."""
 
     return build_registry_section(
         section_name="evidence_backends",
@@ -190,7 +190,7 @@ def build_evidence_backend_section(
 def build_scoring_backend_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """scoring backend registry를 FL runtime catalog에 노출한다."""
+    """scoring capability snapshot을 FL runtime catalog에 노출한다."""
 
     return build_registry_section(
         section_name="scoring_backends",
@@ -199,7 +199,7 @@ def build_scoring_backend_section(
         description=(
             "embedding/prototype/shared_state로 category score를 계산하는 backend."
         ),
-        source_module_name="agent.src.services.inference.scoring_backends",
+        source_module_name="agent.src.services.inference.scoring_backends.registry",
         entries=list_scoring_backend_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=context.resolve_scoring_backend_runtime_paths,
@@ -209,7 +209,7 @@ def build_scoring_backend_section(
 def build_acceptance_policy_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """pseudo-label acceptance policy registry를 FL runtime catalog에 노출한다."""
+    """pseudo-label acceptance capability snapshot을 FL runtime catalog에 노출한다."""
 
     return build_registry_section(
         section_name="acceptance_policies",
@@ -229,7 +229,7 @@ def build_acceptance_policy_section(
 def build_privacy_guard_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """local update privacy guard registry를 FL runtime catalog에 노출한다."""
+    """local update privacy guard capability snapshot을 노출한다."""
 
     return build_registry_section(
         section_name="privacy_guards",

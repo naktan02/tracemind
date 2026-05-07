@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from agent.src.services.training.backends.inputs import (
-    registry as training_example_backend_registry,
-)
 from agent.src.services.training.backends.inputs.base import (
     TrainingExampleBackend,
 )
@@ -16,6 +13,9 @@ from agent.src.services.training.backends.inputs.models import (
 )
 from agent.src.services.training.backends.inputs.prototype_rescore import (
     PrototypeRescoringTrainingExampleBackend,
+)
+from agent.src.services.training.backends.inputs.resolver import (
+    resolve_training_example_backend,
 )
 from agent.src.services.training.examples.models import (
     EmbeddedTrainingExample,
@@ -37,7 +37,7 @@ class TrainingExampleService:
         objective_config: TrainingObjectiveConfig,
     ) -> "TrainingExampleService":
         return cls(
-            backend=training_example_backend_registry.resolve_training_example_backend(
+            backend=resolve_training_example_backend(
                 objective_config=objective_config
             )
         )

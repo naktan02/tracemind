@@ -9,10 +9,14 @@ from pathlib import Path
 
 import pytest
 
-from agent.src.services.inference.scoring_backends import (
+from agent.src.services.inference.scoring_backends.base import (
     PROTOTYPE_SIMILARITY_BACKEND_NAME,
     PROTOTYPE_SIMILARITY_CONFIDENCE_KIND,
+)
+from agent.src.services.inference.scoring_backends.prototype_similarity import (
     PrototypeSimilarityScoringBackend,
+)
+from agent.src.services.inference.scoring_backends.registry import (
     register_scoring_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
