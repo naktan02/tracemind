@@ -325,6 +325,8 @@ dict/list table, 작은 helper로 낮춘다.
   - 진행: fixed classifier의 data model과 artifact write/load를
     `scripts/experiments/fixed_classifier/models.py`, `artifacts.py`로 분리했다. 기존
     `runner.py` public import 표면은 유지한다.
+  - 진행: fixed classifier prediction loop를 `prediction.py`로, row embedding batching을
+    `row_embeddings.py`로 분리했다. bootstrap runner는 prediction helper를 직접 import한다.
   - 방향: entrypoint는 config load, core 호출, artifact 저장 호출만 남기고 학습/평가/예측
     세부 loop는 작은 module 함수로 분리한다. `Any`는 외부 library boundary 또는 Hydra raw
     config boundary에만 남긴다.

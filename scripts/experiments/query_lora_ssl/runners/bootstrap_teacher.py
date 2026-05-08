@@ -16,8 +16,10 @@ from scripts.experiments.fixed_classifier.artifacts import (
     load_fixed_classifier_artifacts,
     write_fixed_classifier_artifacts,
 )
-from scripts.experiments.fixed_classifier.runner import (
+from scripts.experiments.fixed_classifier.prediction import (
     predict_fixed_classifier_rows,
+)
+from scripts.experiments.fixed_classifier.runner import (
     train_fixed_embedding_classifier,
 )
 from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
