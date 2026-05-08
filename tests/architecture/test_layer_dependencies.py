@@ -27,6 +27,7 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "prototype_pack_builder.py",
 )
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
+PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
     AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
 )
@@ -188,6 +189,19 @@ def test_prototype_building_keeps_strategy_files_separate() -> None:
         "prototype builder strategy는 base/single/kmeans/dbscan 파일로 나눈다. "
         f"monolith path={_relative_repo_path(monolith_path)}"
     )
+
+
+def test_prototype_scoring_does_not_keep_policy_facade() -> None:
+    facade_path = PROTOTYPE_SCORING_SRC / "policies.py"
+    implementation_root = PROTOTYPE_SCORING_SRC / "score_policies"
+
+    assert not facade_path.exists(), (
+        "prototype score policy는 중앙 facade 없이 registry와 구현 파일로 분리한다. "
+        "runtime은 policy_registry.py를, concrete 구현은 "
+        "score_policies/<policy>.py를 직접 import한다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
+    )
+    assert implementation_root.is_dir()
 
 
 def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:

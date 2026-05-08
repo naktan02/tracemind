@@ -4,10 +4,10 @@ from __future__ import annotations
 
 import pytest
 
-from methods.prototype.scoring.policies import (
-    MaxCosineScorePolicy,
+from methods.prototype.scoring.policy_registry import build_prototype_score_policy
+from methods.prototype.scoring.score_policies.max_cosine import MaxCosineScorePolicy
+from methods.prototype.scoring.score_policies.topk_mean_cosine import (
     TopKMeanCosineScorePolicy,
-    build_prototype_score_policy,
 )
 from methods.prototype.scoring.similarity import score_prototype_categories
 

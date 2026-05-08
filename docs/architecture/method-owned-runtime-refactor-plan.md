@@ -270,8 +270,9 @@ ref 생성/JSON loading capability만 남긴다. `assets/prototypes`는 catch-al
 
 상태: 진행 중. `SslObjectiveHooks` typed bundle과 FixMatch fixed-threshold hook 조합은
 열려 있고, selection-set epoch history/summary record는
-`methods/adaptation/common/training_history.py`로 공통화했다. model input 처리와
-runner orchestration은 각 family/script에 남긴다.
+`methods/adaptation/common/training_history.py`로 공통화했다. prototype score policy는
+`policy_registry.py`와 `score_policies/`로 분리했고, 얇은 `policies.py` facade는
+제거했다. model input 처리와 runner orchestration은 각 family/script에 남긴다.
 
 - 완료: USB식 장점인 hook 교체 구조를 TraceMind 방식으로 명시화한다.
 - 완료: `SslObjectiveHooks` role-based bundle로 masking, pseudo-labeling,
@@ -280,6 +281,9 @@ runner orchestration은 각 family/script에 남긴다.
   masking hook으로 교체 가능성을 검증한다.
 - 진행: fixed classifier와 LoRA classifier의 evaluation/checkpoint/history/training
   loop 중 selection-set history record처럼 반복되는 template만 공통화한다.
+- 완료: prototype score policy 구현과 registry를 분리하고, 새 policy는
+  `methods/prototype/scoring/score_policies/<policy>.py`에서 구현 옆 decorator로
+  등록한다.
 
 완료 기준:
 

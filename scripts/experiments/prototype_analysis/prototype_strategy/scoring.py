@@ -8,7 +8,7 @@ from typing import Protocol
 
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.scoring.base import PrototypeScorePolicy
-from methods.prototype.scoring.policies import build_prototype_score_policy
+from methods.prototype.scoring.policy_registry import build_prototype_score_policy
 from methods.prototype.scoring.similarity import score_prototype_categories
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     PrototypeIndex,

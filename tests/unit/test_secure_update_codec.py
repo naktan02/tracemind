@@ -26,7 +26,9 @@ def _task(*, secure_required: bool = False) -> TrainingTask:
         batch_size=1,
         learning_rate=0.1,
         max_steps=1,
-        objective_config=TrainingObjectiveConfigPayload(),
+        objective_config=TrainingObjectiveConfigPayload(
+            training_backend_name="diagonal_scale_heuristic"
+        ),
         selection_policy=TrainingSelectionPolicyPayload(),
         secure_aggregation=SecureAggregationConfigPayload(
             required=secure_required,
