@@ -15,13 +15,13 @@ from shared.src.contracts.registry_catalog_metadata import (
     dedupe_registry_catalog_entries,
 )
 
-from .diagonal_scale_defaults import AggregationConfigScalar
+from .models import AggregationConfigScalar
 
 _AGGREGATION_PACKAGE = "main_server.src.services.federation.rounds.aggregation"
 _SKIPPED_AGGREGATION_MODULES = frozenset(
     {
+        "artifact_refs",
         "builtin_loader",
-        "diagonal_scale_defaults",
         "models",
         "registry",
         "runtime_adapter",
@@ -69,7 +69,7 @@ def build_shared_adapter_aggregation_backend(
     """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
 
     normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
-    _import_aggregation_module_for_adapter_kind(normalized_key[0])
+    _import_aggregation_module_for_backend_name(normalized_key[1])
     registered_backend = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
     if registered_backend is not None:
         factory, _catalog_entry = registered_backend
@@ -108,8 +108,8 @@ def list_shared_adapter_aggregation_backend_catalog_entries() -> tuple[
     )
 
 
-def _import_aggregation_module_for_adapter_kind(normalized_adapter_kind: str) -> None:
-    module_name = normalized_adapter_kind.replace("-", "_")
+def _import_aggregation_module_for_backend_name(normalized_backend_name: str) -> None:
+    module_name = normalized_backend_name.replace("-", "_")
     try:
         importlib.import_module(f"{_AGGREGATION_PACKAGE}.{module_name}")
     except ModuleNotFoundError as error:

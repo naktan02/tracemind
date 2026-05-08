@@ -1,4 +1,9 @@
-"""Shared adapter family canonical 메타데이터."""
+"""Shared adapter family payload contract 메타데이터.
+
+이 파일은 agent/server가 같은 adapter family discriminator와 update payload format을
+해석하기 위한 contract-adjacent metadata만 소유한다. runtime backend, method profile,
+aggregation implementation catalog의 source of truth로 쓰지 않는다.
+"""
 
 from __future__ import annotations
 
@@ -10,7 +15,7 @@ from shared.src.contracts.training_contracts import UpdatePayloadFormat
 
 @dataclass(frozen=True, slots=True)
 class SharedAdapterFamilyMetadata:
-    """agent/server가 함께 해석하는 adapter family 메타데이터."""
+    """agent/server가 함께 해석하는 adapter family payload 메타데이터."""
 
     family_name: str
     adapter_kind: str

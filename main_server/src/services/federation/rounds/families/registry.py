@@ -9,7 +9,7 @@ from shared.src.contracts.adapter_family_metadata import (
     list_shared_adapter_family_metadata,
 )
 
-from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
+from ..aggregation.models import AggregationConfigScalar
 from ..aggregation.registry import build_shared_adapter_aggregation_backend
 from .models import (
     RoundFamilyFactory,
@@ -23,10 +23,7 @@ _ROUND_FAMILY_REGISTRY: dict[str, RoundFamilyFactory] = {}
 def register_shared_adapter_round_family(
     *family_names: str,
     factory: RoundFamilyFactory | None = None,
-) -> (
-    Callable[[RoundFamilyFactory], RoundFamilyFactory]
-    | RoundFamilyFactory
-):
+) -> Callable[[RoundFamilyFactory], RoundFamilyFactory] | RoundFamilyFactory:
     """adapter family factory 옆에서 round runtime wiring을 등록한다."""
 
     def _decorator(factory: RoundFamilyFactory) -> RoundFamilyFactory:
@@ -72,6 +69,4 @@ def _resolve_shared_adapter_family_metadata(
             or family_metadata.adapter_kind.strip().lower() == normalized_family_name
         ):
             return family_metadata
-    raise ValueError(
-        f"Unsupported shared adapter family: {normalized_family_name}."
-    )
+    raise ValueError(f"Unsupported shared adapter family: {normalized_family_name}.")

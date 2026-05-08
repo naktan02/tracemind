@@ -15,8 +15,10 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from ..aggregation.diagonal_scale_defaults import AggregationConfigScalar
-from ..aggregation.models import SharedAdapterAggregationBackend
+from ..aggregation.models import (
+    AggregationConfigScalar,
+    SharedAdapterAggregationBackend,
+)
 
 
 class SharedAdapterRoundFamily(Protocol):

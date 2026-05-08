@@ -27,22 +27,22 @@ from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
 from main_server.src.infrastructure.repositories.round_repository import RoundRepository
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     models as prototype_models,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_build_state_service as build_state_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_pack_service as pack_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_rebuild_service as rebuild_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     publication_strategies as publication_strategy_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     stored_input_rebuild_service as stored_rebuild_service_module,
 )
 from main_server.src.services.federation.rounds.acceptance.policies import (
@@ -88,9 +88,8 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_manager_service_from_config,
 )
-from methods.prototype.building.single import SinglePrototypeBuildStrategy
-from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.prototype.building.single import SinglePrototypeBuildStrategy
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -99,6 +98,7 @@ from shared.src.contracts.adapter_contracts import (
     register_shared_adapter_payload_family,
 )
 from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import (
     TrainingUpdateEnvelope,
     TrainingUpdateSubmission,

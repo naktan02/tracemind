@@ -138,9 +138,7 @@ def build_training_backend_section(
         item_kind="training_backend",
         description="로컬 accepted example을 update payload로 바꾸는 backend.",
         source_module_name="agent.src.services.training.backends.training.registry",
-        entries=(
-            local_catalog.list_shared_adapter_training_backend_catalog_entries()
-        ),
+        entries=(local_catalog.list_shared_adapter_training_backend_catalog_entries()),
         source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=_resolve_training_backend_runtime_paths,
     )
@@ -213,9 +211,7 @@ def build_acceptance_policy_section(
         item_kind="acceptance_policy",
         description="pseudo-label evidence를 accepted candidate로 해석하는 정책.",
         source_module_name="agent.src.services.training.acceptance_policies.registry",
-        entries=(
-            local_catalog.list_pseudo_label_acceptance_policy_catalog_entries()
-        ),
+        entries=(local_catalog.list_pseudo_label_acceptance_policy_catalog_entries()),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,

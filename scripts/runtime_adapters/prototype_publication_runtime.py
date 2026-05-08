@@ -16,10 +16,10 @@ def build_reference_prototype_rebuild_service(
 ) -> Any:
     """reference pack과 build state를 기록하는 rebuild service를 만든다."""
 
-    from main_server.src.services.federation.assets.prototypes import (
+    from main_server.src.services.federation.prototypes import (
         prototype_rebuild_service as rebuild_service_module,
     )
-    from main_server.src.services.federation.assets.prototypes import (
+    from main_server.src.services.federation.prototypes import (
         publication_strategies as publication_strategy_module,
     )
 
@@ -37,7 +37,7 @@ def build_reference_prototype_rebuild_service(
 def publish_prototype_build_state(payload: Any) -> Path:
     """main_server state 저장소에 prototype build state를 publish한다."""
 
-    from main_server.src.services.federation.assets.prototypes import (
+    from main_server.src.services.federation.prototypes import (
         prototype_build_state_service as build_state_service_module,
     )
 
@@ -49,7 +49,7 @@ def publish_prototype_build_state(payload: Any) -> Path:
 def publish_prototype_pack(payload: Any) -> Path:
     """main_server state 저장소에 prototype pack을 publish한다."""
 
-    from main_server.src.services.federation.assets.prototypes import (
+    from main_server.src.services.federation.prototypes import (
         prototype_pack_service as pack_service_module,
     )
 
@@ -59,7 +59,7 @@ def publish_prototype_pack(payload: Any) -> Path:
 def activate_prototype_pack_version(prototype_version: str) -> Any:
     """main_server state 저장소의 활성 PrototypePack 버전을 변경한다."""
 
-    from main_server.src.services.federation.assets.prototypes import (
+    from main_server.src.services.federation.prototypes import (
         prototype_pack_service as pack_service_module,
     )
 

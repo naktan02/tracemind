@@ -24,7 +24,7 @@ from main_server.src.services.experiment_workspace.run_execution.service import 
 from main_server.src.services.experiment_workspace.workspace_service import (
     ExperimentWorkspaceService,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_pack_service as prototype_pack_service_module,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (

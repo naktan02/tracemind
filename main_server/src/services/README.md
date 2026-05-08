@@ -6,9 +6,9 @@
 
 - `federation/rounds/`
   - FL round open/update/finalize, aggregation, runtime wiring
-- `federation/assets/prototypes/`
+- `federation/prototypes/`
   - prototype pack/build-state rebuild, publication, activation 같은
-    federation asset lifecycle
+    server-owned prototype artifact lifecycle
 - `experiment_workspace/`
   - 개발자용 experiment workspace catalog/compile/run/save backend
   - `catalog/`, `compiler/`, `run_execution/`가 각각 선택지 노출, Hydra preview 번역,
@@ -24,17 +24,19 @@
 
 ### 2. prototype rebuild/publication부터 보고 싶을 때
 
-1. `federation/assets/prototypes/prototype_rebuild_service.py`
-2. `federation/assets/prototypes/stored_input_rebuild_service.py`
-3. `federation/assets/prototypes/models.py`
+1. `federation/prototypes/prototype_rebuild_service.py`
+2. `federation/prototypes/stored_input_rebuild_service.py`
+3. `federation/prototypes/models.py`
 4. `infrastructure/repositories/prototype_rebuild_input_repository.py`
-5. `federation/assets/prototypes/publication_strategies.py`
+5. `federation/prototypes/publication_strategies.py`
 
 ## 경계 원칙
 
 - federation round orchestration은 `federation/rounds/`가 소유한다.
 - prototype pack/build-state 생성과 publication은
-  `federation/assets/prototypes/`가 소유한다.
+  `federation/prototypes/`가 소유한다.
+- `federation/assets/` 같은 넓은 catch-all service package를 새 source로 되살리지
+  않는다. artifact 종류가 필요하면 resource/capability 이름으로 좁힌 package를 둔다.
 - prototype rebuild input row는 `ServerReferencePrototypeSourceRow`로 표현되는
   server-owned reference만 허용한다. agent raw/query text는 이 경로로 승격하지 않는다.
 - 개발자 실험 웹용 catalog/compile/workspace/run surface는

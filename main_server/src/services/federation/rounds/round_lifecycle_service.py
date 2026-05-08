@@ -46,10 +46,10 @@ from shared.src.services.secure_update_codec import (
     SecureUpdateCodec,
 )
 
-from ..assets.prototypes.models import (
+from ..prototypes.models import (
     StoredReferencePrototypeRebuildRequest,
 )
-from ..assets.prototypes.stored_input_rebuild_service import (
+from ..prototypes.stored_input_rebuild_service import (
     StoredReferencePrototypeRebuildService,
 )
 

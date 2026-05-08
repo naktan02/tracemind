@@ -27,9 +27,7 @@ ANY_ADAPTER_KIND = "*"
 DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_heuristic",
     display_name="diagonal_scale_heuristic",
-    implementation_module=(
-        "methods.adaptation.diagonal_scale.training_backend"
-    ),
+    implementation_module=("methods.adaptation.diagonal_scale.training_backend"),
     core_method_name="diagonal_scale_heuristic",
     family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
     supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
@@ -46,9 +44,7 @@ DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="lora_classifier_trainer",
     display_name="lora_classifier_trainer",
-    implementation_module=(
-        "methods.adaptation.lora_classifier.training_backend"
-    ),
+    implementation_module=("methods.adaptation.lora_classifier.training_backend"),
     core_method_name="lora_classifier_trainer",
     family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
     supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
@@ -148,8 +144,7 @@ DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_clip_only",
     display_name="diagonal_scale_clip_only",
     implementation_module=(
-        "agent.src.services.training.execution.privacy_guards."
-        "diagonal_scale_clip_only"
+        "agent.src.services.training.execution.privacy_guards.diagonal_scale_clip_only"
     ),
     core_method_name="diagonal_scale_clip_only",
     family_name="privacy_guard",
@@ -159,8 +154,7 @@ CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_clip_only",
     display_name="classifier_head_clip_only",
     implementation_module=(
-        "agent.src.services.training.execution.privacy_guards."
-        "classifier_head_clip_only"
+        "agent.src.services.training.execution.privacy_guards.classifier_head_clip_only"
     ),
     core_method_name="classifier_head_clip_only",
     family_name="privacy_guard",
@@ -169,9 +163,7 @@ CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
 NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="noop",
     display_name="noop",
-    implementation_module=(
-        "agent.src.services.training.execution.privacy_guards.noop"
-    ),
+    implementation_module=("agent.src.services.training.execution.privacy_guards.noop"),
     core_method_name="noop",
     family_name="privacy_guard",
     supported_adapter_kinds=(ANY_ADAPTER_KIND,),

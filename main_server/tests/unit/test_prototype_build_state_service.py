@@ -8,8 +8,8 @@ from pathlib import Path
 from main_server.src.infrastructure.repositories import (
     prototype_build_state_repository as prototype_build_state_repository_module,
 )
-from main_server.src.services.federation.assets.prototypes.prototype_build_state_service import (
-    PrototypeBuildStateService,
+from main_server.src.services.federation.prototypes import (
+    prototype_build_state_service as prototype_build_state_service_module,
 )
 from shared.src.contracts.prototype_build_state_contracts import (
     PrototypeBuildStatePayload,
@@ -17,12 +17,12 @@ from shared.src.contracts.prototype_build_state_contracts import (
 
 
 def test_publish_and_get_state(tmp_path: Path) -> None:
-    repository = (
-        prototype_build_state_repository_module.PrototypeBuildStateRepository(
+    repository = prototype_build_state_repository_module.PrototypeBuildStateRepository(
         state_root=tmp_path / "prototype_build_states"
-        )
     )
-    service = PrototypeBuildStateService(repository=repository)
+    service = prototype_build_state_service_module.PrototypeBuildStateService(
+        repository=repository
+    )
     payload = PrototypeBuildStatePayload(
         schema_version="prototype_build_state.v1",
         prototype_version="proto_test_v1",

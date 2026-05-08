@@ -342,7 +342,7 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
    - 예: `DiagonalScaleHeuristicTrainingBackend`
 
 3. `server aggregation backend`
-   - 예: `DiagonalScaleAggregationService`
+   - 예: `fedavg` runtime adapter
 
 즉 같은 `diagonal_scale` family 안에서는
 `heuristic -> gradient` 교체가 비교적 쉽고,

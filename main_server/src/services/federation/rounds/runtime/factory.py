@@ -39,7 +39,7 @@ from main_server.src.services.federation.rounds.runtime.config import (
 )
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
-from ...assets.prototypes.stored_input_rebuild_service import (
+from ...prototypes.stored_input_rebuild_service import (
     StoredReferencePrototypeRebuildService,
 )
 

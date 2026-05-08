@@ -9,22 +9,22 @@ from typing import Any
 from main_server.src.infrastructure.repositories import (
     prototype_rebuild_input_repository as rebuild_input_repo,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     models as prototype_models,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_build_state_service as build_state_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_pack_service as pack_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     prototype_rebuild_service as rebuild_service_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     publication_strategies as publication_strategy_module,
 )
-from main_server.src.services.federation.assets.prototypes import (
+from main_server.src.services.federation.prototypes import (
     stored_input_rebuild_service as stored_rebuild_service_module,
 )
 from methods.prototype.building.base import PrototypeBuildStrategy

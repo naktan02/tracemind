@@ -244,19 +244,13 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
 
 def test_local_training_service_uses_update_executor_not_concrete_backends() -> None:
     path = (
-        AGENT_SRC
-        / "services"
-        / "training"
-        / "execution"
-        / "local_training_service.py"
+        AGENT_SRC / "services" / "training" / "execution" / "local_training_service.py"
     )
     imports = _collect_absolute_imports(path)
     violations = sorted(
         imported_module
         for imported_module in imports
-        if imported_module.startswith(
-            "agent.src.services.training.backends.training."
-        )
+        if imported_module.startswith("agent.src.services.training.backends.training.")
     )
     assert not violations, (
         "LocalTrainingService는 selection orchestration만 맡고 update 생성은 "
@@ -303,6 +297,84 @@ def test_main_server_round_family_package_has_no_concrete_family_modules() -> No
         "main_server round family package는 shared adapter family metadata와 "
         "aggregation backend를 generic runtime으로 조합한다. concrete family "
         "module은 추가하지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_main_server_aggregation_package_uses_method_not_family_modules() -> None:
+    package_root = (
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
+    )
+    from shared.src.contracts.adapter_family_metadata import (
+        list_shared_adapter_family_metadata,
+    )
+
+    forbidden_stems = {
+        family_metadata.adapter_kind.replace("-", "_")
+        for family_metadata in list_shared_adapter_family_metadata()
+    }
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if path.stem in forbidden_stems
+    ]
+
+    assert not violations, (
+        "main_server aggregation package는 adapter family별 module을 두지 않는다. "
+        "server runtime adapter는 fedavg 같은 aggregation method 파일과 "
+        "artifact/materialization capability 파일로만 확장한다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_main_server_aggregation_methods_do_not_define_family_specific_services() -> (
+    None
+):
+    package_root = (
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
+    )
+    from shared.src.contracts.adapter_family_metadata import (
+        list_shared_adapter_family_metadata,
+    )
+
+    family_name_prefixes = {
+        "".join(part.capitalize() for part in family_metadata.adapter_kind.split("_"))
+        for family_metadata in list_shared_adapter_family_metadata()
+    }
+    violations: list[tuple[Path, str]] = []
+    for path in _iter_python_files(package_root):
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in ast.walk(tree):
+            if not isinstance(node, ast.ClassDef):
+                continue
+            if any(
+                node.name.startswith(prefix) for prefix in family_name_prefixes
+            ) and (
+                node.name.endswith("AggregationService")
+                or node.name.endswith("AggregationConfig")
+            ):
+                violations.append((_relative_repo_path(path), node.name))
+
+    assert not violations, (
+        "main_server aggregation method file은 family별 service/config class를 "
+        "누적하지 않는다. family 차이는 shared payload contract와 generic "
+        "runtime spec 뒤에 둔다.\n"
+        f"{chr(10).join(f'- {path}: {class_name}' for path, class_name in violations)}"
+    )
+
+
+def test_main_server_federation_assets_package_has_no_source_modules() -> None:
+    package_root = MAIN_SERVER_SRC / "services" / "federation" / "assets"
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if "__pycache__" not in path.parts
+    ]
+
+    assert not violations, (
+        "main_server federation assets package는 넓은 catch-all source package로 "
+        "사용하지 않는다. server-owned prototype artifact lifecycle은 "
+        "main_server/src/services/federation/prototypes에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

@@ -10,7 +10,7 @@ from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
-from main_server.src.services.federation.assets.prototypes.models import (
+from main_server.src.services.federation.prototypes.models import (
     SERVER_REFERENCE_PROTOTYPE_SOURCE_KIND,
     PrototypeRebuildInputRecord,
     ServerReferencePrototypeSourceRow,

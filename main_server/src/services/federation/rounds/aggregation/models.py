@@ -12,12 +12,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from .diagonal_scale_defaults import (
-    AggregationConfigScalar,
-    DiagonalScaleFedAvgAggregationConfig,
-)
-
-AggregationConfig = DiagonalScaleFedAvgAggregationConfig
+AggregationConfigScalar = str | int | float | bool
 
 
 @dataclass(slots=True)

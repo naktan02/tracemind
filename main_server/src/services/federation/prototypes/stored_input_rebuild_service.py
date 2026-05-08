@@ -5,7 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field, replace
 from typing import Protocol
 
-from main_server.src.services.federation.assets.prototypes.models import (
+from main_server.src.services.federation.prototypes.models import (
     PrototypeRebuildInputRecord,
     PrototypeRebuildResult,
     ReferencePrototypeRebuildRequest,
