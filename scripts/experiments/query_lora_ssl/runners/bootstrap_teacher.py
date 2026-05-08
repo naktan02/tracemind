@@ -12,11 +12,13 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from scripts.datasets.lib.split import split_rows
-from scripts.experiments.fixed_classifier.runner import (
+from scripts.experiments.fixed_classifier.artifacts import (
     load_fixed_classifier_artifacts,
+    write_fixed_classifier_artifacts,
+)
+from scripts.experiments.fixed_classifier.runner import (
     predict_fixed_classifier_rows,
     train_fixed_embedding_classifier,
-    write_fixed_classifier_artifacts,
 )
 from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
     resolve_pseudo_label_algorithm,

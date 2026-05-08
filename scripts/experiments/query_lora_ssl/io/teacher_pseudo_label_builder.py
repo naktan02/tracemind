@@ -9,7 +9,7 @@ from datetime import datetime
 from typing import Any
 
 from methods.ssl.hooks.registry import build_pseudo_label_selection_hook
-from scripts.experiments.fixed_classifier.runner import FixedClassifierPrediction
+from scripts.experiments.fixed_classifier.models import FixedClassifierPrediction
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.entities.training.pseudo_label_evidence import (
     PSEUDO_LABEL_EVIDENCE_V1,
