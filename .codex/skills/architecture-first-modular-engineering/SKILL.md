@@ -91,6 +91,24 @@ description: Use when a project needs a reusable engineering style that prioriti
 Adapter`처럼 여러 작은 패턴이 각자의 책임을 지도록 조합한다. 공통 hook이나 helper는
 처음부터 끌어올리지 말고, 두 개 이상 implementation에서 의미가 안정될 때 승격한다.
 
+## 코드 표현 규칙
+
+좋은 구조는 읽는 표면도 가벼워야 한다. 파일을 나누는 것만으로는 충분하지 않고,
+reader가 먼저 봐야 하는 흐름과 나중에 봐도 되는 세부 규칙이 코드에서 분리되어야 한다.
+
+- plain function, local helper, direct import를 우선한다. 패턴 객체는 실제 변화 축이나
+  boundary contract가 있을 때만 도입한다.
+- `dataclass`, `Protocol`, `TypedDict`, 긴 generic type은 contract, stable value object,
+  port/interface에 제한한다.
+- `Any`는 untyped 외부 경계에만 허용하고, 내부 흐름으로 들어오기 전에 이름 있는 payload,
+  alias, helper로 의미를 좁힌다.
+- runner/controller/service의 첫 화면은 orchestration 흐름이 보여야 한다. 긴 rule table,
+  artifact IO, report row assembly, plotting, validation boilerplate가 섞이면 분리한다.
+- 한 줄짜리 pass-through facade, 단일 사용처용 DTO, 삭제해도 caller가 거의 단순해지는
+  helper는 만들지 않는다.
+- type hint는 읽기를 도와야 한다. 긴 union/generic이 핵심 흐름을 가리면 domain alias나
+  작은 payload object로 이름을 주고, 단일 사용처라면 과한 타입을 줄인다.
+
 ## 패턴 무결성 Guard
 
 패턴을 도입하거나 리뷰할 때 아래를 먼저 확인한다.

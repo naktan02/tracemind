@@ -130,6 +130,29 @@ trigger: always_on
 7. 두 번째 implementation 또는 test-only extension으로 seam이 실제인지 검증한다.
 8. contract, caller, tests, docs를 같은 흐름으로 닫는다.
 
+## 코드 표현 규칙
+
+이 규칙은 특정 프로젝트나 폴더에 묶이지 않는다. 좋은 구조는 파일 수나 패턴 이름이
+아니라, reader가 핵심 흐름을 빠르게 찾고 세부 규칙을 필요할 때 내려가 볼 수 있는지로
+평가한다.
+
+- plain function, local helper, direct import를 우선한다. 패턴 객체, registry, facade,
+  DTO는 실제 변화 축이나 boundary contract가 있을 때만 만든다.
+- `dataclass`, `Protocol`, `TypedDict`, 긴 generic type은 contract, stable value object,
+  port/interface처럼 안정성이 필요한 경계에 제한한다.
+- `Any`는 untyped 외부 경계에만 허용하고, 내부 흐름으로 들어오기 전에 이름 있는 payload,
+  alias, helper로 의미를 좁힌다.
+- runner/controller/service의 첫 화면은 orchestration 흐름이 보여야 한다. 긴 rule table,
+  artifact IO, report row assembly, plotting, validation boilerplate가 섞이면 분리한다.
+- data declaration과 실행 로직을 섞지 않는다. 긴 catalog/rule table은 helper factory나
+  plain table로 낮추고, 실행 함수에는 lookup 흐름만 남긴다.
+- 한 줄짜리 pass-through facade, 단일 사용처용 DTO, 삭제해도 caller가 거의 단순해지는
+  helper는 만들지 않는다.
+- type hint는 읽기를 도와야 한다. 긴 union/generic이 핵심 흐름을 가리면 domain alias나
+  작은 payload object로 이름을 주고, 단일 사용처라면 과한 타입을 줄인다.
+- 주석은 코드가 말하지 못하는 이유와 계약 의미만 설명한다. 코드의 동작을 반복하는
+  설명이나 장황한 boilerplate 주석은 피한다.
+
 ## 패턴 사용 원칙
 
 패턴 자체를 목적처럼 쓰지 않는다. 아래 기준은 출발점일 뿐이며 필요하면 조합해서 쓴다.

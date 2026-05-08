@@ -20,6 +20,7 @@ central fixed embedding + classifier seed
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
 | `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 리팩터링 계획 |
 | `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 리팩터링 후보와 우선순위 |
+| `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |

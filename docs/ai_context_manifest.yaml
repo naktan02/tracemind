@@ -39,6 +39,7 @@ active_entrypoints:
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
+  - docs/architecture/code-expression-guidelines.md
   - docs/architecture/pattern-integrity-refactor-backlog.md
   - docs/architecture/method-owned-runtime-refactor-plan.md
   - docs/contracts/query_buffer_v1.md
