@@ -18,6 +18,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 
 from ..io.simulation_report_builder import SimulationReportBuilder
+from ..io.simulation_report_writer import SimulationReportWriter
 
 
 def build_simulation_result(
@@ -47,22 +48,26 @@ def build_simulation_result(
         ),
     )
     if request.report_config is not None:
+        report_payload = SimulationReportBuilder().build_payload(
+            result=result,
+            report_config=request.report_config,
+            client_count=request.client_count,
+            round_budget=request.rounds,
+            bootstrap_ratio=request.bootstrap_ratio,
+            seed=request.seed,
+            shard_policy=request.shard_policy,
+            dataset_split=bootstrapped.dataset_split,
+            ssl_method_config=request.ssl_method_config,
+            client_pool_split_config=request.client_pool_split_config,
+            training_task_config=request.training_task_config,
+            validation_config=request.validation_config,
+            round_runtime_config=request.round_runtime_config,
+        )
         result.report_path = str(
-            SimulationReportBuilder().save(
+            SimulationReportWriter().write(
                 output_dir=request.output_dir,
-                result=result,
                 report_config=request.report_config,
-                client_count=request.client_count,
-                round_budget=request.rounds,
-                bootstrap_ratio=request.bootstrap_ratio,
-                seed=request.seed,
-                shard_policy=request.shard_policy,
-                dataset_split=bootstrapped.dataset_split,
-                ssl_method_config=request.ssl_method_config,
-                client_pool_split_config=request.client_pool_split_config,
-                training_task_config=request.training_task_config,
-                validation_config=request.validation_config,
-                round_runtime_config=request.round_runtime_config,
+                payload=report_payload,
             )
         )
     return result

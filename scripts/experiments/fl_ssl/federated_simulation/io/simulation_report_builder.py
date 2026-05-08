@@ -1,10 +1,8 @@
-"""FL simulation report payload builder and writer."""
+"""FL simulation report payload builder."""
 
 from __future__ import annotations
 
-import json
 from collections.abc import Mapping
-from pathlib import Path
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -22,53 +20,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 
 
 class SimulationReportBuilder:
-    """FL SSL main comparison report schema와 저장을 담당한다."""
-
-    def save(
-        self,
-        *,
-        output_dir: Path,
-        result: SimulationResult,
-        report_config: FederatedReportConfig,
-        client_count: int,
-        round_budget: int,
-        bootstrap_ratio: float,
-        seed: int,
-        shard_policy: FederatedShardPolicyConfig,
-        dataset_split: FederatedDatasetSplit,
-        ssl_method_config: FederatedSslMethodConfig,
-        client_pool_split_config: FederatedClientPoolSplitConfig | None,
-        training_task_config: FederatedTrainingTaskConfig,
-        validation_config: FederatedValidationConfig,
-        round_runtime_config: FederatedRoundRuntimeConfig,
-    ) -> Path:
-        report_dir = output_dir / "reports"
-        report_dir.mkdir(parents=True, exist_ok=True)
-        path = report_dir / f"{report_config.track}.report.json"
-        path.write_text(
-            json.dumps(
-                self.build_payload(
-                    result=result,
-                    report_config=report_config,
-                    client_count=client_count,
-                    round_budget=round_budget,
-                    bootstrap_ratio=bootstrap_ratio,
-                    seed=seed,
-                    shard_policy=shard_policy,
-                    dataset_split=dataset_split,
-                    ssl_method_config=ssl_method_config,
-                    client_pool_split_config=client_pool_split_config,
-                    training_task_config=training_task_config,
-                    validation_config=validation_config,
-                    round_runtime_config=round_runtime_config,
-                ),
-                indent=2,
-                ensure_ascii=True,
-            )
-            + "\n",
-            encoding="utf-8",
-        )
-        return path
+    """FL SSL main comparison report schema payload를 조립한다."""
 
     def build_payload(
         self,

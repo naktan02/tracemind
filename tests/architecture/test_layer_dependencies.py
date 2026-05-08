@@ -383,6 +383,28 @@ def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     )
 
 
+def test_fl_simulation_report_builder_does_not_write_report_json() -> None:
+    builder_path = FL_SIMULATION_IO_SRC / "simulation_report_builder.py"
+    writer_path = FL_SIMULATION_IO_SRC / "simulation_report_writer.py"
+    source = builder_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "json.dumps(",
+        ".write_text(",
+        ".mkdir(",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert writer_path.exists(), (
+        "FL simulation report는 payload builder와 JSON writer를 분리한다. "
+        f"missing writer={_relative_repo_path(writer_path)}"
+    )
+    assert not violations, (
+        "SimulationReportBuilder는 schema payload만 조립한다. report path, directory, "
+        "JSON serialization, 파일 write는 SimulationReportWriter가 맡는다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
     orchestrator_path = QUERY_LORA_SSL_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
