@@ -82,6 +82,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from main_server.src.services.federation.rounds.round_state_exchange.executor import (
+    RoundStateExchangeResult,
+)
 from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
 )
@@ -174,6 +177,23 @@ class _RecordingServerPolicyExecutor:
             round_policy_name=method_descriptor.server_step.round_policy_name,
             server_aggregate_hint=method_descriptor.server_step.server_aggregate_hint,
             update_count=update_count,
+        )
+
+
+@dataclass(slots=True)
+class _StaticRoundStateExchangeExecutor:
+    summary_metrics: dict[str, float]
+
+    def summarize(
+        self,
+        *,
+        method_descriptor: FederatedSslMethodDescriptor,
+        record,
+    ) -> RoundStateExchangeResult:
+        del method_descriptor, record
+        return RoundStateExchangeResult(
+            exchange_name="client_metric_summary",
+            summary_metrics=dict(self.summary_metrics),
         )
 
 
@@ -617,6 +637,40 @@ def test_round_lifecycle_runs_method_server_policy_before_finalize(
     )
 
     assert policy_executor.calls == [("fedavg_pseudo_label", record.round_id, 1)]
+
+
+def test_round_lifecycle_stores_round_state_exchange_summary(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, _ = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    service.method_descriptor = FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    service.round_state_exchange_executor = _StaticRoundStateExchangeExecutor(
+        summary_metrics={"round_state.mean_confidence.mean": 0.8}
+    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update = _build_update(
+        tmp_path=tmp_path,
+        round_id=record.round_id,
+        task_id=record.training_task.task_id,
+    )
+    service.accept_update_submission(record.round_id, update)
+
+    finalized = service.finalize_round(
+        record.round_id,
+        RoundFinalizeRequest(
+            next_prototype_version="proto_001",
+            next_model_revision="rev_001",
+        ),
+    )
+
+    assert finalized.publication is not None
+    assert finalized.publication.round_state_summary_metrics == {
+        "round_state.mean_confidence.mean": 0.8
+    }
 
 
 def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:

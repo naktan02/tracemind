@@ -196,6 +196,28 @@ def _require_ssl_method_config_matches_descriptor(
         ),
         context=f"ssl_method.server_step for {ssl_method_config.name}",
     )
+    expected_exchange_name = (
+        None
+        if ssl_method_descriptor.round_state_exchange is None
+        else ssl_method_descriptor.round_state_exchange.exchange_name
+    )
+    _require_mapping_value(
+        ssl_method_config.round_state_exchange,
+        key="exchange_name",
+        expected=expected_exchange_name,
+        context=f"ssl_method.round_state_exchange for {ssl_method_config.name}",
+    )
+    expected_custom_exchange_required = (
+        False
+        if ssl_method_descriptor.round_state_exchange is None
+        else ssl_method_descriptor.round_state_exchange.requires_custom_exchange
+    )
+    _require_mapping_value(
+        ssl_method_config.round_state_exchange,
+        key="custom_exchange_required",
+        expected=expected_custom_exchange_required,
+        context=f"ssl_method.round_state_exchange for {ssl_method_config.name}",
+    )
 
 
 def _require_mapping_value(

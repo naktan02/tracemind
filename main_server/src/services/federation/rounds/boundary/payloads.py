@@ -30,6 +30,7 @@ class RoundPublicationPayload(BaseModel):
     aggregated_metrics: dict[str, float]
     update_count: int = Field(ge=1)
     finalized_at: datetime
+    round_state_summary_metrics: dict[str, float] = Field(default_factory=dict)
     prototype_pack_ref: str | None = None
     prototype_build_state_ref: str | None = None
     prototype_rebuild_input_id: str | None = None

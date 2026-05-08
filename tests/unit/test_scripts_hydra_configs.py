@@ -405,6 +405,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.ssl_method.implementation_status == "active_runtime"
     assert cfg.ssl_method.client_step.owner == "agent"
     assert cfg.ssl_method.server_step.aggregation_backend_name == "fedavg"
+    assert cfg.ssl_method.round_state_exchange.exchange_name == "none"
     assert cfg.report.track == "fl_ssl_main_comparison"
     assert cfg.report.table_role == "main_comparison"
     assert cfg.client_pool_split.labeled_ratio == 0.1
@@ -421,6 +422,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.ssl_method.client_step.uses_local_update_profile is True
     assert cfg.ssl_method.client_step.custom_method_runtime_required is False
     assert cfg.ssl_method.server_step.custom_round_policy_required is False
+    assert cfg.ssl_method.round_state_exchange.custom_exchange_required is False
     assert "training_algorithm_profile" not in cfg
     assert "adapter_family_name" not in cfg.local_update_profile
     assert "aggregation_backend_name" not in cfg.local_update_profile
@@ -568,6 +570,12 @@ def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
         cfg.ssl_method.server_step.custom_round_policy_required
         is descriptor.runtime_capabilities.requires_custom_server_runtime
     )
+    assert cfg.ssl_method.round_state_exchange.exchange_name == (
+        descriptor.round_state_exchange.exchange_name
+    )
+    assert list(
+        cfg.ssl_method.round_state_exchange.required_client_metric_keys
+    ) == list(descriptor.round_state_exchange.required_client_metric_keys)
     assert descriptor.recipe is not None
     assert descriptor.recipe.supports_local_update_profile(
         local_update_profile.algorithm_profile_name
@@ -682,6 +690,7 @@ def test_federated_simulation_supports_ssl_method_override() -> None:
 
     assert cfg.ssl_method.schema_version == "federated_ssl_method.v1"
     assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert cfg.ssl_method.round_state_exchange.exchange_name == "none"
     assert list(cfg.ssl_method.report_tags) == [
         "baseline",
         "fedavg",

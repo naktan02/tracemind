@@ -219,6 +219,7 @@ def _ssl_method_to_payload(
         "implementation_status": ssl_method_config.implementation_status,
         "client_step": dict(ssl_method_config.client_step),
         "server_step": dict(ssl_method_config.server_step),
+        "round_state_exchange": dict(ssl_method_config.round_state_exchange),
         "report_tags": list(ssl_method_config.report_tags),
         "notes": list(ssl_method_config.notes),
     }

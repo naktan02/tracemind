@@ -14,6 +14,10 @@ server_step:
   owner: main_server
   aggregation_backend_name: ${round_runtime.aggregation_backend_name}
   custom_round_policy_required: false
+round_state_exchange:
+  exchange_name: none
+  required_client_metric_keys: []
+  custom_exchange_required: false
 report_tags:
   - baseline
   - fedavg

@@ -133,6 +133,40 @@ class FederatedSslServerStepSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class FederatedSslRoundStateExchangeSpec:
+    """server round가 client metric/state를 교환하는 방식."""
+
+    exchange_name: str
+    required_client_metric_keys: tuple[str, ...] = ()
+    summary_metric_prefix: str = "round_state"
+    requires_custom_exchange: bool = False
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "exchange_name",
+            _require_non_empty(self.exchange_name, field_name="exchange_name"),
+        )
+        object.__setattr__(
+            self,
+            "required_client_metric_keys",
+            _normalize_unique_names(
+                self.required_client_metric_keys,
+                field_name="required_client_metric_keys",
+                allow_empty=True,
+            ),
+        )
+        object.__setattr__(
+            self,
+            "summary_metric_prefix",
+            _require_non_empty(
+                self.summary_metric_prefix,
+                field_name="summary_metric_prefix",
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FederatedSslRuntimeCapabilities:
     """method가 현재 지원하는 실행 표면."""
 
@@ -298,6 +332,7 @@ class FederatedSslMethodDescriptor:
     local_step: FederatedSslLocalStepSpec
     server_step: FederatedSslServerStepSpec
     runtime_capabilities: FederatedSslRuntimeCapabilities
+    round_state_exchange: FederatedSslRoundStateExchangeSpec | None = None
     recipe: FederatedSslMethodRecipe | None = None
 
     def __post_init__(self) -> None:
@@ -339,6 +374,12 @@ class FederatedSslMethodDescriptor:
     @property
     def round_policy_name(self) -> str:
         return self.server_step.round_policy_name
+
+    @property
+    def round_state_exchange_name(self) -> str | None:
+        if self.round_state_exchange is None:
+            return None
+        return self.round_state_exchange.exchange_name
 
     @property
     def requires_custom_client_runtime(self) -> bool:

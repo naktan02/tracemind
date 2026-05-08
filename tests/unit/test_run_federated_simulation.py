@@ -237,6 +237,11 @@ def _default_ssl_method_config() -> FederatedSslMethodConfig:
             "aggregation_backend_name": "fedavg",
             "custom_round_policy_required": False,
         },
+        round_state_exchange={
+            "exchange_name": "none",
+            "required_client_metric_keys": [],
+            "custom_exchange_required": False,
+        },
         report_tags=["baseline", "fedavg", "pseudo_label"],
     )
 

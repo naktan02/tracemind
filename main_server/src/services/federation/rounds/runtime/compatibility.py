@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from main_server.src.services.federation.rounds.round_state_exchange.executor import (
+    validate_default_round_state_exchange_descriptor,
+)
 from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
 )
@@ -57,6 +60,7 @@ def validate_server_round_runtime_config(
                 f"{method_descriptor.name} requires a custom server runtime "
                 "capability that is not wired in the default live server runtime."
             )
+        validate_default_round_state_exchange_descriptor(method_descriptor)
         recipe = method_descriptor.recipe
         if recipe is not None and not recipe.supports_runtime_pair(
             adapter_family_name=config.adapter_family_name,

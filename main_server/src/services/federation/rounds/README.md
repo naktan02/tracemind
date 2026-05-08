@@ -30,6 +30,7 @@
 2. `runtime/factory.py`
 3. `runtime/compatibility.py`
 4. `server_policy/executor.py`
+5. `round_state_exchange/executor.py`
 
 ## 파일 역할 빠른 맵
 
@@ -44,6 +45,9 @@
 - `server_policy/`
   - methods-owned method descriptor의 server policy 요구사항을 main_server live runtime
     capability로 검증한다. policy 의미 자체는 `methods/federated_ssl/<method>/`에 둔다
+- `round_state_exchange/`
+  - methods-owned method descriptor가 요구하는 client metric/state summary를
+    main_server live runtime capability로 검증하고 publication summary에 분리해 남긴다
 - `round_manager_service.py`
   - training task 생성, aggregation 결과 publication
   - `artifact_ref`/`payload_ref`는 파일 경로가 아니라 server-owned ref로 다루고,

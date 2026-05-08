@@ -11,6 +11,7 @@ from methods.federated_ssl.base import (
     FederatedSslMethodDescriptor,
     FederatedSslMethodRecipe,
     FederatedSslRequiredViews,
+    FederatedSslRoundStateExchangeSpec,
     FederatedSslRuntimeCapabilities,
     FederatedSslRuntimePair,
     FederatedSslServerStepSpec,
@@ -63,6 +64,9 @@ def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
     assert descriptor.server_step.server_aggregate_hint == (
         "use_round_runtime_aggregation_backend"
     )
+    assert descriptor.round_state_exchange is not None
+    assert descriptor.round_state_exchange.exchange_name == "none"
+    assert descriptor.round_state_exchange.required_client_metric_keys == ()
     assert descriptor.recipe is FEDAVG_PSEUDO_LABEL_RECIPE
     assert descriptor.requires_custom_client_runtime is False
     assert descriptor.requires_custom_server_runtime is False
@@ -209,6 +213,16 @@ def test_federated_ssl_method_descriptor_rejects_recipe_name_drift() -> None:
                     ),
                 ),
             ),
+        )
+
+
+def test_federated_ssl_round_state_exchange_spec_rejects_duplicate_metric_keys() -> (
+    None
+):
+    with pytest.raises(ValueError, match="required_client_metric_keys must be unique"):
+        FederatedSslRoundStateExchangeSpec(
+            exchange_name="client_metric_summary",
+            required_client_metric_keys=("mean_confidence", "MEAN_CONFIDENCE"),
         )
 
 

@@ -35,6 +35,12 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
 )
+from main_server.src.services.federation.rounds.round_state_exchange.executor import (
+    NO_ROUND_STATE_EXCHANGE_NAME,
+    DefaultRoundStateExchangeExecutor,
+    RoundStateExchangeExecutor,
+    RoundStateExchangeResult,
+)
 from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
     ServerPolicyExecutor,
@@ -109,6 +115,9 @@ class RoundLifecycleService:
     )
     server_policy_executor: ServerPolicyExecutor = field(
         default_factory=DefaultServerPolicyExecutor
+    )
+    round_state_exchange_executor: RoundStateExchangeExecutor = field(
+        default_factory=DefaultRoundStateExchangeExecutor
     )
     method_descriptor: FederatedSslMethodDescriptor | None = None
     clock: Clock = field(default_factory=SystemUtcClock)
@@ -236,6 +245,7 @@ class RoundLifecycleService:
             raise RoundConflictError(f"Round is not open: {round_id}")
 
         self._prepare_method_server_policy(record)
+        round_state_exchange = self._summarize_round_state_exchange(record)
         publication = self.round_manager_service.publish_next_pair(
             RoundPublicationRequest(
                 base_manifest=record.active_manifest,
@@ -267,6 +277,7 @@ class RoundLifecycleService:
                 aggregated_metrics=dict(publication.aggregated_metrics),
                 update_count=publication.update_count,
                 finalized_at=finalized_at,
+                round_state_summary_metrics=dict(round_state_exchange.summary_metrics),
                 prototype_pack_ref=(
                     None
                     if rebuild_result is None
@@ -299,6 +310,17 @@ class RoundLifecycleService:
             method_descriptor=self.method_descriptor,
             round_id=record.round_id,
             update_count=len(record.updates),
+        )
+
+    def _summarize_round_state_exchange(
+        self,
+        record: RoundRecord,
+    ) -> RoundStateExchangeResult:
+        if self.method_descriptor is None:
+            return RoundStateExchangeResult(exchange_name=NO_ROUND_STATE_EXCHANGE_NAME)
+        return self.round_state_exchange_executor.summarize(
+            method_descriptor=self.method_descriptor,
+            record=record,
         )
 
     @staticmethod

@@ -30,6 +30,11 @@ round policy 조합으로 구성되는지"를 보는 조립표다. 작은 method
 `descriptor.py`에 recipe metadata를 함께 둘 수 있고, 조합표가 커지거나 별도
 테스트/문서화가 필요할 때만 `recipe.py`로 분리한다.
 
+round별 pseudo-label statistics, client metric summary, calibration state가 필요하면
+`FederatedSslRoundStateExchangeSpec`에 `exchange_name`과
+`required_client_metric_keys`를 먼저 선언한다. main_server에는 method 이름이 아니라
+`round_state_exchange` capability executor만 추가한다.
+
 `aggregation.py`는 특정 method에만 종속된 client weighting, state exchange,
 pseudo-label 통계 결합 같은 변형이 있을 때만 둔다. 두 개 이상 method에서 공유되거나
 adapter payload 해석/평균 규칙으로 안정화된 계산은 `methods/federated/aggregation/*`

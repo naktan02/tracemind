@@ -8,6 +8,7 @@ from methods.federated_ssl.base import (
     FederatedSslMethodRecipe,
     FederatedSslProfileCombination,
     FederatedSslRequiredViews,
+    FederatedSslRoundStateExchangeSpec,
     FederatedSslRuntimeCapabilities,
     FederatedSslRuntimePair,
     FederatedSslServerStepSpec,
@@ -78,6 +79,7 @@ FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
         round_policy_name=FEDAVG_PSEUDO_LABEL_ROUND_POLICY.policy_name,
         server_aggregate_hint=FEDAVG_PSEUDO_LABEL_SERVER_POLICY.aggregation_hint,
     ),
+    round_state_exchange=FederatedSslRoundStateExchangeSpec(exchange_name="none"),
     runtime_capabilities=FederatedSslRuntimeCapabilities(
         simulation_supported=True,
         live_agent_supported=True,

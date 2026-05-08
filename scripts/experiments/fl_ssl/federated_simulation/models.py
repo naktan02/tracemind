@@ -190,6 +190,7 @@ class FederatedSslMethodConfig:
     implementation_status: str
     client_step: dict[str, object] = field(default_factory=dict)
     server_step: dict[str, object] = field(default_factory=dict)
+    round_state_exchange: dict[str, object] = field(default_factory=dict)
     report_tags: list[str] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
