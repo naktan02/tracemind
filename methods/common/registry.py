@@ -40,9 +40,7 @@ class MethodRegistry(Generic[RegistryItem]):
             items = tuple(self._items.values())
         else:
             items = tuple(
-                item
-                for name in names
-                if (item := self.resolve(name)) is not None
+                item for name in names if (item := self.resolve(name)) is not None
             )
         unique_items = {id(item): item for item in items}
         return tuple(sorted(unique_items.values(), key=sort_key))

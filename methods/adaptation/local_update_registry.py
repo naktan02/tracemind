@@ -28,17 +28,16 @@ def register_shared_adapter_training_backend(
     catalog_entry: RegistryCatalogEntry,
     factory: TrainingBackendFactory | None = None,
 ) -> (
-    Callable[[TrainingBackendFactory], TrainingBackendFactory]
-    | TrainingBackendFactory
+    Callable[[TrainingBackendFactory], TrainingBackendFactory] | TrainingBackendFactory
 ):
     """local update backend 구현 옆에서 factory/catalog를 등록한다."""
 
     def _decorator(factory: TrainingBackendFactory) -> TrainingBackendFactory:
         registered_backend = (factory, catalog_entry)
         for backend_name in backend_names:
-            _LOCAL_UPDATE_BACKEND_REGISTRY[
-                _normalize_backend_name(backend_name)
-            ] = registered_backend
+            _LOCAL_UPDATE_BACKEND_REGISTRY[_normalize_backend_name(backend_name)] = (
+                registered_backend
+            )
         return factory
 
     if factory is not None:
@@ -103,18 +102,14 @@ def _import_all_training_backend_modules() -> None:
     for module_info in pkgutil.iter_modules(package_paths):
         if not module_info.ispkg:
             continue
-        _try_import_module(
-            f"{_ADAPTATION_PACKAGE}.{module_info.name}.training_backend"
-        )
+        _try_import_module(f"{_ADAPTATION_PACKAGE}.{module_info.name}.training_backend")
 
 
 def _try_import_module(module_name: str) -> bool:
     try:
         importlib.import_module(module_name)
     except ModuleNotFoundError as error:
-        if error.name == module_name or module_name.startswith(
-            f"{error.name}."
-        ):
+        if error.name == module_name or module_name.startswith(f"{error.name}."):
             return False
         raise
     return True

@@ -65,7 +65,7 @@ class LocalUpdateProfile:
         unknown_keys = sorted(set(source) - _LOCAL_UPDATE_PROFILE_KEYS)
         if unknown_keys:
             raise ValueError(
-                "Unsupported local_update_profile key(s): " f"{unknown_keys}."
+                f"Unsupported local_update_profile key(s): {unknown_keys}."
             )
         return cls(
             algorithm_profile_name=_str_value(source, "algorithm_profile_name"),
@@ -133,8 +133,7 @@ def require_training_objective_matches_local_update_profile(
     }
     if mismatches:
         raise ValueError(
-            "training_task.objective must match local_update_profile: "
-            f"{mismatches}."
+            f"training_task.objective must match local_update_profile: {mismatches}."
         )
 
 
