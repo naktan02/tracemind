@@ -37,8 +37,6 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
    - `prototype_rebuild_bridge.py`: prototype rebuild runtime과 adapter seam
    - `initial_state_factory.py`: initial shared state 생성
    - `round_request_mapper.py`: round task/open request 변환
-   - `scripts/runtime_adapters/federated_server_runtime.py`는 기존 import path를
-     유지하는 compatibility facade다.
 8. `adapters/method_runtime.py`
    - `methods/federated_ssl/` descriptor를 simulation runtime adapter로 연결
 9. `adapters/evaluation.py`
@@ -46,7 +44,6 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
 10. `adapters/sharding.py`
    - `methods/federated/shard_policy/`의 row adapter
 11. `io/`
-   - `artifacts.py`: 기존 import path를 유지하는 compatibility facade
    - `run_artifact_writer.py`: prototype pack과 model manifest 저장
    - `selection_diagnostics_writer.py`: selection diagnostics 저장
    - `simulation_report_builder.py`: simulation report payload 조립과 저장
@@ -62,7 +59,7 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
 - `adapters/`
   - method descriptor, round task config, sharding, validation scorer 연결
 - `io/`
-  - JSONL row load, artifact facade, artifact writer, diagnostics writer, report builder
+  - JSONL row load, artifact writer, diagnostics writer, report builder
 
 `flow/`는 FL simulation 전용이다. 중앙 SSL과 공유될 수 있는 algorithm core나
 contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`, `shared/`,

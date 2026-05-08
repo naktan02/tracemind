@@ -13,16 +13,16 @@ from omegaconf import DictConfig, OmegaConf
 from scripts.artifacts.run_artifacts import build_run_dir  # noqa: E402
 from scripts.prototypes.evaluation import evaluate_rows  # noqa: E402
 from scripts.prototypes.io import load_jsonl  # noqa: E402
-from scripts.reporting.classification_report import (  # noqa: E402
-    render_confusion_table,
-    render_per_category_table,
-)
 from scripts.runtime_adapters.embedding_runtime import (  # noqa: E402
     create_embedding_adapter,
 )
 from shared.src.contracts.prototype_contracts import (  # noqa: E402
     extract_category_prototypes,
     load_prototype_pack_payload,
+)
+from shared.src.domain.services.classification_report import (  # noqa: E402
+    render_confusion_table,
+    render_per_category_table,
 )
 from shared.src.domain.value_objects.embedding_adapter_spec import (  # noqa: E402
     EmbeddingAdapterSpec,

@@ -31,7 +31,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
-from scripts.runtime_adapters.federated_server_runtime import (
+from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
 )
 from shared.src.contracts.training_contracts import (

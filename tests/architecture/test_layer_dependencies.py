@@ -13,6 +13,9 @@ AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+FL_SIMULATION_IO_SRC = (
+    SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
+)
 PYTHON_SOURCE_ROOTS = (
     SHARED_SRC,
     METHODS_SRC,
@@ -362,6 +365,37 @@ def test_agent_training_backend_package_is_registry_facade_only() -> None:
         "facade만 둔다. concrete local update backend는 "
         "methods/adaptation/<family>/training_backend.py에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
+    facade_path = FL_SIMULATION_IO_SRC / "artifacts.py"
+
+    assert not facade_path.exists(), (
+        "FL simulation artifact I/O는 중앙 artifacts.py facade 없이 writer/builder를 "
+        "직접 호출한다. facade가 필요해 보이면 builder/writer 책임이 얕은지 먼저 "
+        "점검한다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
+def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
+    facade_path = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server_runtime.py"
+
+    assert not facade_path.exists(), (
+        "FL simulation server runtime adapter는 federated_server/ package의 책임별 "
+        "module을 직접 import한다. 중앙 re-export facade를 다시 만들지 않는다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
+def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
+    facade_path = SCRIPTS_SRC / "reporting" / "classification_report.py"
+
+    assert not facade_path.exists(), (
+        "classification report canonical utility는 shared domain service가 소유한다. "
+        "scripts/reporting에는 단순 re-export wrapper를 두지 않는다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
     )
 
 

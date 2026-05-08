@@ -22,13 +22,13 @@ from methods.adaptation.common.training_history import (
 )
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.io.labeled_query_rows import LabeledQueryRow
-from scripts.reporting.classification_report import (
-    render_confusion_table,
-    render_per_category_table,
-)
 from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
     resolve_runtime_device_name,
+)
+from shared.src.domain.services.classification_report import (
+    render_confusion_table,
+    render_per_category_table,
 )
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec

@@ -10,15 +10,14 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
 )
-from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
-    save_simulation_report,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
     SimulationResult,
     SimulationRoundSummary,
     SimulationRunRequest,
 )
+
+from ..io.simulation_report_builder import SimulationReportBuilder
 
 
 def build_simulation_result(
@@ -49,7 +48,7 @@ def build_simulation_result(
     )
     if request.report_config is not None:
         result.report_path = str(
-            save_simulation_report(
+            SimulationReportBuilder().save(
                 output_dir=request.output_dir,
                 result=result,
                 report_config=request.report_config,

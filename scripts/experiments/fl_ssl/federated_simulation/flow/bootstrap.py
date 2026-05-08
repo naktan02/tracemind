@@ -15,24 +15,22 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
 )
-from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
-    save_model_manifest,
-    save_prototype_pack,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     SimulationRunRequest,
 )
 from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
-from scripts.runtime_adapters.federated_server_runtime import (
-    SimulationServerRuntime,
+from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_classifier_head_state_from_prototype_pack,
     build_initial_shared_state,
 )
+from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
+
+from ..io.run_artifact_writer import RunArtifactWriter
 
 
 def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulation:
@@ -95,8 +93,12 @@ def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulatio
         initial_model_revision=initial_model_revision,
         built_at=now,
     )
+    run_artifact_writer = RunArtifactWriter()
     initial_state_ref = server_runtime.save_shared_adapter_state(initial_state)
-    save_prototype_pack(request.output_dir, active_prototype)
+    run_artifact_writer.save_prototype_pack(
+        output_dir=request.output_dir,
+        payload=active_prototype,
+    )
     active_manifest = _build_bootstrap_manifest(
         request=request,
         initial_model_revision=initial_model_revision,
@@ -104,7 +106,10 @@ def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulatio
         initial_state_ref=initial_state_ref,
         published_at=now,
     )
-    save_model_manifest(request.output_dir, active_manifest)
+    run_artifact_writer.save_model_manifest(
+        output_dir=request.output_dir,
+        manifest=active_manifest,
+    )
     server_runtime.activate_manifest(active_manifest)
 
     active = ActiveSimulationState(

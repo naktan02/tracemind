@@ -137,7 +137,6 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
 - `embedding_runtime.py`: agent embedding adapter factory/device resolver bridge.
 - `backtranslation_runtime.py`: agent backtranslation service bridge.
 - `federated_agent_runtime.py`: FL simulation에서 agent local runtime 호출.
-- `federated_server_runtime.py`: FL simulation server bridge의 compatibility facade.
 - `federated_server/`: FL simulation에서 main_server round/aggregation 호출을 책임별로
   나눈 실제 runtime adapter package.
   - `runtime.py`: `SimulationServerRuntime` orchestration.

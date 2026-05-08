@@ -99,8 +99,6 @@
   - query-buffer selection summary/trace dump 저장 helper
 - `scripts/artifacts/run_artifacts.py`
   - run 출력 디렉터리 생성 helper
-- `scripts/reporting/classification_report.py`
-  - shared canonical confusion matrix/per-category metric helper wrapper
 
 ## 먼저 읽을 파일
 

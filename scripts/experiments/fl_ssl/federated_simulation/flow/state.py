@@ -11,7 +11,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationEvaluation,
     SimulationRoundSummary,
 )
-from scripts.runtime_adapters.federated_server_runtime import SimulationServerRuntime
+from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState

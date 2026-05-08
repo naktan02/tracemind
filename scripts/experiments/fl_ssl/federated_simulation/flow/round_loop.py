@@ -17,11 +17,6 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ClientRoundExecution,
     RoundExecution,
 )
-from scripts.experiments.fl_ssl.federated_simulation.io.artifacts import (
-    save_model_manifest,
-    save_prototype_pack,
-    save_selection_diagnostics,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     FederatedClientShard,
@@ -33,9 +28,12 @@ from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_scoring_service,
     run_federated_local_training,
 )
-from scripts.runtime_adapters.federated_server_runtime import SimulationServerRuntime
+from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+
+from ..io.run_artifact_writer import RunArtifactWriter
+from ..io.selection_diagnostics_writer import SelectionDiagnosticsWriter
 
 
 def run_one_round(
@@ -141,7 +139,7 @@ def _run_client_round(
         training_task=training_task,
         model_manifest=active.manifest,
     )
-    save_selection_diagnostics(
+    SelectionDiagnosticsWriter().save(
         output_dir=request.output_dir,
         round_id=round_id,
         client_id=shard.client_id,
@@ -209,15 +207,22 @@ def _finalize_round_publication(
     )
     if finalized_round.publication is None:
         raise ValueError("Finalized simulation round must contain publication.")
+    run_artifact_writer = RunArtifactWriter()
     active_manifest = finalized_round.publication.next_manifest
     active_state = bootstrapped.server_runtime.load_active_state(active_manifest)
-    save_model_manifest(request.output_dir, active_manifest)
+    run_artifact_writer.save_model_manifest(
+        output_dir=request.output_dir,
+        manifest=active_manifest,
+    )
     if finalized_round.publication.prototype_pack_ref is None:
         raise ValueError("Simulation finalize must publish a prototype pack reference.")
     active_prototype = load_prototype_pack_payload(
         Path(finalized_round.publication.prototype_pack_ref)
     )
-    save_prototype_pack(request.output_dir, active_prototype)
+    run_artifact_writer.save_prototype_pack(
+        output_dir=request.output_dir,
+        payload=active_prototype,
+    )
     return ActiveSimulationState(
         manifest=active_manifest,
         adapter_state=active_state,
