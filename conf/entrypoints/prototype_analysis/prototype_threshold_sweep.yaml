@@ -14,7 +14,7 @@ output:
 runner:
   _target_: scripts.experiments.prototype_analysis.prototype_strategy.sweep.ThresholdPolicyExperimentRunner
   selection_policy:
-    _target_: scripts.experiments.prototype_analysis.prototype_strategy.sweep.ThresholdPolicySelectionPolicy
+    _target_: scripts.experiments.prototype_analysis.prototype_strategy.threshold_selection.ThresholdPolicySelectionPolicy
     minimum_accepted_ratio: 0.5
   similarity_name: cosine
   scorer_backend_name: prototype_similarity

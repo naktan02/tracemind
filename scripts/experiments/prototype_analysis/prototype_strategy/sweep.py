@@ -9,12 +9,9 @@ from pathlib import Path
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     embed_rows,
     group_embeddings_by_label,
-    score_embeddings,
 )
-from scripts.experiments.prototype_analysis.prototype_strategy.io_utils import dump_json
 from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     ThresholdArtifact,
-    ThresholdPolicyEvaluation,
     ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
@@ -26,57 +23,10 @@ from scripts.experiments.prototype_analysis.prototype_strategy.strategies import
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
+from .threshold_artifact_writer import write_threshold_policy_artifacts
 from .threshold_policies import StaticThresholdPolicy
-
-
-@dataclass(slots=True)
-class ThresholdPolicySelectionPolicy:
-    """Validation 결과로 가장 적합한 threshold policy 후보를 고른다."""
-
-    minimum_accepted_ratio: float = 0.5
-
-    def select(
-        self,
-        evaluations: Sequence[ThresholdPolicyEvaluation],
-    ) -> ThresholdPolicyEvaluation:
-        if not evaluations:
-            raise ValueError("At least one threshold policy evaluation is required.")
-        eligible = tuple(
-            evaluation
-            for evaluation in evaluations
-            if (
-                evaluation.validation_metrics.accepted_ratio
-                >= self.minimum_accepted_ratio
-            )
-        )
-        candidates = eligible or tuple(evaluations)
-        return max(candidates, key=self._selection_key)
-
-    def sort(
-        self,
-        evaluations: Sequence[ThresholdPolicyEvaluation],
-    ) -> tuple[ThresholdPolicyEvaluation, ...]:
-        return tuple(
-            sorted(
-                evaluations,
-                key=self._selection_key,
-                reverse=True,
-            )
-        )
-
-    @staticmethod
-    def _selection_key(
-        evaluation: ThresholdPolicyEvaluation,
-    ) -> tuple[float | str, ...]:
-        metrics = evaluation.validation_metrics
-        return (
-            metrics.accepted_accuracy,
-            metrics.accepted_correct_ratio,
-            metrics.accepted_ratio,
-            _confidence_threshold_or_floor(evaluation.threshold_artifact),
-            evaluation.policy_name,
-            evaluation.candidate_name,
-        )
+from .threshold_policy_evaluator import evaluate_threshold_policies
+from .threshold_selection import ThresholdPolicySelectionPolicy
 
 
 @dataclass(slots=True, kw_only=True)
@@ -91,8 +41,6 @@ class ThresholdPolicyExperimentRunner(PrototypeScoringConfigMixin):
         self,
         request: "ThresholdPolicyExperimentRequest",
     ) -> ThresholdPolicyExperimentSummary:
-        request.output_dir.mkdir(parents=True, exist_ok=True)
-
         train_embeddings = embed_rows(request.train_rows, request.adapter)
         validation_embeddings = embed_rows(request.validation_rows, request.adapter)
         test_embeddings = embed_rows(request.test_rows, request.adapter)
@@ -112,35 +60,17 @@ class ThresholdPolicyExperimentRunner(PrototypeScoringConfigMixin):
             dbscan_min_cluster_coverage=request.dbscan_min_cluster_coverage,
         )
         prototype_index = strategy.build(embeddings_by_label)
-        dump_json(
-            request.output_dir / "strategy" / "prototype_index.json",
-            prototype_index.to_dict(),
-        )
 
         scorer = self.build_prototype_index_scorer()
-        validation_predictions = score_embeddings(
-            rows=request.validation_rows,
-            embeddings=validation_embeddings,
+        evaluations = evaluate_threshold_policies(
+            validation_rows=request.validation_rows,
+            validation_embeddings=validation_embeddings,
+            test_rows=request.test_rows,
+            test_embeddings=test_embeddings,
             prototype_index=prototype_index,
+            threshold_policies=request.threshold_policies,
             scorer=scorer,
         )
-        test_predictions = score_embeddings(
-            rows=request.test_rows,
-            embeddings=test_embeddings,
-            prototype_index=prototype_index,
-            scorer=scorer,
-        )
-        categories = sorted(prototype_index.categories.keys())
-
-        evaluations: list[ThresholdPolicyEvaluation] = []
-        for policy in request.threshold_policies:
-            evaluations.extend(
-                policy.build_evaluations(
-                    validation_predictions=validation_predictions,
-                    test_predictions=test_predictions,
-                    categories=categories,
-                )
-            )
 
         selected_evaluation = self.selection_policy.select(evaluations)
         sorted_evaluations = self.selection_policy.sort(evaluations)
@@ -151,14 +81,10 @@ class ThresholdPolicyExperimentRunner(PrototypeScoringConfigMixin):
             selected_evaluation=selected_evaluation,
             policy_evaluations=sorted_evaluations,
         )
-        evaluation_payload = {
-            "evaluations": [evaluation.to_dict() for evaluation in sorted_evaluations]
-        }
-        dump_json(
-            request.output_dir / "validation" / "policy_evaluations.json",
-            evaluation_payload,
+        write_threshold_policy_artifacts(
+            output_dir=request.output_dir,
+            summary=summary,
         )
-        dump_json(request.output_dir / "summary.json", summary.to_dict())
         return summary
 
 
@@ -208,20 +134,6 @@ def render_sweep_summary(summary: ThresholdPolicyExperimentSummary) -> str:
         ),
     ]
     return "\n".join(lines)
-
-
-def _confidence_threshold_or_floor(artifact: ThresholdArtifact) -> float:
-    value = artifact.parameters.get("confidence_threshold")
-    if isinstance(value, (int, float)):
-        return float(value)
-    classwise = artifact.parameters.get("confidence_threshold_by_label")
-    if isinstance(classwise, dict) and classwise:
-        numeric_values = [
-            float(item) for item in classwise.values() if isinstance(item, (int, float))
-        ]
-        if numeric_values:
-            return sum(numeric_values) / len(numeric_values)
-    return -1.0
 
 
 def _render_selected_threshold(artifact: ThresholdArtifact) -> str:

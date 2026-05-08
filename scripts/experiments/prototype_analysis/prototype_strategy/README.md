@@ -18,9 +18,12 @@
 
 1. `../prototype_threshold_sweep.py`
 2. `sweep.py`
-3. `threshold_policies.py`
-4. `evaluation.py`
-5. `scoring.py`
+3. `threshold_policy_evaluator.py`
+4. `threshold_selection.py`
+5. `threshold_artifact_writer.py`
+6. `threshold_policies.py`
+7. `evaluation.py`
+8. `scoring.py`
 
 ## 파일 역할
 
@@ -36,6 +39,12 @@
   - PCA/UMAP 시각화 산출물
 - `threshold_policies.py`
   - static threshold policy 후보 구현
+- `threshold_policy_evaluator.py`
+  - prototype score를 한 번 계산하고 threshold policy 후보별 validation/test 평가를 만든다.
+- `threshold_selection.py`
+  - validation metric으로 threshold policy 후보를 선택/정렬한다.
+- `threshold_artifact_writer.py`
+  - threshold sweep의 prototype index, policy evaluation grid, summary JSON 저장을 맡는다.
 
 ## 바로 조절 가능한 실험 축
 

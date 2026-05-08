@@ -20,6 +20,9 @@ FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
 QUERY_LORA_SSL_IO_SRC = SCRIPTS_SRC / "experiments" / "query_lora_ssl" / "io"
+PROTOTYPE_STRATEGY_SRC = (
+    SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
+)
 PYTHON_SOURCE_ROOTS = (
     SHARED_SRC,
     METHODS_SRC,
@@ -467,6 +470,56 @@ def test_query_lora_teacher_pseudo_label_does_not_keep_exporter_monolith() -> No
         "TeacherPseudoLabelBuilder는 pseudo-label row와 diagnostics payload만 만든다. "
         "JSON serialization과 파일 write는 TeacherPseudoLabelArtifactWriter가 맡는다.\n"
         f"violations={violations}"
+    )
+
+
+def test_prototype_threshold_sweep_runner_splits_eval_selection_and_write() -> None:
+    runner_path = PROTOTYPE_STRATEGY_SRC / "sweep.py"
+    evaluator_path = PROTOTYPE_STRATEGY_SRC / "threshold_policy_evaluator.py"
+    selection_path = PROTOTYPE_STRATEGY_SRC / "threshold_selection.py"
+    writer_path = PROTOTYPE_STRATEGY_SRC / "threshold_artifact_writer.py"
+    required_files = (evaluator_path, selection_path, writer_path)
+    runner_source = runner_path.read_text(encoding="utf-8")
+    evaluator_source = evaluator_path.read_text(encoding="utf-8")
+    runner_forbidden_snippets = (
+        "policy.build_evaluations(",
+        "score_embeddings(",
+        "dump_json(",
+        ".write_text(",
+        ".mkdir(",
+        "_confidence_threshold_or_floor",
+    )
+    evaluator_forbidden_snippets = (
+        "dump_json(",
+        ".write_text(",
+        ".mkdir(",
+    )
+    missing_files = [
+        _relative_repo_path(path) for path in required_files if not path.exists()
+    ]
+    runner_violations = [
+        snippet for snippet in runner_forbidden_snippets if snippet in runner_source
+    ]
+    evaluator_violations = [
+        snippet
+        for snippet in evaluator_forbidden_snippets
+        if snippet in evaluator_source
+    ]
+
+    assert not missing_files, (
+        "prototype threshold sweep는 policy 평가, selection policy, artifact writer를 "
+        "전용 module로 분리한다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_files)}"
+    )
+    assert not runner_violations, (
+        "ThresholdPolicyExperimentRunner는 orchestration만 맡는다. threshold 후보 "
+        "평가, 선택 정렬 기준, JSON artifact 저장은 전용 module이 맡는다.\n"
+        f"violations={runner_violations}"
+    )
+    assert not evaluator_violations, (
+        "threshold_policy_evaluator.py는 후보 평가만 맡는다. JSON 저장과 directory "
+        "생성은 threshold_artifact_writer.py가 맡는다.\n"
+        f"violations={evaluator_violations}"
     )
 
 

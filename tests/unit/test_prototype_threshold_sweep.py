@@ -2,10 +2,16 @@
 
 from __future__ import annotations
 
+import json
+
+import numpy as np
 import pytest
 
 from scripts.experiments.prototype_analysis.prototype_strategy import (
+    threshold_artifact_writer,
     threshold_policies,
+    threshold_policy_evaluator,
+    threshold_selection,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.evaluation import (
     evaluate_global_confidence_threshold,
@@ -16,13 +22,11 @@ from scripts.experiments.prototype_analysis.prototype_strategy.models import (
     ScoredPrediction,
     ThresholdArtifact,
     ThresholdPolicyEvaluation,
+    ThresholdPolicyExperimentSummary,
 )
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeScoringConfig,
     build_prototype_index_scorer,
-)
-from scripts.experiments.prototype_analysis.prototype_strategy.sweep import (
-    ThresholdPolicySelectionPolicy,
 )
 
 
@@ -353,7 +357,9 @@ def test_classwise_static_policy_builds_label_specific_thresholds() -> None:
 def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met() -> (
     None
 ):
-    policy = ThresholdPolicySelectionPolicy(minimum_accepted_ratio=0.5)
+    policy = threshold_selection.ThresholdPolicySelectionPolicy(
+        minimum_accepted_ratio=0.5
+    )
 
     def evaluation(
         *,
@@ -412,3 +418,116 @@ def test_threshold_policy_selection_prefers_precision_once_coverage_floor_is_met
 
     assert selected.policy_name == "validation_target_error_confidence"
     assert selected.threshold_artifact.parameters["confidence_threshold"] == 0.7
+
+
+def test_threshold_policy_evaluator_scores_once_then_evaluates_candidates() -> None:
+    prototype_index = PrototypeIndex(
+        strategy_name="single",
+        categories={
+            "anxiety": [
+                PrototypeVector(
+                    prototype_id="anxiety:0",
+                    centroid=[1.0, 0.0],
+                    member_count=2,
+                )
+            ],
+            "normal": [
+                PrototypeVector(
+                    prototype_id="normal:0",
+                    centroid=[-1.0, 0.0],
+                    member_count=2,
+                )
+            ],
+        },
+    )
+    rows = (
+        {
+            "query_id": "q1",
+            "mapped_label_4": "anxiety",
+            "text": "panic",
+        },
+        {
+            "query_id": "q2",
+            "mapped_label_4": "normal",
+            "text": "calm",
+        },
+    )
+
+    evaluations = threshold_policy_evaluator.evaluate_threshold_policies(
+        validation_rows=rows,
+        validation_embeddings=np.asarray(
+            [[1.0, 0.0], [-1.0, 0.0]],
+            dtype=float,
+        ),
+        test_rows=rows,
+        test_embeddings=np.asarray(
+            [[1.0, 0.0], [-1.0, 0.0]],
+            dtype=float,
+        ),
+        prototype_index=prototype_index,
+        threshold_policies=(
+            threshold_policies.FixMatchFixedConfidencePolicy(thresholds=(0.9,)),
+        ),
+        scorer=build_prototype_index_scorer(),
+    )
+
+    assert len(evaluations) == 1
+    assert evaluations[0].threshold_artifact.parameters["confidence_threshold"] == 0.9
+    assert evaluations[0].validation_metrics.accepted_accuracy == 1.0
+    assert evaluations[0].test_metrics.accepted_accuracy == 1.0
+
+
+def test_threshold_artifact_writer_writes_summary_and_policy_grid(tmp_path) -> None:
+    metrics = evaluate_global_confidence_threshold(
+        scored_predictions=(),
+        categories=(),
+        confidence_threshold=0.8,
+    )
+    evaluation = ThresholdPolicyEvaluation(
+        policy_name="fixmatch_fixed_confidence",
+        candidate_name="confidence=0.800",
+        source_paper=threshold_policies.FixMatchFixedConfidencePolicy().source_paper,
+        selection_params={"confidence_threshold": 0.8},
+        threshold_artifact=ThresholdArtifact(
+            threshold_kind="global_confidence",
+            parameters={"confidence_threshold": 0.8},
+        ),
+        validation_metrics=metrics,
+        test_metrics=metrics,
+    )
+    summary = ThresholdPolicyExperimentSummary(
+        run_id="run-1",
+        strategy_name="single",
+        prototype_index=PrototypeIndex(
+            strategy_name="single",
+            categories={
+                "anxiety": [
+                    PrototypeVector(
+                        prototype_id="anxiety:0",
+                        centroid=[1.0, 0.0],
+                        member_count=1,
+                    )
+                ]
+            },
+        ),
+        selected_evaluation=evaluation,
+        policy_evaluations=(evaluation,),
+    )
+
+    threshold_artifact_writer.write_threshold_policy_artifacts(
+        output_dir=tmp_path,
+        summary=summary,
+    )
+
+    summary_payload = json.loads((tmp_path / "summary.json").read_text())
+    evaluations_payload = json.loads(
+        (tmp_path / "validation" / "policy_evaluations.json").read_text()
+    )
+    prototype_payload = json.loads(
+        (tmp_path / "strategy" / "prototype_index.json").read_text()
+    )
+    assert summary_payload["run_id"] == "run-1"
+    assert evaluations_payload["evaluations"][0]["candidate_name"] == (
+        "confidence=0.800"
+    )
+    assert prototype_payload["strategy_name"] == "single"
