@@ -554,7 +554,9 @@ def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
     )
     assert descriptor.recipe.supports_runtime_pair(
         adapter_family_name=str(cfg.round_runtime_profile.adapter_family_name),
-        aggregation_backend_name=str(cfg.round_runtime_profile.aggregation_backend_name),
+        aggregation_backend_name=str(
+            cfg.round_runtime_profile.aggregation_backend_name
+        ),
     )
     assert descriptor.recipe.supports_profile_combination(
         local_update_profile_name=local_update_profile.algorithm_profile_name,

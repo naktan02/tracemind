@@ -37,9 +37,7 @@ class TrainingExampleService:
         objective_config: TrainingObjectiveConfig,
     ) -> "TrainingExampleService":
         return cls(
-            backend=resolve_training_example_backend(
-                objective_config=objective_config
-            )
+            backend=resolve_training_example_backend(objective_config=objective_config)
         )
 
     def build_examples(

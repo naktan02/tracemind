@@ -33,8 +33,7 @@ def register_shared_adapter_training_backend(
     catalog_entry: RegistryCatalogEntry,
     factory: TrainingBackendFactory | None = None,
 ) -> (
-    Callable[[TrainingBackendFactory], TrainingBackendFactory]
-    | TrainingBackendFactory
+    Callable[[TrainingBackendFactory], TrainingBackendFactory] | TrainingBackendFactory
 ):
     """methods-owned local update backend registry에 factory를 등록한다."""
 

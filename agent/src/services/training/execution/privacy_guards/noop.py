@@ -16,9 +16,7 @@ from .registry import register_shared_adapter_privacy_guard
 NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="noop",
     display_name="noop",
-    implementation_module=(
-        "agent.src.services.training.execution.privacy_guards.noop"
-    ),
+    implementation_module=("agent.src.services.training.execution.privacy_guards.noop"),
     core_method_name="noop",
     family_name="privacy_guard",
     supported_adapter_kinds=("*",),
