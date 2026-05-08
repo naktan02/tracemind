@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -18,16 +17,13 @@ from scripts.experiments.query_lora_ssl.io.labeled_row_export import (
     LabeledRowExportArtifacts,
     write_labeled_row_export,
 )
-from scripts.experiments.query_lora_ssl.io.query_adaptation import (
-    build_labeled_rows_from_query_adaptation_dataset,
+from scripts.experiments.query_lora_ssl.runners.pseudo_label_inputs import (
+    resolve_pseudo_label_training_rows,
 )
 from scripts.experiments.query_lora_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
-from shared.src.contracts.labeled_query_row_contracts import (
-    LabeledQueryRow,
-    load_labeled_query_rows,
-)
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 @dataclass(slots=True)
@@ -158,65 +154,22 @@ def prepare_pseudo_label_self_training_run(
     export_dir = resolved_export_root / run_id
     export_dir.mkdir(parents=True, exist_ok=True)
 
-    effective_include_seed_rows = (
-        bool(getattr(cfg, "include_seed_train_rows", True))
-        if include_seed_train_rows is None
-        else bool(include_seed_train_rows)
-    )
-    if effective_include_seed_rows:
-        effective_seed_train_rows = (
-            load_labeled_query_rows(
-                Path(
-                    str(cfg.train_jsonl if train_jsonl_ref is None else train_jsonl_ref)
-                )
-            )
-            if seed_train_rows is None
-            else list(seed_train_rows)
-        )
-    else:
-        effective_seed_train_rows = []
-    effective_pseudo_label_rows = _resolve_pseudo_label_rows(
+    resolved_rows = resolve_pseudo_label_training_rows(
         cfg=cfg,
         pseudo_label_jsonl=pseudo_label_jsonl,
         pseudo_label_rows=pseudo_label_rows,
         pseudo_label_dataset=pseudo_label_dataset,
+        seed_train_rows=seed_train_rows,
+        include_seed_train_rows=include_seed_train_rows,
+        train_jsonl_ref=train_jsonl_ref,
     )
-    if not effective_pseudo_label_rows:
-        raise ValueError("pseudo_label_rows must not be empty.")
-
-    _ensure_unique_query_ids(
-        effective_seed_train_rows,
-        item_name="seed_train_rows",
-    )
-    _ensure_unique_query_ids(
-        effective_pseudo_label_rows,
-        item_name="pseudo_label_rows",
-    )
-    overlapping_query_ids = sorted(
-        {
-            str(row["query_id"])
-            for row in effective_seed_train_rows
-            if str(row["query_id"])
-            in {str(item["query_id"]) for item in effective_pseudo_label_rows}
-        }
-    )
-    if overlapping_query_ids:
-        raise ValueError(
-            "seed_train_rows and pseudo_label_rows must use disjoint query_id values. "
-            f"Found overlaps: {overlapping_query_ids[:5]}."
-        )
-
-    combined_train_rows = [
-        *effective_seed_train_rows,
-        *effective_pseudo_label_rows,
-    ]
     pseudo_label_artifacts = write_labeled_row_export(
-        rows=effective_pseudo_label_rows,
+        rows=resolved_rows.pseudo_label_rows,
         output_path=export_dir / "pseudo_label_train.jsonl",
         generated_at=effective_generated_at,
     )
     combined_train_artifacts = write_labeled_row_export(
-        rows=combined_train_rows,
+        rows=resolved_rows.combined_train_rows,
         output_path=export_dir / "combined_train.jsonl",
         generated_at=effective_generated_at,
     )
@@ -226,47 +179,14 @@ def prepare_pseudo_label_self_training_run(
         train_jsonl_ref=str(combined_train_artifacts.jsonl_path),
         run_id=run_id,
         export_dir=export_dir,
-        seed_train_count=len(effective_seed_train_rows),
-        pseudo_label_count=len(effective_pseudo_label_rows),
-        combined_train_count=len(combined_train_rows),
-        combined_train_rows=combined_train_rows,
-        pseudo_label_rows=effective_pseudo_label_rows,
+        seed_train_count=len(resolved_rows.seed_train_rows),
+        pseudo_label_count=len(resolved_rows.pseudo_label_rows),
+        combined_train_count=len(resolved_rows.combined_train_rows),
+        combined_train_rows=resolved_rows.combined_train_rows,
+        pseudo_label_rows=resolved_rows.pseudo_label_rows,
         combined_train_artifacts=combined_train_artifacts,
         pseudo_label_artifacts=pseudo_label_artifacts,
     )
-
-
-def _resolve_pseudo_label_rows(
-    *,
-    cfg: DictConfig,
-    pseudo_label_jsonl: str | Path | None,
-    pseudo_label_rows: Sequence[LabeledQueryRow] | None,
-    pseudo_label_dataset: Any | None,
-) -> list[LabeledQueryRow]:
-    provided_sources = sum(
-        source is not None
-        for source in (pseudo_label_jsonl, pseudo_label_rows, pseudo_label_dataset)
-    )
-    if provided_sources > 1:
-        raise ValueError(
-            "Provide only one of pseudo_label_jsonl, pseudo_label_rows, or "
-            "pseudo_label_dataset."
-        )
-    if pseudo_label_dataset is not None:
-        return build_labeled_rows_from_query_adaptation_dataset(
-            pseudo_label_dataset,
-            annotation_source="pseudo_label_self_training",
-        )
-    if pseudo_label_rows is not None:
-        return list(pseudo_label_rows)
-
-    effective_path = pseudo_label_jsonl or getattr(cfg, "pseudo_label_jsonl", None)
-    if effective_path is None:
-        raise ValueError(
-            "pseudo_label_jsonl is required when pseudo_label_rows/dataset is not "
-            "provided."
-        )
-    return load_labeled_query_rows(Path(str(effective_path)))
 
 
 def _resolve_run_id(
@@ -281,16 +201,3 @@ def _resolve_run_id(
     if trainer_version:
         return trainer_version
     return generated_at.strftime("lora_pseudo_label_%Y_%m_%d_%H%M%S")
-
-
-def _ensure_unique_query_ids(
-    rows: Sequence[LabeledQueryRow],
-    *,
-    item_name: str,
-) -> None:
-    counts = Counter(str(row["query_id"]) for row in rows)
-    duplicates = sorted(query_id for query_id, count in counts.items() if count > 1)
-    if duplicates:
-        raise ValueError(
-            f"{item_name} must not contain duplicate query_id values: {duplicates[:5]}."
-        )
