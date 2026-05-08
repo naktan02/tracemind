@@ -348,6 +348,7 @@ dict/list table, 작은 helper로 낮춘다.
     세부 loop는 작은 module 함수로 분리한다. `Any`는 외부 library boundary 또는 Hydra raw
     config boundary에만 남긴다.
 - E2. `agent` diagnostics/rule table 단순화
+  - 상태: 완료.
   - 대상: `agent/src/services/training/selection/query_buffer_selection_diagnostics.py`,
     wellbeing rule table 후보.
   - 진행: query buffer selection diagnostics의 row/summary/scalar stats 전용 DTO와
