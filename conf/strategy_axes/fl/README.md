@@ -48,6 +48,11 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 실제 threshold, LoRA rank, round 수 같은 실행 파라미터는 계속 Hydra config leaf에
 남긴다.
 
+`fl_profile` metadata는 실행값을 다시 소유하지 않는다. Simulation bootstrap 전
+`FederatedSslExperimentProfile`로 해석해 실제로 compose된 method/local update/round
+runtime profile과 일치하는지만 검증한다. 즉 `fl_profile`은 사람이 고른 preset의
+이름표이고, 실행값 source-of-truth는 각 strategy axis leaf다.
+
 사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/descriptor.py`의 recipe
 metadata가 소유하고, 커질 때만 optional `recipe.py`로 분리한다. Hydra YAML은 실행
 조합과 파라미터 값만 소유한다.

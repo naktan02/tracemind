@@ -13,6 +13,7 @@ baseline이 아니라 이 spec을 만족하는 첫 method 구현으로 다룬다
 - 실제 runtime adapter가 읽을 canonical method 요구사항 제공
 - method-local module 옆 decorator 등록과 작은 import trigger
 - method recipe metadata와 method-only aggregation/server policy 변형
+- Hydra `experiment_profile` metadata와 실제 compose 결과의 drift 검증
 - 명시 training config가 없는 API/runtime 요청용 `runtime_fallbacks.py`
 
 ## 제외

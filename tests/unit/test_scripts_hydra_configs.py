@@ -7,6 +7,11 @@ from hydra import compose, initialize_config_module
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
+from methods.federated_ssl.compatibility import (
+    FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_profile_compatibility,
+)
+from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
@@ -526,6 +531,21 @@ def test_federated_simulation_supports_high_level_fl_profile() -> None:
     assert descriptor.recipe.supports_profile_combination(
         local_update_profile_name=local_update_profile.algorithm_profile_name,
         round_runtime_profile_name=str(cfg.round_runtime_profile.name),
+    )
+    validate_federated_ssl_profile_compatibility(
+        FederatedSslProfileCompatibilityContext(
+            method_descriptor=descriptor,
+            local_update_profile=local_update_profile,
+            local_update_adapter_kind=str(cfg.round_runtime.adapter_family_name),
+            round_adapter_family_name=str(cfg.round_runtime.adapter_family_name),
+            round_aggregation_backend_name=str(
+                cfg.round_runtime.aggregation_backend_name
+            ),
+            experiment_profile=FederatedSslExperimentProfile.from_mapping(
+                _plain_dict(cfg.fl_profile)
+            ),
+            round_runtime_profile_name=str(cfg.round_runtime_profile.name),
+        )
     )
 
 

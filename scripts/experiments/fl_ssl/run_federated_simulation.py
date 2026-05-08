@@ -10,6 +10,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
@@ -81,6 +82,14 @@ def _build_lora_classifier_runtime_config(
     return FederatedLoraClassifierRuntimeConfig(**_to_plain_dict(cfg.lora_classifier))
 
 
+def _build_experiment_profile(
+    cfg: DictConfig,
+) -> FederatedSslExperimentProfile | None:
+    if "fl_profile" not in cfg or cfg.fl_profile is None:
+        return None
+    return FederatedSslExperimentProfile.from_mapping(_to_plain_dict(cfg.fl_profile))
+
+
 def build_simulation_request_from_config(
     cfg: DictConfig,
     *,
@@ -133,6 +142,7 @@ def build_simulation_request_from_config(
         ),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
         local_update_profile=local_update_profile,
+        experiment_profile=_build_experiment_profile(cfg),
     )
 
 

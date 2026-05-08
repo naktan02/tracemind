@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 
 
@@ -17,6 +18,7 @@ class FederatedSslProfileCompatibilityContext:
     local_update_adapter_kind: str
     round_adapter_family_name: str
     round_aggregation_backend_name: str
+    experiment_profile: FederatedSslExperimentProfile | None = None
     round_runtime_profile_name: str | None = None
 
     def __post_init__(self) -> None:
@@ -65,6 +67,8 @@ def validate_federated_ssl_profile_compatibility(
             "FL profile compatibility failed: method_descriptor="
             f"{context.method_descriptor.name} does not support simulation runtime."
         )
+    if context.experiment_profile is not None:
+        _validate_experiment_profile_metadata(context)
 
     if (
         context.local_update_adapter_kind.lower()
@@ -120,6 +124,67 @@ def validate_federated_ssl_profile_compatibility(
             f"adapter_family={context.round_adapter_family_name}, "
             f"aggregation_backend={context.round_aggregation_backend_name}."
         )
+
+
+def _validate_experiment_profile_metadata(
+    context: FederatedSslProfileCompatibilityContext,
+) -> None:
+    profile = context.experiment_profile
+    if profile is None:
+        return
+
+    _require_profile_value(
+        profile.method_name,
+        expected=context.method_descriptor.name,
+        field_name="method_name",
+        profile_name=profile.name,
+    )
+    if context.local_update_profile is not None:
+        _require_profile_value(
+            profile.local_update_profile_name,
+            expected=context.local_update_profile.algorithm_profile_name,
+            field_name="local_update_profile_name",
+            profile_name=profile.name,
+        )
+    if context.round_runtime_profile_name is None:
+        raise ValueError(
+            "FL profile compatibility failed: experiment_profile requires "
+            "round_runtime_profile_name to validate compose metadata."
+        )
+    _require_profile_value(
+        profile.round_runtime_profile_name,
+        expected=context.round_runtime_profile_name,
+        field_name="round_runtime_profile_name",
+        profile_name=profile.name,
+    )
+    _require_profile_value(
+        profile.adapter_family_name,
+        expected=context.round_adapter_family_name,
+        field_name="adapter_family_name",
+        profile_name=profile.name,
+    )
+    _require_profile_value(
+        profile.aggregation_backend_name,
+        expected=context.round_aggregation_backend_name,
+        field_name="aggregation_backend_name",
+        profile_name=profile.name,
+    )
+
+
+def _require_profile_value(
+    actual: str,
+    *,
+    expected: str,
+    field_name: str,
+    profile_name: str,
+) -> None:
+    if actual.lower() == expected.lower():
+        return
+    raise ValueError(
+        "FL profile compatibility failed: experiment_profile metadata drift: "
+        f"profile={profile_name}, field={field_name}, "
+        f"actual={actual}, expected={expected}."
+    )
 
 
 def _normalize_non_empty(value: str, *, field_name: str) -> str:

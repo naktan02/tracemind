@@ -19,6 +19,7 @@ from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_profile_compatibility,
 )
+from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
     FEDAVG_PSEUDO_LABEL_RECIPE,
@@ -356,5 +357,53 @@ def test_fl_profile_compatibility_rejects_method_recipe_mismatch() -> None:
                 round_adapter_family_name="diagonal_scale",
                 round_aggregation_backend_name="fedavg",
                 round_runtime_profile_name="fedavg_lora_classifier",
+            )
+        )
+
+
+def test_fl_profile_compatibility_rejects_experiment_profile_metadata_drift() -> None:
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        {
+            "algorithm_profile_name": "prototype_pseudo_label_v1",
+            "training_scope": "adapter_only",
+            "training_backend_name": "diagonal_scale_heuristic",
+            "confidence_threshold": 0.6,
+            "margin_threshold": 0.02,
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "score_top_k": None,
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "diagonal_scale_clip_only",
+            "evidence_backend_temperature": 1.0,
+        }
+    )
+    experiment_profile = FederatedSslExperimentProfile.from_mapping(
+        {
+            "name": "fedavg_pseudo_label_diagonal_scale_v1",
+            "method_name": "fedavg_pseudo_label",
+            "local_update_profile_name": "lora_pseudo_label_v1",
+            "round_runtime_profile_name": "fedavg_diagonal_scale",
+            "adapter_family_name": "diagonal_scale",
+            "aggregation_backend_name": "fedavg",
+            "description": "test drift",
+        }
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="experiment_profile metadata drift.*local_update_profile_name",
+    ):
+        validate_federated_ssl_profile_compatibility(
+            FederatedSslProfileCompatibilityContext(
+                method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+                local_update_profile=local_update_profile,
+                local_update_adapter_kind="diagonal_scale",
+                round_adapter_family_name="diagonal_scale",
+                round_aggregation_backend_name="fedavg",
+                experiment_profile=experiment_profile,
+                round_runtime_profile_name="fedavg_diagonal_scale",
             )
         )
