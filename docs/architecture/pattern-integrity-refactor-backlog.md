@@ -370,12 +370,15 @@ dict/list table, 작은 helper로 낮춘다.
   - 방향: catalog snapshot은 implementation registration source of truth가 아니므로, 반복 spec
     class보다 사람이 읽는 table과 작은 builder helper를 우선한다.
 - E4. `methods` descriptor/config/fallback 표현 축소
+  - 상태: 완료.
   - 대상: `methods/federated_ssl/base.py`, `runtime_fallbacks.py`,
     `methods/adaptation/lora_classifier/config.py`.
   - 진행: `runtime_fallbacks.py`의 반복 objective getter와 fallback mapping merge 코드를
     작은 helper로 낮췄다. fallback 값의 source-of-truth와 profile dataclass 의미는 유지한다.
   - 진행: `methods/adaptation/lora_classifier/config.py`의 필드별 `from_mapping()` 파싱을
     config key table 기반 loop로 낮췄다. backend config dataclass와 값 검증 의미는 유지한다.
+  - 진행: `methods/federated_ssl/base.py`의 descriptor dataclass 반복 검증 setter를
+    파일 내부 helper로 낮췄다. descriptor/recipe/capability 계약 surface는 유지한다.
   - 방향: method core의 tensor/objective 계산은 유지하고, descriptor/config/fallback 선언부에서
     단일 구현 전용 추상화와 장황한 generic type을 줄인다.
 - E5. `shared` contract 파일 크기와 설명 품질 정리

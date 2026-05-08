@@ -42,6 +42,31 @@ def _normalize_unique_names(
     return normalized
 
 
+def _set_non_empty(instance: object, field_name: str) -> None:
+    object.__setattr__(
+        instance,
+        field_name,
+        _require_non_empty(getattr(instance, field_name), field_name=field_name),
+    )
+
+
+def _set_unique_names(
+    instance: object,
+    field_name: str,
+    *,
+    allow_empty: bool = False,
+) -> None:
+    object.__setattr__(
+        instance,
+        field_name,
+        _normalize_unique_names(
+            getattr(instance, field_name),
+            field_name=field_name,
+            allow_empty=allow_empty,
+        ),
+    )
+
+
 @dataclass(frozen=True, slots=True)
 class FederatedSslRequiredViews:
     """FL SSL method가 client 입력 row에 요구하는 view surface."""
@@ -55,14 +80,7 @@ class FederatedSslRequiredViews:
             "view_names",
             _normalize_view_names(self.view_names),
         )
-        object.__setattr__(
-            self,
-            "view_generator_name",
-            _require_non_empty(
-                self.view_generator_name,
-                field_name="view_generator_name",
-            ),
-        )
+        _set_non_empty(self, "view_generator_name")
 
 
 @dataclass(frozen=True, slots=True)
@@ -74,27 +92,9 @@ class FederatedSslLocalStepSpec:
     pseudo_labeler_name: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "step_name",
-            _require_non_empty(self.step_name, field_name="step_name"),
-        )
-        object.__setattr__(
-            self,
-            "client_trainer_name",
-            _require_non_empty(
-                self.client_trainer_name,
-                field_name="client_trainer_name",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "pseudo_labeler_name",
-            _require_non_empty(
-                self.pseudo_labeler_name,
-                field_name="pseudo_labeler_name",
-            ),
-        )
+        _set_non_empty(self, "step_name")
+        _set_non_empty(self, "client_trainer_name")
+        _set_non_empty(self, "pseudo_labeler_name")
 
 
 @dataclass(frozen=True, slots=True)
@@ -106,30 +106,9 @@ class FederatedSslServerStepSpec:
     server_aggregate_hint: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "server_aggregator_name",
-            _require_non_empty(
-                self.server_aggregator_name,
-                field_name="server_aggregator_name",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "round_policy_name",
-            _require_non_empty(
-                self.round_policy_name,
-                field_name="round_policy_name",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "server_aggregate_hint",
-            _require_non_empty(
-                self.server_aggregate_hint,
-                field_name="server_aggregate_hint",
-            ),
-        )
+        _set_non_empty(self, "server_aggregator_name")
+        _set_non_empty(self, "round_policy_name")
+        _set_non_empty(self, "server_aggregate_hint")
 
 
 @dataclass(frozen=True, slots=True)
@@ -142,28 +121,9 @@ class FederatedSslRoundStateExchangeSpec:
     requires_custom_exchange: bool = False
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "exchange_name",
-            _require_non_empty(self.exchange_name, field_name="exchange_name"),
-        )
-        object.__setattr__(
-            self,
-            "required_client_metric_keys",
-            _normalize_unique_names(
-                self.required_client_metric_keys,
-                field_name="required_client_metric_keys",
-                allow_empty=True,
-            ),
-        )
-        object.__setattr__(
-            self,
-            "summary_metric_prefix",
-            _require_non_empty(
-                self.summary_metric_prefix,
-                field_name="summary_metric_prefix",
-            ),
-        )
+        _set_non_empty(self, "exchange_name")
+        _set_unique_names(self, "required_client_metric_keys", allow_empty=True)
+        _set_non_empty(self, "summary_metric_prefix")
 
 
 @dataclass(frozen=True, slots=True)
@@ -185,22 +145,8 @@ class FederatedSslRuntimePair:
     aggregation_backend_name: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "adapter_family_name",
-            _require_non_empty(
-                self.adapter_family_name,
-                field_name="adapter_family_name",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "aggregation_backend_name",
-            _require_non_empty(
-                self.aggregation_backend_name,
-                field_name="aggregation_backend_name",
-            ),
-        )
+        _set_non_empty(self, "adapter_family_name")
+        _set_non_empty(self, "aggregation_backend_name")
 
     @property
     def normalized_key(self) -> tuple[str, str]:
@@ -218,22 +164,8 @@ class FederatedSslProfileCombination:
     round_runtime_profile_name: str
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "local_update_profile_name",
-            _require_non_empty(
-                self.local_update_profile_name,
-                field_name="local_update_profile_name",
-            ),
-        )
-        object.__setattr__(
-            self,
-            "round_runtime_profile_name",
-            _require_non_empty(
-                self.round_runtime_profile_name,
-                field_name="round_runtime_profile_name",
-            ),
-        )
+        _set_non_empty(self, "local_update_profile_name")
+        _set_non_empty(self, "round_runtime_profile_name")
 
 
 @dataclass(frozen=True, slots=True)
@@ -246,19 +178,11 @@ class FederatedSslMethodRecipe:
     supported_profile_combinations: tuple[FederatedSslProfileCombination, ...] = ()
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "method_name",
-            _require_non_empty(self.method_name, field_name="method_name"),
-        )
-        object.__setattr__(
+        _set_non_empty(self, "method_name")
+        _set_unique_names(
             self,
             "supported_local_update_profile_names",
-            _normalize_unique_names(
-                self.supported_local_update_profile_names,
-                field_name="supported_local_update_profile_names",
-                allow_empty=True,
-            ),
+            allow_empty=True,
         )
         if len(set(self._runtime_pair_keys())) != len(self.supported_runtime_pairs):
             raise ValueError("supported_runtime_pairs must be unique.")
@@ -336,19 +260,8 @@ class FederatedSslMethodDescriptor:
     recipe: FederatedSslMethodRecipe | None = None
 
     def __post_init__(self) -> None:
-        object.__setattr__(
-            self,
-            "name",
-            _require_non_empty(self.name, field_name="name"),
-        )
-        object.__setattr__(
-            self,
-            "implementation_status",
-            _require_non_empty(
-                self.implementation_status,
-                field_name="implementation_status",
-            ),
-        )
+        _set_non_empty(self, "name")
+        _set_non_empty(self, "implementation_status")
         if self.recipe is not None and self.recipe.method_name != self.name:
             raise ValueError(
                 "method descriptor recipe must use the same method name: "
