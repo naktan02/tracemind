@@ -4,8 +4,9 @@ from pathlib import Path
 
 import pytest
 
-from shared.src.contracts.adapter_family_metadata import (
-    list_shared_adapter_family_metadata,
+from shared.src.contracts.adapter_contract_families.registry import (
+    get_shared_adapter_canonical_update_payload_format,
+    get_shared_adapter_update_payload_formats,
 )
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadAdapterStatePayload,
@@ -315,18 +316,11 @@ def test_lora_classifier_update_requires_artifact_ref_or_inline_delta(
         )
 
 
-def test_adapter_family_metadata_lists_lora_classifier_as_metadata_only() -> None:
-    metadata = {
-        family.family_name: family for family in list_shared_adapter_family_metadata()
-    }
-
-    lora_classifier = metadata["lora_classifier"]
-
-    assert lora_classifier.adapter_kind == "lora_classifier"
+def test_payload_registry_exposes_lora_classifier_update_formats() -> None:
     assert (
-        lora_classifier.canonical_update_payload_format
+        get_shared_adapter_canonical_update_payload_format("lora_classifier")
         == UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value
     )
-    assert lora_classifier.accepted_update_payload_formats == (
+    assert get_shared_adapter_update_payload_formats("lora_classifier") == (
         "lora_classifier_update",
     )

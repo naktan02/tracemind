@@ -72,6 +72,11 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierStatePayload,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
+    get_shared_adapter_canonical_update_payload_format,
+    get_shared_adapter_state_payload_type,
+    get_shared_adapter_update_payload_formats,
+    get_shared_adapter_update_payload_type,
+    list_registered_shared_adapter_payload_adapter_kinds,
     parse_shared_adapter_state_payload,
     parse_shared_adapter_update_payload,
     register_shared_adapter_payload_family,

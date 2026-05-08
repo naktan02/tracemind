@@ -7,20 +7,23 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+)
 
 from ..aggregation.models import AggregationConfigScalar
 
 ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
+DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME = DIAGONAL_SCALE_ADAPTER_KIND
 
 
 @dataclass(slots=True)
 class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
-    adapter_family_name: str = DIAGONAL_SCALE_FAMILY_METADATA.family_name
+    adapter_family_name: str = DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME
     aggregation_backend_name: str = "fedavg"
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
         default_factory=dict
@@ -37,7 +40,7 @@ def load_server_round_runtime_config_from_env(
     return ServerRoundRuntimeConfig(
         adapter_family_name=source.get(
             ROUND_ADAPTER_FAMILY_ENV,
-            DIAGONAL_SCALE_FAMILY_METADATA.family_name,
+            DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,

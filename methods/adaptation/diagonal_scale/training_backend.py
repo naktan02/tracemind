@@ -18,11 +18,14 @@ from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.adapter_contracts import (
     SharedAdapterUpdatePayload,
     VectorAdapterDelta,
 )
-from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -38,20 +41,12 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_heuristic",
     display_name="diagonal_scale_heuristic",
-    implementation_module=(
-        "methods.adaptation.diagonal_scale.training_backend"
-    ),
+    implementation_module=("methods.adaptation.diagonal_scale.training_backend"),
     core_method_name="diagonal_scale_heuristic",
-    family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-    supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
-    accepted_payload_formats=(
-        DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format,
-    ),
-    metadata={
-        "payload_format": (
-            DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
-        )
-    },
+    family_name=DIAGONAL_SCALE_ADAPTER_KIND,
+    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
+    accepted_payload_formats=(DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,),
+    metadata={"payload_format": DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT},
 )
 
 
@@ -60,8 +55,8 @@ class DiagonalScaleHeuristicTrainingBackend:
     """결정적 통계 기반으로 diagonal scale adapter update를 만든다."""
 
     backend_name: str = "diagonal_scale_heuristic"
-    payload_format: str = DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
-    adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind
+    payload_format: str = DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT
+    adapter_kind: str = DIAGONAL_SCALE_ADAPTER_KIND
     config: DiagonalScaleHeuristicTrainingBackendConfig = (
         DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG
     )
@@ -123,6 +118,4 @@ def build_diagonal_scale_heuristic_training_backend(
 ) -> DiagonalScaleHeuristicTrainingBackend:
     """registry용 diagonal-scale heuristic backend factory."""
 
-    return DiagonalScaleHeuristicTrainingBackend.from_objective_config(
-        objective_config
-    )
+    return DiagonalScaleHeuristicTrainingBackend.from_objective_config(objective_config)

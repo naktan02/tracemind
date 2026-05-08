@@ -6,15 +6,6 @@ from dataclasses import dataclass
 
 
 @dataclass(frozen=True, slots=True)
-class AggregatedArtifactRefSet:
-    """Aggregation 결과가 가리키는 server-owned artifact refs."""
-
-    lora_adapter_artifact_ref: str
-    classifier_head_artifact_ref: str
-    artifact_format: str
-
-
-@dataclass(frozen=True, slots=True)
 class AggregatedArtifactRefBuilder:
     """next revision 기준 server-owned artifact ref를 만든다."""
 
@@ -27,25 +18,6 @@ class AggregatedArtifactRefBuilder:
             field_name="artifact_ref_prefix",
         )
         _require_non_empty_str(self.artifact_format, field_name="artifact_format")
-
-    def build_lora_classifier_refs(
-        self,
-        *,
-        next_model_revision: str,
-    ) -> AggregatedArtifactRefSet:
-        """LoRA adapter와 classifier head aggregate artifact refs를 만든다."""
-
-        return AggregatedArtifactRefSet(
-            lora_adapter_artifact_ref=self.build_ref(
-                next_model_revision=next_model_revision,
-                artifact_name="lora_adapter",
-            ),
-            classifier_head_artifact_ref=self.build_ref(
-                next_model_revision=next_model_revision,
-                artifact_name="classifier_head",
-            ),
-            artifact_format=self.artifact_format,
-        )
 
     def build_ref(
         self,

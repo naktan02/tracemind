@@ -4,9 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 
-from shared.src.contracts.adapter_family_metadata import (
-    SharedAdapterFamilyMetadata,
-    list_shared_adapter_family_metadata,
+from shared.src.contracts.adapter_contract_families.registry import (
+    get_shared_adapter_update_payload_formats,
+    list_registered_shared_adapter_payload_adapter_kinds,
 )
 
 from ..aggregation.models import AggregationConfigScalar
@@ -48,25 +48,22 @@ def build_shared_adapter_round_family(
     factory = _ROUND_FAMILY_REGISTRY.get(normalized_family_name)
     if factory is not None:
         return factory(aggregation_backend_name, aggregation_backend_overrides)
-    family_metadata = _resolve_shared_adapter_family_metadata(normalized_family_name)
+    adapter_kind = _resolve_shared_adapter_kind(normalized_family_name)
     return SharedAdapterRoundFamilyRuntime(
-        adapter_kind=family_metadata.adapter_kind,
-        accepted_update_formats=family_metadata.accepted_update_payload_formats,
+        adapter_kind=adapter_kind,
+        accepted_update_formats=get_shared_adapter_update_payload_formats(adapter_kind),
         aggregation_backend=build_shared_adapter_aggregation_backend(
-            adapter_kind=family_metadata.adapter_kind,
+            adapter_kind=adapter_kind,
             backend_name=aggregation_backend_name,
             overrides=aggregation_backend_overrides,
         ),
     )
 
 
-def _resolve_shared_adapter_family_metadata(
+def _resolve_shared_adapter_kind(
     normalized_family_name: str,
-) -> SharedAdapterFamilyMetadata:
-    for family_metadata in list_shared_adapter_family_metadata():
-        if (
-            family_metadata.family_name.strip().lower() == normalized_family_name
-            or family_metadata.adapter_kind.strip().lower() == normalized_family_name
-        ):
-            return family_metadata
+) -> str:
+    for adapter_kind in list_registered_shared_adapter_payload_adapter_kinds():
+        if adapter_kind.strip().lower() == normalized_family_name:
+            return adapter_kind
     raise ValueError(f"Unsupported shared adapter family: {normalized_family_name}.")

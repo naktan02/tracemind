@@ -31,8 +31,8 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
-from shared.src.contracts.adapter_family_metadata import (
-    list_shared_adapter_family_metadata,
+from shared.src.contracts.adapter_contract_families.registry import (
+    list_registered_shared_adapter_payload_adapter_kinds,
 )
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -92,10 +92,10 @@ def build_local_update_profile_section(
 def build_adapter_family_catalog_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """shared adapter family metadata를 FL runtime catalog에 노출한다."""
+    """shared adapter payload family contract를 FL runtime catalog에 노출한다."""
 
     return build_adapter_family_section(
-        family_metadata=list_shared_adapter_family_metadata(),
+        adapter_kinds=list_registered_shared_adapter_payload_adapter_kinds(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,

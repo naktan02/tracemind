@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_ADAPTER_KIND,
+)
 from shared.src.contracts.adapter_contracts import ClassifierHeadDelta
-from shared.src.contracts.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
@@ -19,12 +21,11 @@ CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_clip_only",
     display_name="classifier_head_clip_only",
     implementation_module=(
-        "agent.src.services.training.execution.privacy_guards."
-        "classifier_head_clip_only"
+        "agent.src.services.training.execution.privacy_guards.classifier_head_clip_only"
     ),
     core_method_name="classifier_head_clip_only",
     family_name="privacy_guard",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
 )
 
 
@@ -33,9 +34,7 @@ class ClassifierHeadClipOnlyPrivacyGuard:
     """Classifier-head update에 clip만 적용하는 privacy guard."""
 
     guard_name: str = "classifier_head_clip_only"
-    supported_adapter_kinds: tuple[str, ...] = (
-        CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
-    )
+    supported_adapter_kinds: tuple[str, ...] = (CLASSIFIER_HEAD_ADAPTER_KIND,)
 
     def protect(
         self,

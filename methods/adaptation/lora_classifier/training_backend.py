@@ -12,11 +12,14 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainExecutor,
 )
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
     SharedAdapterUpdatePayload,
 )
-from shared.src.contracts.adapter_family_metadata import LORA_CLASSIFIER_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -40,20 +43,14 @@ from .payload_builder import build_lora_classifier_delta_update
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     display_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-    implementation_module=(
-        "methods.adaptation.lora_classifier.training_backend"
-    ),
+    implementation_module=("methods.adaptation.lora_classifier.training_backend"),
     core_method_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-    family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-    supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
-    accepted_payload_formats=(
-        LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format,
-    ),
+    family_name=LORA_CLASSIFIER_ADAPTER_KIND,
+    supported_adapter_kinds=(LORA_CLASSIFIER_ADAPTER_KIND,),
+    accepted_payload_formats=(LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,),
     tags=("requires_raw_text", "artifact_ref_update"),
     metadata={
-        "payload_format": (
-            LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format
-        ),
+        "payload_format": LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         "requires_raw_text": True,
         "produces_artifact_refs": True,
         "supports_live_stored_event_runtime": False,
@@ -71,10 +68,8 @@ class LoraClassifierTrainingBackend:
     """
 
     backend_name: str = LORA_CLASSIFIER_TRAINING_BACKEND_NAME
-    payload_format: str = (
-        LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format
-    )
-    adapter_kind: str = LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind
+    payload_format: str = LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+    adapter_kind: str = LORA_CLASSIFIER_ADAPTER_KIND
     config: LoraClassifierTrainingBackendConfig = field(
         default_factory=LoraClassifierTrainingBackendConfig
     )

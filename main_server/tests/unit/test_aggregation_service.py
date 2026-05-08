@@ -6,14 +6,19 @@ from datetime import datetime, timezone
 
 import pytest
 
-from main_server.src.services.federation.rounds.aggregation.fedavg import (
-    DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
-    DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
-    FedAvgAggregationRuntime,
+from main_server.src.services.federation.rounds.aggregation.executor import (
+    MethodAggregationBackend,
 )
 from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     list_shared_adapter_aggregation_backend_catalog_entries,
+)
+from methods.adaptation.diagonal_scale.fedavg_projection import (
+    DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
+    DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
+)
+from methods.federated.aggregation.fedavg.strategy import (
+    FedAvgAggregationStrategy,
 )
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
@@ -65,9 +70,10 @@ def test_diagonal_scale_aggregation_uses_shared_default_config() -> None:
         backend_name="fedavg",
     )
 
-    assert isinstance(backend, FedAvgAggregationRuntime)
+    assert isinstance(backend, MethodAggregationBackend)
+    assert isinstance(backend.strategy, FedAvgAggregationStrategy)
     assert backend.adapter_kind == "diagonal_scale"
-    assert backend.overrides is None
+    assert backend.strategy.overrides is None
     assert DEFAULT_DIAGONAL_SCALE_MIN_SCALE == 0.75
     assert DEFAULT_DIAGONAL_SCALE_MAX_SCALE == 1.25
 
@@ -109,7 +115,7 @@ def test_diagonal_scale_aggregation_applies_backend_overrides() -> None:
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    assert isinstance(backend, FedAvgAggregationRuntime)
+    assert isinstance(backend, MethodAggregationBackend)
     assert backend.adapter_kind == "diagonal_scale"
     assert result.next_state.dimension_scales == [1.1, 0.9]
 
@@ -174,7 +180,7 @@ def test_classifier_head_fedavg_aggregation_updates_weights_and_biases() -> None
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    assert isinstance(backend, FedAvgAggregationRuntime)
+    assert isinstance(backend, MethodAggregationBackend)
     assert backend.adapter_kind == "classifier_head"
     assert result.next_state.label_weights["anxiety"] == pytest.approx(
         [1.1666666666666667, 0.0]
@@ -232,7 +238,7 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs() -> None:
         aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
     )
 
-    assert isinstance(backend, FedAvgAggregationRuntime)
+    assert isinstance(backend, MethodAggregationBackend)
     assert backend.adapter_kind == "lora_classifier"
     assert isinstance(result.next_state, LoraClassifierState)
     assert result.next_state.model_revision == "rev_001"

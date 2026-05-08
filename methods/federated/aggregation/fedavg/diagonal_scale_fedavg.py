@@ -12,7 +12,9 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_vectors,
 )
 from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -36,7 +38,7 @@ class DiagonalScaleFedAvgResult:
 
 
 @register_federated_aggregation_method(
-    adapter_kind=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    adapter_kind=DIAGONAL_SCALE_ADAPTER_KIND,
     method_name="fedavg",
     aliases=("diagonal_scale_fedavg",),
 )

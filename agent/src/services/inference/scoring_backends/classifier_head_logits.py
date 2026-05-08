@@ -5,8 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_ADAPTER_KIND,
+)
 from shared.src.contracts.adapter_contracts import ClassifierHeadState
-from shared.src.contracts.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -26,7 +28,7 @@ CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     ),
     core_method_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     family_name="scoring",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
     tags=("requires_shared_state",),
     metadata={
         "requires_shared_state": True,

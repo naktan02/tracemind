@@ -12,10 +12,16 @@ workspace UI/catalog 노출이 필요한 stable 항목만 snapshot으로 반영�
 
 from __future__ import annotations
 
-from shared.src.contracts.adapter_family_metadata import (
-    CLASSIFIER_HEAD_FAMILY_METADATA,
-    DIAGONAL_SCALE_FAMILY_METADATA,
-    LORA_CLASSIFIER_FAMILY_METADATA,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_ADAPTER_KIND,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -29,16 +35,10 @@ DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     display_name="diagonal_scale_heuristic",
     implementation_module=("methods.adaptation.diagonal_scale.training_backend"),
     core_method_name="diagonal_scale_heuristic",
-    family_name=DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-    supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
-    accepted_payload_formats=(
-        DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format,
-    ),
-    metadata={
-        "payload_format": (
-            DIAGONAL_SCALE_FAMILY_METADATA.canonical_update_payload_format
-        )
-    },
+    family_name=DIAGONAL_SCALE_ADAPTER_KIND,
+    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
+    accepted_payload_formats=(DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,),
+    metadata={"payload_format": DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT},
 )
 
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
@@ -46,16 +46,12 @@ LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     display_name="lora_classifier_trainer",
     implementation_module=("methods.adaptation.lora_classifier.training_backend"),
     core_method_name="lora_classifier_trainer",
-    family_name=LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,
-    supported_adapter_kinds=(LORA_CLASSIFIER_FAMILY_METADATA.adapter_kind,),
-    accepted_payload_formats=(
-        LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format,
-    ),
+    family_name=LORA_CLASSIFIER_ADAPTER_KIND,
+    supported_adapter_kinds=(LORA_CLASSIFIER_ADAPTER_KIND,),
+    accepted_payload_formats=(LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,),
     tags=("requires_raw_text", "artifact_ref_update"),
     metadata={
-        "payload_format": (
-            LORA_CLASSIFIER_FAMILY_METADATA.canonical_update_payload_format
-        ),
+        "payload_format": LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         "requires_raw_text": True,
         "produces_artifact_refs": True,
         "supports_live_stored_event_runtime": False,
@@ -115,7 +111,7 @@ CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     ),
     core_method_name="classifier_head_logits",
     family_name="scoring",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
     tags=("requires_shared_state",),
     metadata={
         "requires_shared_state": True,
@@ -148,7 +144,7 @@ DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     ),
     core_method_name="diagonal_scale_clip_only",
     family_name="privacy_guard",
-    supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
 )
 CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_clip_only",
@@ -158,7 +154,7 @@ CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     ),
     core_method_name="classifier_head_clip_only",
     family_name="privacy_guard",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
 )
 NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="noop",

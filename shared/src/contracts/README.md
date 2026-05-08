@@ -56,9 +56,10 @@ Shared adapter 상태와 update payload를 정의한다.
 `adapter_contract_families/builtin_loader.py`, `adapter_contract_families/io.py`,
 `adapter_contract_families/factories.py`로 나뉜다. Registry는 lookup helper만
 소유하고 builtin family 연결은 `builtin_loader.py`의 명시 목록이 담당한다.
-`adapter_family_metadata.py`는 adapter discriminator와 update payload format을 맞추는
-contract-adjacent metadata만 소유하며, runtime backend나 method catalog의 source of
-truth가 아니다.
+Family별 `adapter_kind`와 canonical/accepted update payload format은 각
+`adapter_contract_families/<family>.py` payload contract 옆에 둔다. 중앙
+adapter family metadata catalog는 두지 않고, registry는 payload type lookup과
+parse/serialize contract helper만 소유한다.
 
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드

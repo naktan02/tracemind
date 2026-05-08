@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import ClassVar
 
 from pydantic import Field, model_validator
 
@@ -19,6 +20,12 @@ from .base import (
     SharedAdapterUpdatePayload,
 )
 
+CLASSIFIER_HEAD_ADAPTER_KIND = AdapterKind.CLASSIFIER_HEAD.value
+CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT = "classifier_head_update"
+CLASSIFIER_HEAD_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
+    CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
+)
+
 
 class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
     """고정 임베딩 위 category별 선형 분류 head를 공유하는 family state."""
@@ -27,6 +34,7 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
         default=CLASSIFIER_HEAD_STATE_V1,
         description="Classifier head state payload contract 버전.",
     )
+    adapter_kind: str = Field(default=CLASSIFIER_HEAD_ADAPTER_KIND)
     label_weights: dict[str, list[float]] = Field(
         description="카테고리별 선형 head weight 벡터."
     )
@@ -77,7 +85,7 @@ class ClassifierHeadAdapterStatePayload(SharedAdapterStatePayload):
             raise ValueError("embedding_dim must be positive.")
         return cls(
             schema_version=CLASSIFIER_HEAD_STATE_V1,
-            adapter_kind=AdapterKind.CLASSIFIER_HEAD.value,
+            adapter_kind=CLASSIFIER_HEAD_ADAPTER_KIND,
             model_id=model_id,
             model_revision=model_revision,
             training_scope=training_scope,
@@ -122,6 +130,13 @@ class ClassifierHeadAdapterUpdatePayload(SharedAdapterUpdatePayload):
     schema_version: ClassifierHeadDeltaSchemaVersion = Field(
         default=CLASSIFIER_HEAD_DELTA_V1,
         description="Classifier head update payload contract 버전.",
+    )
+    adapter_kind: str = Field(default=CLASSIFIER_HEAD_ADAPTER_KIND)
+    canonical_update_payload_format: ClassVar[str] = (
+        CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT
+    )
+    accepted_update_payload_formats: ClassVar[tuple[str, ...]] = (
+        CLASSIFIER_HEAD_ACCEPTED_UPDATE_PAYLOAD_FORMATS
     )
     label_weight_deltas: dict[str, list[float]] = Field(
         description="카테고리별 weight delta 벡터."

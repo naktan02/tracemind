@@ -49,18 +49,17 @@
 - `active_manifest_service.py`
   - 서버 current `ModelManifest` 저장/활성화
 - `families/`
-  - shared adapter family contract metadata를 generic round runtime으로 연결
-  - concrete family별 파일을 두지 않고 `shared/src/contracts/adapter_family_metadata.py`
-    와 aggregation backend 조합으로 해석한다
+  - shared adapter payload registry를 generic round runtime으로 연결
+  - concrete family별 파일을 두지 않고 registered payload family와 aggregation backend
+    조합으로 해석한다
 - `aggregation/`
-  - server-owned aggregation backend registry와 methods core adapter
-  - `fedavg.py`처럼 aggregation method 단위 runtime adapter만 둔다
+  - server-owned aggregation backend registry와 methods strategy executor
+  - `fedavg.py`, `fedprox.py` 같은 aggregation method 파일은 두지 않는다
   - `diagonal_scale.py`, `classifier_head.py`, `lora_classifier.py` 같은 adapter
-    family 단위 module은 두지 않는다
-  - registry는 lookup/catalog만 맡고 backend factory 등록은 method module 옆
-    decorator가 소유한다
-  - payload/state materialization은 runtime capability로만 맡고 FedMatch/FedLGMatch
-    같은 method-specific server policy를 소유하지 않는다
+    family 단위 module도 두지 않는다
+  - registry는 explicit test/backend override와 methods strategy resolve만 맡는다
+  - payload projection과 aggregation method 의미는 `methods/federated/aggregation/`이
+    소유하고, server-owned artifact ref 생성만 runtime capability로 제공한다
   - `lora_classifier.fedavg`는 inline delta smoke 경로를 집계하고,
     artifact-ref-only update는 artifact materializer가 붙기 전까지 거부한다
 - `acceptance/`
@@ -68,8 +67,8 @@
 
 ## 새 전략 추가 시 어디를 보는가
 
-- aggregation backend 추가: server adapter/wiring은 `aggregation/<method>.py`,
-  순수 method 계산은 `methods/federated/aggregation/`
+- aggregation backend 추가: strategy/projection은 `methods/federated/aggregation/`,
+  server wiring은 기존 generic `aggregation/executor.py`와 registry를 재사용한다
 - adapter family 추가: `shared/src/contracts/adapter_contract_families/` +
   aggregation backend. `families/`에 family-specific 파일을 추가하지 않는다.
 - server runtime 기본 축 변경: `runtime/config.py`

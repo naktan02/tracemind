@@ -44,6 +44,74 @@ def register_shared_adapter_payload_family(
     register_shared_adapter_update_payload_type(adapter_kind, update_payload_type)
 
 
+def get_shared_adapter_state_payload_type(
+    adapter_kind: str,
+) -> type[SharedAdapterStatePayload]:
+    """adapter family discriminator에 맞는 state payload type을 반환한다."""
+
+    _ensure_builtin_payload_families_loaded()
+    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    payload_type = _STATE_PAYLOAD_TYPES.get(normalized_adapter_kind)
+    if payload_type is None:
+        raise ValueError(
+            f"Unsupported shared adapter state kind: {normalized_adapter_kind}"
+        )
+    return payload_type
+
+
+def get_shared_adapter_update_payload_type(
+    adapter_kind: str,
+) -> type[SharedAdapterUpdatePayload]:
+    """adapter family discriminator에 맞는 update payload type을 반환한다."""
+
+    _ensure_builtin_payload_families_loaded()
+    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    payload_type = _UPDATE_PAYLOAD_TYPES.get(normalized_adapter_kind)
+    if payload_type is None:
+        raise ValueError(
+            f"Unsupported shared adapter update kind: {normalized_adapter_kind}"
+        )
+    return payload_type
+
+
+def list_registered_shared_adapter_payload_adapter_kinds() -> tuple[str, ...]:
+    """builtin/custom payload parser registry에 등록된 adapter kind 목록."""
+
+    _ensure_builtin_payload_families_loaded()
+    return tuple(sorted(set(_STATE_PAYLOAD_TYPES) & set(_UPDATE_PAYLOAD_TYPES)))
+
+
+def get_shared_adapter_canonical_update_payload_format(
+    adapter_kind: str,
+) -> str:
+    """adapter family update payload type이 선언한 canonical envelope format."""
+
+    normalized_adapter_kind = _normalize_adapter_kind(adapter_kind)
+    payload_type = get_shared_adapter_update_payload_type(normalized_adapter_kind)
+    return str(
+        getattr(
+            payload_type,
+            "canonical_update_payload_format",
+            normalized_adapter_kind,
+        )
+    )
+
+
+def get_shared_adapter_update_payload_formats(
+    adapter_kind: str,
+) -> tuple[str, ...]:
+    """adapter family update payload type이 허용하는 envelope format 목록."""
+
+    canonical_format = get_shared_adapter_canonical_update_payload_format(adapter_kind)
+    payload_type = get_shared_adapter_update_payload_type(adapter_kind)
+    raw_formats = getattr(
+        payload_type,
+        "accepted_update_payload_formats",
+        (canonical_format,),
+    )
+    return tuple(str(value).strip() for value in raw_formats if str(value).strip())
+
+
 def parse_shared_adapter_state_payload(
     source: Mapping[str, object] | SharedAdapterStatePayload,
 ) -> SharedAdapterStatePayload:
@@ -52,8 +120,8 @@ def parse_shared_adapter_state_payload(
         return source
     _ensure_builtin_payload_families_loaded()
     data = dict(source)
-    adapter_kind = (
-        str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
+    adapter_kind = _normalize_adapter_kind(
+        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
     )
     payload_type = _STATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
@@ -69,13 +137,17 @@ def parse_shared_adapter_update_payload(
         return source
     _ensure_builtin_payload_families_loaded()
     data = dict(source)
-    adapter_kind = (
-        str(data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)).strip().lower()
+    adapter_kind = _normalize_adapter_kind(
+        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
     )
     payload_type = _UPDATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter update kind: {adapter_kind}")
     return payload_type.model_validate(data)
+
+
+def _normalize_adapter_kind(adapter_kind: object) -> str:
+    return str(adapter_kind).strip().lower()
 
 
 def _ensure_builtin_payload_families_loaded() -> None:

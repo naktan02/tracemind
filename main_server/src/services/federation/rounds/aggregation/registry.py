@@ -2,31 +2,23 @@
 
 from __future__ import annotations
 
-import importlib
-import pkgutil
 from collections.abc import Callable, Mapping
 
 from main_server.src.services.federation.rounds.aggregation.models import (
     AggregationBackendFactory,
     SharedAdapterAggregationBackend,
 )
+from methods.federated.aggregation.registry import (
+    build_federated_aggregation_strategy,
+    list_federated_aggregation_method_specs,
+)
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
 
+from .executor import MethodAggregationBackend
 from .models import AggregationConfigScalar
-
-_AGGREGATION_PACKAGE = "main_server.src.services.federation.rounds.aggregation"
-_SKIPPED_AGGREGATION_MODULES = frozenset(
-    {
-        "artifact_refs",
-        "builtin_loader",
-        "models",
-        "registry",
-        "runtime_adapter",
-    }
-)
 
 _AGGREGATION_BACKEND_REGISTRY: dict[
     tuple[str, str],
@@ -69,14 +61,17 @@ def build_shared_adapter_aggregation_backend(
     """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
 
     normalized_key = (adapter_kind.strip().lower(), backend_name.strip().lower())
-    _import_aggregation_module_for_backend_name(normalized_key[1])
     registered_backend = _AGGREGATION_BACKEND_REGISTRY.get(normalized_key)
     if registered_backend is not None:
         factory, _catalog_entry = registered_backend
         return factory(overrides)
-    raise ValueError(
-        "Unsupported aggregation backend for adapter family: "
-        f"adapter_kind={adapter_kind}, backend_name={backend_name}"
+    return MethodAggregationBackend(
+        strategy=build_federated_aggregation_strategy(
+            adapter_kind=adapter_kind,
+            method_name=backend_name,
+            overrides=overrides,
+        ),
+        overrides=overrides,
     )
 
 
@@ -86,14 +81,20 @@ def list_registered_shared_adapter_aggregation_backends(
 ) -> tuple[tuple[str, str], ...]:
     """등록된 aggregation backend 키를 정렬된 tuple로 반환한다."""
 
-    _import_aggregation_package_modules()
     normalized_adapter_kind = None
     if adapter_kind is not None:
         normalized_adapter_kind = adapter_kind.strip().lower()
-    registered = sorted(_AGGREGATION_BACKEND_REGISTRY)
+    registered = set(_AGGREGATION_BACKEND_REGISTRY)
+    registered.update(
+        (spec.adapter_kind, spec.method_name)
+        for spec in list_federated_aggregation_method_specs(
+            adapter_kind=normalized_adapter_kind
+        )
+    )
+    sorted_registered = tuple(sorted(registered))
     if normalized_adapter_kind is None:
-        return tuple(registered)
-    return tuple(key for key in registered if key[0] == normalized_adapter_kind)
+        return sorted_registered
+    return tuple(key for key in sorted_registered if key[0] == normalized_adapter_kind)
 
 
 def list_shared_adapter_aggregation_backend_catalog_entries() -> tuple[
@@ -101,30 +102,23 @@ def list_shared_adapter_aggregation_backend_catalog_entries() -> tuple[
 ]:
     """등록된 aggregation backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    _import_aggregation_package_modules()
     return dedupe_registry_catalog_entries(
-        catalog_entry
-        for _factory, catalog_entry in _AGGREGATION_BACKEND_REGISTRY.values()
+        (
+            *(
+                catalog_entry
+                for _factory, catalog_entry in _AGGREGATION_BACKEND_REGISTRY.values()
+            ),
+            *(
+                RegistryCatalogEntry(
+                    item_name=f"{spec.adapter_kind}.{spec.method_name}",
+                    display_name=spec.method_name,
+                    implementation_module=spec.implementation_module,
+                    core_method_name=spec.method_name,
+                    family_name=spec.adapter_kind,
+                    supported_adapter_kinds=(spec.adapter_kind,),
+                    metadata=dict(spec.metadata or {}),
+                )
+                for spec in list_federated_aggregation_method_specs()
+            ),
+        )
     )
-
-
-def _import_aggregation_module_for_backend_name(normalized_backend_name: str) -> None:
-    module_name = normalized_backend_name.replace("-", "_")
-    try:
-        importlib.import_module(f"{_AGGREGATION_PACKAGE}.{module_name}")
-    except ModuleNotFoundError as error:
-        expected_module = f"{_AGGREGATION_PACKAGE}.{module_name}"
-        if error.name != expected_module:
-            raise
-
-
-def _import_aggregation_package_modules() -> None:
-    package = importlib.import_module(_AGGREGATION_PACKAGE)
-    package_paths = getattr(package, "__path__", None)
-    if package_paths is None:
-        return
-
-    for module_info in pkgutil.iter_modules(package_paths):
-        if module_info.name in _SKIPPED_AGGREGATION_MODULES:
-            continue
-        importlib.import_module(f"{_AGGREGATION_PACKAGE}.{module_info.name}")

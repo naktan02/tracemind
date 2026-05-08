@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+)
 from shared.src.contracts.adapter_contracts import VectorAdapterDelta
-from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
@@ -19,12 +21,11 @@ DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_clip_only",
     display_name="diagonal_scale_clip_only",
     implementation_module=(
-        "agent.src.services.training.execution.privacy_guards."
-        "diagonal_scale_clip_only"
+        "agent.src.services.training.execution.privacy_guards.diagonal_scale_clip_only"
     ),
     core_method_name="diagonal_scale_clip_only",
     family_name="privacy_guard",
-    supported_adapter_kinds=(DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,),
+    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
 )
 
 
@@ -33,9 +34,7 @@ class DiagonalScaleClipOnlyPrivacyGuard:
     """현재 diagonal scale update에 clip만 적용하는 기본 privacy guard."""
 
     guard_name: str = "diagonal_scale_clip_only"
-    supported_adapter_kinds: tuple[str, ...] = (
-        DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
-    )
+    supported_adapter_kinds: tuple[str, ...] = (DIAGONAL_SCALE_ADAPTER_KIND,)
 
     def protect(
         self,
@@ -70,9 +69,7 @@ class DiagonalScaleClipOnlyPrivacyGuard:
     "diagonal_scale_clip_only",
     catalog_entry=DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
 )
-def build_diagonal_scale_clip_only_privacy_guard() -> (
-    DiagonalScaleClipOnlyPrivacyGuard
-):
+def build_diagonal_scale_clip_only_privacy_guard() -> DiagonalScaleClipOnlyPrivacyGuard:
     """registry용 diagonal-scale clip-only privacy guard factory."""
 
     return DiagonalScaleClipOnlyPrivacyGuard()

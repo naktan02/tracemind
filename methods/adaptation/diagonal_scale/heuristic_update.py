@@ -12,11 +12,13 @@ from methods.adaptation.diagonal_scale.config import (
     TRAINING_BACKEND_EXTRA_SCOPE,
     DiagonalScaleHeuristicTrainingBackendConfig,
 )
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+)
 from shared.src.contracts.adapter_contracts import (
     VECTOR_ADAPTER_DELTA_V1,
     VectorAdapterDelta,
 )
-from shared.src.contracts.adapter_family_metadata import DIAGONAL_SCALE_FAMILY_METADATA
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     ClientMetricKeys,
@@ -58,7 +60,7 @@ def build_diagonal_scale_heuristic_update(
     accepted_examples: Sequence[DiagonalScaleAcceptedExample],
     created_at: datetime,
     config: DiagonalScaleHeuristicTrainingBackendConfig,
-    adapter_kind: str = DIAGONAL_SCALE_FAMILY_METADATA.adapter_kind,
+    adapter_kind: str = DIAGONAL_SCALE_ADAPTER_KIND,
 ) -> VectorAdapterDelta:
     """accepted examples에서 deterministic diagonal-scale delta를 계산한다."""
 

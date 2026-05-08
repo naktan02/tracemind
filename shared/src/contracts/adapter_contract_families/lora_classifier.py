@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Sequence
+from typing import ClassVar
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
 
@@ -20,6 +21,12 @@ from .base import (
     squared_vector_mapping_norm,
     validate_label_vector_mapping,
     validate_non_empty_vector_mapping,
+)
+
+LORA_CLASSIFIER_ADAPTER_KIND = AdapterKind.LORA_CLASSIFIER.value
+LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT = "lora_classifier_update"
+LORA_CLASSIFIER_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
 
 
@@ -73,7 +80,7 @@ class LoraClassifierAdapterStatePayload(SharedAdapterStatePayload):
         default=LORA_CLASSIFIER_STATE_V1,
         description="LoRA-classifier state payload contract 버전.",
     )
-    adapter_kind: str = Field(default=AdapterKind.LORA_CLASSIFIER.value)
+    adapter_kind: str = Field(default=LORA_CLASSIFIER_ADAPTER_KIND)
     backbone: LoraClassifierBackbonePayload
     lora_config: LoraClassifierConfigPayload
     label_schema: list[str]
@@ -112,7 +119,13 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
         default=LORA_CLASSIFIER_DELTA_V1,
         description="LoRA-classifier update payload contract 버전.",
     )
-    adapter_kind: str = Field(default=AdapterKind.LORA_CLASSIFIER.value)
+    adapter_kind: str = Field(default=LORA_CLASSIFIER_ADAPTER_KIND)
+    canonical_update_payload_format: ClassVar[str] = (
+        LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+    )
+    accepted_update_payload_formats: ClassVar[tuple[str, ...]] = (
+        LORA_CLASSIFIER_ACCEPTED_UPDATE_PAYLOAD_FORMATS
+    )
     backbone: LoraClassifierBackbonePayload
     lora_config: LoraClassifierConfigPayload
     label_schema: list[str]

@@ -211,7 +211,6 @@
 보통 수정 파일:
 
 - [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
-- [shared/src/contracts/adapter_family_metadata.py](../../shared/src/contracts/adapter_family_metadata.py)
 - [methods/adaptation/<family>/training_backend.py](../../methods/adaptation/)
 - [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
@@ -221,13 +220,15 @@
 작업 순서:
 
 1. 새 state/update payload를 `shared`에 정의한다.
-2. family metadata를 추가해 canonical `family_name`, `adapter_kind`, payload format을 정한다.
+2. 해당 family payload 파일 옆에 canonical `adapter_kind`와 update payload format
+   상수를 둔다. 중앙 adapter family metadata catalog는 추가하지 않는다.
 3. agent training backend와 privacy guard가 새 `adapter_kind`를 생산/소비하게 한다.
    단, method-specific 의미는 agent에 두지 않고 capability adapter로만 연결한다.
 4. example backend, scorer, acceptance policy가 새 family를 지원하는지 확인한다.
 5. server aggregation backend를 추가한다.
-6. shared adapter family metadata와 aggregation backend만으로 generic round family runtime이
-   조립되는지 확인한다. `main_server/.../families/`에 family-specific 파일을 추가하지 않는다.
+6. shared payload registry와 aggregation backend만으로 generic round family runtime이
+   조립되는지 확인한다. `main_server/.../families/`에 family-specific 파일을 추가하지
+   않는다.
 7. payload 변환과 publication 경로를 점검한다.
 
 이 경우는 producer와 consumer가 함께 바뀌므로

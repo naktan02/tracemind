@@ -7,6 +7,7 @@
 
 - accepted pseudo-label example의 confidence 가중 평균 방향 계산
 - `VectorAdapterDelta` 생성
+- `fedavg_projection.py`에서 diagonal-scale state/update payload를 FedAvg core 입력으로 변환
 - diagonal-scale update metric 추출
 - backend-specific objective extras를 method config로 정규화
 - `diagonal_scale_heuristic` local update backend registration

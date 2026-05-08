@@ -14,7 +14,9 @@ from methods.federated.aggregation.fedavg.fedavg import (
     weighted_average_vector_mappings,
 )
 from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.contracts.adapter_family_metadata import CLASSIFIER_HEAD_FAMILY_METADATA
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_ADAPTER_KIND,
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -40,7 +42,7 @@ class ClassifierHeadFedAvgResult:
 
 
 @register_federated_aggregation_method(
-    adapter_kind=CLASSIFIER_HEAD_FAMILY_METADATA.adapter_kind,
+    adapter_kind=CLASSIFIER_HEAD_ADAPTER_KIND,
     method_name="fedavg",
     aliases=("classifier_head_fedavg",),
 )

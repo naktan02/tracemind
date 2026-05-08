@@ -5,6 +5,7 @@ from __future__ import annotations
 import math
 from collections.abc import Sequence
 from datetime import datetime
+from typing import ClassVar
 
 from pydantic import Field
 
@@ -17,10 +18,18 @@ from .base import (
     SharedAdapterUpdatePayload,
 )
 
+DIAGONAL_SCALE_ADAPTER_KIND = AdapterKind.DIAGONAL_SCALE.value
+DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT = "diagonal_scale_update"
+DIAGONAL_SCALE_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+    "vector_adapter_delta",
+)
+
 
 class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
     """임베딩 각 차원에 곱하는 scale 벡터를 공유하는 adapter state."""
 
+    adapter_kind: str = Field(default=DIAGONAL_SCALE_ADAPTER_KIND)
     dimension_scales: list[float] = Field(description="임베딩 차원별 전역 scale 벡터.")
 
     @classmethod
@@ -38,7 +47,7 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
             raise ValueError("embedding_dim must be positive.")
         return cls(
             schema_version=schema_version,
-            adapter_kind=AdapterKind.DIAGONAL_SCALE.value,
+            adapter_kind=DIAGONAL_SCALE_ADAPTER_KIND,
             model_id=model_id,
             model_revision=model_revision,
             training_scope=training_scope,
@@ -66,6 +75,13 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
 class DiagonalScaleAdapterUpdatePayload(SharedAdapterUpdatePayload):
     """Diagonal-scale adapter update payload."""
 
+    adapter_kind: str = Field(default=DIAGONAL_SCALE_ADAPTER_KIND)
+    canonical_update_payload_format: ClassVar[str] = (
+        DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT
+    )
+    accepted_update_payload_formats: ClassVar[tuple[str, ...]] = (
+        DIAGONAL_SCALE_ACCEPTED_UPDATE_PAYLOAD_FORMATS
+    )
     dimension_deltas: list[float] = Field(description="차원별 scale에 더할 delta 벡터.")
     mean_confidence: float = Field(
         ge=0.0,

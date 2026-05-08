@@ -22,8 +22,10 @@ from main_server.src.services.experiment_workspace.payloads import (
     CatalogItemPayload,
     CatalogSectionPayload,
 )
-from shared.src.contracts.adapter_family_metadata import (
-    SharedAdapterFamilyMetadata,
+from shared.src.contracts.adapter_contract_families.registry import (
+    get_shared_adapter_canonical_update_payload_format,
+    get_shared_adapter_update_payload_formats,
+    get_shared_adapter_update_payload_type,
 )
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 
@@ -198,46 +200,62 @@ def build_registry_section(
 
 def build_adapter_family_section(
     *,
-    family_metadata: Iterable[SharedAdapterFamilyMetadata],
+    adapter_kinds: Iterable[str],
     source_of_truth_for_module: SourceOfTruthForModule,
     supported_runtime_paths: tuple[str, ...],
 ) -> CatalogSectionPayload:
-    """shared adapter family metadata를 별도 section으로 노출한다."""
+    """shared adapter payload contract를 별도 section으로 노출한다."""
 
-    source_of_truth = source_of_truth_for_module(
-        "shared.src.contracts.adapter_family_metadata"
-    )
     items = tuple(
-        CatalogItemPayload(
-            item_name=metadata.family_name,
-            display_name=metadata.family_name,
-            item_kind="adapter_family",
-            family_name=metadata.family_name,
-            core_method_name=metadata.family_name,
-            variant_profile_name=metadata.family_name,
-            source_of_truth=source_of_truth,
-            source_kind="python_module",
-            compile_support="metadata_only",
-            compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
-            supported_adapter_kinds=(metadata.adapter_kind,),
+        _build_adapter_family_catalog_item(
+            adapter_kind=adapter_kind,
+            source_of_truth_for_module=source_of_truth_for_module,
             supported_runtime_paths=supported_runtime_paths,
-            accepted_payload_formats=metadata.accepted_update_payload_formats,
-            metadata={
-                "canonical_update_payload_format": (
-                    metadata.canonical_update_payload_format
-                ),
-            },
         )
-        for metadata in family_metadata
+        for adapter_kind in adapter_kinds
     )
     return CatalogSectionPayload(
         section_name="adapter_families",
         display_name="어댑터 패밀리",
         item_kind="adapter_family",
-        description="server/agent가 공통으로 해석하는 shared adapter family.",
+        description="server/agent가 공통으로 해석하는 shared adapter payload family.",
+        source_of_truth=source_of_truth_for_module(
+            "shared.src.contracts.adapter_contract_families.registry"
+        ),
+        source_kind="python_registry",
+        items=items,
+    )
+
+
+def _build_adapter_family_catalog_item(
+    *,
+    adapter_kind: str,
+    source_of_truth_for_module: SourceOfTruthForModule,
+    supported_runtime_paths: tuple[str, ...],
+) -> CatalogItemPayload:
+    update_payload_type = get_shared_adapter_update_payload_type(adapter_kind)
+    source_of_truth = source_of_truth_for_module(update_payload_type.__module__)
+    return CatalogItemPayload(
+        item_name=adapter_kind,
+        display_name=adapter_kind,
+        item_kind="adapter_family",
+        family_name=adapter_kind,
+        core_method_name=adapter_kind,
+        variant_profile_name=adapter_kind,
         source_of_truth=source_of_truth,
         source_kind="python_module",
-        items=items,
+        compile_support="metadata_only",
+        compile_blocker_reason=PHASE2_METADATA_ONLY_BLOCKER,
+        supported_adapter_kinds=(adapter_kind,),
+        supported_runtime_paths=supported_runtime_paths,
+        accepted_payload_formats=get_shared_adapter_update_payload_formats(
+            adapter_kind
+        ),
+        metadata={
+            "canonical_update_payload_format": (
+                get_shared_adapter_canonical_update_payload_format(adapter_kind)
+            ),
+        },
     )
 
 

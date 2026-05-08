@@ -104,6 +104,15 @@ def test_shared_layer_does_not_import_runtime_layers() -> None:
     assert not violations, _format_violations(violations)
 
 
+def test_shared_contracts_do_not_keep_central_adapter_family_metadata_catalog() -> None:
+    forbidden_path = SHARED_SRC / "contracts" / "adapter_family_metadata.py"
+    assert not forbidden_path.exists(), (
+        "shared는 중앙 adapter family metadata catalog를 소유하지 않는다. "
+        "payload shape, adapter_kind, parse/serialize 규칙은 "
+        "adapter_contract_families/<family>.py와 registry.py에 둔다."
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)
@@ -294,36 +303,66 @@ def test_main_server_round_family_package_has_no_concrete_family_modules() -> No
     ]
 
     assert not violations, (
-        "main_server round family package는 shared adapter family metadata와 "
+        "main_server round family package는 shared adapter payload registry와 "
         "aggregation backend를 generic runtime으로 조합한다. concrete family "
         "module은 추가하지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
-def test_main_server_aggregation_package_uses_method_not_family_modules() -> None:
+def test_main_server_aggregation_package_is_executor_boundary_only() -> None:
     package_root = (
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
     )
-    from shared.src.contracts.adapter_family_metadata import (
-        list_shared_adapter_family_metadata,
-    )
-
-    forbidden_stems = {
-        family_metadata.adapter_kind.replace("-", "_")
-        for family_metadata in list_shared_adapter_family_metadata()
+    allowed_files = {
+        package_root / "__init__.py",
+        package_root / "artifact_refs.py",
+        package_root / "executor.py",
+        package_root / "models.py",
+        package_root / "registry.py",
     }
     violations = [
         _relative_repo_path(path)
         for path in _iter_python_files(package_root)
-        if path.stem in forbidden_stems
+        if path not in allowed_files
     ]
 
     assert not violations, (
-        "main_server aggregation package는 adapter family별 module을 두지 않는다. "
-        "server runtime adapter는 fedavg 같은 aggregation method 파일과 "
-        "artifact/materialization capability 파일로만 확장한다.\n"
+        "main_server aggregation package는 executor, registry, server-owned "
+        "artifact ref capability만 둔다. FedAvg/FedProx 같은 aggregation method와 "
+        "adapter-family projection은 methods/federated/aggregation이 소유한다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_main_server_aggregation_package_has_no_method_or_family_literals() -> None:
+    package_root = (
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
+    )
+    forbidden_snippets = (
+        "fedavg",
+        "fedprox",
+        "diagonal_scale",
+        "classifier_head",
+        "lora_classifier",
+        "FedAvg",
+        "FedProx",
+        "DiagonalScale",
+        "ClassifierHead",
+        "LoraClassifier",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in _iter_python_files(package_root):
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "main_server aggregation package는 selected methods strategy를 실행하는 "
+        "generic boundary만 둔다. aggregation method나 adapter family 상세 문자열은 "
+        "methods/ 쪽 strategy/projection에 둔다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
     )
 
 
@@ -333,13 +372,11 @@ def test_main_server_aggregation_methods_do_not_define_family_specific_services(
     package_root = (
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
     )
-    from shared.src.contracts.adapter_family_metadata import (
-        list_shared_adapter_family_metadata,
-    )
+    from shared.src.contracts.adapter_contracts import AdapterKind
 
     family_name_prefixes = {
-        "".join(part.capitalize() for part in family_metadata.adapter_kind.split("_"))
-        for family_metadata in list_shared_adapter_family_metadata()
+        "".join(part.capitalize() for part in adapter_kind.value.split("_"))
+        for adapter_kind in AdapterKind
     }
     violations: list[tuple[Path, str]] = []
     for path in _iter_python_files(package_root):
@@ -360,6 +397,24 @@ def test_main_server_aggregation_methods_do_not_define_family_specific_services(
         "누적하지 않는다. family 차이는 shared payload contract와 generic "
         "runtime spec 뒤에 둔다.\n"
         f"{chr(10).join(f'- {path}: {class_name}' for path, class_name in violations)}"
+    )
+
+
+def test_fedavg_strategy_file_stays_generic_without_family_specs() -> None:
+    path = METHODS_SRC / "federated" / "aggregation" / "fedavg" / "strategy.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "DIAGONAL_SCALE",
+        "CLASSIFIER_HEAD",
+        "LORA_CLASSIFIER",
+        "_FAMILY_METADATA",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "FedAvg strategy wiring 파일은 family별 projection/spec을 소유하지 않는다. "
+        "family 상세는 methods/adaptation/<family>/fedavg_projection.py에 둔다.\n"
+        f"violations={violations}"
     )
 
 
