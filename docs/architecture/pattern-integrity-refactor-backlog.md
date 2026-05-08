@@ -386,6 +386,9 @@ dict/list table, 작은 helper로 낮춘다.
   - 진행: `TrainingObjectiveConfigPayload`와 `TrainingSelectionPolicyPayload`를
     `shared/src/contracts/training_objective_contracts.py`로 분리했다. 기존
     `training_contracts.py` import path는 compatibility surface로 유지한다.
+  - 진행: `SecureAggregationConfigPayload`와 `SecureAggregationSubmissionPayload`를
+    `shared/src/contracts/secure_aggregation_contracts.py`로 분리했다. task/update
+    envelope의 기존 import path는 compatibility surface로 유지한다.
   - 방향: 타입 엄격성은 유지하되 파일을 의미 단위로 나누고, 필드 의미는 코드 가까이에 짧고
     정확한 한국어로 남긴다.
 

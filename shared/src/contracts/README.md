@@ -110,6 +110,21 @@ parse/serialize contract helper만 소유한다.
 - `TrainingSelectionPolicyPayload`
   - 한 라운드에서 사용할 로컬 예시 선택 제한과 selection policy별 확장값을 담는다
 
+### `secure_aggregation_contracts.py`
+
+학습 task와 update submission이 요구하거나 제출하는 secure aggregation/encryption
+metadata의 canonical shape를 정의한다.
+
+기존 import path 호환을 위해 `SecureAggregationConfigPayload`와
+`SecureAggregationSubmissionPayload`는 `training_contracts.py`에서도 계속 import할 수 있다.
+
+- `SecureAggregationConfigPayload`
+  - task가 요구하는 secure aggregation backend, encryption scheme, key/ciphertext
+    metadata를 담는다
+- `SecureAggregationSubmissionPayload`
+  - agent가 제출한 update payload가 어떤 secure aggregation/encryption metadata를
+    따르는지 담는다
+
 ### `training_contracts.py`
 
 FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
