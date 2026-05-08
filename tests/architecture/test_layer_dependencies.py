@@ -19,6 +19,7 @@ EXPERIMENT_COMPILER_SRC = (
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
+QUERY_LORA_SSL_IO_SRC = SCRIPTS_SRC / "experiments" / "query_lora_ssl" / "io"
 PYTHON_SOURCE_ROOTS = (
     SHARED_SRC,
     METHODS_SRC,
@@ -379,6 +380,40 @@ def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
         "직접 호출한다. facade가 필요해 보이면 builder/writer 책임이 얕은지 먼저 "
         "점검한다.\n"
         f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
+def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
+    orchestrator_path = QUERY_LORA_SSL_IO_SRC / "artifacts.py"
+    expected_responsibility_files = (
+        QUERY_LORA_SSL_IO_SRC / "artifact_paths.py",
+        QUERY_LORA_SSL_IO_SRC / "artifact_writer.py",
+        QUERY_LORA_SSL_IO_SRC / "manifest_builder.py",
+        QUERY_LORA_SSL_IO_SRC / "model_artifact_exporter.py",
+    )
+    source = orchestrator_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "json.dumps(",
+        "torch.save(",
+        ".write_text(",
+        "save_pretrained(",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    missing_files = [
+        _relative_repo_path(path)
+        for path in expected_responsibility_files
+        if not path.exists()
+    ]
+
+    assert not missing_files, (
+        "Query LoRA run artifact 저장은 경로, 모델 export, payload build, JSON write "
+        "책임 파일로 나눈다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_files)}"
+    )
+    assert not violations, (
+        "artifacts.py는 public orchestration entrypoint만 유지한다. 파일 저장, "
+        "JSON serialization, model export를 다시 한 함수에 모으지 않는다.\n"
+        f"violations={violations}"
     )
 
 

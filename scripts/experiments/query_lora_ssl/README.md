@@ -16,7 +16,12 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
 - `harness/`
   - LoRA model/data/eval 공통 scaffolding.
 - `io/`
-  - run artifact 저장과 query adaptation dataset export.
+  - `artifacts.py`: run artifact 저장 public orchestration entrypoint.
+  - `artifact_paths.py`: run directory와 output path 계산.
+  - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
+  - `manifest_builder.py`: manifest/report payload 조립.
+  - `artifact_writer.py`: manifest/report JSON 쓰기.
+  - query adaptation dataset export.
 - `config/`
   - Hydra initial checkpoint와 pseudo-label algorithm preset 해석.
 - `query_ssl/`
