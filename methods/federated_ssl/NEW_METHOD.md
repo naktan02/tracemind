@@ -92,6 +92,7 @@ core로 올린다.
 - Hydra `method_descriptor`와 필요한 profile compose가 동작한다.
 - compatibility validator가 incompatible profile을 실행 전에 실패시킨다.
 - 기존 smoke/report/manifest shape가 변하지 않는다.
-- dummy extension guard 또는 method-local unit test가 registry와 descriptor 경계를
+- production `methods/federated_ssl/`에 dummy method를 남기지 않고
+  `tests/fixtures/` 아래 test-only method fixture로 registry와 descriptor 경계를
   고정한다.
 - shared payload를 바꾸면 golden fixture와 producer/consumer test를 함께 갱신한다.

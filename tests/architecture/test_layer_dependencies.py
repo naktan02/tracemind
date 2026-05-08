@@ -337,6 +337,26 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
     )
 
 
+def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None:
+    package_root = METHODS_SRC / "federated_ssl"
+    forbidden_path_fragments = ("dummy", "test_only")
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if any(
+            fragment in str(_relative_repo_path(path)).lower()
+            for fragment in forbidden_path_fragments
+        )
+    ]
+
+    assert not violations, (
+        "Batch 7 extension dry run은 tests/fixtures 아래 test-only method로 검증한다. "
+        "production methods/federated_ssl에는 dummy/test-only method 파일을 남기지 "
+        "않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_local_training_service_uses_update_executor_not_concrete_backends() -> None:
     path = (
         AGENT_SRC / "services" / "training" / "execution" / "local_training_service.py"

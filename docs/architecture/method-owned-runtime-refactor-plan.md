@@ -351,7 +351,9 @@ package 분리는 완료됐고, selection diagnostics dataclass 직렬화 반복
 
 ### Batch 7. Extension Dry Run
 
-상태: 남음.
+상태: 완료. production registry에 장난감 method를 남기지 않고
+`tests/fixtures/federated_ssl_dummy_method.py` test-only method로 descriptor,
+recipe, round-state exchange, compatibility validator, registry 경계를 검증했다.
 
 - production registry에 장난감 method를 남기지 않는 방식으로 dummy FL SSL method
   extension test를 유지한다.

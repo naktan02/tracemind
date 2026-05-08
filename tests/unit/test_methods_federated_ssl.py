@@ -2,6 +2,10 @@
 
 from __future__ import annotations
 
+import importlib.util
+import sys
+from pathlib import Path
+
 import pytest
 
 from methods.common.registry import MethodRegistry
@@ -49,6 +53,21 @@ from methods.federated_ssl.registry import (
     resolve_federated_ssl_method_descriptor,
 )
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+
+TEST_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
+
+
+def _load_test_only_federated_ssl_method_fixture() -> object:
+    module_name = "_tracemind_test_only_federated_ssl_method"
+    module_path = TEST_FIXTURE_ROOT / "federated_ssl_dummy_method.py"
+    sys.modules.pop(module_name, None)
+    module_spec = importlib.util.spec_from_file_location(module_name, module_path)
+    if module_spec is None or module_spec.loader is None:
+        raise RuntimeError(f"Failed to load test fixture module: {module_path}")
+    module = importlib.util.module_from_spec(module_spec)
+    sys.modules[module_name] = module
+    module_spec.loader.exec_module(module)
+    return module
 
 
 def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
@@ -127,42 +146,61 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
         True,
     )
 
-    dummy_descriptor = FederatedSslMethodDescriptor(
-        name="dummy_federated_ssl_method",
-        implementation_status="test_only",
-        required_views=FederatedSslRequiredViews(
-            view_names=("single_view",),
-            view_generator_name="test_view_generator",
-        ),
-        local_step=FederatedSslLocalStepSpec(
-            step_name="dummy_local_step",
-            client_trainer_name="dummy_client_trainer",
-            pseudo_labeler_name="dummy_pseudo_labeler",
-        ),
-        server_step=FederatedSslServerStepSpec(
-            server_aggregator_name="dummy_aggregator",
-            round_policy_name="dummy_round_policy",
-            server_aggregate_hint="dummy_aggregate_hint",
-        ),
-        runtime_capabilities=FederatedSslRuntimeCapabilities(
-            simulation_supported=True,
-            live_agent_supported=False,
-            live_server_supported=False,
-        ),
-    )
+    fixture = _load_test_only_federated_ssl_method_fixture()
+    dummy_descriptor = fixture.DUMMY_FEDERATED_SSL_DESCRIPTOR
 
-    federated_ssl_registry.register_federated_ssl_method_descriptor(
-        "dummy_federated_ssl_method"
-    )(dummy_descriptor)
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        {
+            "algorithm_profile_name": "dummy_local_update_profile_v1",
+            "training_scope": "adapter_only",
+            "training_backend_name": "diagonal_scale_heuristic",
+            "confidence_threshold": 0.6,
+            "margin_threshold": 0.02,
+            "example_generation_backend_name": "prototype_rescore",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "score_top_k": None,
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "diagonal_scale_clip_only",
+            "evidence_backend_temperature": 1.0,
+        }
+    )
 
     assert (
         federated_ssl_registry.resolve_federated_ssl_method_descriptor(
-            "dummy_federated_ssl_method"
+            "dummy_metric_weighted_ssl"
         )
         is dummy_descriptor
     )
     assert federated_ssl_registry.list_federated_ssl_method_descriptors() == (
         dummy_descriptor,
+    )
+    assert dummy_descriptor.round_state_exchange is not None
+    assert dummy_descriptor.round_state_exchange.exchange_name == (
+        "client_metric_summary"
+    )
+    assert dummy_descriptor.requires_custom_server_runtime is True
+
+    validate_federated_ssl_profile_compatibility(
+        FederatedSslProfileCompatibilityContext(
+            method_descriptor=dummy_descriptor,
+            local_update_profile=local_update_profile,
+            local_update_adapter_kind="diagonal_scale",
+            round_adapter_family_name="diagonal_scale",
+            round_aggregation_backend_name="fedavg",
+            round_runtime_profile_name="dummy_round_runtime_profile_v1",
+        )
+    )
+
+
+def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
+    descriptors = list_federated_ssl_method_descriptors()
+
+    assert descriptors == (FEDAVG_PSEUDO_LABEL_DESCRIPTOR,)
+    assert all(
+        descriptor.implementation_status != "test_only" for descriptor in descriptors
     )
 
 
