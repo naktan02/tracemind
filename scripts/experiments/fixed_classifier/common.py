@@ -10,7 +10,10 @@ from typing import Any
 from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 
 
 @dataclass(slots=True)

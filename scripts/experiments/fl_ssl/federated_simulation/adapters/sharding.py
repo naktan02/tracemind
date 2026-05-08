@@ -18,7 +18,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 def split_rows_for_federation(

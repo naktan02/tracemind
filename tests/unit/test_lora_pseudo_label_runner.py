@@ -17,7 +17,10 @@ from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     prepare_pseudo_label_self_training_run,
     run_pseudo_label_self_training,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelSelectionContext,
     PseudoLabelSelectionStage,

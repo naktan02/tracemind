@@ -27,7 +27,10 @@ from scripts.experiments.query_lora_ssl.query_ssl.common import (
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 
 
 def run_query_ssl_lora_baseline(

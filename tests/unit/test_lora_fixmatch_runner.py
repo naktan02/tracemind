@@ -7,7 +7,7 @@ from scripts.experiments.query_lora_ssl.runners.consistency import (
     run_fixmatch_lora_baseline,
     run_query_ssl_lora_baseline,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (

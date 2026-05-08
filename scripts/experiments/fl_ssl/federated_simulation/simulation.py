@@ -38,10 +38,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
     resolve_federated_training_backend_adapter_kind,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 

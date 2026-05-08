@@ -10,13 +10,13 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from scripts.io.labeled_query_rows import (
+from scripts.runtime_adapters.backtranslation_runtime import (
+    build_nllb_backtranslation_candidate_pairs,
+)
+from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     dump_labeled_query_rows,
     load_labeled_query_rows,
-)
-from scripts.runtime_adapters.backtranslation_runtime import (
-    build_nllb_backtranslation_candidate_pairs,
 )
 
 QUERY_SSL_AUGMENTER_CACHE_SCHEMA_VERSION = "query_ssl_augmenter_cache.v1"

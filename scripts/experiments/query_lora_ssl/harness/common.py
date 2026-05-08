@@ -28,8 +28,11 @@ from methods.adaptation.query_classifier_adaptation.data import (
 from scripts.experiments.query_lora_ssl.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow, load_labeled_query_rows
 from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name
+from shared.src.contracts.labeled_query_row_contracts import (
+    LabeledQueryRow,
+    load_labeled_query_rows,
+)
 from shared.src.domain.services.classification_report import (
     render_confusion_table,
     render_per_category_table,

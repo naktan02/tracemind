@@ -15,7 +15,7 @@ from scripts.experiments.prototype_analysis.prototype_strategy.models import (
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeIndexScorer,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     safe_divide,

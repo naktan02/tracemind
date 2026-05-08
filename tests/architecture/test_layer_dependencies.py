@@ -399,6 +399,16 @@ def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
     )
 
 
+def test_scripts_do_not_wrap_shared_labeled_query_rows() -> None:
+    facade_path = SCRIPTS_SRC / "io" / "labeled_query_rows.py"
+
+    assert not facade_path.exists(), (
+        "labeled query row canonical contract는 shared contract가 소유한다. "
+        "scripts/io에는 단순 re-export wrapper를 두지 않는다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
 def test_main_server_round_family_package_has_no_concrete_family_modules() -> None:
     package_root = MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "families"
     allowed_files = {

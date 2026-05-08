@@ -25,7 +25,7 @@ from scripts.experiments.prototype_analysis.prototype_strategy.models import (
 from scripts.experiments.prototype_analysis.prototype_strategy.sampling import (
     sample_index_array,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt  # noqa: E402

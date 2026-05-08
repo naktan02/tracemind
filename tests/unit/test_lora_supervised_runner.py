@@ -6,7 +6,7 @@ from omegaconf import OmegaConf
 from scripts.experiments.query_lora_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
 TEST_JSONL = (

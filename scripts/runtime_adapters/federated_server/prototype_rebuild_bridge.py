@@ -28,7 +28,7 @@ from main_server.src.services.federation.prototypes import (
     stored_input_rebuild_service as stored_rebuild_service_module,
 )
 from methods.prototype.building.base import PrototypeBuildStrategy
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
     load_prototype_pack_payload,

@@ -24,7 +24,7 @@ from scripts.experiments.prototype_analysis.prototype_strategy.projection import
 from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
     PrototypeScoringConfigMixin,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 

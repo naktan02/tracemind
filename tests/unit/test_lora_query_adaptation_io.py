@@ -18,7 +18,7 @@ from scripts.experiments.query_lora_ssl.io.query_adaptation import (
     build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_lora_dataset,
 )
-from scripts.io.labeled_query_rows import load_labeled_query_rows
+from shared.src.contracts.labeled_query_row_contracts import load_labeled_query_rows
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelSelectionContext,
     PseudoLabelSelectionStage,

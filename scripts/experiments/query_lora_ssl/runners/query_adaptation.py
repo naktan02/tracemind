@@ -18,7 +18,7 @@ from scripts.experiments.query_lora_ssl.io.query_adaptation import (
 from scripts.experiments.query_lora_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 @dataclass(slots=True)

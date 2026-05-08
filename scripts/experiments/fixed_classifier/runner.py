@@ -21,11 +21,11 @@ from methods.adaptation.common.training_history import (
     format_selection_epoch_summary,
 )
 from scripts.artifacts.run_artifacts import build_run_dir
-from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
     resolve_runtime_device_name,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.classification_report import (
     render_confusion_table,
     render_per_category_table,

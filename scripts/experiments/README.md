@@ -93,8 +93,6 @@
 
 ## 공통 helper
 
-- `scripts/io/labeled_query_rows.py`
-  - shared canonical labeled row contract를 실험층에서 다시 노출하는 wrapper
 - `scripts/reporting/query_buffer_selection_diagnostics.py`
   - query-buffer selection summary/trace dump 저장 helper
 - `scripts/artifacts/run_artifacts.py`

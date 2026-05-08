@@ -5,7 +5,7 @@ from omegaconf import OmegaConf
 from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
     prepare_fixmatch_unlabeled_rows,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 def _cfg(cache_dir: str) -> object:

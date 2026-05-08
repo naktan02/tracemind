@@ -14,7 +14,7 @@ from scripts.experiments.query_lora_ssl.harness.common import (
     prepare_supervised_lora_run_context,
 )
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 def run_supervised_lora_baseline(

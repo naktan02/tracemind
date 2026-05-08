@@ -17,10 +17,10 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedTrainingTaskConfig,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.runtime_adapters.federated_agent_runtime import (
     build_federated_local_training_service,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig

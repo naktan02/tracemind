@@ -9,7 +9,7 @@ from typing import Any, Protocol
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.prototype.building.base import PrototypeBuildStrategy
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

@@ -27,7 +27,7 @@ from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_exporter import 
 from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
-from scripts.io.labeled_query_rows import (
+from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     dump_labeled_query_rows,
     load_labeled_query_rows,

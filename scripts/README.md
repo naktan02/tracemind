@@ -12,7 +12,6 @@ runtime/service adapter는 `agent/`와 `main_server/`가 소유한다.
 - `scripts/experiments/fl_ssl/federated_simulation/`: FL SSL synthetic harness와 artifact dump.
 - `scripts/experiments/query_lora_ssl/`: 중앙/FL에서 공유 가능한 query-domain LoRA SSL harness와 adaptation IO.
 - `scripts/runtime_adapters/`: scripts가 불가피하게 agent/main_server runtime을 재사용할 때 쓰는 명시 bridge.
-- `scripts/io/`: scripts 전용 row IO compatibility wrapper.
 - `scripts/reporting/`: report/diagnostics helper.
 - `scripts/artifacts/`: run output 경로 helper.
 - `scripts/codegen/`: app type 생성 entrypoint.

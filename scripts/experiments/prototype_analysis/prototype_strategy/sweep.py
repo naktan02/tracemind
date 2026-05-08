@@ -23,7 +23,7 @@ from scripts.experiments.prototype_analysis.prototype_strategy.scoring import (
 from scripts.experiments.prototype_analysis.prototype_strategy.strategies import (
     build_requested_strategy,
 )
-from scripts.io.labeled_query_rows import LabeledQueryRow
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from .threshold_policies import StaticThresholdPolicy
