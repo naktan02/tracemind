@@ -30,7 +30,7 @@ from main_server.src.services.experiment_workspace.payloads import (
 from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contract_families.registry import (
     list_registered_shared_adapter_payload_adapter_kinds,
 )
@@ -255,12 +255,12 @@ def _resolve_training_profile_runtime_paths(
     example_backend = _find_catalog_entry(
         local_catalog.list_training_example_backend_catalog_entries(),
         objective_config.example_generation_backend_name
-        or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name,
     )
     scorer_backend = _find_catalog_entry(
         local_catalog.list_scoring_backend_catalog_entries(),
         objective_config.scorer_backend_name
-        or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name,
     )
     if bool(example_backend.metadata.get("supports_stored_event_rebuild")) and (
         not bool(scorer_backend.metadata.get("requires_shared_state"))
@@ -308,7 +308,7 @@ def _is_local_training_runtime_catalog_compatible(
             entry=_find_catalog_entry(
                 local_catalog.list_training_example_backend_catalog_entries(),
                 objective_config.example_generation_backend_name
-                or DEFAULT_TRAINING_PROFILE.example_generation_backend_name,
+                or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name,
             ),
             adapter_kind=adapter_kind,
         )
@@ -316,7 +316,7 @@ def _is_local_training_runtime_catalog_compatible(
             entry=_find_catalog_entry(
                 local_catalog.list_pseudo_label_evidence_backend_catalog_entries(),
                 objective_config.evidence_backend_name
-                or DEFAULT_TRAINING_PROFILE.evidence_backend_name,
+                or RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name,
             ),
             adapter_kind=adapter_kind,
         )
@@ -324,7 +324,7 @@ def _is_local_training_runtime_catalog_compatible(
             entry=_find_catalog_entry(
                 local_catalog.list_scoring_backend_catalog_entries(),
                 objective_config.scorer_backend_name
-                or DEFAULT_TRAINING_PROFILE.scorer_backend_name,
+                or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name,
             ),
             adapter_kind=adapter_kind,
         )
@@ -332,7 +332,7 @@ def _is_local_training_runtime_catalog_compatible(
             entry=_find_catalog_entry(
                 local_catalog.list_pseudo_label_acceptance_policy_catalog_entries(),
                 objective_config.acceptance_policy_name
-                or DEFAULT_TRAINING_PROFILE.acceptance_policy_name,
+                or RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name,
             ),
             adapter_kind=adapter_kind,
         )
@@ -340,7 +340,7 @@ def _is_local_training_runtime_catalog_compatible(
             entry=_find_catalog_entry(
                 local_catalog.list_shared_adapter_privacy_guard_catalog_entries(),
                 objective_config.privacy_guard_name
-                or DEFAULT_TRAINING_PROFILE.privacy_guard_name,
+                or RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name,
             ),
             adapter_kind=adapter_kind,
         )

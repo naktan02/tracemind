@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections import defaultdict
 from typing import Any
 
-from methods.federated_ssl.training_defaults import (
-    build_default_training_objective_config,
+from methods.federated_ssl.runtime_fallbacks import (
+    build_runtime_fallback_training_objective_config,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -136,7 +136,9 @@ def build_validation_scoring_service(
     if validation_config.score_top_k is not None:
         overrides["score_top_k"] = validation_config.score_top_k
     return build_federated_scoring_service(
-        objective_config=build_default_training_objective_config(overrides=overrides),
+        objective_config=build_runtime_fallback_training_objective_config(
+            overrides=overrides
+        ),
         similarity_name=validation_config.similarity_name,
         shared_state=shared_state,
     )
@@ -179,7 +181,7 @@ def _build_validation_objective_config(
     )
     overrides["confidence_threshold"] = confidence_threshold
     overrides["margin_threshold"] = margin_threshold
-    return build_default_training_objective_config(overrides=overrides)
+    return build_runtime_fallback_training_objective_config(overrides=overrides)
 
 
 def _build_validation_task(

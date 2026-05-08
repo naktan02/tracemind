@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import PseudoLabelEvidenceBackend
@@ -17,7 +17,7 @@ def resolve_pseudo_label_evidence_backend(
 
     backend_name = (
         objective_config.evidence_backend_name
-        or DEFAULT_TRAINING_PROFILE.evidence_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
     )
     return build_pseudo_label_evidence_backend(
         backend_name,

@@ -25,16 +25,16 @@ from agent.src.services.training.backends.inputs.prototype_rescore import (
 from agent.src.services.training.backends.inputs.weak_strong_pair import (
     WeakStrongPairTrainingExampleBackend,
 )
-from methods.adaptation.local_update_registry import (
-    register_shared_adapter_training_backend,
-)
 from agent.src.services.training.examples.service import (
     TrainingExampleService,
 )
-from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.adaptation.local_update_registry import (
+    register_shared_adapter_training_backend,
+)
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import VectorAdapterState
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.inference.events import ScoredEvent
 
@@ -349,13 +349,13 @@ def test_training_example_service_selects_backend_from_objective_config() -> Non
 def test_training_example_service_uses_profile_default_backend_when_omitted() -> None:
     service = TrainingExampleService.from_objective_config(
         TrainingObjectiveConfig(
-            training_backend_name=DEFAULT_TRAINING_PROFILE.training_backend_name,
+            training_backend_name=RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name,
         )
     )
 
     assert isinstance(service.backend, PrototypeRescoringTrainingExampleBackend)
     assert service.backend.backend_name == (
-        DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
 
 

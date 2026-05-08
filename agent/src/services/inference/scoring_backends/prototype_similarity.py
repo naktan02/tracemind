@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.scoring.base import PrototypeScorePolicy
 from methods.prototype.scoring.policies import (
     MaxCosineScorePolicy,
@@ -76,7 +76,8 @@ def build_prototype_similarity_scoring_backend(
     """registry용 prototype similarity scoring backend factory."""
 
     policy_name = (
-        objective_config.score_policy_name or DEFAULT_TRAINING_PROFILE.score_policy_name
+        objective_config.score_policy_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
     )
     policy = build_prototype_score_policy(
         policy_name,

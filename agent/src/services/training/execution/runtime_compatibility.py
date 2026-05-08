@@ -29,7 +29,7 @@ from methods.adaptation.local_update_backend import (
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.training_contracts import TrainingTask
 
 ANY_ADAPTER_KIND = "*"
@@ -65,7 +65,8 @@ def validate_live_agent_stored_event_runtime(
         training_backend=resolved_training_backend,
     )
     scorer_backend_name = (
-        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+        objective.scorer_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
     build_scoring_backend(
         scorer_backend_name,
@@ -97,7 +98,7 @@ def validate_local_training_runtime(
     *,
     similarity_name: str = "cosine",
     default_acceptance_policy_name: str = (
-        DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     ),
     default_privacy_guard_name: str = "noop",
     training_backend: SharedAdapterTrainingBackend | None = None,
@@ -121,7 +122,8 @@ def validate_local_training_runtime(
         objective_config=objective,
     )
     scorer_backend_name = (
-        objective.scorer_backend_name or DEFAULT_TRAINING_PROFILE.scorer_backend_name
+        objective.scorer_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
     scorer_backend = build_scoring_backend(
         scorer_backend_name,
@@ -136,7 +138,7 @@ def validate_local_training_runtime(
     )
     pseudo_label_algorithm_name = (
         objective.pseudo_label_algorithm_name
-        or DEFAULT_TRAINING_PROFILE.pseudo_label_algorithm_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.pseudo_label_algorithm_name
     )
     if resolved_acceptance_policy.selection_hook_name != pseudo_label_algorithm_name:
         raise ValueError(

@@ -220,6 +220,41 @@ def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
     )
 
 
+def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
+    forbidden_modules = (
+        "methods.federated_ssl.training_defaults",
+        "methods.federated_ssl.training_default_values",
+    )
+    legacy_paths = (
+        METHODS_SRC / "federated_ssl" / "training_defaults.py",
+        METHODS_SRC / "federated_ssl" / "training_default_values.py",
+    )
+    existing_legacy_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    assert not existing_legacy_paths, (
+        "짧은 compatibility facade가 내부 구조를 흐리지 않도록 legacy default "
+        "module은 제거한다. runtime/API fallback은 runtime_fallbacks.py만 소유한다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_legacy_paths)}"
+    )
+
+    violations: list[tuple[Path, str]] = []
+    for root in (AGENT_SRC, MAIN_SERVER_SRC, SCRIPTS_SRC):
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=forbidden_modules,
+            )
+        )
+
+    assert not violations, (
+        "runtime 계층은 legacy training default module이 아니라 "
+        "methods.federated_ssl.runtime_fallbacks를 import해야 한다. "
+        "Hydra profile source-of-truth와 runtime fallback을 이름으로 분리한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
 def test_agent_layer_does_not_import_main_server_or_scripts() -> None:
     violations = _find_forbidden_imports(
         root=AGENT_SRC,

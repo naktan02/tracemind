@@ -160,13 +160,15 @@ def _resolve_example_generation_backend_name(
     *,
     objective_config: Any | None,
 ) -> str:
-    from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+    from methods.federated_ssl.runtime_fallbacks import (
+        RUNTIME_FALLBACK_TRAINING_PROFILE,
+    )
 
     if objective_config is None:
-        return DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+        return RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     return (
         objective_config.example_generation_backend_name
-        or DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+        or RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
 
 

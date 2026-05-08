@@ -13,12 +13,14 @@ baseline이 아니라 이 spec을 만족하는 첫 method 구현으로 다룬다
 - 실제 runtime adapter가 읽을 canonical method 요구사항 제공
 - method-local module 옆 decorator 등록과 작은 import trigger
 - method recipe metadata와 method-only aggregation/server policy 변형
+- 명시 training config가 없는 API/runtime 요청용 `runtime_fallbacks.py`
 
 ## 제외
 
 - Hydra config loading
 - simulation loop와 artifact/report 저장
 - `LocalTrainingService`, `RoundOpenRequest` 같은 runtime 객체 생성
+- 실험 실행값 source of truth. 이 값은 `conf/strategy_axes/fl/*`가 소유한다.
 
 위 실행 glue는 `scripts/experiments/fl_ssl/federated_simulation/`에 남긴다. 새
 논문 method의 계산 core는 이 패키지나 `methods/ssl/*`, `methods/federated/*`

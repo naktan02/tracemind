@@ -22,7 +22,7 @@
 | 변경 종류 | 대표 예시 | 보통 건드리는 경계 |
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` core + capability runtime adapter |
-| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `conf/`, `methods/federated_ssl/training_defaults.py`, 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
+| 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | 실험 기본값은 `conf/`, runtime 누락값 fallback은 `methods/federated_ssl/runtime_fallbacks.py`, server runtime knob는 `main_server/src/services/federation/rounds/runtime/config.py` |
 | 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `methods/adaptation` + capability runtime adapter |
 | 새 논문 method 추가 | FedMatch, FedLGMatch, (FL)^2 | `methods/federated_ssl/<method>/` + `conf` |
 
@@ -102,7 +102,7 @@
 - [methods/adaptation/local_update_backend.py](../../methods/adaptation/local_update_backend.py)
 - [methods/adaptation/local_update_registry.py](../../methods/adaptation/local_update_registry.py)
 - 필요 시 [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
-- 기본값을 바꿀 때만 [methods/federated_ssl/training_defaults.py](../../methods/federated_ssl/training_defaults.py)
+- runtime fallback을 바꿀 때만 [methods/federated_ssl/runtime_fallbacks.py](../../methods/federated_ssl/runtime_fallbacks.py)
 
 작업 순서:
 
@@ -249,8 +249,10 @@
 
 ### 기본값만 바꾸는 경우
 
-- local training 기본 전략:
-  - [methods/federated_ssl/training_defaults.py](../../methods/federated_ssl/training_defaults.py)
+- local training runtime fallback:
+  - [methods/federated_ssl/runtime_fallbacks.py](../../methods/federated_ssl/runtime_fallbacks.py)
+- 실험 실행 기본 조합:
+  - `conf/strategy_axes/fl/` 또는 `conf/track_presets/`
 - server round runtime 기본 aggregation:
   - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:

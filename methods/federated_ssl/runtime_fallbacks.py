@@ -1,7 +1,8 @@
-"""FL SSL local training 기본 profile과 builder.
+"""FL SSL runtime fallback profile.
 
-계약 파일은 필드 의미와 validation을 소유하고, 이 모듈은 FL SSL runtime과
-실험 compatibility가 재사용하는 default profile facade를 소유한다.
+이 모듈은 API/runtime 요청이 명시 training 값을 주지 않았을 때만 쓰는
+compatibility fallback을 소유한다. 실험 실행값의 source of truth는 Hydra
+`conf/strategy_axes/fl/*`에 남긴다.
 """
 
 from __future__ import annotations
@@ -10,13 +11,8 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from types import MappingProxyType
 
-from methods.federated_ssl.training_default_values import (
-    DEFAULT_TRAINING_OBJECTIVE_MAPPING,
-    DEFAULT_TRAINING_SECURE_AGGREGATION_MAPPING,
-    DEFAULT_TRAINING_SELECTION_MAPPING,
-    DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
-    PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE_NAME,
-    TrainingTaskRuntimeDefaults,
+from methods.adaptation.diagonal_scale.config import (
+    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -26,15 +22,33 @@ from shared.src.contracts.training_contracts import (
 )
 
 
+def _freeze_mapping(
+    source: Mapping[str, TrainingConfigScalar],
+) -> Mapping[str, TrainingConfigScalar]:
+    return MappingProxyType(dict(source))
+
+
 @dataclass(frozen=True, slots=True)
-class TrainingDefaultsProfile:
-    """운영/실험이 공유하는 local training 기본 profile 묶음."""
+class RuntimeTrainingTaskDefaults:
+    """round open/task 생성에 쓰는 top-level runtime fallback 값."""
+
+    local_epochs: int
+    batch_size: int
+    learning_rate: float
+    max_steps: int
+    min_required_examples: int | None = None
+    gradient_clip_norm: float | None = None
+
+
+@dataclass(frozen=True, slots=True)
+class RuntimeFallbackTrainingProfile:
+    """명시 config가 없는 legacy/runtime 요청을 위한 fallback profile."""
 
     profile_name: str
     objective_mapping: Mapping[str, TrainingConfigScalar]
     selection_mapping: Mapping[str, TrainingConfigScalar]
     secure_aggregation_mapping: Mapping[str, TrainingConfigScalar]
-    task_runtime_defaults: TrainingTaskRuntimeDefaults
+    task_runtime_defaults: RuntimeTrainingTaskDefaults
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -136,7 +150,7 @@ class TrainingDefaultsProfile:
         if value is None:
             return None
         if isinstance(value, bool):
-            raise ValueError("Default max_examples must not be bool.")
+            raise ValueError("Runtime fallback max_examples must not be bool.")
         return int(value)
 
     @property
@@ -200,7 +214,7 @@ class TrainingDefaultsProfile:
     ) -> str:
         value = source.get(key)
         if value is None:
-            raise ValueError(f"Default training profile is missing key: {key}")
+            raise ValueError(f"Runtime fallback training profile is missing: {key}")
         return str(value)
 
     @staticmethod
@@ -210,45 +224,81 @@ class TrainingDefaultsProfile:
     ) -> float:
         value = source.get(key)
         if value is None:
-            raise ValueError(f"Default training profile is missing key: {key}")
+            raise ValueError(f"Runtime fallback training profile is missing: {key}")
         if isinstance(value, bool):
-            raise ValueError(f"Default training profile key must not be bool: {key}")
+            raise ValueError(f"Runtime fallback key must not be bool: {key}")
         return float(value)
 
 
-PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE = TrainingDefaultsProfile(
-    profile_name=PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE_NAME,
-    objective_mapping=DEFAULT_TRAINING_OBJECTIVE_MAPPING,
-    selection_mapping=DEFAULT_TRAINING_SELECTION_MAPPING,
-    secure_aggregation_mapping=DEFAULT_TRAINING_SECURE_AGGREGATION_MAPPING,
-    task_runtime_defaults=DEFAULT_TRAINING_TASK_RUNTIME_DEFAULTS,
+PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
+
+RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = _freeze_mapping(
+    {
+        "algorithm_profile_name": "prototype_pseudo_label_v1",
+        "training_backend_name": "diagonal_scale_heuristic",
+        "confidence_threshold": 0.6,
+        "margin_threshold": 0.02,
+        "example_generation_backend_name": "prototype_rescore",
+        "evidence_backend_name": "prototype_similarity_evidence",
+        "scorer_backend_name": "prototype_similarity",
+        "score_policy_name": "max_cosine",
+        "acceptance_policy_name": "top1_margin_threshold",
+        "pseudo_label_algorithm_name": "top1_margin_threshold",
+        "privacy_guard_name": "diagonal_scale_clip_only",
+        **dict(
+            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
+        ),
+    }
 )
 
-DEFAULT_TRAINING_PROFILE = PSEUDO_LABEL_SELF_TRAINING_V1_PROFILE
+RUNTIME_FALLBACK_TRAINING_SELECTION_MAPPING = _freeze_mapping({"max_examples": 128})
+
+RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING = _freeze_mapping({"required": False})
+
+RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS = RuntimeTrainingTaskDefaults(
+    local_epochs=1,
+    batch_size=16,
+    learning_rate=1e-4,
+    max_steps=50,
+    min_required_examples=None,
+    gradient_clip_norm=None,
+)
+
+PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK = RuntimeFallbackTrainingProfile(
+    profile_name=PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME,
+    objective_mapping=RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING,
+    selection_mapping=RUNTIME_FALLBACK_TRAINING_SELECTION_MAPPING,
+    secure_aggregation_mapping=RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING,
+    task_runtime_defaults=RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
+)
+
+RUNTIME_FALLBACK_TRAINING_PROFILE = PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK
 
 
-def build_default_training_objective_config(
+def build_runtime_fallback_training_objective_config(
     *,
     overrides: Mapping[str, TrainingConfigScalar] | None = None,
 ) -> TrainingObjectiveConfig:
-    """공용 기본 local training objective config를 조립한다."""
+    """명시 objective가 없는 runtime 요청용 fallback config를 조립한다."""
 
-    return DEFAULT_TRAINING_PROFILE.build_objective_config(overrides=overrides)
+    return RUNTIME_FALLBACK_TRAINING_PROFILE.build_objective_config(overrides=overrides)
 
 
-def build_default_training_selection_policy(
+def build_runtime_fallback_training_selection_policy(
     *,
     overrides: Mapping[str, TrainingConfigScalar] | None = None,
 ) -> TrainingSelectionPolicy:
-    """공용 기본 local training selection policy를 조립한다."""
+    """명시 selection policy가 없는 runtime 요청용 fallback을 조립한다."""
 
-    return DEFAULT_TRAINING_PROFILE.build_selection_policy(overrides=overrides)
+    return RUNTIME_FALLBACK_TRAINING_PROFILE.build_selection_policy(overrides=overrides)
 
 
-def build_default_secure_aggregation_config(
+def build_runtime_fallback_secure_aggregation_config(
     *,
     overrides: Mapping[str, TrainingConfigScalar] | None = None,
 ) -> SecureAggregationConfig:
-    """공용 기본 secure aggregation config를 조립한다."""
+    """명시 secure aggregation config가 없는 runtime 요청용 fallback을 조립한다."""
 
-    return DEFAULT_TRAINING_PROFILE.build_secure_aggregation_config(overrides=overrides)
+    return RUNTIME_FALLBACK_TRAINING_PROFILE.build_secure_aggregation_config(
+        overrides=overrides
+    )

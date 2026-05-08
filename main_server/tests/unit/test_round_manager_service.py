@@ -24,7 +24,7 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
 from methods.adaptation.diagonal_scale.config import (  # noqa: E402
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (  # noqa: E402
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -287,41 +287,41 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
         )
     )
 
-    assert task.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
-    assert task.batch_size == DEFAULT_TRAINING_PROFILE.batch_size
-    assert task.learning_rate == DEFAULT_TRAINING_PROFILE.learning_rate
-    assert task.max_steps == DEFAULT_TRAINING_PROFILE.max_steps
+    assert task.local_epochs == RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
+    assert task.batch_size == RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
+    assert task.learning_rate == RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
+    assert task.max_steps == RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps
     assert (
         task.objective_config.training_backend_name
-        == DEFAULT_TRAINING_PROFILE.training_backend_name
+        == RUNTIME_FALLBACK_TRAINING_PROFILE.training_backend_name
     )
     assert task.objective_config.algorithm_profile_name == (
-        DEFAULT_TRAINING_PROFILE.algorithm_profile_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.algorithm_profile_name
     )
     assert (
         task.objective_config.example_generation_backend_name
-        == DEFAULT_TRAINING_PROFILE.example_generation_backend_name
+        == RUNTIME_FALLBACK_TRAINING_PROFILE.example_generation_backend_name
     )
     assert task.objective_config.evidence_backend_name == (
-        DEFAULT_TRAINING_PROFILE.evidence_backend_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.evidence_backend_name
     )
     assert task.objective_config.scorer_backend_name == (
-        DEFAULT_TRAINING_PROFILE.scorer_backend_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
     )
     assert task.objective_config.score_policy_name == (
-        DEFAULT_TRAINING_PROFILE.score_policy_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
     )
     assert task.objective_config.acceptance_policy_name == (
-        DEFAULT_TRAINING_PROFILE.acceptance_policy_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     )
     assert task.objective_config.privacy_guard_name == (
-        DEFAULT_TRAINING_PROFILE.privacy_guard_name
+        RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
     )
     assert task.objective_config.confidence_threshold == (
-        DEFAULT_TRAINING_PROFILE.confidence_threshold
+        RUNTIME_FALLBACK_TRAINING_PROFILE.confidence_threshold
     )
     assert task.objective_config.margin_threshold == (
-        DEFAULT_TRAINING_PROFILE.margin_threshold
+        RUNTIME_FALLBACK_TRAINING_PROFILE.margin_threshold
     )
     assert task.objective_config.extras == {
         "training_backend.delta_scale_multiplier": (

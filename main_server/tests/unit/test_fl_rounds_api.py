@@ -33,7 +33,7 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
-from methods.federated_ssl.training_defaults import DEFAULT_TRAINING_PROFILE
+from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contracts import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -258,7 +258,7 @@ def test_fl_rounds_router_is_registered_on_main_app() -> None:
 def test_round_open_request_payload_uses_shared_task_runtime_defaults() -> None:
     payload = RoundOpenRequestPayload()
 
-    assert payload.local_epochs == DEFAULT_TRAINING_PROFILE.local_epochs
-    assert payload.batch_size == DEFAULT_TRAINING_PROFILE.batch_size
-    assert payload.learning_rate == DEFAULT_TRAINING_PROFILE.learning_rate
-    assert payload.max_steps == DEFAULT_TRAINING_PROFILE.max_steps
+    assert payload.local_epochs == RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs
+    assert payload.batch_size == RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size
+    assert payload.learning_rate == RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate
+    assert payload.max_steps == RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps

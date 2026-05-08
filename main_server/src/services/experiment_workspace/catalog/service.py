@@ -21,10 +21,10 @@ from main_server.src.services.experiment_workspace.catalog.tracks import (
 from main_server.src.services.experiment_workspace.payloads import (
     ExperimentCatalogPayload,
 )
-from methods.federated_ssl.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
-    build_default_secure_aggregation_config,
-    build_default_training_selection_policy,
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_TRAINING_PROFILE,
+    build_runtime_fallback_secure_aggregation_config,
+    build_runtime_fallback_training_selection_policy,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
@@ -98,15 +98,15 @@ class ExperimentCatalogService:
             model_revision="catalog_preview_revision",
             task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
             training_scope=training_scope,
-            local_epochs=DEFAULT_TRAINING_PROFILE.local_epochs,
-            batch_size=DEFAULT_TRAINING_PROFILE.batch_size,
-            learning_rate=DEFAULT_TRAINING_PROFILE.learning_rate,
-            max_steps=DEFAULT_TRAINING_PROFILE.max_steps,
+            local_epochs=RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs,
+            batch_size=RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size,
+            learning_rate=RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate,
+            max_steps=RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps,
             objective_config=objective_config,
-            selection_policy=build_default_training_selection_policy(),
-            min_required_examples=DEFAULT_TRAINING_PROFILE.min_required_examples,
-            gradient_clip_norm=DEFAULT_TRAINING_PROFILE.gradient_clip_norm,
-            secure_aggregation=build_default_secure_aggregation_config(),
+            selection_policy=build_runtime_fallback_training_selection_policy(),
+            min_required_examples=RUNTIME_FALLBACK_TRAINING_PROFILE.min_required_examples,
+            gradient_clip_norm=RUNTIME_FALLBACK_TRAINING_PROFILE.gradient_clip_norm,
+            secure_aggregation=build_runtime_fallback_secure_aggregation_config(),
         )
 
     def _resolve_example_generation_runtime_paths(

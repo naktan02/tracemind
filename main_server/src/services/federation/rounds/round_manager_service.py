@@ -22,10 +22,10 @@ from main_server.src.services.federation.rounds.families.models import (
 from main_server.src.services.federation.rounds.families.registry import (
     build_shared_adapter_round_family,
 )
-from methods.federated_ssl.training_defaults import (
-    build_default_secure_aggregation_config,
-    build_default_training_objective_config,
-    build_default_training_selection_policy,
+from methods.federated_ssl.runtime_fallbacks import (
+    build_runtime_fallback_secure_aggregation_config,
+    build_runtime_fallback_training_objective_config,
+    build_runtime_fallback_training_selection_policy,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -195,7 +195,7 @@ class RoundManagerService:
         if isinstance(source, TrainingObjectiveConfig):
             return source
         if source is None:
-            return build_default_training_objective_config()
+            return build_runtime_fallback_training_objective_config()
         return TrainingObjectiveConfig.from_mapping(source)
 
     @staticmethod
@@ -205,7 +205,7 @@ class RoundManagerService:
         if isinstance(source, TrainingSelectionPolicy):
             return source
         if source is None:
-            return build_default_training_selection_policy()
+            return build_runtime_fallback_training_selection_policy()
         return TrainingSelectionPolicy.from_mapping(source)
 
     @staticmethod
@@ -217,9 +217,9 @@ class RoundManagerService:
         if isinstance(source, SecureAggregationConfig):
             return source
         if isinstance(source, bool):
-            return build_default_secure_aggregation_config(
+            return build_runtime_fallback_secure_aggregation_config(
                 overrides={"required": source}
             )
         if source is None:
-            return build_default_secure_aggregation_config()
+            return build_runtime_fallback_secure_aggregation_config()
         return SecureAggregationConfig.from_mapping(source)

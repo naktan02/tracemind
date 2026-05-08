@@ -10,9 +10,9 @@ from agent.src.services.training.acceptance_policies.base import (
 from agent.src.services.training.acceptance_policies.top1 import (
     Top1MarginThresholdAcceptancePolicy,
 )
-from methods.federated_ssl.training_defaults import (
-    DEFAULT_TRAINING_PROFILE,
-    TrainingDefaultsProfile,
+from methods.federated_ssl.runtime_fallbacks import (
+    RUNTIME_FALLBACK_TRAINING_PROFILE,
+    RuntimeFallbackTrainingProfile,
 )
 from methods.ssl.hooks.registry import (
     build_pseudo_label_selection_hook,
@@ -69,7 +69,9 @@ class PseudoLabelSelectionResult:
 class PseudoLabelSelectionService:
     """score threshold와 margin 기준으로 pseudo-label을 선별한다."""
 
-    default_profile: TrainingDefaultsProfile = field(default=DEFAULT_TRAINING_PROFILE)
+    default_profile: RuntimeFallbackTrainingProfile = field(
+        default=RUNTIME_FALLBACK_TRAINING_PROFILE
+    )
     evidence_service: PseudoLabelEvidenceService = field(
         default_factory=PseudoLabelEvidenceService
     )
