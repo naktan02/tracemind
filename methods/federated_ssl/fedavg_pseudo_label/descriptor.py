@@ -5,8 +5,11 @@ from __future__ import annotations
 from methods.federated_ssl.base import (
     FederatedSslLocalStepSpec,
     FederatedSslMethodDescriptor,
+    FederatedSslMethodRecipe,
+    FederatedSslProfileCombination,
     FederatedSslRequiredViews,
     FederatedSslRuntimeCapabilities,
+    FederatedSslRuntimePair,
     FederatedSslServerStepSpec,
 )
 from methods.federated_ssl.fedavg_pseudo_label.local_objective import (
@@ -17,6 +20,45 @@ from methods.federated_ssl.fedavg_pseudo_label.round_policy import (
 )
 from methods.federated_ssl.fedavg_pseudo_label.server_policy import (
     FEDAVG_PSEUDO_LABEL_SERVER_POLICY,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
+
+FEDAVG_PSEUDO_LABEL_RECIPE = FederatedSslMethodRecipe(
+    method_name="fedavg_pseudo_label",
+    supported_local_update_profile_names=(
+        "prototype_pseudo_label_v1",
+        "prototype_top1_confidence_v1",
+        "lora_pseudo_label_v1",
+    ),
+    supported_runtime_pairs=(
+        FederatedSslRuntimePair(
+            adapter_family_name=DIAGONAL_SCALE_ADAPTER_KIND,
+            aggregation_backend_name="fedavg",
+        ),
+        FederatedSslRuntimePair(
+            adapter_family_name=LORA_CLASSIFIER_ADAPTER_KIND,
+            aggregation_backend_name="fedavg",
+        ),
+    ),
+    supported_profile_combinations=(
+        FederatedSslProfileCombination(
+            local_update_profile_name="prototype_pseudo_label_v1",
+            round_runtime_profile_name="fedavg_diagonal_scale",
+        ),
+        FederatedSslProfileCombination(
+            local_update_profile_name="prototype_top1_confidence_v1",
+            round_runtime_profile_name="fedavg_diagonal_scale",
+        ),
+        FederatedSslProfileCombination(
+            local_update_profile_name="lora_pseudo_label_v1",
+            round_runtime_profile_name="fedavg_lora_classifier",
+        ),
+    ),
 )
 
 FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
@@ -45,4 +87,5 @@ FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
             or FEDAVG_PSEUDO_LABEL_ROUND_POLICY.custom_round_policy_required
         ),
     ),
+    recipe=FEDAVG_PSEUDO_LABEL_RECIPE,
 )

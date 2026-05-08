@@ -36,7 +36,7 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 조합은 `round_runtime_profile`에서 온다.
 
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다. 먼저
-`methods/federated_ssl/<method>/` descriptor/recipe와 필요한 methods core를 구현한
+`methods/federated_ssl/<method>/` descriptor/recipe metadata와 필요한 methods core를 구현한
 뒤 이 config group을 연다. method-only local/server/aggregation 변형은 method 폴더에
 둘 수 있고, `agent`/`main_server`에는 capability adapter만 둔다.
 
@@ -48,5 +48,6 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 실제 threshold, LoRA rank, round 수 같은 실행 파라미터는 계속 Hydra config leaf에
 남긴다.
 
-사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/recipe.py`가 소유하고,
-Hydra YAML은 실행 조합과 파라미터 값만 소유한다.
+사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/descriptor.py`의 recipe
+metadata가 소유하고, 커질 때만 optional `recipe.py`로 분리한다. Hydra YAML은 실행
+조합과 파라미터 값만 소유한다.

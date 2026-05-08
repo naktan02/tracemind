@@ -143,6 +143,7 @@ def _require_fl_profile_compatibility(
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name
             ),
+            round_runtime_profile_name=request.round_runtime_config.profile_name,
         )
     )
 

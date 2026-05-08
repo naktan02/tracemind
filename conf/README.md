@@ -68,7 +68,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.ssl_method`로 compose된다.
   - 논문 method identity, report role, custom runtime 필요 여부를 설명한다.
   - 실제 local update 계산 조합을 단독으로 소유하지 않는다.
-  - 사람이 읽는 method recipe와 method-only 변형은
+  - 사람이 읽는 method recipe metadata와 method-only 변형은
     `methods/federated_ssl/<method>/`가 소유한다.
 - `strategy_axes/fl/local_update_profile`
   - `cfg.local_update_profile`로 compose된다.

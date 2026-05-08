@@ -174,7 +174,7 @@ Raw Event / Local Signal
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
 | adapter-family FedAvg core/projection | `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py` |
-| FL SSL method descriptor/recipe/policy | `methods/federated_ssl/*` |
+| FL SSL method descriptor/recipe metadata/policy | `methods/federated_ssl/*` |
 | method-only aggregation variant | `methods/federated_ssl/<method>/aggregation.py` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/registry.py`, `families/models.py` |
@@ -189,7 +189,7 @@ Raw Event / Local Signal
 | 경로 | 소유 책임 | 금지 사항 |
 |---|---|---|
 | `shared/` | 공통 contract, domain entity, canonical payload 해석 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
-| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core와 method-local recipe/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
+| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core와 method-local recipe metadata/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
 | `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | method identity/local objective와 서버 round orchestration/aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication, experiment workspace backend | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |

@@ -133,8 +133,9 @@ Runtime translation:
 
 - 공용 contract, domain entity, canonical payload 해석은 `shared`에 둔다.
 - 교체 가능한 algorithm/method 계산은 `methods`에 둔다.
-- 논문 method의 descriptor, recipe, local/server/round policy, method-only aggregation
-  변형은 `methods/federated_ssl/<method>/`에 둔다.
+- 논문 method의 descriptor, recipe metadata 또는 optional recipe,
+  local/server/round policy, method-only aggregation 변형은
+  `methods/federated_ssl/<method>/`에 둔다.
 - 실행 조합과 파라미터는 루트 `conf`에 둔다.
 - agent-owned local training/inference runtime은 `agent`에 둔다.
 - server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.

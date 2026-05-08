@@ -234,7 +234,7 @@
    단, method-specific 의미는 agent에 두지 않고 capability adapter로만 연결한다.
 4. example backend, scorer, acceptance policy가 새 family를 지원하는지 확인한다.
 5. 필요하면 `methods/adaptation/<family>/aggregation_projection.py` 또는 method-local
-   recipe/aggregation이 해당 family projection을 지원하게 한다.
+   recipe metadata/aggregation이 해당 family projection을 지원하게 한다.
 6. shared payload registry와 aggregation backend만으로 generic round family runtime이
    조립되는지 확인한다. `main_server/.../families/`에 family-specific 파일을 추가하지
    않는다.

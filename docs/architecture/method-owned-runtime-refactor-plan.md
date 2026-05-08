@@ -31,10 +31,10 @@ scripts
 ```
 
 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다. 이
-폴더가 descriptor, recipe, local objective, server/round policy, method-only
-aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 평균/투영/adapter payload
-해석은 `methods/federated/aggregation/*` 또는 `methods/adaptation/<family>/*`로
-승격한다.
+폴더가 descriptor, recipe metadata 또는 optional recipe, local objective,
+server/round policy, method-only aggregation 변형을 묶는다. 두 개 이상 방법론에서
+공유되는 평균/투영/adapter payload 해석은 `methods/federated/aggregation/*` 또는
+`methods/adaptation/<family>/*`로 승격한다.
 
 새 method를 추가하기 위해 `agent`나 `main_server`에 method 이름을 가진 파일이
 추가되면 실패 신호로 본다. runtime 계층에 추가할 수 있는 것은 method가 아니라
@@ -159,14 +159,21 @@ handoff 순서를 따른다.
 - 닫힘: `shared/src/contracts/training_contracts.py`에서 method-specific
   `diagonal_scale_heuristic` backend default를 제거했다. `training_backend_name`은
   contract 필수 값이고, 실험 기본값은 Hydra local update profile이 소유한다.
+- 닫힘: `methods/federated_ssl/<method>/descriptor.py`의 recipe metadata 경계를 열고
+  `fedavg_pseudo_label`이 지원 local update profile, adapter family, aggregation
+  backend, round runtime profile 조합을 소유하게 했다. 조합표가 커지는 method만
+  optional `recipe.py`로 분리한다.
+- 닫힘: compatibility validator가 method descriptor뿐 아니라 recipe metadata,
+  local update profile, adapter family, aggregation backend, round runtime profile을
+  bootstrap 전에 함께 검증한다.
 
 다음 단계 handoff:
 
 1. Batch 4-A aggregation ownership correction은 완료됐다. main_server family별 FedAvg
    구현과 aggregation projection은 methods 계층으로 이동했다.
-2. 이제 profile source-of-truth 작업으로 이동한다. 목표는 실행값을 Hydra에 모으고,
-   Python profile/mapping은 해석과 검증만 맡게 하는 것이다.
-3. profile 작업이 닫히면 Batch 4-B로 돌아와 LoRA artifact-ref materializer,
+2. 다음 Batch 3 잔여 작업은 `training_default_values.py`와 `training_defaults.py`의
+   runtime fallback/fixture/helper 역할을 더 좁히는 것이다.
+3. profile/default 작업이 닫히면 Batch 4-B로 돌아와 LoRA artifact-ref materializer,
    server policy executor, round state exchange 같은 server capability seam을 진행한다.
 
 시작 전 조건:
@@ -185,14 +192,15 @@ handoff 순서를 따른다.
 2. 실행값 source-of-truth 표를 만든다. threshold, scorer, evidence backend,
    privacy guard, local update backend, round runtime profile, aggregation backend가
    어디에서 오는지 한 곳에 고정한다.
-3. profile resolve output을 typed object로 정의한다. 이 object는 runtime 실행값을 새로
-   만들지 않고 Hydra config, method recipe, descriptor metadata를 검증한 결과만 담는다.
-4. compatibility validator를 최소 구현한다. method descriptor, method recipe, payload
+3. 완료: profile resolve output을 typed object로 정의한다. 이 object는 runtime 실행값을 새로
+   만들지 않고 Hydra config, method recipe metadata, descriptor metadata를 검증한 결과만 담는다.
+4. 완료: compatibility validator를 최소 구현한다. method descriptor, recipe metadata, payload
    family contract, local update profile, round runtime profile, aggregation backend,
    runtime capability를 함께 확인한다.
-5. method-only 변형은 `methods/federated_ssl/<method>/recipe.py`에서 선언하고,
-   재사용 backend/projection은 축별 methods 패키지에서 참조하게 한다.
-6. Python default/mapping module을 legacy facade 또는 fixture helper로 낮춘다. 삭제가
+5. 완료: method-only 변형은 `methods/federated_ssl/<method>/descriptor.py`의 recipe
+   metadata 또는 optional `recipe.py`에서 선언하고, 재사용 backend/projection은 축별
+   methods 패키지에서 참조하게 한다.
+6. 남음: Python default/mapping module을 legacy facade 또는 fixture helper로 낮춘다. 삭제가
    안전하지 않으면 deprecation boundary를 문서화하고 tests가 참조하는 경로만 유지한다.
 
 검증 대상:
@@ -206,7 +214,8 @@ handoff 순서를 따른다.
 완료 기준:
 
 - FedMatch/FedLGMatch류 조합을 추가할 때 method 폴더 중심으로 읽히고, runtime core
-  수정이 아니라 profile/descriptor/recipe 조합 검증으로 실패/성공이 결정된다.
+  수정이 아니라 profile/descriptor/recipe metadata 조합 검증으로 실패/성공이
+  결정된다.
 - 같은 실행 기본값이 Hydra와 Python에 중복 정의되지 않는다.
 - incompatible method/profile 조합은 agent/main_server runtime이 호출되기 전에 실패한다.
 - 새 profile 추가 시 수정 위치가 `conf`, method descriptor/profile validator, 테스트로

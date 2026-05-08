@@ -16,7 +16,7 @@ methods/federated_ssl/<method_name>/
   local_objective.py
   server_policy.py
   round_policy.py
-  recipe.py
+  recipe.py          # optional: 조합표가 descriptor.py를 흐리게 할 때만 분리
   aggregation.py       # method-only aggregation 변형일 때만 추가
   README.md
 ```
@@ -24,9 +24,11 @@ methods/federated_ssl/<method_name>/
 `descriptor.py`는 method identity, required views, runtime capability,
 local/server hint를 소유한다. `local_objective.py`, `server_policy.py`,
 `round_policy.py`는 FedMatch/FedLGMatch류에서 local objective나 server-side
-state exchange가 달라질 때 method-local 의미를 담는 seam이다. `recipe.py`는 사람이
+state exchange가 달라질 때 method-local 의미를 담는 seam이다. method recipe는 사람이
 method 폴더를 열었을 때 "이 논문 방법론이 어떤 adapter family, aggregation backend,
-round policy 조합으로 구성되는지"를 보는 시작점이다.
+round policy 조합으로 구성되는지"를 보는 조립표다. 작은 method는
+`descriptor.py`에 recipe metadata를 함께 둘 수 있고, 조합표가 커지거나 별도
+테스트/문서화가 필요할 때만 `recipe.py`로 분리한다.
 
 `aggregation.py`는 특정 method에만 종속된 client weighting, state exchange,
 pseudo-label 통계 결합 같은 변형이 있을 때만 둔다. 두 개 이상 method에서 공유되거나

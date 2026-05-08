@@ -25,6 +25,23 @@ def _normalize_view_names(view_names: tuple[str, ...]) -> tuple[str, ...]:
     return normalized_names
 
 
+def _normalize_unique_names(
+    values: tuple[str, ...],
+    *,
+    field_name: str,
+    allow_empty: bool = False,
+) -> tuple[str, ...]:
+    normalized = tuple(
+        _require_non_empty(str(value), field_name=f"{field_name} item")
+        for value in values
+    )
+    if not allow_empty and not normalized:
+        raise ValueError(f"{field_name} must not be empty.")
+    if len({value.lower() for value in normalized}) != len(normalized):
+        raise ValueError(f"{field_name} must be unique.")
+    return normalized
+
+
 @dataclass(frozen=True, slots=True)
 class FederatedSslRequiredViews:
     """FL SSL method가 client 입력 row에 요구하는 view surface."""
@@ -127,6 +144,151 @@ class FederatedSslRuntimeCapabilities:
 
 
 @dataclass(frozen=True, slots=True)
+class FederatedSslRuntimePair:
+    """method가 지원하는 adapter family와 aggregation backend 조합."""
+
+    adapter_family_name: str
+    aggregation_backend_name: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "adapter_family_name",
+            _require_non_empty(
+                self.adapter_family_name,
+                field_name="adapter_family_name",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "aggregation_backend_name",
+            _require_non_empty(
+                self.aggregation_backend_name,
+                field_name="aggregation_backend_name",
+            ),
+        )
+
+    @property
+    def normalized_key(self) -> tuple[str, str]:
+        return (
+            self.adapter_family_name.lower(),
+            self.aggregation_backend_name.lower(),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedSslProfileCombination:
+    """사람이 읽는 method recipe용 Hydra profile 조합."""
+
+    local_update_profile_name: str
+    round_runtime_profile_name: str
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "local_update_profile_name",
+            _require_non_empty(
+                self.local_update_profile_name,
+                field_name="local_update_profile_name",
+            ),
+        )
+        object.__setattr__(
+            self,
+            "round_runtime_profile_name",
+            _require_non_empty(
+                self.round_runtime_profile_name,
+                field_name="round_runtime_profile_name",
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedSslMethodRecipe:
+    """FL SSL method가 지원하는 profile/backend/family 조합표."""
+
+    method_name: str
+    supported_local_update_profile_names: tuple[str, ...] = ()
+    supported_runtime_pairs: tuple[FederatedSslRuntimePair, ...] = ()
+    supported_profile_combinations: tuple[FederatedSslProfileCombination, ...] = ()
+
+    def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "method_name",
+            _require_non_empty(self.method_name, field_name="method_name"),
+        )
+        object.__setattr__(
+            self,
+            "supported_local_update_profile_names",
+            _normalize_unique_names(
+                self.supported_local_update_profile_names,
+                field_name="supported_local_update_profile_names",
+                allow_empty=True,
+            ),
+        )
+        if len(set(self._runtime_pair_keys())) != len(self.supported_runtime_pairs):
+            raise ValueError("supported_runtime_pairs must be unique.")
+        if len(set(self._profile_combination_keys())) != len(
+            self.supported_profile_combinations
+        ):
+            raise ValueError("supported_profile_combinations must be unique.")
+
+    def supports_local_update_profile(self, profile_name: str) -> bool:
+        """method가 local update profile을 허용하는지 확인한다."""
+
+        if not self.supported_local_update_profile_names:
+            return True
+        normalized_profile_name = profile_name.strip().lower()
+        return normalized_profile_name in {
+            value.lower() for value in self.supported_local_update_profile_names
+        }
+
+    def supports_runtime_pair(
+        self,
+        *,
+        adapter_family_name: str,
+        aggregation_backend_name: str,
+    ) -> bool:
+        """method가 adapter family/backend 조합을 허용하는지 확인한다."""
+
+        if not self.supported_runtime_pairs:
+            return True
+        normalized_key = (
+            adapter_family_name.strip().lower(),
+            aggregation_backend_name.strip().lower(),
+        )
+        return normalized_key in set(self._runtime_pair_keys())
+
+    def supports_profile_combination(
+        self,
+        *,
+        local_update_profile_name: str,
+        round_runtime_profile_name: str,
+    ) -> bool:
+        """method가 명시 Hydra profile 조합을 허용하는지 확인한다."""
+
+        if not self.supported_profile_combinations:
+            return True
+        normalized_key = (
+            local_update_profile_name.strip().lower(),
+            round_runtime_profile_name.strip().lower(),
+        )
+        return normalized_key in set(self._profile_combination_keys())
+
+    def _runtime_pair_keys(self) -> tuple[tuple[str, str], ...]:
+        return tuple(pair.normalized_key for pair in self.supported_runtime_pairs)
+
+    def _profile_combination_keys(self) -> tuple[tuple[str, str], ...]:
+        return tuple(
+            (
+                combination.local_update_profile_name.lower(),
+                combination.round_runtime_profile_name.lower(),
+            )
+            for combination in self.supported_profile_combinations
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FederatedSslMethodDescriptor:
     """FL SSL method의 canonical strategy spec."""
 
@@ -136,6 +298,7 @@ class FederatedSslMethodDescriptor:
     local_step: FederatedSslLocalStepSpec
     server_step: FederatedSslServerStepSpec
     runtime_capabilities: FederatedSslRuntimeCapabilities
+    recipe: FederatedSslMethodRecipe | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -151,6 +314,11 @@ class FederatedSslMethodDescriptor:
                 field_name="implementation_status",
             ),
         )
+        if self.recipe is not None and self.recipe.method_name != self.name:
+            raise ValueError(
+                "method descriptor recipe must use the same method name: "
+                f"{self.recipe.method_name} != {self.name}."
+            )
 
     @property
     def client_trainer_name(self) -> str:

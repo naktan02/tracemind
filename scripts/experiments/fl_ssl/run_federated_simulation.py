@@ -103,6 +103,7 @@ def build_simulation_request_from_config(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
         lora_classifier=_build_lora_classifier_runtime_config(cfg.round_runtime),
+        profile_name=str(cfg.round_runtime_profile.name),
     )
     return SimulationRunRequest(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),

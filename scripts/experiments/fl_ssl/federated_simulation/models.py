@@ -250,6 +250,7 @@ class FederatedRoundRuntimeConfig:
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
+    profile_name: str | None = None
 
 
 @dataclass(slots=True)

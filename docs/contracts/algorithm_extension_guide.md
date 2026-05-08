@@ -13,7 +13,7 @@
 - 새 method/algorithm 추가 때문에 agent/main_server에 method-specific 파일을 만들지
   않는다. runtime 파일은 capability 이름으로 확장한다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
-  이 폴더는 descriptor, recipe, local objective, server/round policy, method-only
+  이 폴더는 descriptor, optional recipe, local objective, server/round policy, method-only
   aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 계산은 축별 methods
   패키지로 승격한다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
@@ -37,8 +37,8 @@
 ## 추가 순서
 
 1. 논문/방법 이름, 고정 변수, 변경 변수, dataset split, seed, metric, output metadata를 먼저 적는다.
-2. 논문 방법론이면 `methods/federated_ssl/<method>/recipe.py`에서 조합을 먼저
-   드러낸다.
+2. 논문 방법론이면 `methods/federated_ssl/<method>/descriptor.py`에 recipe metadata로
+   조합을 먼저 드러내고, 조합표가 커질 때만 `recipe.py`로 분리한다.
 3. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.
 4. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
 5. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server/` adapter를 추가한다.

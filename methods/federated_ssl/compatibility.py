@@ -17,6 +17,7 @@ class FederatedSslProfileCompatibilityContext:
     local_update_adapter_kind: str
     round_adapter_family_name: str
     round_aggregation_backend_name: str
+    round_runtime_profile_name: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -43,6 +44,15 @@ class FederatedSslProfileCompatibilityContext:
                 field_name="round_aggregation_backend_name",
             ),
         )
+        if self.round_runtime_profile_name is not None:
+            object.__setattr__(
+                self,
+                "round_runtime_profile_name",
+                _normalize_non_empty(
+                    self.round_runtime_profile_name,
+                    field_name="round_runtime_profile_name",
+                ),
+            )
 
 
 def validate_federated_ssl_profile_compatibility(
@@ -71,6 +81,44 @@ def validate_federated_ssl_profile_compatibility(
             f"local_update_profile={profile_name}, "
             f"local_update_adapter_kind={context.local_update_adapter_kind}, "
             f"round_adapter_family={context.round_adapter_family_name}."
+        )
+
+    recipe = context.method_descriptor.recipe
+    if recipe is None:
+        return
+
+    if context.local_update_profile is not None:
+        profile_name = context.local_update_profile.algorithm_profile_name
+        if not recipe.supports_local_update_profile(profile_name):
+            raise ValueError(
+                "FL profile compatibility failed: method recipe does not support "
+                "local_update_profile="
+                f"{profile_name} for method={context.method_descriptor.name}."
+            )
+        if context.round_runtime_profile_name is not None and (
+            not recipe.supports_profile_combination(
+                local_update_profile_name=profile_name,
+                round_runtime_profile_name=context.round_runtime_profile_name,
+            )
+        ):
+            raise ValueError(
+                "FL profile compatibility failed: method recipe does not support "
+                "profile combination: "
+                f"method={context.method_descriptor.name}, "
+                f"local_update_profile={profile_name}, "
+                f"round_runtime_profile={context.round_runtime_profile_name}."
+            )
+
+    if not recipe.supports_runtime_pair(
+        adapter_family_name=context.round_adapter_family_name,
+        aggregation_backend_name=context.round_aggregation_backend_name,
+    ):
+        raise ValueError(
+            "FL profile compatibility failed: method recipe does not support "
+            "round runtime pair: "
+            f"method={context.method_descriptor.name}, "
+            f"adapter_family={context.round_adapter_family_name}, "
+            f"aggregation_backend={context.round_aggregation_backend_name}."
         )
 
 

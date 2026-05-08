@@ -12,7 +12,7 @@ baseline이 아니라 이 spec을 만족하는 첫 method 구현으로 다룬다
 - simulation/live runtime capability 선언
 - 실제 runtime adapter가 읽을 canonical method 요구사항 제공
 - method-local module 옆 decorator 등록과 작은 import trigger
-- method recipe와 method-only aggregation/server policy 변형
+- method recipe metadata와 method-only aggregation/server policy 변형
 
 ## 제외
 

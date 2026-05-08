@@ -518,6 +518,15 @@ def test_federated_simulation_supports_high_level_fl_profile() -> None:
     assert cfg.training_task.objective.training_backend_name == (
         "lora_classifier_trainer"
     )
+    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        _plain_dict(cfg.local_update_profile)
+    )
+    assert descriptor.recipe is not None
+    assert descriptor.recipe.supports_profile_combination(
+        local_update_profile_name=local_update_profile.algorithm_profile_name,
+        round_runtime_profile_name=str(cfg.round_runtime_profile.name),
+    )
 
 
 def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
@@ -525,6 +534,9 @@ def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        _plain_dict(cfg.local_update_profile)
+    )
 
     assert cfg.ssl_method.implementation_status == descriptor.implementation_status
     assert cfg.ssl_method.client_step.task_type == descriptor.local_step.step_name
@@ -535,6 +547,18 @@ def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
     assert (
         cfg.ssl_method.server_step.custom_round_policy_required
         is descriptor.runtime_capabilities.requires_custom_server_runtime
+    )
+    assert descriptor.recipe is not None
+    assert descriptor.recipe.supports_local_update_profile(
+        local_update_profile.algorithm_profile_name
+    )
+    assert descriptor.recipe.supports_runtime_pair(
+        adapter_family_name=str(cfg.round_runtime_profile.adapter_family_name),
+        aggregation_backend_name=str(cfg.round_runtime_profile.aggregation_backend_name),
+    )
+    assert descriptor.recipe.supports_profile_combination(
+        local_update_profile_name=local_update_profile.algorithm_profile_name,
+        round_runtime_profile_name=str(cfg.round_runtime_profile.name),
     )
 
 
