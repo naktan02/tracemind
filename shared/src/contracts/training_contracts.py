@@ -71,7 +71,6 @@ class FeedbackSignalType(StrEnum):
 
 
 TrainingConfigScalar = str | int | float | bool
-DEFAULT_TRAINING_BACKEND_NAME = "diagonal_scale_heuristic"
 
 
 class ClientMetricKeys:
@@ -118,7 +117,6 @@ class TrainingObjectiveConfigPayload(BaseModel):
     model_config = ConfigDict(extra="forbid", populate_by_name=True)
 
     training_backend_name: str = Field(
-        default=DEFAULT_TRAINING_BACKEND_NAME,
         validation_alias=AliasChoices("training_backend_name", "loss"),
         serialization_alias="training_backend_name",
         description="로컬 update backend 식별자.",
@@ -188,12 +186,11 @@ class TrainingObjectiveConfigPayload(BaseModel):
     ) -> "TrainingObjectiveConfigPayload":
         """Mapping 입력을 canonical objective config로 정규화한다."""
         if source is None:
-            return cls()
+            raise ValueError("training_backend_name is required.")
         source = dict(source)
-        backend_name = source.get(
-            "training_backend_name",
-            source.get("loss", DEFAULT_TRAINING_BACKEND_NAME),
-        )
+        backend_name = source.get("training_backend_name", source.get("loss"))
+        if backend_name is None:
+            raise ValueError("training_backend_name is required.")
         pseudo_label_algorithm_name = _optional_str(
             source.get("pseudo_label_algorithm_name")
         )

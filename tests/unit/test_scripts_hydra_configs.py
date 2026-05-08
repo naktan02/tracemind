@@ -5,9 +5,22 @@ from __future__ import annotations
 import pytest
 from hydra import compose, initialize_config_module
 from hydra.utils import instantiate
+from omegaconf import DictConfig, OmegaConf
 
+from methods.federated_ssl.local_update_profile import (
+    LocalUpdateProfile,
+    require_training_objective_matches_local_update_profile,
+)
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+
+def _plain_dict(source: DictConfig) -> dict[str, object]:
+    raw = OmegaConf.to_container(source, resolve=True)
+    if not isinstance(raw, dict):
+        raise ValueError("Expected DictConfig section to resolve to a dict.")
+    return raw
 
 
 @pytest.mark.parametrize(
@@ -422,6 +435,39 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
     assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
+
+
+@pytest.mark.parametrize(
+    "profile_name",
+    [
+        "prototype_pseudo_label_v1",
+        "prototype_top1_confidence_v1",
+        "lora_pseudo_label_v1",
+    ],
+)
+def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
+    profile_name: str,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                f"strategy_axes/fl/local_update_profile={profile_name}",
+            ],
+        )
+
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        _plain_dict(cfg.local_update_profile)
+    )
+    objective_config = TrainingObjectiveConfig.from_mapping(
+        _plain_dict(cfg.training_task.objective)
+    )
+
+    assert local_update_profile.algorithm_profile_name == profile_name
+    require_training_objective_matches_local_update_profile(
+        objective_config=objective_config,
+        local_update_profile=local_update_profile,
+    )
 
 
 def test_federated_simulation_supports_lora_classifier_profiles() -> None:

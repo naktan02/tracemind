@@ -105,6 +105,11 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
 - `TrainingTaskPayload`
   - 서버가 agent에 내려주는 학습 task
   - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
+- `TrainingObjectiveConfigPayload`
+  - local update objective 선택값을 담는 contract
+  - `training_backend_name`은 필수 값이며 `shared`는 기본 backend를 소유하지 않는다.
+    실험 기본 조합은 Hydra profile, production fallback은 runtime/default facade가
+    소유한다
 - `TrainingUpdateEnvelopePayload`
   - 서버가 수락/저장한 update 메타데이터 봉투
   - `payload_ref`는 서버가 저장한 update payload의 opaque ref를 가리킴

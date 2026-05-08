@@ -113,6 +113,24 @@ def test_shared_contracts_do_not_keep_central_adapter_family_metadata_catalog() 
     )
 
 
+def test_shared_training_contracts_do_not_own_runtime_backend_defaults() -> None:
+    path = SHARED_SRC / "contracts" / "training_contracts.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "DEFAULT_TRAINING_BACKEND_NAME",
+        "diagonal_scale_heuristic",
+        "lora_classifier_trainer",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "shared training contract는 runtime/backend 기본 선택값을 소유하지 않는다. "
+        "training_backend_name은 payload 필수 값이고 기본 조합은 conf/ 또는 runtime "
+        "default facade가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)
@@ -190,6 +208,15 @@ def test_query_classifier_adaptation_core_stays_in_methods_layer() -> None:
         "methods/adaptation/query_classifier_adaptation에 둔다. "
         "agent는 local runtime/API와 private state만 소유한다. "
         f"legacy paths={sorted(str(path) for path in existing_paths)}"
+    )
+
+
+def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
+    forbidden_path = METHODS_SRC / "federated_ssl" / "training_algorithm_profiles.py"
+    assert not forbidden_path.exists(), (
+        "FL local update profile 실행값은 conf/strategy_axes/fl/local_update_profile "
+        "Hydra YAML이 소유한다. Python에는 profile별 objective mapping catalog를 "
+        "다시 만들지 않는다."
     )
 
 

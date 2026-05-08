@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import pytest
+
 from shared.src.contracts.common_types import (
     TrainingScope,
     TrainingTaskType,
@@ -137,6 +139,7 @@ def test_training_objective_config_payload_accepts_policy_fields() -> None:
 def test_training_objective_config_round_trips_policy_fields() -> None:
     config = TrainingObjectiveConfig.from_mapping(
         {
+            "training_backend_name": "diagonal_scale_heuristic",
             "algorithm_profile_name": "prototype_pseudo_label_v1",
             "loss_name": "cross_entropy",
             "confidence_threshold": 0.65,
@@ -187,7 +190,10 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
     None
 ):
     config = TrainingObjectiveConfig.from_mapping(
-        {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+        {
+            "training_backend_name": "diagonal_scale_heuristic",
+            "algorithm_profile_name": "prototype_top1_confidence_v1",
+        }
     )
 
     assert config.algorithm_profile_name == "prototype_top1_confidence_v1"
@@ -201,15 +207,25 @@ def test_training_objective_config_preserves_algorithm_profile_without_expansion
 
 def test_training_objective_config_does_not_expand_lora_algorithm_profile() -> None:
     config = TrainingObjectiveConfig.from_mapping(
-        {"algorithm_profile_name": "lora_pseudo_label_v1"}
+        {
+            "training_backend_name": "lora_classifier_trainer",
+            "algorithm_profile_name": "lora_pseudo_label_v1",
+        }
     )
 
     assert config.algorithm_profile_name == "lora_pseudo_label_v1"
-    assert config.training_backend_name == "diagonal_scale_heuristic"
+    assert config.training_backend_name == "lora_classifier_trainer"
     assert config.example_generation_backend_name is None
     assert config.scorer_backend_name is None
     assert config.pseudo_label_algorithm_name is None
     assert config.privacy_guard_name is None
+
+
+def test_training_objective_config_requires_training_backend_name() -> None:
+    with pytest.raises(ValueError, match="training_backend_name is required"):
+        TrainingObjectiveConfig.from_mapping(
+            {"algorithm_profile_name": "prototype_top1_confidence_v1"}
+        )
 
 
 def test_training_objective_config_from_mapping_keeps_legacy_algorithm_fallback() -> (
