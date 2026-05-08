@@ -1,66 +1,12 @@
-"""Entrypoint별 experiment compile warning/validation policy."""
+"""Concrete experiment compile policies."""
 
 from __future__ import annotations
 
-from dataclasses import dataclass, field
-from typing import Protocol
+from dataclasses import dataclass
 
-from main_server.src.services.experiment_workspace.catalog.service import (
-    ExperimentCatalogService,
+from main_server.src.services.experiment_workspace.compiler.contracts import (
+    ExperimentCompileContext,
 )
-from main_server.src.services.experiment_workspace.payloads import CatalogItemPayload
-from shared.src.contracts.workspace_manifest_contracts import (
-    WorkspaceManifestPayload,
-)
-
-
-@dataclass(frozen=True, slots=True)
-class ExperimentCompileContext:
-    """Entrypoint-specific compile policy가 읽는 canonical context."""
-
-    manifest: WorkspaceManifestPayload
-    entrypoint_item: CatalogItemPayload
-    effective_groups: dict[str, str]
-    hydra_override_map: dict[str, str]
-    catalog_service: ExperimentCatalogService
-
-
-class ExperimentCompilePolicy(Protocol):
-    """Entrypoint-specific compile policy."""
-
-    def collect_warnings(
-        self,
-        *,
-        context: ExperimentCompileContext,
-    ) -> tuple[str, ...]:
-        """compile preview에 추가할 warning을 반환한다."""
-
-    def validate_requirements(
-        self,
-        *,
-        context: ExperimentCompileContext,
-    ) -> None:
-        """compile 전제조건을 검사하고 실패 시 ValueError를 올린다."""
-
-
-@dataclass(frozen=True, slots=True)
-class NoOpExperimentCompilePolicy:
-    """추가 warning/validation이 없는 기본 policy."""
-
-    def collect_warnings(
-        self,
-        *,
-        context: ExperimentCompileContext,
-    ) -> tuple[str, ...]:
-        del context
-        return ()
-
-    def validate_requirements(
-        self,
-        *,
-        context: ExperimentCompileContext,
-    ) -> None:
-        del context
 
 
 @dataclass(frozen=True, slots=True)
@@ -209,37 +155,6 @@ class FixMatchCompilePolicy:
                 "다른 query_source preset을 고르거나 "
                 "unlabeled_jsonl override를 직접 제공하세요."
             )
-
-
-@dataclass(slots=True)
-class ExperimentCompilePolicyRegistry:
-    """Entrypoint 이름별 compile policy registry."""
-
-    _policies: dict[str, ExperimentCompilePolicy] = field(default_factory=dict)
-    _default_policy: ExperimentCompilePolicy = field(
-        default_factory=NoOpExperimentCompilePolicy
-    )
-
-    def register(
-        self,
-        entrypoint_name: str,
-        policy: ExperimentCompilePolicy,
-    ) -> None:
-        self._policies[entrypoint_name] = policy
-
-    def resolve(self, entrypoint_name: str) -> ExperimentCompilePolicy:
-        return self._policies.get(entrypoint_name, self._default_policy)
-
-
-DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY = ExperimentCompilePolicyRegistry()
-DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY.register(
-    "run_federated_simulation",
-    FederatedSimulationCompilePolicy(),
-)
-DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY.register(
-    "train_lora_fixmatch",
-    FixMatchCompilePolicy(),
-)
 
 
 def _string_or_none(value: object) -> str | None:

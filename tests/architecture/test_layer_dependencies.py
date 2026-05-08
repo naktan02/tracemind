@@ -13,6 +13,9 @@ AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
+EXPERIMENT_COMPILER_SRC = (
+    MAIN_SERVER_SRC / "services" / "experiment_workspace" / "compiler"
+)
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
@@ -406,6 +409,17 @@ def test_scripts_do_not_wrap_shared_labeled_query_rows() -> None:
         "labeled query row canonical contract는 shared contract가 소유한다. "
         "scripts/io에는 단순 re-export wrapper를 두지 않는다.\n"
         f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
+def test_experiment_compiler_does_not_keep_policy_monolith() -> None:
+    monolith_path = EXPERIMENT_COMPILER_SRC / "policies.py"
+
+    assert not monolith_path.exists(), (
+        "experiment compiler policy contract, registry primitive, default wiring, "
+        "concrete policy 구현은 분리한다. 중앙 policies.py monolith를 다시 만들지 "
+        "않는다.\n"
+        f"monolith path={_relative_repo_path(monolith_path)}"
     )
 
 

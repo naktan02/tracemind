@@ -7,9 +7,13 @@ from dataclasses import dataclass, field
 from main_server.src.services.experiment_workspace.catalog.service import (
     ExperimentCatalogService,
 )
-from main_server.src.services.experiment_workspace.compiler.policies import (
-    DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY,
+from main_server.src.services.experiment_workspace.compiler.contracts import (
     ExperimentCompileContext,
+)
+from main_server.src.services.experiment_workspace.compiler.default_registry import (
+    DEFAULT_EXPERIMENT_COMPILE_POLICY_REGISTRY,
+)
+from main_server.src.services.experiment_workspace.compiler.registry import (
     ExperimentCompilePolicyRegistry,
 )
 from main_server.src.services.experiment_workspace.payloads import (
