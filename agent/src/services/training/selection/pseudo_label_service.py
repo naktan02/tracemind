@@ -4,17 +4,13 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 
-from agent.src.services.training.acceptance_policies.base import (
-    PseudoLabelAcceptancePolicy,
-)
-from agent.src.services.training.acceptance_policies.top1 import (
-    Top1MarginThresholdAcceptancePolicy,
-)
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
     RuntimeFallbackTrainingProfile,
 )
+from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec
 from methods.ssl.hooks.registry import (
+    build_pseudo_label_acceptance_policy,
     build_pseudo_label_selection_hook,
 )
 from methods.ssl.hooks.selection import (
@@ -39,6 +35,14 @@ from .evidence_service import (
     PseudoLabelEvidenceService,
 )
 from .selector import PseudoLabelSelector
+
+
+def _build_default_acceptance_policy() -> PseudoLabelAcceptancePolicySpec:
+    """runtime fallback의 acceptance policy를 methods-owned spec으로 해석한다."""
+
+    return build_pseudo_label_acceptance_policy(
+        RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
+    )
 
 
 @dataclass(slots=True)
@@ -75,8 +79,8 @@ class PseudoLabelSelectionService:
     evidence_service: PseudoLabelEvidenceService = field(
         default_factory=PseudoLabelEvidenceService
     )
-    default_policy: PseudoLabelAcceptancePolicy = field(
-        default_factory=Top1MarginThresholdAcceptancePolicy
+    default_policy: PseudoLabelAcceptancePolicySpec = field(
+        default_factory=_build_default_acceptance_policy
     )
     default_selection_hook: PseudoLabelSelectionHook = field(
         default_factory=MarginThresholdPseudoLabelSelectionHook

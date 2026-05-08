@@ -119,23 +119,6 @@ CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     },
 )
 
-TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="top1_margin_threshold",
-    display_name="top1_margin_threshold",
-    implementation_module="agent.src.services.training.acceptance_policies.top1",
-    core_method_name="top1_margin_threshold",
-    family_name="pseudo_label_acceptance",
-    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
-)
-TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="top1_confidence_only",
-    display_name="top1_confidence_only",
-    implementation_module="agent.src.services.training.acceptance_policies.top1",
-    core_method_name="top1_confidence_only",
-    family_name="pseudo_label_acceptance",
-    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
-)
-
 DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="diagonal_scale_clip_only",
     display_name="diagonal_scale_clip_only",
@@ -205,19 +188,6 @@ def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
         (
             PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
             CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
-        )
-    )
-
-
-def list_pseudo_label_acceptance_policy_catalog_entries() -> tuple[
-    RegistryCatalogEntry, ...
-]:
-    """Agent pseudo-label acceptance policy catalog entry 목록."""
-
-    return dedupe_registry_catalog_entries(
-        (
-            TOP1_MARGIN_THRESHOLD_ACCEPTANCE_POLICY_CATALOG_ENTRY,
-            TOP1_CONFIDENCE_ONLY_ACCEPTANCE_POLICY_CATALOG_ENTRY,
         )
     )
 

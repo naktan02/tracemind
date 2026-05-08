@@ -13,7 +13,9 @@ from methods.ssl.hooks.pseudo_labeling import (
     PseudoLabelingConfig,
 )
 from methods.ssl.hooks.registry import (
+    build_pseudo_label_acceptance_policy,
     build_pseudo_label_selection_hook,
+    list_pseudo_label_acceptance_policy_catalog_entries,
 )
 from methods.ssl.hooks.selection import PseudoLabelSelectionConfig
 from shared.src.domain.entities.training.pseudo_label_evidence import (
@@ -122,3 +124,21 @@ def test_fixed_confidence_selection_hook_ignores_margin_cutoff() -> None:
     assert decision.accepted is True
     assert decision.label == "anxiety"
     assert decision.runner_up_label == "depression"
+
+
+def test_pseudo_label_acceptance_policy_specs_are_methods_owned() -> None:
+    policy = build_pseudo_label_acceptance_policy("top1_margin_threshold")
+    catalog_entries = {
+        entry.item_name: entry
+        for entry in list_pseudo_label_acceptance_policy_catalog_entries()
+    }
+
+    assert policy.policy_name == "top1_margin_threshold"
+    assert policy.selection_hook_name == "top1_margin_threshold"
+    assert policy.supported_adapter_kinds == ("*",)
+    assert catalog_entries["top1_margin_threshold"].implementation_module == (
+        "methods.ssl.hooks.acceptance"
+    )
+    assert catalog_entries["top1_confidence_only"].implementation_module == (
+        "methods.ssl.hooks.acceptance"
+    )

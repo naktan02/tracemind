@@ -11,6 +11,8 @@ subroutine을 둔다.
   loss 계산
 - `objective.py`: algorithm이 role별 hook을 명시적으로 받는 bundle 정의
 - `selection.py`: `PseudoLabelEvidence`를 threshold 기반 selection decision으로 해석
+- `acceptance.py`: `acceptance_policy_name`을 selection hook spec으로 해석하는
+  method-level metadata
 - `registry.py`: scripts와 agent runtime이 공유하는 selection hook lookup
 - builtin hook import trigger는 registry 내부의 bounded package import로 처리하고,
   registration은 각 hook 구현 옆 decorator가 소유
@@ -18,7 +20,6 @@ subroutine을 둔다.
 ## 제외
 
 - `PseudoLabelCandidate` 생성과 selection context/diagnostics 조립
-- agent-local `AcceptanceDecision` wrapping
 - query buffer retention, local training artifact 저장
 - FL round lifecycle, aggregation, publication
 

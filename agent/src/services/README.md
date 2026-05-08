@@ -137,8 +137,6 @@
   - prototype score 기반 single/multiview input view 계산 core
 - `training/backends/evidence/`
   - pseudo-label evidence 정규화 backend 구현
-- `training/acceptance_policies/`
-  - evidence 기반 pseudo-label acceptance 정책 구현
 - `training/backends/training/`
   - methods-owned local update backend registry compatibility facade
   - concrete backend 파일을 두지 않는다
@@ -161,6 +159,7 @@
 - scorer backend 추가: `methods/prototype/scoring/` 또는 다른 methods core를 먼저
   추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - prototype score policy 추가: `methods/prototype/scoring/`
+- pseudo-label acceptance/selection 정책 추가: `methods/ssl/hooks/`
 - privacy guard 추가: `training/execution/privacy_guards/`
 
 FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지

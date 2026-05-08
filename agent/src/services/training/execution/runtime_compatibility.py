@@ -5,12 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from agent.src.services.inference.scoring_backends.registry import build_scoring_backend
-from agent.src.services.training.acceptance_policies.base import (
-    PseudoLabelAcceptancePolicy,
-)
-from agent.src.services.training.acceptance_policies.registry import (
-    build_pseudo_label_acceptance_policy,
-)
 from agent.src.services.training.backends.evidence.resolver import (
     resolve_pseudo_label_evidence_backend,
 )
@@ -30,6 +24,8 @@ from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
+from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec
+from methods.ssl.hooks.registry import build_pseudo_label_acceptance_policy
 from shared.src.contracts.training_contracts import TrainingTask
 
 ANY_ADAPTER_KIND = "*"
@@ -102,7 +98,7 @@ def validate_local_training_runtime(
     ),
     default_privacy_guard_name: str = "noop",
     training_backend: SharedAdapterTrainingBackend | None = None,
-    acceptance_policy: PseudoLabelAcceptancePolicy | None = None,
+    acceptance_policy: PseudoLabelAcceptancePolicySpec | None = None,
     privacy_guard: SharedAdapterPrivacyGuard | None = None,
 ) -> LocalTrainingRuntimeCompatibility:
     """TrainingTask가 선택한 로컬 runtime 조합이 서로 호환되는지 검증한다."""

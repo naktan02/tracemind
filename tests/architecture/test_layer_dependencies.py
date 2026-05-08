@@ -375,6 +375,20 @@ def test_agent_training_backend_package_is_registry_facade_only() -> None:
     )
 
 
+def test_agent_does_not_own_pseudo_label_acceptance_policy_modules() -> None:
+    package_root = AGENT_SRC / "services" / "training" / "acceptance_policies"
+    violations = [
+        _relative_repo_path(path) for path in _iter_python_files(package_root)
+    ]
+
+    assert not violations, (
+        "pseudo-label acceptance/selection 정책 의미는 methods/ssl/hooks가 소유한다. "
+        "agent는 methods-owned hook/spec을 local candidate/context에 연결하는 "
+        "runtime adapter만 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     facade_path = FL_SIMULATION_IO_SRC / "artifacts.py"
 

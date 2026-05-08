@@ -31,6 +31,9 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
+from methods.ssl.hooks.registry import (
+    list_pseudo_label_acceptance_policy_catalog_entries,
+)
 from shared.src.contracts.adapter_contract_families.registry import (
     list_registered_shared_adapter_payload_adapter_kinds,
 )
@@ -203,15 +206,15 @@ def build_scoring_backend_section(
 def build_acceptance_policy_section(
     context: ExperimentCatalogBuildContext,
 ) -> CatalogSectionPayload:
-    """pseudo-label acceptance capability snapshot을 FL runtime catalog에 노출한다."""
+    """methods-owned pseudo-label acceptance policy spec을 catalog에 노출한다."""
 
     return build_registry_section(
         section_name="acceptance_policies",
         display_name="채택 정책",
         item_kind="acceptance_policy",
         description="pseudo-label evidence를 accepted candidate로 해석하는 정책.",
-        source_module_name="agent.src.services.training.acceptance_policies.registry",
-        entries=(local_catalog.list_pseudo_label_acceptance_policy_catalog_entries()),
+        source_module_name="methods.ssl.hooks.registry",
+        entries=list_pseudo_label_acceptance_policy_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -330,7 +333,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                local_catalog.list_pseudo_label_acceptance_policy_catalog_entries(),
+                list_pseudo_label_acceptance_policy_catalog_entries(),
                 objective_config.acceptance_policy_name
                 or RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name,
             ),
