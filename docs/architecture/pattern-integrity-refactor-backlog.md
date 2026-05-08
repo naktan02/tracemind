@@ -353,6 +353,8 @@ dict/list table, 작은 helper로 낮춘다.
   - 진행: query buffer selection diagnostics의 row/summary/scalar stats 전용 DTO와
     dataclass serializer helper를 제거했다. service는 JSON-ready dict payload를 만들고,
     reporting writer는 해당 payload를 그대로 기록한다.
+  - 진행: child-support response policy의 긴 `build_plan()` 분기를 plan table lookup
+    흐름으로 낮췄다. 안전 문구, fallback text, required/blocked term 검증 의미는 유지한다.
   - 방향: stable contract가 아닌 diagnostics는 class graph보다 plain dict builder와
     serialization helper를 우선한다. runtime adapter는 private state, artifact ref, capability
     호출만 맡는다.
