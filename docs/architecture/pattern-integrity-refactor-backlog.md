@@ -335,6 +335,8 @@ dict/list table, 작은 helper로 낮춘다.
     `teacher_split.py`로 분리했다.
   - 진행: bootstrap teacher runner의 teacher artifact 재사용/학습/저장을
     `teacher_classifier.py`로 분리했다.
+  - 진행: pseudo-label self-training runner의 labeled row JSONL/manifest/summary writer를
+    `io/labeled_row_export.py`로 분리했다.
   - 방향: entrypoint는 config load, core 호출, artifact 저장 호출만 남기고 학습/평가/예측
     세부 loop는 작은 module 함수로 분리한다. `Any`는 외부 library boundary 또는 Hydra raw
     config boundary에만 남긴다.
