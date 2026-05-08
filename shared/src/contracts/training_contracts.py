@@ -78,15 +78,15 @@ class ClientMetricKeys:
 
     client_metrics는 dict[str, float]로 열려 있지만,
     서버 aggregation과 q-합의 알고리즘이 사용하는 표준 키를 여기 선언한다.
-    사실상 타입 제약이므로, 이 클래스를 갑율역할 필요 없다. key 저장소로만 사용할 것
+    사실상 타입 제약이므로, 동작을 추가하지 않고 key 저장소로만 사용한다.
     """
 
-    # --- 하학 질 요약 ---
+    # --- 학습 품질 요약 ---
     # pseudo-label selection 스테이지에서 종합 컨피던스 평균
     MEAN_CONFIDENCE = "mean_confidence"
     # top1 접수와 top2 접수 차이의 평균
     MEAN_MARGIN = "mean_margin"
-    # 주어진 scored events 중 선탉된 비율
+    # 주어진 scored events 중 선택된 비율
     ACCEPTED_RATIO = "accepted_ratio"
     # privacy guard 적용 후 delta 벡터의 L2 norm
     DELTA_L2_NORM = "delta_l2_norm"
