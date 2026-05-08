@@ -41,6 +41,12 @@ framework seam이 얕다는 신호로 본다. 두 runtime 계층은 raw text 접
 state, artifact repository, round lifecycle, publication처럼 실행 환경 차이를
 core interface로 변환하는 adapter만 소유한다.
 
+논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다. 이
+폴더는 descriptor, recipe, local objective, server/round policy, method-only
+aggregation 변형을 묶는다. 반대로 두 개 이상 방법론에서 재사용되는 SSL hook,
+aggregation backend, adapter projection, prototype builder는 축별 패키지로 승격한다.
+이 기준은 method 응집도와 교체 가능한 core 재사용성을 동시에 지키기 위한 것이다.
+
 ## 하위 패키지 지도
 
 - `methods/ssl/algorithms/fixmatch/`: USB 스타일 FixMatch objective core
@@ -57,7 +63,8 @@ core interface로 변환하는 adapter만 소유한다.
 - `methods/federated/aggregation/fedavg/`: FedAvg 공통 가중 평균 산술과 generic
   strategy wiring
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
-- `methods/federated_ssl/`: FL SSL method descriptor와 조합 metadata
+- `methods/federated_ssl/`: FL SSL method descriptor, recipe, local objective,
+  server/round policy, method-local variant
 - `methods/prototype/building/`: prototype pack builder와 single/kmeans/dbscan
   생성 전략
 - `methods/prototype/scoring/`: prototype similarity와 category score policy 계산

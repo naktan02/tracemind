@@ -12,6 +12,10 @@
 - shared는 contract, domain entity, canonical payload 해석만 담당한다.
 - 새 method/algorithm 추가 때문에 agent/main_server에 method-specific 파일을 만들지
   않는다. runtime 파일은 capability 이름으로 확장한다.
+- 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
+  이 폴더는 descriptor, recipe, local objective, server/round policy, method-only
+  aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 계산은 축별 methods
+  패키지로 승격한다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
@@ -26,20 +30,22 @@
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |
 | Prototype SSL method | `methods/ssl/*` + `methods/prototype/*` | central/FL SSL runner | SSL/prototype strategy axes | SSL comparison smoke |
 | FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl/shard_policy/*` | shard determinism unit |
-| FL aggregation | `methods/federated/aggregation/*` generic strategy + `methods/adaptation/<family>/*` projection | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
+| FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/*` projection | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
 | FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*` | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |
 
 ## 추가 순서
 
 1. 논문/방법 이름, 고정 변수, 변경 변수, dataset split, seed, metric, output metadata를 먼저 적는다.
-2. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.
-3. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
-4. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server/` adapter를 추가한다.
-5. 실험 실행은 `scripts/experiments/` entrypoint나 기존 runner에 얇게 연결한다.
-6. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, track preset은 `conf/track_presets/`에 둔다.
-7. core unit test와 경계 integration test를 추가한다.
-8. architecture guard가 금지 import를 잡는지 확인한다.
+2. 논문 방법론이면 `methods/federated_ssl/<method>/recipe.py`에서 조합을 먼저
+   드러낸다.
+3. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.
+4. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
+5. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server/` adapter를 추가한다.
+6. 실험 실행은 `scripts/experiments/` entrypoint나 기존 runner에 얇게 연결한다.
+7. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, track preset은 `conf/track_presets/`에 둔다.
+8. core unit test와 경계 integration test를 추가한다.
+9. architecture guard가 금지 import를 잡는지 확인한다.
 
 ## 위치 판단
 

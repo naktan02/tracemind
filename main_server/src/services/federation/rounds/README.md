@@ -58,17 +58,21 @@
   - `diagonal_scale.py`, `classifier_head.py`, `lora_classifier.py` 같은 adapter
     family 단위 module도 두지 않는다
   - registry는 explicit test/backend override와 methods strategy resolve만 맡는다
-  - payload projection과 aggregation method 의미는 `methods/federated/aggregation/`이
+  - adapter payload projection은 `methods/adaptation/<family>/`가 소유하고,
+    재사용 aggregation backend 의미는 `methods/federated/aggregation/`이 소유한다
+  - method-only aggregation/server policy 변형은 `methods/federated_ssl/<method>/`가
     소유하고, server-owned artifact ref 생성만 runtime capability로 제공한다
-  - `lora_classifier.fedavg`는 inline delta smoke 경로를 집계하고,
+  - LoRA-classifier FedAvg methods strategy는 inline delta smoke 경로를 집계하고,
     artifact-ref-only update는 artifact materializer가 붙기 전까지 거부한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 
 ## 새 전략 추가 시 어디를 보는가
 
-- aggregation backend 추가: strategy/projection은 `methods/federated/aggregation/`,
-  server wiring은 기존 generic `aggregation/executor.py`와 registry를 재사용한다
+- aggregation backend 추가: method-only 변형은 `methods/federated_ssl/<method>/`에,
+  재사용 backend/projection은 `methods/federated/aggregation/` 또는
+  `methods/adaptation/<family>/`에 두고, server wiring은 기존 generic
+  `aggregation/executor.py`와 registry를 재사용한다
 - adapter family 추가: `shared/src/contracts/adapter_contract_families/` +
   aggregation backend. `families/`에 family-specific 파일을 추가하지 않는다.
 - server runtime 기본 축 변경: `runtime/config.py`

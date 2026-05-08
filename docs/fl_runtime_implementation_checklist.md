@@ -16,7 +16,7 @@ source of truth로 본다.
 - main_server round 생성, 조회, update ingest, finalize, publication.
 - agent round client와 local training service.
 - adapter family 기반 aggregation wiring.
-- `fedavg` aggregation core와 server adapter.
+- methods-owned `fedavg` aggregation core와 main_server generic executor.
 - prototype rebuild/publication path.
 - FL simulation harness와 artifact/report dump.
 - architecture guard로 `scripts -> agent/main_server` 직접 import 제한.
@@ -99,14 +99,15 @@ source of truth로 본다.
 
 - [x] unit: payload parse/serialize, training algorithm profile, LoRA config snapshot.
 - [x] unit: `LoraTextClassifier` 1-batch train/eval step.
-- [x] unit: `lora_classifier.fedavg` inline delta shape/version과 artifact-only 거부.
+- [x] unit: methods-owned LoRA-classifier FedAvg inline delta shape/version과
+  artifact-only 거부.
 - [x] smoke: `hash_debug + cpu_local` baseline `2 clients / 1 round / 1 seed`.
 - [x] small: `hash_debug + cpu_local` baseline `3 clients / 2 rounds / 1 seed`.
 - [x] LoRA bootstrap: `lora_pseudo_label_v1 + fedavg_lora_classifier`
   `2 clients / 0 rounds / 1 seed`.
 - [ ] LoRA smoke: `2 clients / 1 round / 1 seed`.
-  현재 agent는 artifact-ref LoRA update만 만들고, server `lora_classifier.fedavg`는
-  materializer/loader 없는 artifact-only 집계를 의도적으로 거부한다. 실제
+  현재 agent는 artifact-ref LoRA update만 만들고, methods-owned LoRA-classifier FedAvg
+  strategy는 materializer/loader 없는 artifact-only 집계를 의도적으로 거부한다. 실제
   1-round smoke는 agent LoRA artifact materialization 또는 inline train-step delta
   생산이 붙은 뒤 실행한다.
 - [ ] standard 전 runtime trace: GPU memory, update size, round time.
@@ -117,4 +118,5 @@ source of truth로 본다.
 - server는 round, aggregation, publication만 소유한다.
 - scripts 없이도 agent/main_server runtime contract가 설명된다.
 - scripts simulation은 production core를 복사하지 않고 호출한다.
-- 새 method 추가 위치가 `methods`, `conf`, runtime adapter, test로 분명히 나뉜다.
+- 새 method 추가 위치가 `methods/federated_ssl/<method>/`, `conf`, 필요한 capability
+  adapter, test로 분명히 나뉜다.

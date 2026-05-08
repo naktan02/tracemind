@@ -12,8 +12,8 @@ subroutine을 둔다.
 - `objective.py`: algorithm이 role별 hook을 명시적으로 받는 bundle 정의
 - `selection.py`: `PseudoLabelEvidence`를 threshold 기반 selection decision으로 해석
 - `registry.py`: scripts와 agent runtime이 공유하는 selection hook lookup
-- `builtin_loader.py`: builtin hook module을 명시적으로 import하고 registration은
-  각 hook 구현 옆 decorator가 소유
+- builtin hook import trigger는 registry 내부의 bounded package import로 처리하고,
+  registration은 각 hook 구현 옆 decorator가 소유
 
 ## 제외
 

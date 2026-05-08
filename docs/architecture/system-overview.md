@@ -21,8 +21,11 @@ central fixed embedding + classifier seed
 
 - 원문 텍스트와 개인 해석 상태는 agent 로컬에 남긴다.
 - 전역 서버는 round lifecycle, aggregation, artifact publication을 소유한다.
-- 공통 payload와 canonical 계산 규칙은 `shared`가 소유한다.
+- 공통 payload와 canonical payload 해석 규칙은 `shared`가 소유한다.
 - 교체 가능한 알고리즘/method 계산 core는 `methods`가 소유한다.
+- 논문 방법론은 `methods/federated_ssl/<method>/`가 사람이 읽는 시작점이고,
+  method-only 변형은 이 폴더에 둔다. 두 개 이상 방법론에서 공유되는 계산은 축별
+  methods 패키지로 승격한다.
 - `agent`와 `main_server`는 method-specific 구현이 아니라 선택된 method core를
   실행하는 capability adapter만 소유한다.
 - `scripts`는 운영 후보 코어를 소유하지 않고, 실험 조합과 실행 표면만 소유한다.
@@ -171,7 +174,8 @@ Raw Event / Local Signal
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
 | adapter-family FedAvg core/projection | `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py` |
-| FL SSL method descriptor | `methods/federated_ssl/*` |
+| FL SSL method descriptor/recipe/policy | `methods/federated_ssl/*` |
+| method-only aggregation variant | `methods/federated_ssl/<method>/aggregation.py` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/registry.py`, `families/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
@@ -184,8 +188,8 @@ Raw Event / Local Signal
 
 | 경로 | 소유 책임 | 금지 사항 |
 |---|---|---|
-| `shared/` | 공통 contract, domain entity, canonical 계산 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
-| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
+| `shared/` | 공통 contract, domain entity, canonical payload 해석 규칙 | 실험 편의 로직을 공통 계층으로 승격하지 않는다 |
+| `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core와 method-local recipe/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
 | `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | method identity/local objective와 서버 round orchestration/aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication, experiment workspace backend | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |

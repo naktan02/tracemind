@@ -139,8 +139,9 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
   이 package의 `adapters/method_runtime.py`는 method spec을 simulation runtime으로 연결하는
   adapter만 둔다.
 - 후보 논문 method는 확정 전까지 descriptor/config/runtime 파일을 미리 만들지 않는다.
-  실제 method core는 `agent` local runtime, `methods`, 필요한 경우 `main_server`
-  round/aggregation 경계에 둔다.
+  실제 method core는 `methods/federated_ssl/<method>/`를 시작점으로 두고,
+  재사용 가능한 계산만 축별 `methods` 패키지로 승격한다. `agent`와 `main_server`에는
+  필요한 capability adapter만 둔다.
 - `report.track=fl_ssl_main_comparison`은 중앙 SSL control과 분리된
   `reports/fl_ssl_main_comparison.report.json`을 남긴다. 현재 report shape는
   entrypoint-local section이므로 별도 Hydra group이 아니다.

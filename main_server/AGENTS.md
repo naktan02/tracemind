@@ -28,6 +28,8 @@ federated orchestration을 소유한다.
   `methods/federated/aggregation/`이 소유하고, adapter family별 delta 해석과
   next-state projection은 `methods/adaptation/<family>/`가 소유한다. server
   aggregation module은 selected methods strategy 호출 runtime adapter에 머문다.
+- method-only aggregation/server policy 변형은 `methods/federated_ssl/<method>/`가
+  소유할 수 있지만, `main_server`에서는 등록된 capability/strategy로만 호출한다.
 - payload format 변경은 반드시 `shared` contract 변경과 함께 진행한다.
 
 ## 테스트 규칙

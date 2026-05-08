@@ -23,13 +23,16 @@
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` core + capability runtime adapter |
 | 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | `conf/`, `methods/federated_ssl/training_defaults.py`, 또는 `main_server/src/services/federation/rounds/runtime/config.py` |
-| 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `agent` + `main_server` |
+| 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `methods/adaptation` + capability runtime adapter |
+| 새 논문 method 추가 | FedMatch, FedLGMatch, (FL)^2 | `methods/federated_ssl/<method>/` + `conf` |
 
 판별 기준은 단순하다.
 
 1. payload shape가 그대로면 대개 "같은 계약 안의 새 구현체 추가"다.
 2. 구현체는 그대로고 기본 fallback만 바꾸면 "기본 선택값만 변경"이다.
 3. state/update payload가 달라지면 "새 adapter family 추가"다.
+4. 논문 단위로 local objective, server/round policy, method-only aggregation 변형이
+   묶이면 `methods/federated_ssl/<method>/`를 먼저 만든다.
 
 ## 2. 공통 작업 순서
 
@@ -186,11 +189,16 @@
 
 작업 순서:
 
-1. backend의 generic 산술/strategy wiring은 `methods/federated/aggregation/`에 추가한다.
-2. adapter family별 delta 해석과 next-state projection은 `methods/adaptation/<family>/`에 둔다.
-3. family projection에서 methods-owned aggregation strategy를 등록한다.
-4. 현재 family runtime이 새 backend 이름을 selected strategy로 resolve하는지 확인한다.
-5. 기본 선택값까지 바꾸려면 `ServerRoundRuntimeConfig.aggregation_backend_name` fallback을 수정한다.
+1. 먼저 새 로직이 method-only 변형인지 재사용 backend인지 판단한다.
+2. FedMatch 같은 논문 방법론에만 종속된 client weighting, state exchange,
+   pseudo-label 통계 결합은 `methods/federated_ssl/<method>/aggregation.py`,
+   `server_policy.py`, `round_policy.py`에 둔다.
+3. 두 개 이상 방법론에서 공유되는 backend의 generic 산술/strategy wiring은
+   `methods/federated/aggregation/`에 추가한다.
+4. adapter family별 delta 해석과 next-state projection은 `methods/adaptation/<family>/`에 둔다.
+5. family projection에서 methods-owned aggregation strategy를 등록한다.
+6. 현재 family runtime이 새 backend 이름을 selected strategy로 resolve하는지 확인한다.
+7. 기본 선택값까지 바꾸려면 `ServerRoundRuntimeConfig.aggregation_backend_name` fallback을 수정한다.
 
 보통 건드리지 않는 것:
 
@@ -225,7 +233,8 @@
 3. agent training backend와 privacy guard가 새 `adapter_kind`를 생산/소비하게 한다.
    단, method-specific 의미는 agent에 두지 않고 capability adapter로만 연결한다.
 4. example backend, scorer, acceptance policy가 새 family를 지원하는지 확인한다.
-5. server aggregation backend를 추가한다.
+5. 필요하면 `methods/adaptation/<family>/aggregation_projection.py` 또는 method-local
+   recipe/aggregation이 해당 family projection을 지원하게 한다.
 6. shared payload registry와 aggregation backend만으로 generic round family runtime이
    조립되는지 확인한다. `main_server/.../families/`에 family-specific 파일을 추가하지
    않는다.

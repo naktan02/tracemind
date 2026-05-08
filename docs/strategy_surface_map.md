@@ -65,7 +65,7 @@ central fixed embedding + classifier seed
 | FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | FL round-runtime profile | `fedavg_diagonal_scale`, `fedavg_lora_classifier` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
-| Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | `methods/federated/aggregation/fedavg/*` generic core + `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py` + main_server generic aggregation executor | 활성 runtime |
+| Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
@@ -79,6 +79,9 @@ central fixed embedding + classifier seed
 - method identity와 local/server policy 의미는 `methods/`가 소유한다. `agent`와
   `main_server`의 backend/adapter는 선택된 core를 runtime data, artifact, contract
   payload에 연결하는 capability다.
+- 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
+  method-only 변형은 이 폴더에 남기고, 두 개 이상 방법론에서 공유되는 aggregation,
+  adapter projection, SSL hook은 축별 methods 패키지로 승격한다.
 
 ## Prototype 축
 
@@ -108,9 +111,9 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
   source row metadata 또는 translated text에서 agent-local raw text를 읽고,
   shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
-- Server `lora_classifier.fedavg`는 inline LoRA parameter delta와 classifier-head
-  delta의 FedAvg shape/version을 검증한다. Artifact-ref-only update 집계는 실제
-  artifact materializer/loader가 붙기 전까지 명시적으로 거부한다.
+- LoRA-classifier FedAvg 경로는 inline LoRA parameter delta와 classifier-head
+  delta의 FedAvg shape/version을 methods-owned core로 검증한다. Artifact-ref-only
+  update 집계는 실제 artifact materializer/loader가 붙기 전까지 명시적으로 거부한다.
 - FL simulation은 `local_update_profile=lora_pseudo_label_v1`와
   `round_runtime_profile=fedavg_lora_classifier` 조합을 compose할 수 있다. 이
   profile은 기존 `fedavg_pseudo_label` method descriptor를 유지하고, 실제 1-round

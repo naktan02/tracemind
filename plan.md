@@ -97,6 +97,9 @@ TraceMind는 아동·청소년의 온라인 위험 신호를 다룬다.
 4. heuristic과 gradient, runtime과 aggregation, privacy와 training을 분리한다.
 5. source of truth는 코드 가까이에 둔다.
 6. raw registry보다 strategy/factory/family object를 우선한다.
+7. 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 두고,
+   method-only 변형은 그 안에 남긴다. 두 개 이상 방법론에서 공유되는 계산만
+   축별 `methods` 패키지로 승격한다.
 
 ## 7. 연구 메시지
 

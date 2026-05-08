@@ -34,6 +34,9 @@ central fixed embedding + classifier seed
 - 중앙 SSL은 FL client partition 없는 control table이다. seed full replay 기본값이 아니다.
 - 중앙 canonical 규약은 `seed checkpoint 1회 생성 -> new accepted query-derived rows only continual adaptation`이다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL SSL non-IID 메인 비교군이다.
+- 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
+  method-only local/server/aggregation 변형은 이 폴더에 남기고, 두 개 이상
+  방법론에서 공유되는 계산만 축별 `methods` 패키지로 승격한다.
 - FL SSL에서 `LoRA + classifier`를 shared family로 승격할 때의 canonical family
   이름은 `lora_classifier`로 둔다. `classifier_head`에 LoRA 옵션을 섞거나
   bare `lora` family로 head 의미를 숨기지 않는다.
@@ -130,6 +133,8 @@ Runtime translation:
 
 - 공용 contract, domain entity, canonical payload 해석은 `shared`에 둔다.
 - 교체 가능한 algorithm/method 계산은 `methods`에 둔다.
+- 논문 method의 descriptor, recipe, local/server/round policy, method-only aggregation
+  변형은 `methods/federated_ssl/<method>/`에 둔다.
 - 실행 조합과 파라미터는 루트 `conf`에 둔다.
 - agent-owned local training/inference runtime은 `agent`에 둔다.
 - server-owned round/rebuild/publication orchestration은 `main_server`에 둔다.

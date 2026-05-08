@@ -342,14 +342,16 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
    - 예: `DiagonalScaleHeuristicTrainingBackend`
 
 3. `server aggregation backend`
-   - 예: `fedavg` runtime adapter
+   - 예: `fedavg` reusable backend와 main_server generic executor
 
 즉 같은 `diagonal_scale` family 안에서는
 `heuristic -> gradient` 교체가 비교적 쉽고,
 나중에는 `lora`, `projection_head` 같은 다른 family도 추가할 수 있다.
 
-다만 현재는 첫 단계이므로,
-registry가 완전히 일반화된 상태는 아니고 `diagonal_scale` 하나를 concrete 구현으로 둔 구조다.
+adapter family별 payload 해석과 projection은 `methods/adaptation/<family>/`가
+소유하고, 재사용 aggregation backend는 `methods/federated/aggregation/`가 소유한다.
+특정 논문 method에만 종속된 aggregation 변형은 `methods/federated_ssl/<method>/`에 둘
+수 있다. `main_server`는 round lifecycle과 publication adapter로 남긴다.
 
 ---
 

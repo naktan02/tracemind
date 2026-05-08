@@ -8,7 +8,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 
 | 그룹 | compose field | 의미 |
 |---|---|---|
-| `method_descriptor/` | `ssl_method` | FedAvg, FedMatch 같은 FL SSL method identity와 report metadata |
+| `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 FL SSL method identity와 report metadata. `fedavg_pseudo_label`은 현재 baseline identity다. |
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime_profile/` | `round_runtime_profile` | server round의 adapter family와 aggregation backend 조합 |
 | `experiment_profile/` | `fl_profile` | method/local update/round runtime 축을 함께 고르는 compose preset |
@@ -36,8 +36,9 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 조합은 `round_runtime_profile`에서 온다.
 
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다. 먼저
-`methods/federated_ssl/` descriptor와 필요한 `agent`, `main_server`, `methods`
-runtime seam을 구현한 뒤 이 config group을 연다.
+`methods/federated_ssl/<method>/` descriptor/recipe와 필요한 methods core를 구현한
+뒤 이 config group을 연다. method-only local/server/aggregation 변형은 method 폴더에
+둘 수 있고, `agent`/`main_server`에는 capability adapter만 둔다.
 
 ## `experiment_profile`
 
@@ -46,3 +47,6 @@ runtime seam을 구현한 뒤 이 config group을 연다.
 `local_update_profile`, `round_runtime_profile`을 함께 고르는 좁은 시작점이다.
 실제 threshold, LoRA rank, round 수 같은 실행 파라미터는 계속 Hydra config leaf에
 남긴다.
+
+사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/recipe.py`가 소유하고,
+Hydra YAML은 실행 조합과 파라미터 값만 소유한다.

@@ -156,8 +156,8 @@ family는 서로 다른 선택이다.
 ```
 
 `secure_aggregation`은 secure aggregation 계층 요구사항을 나타내는 task 축이다.
-server round runtime이 내부적으로 어떤 aggregation backend를 쓰는지와는 별도다.
-예를 들어 현재 server-owned round runtime 기본 aggregation backend는 `fedavg`지만,
+server round runtime이 내부적으로 어떤 aggregation backend를 선택하는지와는 별도다.
+예를 들어 현재 round runtime의 기본 aggregation backend 이름은 `fedavg`지만,
 이 값은 `TrainingTaskPayload.secure_aggregation` 필드와 같은 의미가 아니다.
 
 위 JSON은 시스템/FL runtime의 `adapter_only + prototype_pseudo_label_v1` 예시다.
