@@ -30,11 +30,11 @@ def write_query_buffer_selection_diagnostics(
 
     with candidates_path.open("w", encoding="utf-8") as file:
         for row in diagnostics.trace_rows:
-            file.write(json.dumps(row.to_mapping(), ensure_ascii=True) + "\n")
+            file.write(json.dumps(row, ensure_ascii=True) + "\n")
 
     summary_path.write_text(
         json.dumps(
-            diagnostics.summary.to_mapping(),
+            diagnostics.summary,
             indent=2,
             ensure_ascii=True,
         )

@@ -350,6 +350,9 @@ dict/list table, 작은 helper로 낮춘다.
 - E2. `agent` diagnostics/rule table 단순화
   - 대상: `agent/src/services/training/selection/query_buffer_selection_diagnostics.py`,
     wellbeing rule table 후보.
+  - 진행: query buffer selection diagnostics의 row/summary/scalar stats 전용 DTO와
+    dataclass serializer helper를 제거했다. service는 JSON-ready dict payload를 만들고,
+    reporting writer는 해당 payload를 그대로 기록한다.
   - 방향: stable contract가 아닌 diagnostics는 class graph보다 plain dict builder와
     serialization helper를 우선한다. runtime adapter는 private state, artifact ref, capability
     호출만 맡는다.
