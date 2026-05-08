@@ -383,6 +383,9 @@ dict/list table, 작은 helper로 낮춘다.
     단일 구현 전용 추상화와 장황한 generic type을 줄인다.
 - E5. `shared` contract 파일 크기와 설명 품질 정리
   - 대상: `shared/src/contracts/training_contracts.py`를 비롯한 큰 contract 파일.
+  - 진행: `TrainingObjectiveConfigPayload`와 `TrainingSelectionPolicyPayload`를
+    `shared/src/contracts/training_objective_contracts.py`로 분리했다. 기존
+    `training_contracts.py` import path는 compatibility surface로 유지한다.
   - 방향: 타입 엄격성은 유지하되 파일을 의미 단위로 나누고, 필드 의미는 코드 가까이에 짧고
     정확한 한국어로 남긴다.
 

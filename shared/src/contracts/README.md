@@ -98,18 +98,28 @@ parse/serialize contract helper만 소유한다.
   - 작은 smoke나 deterministic 단위 검증에는 선택적 inline delta 필드를 쓸 수
     있지만, runtime은 artifact-ref와 inline delta를 명시적으로 구분해야 한다
 
-### `training_contracts.py`
+### `training_objective_contracts.py`
 
-FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
+로컬 학습 objective와 selection policy config의 canonical shape를 정의한다.
 
-- `TrainingTaskPayload`
-  - 서버가 agent에 내려주는 학습 task
-  - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
 - `TrainingObjectiveConfigPayload`
   - local update objective 선택값을 담는 contract
   - `training_backend_name`은 필수 값이며 `shared`는 기본 backend를 소유하지 않는다.
     실험 기본 조합은 Hydra profile, production fallback은 runtime/default facade가
     소유한다
+- `TrainingSelectionPolicyPayload`
+  - 한 라운드에서 사용할 로컬 예시 선택 제한과 selection policy별 확장값을 담는다
+
+### `training_contracts.py`
+
+FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
+
+기존 import path 호환을 위해 `TrainingObjectiveConfigPayload`와
+`TrainingSelectionPolicyPayload`는 이 파일에서도 계속 import할 수 있다.
+
+- `TrainingTaskPayload`
+  - 서버가 agent에 내려주는 학습 task
+  - 로컬 학습 하이퍼파라미터, threshold, selection policy 포함
 - `TrainingUpdateEnvelopePayload`
   - 서버가 수락/저장한 update 메타데이터 봉투
   - `payload_ref`는 서버가 저장한 update payload의 opaque ref를 가리킴
