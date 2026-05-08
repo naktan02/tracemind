@@ -99,6 +99,20 @@ def _row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
+def _fake_teacher_classifier() -> SimpleNamespace:
+    return SimpleNamespace(
+        trained=SimpleNamespace(
+            categories=["anxiety", "depression", "normal", "suicidal"]
+        ),
+        outputs={
+            "output_dir": "runs/fake_teacher",
+            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
+            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
+            "report_json": "runs/fake_teacher/reports/report.json",
+        },
+    )
+
+
 def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     tmp_path: Path,
     monkeypatch,
@@ -107,31 +121,9 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher.instantiate",
-        lambda _spec: SimpleNamespace(
-            backend="transformers_mxbai",
-            model_id="mixedbread-ai/mxbai-embed-large-v1",
-            revision="main",
-            task_prefix="",
-            device="cpu",
-        ),
-    )
-    monkeypatch.setattr(
         "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
-        "train_fixed_embedding_classifier",
-        lambda **_kwargs: SimpleNamespace(
-            categories=["anxiety", "depression", "normal", "suicidal"]
-        ),
-    )
-    monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
-        "write_fixed_classifier_artifacts",
-        lambda **_kwargs: {
-            "output_dir": "runs/fake_teacher",
-            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
-            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
-            "report_json": "runs/fake_teacher/reports/report.json",
-        },
+        "resolve_teacher_classifier",
+        lambda **_kwargs: _fake_teacher_classifier(),
     )
     monkeypatch.setattr(
         "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
@@ -259,31 +251,9 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
     )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher.instantiate",
-        lambda _spec: SimpleNamespace(
-            backend="transformers_mxbai",
-            model_id="mixedbread-ai/mxbai-embed-large-v1",
-            revision="main",
-            task_prefix="",
-            device="cpu",
-        ),
-    )
-    monkeypatch.setattr(
         "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
-        "train_fixed_embedding_classifier",
-        lambda **_kwargs: SimpleNamespace(
-            categories=["anxiety", "depression", "normal", "suicidal"]
-        ),
-    )
-    monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
-        "write_fixed_classifier_artifacts",
-        lambda **_kwargs: {
-            "output_dir": "runs/fake_teacher",
-            "model_path": "data/processed/classifier_heads/fake_teacher.pt",
-            "manifest": "data/processed/classifier_heads/fake_teacher.manifest.json",
-            "report_json": "runs/fake_teacher/reports/report.json",
-        },
+        "resolve_teacher_classifier",
+        lambda **_kwargs: _fake_teacher_classifier(),
     )
     monkeypatch.setattr(
         "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
@@ -340,13 +310,16 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
 
     monkeypatch.setattr(
         "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
-        "load_fixed_classifier_artifacts",
-        lambda **_kwargs: (
-            SimpleNamespace(categories=["anxiety", "depression", "normal", "suicidal"]),
-            {
+        "resolve_teacher_classifier",
+        lambda **_kwargs: SimpleNamespace(
+            trained=SimpleNamespace(
+                categories=["anxiety", "depression", "normal", "suicidal"]
+            ),
+            outputs={
                 "model_path": "data/processed/classifier_heads/canonical.pt",
                 "manifest": "data/processed/classifier_heads/canonical.manifest.json",
                 "report_json": "runs/train_classifier/canonical/reports/report.json",
+                "reused_teacher_manifest": cfg.teacher_reuse_manifest_path,
             },
         ),
     )

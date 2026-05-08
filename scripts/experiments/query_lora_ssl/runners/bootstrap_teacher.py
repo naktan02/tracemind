@@ -6,18 +6,10 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
-from hydra.utils import instantiate
 from omegaconf import DictConfig
 
-from scripts.experiments.fixed_classifier.artifacts import (
-    load_fixed_classifier_artifacts,
-    write_fixed_classifier_artifacts,
-)
 from scripts.experiments.fixed_classifier.prediction import (
     predict_fixed_classifier_rows,
-)
-from scripts.experiments.fixed_classifier.runner import (
-    train_fixed_embedding_classifier,
 )
 from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
     resolve_pseudo_label_algorithm,
@@ -31,13 +23,13 @@ from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_builder import (
 from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
+from scripts.experiments.query_lora_ssl.runners.teacher_classifier import (
+    resolve_teacher_classifier,
+)
 from scripts.experiments.query_lora_ssl.runners.teacher_split import (
     resolve_teacher_and_unlabeled_rows,
 )
-from shared.src.contracts.labeled_query_row_contracts import (
-    LabeledQueryRow,
-    load_labeled_query_rows,
-)
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 BOOTSTRAP_SUMMARY_SCHEMA_VERSION = "fixed_classifier_lora_bootstrap.v1"
 
@@ -70,58 +62,15 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
         teacher_unlabeled_rows=teacher_unlabeled_rows,
     )
 
-    eval_set_map = {name: Path(str(path)) for name, path in cfg.eval_sets.items()}
-    eval_rows_by_name = {
-        name: load_labeled_query_rows(path) for name, path in eval_set_map.items()
-    }
-    teacher_reuse_manifest_path = str(
-        getattr(cfg, "teacher_reuse_manifest_path", "") or ""
-    ).strip()
-    if teacher_reuse_manifest_path:
-        trained_teacher, teacher_outputs = load_fixed_classifier_artifacts(
-            manifest_path=teacher_reuse_manifest_path,
-            device=str(cfg.runtime.device),
-            batch_size=int(cfg.teacher_eval_batch_size),
-            cache_dir=str(getattr(cfg.embedding, "cache_dir", "") or "") or None,
-            local_files_only=bool(getattr(cfg.runtime, "local_files_only", False)),
-        )
-        teacher_outputs = {
-            **teacher_outputs,
-            "reused_teacher_manifest": teacher_reuse_manifest_path,
-        }
-    else:
-        embedding_spec = instantiate(cfg.embedding.spec)
-        teacher_classifier_version = (
-            str(getattr(cfg, "teacher_classifier_version", "") or "").strip()
-            or f"{run_id}_teacher"
-        )
-
-        trained_teacher = train_fixed_embedding_classifier(
-            train_rows=teacher_rows.seed_rows,
-            eval_rows_by_name=eval_rows_by_name,
-            selection_set_name=str(cfg.selection_set),
-            embedding_spec=embedding_spec,
-            embed_chunk_size=int(cfg.teacher_embed_chunk_size),
-            train_batch_size=int(cfg.teacher_train_batch_size),
-            eval_batch_size=int(cfg.teacher_eval_batch_size),
-            epochs=int(cfg.teacher_epochs),
-            learning_rate=float(cfg.teacher_learning_rate),
-            weight_decay=float(cfg.teacher_weight_decay),
-        )
-        teacher_outputs = write_fixed_classifier_artifacts(
-            classifier_version=teacher_classifier_version,
-            created_at=effective_generated_at,
-            train_jsonl_ref=teacher_rows.seed_jsonl_ref,
-            eval_set_map={name: str(path) for name, path in eval_set_map.items()},
-            selection_set_name=str(cfg.selection_set),
-            output_dir_root=str(cfg.teacher_output_dir),
-            model_output_dir=str(cfg.teacher_model_output_dir),
-            epochs=int(cfg.teacher_epochs),
-            train_batch_size=int(cfg.teacher_train_batch_size),
-            learning_rate=float(cfg.teacher_learning_rate),
-            weight_decay=float(cfg.teacher_weight_decay),
-            trained=trained_teacher,
-        )
+    teacher_classifier = resolve_teacher_classifier(
+        cfg=cfg,
+        run_id=run_id,
+        generated_at=effective_generated_at,
+        seed_rows=teacher_rows.seed_rows,
+        seed_jsonl_ref=teacher_rows.seed_jsonl_ref,
+    )
+    trained_teacher = teacher_classifier.trained
+    teacher_outputs = teacher_classifier.outputs
 
     predictions = predict_fixed_classifier_rows(
         trained=trained_teacher,
