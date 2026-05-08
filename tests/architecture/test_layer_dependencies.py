@@ -557,6 +557,44 @@ def test_experiment_compiler_does_not_keep_policy_monolith() -> None:
     )
 
 
+def test_experiment_compiler_service_does_not_own_selection_or_override_building() -> (
+    None
+):
+    service_path = EXPERIMENT_COMPILER_SRC / "service.py"
+    required_files = (
+        EXPERIMENT_COMPILER_SRC / "catalog_lookup.py",
+        EXPERIMENT_COMPILER_SRC / "hydra_overrides.py",
+        EXPERIMENT_COMPILER_SRC / "selection_compiler.py",
+    )
+    source = service_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "for selection in manifest.selections",
+        "selection.override_patch",
+        "item.default_override_patch",
+        "_format_hydra_value",
+        "_merge_group_assignments",
+        "_parse_hydra_override_map",
+        "_selector_group_for_item",
+        "_validate_selection_against_item",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    missing_files = [
+        _relative_repo_path(path) for path in required_files if not path.exists()
+    ]
+
+    assert not missing_files, (
+        "experiment compiler는 catalog lookup, selection compile, Hydra override "
+        "utility를 service.py 밖의 전용 module로 분리한다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_files)}"
+    )
+    assert not violations, (
+        "ExperimentCompilerService는 compile orchestration만 맡는다. selection "
+        "검증/selector build/override formatting 세부사항은 selection_compiler.py와 "
+        "hydra_overrides.py가 맡는다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_main_server_round_family_package_has_no_concrete_family_modules() -> None:
     package_root = MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "families"
     allowed_files = {

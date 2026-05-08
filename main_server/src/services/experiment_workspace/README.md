@@ -9,6 +9,8 @@ catalog와 preview를 만든다.
 
 - `catalog/`: 현재 repo에서 사용 가능한 entrypoint, preset, strategy surface를 읽어 API payload로 노출한다.
 - `compiler/`: workspace manifest selection을 Hydra selector/override와 실행 command preview로 번역한다.
+  `service.py`는 orchestration만 맡고, catalog lookup, selection compile, Hydra override
+  문자열 조립, entrypoint policy는 하위 module이 책임별로 소유한다.
 - `run_execution/`: compile된 실험을 local process로 실행하고 stdout/stderr, run summary를 조회한다.
 
 `payloads.py`는 experiment workspace API payload를, `workspace_service.py`는 saved
