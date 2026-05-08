@@ -17,10 +17,14 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationEvaluation,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent_runtime import (
+from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
-    build_federated_training_examples,
+)
+from scripts.runtime_adapters.federated_agent.selection_runtime import (
     select_federated_pseudo_labels,
+)
+from scripts.runtime_adapters.federated_agent.training_example_mapper import (
+    build_federated_training_examples,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import PrototypePackPayload

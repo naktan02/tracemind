@@ -480,6 +480,52 @@ def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
     )
 
 
+def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None:
+    monolith_path = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent_runtime.py"
+    package_root = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent"
+    expected_files = (
+        package_root / "__init__.py",
+        package_root / "backend_resolver.py",
+        package_root / "row_validator.py",
+        package_root / "scoring_runtime.py",
+        package_root / "selection_runtime.py",
+        package_root / "training_example_mapper.py",
+        package_root / "training_runtime.py",
+    )
+    mapper_source = (package_root / "training_example_mapper.py").read_text(
+        encoding="utf-8"
+    )
+    mapper_forbidden_snippets = (
+        "WEAK_STRONG_PAIR_BACKEND_NAME",
+        "RUNTIME_FALLBACK_TRAINING_PROFILE",
+        "build_shared_adapter_training_backend",
+        "LocalTrainingRequest(",
+    )
+    mapper_violations = [
+        snippet for snippet in mapper_forbidden_snippets if snippet in mapper_source
+    ]
+    missing_files = [
+        _relative_repo_path(path) for path in expected_files if not path.exists()
+    ]
+
+    assert not monolith_path.exists(), (
+        "FL simulation agent runtime bridge는 federated_agent/ package의 책임별 "
+        "module을 직접 import한다. 중앙 monolith/facade를 다시 만들지 않는다.\n"
+        f"monolith path={_relative_repo_path(monolith_path)}"
+    )
+    assert not missing_files, (
+        "federated_agent runtime adapter package는 backend resolver, row validator, "
+        "mapper, scoring/selection/training runtime bridge를 분리한다.\n"
+        f"{chr(10).join(f'- {path}' for path in missing_files)}"
+    )
+    assert not mapper_violations, (
+        "training_example_mapper는 row -> TrainingExampleSource 변환만 맡는다. "
+        "backend fallback, weak/strong row 검증, local training request 생성은 "
+        "각 전용 module로 분리한다.\n"
+        f"violations={mapper_violations}"
+    )
+
+
 def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
     facade_path = SCRIPTS_SRC / "reporting" / "classification_report.py"
 

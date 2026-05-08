@@ -38,7 +38,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent_runtime import (
+from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

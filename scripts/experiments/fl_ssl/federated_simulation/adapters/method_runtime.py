@@ -17,7 +17,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedTrainingTaskConfig,
 )
-from scripts.runtime_adapters.federated_agent_runtime import (
+from scripts.runtime_adapters.federated_agent.training_runtime import (
     build_federated_local_training_service,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

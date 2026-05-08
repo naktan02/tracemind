@@ -23,8 +23,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent_runtime import (
+from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
+)
+from scripts.runtime_adapters.federated_agent.training_runtime import (
     run_federated_local_training,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime

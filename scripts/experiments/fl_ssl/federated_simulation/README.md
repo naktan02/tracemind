@@ -37,13 +37,19 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
    - `prototype_rebuild_bridge.py`: prototype rebuild runtime과 adapter seam
    - `initial_state_factory.py`: initial shared state 생성
    - `round_request_mapper.py`: round task/open request 변환
-8. `adapters/method_runtime.py`
+8. `scripts/runtime_adapters/federated_agent/`
+   - agent local runtime adapter package
+   - `training_example_mapper.py`: simulation row를 agent training example request로 변환
+   - `row_validator.py`: `weak_strong_pair` 같은 row-source 요구사항 검증
+   - `training_runtime.py`: local training request/service bridge
+   - `backend_resolver.py`: profile compatibility 검증용 backend resolve
+9. `adapters/method_runtime.py`
    - `methods/federated_ssl/` descriptor를 simulation runtime adapter로 연결
-9. `adapters/evaluation.py`
+10. `adapters/evaluation.py`
    - validation scoring과 training example 재구성
-10. `adapters/sharding.py`
+11. `adapters/sharding.py`
    - `methods/federated/shard_policy/`의 row adapter
-11. `io/`
+12. `io/`
    - `run_artifact_writer.py`: prototype pack과 model manifest 저장
    - `selection_diagnostics_writer.py`: selection diagnostics 저장
    - `simulation_report_builder.py`: simulation report payload 조립

@@ -293,7 +293,8 @@ ref 생성/JSON loading capability만 남긴다. `assets/prototypes`는 catch-al
 
 ### Batch 6. Runtime Adapter와 Artifact Writer 정리
 
-상태: 남음.
+상태: 진행 중. artifact/report builder-writer 분리와 federated agent runtime adapter
+package 분리는 완료됐고, diagnostics serializer 반복 정리가 남아 있다.
 
 - `scripts/runtime_adapters/*`는 request mapper, repository wiring, runtime bridge로
   나눈다.
