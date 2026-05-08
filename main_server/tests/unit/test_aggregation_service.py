@@ -84,14 +84,17 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
         for entry in list_shared_adapter_aggregation_backend_catalog_entries()
     }
 
-    assert entries["diagonal_scale.fedavg"].implementation_module.endswith(
-        "diagonal_scale_fedavg"
+    assert (
+        entries["diagonal_scale.fedavg"].implementation_module
+        == "methods.adaptation.diagonal_scale.fedavg"
     )
-    assert entries["classifier_head.fedavg"].implementation_module.endswith(
-        "classifier_head_fedavg"
+    assert (
+        entries["classifier_head.fedavg"].implementation_module
+        == "methods.adaptation.classifier_head.fedavg"
     )
-    assert entries["lora_classifier.fedavg"].implementation_module.endswith(
-        "lora_classifier_fedavg"
+    assert (
+        entries["lora_classifier.fedavg"].implementation_module
+        == "methods.adaptation.lora_classifier.fedavg"
     )
     assert (
         entries["lora_classifier.fedavg"].metadata[

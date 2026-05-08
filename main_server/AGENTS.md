@@ -24,9 +24,10 @@ federated orchestration을 소유한다.
   aggregation, server policy 파일을 추가하지 않는다. method-local server/round
   policy 의미는 `methods/federated_ssl/<method>/`에 두고, `main_server`는
   lifecycle, validation, artifact materialization, publication adapter만 맡는다.
-- aggregation math는 `methods/federated/aggregation/`이 소유하고, server
-  aggregation module은 shared contract payload를 methods core 입력으로 바꾸는
-  runtime adapter에 머문다.
+- aggregation method의 generic 산술/strategy wiring은
+  `methods/federated/aggregation/`이 소유하고, adapter family별 delta 해석과
+  next-state projection은 `methods/adaptation/<family>/`가 소유한다. server
+  aggregation module은 selected methods strategy 호출 runtime adapter에 머문다.
 - payload format 변경은 반드시 `shared` contract 변경과 함께 진행한다.
 
 ## 테스트 규칙

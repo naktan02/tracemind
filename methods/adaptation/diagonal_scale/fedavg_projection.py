@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from methods.adaptation.diagonal_scale.fedavg import (
+    DiagonalScaleFedAvgUpdate,
+    compute_diagonal_scale_fedavg,
+)
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
     FederatedAggregationContext,
     FederatedAggregationResult,
-)
-from methods.federated.aggregation.fedavg.diagonal_scale_fedavg import (
-    DiagonalScaleFedAvgUpdate,
-    compute_diagonal_scale_fedavg,
 )
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAdapterStrategySpec,

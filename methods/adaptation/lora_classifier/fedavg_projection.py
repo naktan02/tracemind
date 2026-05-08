@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from methods.adaptation.lora_classifier.fedavg import (
+    LoraClassifierFedAvgUpdate,
+    compute_lora_classifier_fedavg,
+)
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
     FederatedAggregationContext,
     FederatedAggregationResult,
-)
-from methods.federated.aggregation.fedavg.lora_classifier_fedavg import (
-    LoraClassifierFedAvgUpdate,
-    compute_lora_classifier_fedavg,
 )
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAdapterStrategySpec,

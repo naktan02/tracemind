@@ -4,25 +4,25 @@ from __future__ import annotations
 
 import pytest
 
-from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
+from methods.adaptation.classifier_head.fedavg import (
     ClassifierHeadFedAvgUpdate,
     compute_classifier_head_fedavg,
 )
-from methods.federated.aggregation.fedavg.diagonal_scale_fedavg import (
+from methods.adaptation.diagonal_scale.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
 )
-from methods.federated.aggregation.fedavg.fedavg import (
+from methods.adaptation.lora_classifier.fedavg import (
+    LoraClassifierFedAvgUpdate,
+    compute_lora_classifier_fedavg,
+)
+from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedScalarUpdate,
     WeightedVectorMappingUpdate,
     WeightedVectorUpdate,
     weighted_average_scalars,
     weighted_average_vector_mappings,
     weighted_average_vectors,
-)
-from methods.federated.aggregation.fedavg.lora_classifier_fedavg import (
-    LoraClassifierFedAvgUpdate,
-    compute_lora_classifier_fedavg,
 )
 from methods.federated.aggregation.registry import (
     get_federated_aggregation_method_spec,
@@ -229,7 +229,7 @@ def test_federated_aggregation_method_registry_points_to_methods_core() -> None:
     )
 
     assert spec.method_name == "fedavg"
-    assert spec.implementation_module.endswith("diagonal_scale_fedavg")
+    assert spec.implementation_module == "methods.adaptation.diagonal_scale.fedavg"
     assert spec.core_function_name == "compute_diagonal_scale_fedavg"
 
 
@@ -240,5 +240,5 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
     )
 
     assert spec.method_name == "fedavg"
-    assert spec.implementation_module.endswith("lora_classifier_fedavg")
+    assert spec.implementation_module == "methods.adaptation.lora_classifier.fedavg"
     assert spec.core_function_name == "compute_lora_classifier_fedavg"

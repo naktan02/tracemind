@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import importlib
 import pkgutil
-from collections.abc import Callable, Iterable, Mapping
+from collections.abc import Iterable, Mapping
 
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
@@ -13,7 +13,6 @@ from methods.federated.aggregation.base import (
     FederatedAggregationStrategyFactory,
 )
 
-FederatedAggregationCoreFunction = Callable[..., object]
 _AGGREGATION_PACKAGE = "methods.federated.aggregation"
 _ADAPTATION_PACKAGE = "methods.adaptation"
 _SKIPPED_AGGREGATION_MODULE_PARTS = frozenset(
@@ -32,31 +31,6 @@ _FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
     tuple[str, str],
     tuple[FederatedAggregationStrategyFactory, FederatedAggregationMethodSpec],
 ] = {}
-
-
-def register_federated_aggregation_method(
-    *,
-    adapter_kind: str,
-    method_name: str,
-    aliases: Iterable[str] = (),
-) -> Callable[[FederatedAggregationCoreFunction], FederatedAggregationCoreFunction]:
-    """core function 옆에서 adapter family별 aggregation method를 등록한다."""
-
-    def _decorator(
-        core_function: FederatedAggregationCoreFunction,
-    ) -> FederatedAggregationCoreFunction:
-        spec = FederatedAggregationMethodSpec(
-            adapter_kind=adapter_kind.strip().lower(),
-            method_name=method_name.strip().lower(),
-            implementation_module=core_function.__module__,
-            core_function_name=core_function.__name__,
-            aliases=tuple(alias.strip().lower() for alias in aliases),
-        )
-        for name in (spec.method_name, *spec.aliases):
-            _FEDERATED_AGGREGATION_METHOD_REGISTRY[(spec.adapter_kind, name)] = spec
-        return core_function
-
-    return _decorator
 
 
 def register_federated_aggregation_strategy(
@@ -97,11 +71,15 @@ def get_federated_aggregation_method_spec(
     """adapter family와 method 이름에 맞는 method metadata를 반환한다."""
 
     normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
-    if not _import_aggregation_method_module(
-        normalized_adapter_kind=normalized_key[0],
+    if not _import_aggregation_strategy_module(
         normalized_method_name=normalized_key[1],
     ):
         _import_aggregation_package_modules()
+    if not _import_adapter_projection_module(
+        normalized_adapter_kind=normalized_key[0],
+        normalized_method_name=normalized_key[1],
+    ):
+        _import_adaptation_projection_modules()
     spec = _FEDERATED_AGGREGATION_METHOD_REGISTRY.get(normalized_key)
     if spec is None:
         raise ValueError(
@@ -164,26 +142,6 @@ def list_federated_aggregation_method_specs(
     return tuple(
         sorted(specs.values(), key=lambda spec: (spec.adapter_kind, spec.method_name))
     )
-
-
-def _import_aggregation_method_module(
-    *,
-    normalized_adapter_kind: str,
-    normalized_method_name: str,
-) -> bool:
-    module_name = (
-        f"{normalized_adapter_kind.replace('-', '_')}_"
-        f"{normalized_method_name.replace('-', '_')}"
-    )
-    method_package = f"{_AGGREGATION_PACKAGE}.{normalized_method_name}"
-    try:
-        importlib.import_module(f"{method_package}.{module_name}")
-    except ModuleNotFoundError as error:
-        expected_module = f"{method_package}.{module_name}"
-        if error.name not in {method_package, expected_module}:
-            raise
-        return False
-    return True
 
 
 def _import_aggregation_strategy_module(*, normalized_method_name: str) -> bool:

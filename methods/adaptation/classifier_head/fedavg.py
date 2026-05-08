@@ -5,17 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.federated.aggregation.fedavg.fedavg import (
+from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedScalarMappingUpdate,
     WeightedScalarUpdate,
     WeightedVectorMappingUpdate,
     weighted_average_scalar_mappings,
     weighted_average_scalars,
     weighted_average_vector_mappings,
-)
-from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.contracts.adapter_contract_families.classifier_head import (
-    CLASSIFIER_HEAD_ADAPTER_KIND,
 )
 
 
@@ -41,11 +37,6 @@ class ClassifierHeadFedAvgResult:
     update_count: int
 
 
-@register_federated_aggregation_method(
-    adapter_kind=CLASSIFIER_HEAD_ADAPTER_KIND,
-    method_name="fedavg",
-    aliases=("classifier_head_fedavg",),
-)
 def compute_classifier_head_fedavg(
     *,
     base_label_weights: Mapping[str, Sequence[float]],

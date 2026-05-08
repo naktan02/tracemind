@@ -440,8 +440,30 @@ def test_fedavg_strategy_file_stays_generic_without_family_specs() -> None:
 
     assert not violations, (
         "FedAvg strategy wiring 파일은 family별 projection/spec을 소유하지 않는다. "
-        "family 상세는 methods/adaptation/<family>/fedavg_projection.py에 둔다.\n"
+        "family 상세는 methods/adaptation/<family>/fedavg.py와 "
+        "fedavg_projection.py에 둔다.\n"
         f"violations={violations}"
+    )
+
+
+def test_fedavg_aggregation_package_stays_generic() -> None:
+    package_root = METHODS_SRC / "federated" / "aggregation" / "fedavg"
+    allowed_files = {
+        package_root / "__init__.py",
+        package_root / "strategy.py",
+        package_root / "weighted_average.py",
+    }
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if path not in allowed_files
+    ]
+
+    assert not violations, (
+        "methods/federated/aggregation/fedavg는 FedAvg 공통 산술과 strategy wiring만 "
+        "소유한다. adapter family별 FedAvg core와 payload projection은 "
+        "methods/adaptation/<family>/에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 

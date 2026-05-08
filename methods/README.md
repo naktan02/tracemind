@@ -49,10 +49,13 @@ core interface로 변환하는 adapter만 소유한다.
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
 - `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +
-  classifier head scaffold와 학습/평가 loop
-- `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산
-- `methods/federated/aggregation/fedavg/`: FedAvg 가중 평균과 adapter family별
-  next-state 계산 core
+  classifier head scaffold, 학습/평가 loop, family별 FedAvg core/projection
+- `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
+  family별 FedAvg core/projection
+- `methods/adaptation/classifier_head/`: classifier-head family별 FedAvg
+  core/projection
+- `methods/federated/aggregation/fedavg/`: FedAvg 공통 가중 평균 산술과 generic
+  strategy wiring
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산
 - `methods/federated_ssl/`: FL SSL method descriptor와 조합 metadata
 - `methods/prototype/building/`: prototype pack builder와 single/kmeans/dbscan

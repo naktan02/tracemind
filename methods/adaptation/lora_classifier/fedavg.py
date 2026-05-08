@@ -5,17 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.federated.aggregation.fedavg.fedavg import (
+from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedScalarMappingUpdate,
     WeightedScalarUpdate,
     WeightedVectorMappingUpdate,
     weighted_average_scalar_mappings,
     weighted_average_scalars,
     weighted_average_vector_mappings,
-)
-from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
 )
 
 
@@ -43,11 +39,6 @@ class LoraClassifierFedAvgResult:
     update_count: int
 
 
-@register_federated_aggregation_method(
-    adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
-    method_name="fedavg",
-    aliases=("lora_classifier_fedavg",),
-)
 def compute_lora_classifier_fedavg(
     *,
     label_schema: Sequence[str],

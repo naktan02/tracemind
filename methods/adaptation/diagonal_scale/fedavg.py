@@ -5,15 +5,11 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
-from methods.federated.aggregation.fedavg.fedavg import (
+from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedScalarUpdate,
     WeightedVectorUpdate,
     weighted_average_scalars,
     weighted_average_vectors,
-)
-from methods.federated.aggregation.registry import register_federated_aggregation_method
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
 )
 
 
@@ -37,11 +33,6 @@ class DiagonalScaleFedAvgResult:
     update_count: int
 
 
-@register_federated_aggregation_method(
-    adapter_kind=DIAGONAL_SCALE_ADAPTER_KIND,
-    method_name="fedavg",
-    aliases=("diagonal_scale_fedavg",),
-)
 def compute_diagonal_scale_fedavg(
     *,
     base_dimension_scales: Sequence[float],

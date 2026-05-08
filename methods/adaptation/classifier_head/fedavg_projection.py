@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import cast
 
+from methods.adaptation.classifier_head.fedavg import (
+    ClassifierHeadFedAvgUpdate,
+    compute_classifier_head_fedavg,
+)
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
     FederatedAggregationContext,
     FederatedAggregationResult,
-)
-from methods.federated.aggregation.fedavg.classifier_head_fedavg import (
-    ClassifierHeadFedAvgUpdate,
-    compute_classifier_head_fedavg,
 )
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAdapterStrategySpec,

@@ -169,7 +169,8 @@ Raw Event / Local Signal
 | prototype training input core | `methods/prototype/training_inputs/*` |
 | FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
-| FedAvg method core | `methods/federated/aggregation/fedavg/*` |
+| FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
+| adapter-family FedAvg core/projection | `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py` |
 | FL SSL method descriptor | `methods/federated_ssl/*` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/registry.py`, `families/models.py` |

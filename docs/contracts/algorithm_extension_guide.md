@@ -26,7 +26,7 @@
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |
 | Prototype SSL method | `methods/ssl/*` + `methods/prototype/*` | central/FL SSL runner | SSL/prototype strategy axes | SSL comparison smoke |
 | FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl/shard_policy/*` | shard determinism unit |
-| FL aggregation | `methods/federated/aggregation/*` | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
+| FL aggregation | `methods/federated/aggregation/*` generic strategy + `methods/adaptation/<family>/*` projection | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
 | FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*` | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |
 

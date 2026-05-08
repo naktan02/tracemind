@@ -181,15 +181,15 @@
 보통 수정 파일:
 
 - [methods/federated/aggregation/](../../methods/federated/aggregation/)
-- [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
+- `methods/adaptation/<family>/`
 - 기본 backend를 바꿀 때만 [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 
 작업 순서:
 
-1. 순수 aggregation 계산은 `methods/federated/aggregation/`에 추가한다.
-2. `SharedAdapterAggregationBackend` 구현 클래스는 server boundary adapter로 둔다.
-3. `register_shared_adapter_aggregation_backend(adapter_kind, ...)`로 등록한다.
-4. 현재 family builder가 새 backend 이름을 받을 수 있는지 확인한다.
+1. backend의 generic 산술/strategy wiring은 `methods/federated/aggregation/`에 추가한다.
+2. adapter family별 delta 해석과 next-state projection은 `methods/adaptation/<family>/`에 둔다.
+3. family projection에서 methods-owned aggregation strategy를 등록한다.
+4. 현재 family runtime이 새 backend 이름을 selected strategy로 resolve하는지 확인한다.
 5. 기본 선택값까지 바꾸려면 `ServerRoundRuntimeConfig.aggregation_backend_name` fallback을 수정한다.
 
 보통 건드리지 않는 것:
