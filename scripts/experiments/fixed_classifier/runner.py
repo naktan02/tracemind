@@ -12,13 +12,12 @@ import torch
 from omegaconf import DictConfig
 from torch import nn
 
-from methods.adaptation.common.checkpointing import BestModelCheckpoint
 from methods.adaptation.common.classification_evaluation import (
     build_classification_evaluation_report,
 )
-from methods.adaptation.common.training_history import (
-    build_selection_epoch_record,
-    format_selection_epoch_summary,
+from methods.adaptation.common.selection_training_loop import (
+    SelectionTrackedEpochResult,
+    run_selection_tracked_training_loop,
 )
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.runtime_adapters.embedding_runtime import (
@@ -183,10 +182,8 @@ def train_classifier_head(
         weight_decay=weight_decay,
     )
     criterion = nn.CrossEntropyLoss()
-    history: list[dict[str, Any]] = []
-    best_checkpoint = BestModelCheckpoint()
 
-    for epoch in range(1, epochs + 1):
+    def train_epoch(_epoch: int) -> SelectionTrackedEpochResult:
         model.train()
         permutation = torch.randperm(len(train_targets))
         epoch_loss_total = 0.0
@@ -205,7 +202,13 @@ def train_classifier_head(
 
             epoch_loss_total += float(loss.item()) * len(indices)
 
-        selection_report = evaluate_classifier(
+        return SelectionTrackedEpochResult(
+            train_loss_total=epoch_loss_total,
+            train_loss_denominator=len(train_targets),
+        )
+
+    def evaluate_selection() -> dict[str, Any]:
+        return evaluate_classifier(
             model=model,
             features=selection_features,
             targets=selection_targets,
@@ -213,23 +216,16 @@ def train_classifier_head(
             eval_batch_size=train_batch_size,
             device=training_device,
         )
-        epoch_record = build_selection_epoch_record(
-            epoch=epoch,
-            train_loss_total=epoch_loss_total,
-            train_loss_denominator=len(train_targets),
-            selection_report=selection_report,
-        )
-        history.append(epoch_record)
-        print(
-            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
-            flush=True,
-        )
 
-        best_checkpoint.update(model=model, selection_report=selection_report)
-
-    best_selection_report = best_checkpoint.restore_best(
+    history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        error_message="Classifier training did not produce a best checkpoint.",
+        epochs=epochs,
+        train_epoch=train_epoch,
+        evaluate_selection=evaluate_selection,
+        best_checkpoint_error_message=(
+            "Classifier training did not produce a best checkpoint."
+        ),
+        log_epoch_summary=lambda message: print(message, flush=True),
     )
     return model, history, best_selection_report
 

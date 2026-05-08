@@ -306,19 +306,22 @@ runtime catalog만 남겼다.
 
 ### Batch 5. SSL Hook Bundle과 Training Template
 
-상태: 진행 중. `SslObjectiveHooks` typed bundle과 FixMatch fixed-threshold hook 조합은
+상태: 완료. `SslObjectiveHooks` typed bundle과 FixMatch fixed-threshold hook 조합은
 열려 있고, selection-set epoch history/summary record는
-`methods/adaptation/common/training_history.py`로 공통화했다. prototype score policy는
-`policy_registry.py`와 `score_policies/`로 분리했고, 얇은 `policies.py` facade는
-제거했다. model input 처리와 runner orchestration은 각 family/script에 남긴다.
+`methods/adaptation/common/training_history.py`로 공통화했다. fixed classifier와 LoRA
+classifier가 공유하는 selection 평가, history, best checkpoint 복원 흐름은
+`methods/adaptation/common/selection_training_loop.py`로 분리했다. prototype score
+policy는 `policy_registry.py`와 `score_policies/`로 분리했고, 얇은 `policies.py`
+facade는 제거했다. model input 처리와 runner orchestration은 각 family/script에 남긴다.
 
 - 완료: USB식 장점인 hook 교체 구조를 TraceMind 방식으로 명시화한다.
 - 완료: `SslObjectiveHooks` role-based bundle로 masking, pseudo-labeling,
   consistency loss를 교체한다.
 - 완료: FixMatch는 fixed-threshold hook bundle로 표현하고, FreeMatch-like test-only
   masking hook으로 교체 가능성을 검증한다.
-- 진행: fixed classifier와 LoRA classifier의 evaluation/checkpoint/history/training
-  loop 중 selection-set history record처럼 반복되는 template만 공통화한다.
+- 완료: fixed classifier와 LoRA classifier의 evaluation/checkpoint/history/training
+  loop 중 selection-set 평가, history record, best checkpoint 복원처럼 반복되는
+  template만 공통화했다.
 - 완료: prototype score policy 구현과 registry를 분리하고, 새 policy는
   `methods/prototype/scoring/score_policies/<policy>.py`에서 구현 옆 decorator로
   등록한다.

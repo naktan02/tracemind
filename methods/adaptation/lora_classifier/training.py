@@ -10,13 +10,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.common.checkpointing import BestModelCheckpoint
 from methods.adaptation.common.classification_evaluation import (
     build_classification_evaluation_report,
 )
-from methods.adaptation.common.training_history import (
-    build_selection_epoch_record,
-    format_selection_epoch_summary,
+from methods.adaptation.common.selection_training_loop import (
+    SelectionTrackedEpochResult,
+    run_selection_tracked_training_loop,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
@@ -151,10 +150,8 @@ def train_classifier(
         weight_decay=weight_decay,
     )
     criterion = nn.CrossEntropyLoss()
-    history: list[dict[str, Any]] = []
-    best_checkpoint = BestModelCheckpoint()
 
-    for epoch in range(1, epochs + 1):
+    def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
         model.train()
         epoch_loss_total = 0.0
         epoch_rows = 0
@@ -184,29 +181,28 @@ def train_classifier(
                     flush=True,
                 )
 
-        selection_report = evaluate_classifier(
+        return SelectionTrackedEpochResult(
+            train_loss_total=epoch_loss_total,
+            train_loss_denominator=epoch_rows,
+        )
+
+    def evaluate_selection() -> dict[str, Any]:
+        return evaluate_classifier(
             model=model,
             dataloader=selection_loader,
             categories=categories,
             device=device,
         )
-        epoch_record = build_selection_epoch_record(
-            epoch=epoch,
-            train_loss_total=epoch_loss_total,
-            train_loss_denominator=epoch_rows,
-            selection_report=selection_report,
-        )
-        history.append(epoch_record)
-        print(
-            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
-            flush=True,
-        )
 
-        best_checkpoint.update(model=model, selection_report=selection_report)
-
-    best_selection_report = best_checkpoint.restore_best(
+    history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        error_message="LoRA classifier training did not produce a best checkpoint.",
+        epochs=epochs,
+        train_epoch=train_epoch,
+        evaluate_selection=evaluate_selection,
+        best_checkpoint_error_message=(
+            "LoRA classifier training did not produce a best checkpoint."
+        ),
+        log_epoch_summary=lambda message: print(message, flush=True),
     )
     return model, history, best_selection_report
 
@@ -313,10 +309,8 @@ def train_query_ssl_classifier(
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
-    history: list[dict[str, Any]] = []
-    best_checkpoint = BestModelCheckpoint()
 
-    for epoch in range(1, epochs + 1):
+    def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
         model.train()
         step_total_loss_sum = 0.0
         step_component_sums: dict[str, float] = {}
@@ -387,17 +381,9 @@ def train_query_ssl_classifier(
                     flush=True,
                 )
 
-        selection_report = evaluate_classifier(
-            model=model,
-            dataloader=selection_loader,
-            categories=categories,
-            device=device,
-        )
-        epoch_record = build_selection_epoch_record(
-            epoch=epoch,
+        return SelectionTrackedEpochResult(
             train_loss_total=step_total_loss_sum,
             train_loss_denominator=step_count,
-            selection_report=selection_report,
             extra_train_metrics={
                 **_build_average_scalar_record(
                     sums=step_component_sums,
@@ -409,19 +395,24 @@ def train_query_ssl_classifier(
                 ),
             },
         )
-        history.append(epoch_record)
-        print(
-            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
-            flush=True,
+
+    def evaluate_selection() -> dict[str, Any]:
+        return evaluate_classifier(
+            model=model,
+            dataloader=selection_loader,
+            categories=categories,
+            device=device,
         )
 
-        best_checkpoint.update(model=model, selection_report=selection_report)
-
-    best_selection_report = best_checkpoint.restore_best(
+    history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        error_message=(
+        epochs=epochs,
+        train_epoch=train_epoch,
+        evaluate_selection=evaluate_selection,
+        best_checkpoint_error_message=(
             f"{algorithm.algorithm_name} training did not produce a best checkpoint."
         ),
+        log_epoch_summary=lambda message: print(message, flush=True),
     )
     return model, history, best_selection_report
 
