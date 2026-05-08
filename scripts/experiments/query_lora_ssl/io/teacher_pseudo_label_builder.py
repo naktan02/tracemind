@@ -1,13 +1,11 @@
-"""Teacher pseudo-label artifact exporter."""
+"""Fixed-classifier teacher prediction을 pseudo-label payload로 변환한다."""
 
 from __future__ import annotations
 
-import json
 from collections import Counter
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 from typing import Any
 
 from methods.ssl.hooks.registry import build_pseudo_label_selection_hook
@@ -31,17 +29,8 @@ class TeacherPseudoLabelExport:
     prediction_summary: dict[str, Any]
 
 
-@dataclass(frozen=True, slots=True)
-class TeacherPseudoLabelArtifactPaths:
-    """Teacher pseudo-label export artifact 경로."""
-
-    prediction_trace_jsonl: Path
-    prediction_summary_json: Path
-    bootstrap_summary_json: Path | None = None
-
-
-class TeacherPseudoLabelExporter:
-    """Fixed-classifier teacher prediction export와 summary 저장을 담당한다."""
+class TeacherPseudoLabelBuilder:
+    """teacher prediction에서 pseudo-label row, trace, summary payload를 조립한다."""
 
     def build_export(
         self,
@@ -148,34 +137,6 @@ class TeacherPseudoLabelExporter:
             prediction_summary=summary,
         )
 
-    def write_prediction_artifacts(
-        self,
-        *,
-        export_dir: Path,
-        prediction_trace_rows: Sequence[Mapping[str, object]],
-        prediction_summary: Mapping[str, object],
-    ) -> TeacherPseudoLabelArtifactPaths:
-        prediction_trace_path = export_dir / "teacher_unlabeled_predictions.jsonl"
-        prediction_summary_path = (
-            export_dir / "teacher_unlabeled_predictions.summary.json"
-        )
-        _write_jsonl(prediction_trace_path, prediction_trace_rows)
-        _write_json(prediction_summary_path, prediction_summary)
-        return TeacherPseudoLabelArtifactPaths(
-            prediction_trace_jsonl=prediction_trace_path,
-            prediction_summary_json=prediction_summary_path,
-        )
-
-    def write_bootstrap_summary(
-        self,
-        *,
-        export_dir: Path,
-        bootstrap_summary: Mapping[str, object],
-    ) -> Path:
-        bootstrap_summary_path = export_dir / "bootstrap.summary.json"
-        _write_json(bootstrap_summary_path, bootstrap_summary)
-        return bootstrap_summary_path
-
 
 def _build_teacher_evidence(
     *,
@@ -213,18 +174,3 @@ def _parse_row_timestamp(value: str, fallback: datetime) -> datetime:
         return datetime.fromisoformat(normalized)
     except ValueError:
         return fallback
-
-
-def _write_json(path: Path, payload: Mapping[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(
-        json.dumps(dict(payload), indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-
-
-def _write_jsonl(path: Path, rows: Sequence[Mapping[str, object]]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    with path.open("w", encoding="utf-8") as file:
-        for row in rows:
-            file.write(json.dumps(dict(row), ensure_ascii=True) + "\n")

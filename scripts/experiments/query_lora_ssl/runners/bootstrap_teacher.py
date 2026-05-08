@@ -21,8 +21,11 @@ from scripts.experiments.fixed_classifier.runner import (
 from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
     resolve_pseudo_label_algorithm,
 )
-from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_exporter import (
-    TeacherPseudoLabelExporter,
+from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_artifact_writer import (
+    TeacherPseudoLabelArtifactWriter,
+)
+from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_builder import (
+    TeacherPseudoLabelBuilder,
 )
 from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
@@ -139,8 +142,7 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
         embed_chunk_size=int(cfg.teacher_embed_chunk_size),
         eval_batch_size=int(cfg.teacher_eval_batch_size),
     )
-    teacher_exporter = TeacherPseudoLabelExporter()
-    teacher_export = teacher_exporter.build_export(
+    teacher_export = TeacherPseudoLabelBuilder().build_export(
         rows=effective_teacher_unlabeled_rows,
         predictions=predictions,
         pseudo_label_algorithm=resolve_pseudo_label_algorithm(cfg),
@@ -154,7 +156,8 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
             "Lower the threshold or provide a different unlabeled pool."
         )
 
-    prediction_artifacts = teacher_exporter.write_prediction_artifacts(
+    teacher_artifact_writer = TeacherPseudoLabelArtifactWriter()
+    prediction_artifacts = teacher_artifact_writer.write_prediction_artifacts(
         export_dir=export_dir,
         prediction_trace_rows=teacher_export.prediction_trace_rows,
         prediction_summary=teacher_export.prediction_summary,
@@ -186,7 +189,7 @@ def run_fixed_classifier_teacher_lora_student_bootstrap(
             None if split_artifacts is None else str(split_artifacts.manifest_path)
         ),
     }
-    bootstrap_summary_path = teacher_exporter.write_bootstrap_summary(
+    bootstrap_summary_path = teacher_artifact_writer.write_bootstrap_summary(
         export_dir=export_dir,
         bootstrap_summary=bootstrap_summary,
     )

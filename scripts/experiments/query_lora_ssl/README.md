@@ -21,6 +21,8 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
   - `model_artifact_exporter.py`: adapter/tokenizer/classifier 파일 export.
   - `manifest_builder.py`: manifest/report payload 조립.
   - `artifact_writer.py`: manifest/report JSON 쓰기.
+  - `teacher_pseudo_label_builder.py`: fixed-classifier teacher prediction을 pseudo-label row와 diagnostics payload로 변환.
+  - `teacher_pseudo_label_artifact_writer.py`: teacher prediction trace/summary JSON artifact 저장.
   - query adaptation dataset export.
 - `config/`
   - Hydra initial checkpoint와 pseudo-label algorithm preset 해석.

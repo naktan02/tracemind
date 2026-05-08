@@ -439,6 +439,37 @@ def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
     )
 
 
+def test_query_lora_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
+    legacy_exporter_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_exporter.py"
+    builder_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_builder.py"
+    writer_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    builder_source = builder_path.read_text(encoding="utf-8")
+    builder_forbidden_snippets = (
+        "json.dumps(",
+        ".write_text(",
+        ".open(",
+        ".mkdir(",
+    )
+    violations = [
+        snippet for snippet in builder_forbidden_snippets if snippet in builder_source
+    ]
+
+    assert not legacy_exporter_path.exists(), (
+        "teacher pseudo-label 경로는 builder/writer를 직접 조합한다. "
+        "단순 compatibility exporter facade를 다시 만들지 않는다.\n"
+        f"legacy path={_relative_repo_path(legacy_exporter_path)}"
+    )
+    assert writer_path.exists(), (
+        "teacher pseudo-label artifact 저장은 전용 writer가 맡는다. "
+        f"missing writer={_relative_repo_path(writer_path)}"
+    )
+    assert not violations, (
+        "TeacherPseudoLabelBuilder는 pseudo-label row와 diagnostics payload만 만든다. "
+        "JSON serialization과 파일 write는 TeacherPseudoLabelArtifactWriter가 맡는다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_scripts_runtime_adapters_do_not_keep_federated_server_facade() -> None:
     facade_path = SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server_runtime.py"
 
