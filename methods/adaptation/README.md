@@ -14,6 +14,7 @@ method-specific 파일을 만들지 않는다.
 - `classifier_head/`: classifier-head shared adapter family FedAvg core/projection
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
+- `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft/`: PEFT adapter builder protocol과 registry
 - `lora/`: LoRA/RSLoRA builder core
 - `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
@@ -28,6 +29,10 @@ rank, alpha, target module 같은 실행 파라미터는 code folder가 아니�
 해석과 next-state materialization을 맡는 method-owned seam이다. generic FedAvg 산술과
 strategy wiring은 `methods/federated/aggregation/fedavg/`에 두고, family 상세는
 `main_server`가 아니라 해당 adapter family package에 둔다.
+
+privacy guard도 같은 기준을 따른다. `agent`는 selected guard를 실행 흐름에 연결하고,
+guard 이름, adapter-kind 지원 범위, clipping 계산은 `methods/adaptation/privacy_guards/`
+가 소유한다.
 
 ## 추가 기준
 

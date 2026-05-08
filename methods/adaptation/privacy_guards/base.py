@@ -22,7 +22,7 @@ class PrivacyProtectedUpdate:
 
 
 class SharedAdapterPrivacyGuard(Protocol):
-    """Shared adapter update에 clipping/DP를 적용하는 인터페이스."""
+    """Shared adapter update에 clipping/DP를 적용하는 method-owned interface."""
 
     guard_name: str
     supported_adapter_kinds: tuple[str, ...]

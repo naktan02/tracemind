@@ -12,8 +12,8 @@ workspace UI/catalog 노출이 필요한 stable 항목만 snapshot으로 반영�
 
 from __future__ import annotations
 
-from shared.src.contracts.adapter_contract_families.classifier_head import (
-    CLASSIFIER_HEAD_ADAPTER_KIND,
+from methods.adaptation.classifier_head.scoring import (
+    CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
 )
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
@@ -103,50 +103,6 @@ PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
         "confidence_kind": "prototype_similarity_top1",
     },
 )
-CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="classifier_head_logits",
-    display_name="classifier_head_logits",
-    implementation_module=(
-        "agent.src.services.inference.scoring_backends.classifier_head_logits"
-    ),
-    core_method_name="classifier_head_logits",
-    family_name="scoring",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
-    tags=("requires_shared_state",),
-    metadata={
-        "requires_shared_state": True,
-        "confidence_kind": "classifier_head_logit_top1",
-    },
-)
-
-DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="diagonal_scale_clip_only",
-    display_name="diagonal_scale_clip_only",
-    implementation_module=(
-        "agent.src.services.training.execution.privacy_guards.diagonal_scale_clip_only"
-    ),
-    core_method_name="diagonal_scale_clip_only",
-    family_name="privacy_guard",
-    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
-)
-CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="classifier_head_clip_only",
-    display_name="classifier_head_clip_only",
-    implementation_module=(
-        "agent.src.services.training.execution.privacy_guards.classifier_head_clip_only"
-    ),
-    core_method_name="classifier_head_clip_only",
-    family_name="privacy_guard",
-    supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
-)
-NOOP_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="noop",
-    display_name="noop",
-    implementation_module=("agent.src.services.training.execution.privacy_guards.noop"),
-    core_method_name="noop",
-    family_name="privacy_guard",
-    supported_adapter_kinds=(ANY_ADAPTER_KIND,),
-)
 
 
 def list_shared_adapter_training_backend_catalog_entries() -> tuple[
@@ -188,19 +144,5 @@ def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
         (
             PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
             CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
-        )
-    )
-
-
-def list_shared_adapter_privacy_guard_catalog_entries() -> tuple[
-    RegistryCatalogEntry, ...
-]:
-    """Agent privacy guard catalog entry 목록."""
-
-    return dedupe_registry_catalog_entries(
-        (
-            DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
-            CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
-            NOOP_PRIVACY_GUARD_CATALOG_ENTRY,
         )
     )

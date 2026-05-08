@@ -57,6 +57,10 @@ class RuntimeRegistry(Generic[FactoryT]):
         registered_item = self._registry.get(normalized_name)
         if registered_item is not None:
             return registered_item
+        import_runtime_package_modules(package_name=self.package_name)
+        registered_item = self._registry.get(normalized_name)
+        if registered_item is not None:
+            return registered_item
         raise ValueError(f"Unsupported {self.item_kind}: {item_name}.")
 
     def list_names(self) -> tuple[str, ...]:

@@ -5,7 +5,14 @@ from __future__ import annotations
 from collections.abc import Callable
 
 from agent.src.services.runtime_registry import RuntimeRegistry
-from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
+from methods.adaptation.scoring_registry import (
+    build_shared_adapter_scoring_backend,
+    list_shared_adapter_scoring_backend_catalog_entries,
+)
+from shared.src.contracts.registry_catalog_metadata import (
+    RegistryCatalogEntry,
+    dedupe_registry_catalog_entries,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .base import ScoringBackend, ScoringBackendFactory
@@ -38,7 +45,14 @@ def build_scoring_backend(
 ) -> ScoringBackend:
     """backend 이름과 objective config로 scoring backend를 조립한다."""
 
-    factory, _catalog_entry = _SCORING_BACKEND_REGISTRY.get(backend_name)
+    try:
+        factory, _catalog_entry = _SCORING_BACKEND_REGISTRY.get(backend_name)
+    except ValueError:
+        return build_shared_adapter_scoring_backend(
+            backend_name,
+            objective_config=objective_config,
+            similarity_name=similarity_name,
+        )
     return factory(objective_config, similarity_name)
 
 
@@ -51,4 +65,9 @@ def list_registered_scoring_backend_names() -> tuple[str, ...]:
 def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
     """등록된 scoring backend catalog entry를 canonical item 기준으로 반환한다."""
 
-    return _SCORING_BACKEND_REGISTRY.list_catalog_entries()
+    return dedupe_registry_catalog_entries(
+        (
+            *_SCORING_BACKEND_REGISTRY.list_catalog_entries(),
+            *list_shared_adapter_scoring_backend_catalog_entries(),
+        )
+    )

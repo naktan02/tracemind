@@ -11,17 +11,17 @@ from agent.src.services.training.backends.evidence.resolver import (
 from agent.src.services.training.backends.inputs.resolver import (
     resolve_training_example_backend,
 )
-from agent.src.services.training.execution.privacy_guards.base import (
-    SharedAdapterPrivacyGuard,
-)
-from agent.src.services.training.execution.privacy_guards.registry import (
-    build_shared_adapter_privacy_guard,
-)
 from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
 )
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
+)
+from methods.adaptation.privacy_guards.base import (
+    SharedAdapterPrivacyGuard,
+)
+from methods.adaptation.privacy_guards.registry import (
+    build_shared_adapter_privacy_guard,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.ssl.hooks.acceptance import PseudoLabelAcceptancePolicySpec

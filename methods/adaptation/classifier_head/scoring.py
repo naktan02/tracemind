@@ -1,31 +1,26 @@
-"""Classifier-head logits scoring backend."""
+"""Classifier-head scoring backend core."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
+from methods.adaptation.scoring_registry import register_shared_adapter_scoring_backend
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
+    ClassifierHeadState,
 )
-from shared.src.contracts.adapter_contracts import ClassifierHeadState
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
-from .base import (
-    CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-    CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND,
-    ScoringBackend,
-)
-from .registry import register_scoring_backend
+CLASSIFIER_HEAD_LOGITS_BACKEND_NAME = "classifier_head_logits"
+CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND = "classifier_head_logit_top1"
 
 CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     display_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
-    implementation_module=(
-        "agent.src.services.inference.scoring_backends.classifier_head_logits"
-    ),
+    implementation_module="methods.adaptation.classifier_head.scoring",
     core_method_name=CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     family_name="scoring",
     supported_adapter_kinds=(CLASSIFIER_HEAD_ADAPTER_KIND,),
@@ -43,7 +38,7 @@ class ClassifierHeadLogitsScoringBackend:
 
     backend_name: str = CLASSIFIER_HEAD_LOGITS_BACKEND_NAME
     confidence_kind: str = CLASSIFIER_HEAD_LOGITS_CONFIDENCE_KIND
-    supported_adapter_kinds: tuple[str, ...] = ("classifier_head",)
+    supported_adapter_kinds: tuple[str, ...] = (CLASSIFIER_HEAD_ADAPTER_KIND,)
     requires_shared_state: bool = True
 
     def score(
@@ -62,15 +57,15 @@ class ClassifierHeadLogitsScoringBackend:
         return shared_state.compute_logits(embedding_vector)
 
 
-@register_scoring_backend(
+@register_shared_adapter_scoring_backend(
     CLASSIFIER_HEAD_LOGITS_BACKEND_NAME,
     catalog_entry=CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
 )
 def build_classifier_head_logits_scoring_backend(
     objective_config: TrainingObjectiveConfig,
     similarity_name: str,
-) -> ScoringBackend:
-    """registry용 classifier-head logits scoring backend factory."""
+) -> ClassifierHeadLogitsScoringBackend:
+    """classifier-head logits scoring backend factory."""
 
     del objective_config, similarity_name
     return ClassifierHeadLogitsScoringBackend()

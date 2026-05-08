@@ -15,12 +15,6 @@ from agent.src.services.training.execution.local_update_executor import (
     LocalUpdateExecutionRequest,
     LocalUpdateExecutor,
 )
-from agent.src.services.training.execution.privacy_guards.base import (
-    SharedAdapterPrivacyGuard,
-)
-from agent.src.services.training.execution.privacy_guards.noop import (
-    NoOpSharedAdapterPrivacyGuard,
-)
 from agent.src.services.training.execution.runtime_compatibility import (
     validate_local_training_runtime,
 )
@@ -30,6 +24,12 @@ from agent.src.services.training.selection.pseudo_label_service import (
 )
 from methods.adaptation.local_update_backend import (
     SharedAdapterTrainingBackend,
+)
+from methods.adaptation.privacy_guards.base import (
+    SharedAdapterPrivacyGuard,
+)
+from methods.adaptation.privacy_guards.noop import (
+    NoOpSharedAdapterPrivacyGuard,
 )
 from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
 from shared.src.contracts.model_contracts import ModelManifest

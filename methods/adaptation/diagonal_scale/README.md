@@ -18,7 +18,7 @@
 
 - agent-local query buffer와 raw text 접근
 - local artifact 저장
-- privacy guard, secure update codec, update upload
+- secure update codec, update upload
 
-위 runtime glue는 `agent/src/services/training/`과 `agent/src/services/federation/`에
-남긴다.
+clip-only privacy guard는 `methods/adaptation/privacy_guards/`가 소유한다. 위 runtime
+glue는 `agent/src/services/training/`과 `agent/src/services/federation/`에 남긴다.

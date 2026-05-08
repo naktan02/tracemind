@@ -9,15 +9,6 @@ from uuid import uuid4
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
-from agent.src.services.training.execution.privacy_guards.base import (
-    SharedAdapterPrivacyGuard,
-)
-from agent.src.services.training.execution.privacy_guards.noop import (
-    NoOpSharedAdapterPrivacyGuard,
-)
-from agent.src.services.training.execution.privacy_guards.registry import (
-    build_shared_adapter_privacy_guard,
-)
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
@@ -27,6 +18,15 @@ from methods.adaptation.local_update_backend import (
 )
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
+)
+from methods.adaptation.privacy_guards.base import (
+    SharedAdapterPrivacyGuard,
+)
+from methods.adaptation.privacy_guards.noop import (
+    NoOpSharedAdapterPrivacyGuard,
+)
+from methods.adaptation.privacy_guards.registry import (
+    build_shared_adapter_privacy_guard,
 )
 from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
 from shared.src.contracts.model_contracts import ModelManifest

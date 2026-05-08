@@ -160,7 +160,7 @@
   추가하고, `inference/scoring_backends/`에는 agent runtime adapter만 둔다
 - prototype score policy 추가: `methods/prototype/scoring/`
 - pseudo-label acceptance/selection 정책 추가: `methods/ssl/hooks/`
-- privacy guard 추가: `training/execution/privacy_guards/`
+- privacy guard 추가: `methods/adaptation/privacy_guards/`
 
 FedMatch, FedLGMatch, FreeMatch 같은 method 이름을 가진 파일은 `agent`에 만들지
 않는다. 해당 method의 local objective, hook, selection/threshold 의미는

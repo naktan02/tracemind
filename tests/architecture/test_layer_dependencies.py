@@ -389,6 +389,37 @@ def test_agent_does_not_own_pseudo_label_acceptance_policy_modules() -> None:
     )
 
 
+def test_agent_does_not_own_privacy_guard_modules() -> None:
+    package_root = AGENT_SRC / "services" / "training" / "execution" / "privacy_guards"
+    violations = [
+        _relative_repo_path(path) for path in _iter_python_files(package_root)
+    ]
+
+    assert not violations, (
+        "privacy guard 정책과 adapter-family별 clipping 계산은 "
+        "methods/adaptation/privacy_guards가 소유한다. agent는 selected guard를 "
+        "local update 실행 흐름에 연결만 한다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_agent_scoring_backends_do_not_keep_adapter_family_modules() -> None:
+    package_root = AGENT_SRC / "services" / "inference" / "scoring_backends"
+    forbidden_fragments = ("classifier_head", "diagonal_scale", "lora_classifier")
+    violations = [
+        _relative_repo_path(path)
+        for path in _iter_python_files(package_root)
+        if any(fragment in path.stem for fragment in forbidden_fragments)
+    ]
+
+    assert not violations, (
+        "adapter-family별 scoring core는 methods/adaptation/<family>가 소유한다. "
+        "agent scoring backend package에는 generic bridge와 local runtime glue만 "
+        "둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     facade_path = FL_SIMULATION_IO_SRC / "artifacts.py"
 

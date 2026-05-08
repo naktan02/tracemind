@@ -30,6 +30,9 @@ from main_server.src.services.experiment_workspace.payloads import (
 from main_server.src.services.federation.rounds.aggregation.registry import (
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
+from methods.adaptation.privacy_guards.registry import (
+    list_shared_adapter_privacy_guard_catalog_entries,
+)
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.ssl.hooks.registry import (
     list_pseudo_label_acceptance_policy_catalog_entries,
@@ -233,10 +236,8 @@ def build_privacy_guard_section(
         display_name="보호 장치",
         item_kind="privacy_guard",
         description="local update 보호 계층 registry.",
-        source_module_name=(
-            "agent.src.services.training.execution.privacy_guards.registry"
-        ),
-        entries=local_catalog.list_shared_adapter_privacy_guard_catalog_entries(),
+        source_module_name="methods.adaptation.privacy_guards.registry",
+        entries=list_shared_adapter_privacy_guard_catalog_entries(),
         source_of_truth_for_module=context.source_of_truth_for_module,
         supported_runtime_paths=(
             FEDERATED_SIMULATION_RUNTIME_PATH,
@@ -341,7 +342,7 @@ def _is_local_training_runtime_catalog_compatible(
         )
         _require_catalog_adapter_kind_support(
             entry=_find_catalog_entry(
-                local_catalog.list_shared_adapter_privacy_guard_catalog_entries(),
+                list_shared_adapter_privacy_guard_catalog_entries(),
                 objective_config.privacy_guard_name
                 or RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name,
             ),
