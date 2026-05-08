@@ -94,15 +94,72 @@ class CatalogTrackSpec:
     entrypoint_section_name: str | None = "entrypoints"
 
 
+def _entrypoint_section(
+    *,
+    description: str,
+    relative_paths: tuple[str, ...],
+    supported_runtime_paths: tuple[str, ...],
+) -> EntrypointSectionSpec:
+    return EntrypointSectionSpec(
+        section_name="entrypoints",
+        display_name="실행 작업",
+        description=description,
+        relative_paths=relative_paths,
+        supported_runtime_paths=supported_runtime_paths,
+    )
+
+
+def _hydra_section(
+    *,
+    section_name: str,
+    display_name: str,
+    description: str,
+    relative_dir: str,
+    family_name: str,
+    preset_group: str,
+    supported_runtime_paths: tuple[str, ...],
+    item_kind: str = "hydra_preset",
+    selector_group: str | None = None,
+    core_method_resolver: CatalogCoreMethodResolver | None = None,
+    metadata_keys: tuple[str, ...] | None = None,
+    tag_resolver: CatalogTagResolver | None = None,
+    metadata_resolver: CatalogMetadataResolver | None = None,
+    extra_items_builder: (
+        Callable[[ExperimentCatalogBuildContext], tuple[CatalogItemPayload, ...]] | None
+    ) = None,
+) -> ConfigGroupSectionSpec:
+    resolved_selector_group = selector_group
+    if resolved_selector_group is None and relative_dir.startswith("conf/"):
+        resolved_selector_group = relative_dir.removeprefix("conf/")
+    return ConfigGroupSectionSpec(
+        section_name=section_name,
+        display_name=display_name,
+        description=description,
+        relative_dir=relative_dir,
+        item_kind=item_kind,
+        family_name=family_name,
+        preset_group=preset_group,
+        selector_group=resolved_selector_group or relative_dir,
+        supported_runtime_paths=supported_runtime_paths,
+        core_method_resolver=core_method_resolver,
+        metadata_keys=metadata_keys,
+        tag_resolver=tag_resolver,
+        metadata_resolver=metadata_resolver,
+        extra_items_builder=extra_items_builder,
+    )
+
+
+def _custom_section(build_section: BuildCustomSection) -> CustomSectionSpec:
+    return CustomSectionSpec(build_section=build_section)
+
+
 SEED_TRACK_SPEC = CatalogTrackSpec(
     track_name="seed",
     display_name="기준선 생성",
     description="분류기와 프로토타입 기준 자산을 만드는 시작 단계입니다.",
     supported_runtime_paths=(SEED_RUNTIME_PATH,),
     sections=(
-        EntrypointSectionSpec(
-            section_name="entrypoints",
-            display_name="실행 작업",
+        _entrypoint_section(
             description="이 탭에서 바로 실행할 수 있는 작업 목록입니다.",
             relative_paths=(
                 "conf/entrypoints/central_classifier_seed/train_softmax_classifier.yaml",
@@ -110,49 +167,41 @@ SEED_TRACK_SPEC = CatalogTrackSpec(
             ),
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="기준선 생성 단계에서 바로 쓰는 dataset alias입니다.",
             relative_dir="conf/execution_context/dataset_asset",
-            item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
-            selector_group="execution_context/dataset_asset",
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
             metadata_resolver=build_dataset_preset_metadata,
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="embedding_presets",
             display_name="임베딩",
             description="분류기/프로토타입 생성에 쓰는 임베딩 preset입니다.",
             relative_dir="conf/execution_context/embedding_adapter",
-            item_kind="hydra_preset",
             family_name="embedding",
             preset_group="embedding",
-            selector_group="execution_context/embedding_adapter",
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="기준선 생성 단계에서 공통으로 쓰는 runtime preset입니다.",
             relative_dir="conf/execution_context/runtime_env",
-            item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
-            selector_group="execution_context/runtime_env",
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="prototype_builders",
             display_name="프로토타입 빌더",
             description="프로토타입 pack을 어떤 빌더로 생성할지 정합니다.",
             relative_dir="conf/strategy_axes/prototype/build_strategy",
-            item_kind="hydra_preset",
             family_name="prototype_pack",
             preset_group="prototype_builder",
-            selector_group="strategy_axes/prototype/build_strategy",
             supported_runtime_paths=(SEED_RUNTIME_PATH,),
             core_method_resolver=lambda _path, raw: resolve_catalog_item_name(raw),
         ),
@@ -168,9 +217,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
     ),
     supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
     sections=(
-        EntrypointSectionSpec(
-            section_name="entrypoints",
-            display_name="실행 작업",
+        _entrypoint_section(
             description="중앙 적응 비교선에서 직접 실행할 작업 목록입니다.",
             relative_paths=(
                 "conf/entrypoints/central_ssl_control/train_lora_classifier.yaml",
@@ -180,42 +227,36 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             ),
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="중앙 적응 비교선에서 쓰는 dataset alias입니다.",
             relative_dir="conf/execution_context/dataset_asset",
-            item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
-            selector_group="execution_context/dataset_asset",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             metadata_resolver=build_dataset_preset_metadata,
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="중앙 적응 실행에 쓰는 runtime preset입니다.",
             relative_dir="conf/execution_context/runtime_env",
-            item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
-            selector_group="execution_context/runtime_env",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="paper_backbones",
             display_name="백본",
             description="중앙 적응에 쓰는 backbone preset입니다.",
             relative_dir="conf/strategy_axes/adaptation/transformer_backbone",
-            item_kind="hydra_preset",
             family_name="backbone",
             preset_group="paper_backbone",
-            selector_group="strategy_axes/adaptation/transformer_backbone",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             metadata_keys=("model_id", "revision", "pooling", "max_length"),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="peft_methods",
             display_name="PEFT 방법",
             description=(
@@ -223,10 +264,8 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "축에서 DoRA 같은 변형을 추가할 수 있습니다."
             ),
             relative_dir="conf/strategy_axes/adaptation/peft_adapter",
-            item_kind="hydra_preset",
             family_name="peft_adapter",
             preset_group="lora",
-            selector_group="strategy_axes/adaptation/peft_adapter",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             core_method_resolver=lambda _path, _raw: "lora",
             metadata_keys=(
@@ -237,15 +276,13 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "target_modules",
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="lora_run_presets",
             display_name="적응 실행 프리셋",
             description="중앙 적응 baseline에서 공통으로 쓰는 실행 preset입니다.",
             relative_dir="conf/track_presets/central_ssl_control/training_preset",
-            item_kind="hydra_preset",
             family_name="run_preset",
             preset_group="lora_run_preset",
-            selector_group="track_presets/central_ssl_control/training_preset",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             metadata_keys=(
                 "seed",
@@ -256,7 +293,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "classifier_learning_rate",
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="query_sources",
             display_name="Query 데이터 소스",
             description=(
@@ -264,17 +301,15 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "unlabeled source preset입니다."
             ),
             relative_dir="conf/track_presets/central_ssl_control/query_source",
-            item_kind="hydra_preset",
             family_name="train_source",
             preset_group="query_source",
-            selector_group="track_presets/central_ssl_control/query_source",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             extra_items_builder=lambda context: build_generated_query_source_items(
                 repo_root=context.repo_root,
                 relative_repo_path=context.relative_repo_path,
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="pseudo_label_algorithms",
             display_name="의사라벨 선택 방식",
             description=(
@@ -282,10 +317,8 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "algorithm preset입니다."
             ),
             relative_dir="conf/strategy_axes/ssl/pseudo_label_selection",
-            item_kind="hydra_preset",
             family_name="pseudo_label_algorithm",
             preset_group="pseudo_label_algorithm",
-            selector_group="strategy_axes/ssl/pseudo_label_selection",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             metadata_keys=(
                 "confidence_threshold",
@@ -293,15 +326,13 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "algorithm_name",
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="query_ssl_methods",
             display_name="Query SSL 목표 함수",
             description="중앙 query SSL objective preset입니다.",
             relative_dir="conf/strategy_axes/ssl/consistency_method",
-            item_kind="hydra_preset",
             family_name="ssl_method",
             preset_group="query_ssl_method",
-            selector_group="strategy_axes/ssl/consistency_method",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             core_method_resolver=lambda _path, raw: string_or_none(
                 raw.get("algorithm_name")
@@ -319,26 +350,22 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 ("requires_multiview",) if bool(raw.get("require_multiview")) else ()
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="query_ssl_augmenters",
             display_name="멀티뷰 증강",
             description="중앙 FixMatch/query SSL multiview augmenter preset입니다.",
             relative_dir="conf/strategy_axes/ssl/augmentation",
-            item_kind="hydra_preset",
             family_name="ssl_augmenter",
             preset_group="query_ssl_augmenter",
-            selector_group="strategy_axes/ssl/augmentation",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="initial_checkpoints",
             display_name="초기 체크포인트",
             description="중앙 적응 시작 시 warm-start checkpoint preset입니다.",
             relative_dir="conf/strategy_axes/adaptation/initial_checkpoint",
-            item_kind="hydra_preset",
             family_name="initial_checkpoint",
             preset_group="query_adaptation_initial_checkpoint",
-            selector_group="strategy_axes/adaptation/initial_checkpoint",
             supported_runtime_paths=(CENTRAL_ADAPTATION_RUNTIME_PATH,),
             extra_items_builder=lambda context: (
                 build_generated_initial_checkpoint_items(
@@ -360,9 +387,7 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
         AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
     ),
     sections=(
-        EntrypointSectionSpec(
-            section_name="entrypoints",
-            display_name="실행 작업",
+        _entrypoint_section(
             description="현재 FL baseline을 직접 실행하는 작업 목록입니다.",
             relative_paths=("conf/entrypoints/fl_ssl/run_federated_simulation.yaml",),
             supported_runtime_paths=(
@@ -370,51 +395,43 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
                 MAIN_SERVER_ROUND_RUNTIME_PATH,
             ),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="dataset_presets",
             display_name="데이터셋",
             description="FL simulation에 쓰는 dataset alias입니다.",
             relative_dir="conf/execution_context/dataset_asset",
-            item_kind="hydra_preset",
             family_name="dataset",
             preset_group="dataset",
-            selector_group="execution_context/dataset_asset",
             supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
             metadata_resolver=build_dataset_preset_metadata,
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="embedding_presets",
             display_name="임베딩",
             description="FL simulation에서 쓰는 embedding preset입니다.",
             relative_dir="conf/execution_context/embedding_adapter",
-            item_kind="hydra_preset",
             family_name="embedding",
             preset_group="embedding",
-            selector_group="execution_context/embedding_adapter",
             supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="runtime_presets",
             display_name="실행 환경",
             description="FL simulation runtime preset입니다.",
             relative_dir="conf/execution_context/runtime_env",
-            item_kind="hydra_preset",
             family_name="runtime",
             preset_group="runtime",
-            selector_group="execution_context/runtime_env",
             supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="federated_run_presets",
             display_name="연합 실행 프리셋",
             description=(
                 "client 수, rounds, max_examples 같은 FL simulation preset입니다."
             ),
             relative_dir="conf/track_presets/fl_ssl/simulation_preset",
-            item_kind="hydra_preset",
             family_name="federated_run_preset",
             preset_group="federated_run_preset",
-            selector_group="track_presets/fl_ssl/simulation_preset",
             supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
             metadata_keys=(
                 "client_count",
@@ -425,24 +442,18 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             ),
             metadata_resolver=build_federated_run_preset_metadata,
         ),
-        ConfigGroupSectionSpec(
+        _hydra_section(
             section_name="prototype_builders",
             display_name="프로토타입 빌더",
             description="FL baseline prototype rebuild/build preset입니다.",
             relative_dir="conf/strategy_axes/prototype/build_strategy",
-            item_kind="hydra_preset",
             family_name="prototype_pack",
             preset_group="prototype_builder",
-            selector_group="strategy_axes/prototype/build_strategy",
             supported_runtime_paths=(FEDERATED_SIMULATION_RUNTIME_PATH,),
             core_method_resolver=lambda _path, raw: resolve_catalog_item_name(raw),
         ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_local_update_profile_section(context)
-            )
-        ),
-        ConfigGroupSectionSpec(
+        _custom_section(fl_catalog_sections.build_local_update_profile_section),
+        _hydra_section(
             section_name="round_runtime_profiles",
             display_name="라운드 런타임 프로필",
             description="FL server round의 adapter family와 aggregation 조합입니다.",
@@ -450,7 +461,6 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
             item_kind="round_runtime_profile",
             family_name="round_runtime",
             preset_group="round_runtime_profile",
-            selector_group="strategy_axes/fl/round_runtime_profile",
             supported_runtime_paths=(
                 FEDERATED_SIMULATION_RUNTIME_PATH,
                 MAIN_SERVER_ROUND_RUNTIME_PATH,
@@ -461,46 +471,14 @@ FEDERATED_RUNTIME_TRACK_SPEC = CatalogTrackSpec(
                 "classifier_head_bootstrap_logit_scale",
             ),
         ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_adapter_family_catalog_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_aggregation_backend_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_training_backend_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_training_example_backend_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_evidence_backend_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_scoring_backend_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_acceptance_policy_section(context)
-            )
-        ),
-        CustomSectionSpec(
-            build_section=lambda context: (
-                fl_catalog_sections.build_privacy_guard_section(context)
-            )
-        ),
+        _custom_section(fl_catalog_sections.build_adapter_family_catalog_section),
+        _custom_section(fl_catalog_sections.build_aggregation_backend_section),
+        _custom_section(fl_catalog_sections.build_training_backend_section),
+        _custom_section(fl_catalog_sections.build_training_example_backend_section),
+        _custom_section(fl_catalog_sections.build_evidence_backend_section),
+        _custom_section(fl_catalog_sections.build_scoring_backend_section),
+        _custom_section(fl_catalog_sections.build_acceptance_policy_section),
+        _custom_section(fl_catalog_sections.build_privacy_guard_section),
     ),
 )
 

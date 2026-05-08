@@ -362,6 +362,8 @@ dict/list table, 작은 helper로 낮춘다.
 - E3. `main_server` catalog 선언부 단순화
   - 대상: `main_server/src/services/experiment_workspace/catalog/tracks.py`,
     `federated_runtime_sections.py`.
+  - 진행: `tracks.py`의 entrypoint/config/custom section 선언을 helper factory로 낮췄다.
+    track payload와 selector group 의미는 유지하고, 반복되는 spec constructor noise만 줄였다.
   - 방향: catalog snapshot은 implementation registration source of truth가 아니므로, 반복 spec
     class보다 사람이 읽는 table과 작은 builder helper를 우선한다.
 - E4. `methods` descriptor/config/fallback 표현 축소
