@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
+
 from main_server.src.services.experiment_workspace.catalog import (
     local_training_registry_snapshot as local_catalog,
 )
@@ -20,6 +22,7 @@ from main_server.src.services.experiment_workspace.catalog.metadata import (
     string_or_none,
 )
 from main_server.src.services.experiment_workspace.catalog.section_builders import (
+    RuntimePathResolver,
     build_adapter_family_section,
     build_registry_section,
 )
@@ -42,6 +45,20 @@ from shared.src.contracts.adapter_contract_families.registry import (
 )
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
+
+_ALL_FEDERATED_RUNTIME_PATHS = (
+    FEDERATED_SIMULATION_RUNTIME_PATH,
+    MAIN_SERVER_ROUND_RUNTIME_PATH,
+    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+)
+_SERVER_RUNTIME_PATHS = (
+    FEDERATED_SIMULATION_RUNTIME_PATH,
+    MAIN_SERVER_ROUND_RUNTIME_PATH,
+)
+_AGENT_RUNTIME_PATHS = (
+    FEDERATED_SIMULATION_RUNTIME_PATH,
+    AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
+)
 
 
 def build_local_update_profile_section(
@@ -103,11 +120,32 @@ def build_adapter_family_catalog_section(
     return build_adapter_family_section(
         adapter_kinds=list_registered_shared_adapter_payload_adapter_kinds(),
         source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            MAIN_SERVER_ROUND_RUNTIME_PATH,
-            AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-        ),
+        supported_runtime_paths=_ALL_FEDERATED_RUNTIME_PATHS,
+    )
+
+
+def _build_registry_catalog_section(
+    context: ExperimentCatalogBuildContext,
+    *,
+    section_name: str,
+    display_name: str,
+    item_kind: str,
+    description: str,
+    source_module_name: str,
+    entries: Iterable[RegistryCatalogEntry],
+    supported_runtime_paths: tuple[str, ...] | None = None,
+    runtime_path_resolver: RuntimePathResolver | None = None,
+) -> CatalogSectionPayload:
+    return build_registry_section(
+        section_name=section_name,
+        display_name=display_name,
+        item_kind=item_kind,
+        description=description,
+        source_module_name=source_module_name,
+        entries=entries,
+        source_of_truth_for_module=context.source_of_truth_for_module,
+        supported_runtime_paths=supported_runtime_paths,
+        runtime_path_resolver=runtime_path_resolver,
     )
 
 
@@ -116,7 +154,8 @@ def build_aggregation_backend_section(
 ) -> CatalogSectionPayload:
     """server aggregation backend registry를 FL runtime catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="aggregation_backends",
         display_name="집계 방식",
         item_kind="aggregation_backend",
@@ -125,11 +164,7 @@ def build_aggregation_backend_section(
             "main_server.src.services.federation.rounds.aggregation.registry"
         ),
         entries=list_shared_adapter_aggregation_backend_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            MAIN_SERVER_ROUND_RUNTIME_PATH,
-        ),
+        supported_runtime_paths=_SERVER_RUNTIME_PATHS,
     )
 
 
@@ -138,14 +173,14 @@ def build_training_backend_section(
 ) -> CatalogSectionPayload:
     """agent local training capability snapshot을 FL runtime catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="training_backends",
         display_name="로컬 학습 백엔드",
         item_kind="training_backend",
         description="로컬 accepted example을 update payload로 바꾸는 backend.",
         source_module_name="agent.src.services.training.backends.training.registry",
-        entries=(local_catalog.list_shared_adapter_training_backend_catalog_entries()),
-        source_of_truth_for_module=context.source_of_truth_for_module,
+        entries=local_catalog.list_shared_adapter_training_backend_catalog_entries(),
         runtime_path_resolver=_resolve_training_backend_runtime_paths,
     )
 
@@ -155,14 +190,14 @@ def build_training_example_backend_section(
 ) -> CatalogSectionPayload:
     """training example capability snapshot을 FL runtime catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="example_generation_backends",
         display_name="예제 생성 방식",
         item_kind="example_generation_backend",
         description="source row 또는 stored event를 학습 예시로 재구성하는 backend.",
         source_module_name="agent.src.services.training.backends.inputs.registry",
         entries=local_catalog.list_training_example_backend_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=context.resolve_example_generation_runtime_paths,
     )
 
@@ -172,18 +207,15 @@ def build_evidence_backend_section(
 ) -> CatalogSectionPayload:
     """pseudo-label evidence capability snapshot을 FL runtime catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="evidence_backends",
         display_name="근거 정규화 방식",
         item_kind="evidence_backend",
         description="ScoredEvent를 pseudo-label evidence로 정규화하는 backend.",
         source_module_name="agent.src.services.training.backends.evidence.registry",
         entries=local_catalog.list_pseudo_label_evidence_backend_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-        ),
+        supported_runtime_paths=_AGENT_RUNTIME_PATHS,
     )
 
 
@@ -192,7 +224,8 @@ def build_scoring_backend_section(
 ) -> CatalogSectionPayload:
     """scoring capability snapshot을 FL runtime catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="scoring_backends",
         display_name="점수 계산 방식",
         item_kind="scoring_backend",
@@ -201,7 +234,6 @@ def build_scoring_backend_section(
         ),
         source_module_name="agent.src.services.inference.scoring_backends.registry",
         entries=local_catalog.list_scoring_backend_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
         runtime_path_resolver=context.resolve_scoring_backend_runtime_paths,
     )
 
@@ -211,18 +243,15 @@ def build_acceptance_policy_section(
 ) -> CatalogSectionPayload:
     """methods-owned pseudo-label acceptance policy spec을 catalog에 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="acceptance_policies",
         display_name="채택 정책",
         item_kind="acceptance_policy",
         description="pseudo-label evidence를 accepted candidate로 해석하는 정책.",
         source_module_name="methods.ssl.hooks.registry",
         entries=list_pseudo_label_acceptance_policy_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-        ),
+        supported_runtime_paths=_AGENT_RUNTIME_PATHS,
     )
 
 
@@ -231,18 +260,15 @@ def build_privacy_guard_section(
 ) -> CatalogSectionPayload:
     """local update privacy guard capability snapshot을 노출한다."""
 
-    return build_registry_section(
+    return _build_registry_catalog_section(
+        context,
         section_name="privacy_guards",
         display_name="보호 장치",
         item_kind="privacy_guard",
         description="local update 보호 계층 registry.",
         source_module_name="methods.adaptation.privacy_guards.registry",
         entries=list_shared_adapter_privacy_guard_catalog_entries(),
-        source_of_truth_for_module=context.source_of_truth_for_module,
-        supported_runtime_paths=(
-            FEDERATED_SIMULATION_RUNTIME_PATH,
-            AGENT_LIVE_STORED_EVENT_RUNTIME_PATH,
-        ),
+        supported_runtime_paths=_AGENT_RUNTIME_PATHS,
     )
 
 
