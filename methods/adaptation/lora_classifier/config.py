@@ -14,6 +14,34 @@ LORA_CLASSIFIER_TRAINING_BACKEND_NAME = "lora_classifier_trainer"
 LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "lora_classifier_trainer"
 LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = "lora_classifier"
 
+_STRING_CONFIG_KEYS = (
+    "backbone_model_id",
+    "backbone_revision",
+    "tokenizer_model_id",
+    "tokenizer_revision",
+    "pooling",
+    "peft_adapter_name",
+    "bias",
+    "target_modules",
+    "delta_format",
+    "artifact_ref_prefix",
+)
+_ALLOW_EMPTY_STRING_CONFIG_KEYS = ("task_prefix",)
+_POSITIVE_INT_CONFIG_KEYS = ("max_length", "rank", "alpha")
+_FLOAT_CONFIG_KEYS = ("dropout",)
+_BOOL_CONFIG_KEYS = ("use_rslora",)
+_STRING_TUPLE_CONFIG_KEYS = ("text_metadata_keys", "label_schema")
+_CONFIG_EXTRA_KEYS = frozenset(
+    {
+        *_STRING_CONFIG_KEYS,
+        *_ALLOW_EMPTY_STRING_CONFIG_KEYS,
+        *_POSITIVE_INT_CONFIG_KEYS,
+        *_FLOAT_CONFIG_KEYS,
+        *_BOOL_CONFIG_KEYS,
+        *_STRING_TUPLE_CONFIG_KEYS,
+    }
+)
+
 
 @dataclass(frozen=True, slots=True)
 class LoraClassifierTrainingBackendConfig:
@@ -103,75 +131,25 @@ class LoraClassifierTrainingBackendConfig:
             )
 
         defaults = cls()
-        return cls(
-            backbone_model_id=_str_value(
+        values: dict[str, object] = {}
+        for key in _STRING_CONFIG_KEYS:
+            values[key] = _str_value(source, key, getattr(defaults, key))
+        for key in _ALLOW_EMPTY_STRING_CONFIG_KEYS:
+            values[key] = _str_value(
                 source,
-                "backbone_model_id",
-                defaults.backbone_model_id,
-            ),
-            backbone_revision=_str_value(
-                source,
-                "backbone_revision",
-                defaults.backbone_revision,
-            ),
-            tokenizer_model_id=_str_value(
-                source,
-                "tokenizer_model_id",
-                defaults.tokenizer_model_id,
-            ),
-            tokenizer_revision=_str_value(
-                source,
-                "tokenizer_revision",
-                defaults.tokenizer_revision,
-            ),
-            pooling=_str_value(source, "pooling", defaults.pooling),
-            max_length=_positive_int_value(
-                source,
-                "max_length",
-                defaults.max_length,
-            ),
-            task_prefix=_str_value(
-                source,
-                "task_prefix",
-                defaults.task_prefix,
+                key,
+                getattr(defaults, key),
                 allow_empty=True,
-            ),
-            peft_adapter_name=_str_value(
-                source,
-                "peft_adapter_name",
-                defaults.peft_adapter_name,
-            ),
-            rank=_positive_int_value(source, "rank", defaults.rank),
-            alpha=_positive_int_value(source, "alpha", defaults.alpha),
-            dropout=_float_value(source, "dropout", defaults.dropout),
-            bias=_str_value(source, "bias", defaults.bias),
-            target_modules=_str_value(
-                source,
-                "target_modules",
-                defaults.target_modules,
-            ),
-            use_rslora=_bool_value(source, "use_rslora", defaults.use_rslora),
-            delta_format=_str_value(
-                source,
-                "delta_format",
-                defaults.delta_format,
-            ),
-            artifact_ref_prefix=_str_value(
-                source,
-                "artifact_ref_prefix",
-                defaults.artifact_ref_prefix,
-            ),
-            text_metadata_keys=_str_tuple_value(
-                source,
-                "text_metadata_keys",
-                defaults.text_metadata_keys,
-            ),
-            label_schema=_str_tuple_value(
-                source,
-                "label_schema",
-                defaults.label_schema,
-            ),
-        )
+            )
+        for key in _POSITIVE_INT_CONFIG_KEYS:
+            values[key] = _positive_int_value(source, key, getattr(defaults, key))
+        for key in _FLOAT_CONFIG_KEYS:
+            values[key] = _float_value(source, key, getattr(defaults, key))
+        for key in _BOOL_CONFIG_KEYS:
+            values[key] = _bool_value(source, key, getattr(defaults, key))
+        for key in _STRING_TUPLE_CONFIG_KEYS:
+            values[key] = _str_tuple_value(source, key, getattr(defaults, key))
+        return cls(**values)
 
     def to_backbone_payload(self) -> dict[str, str | int]:
         """Shared payload에 들어갈 backbone/tokenizer snapshot."""
@@ -298,27 +276,3 @@ def _str_tuple_value(
     if value is None:
         return default
     return tuple(part.strip() for part in str(value).split(",") if part.strip())
-
-
-_CONFIG_EXTRA_KEYS = frozenset(
-    {
-        "backbone_model_id",
-        "backbone_revision",
-        "tokenizer_model_id",
-        "tokenizer_revision",
-        "pooling",
-        "max_length",
-        "task_prefix",
-        "peft_adapter_name",
-        "rank",
-        "alpha",
-        "dropout",
-        "bias",
-        "target_modules",
-        "use_rslora",
-        "delta_format",
-        "artifact_ref_prefix",
-        "text_metadata_keys",
-        "label_schema",
-    }
-)
