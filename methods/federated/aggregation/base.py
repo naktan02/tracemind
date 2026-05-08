@@ -41,6 +41,17 @@ class AggregatedArtifactRefResolver(Protocol):
         """logical artifact name을 server-owned opaque ref로 변환한다."""
 
 
+class AggregationJsonArtifactLoader(Protocol):
+    """server-owned artifact ref에서 JSON mapping artifact를 읽는 capability."""
+
+    def load_json_artifact(
+        self,
+        *,
+        artifact_ref: str,
+    ) -> Mapping[str, object]:
+        """opaque artifact ref를 JSON mapping으로 materialize한다."""
+
+
 @dataclass(frozen=True, slots=True)
 class FederatedAggregationContext:
     """server runtime이 strategy에 제공하는 실행 context."""
@@ -48,6 +59,7 @@ class FederatedAggregationContext:
     next_model_revision: str
     aggregated_at: datetime
     artifact_ref_resolver: AggregatedArtifactRefResolver | None = None
+    artifact_loader: AggregationJsonArtifactLoader | None = None
 
     def require_artifact_ref_resolver(
         self,
@@ -59,6 +71,17 @@ class FederatedAggregationContext:
         if self.artifact_ref_resolver is None:
             raise ValueError(f"{context} requires an aggregate artifact ref resolver.")
         return self.artifact_ref_resolver
+
+    def require_artifact_loader(
+        self,
+        *,
+        context: str,
+    ) -> AggregationJsonArtifactLoader:
+        """artifact-ref update materialization이 필요한 strategy에서 호출한다."""
+
+        if self.artifact_loader is None:
+            raise ValueError(f"{context} requires an artifact materializer.")
+        return self.artifact_loader
 
 
 @dataclass(frozen=True, slots=True)

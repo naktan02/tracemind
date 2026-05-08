@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+import math
 from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import cast
 
 from methods.adaptation.lora_classifier.fedavg import (
@@ -11,6 +13,7 @@ from methods.adaptation.lora_classifier.fedavg import (
 )
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
+    AggregationJsonArtifactLoader,
     FederatedAggregationContext,
     FederatedAggregationResult,
 )
@@ -47,7 +50,11 @@ def aggregate_lora_classifier_fedavg(
     base_state = cast(LoraClassifierState, base_state)
     updates = [cast(LoraClassifierDelta, payload) for payload in update_payloads]
     method_updates = [
-        _to_lora_classifier_method_update(base_state=base_state, payload=payload)
+        _to_lora_classifier_method_update(
+            base_state=base_state,
+            payload=payload,
+            context=context,
+        )
         for payload in updates
     ]
     method_result = compute_lora_classifier_fedavg(
@@ -88,6 +95,7 @@ def _to_lora_classifier_method_update(
     *,
     base_state: LoraClassifierState,
     payload: LoraClassifierDelta,
+    context: FederatedAggregationContext,
 ) -> LoraClassifierFedAvgUpdate:
     if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
         raise ValueError("All LoRA-classifier updates must match the backbone.")
@@ -99,28 +107,187 @@ def _to_lora_classifier_method_update(
         raise ValueError(
             "LoRA-classifier updates must share the base ordered label_schema."
         )
-    if (
-        payload.lora_parameter_deltas is None
-        or payload.classifier_head_weight_deltas is None
-    ):
-        raise ValueError(
-            "LoRA-classifier FedAvg currently requires inline "
-            "lora_parameter_deltas and classifier_head_weight_deltas. "
-            "Artifact-ref-only updates require a server artifact materializer."
-        )
+    materialized = _materialize_lora_classifier_update(
+        payload=payload,
+        context=context,
+    )
     return LoraClassifierFedAvgUpdate(
-        lora_parameter_deltas=payload.lora_parameter_deltas,
-        classifier_head_weight_deltas=payload.classifier_head_weight_deltas,
-        classifier_head_bias_deltas=payload.classifier_head_bias_deltas,
+        lora_parameter_deltas=materialized.lora_parameter_deltas,
+        classifier_head_weight_deltas=materialized.classifier_head_weight_deltas,
+        classifier_head_bias_deltas=materialized.classifier_head_bias_deltas,
         example_count=payload.example_count,
         mean_confidence=payload.mean_confidence,
         mean_margin=payload.mean_margin,
-        delta_l2_norm=payload.l2_norm(),
+        delta_l2_norm=materialized.delta_l2_norm,
     )
 
 
 def _payload_snapshot(payload) -> dict[str, object]:
     return payload.model_dump(mode="json")
+
+
+@dataclass(frozen=True, slots=True)
+class _MaterializedLoraClassifierUpdate:
+    lora_parameter_deltas: dict[str, list[float]]
+    classifier_head_weight_deltas: dict[str, list[float]]
+    classifier_head_bias_deltas: dict[str, float]
+    delta_l2_norm: float
+
+
+def _materialize_lora_classifier_update(
+    *,
+    payload: LoraClassifierDelta,
+    context: FederatedAggregationContext,
+) -> _MaterializedLoraClassifierUpdate:
+    loader = None
+    if (
+        payload.lora_parameter_deltas is None
+        or payload.classifier_head_weight_deltas is None
+    ):
+        loader = context.require_artifact_loader(context="LoRA-classifier FedAvg")
+
+    if payload.lora_parameter_deltas is not None:
+        lora_parameter_deltas = _normalize_vector_mapping(
+            payload.lora_parameter_deltas,
+            field_name="lora_parameter_deltas",
+        )
+    else:
+        if loader is None:
+            raise AssertionError("artifact loader must be resolved before load.")
+        lora_parameter_deltas = _load_lora_parameter_deltas(
+            payload=payload,
+            loader=loader,
+        )
+
+    if payload.classifier_head_weight_deltas is not None:
+        head_artifact = None
+        classifier_head_weight_deltas = _normalize_vector_mapping(
+            payload.classifier_head_weight_deltas,
+            field_name="classifier_head_weight_deltas",
+        )
+    else:
+        if loader is None:
+            raise AssertionError("artifact loader must be resolved before load.")
+        head_artifact = _load_classifier_head_artifact(
+            payload=payload,
+            loader=loader,
+        )
+        classifier_head_weight_deltas = head_artifact[0]
+    classifier_head_bias_deltas = dict(payload.classifier_head_bias_deltas)
+    if not classifier_head_bias_deltas and head_artifact is not None:
+        classifier_head_bias_deltas = head_artifact[1]
+
+    return _MaterializedLoraClassifierUpdate(
+        lora_parameter_deltas=lora_parameter_deltas,
+        classifier_head_weight_deltas=classifier_head_weight_deltas,
+        classifier_head_bias_deltas=classifier_head_bias_deltas,
+        delta_l2_norm=(
+            payload.delta_l2_norm
+            if payload.delta_l2_norm is not None
+            else _l2_norm(
+                lora_parameter_deltas=lora_parameter_deltas,
+                classifier_head_weight_deltas=classifier_head_weight_deltas,
+                classifier_head_bias_deltas=classifier_head_bias_deltas,
+            )
+        ),
+    )
+
+
+def _load_lora_parameter_deltas(
+    *,
+    payload: LoraClassifierDelta,
+    loader: AggregationJsonArtifactLoader,
+) -> dict[str, list[float]]:
+    if payload.lora_delta_artifact_ref is None:
+        raise ValueError(
+            "LoRA-classifier artifact materialization requires lora_delta_artifact_ref."
+        )
+    artifact = loader.load_json_artifact(artifact_ref=payload.lora_delta_artifact_ref)
+    source = artifact.get("lora_parameter_deltas", artifact)
+    return _normalize_vector_mapping(source, field_name="lora_parameter_deltas")
+
+
+def _load_classifier_head_artifact(
+    *,
+    payload: LoraClassifierDelta,
+    loader: AggregationJsonArtifactLoader,
+) -> tuple[dict[str, list[float]], dict[str, float]]:
+    if payload.classifier_head_delta_artifact_ref is None:
+        raise ValueError(
+            "LoRA-classifier artifact materialization requires "
+            "classifier_head_delta_artifact_ref."
+        )
+    artifact = loader.load_json_artifact(
+        artifact_ref=payload.classifier_head_delta_artifact_ref
+    )
+    weight_source = artifact.get("classifier_head_weight_deltas", artifact)
+    bias_source = artifact.get("classifier_head_bias_deltas", {})
+    return (
+        _normalize_vector_mapping(
+            weight_source,
+            field_name="classifier_head_weight_deltas",
+        ),
+        _normalize_scalar_mapping(
+            bias_source,
+            field_name="classifier_head_bias_deltas",
+        ),
+    )
+
+
+def _normalize_vector_mapping(
+    source: object,
+    *,
+    field_name: str,
+) -> dict[str, list[float]]:
+    if not isinstance(source, Mapping) or not source:
+        raise ValueError(f"{field_name} artifact must be a non-empty mapping.")
+    result: dict[str, list[float]] = {}
+    for key, values in source.items():
+        normalized_key = str(key).strip()
+        if not normalized_key:
+            raise ValueError(f"{field_name} artifact keys must not be empty.")
+        if not isinstance(values, Sequence) or isinstance(values, (str, bytes)):
+            raise ValueError(f"{field_name} artifact values must be numeric vectors.")
+        vector = [float(value) for value in values]
+        if not vector:
+            raise ValueError(f"{field_name} artifact vectors must not be empty.")
+        result[normalized_key] = vector
+    return result
+
+
+def _normalize_scalar_mapping(
+    source: object,
+    *,
+    field_name: str,
+) -> dict[str, float]:
+    if not isinstance(source, Mapping):
+        raise ValueError(f"{field_name} artifact must be a mapping.")
+    result: dict[str, float] = {}
+    for key, value in source.items():
+        normalized_key = str(key).strip()
+        if not normalized_key:
+            raise ValueError(f"{field_name} artifact keys must not be empty.")
+        result[normalized_key] = float(value)
+    return result
+
+
+def _l2_norm(
+    *,
+    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    classifier_head_weight_deltas: Mapping[str, Sequence[float]],
+    classifier_head_bias_deltas: Mapping[str, float],
+) -> float:
+    squared_norm = 0.0
+    for vectors in (lora_parameter_deltas, classifier_head_weight_deltas):
+        squared_norm += sum(
+            float(value) * float(value)
+            for vector in vectors.values()
+            for value in vector
+        )
+    squared_norm += sum(
+        float(value) * float(value) for value in classifier_head_bias_deltas.values()
+    )
+    return math.sqrt(squared_norm)
 
 
 def _validate_lora_classifier_fedavg_overrides(

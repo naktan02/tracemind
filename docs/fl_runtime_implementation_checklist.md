@@ -86,10 +86,12 @@ source of truth로 본다.
 - [ ] winner method가 요구하는 shared family/state/update payload 정의.
 - [x] agent local trainer scaffold 구현. raw text는 agent-local 입력으로만 쓰고
   update payload에는 artifact ref와 통계만 남긴다.
-- [ ] agent LoRA artifact materialization 구현.
-- [x] main_server aggregation/publication adapter scaffold 구현. inline delta FedAvg는
-  검증하고 artifact-ref-only update는 materializer가 붙기 전까지 거부한다.
-- [ ] main_server LoRA artifact materializer/loader 구현.
+- [ ] agent LoRA artifact upload/materialization 구현.
+- [x] main_server aggregation/publication adapter scaffold 구현. inline delta FedAvg와
+  server-owned `aggregation_artifact::` JSON artifact-ref update를 검증한다.
+- [x] main_server LoRA artifact materializer/loader 1차 구현. 현재 범위는
+  server-owned JSON artifact ref이며, `agent-local://` ref는 upload 경로가 붙기
+  전까지 거부한다.
 - [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
   `fedavg_lora_classifier` round-runtime profile을 선택할 수 있게 연결한다.
 - [ ] backward-compatible manifest/version 정책 확인.
@@ -100,16 +102,16 @@ source of truth로 본다.
 - [x] unit: payload parse/serialize, training algorithm profile, LoRA config snapshot.
 - [x] unit: `LoraTextClassifier` 1-batch train/eval step.
 - [x] unit: methods-owned LoRA-classifier FedAvg inline delta shape/version과
-  artifact-only 거부.
+  server-owned artifact-ref materialization.
 - [x] smoke: `hash_debug + cpu_local` baseline `2 clients / 1 round / 1 seed`.
 - [x] small: `hash_debug + cpu_local` baseline `3 clients / 2 rounds / 1 seed`.
 - [x] LoRA bootstrap: `lora_pseudo_label_v1 + fedavg_lora_classifier`
   `2 clients / 0 rounds / 1 seed`.
 - [ ] LoRA smoke: `2 clients / 1 round / 1 seed`.
-  현재 agent는 artifact-ref LoRA update만 만들고, methods-owned LoRA-classifier FedAvg
-  strategy는 materializer/loader 없는 artifact-only 집계를 의도적으로 거부한다. 실제
-  1-round smoke는 agent LoRA artifact materialization 또는 inline train-step delta
-  생산이 붙은 뒤 실행한다.
+  methods-owned LoRA-classifier FedAvg strategy는 inline delta와 server-owned
+  artifact-ref update를 집계한다. 실제 1-round smoke는 agent가 만든
+  `agent-local://` LoRA artifact를 server-owned artifact ref로 upload/materialize하는
+  경로가 붙은 뒤 실행한다.
 - [ ] standard 전 runtime trace: GPU memory, update size, round time.
 
 ## 완료 기준

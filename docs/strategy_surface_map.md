@@ -112,10 +112,11 @@ method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
   shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
 - LoRA-classifier FedAvg 경로는 inline LoRA parameter delta와 classifier-head
-  delta의 FedAvg shape/version을 methods-owned core로 검증한다. Artifact-ref-only
-  update 집계는 실제 artifact materializer/loader가 붙기 전까지 명시적으로 거부한다.
+  delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned
+  `aggregation_artifact::` JSON artifact-ref update는 main_server가 제공한 loader로
+  materialize하며, `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
 - FL simulation은 `local_update_profile=lora_pseudo_label_v1`와
   `round_runtime_profile=fedavg_lora_classifier` 조합을 compose할 수 있다. 이
-  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지하고, 실제 1-round
-  LoRA weight 집계는 artifact materializer/loader 또는 inline train-step delta가
-  붙은 뒤 실행한다.
+  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지한다. 실제 1-round
+  LoRA weight 집계는 agent-local artifact upload/materialization 또는 inline
+  train-step delta가 붙은 뒤 실행한다.

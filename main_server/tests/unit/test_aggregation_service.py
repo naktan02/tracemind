@@ -3,9 +3,13 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from pathlib import Path
 
 import pytest
 
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
 from main_server.src.services.federation.rounds.aggregation.executor import (
     MethodAggregationBackend,
 )
@@ -20,6 +24,7 @@ from methods.adaptation.diagonal_scale.fedavg_projection import (
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAggregationStrategy,
 )
+from methods.federated.aggregation.registry import build_federated_aggregation_strategy
 from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
     ClassifierHeadState,
@@ -259,13 +264,93 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs() -> None:
     assert result.update_count == 2
 
 
-def test_lora_classifier_fedavg_rejects_artifact_only_updates() -> None:
+def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
+    tmp_path,
+) -> None:
+    artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
+    artifact_store.save_json_artifact(
+        "u1/lora_delta",
+        {
+            "lora_parameter_deltas": {
+                "encoder.q_proj.lora_A": [0.2, 0.4],
+                "encoder.q_proj.lora_B": [0.1, -0.1],
+            }
+        },
+    )
+    artifact_store.save_json_artifact(
+        "u1/classifier_head_delta",
+        {
+            "classifier_head_weight_deltas": {
+                "anxiety": [0.2, -0.1],
+                "normal": [-0.2, 0.1],
+            },
+            "classifier_head_bias_deltas": {
+                "anxiety": 0.05,
+                "normal": -0.05,
+            },
+        },
+    )
+    backend = MethodAggregationBackend(
+        strategy=build_federated_aggregation_strategy(
+            adapter_kind="lora_classifier",
+            method_name="fedavg",
+            overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        ),
+        overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        artifact_loader=artifact_store,
+    )
+
+    result = backend.aggregate(
+        base_state=_build_lora_state(),
+        update_payloads=(
+            make_lora_classifier_delta_payload(
+                model_id="tracemind-lora",
+                base_model_revision="rev_000",
+                training_scope="adapter_only",
+                backbone=_lora_backbone(),
+                lora_config=_lora_config(),
+                label_schema=("anxiety", "normal"),
+                example_count=2,
+                lora_delta_artifact_ref=artifact_store.ref_for_artifact(
+                    "u1/lora_delta"
+                ),
+                classifier_head_delta_artifact_ref=(
+                    artifact_store.ref_for_artifact("u1/classifier_head_delta")
+                ),
+                delta_format="server_uploaded_artifact_ref",
+                mean_confidence=0.9,
+                mean_margin=0.2,
+            ),
+        ),
+        next_model_revision="rev_001",
+        aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
+    )
+
+    assert result.next_state.lora_adapter_artifact_ref == (
+        "server-aggregate://test_lora/rev_001/lora_adapter"
+    )
+    assert result.aggregated_metrics["client_count"] == 1.0
+    assert result.aggregated_metrics["lora_parameter_count"] == 2.0
+    assert result.aggregated_metrics["classifier_head_label_count"] == 2.0
+
+
+def test_aggregation_artifact_store_defaults_to_main_server_state_root() -> None:
+    store = AggregationArtifactStore()
+
+    assert store.state_root == (
+        Path(__file__).resolve().parents[2] / "state" / "aggregation_artifacts"
+    )
+    with pytest.raises(ValueError, match="path traversal"):
+        store.ref_for_artifact("../escape")
+
+
+def test_lora_classifier_fedavg_rejects_agent_local_artifact_only_updates() -> None:
     backend = build_shared_adapter_aggregation_backend(
         adapter_kind="lora_classifier",
         backend_name="fedavg",
     )
 
-    with pytest.raises(ValueError, match="Artifact-ref-only updates"):
+    with pytest.raises(FileNotFoundError, match="Unsupported aggregation artifact ref"):
         backend.aggregate(
             base_state=_build_lora_state(),
             update_payloads=(

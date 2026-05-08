@@ -15,7 +15,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from .artifact_refs import AggregatedArtifactRefBuilder
+from .artifact_refs import AggregatedArtifactRefBuilder, AggregationArtifactStore
 from .models import AggregationConfigScalar, AggregationResult
 
 DEFAULT_AGGREGATED_ARTIFACT_FORMAT = "server_aggregated_artifact_ref"
@@ -27,6 +27,9 @@ class MethodAggregationBackend:
 
     strategy: FederatedAggregationStrategy
     overrides: Mapping[str, AggregationConfigScalar] | None = None
+    artifact_loader: AggregationArtifactStore = field(
+        default_factory=AggregationArtifactStore
+    )
     artifact_ref_builder: AggregatedArtifactRefBuilder = field(init=False)
 
     def __post_init__(self) -> None:
@@ -58,6 +61,7 @@ class MethodAggregationBackend:
                 next_model_revision=next_model_revision,
                 aggregated_at=aggregated_at,
                 artifact_ref_resolver=self.artifact_ref_builder,
+                artifact_loader=self.artifact_loader,
             ),
         )
         return AggregationResult(

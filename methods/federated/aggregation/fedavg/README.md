@@ -10,7 +10,7 @@ adapter family별 delta 해석과 next-state 계산은 각 family package가 소
 
 이 계층은 `main_server`를 import하지 않는다. model revision, aggregated_at,
 publication metadata는 server context가 제공하고, server-owned artifact ref는
-main_server가 넘긴 resolver를 통해서만 생성한다.
+main_server가 넘긴 resolver/loader capability를 통해서만 생성하거나 읽는다.
 
 Adapter family별 FedAvg core와 payload projection은 각 family가 소유한다.
 
