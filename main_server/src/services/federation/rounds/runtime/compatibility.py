@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
 )
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
 from ..families.registry import (
     build_shared_adapter_round_family,
@@ -20,6 +21,7 @@ class ServerRoundRuntimeCompatibility:
     adapter_family_name: str
     adapter_kind: str
     aggregation_backend_name: str
+    method_descriptor_name: str | None = None
 
 
 def validate_server_round_runtime_config(
@@ -40,8 +42,36 @@ def validate_server_round_runtime_config(
             f"but family {config.adapter_family_name} expects "
             f"{adapter_family.adapter_kind}."
         )
+    if config.method_descriptor_name is not None:
+        method_descriptor = resolve_federated_ssl_method_descriptor(
+            config.method_descriptor_name
+        )
+        if not method_descriptor.runtime_capabilities.live_server_supported:
+            raise ValueError(
+                "Incompatible round runtime config: method_descriptor="
+                f"{method_descriptor.name} does not support live server runtime."
+            )
+        if method_descriptor.runtime_capabilities.requires_custom_server_runtime:
+            raise ValueError(
+                "Incompatible round runtime config: method_descriptor="
+                f"{method_descriptor.name} requires a custom server runtime "
+                "capability that is not wired in the default live server runtime."
+            )
+        recipe = method_descriptor.recipe
+        if recipe is not None and not recipe.supports_runtime_pair(
+            adapter_family_name=config.adapter_family_name,
+            aggregation_backend_name=config.aggregation_backend_name,
+        ):
+            raise ValueError(
+                "Incompatible round runtime config: method recipe does not support "
+                "round runtime pair: "
+                f"method={method_descriptor.name}, "
+                f"adapter_family={config.adapter_family_name}, "
+                f"aggregation_backend={config.aggregation_backend_name}."
+            )
     return ServerRoundRuntimeCompatibility(
         adapter_family_name=config.adapter_family_name,
         adapter_kind=adapter_family.adapter_kind,
         aggregation_backend_name=config.aggregation_backend_name,
+        method_descriptor_name=config.method_descriptor_name,
     )

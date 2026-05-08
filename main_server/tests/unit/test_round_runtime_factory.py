@@ -31,10 +31,12 @@ from main_server.src.services.federation.rounds.runtime.config import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
     ROUND_AGGREGATION_BACKEND_ENV,
+    ROUND_METHOD_DESCRIPTOR_ENV,
     ServerRoundRuntimeConfig,
     load_server_round_runtime_config_from_env,
 )
 from main_server.src.services.federation.rounds.runtime.factory import (
+    build_round_lifecycle_service_from_config,
     build_round_manager_service_from_config,
 )
 from shared.src.contracts.adapter_contracts import (
@@ -201,6 +203,30 @@ def test_round_runtime_config_rejects_mismatched_backend_adapter_kind() -> None:
         )
 
 
+def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift() -> None:
+    with pytest.raises(ValueError, match="method recipe does not support"):
+        build_round_manager_service_from_config(
+            ServerRoundRuntimeConfig(
+                adapter_family_name=TEST_FAMILY_NAME,
+                aggregation_backend_name=TEST_BACKEND_NAME,
+                method_descriptor_name="fedavg_pseudo_label",
+            )
+        )
+
+
+def test_round_lifecycle_config_wires_method_descriptor() -> None:
+    service = build_round_lifecycle_service_from_config(
+        ServerRoundRuntimeConfig(
+            adapter_family_name="diagonal_scale",
+            aggregation_backend_name="fedavg",
+            method_descriptor_name="fedavg_pseudo_label",
+        )
+    )
+
+    assert service.method_descriptor is not None
+    assert service.method_descriptor.name == "fedavg_pseudo_label"
+
+
 def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
     app = create_app(
         round_runtime_config=ServerRoundRuntimeConfig(
@@ -230,12 +256,14 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
         environ={
             ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
             ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
+            ROUND_METHOD_DESCRIPTOR_ENV: " fedavg_pseudo_label ",
             ROUND_AGGREGATION_BACKEND_CONFIG_ENV: '{"min_scale": 0.8}',
         }
     )
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
+    assert config.method_descriptor_name == "fedavg_pseudo_label"
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
 
 

@@ -35,6 +35,10 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
     RoundPublicationRequest,
 )
+from main_server.src.services.federation.rounds.server_policy.executor import (
+    DefaultServerPolicyExecutor,
+    ServerPolicyExecutor,
+)
 from shared.src.contracts.adapter_contracts import (
     CurrentSharedAdapterStatePayload,
     make_current_shared_adapter_state_payload,
@@ -57,6 +61,7 @@ if TYPE_CHECKING:
     from main_server.src.infrastructure.repositories.round_repository import (
         RoundRepository,
     )
+    from methods.federated_ssl.base import FederatedSslMethodDescriptor
 
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
@@ -102,6 +107,10 @@ class RoundLifecycleService:
     secure_update_codec: SecureUpdateCodec = field(
         default_factory=NoOpSecureUpdateCodec
     )
+    server_policy_executor: ServerPolicyExecutor = field(
+        default_factory=DefaultServerPolicyExecutor
+    )
+    method_descriptor: FederatedSslMethodDescriptor | None = None
     clock: Clock = field(default_factory=SystemUtcClock)
 
     def __post_init__(self) -> None:
@@ -226,6 +235,7 @@ class RoundLifecycleService:
         if record.status != RoundStatus.OPEN:
             raise RoundConflictError(f"Round is not open: {round_id}")
 
+        self._prepare_method_server_policy(record)
         publication = self.round_manager_service.publish_next_pair(
             RoundPublicationRequest(
                 base_manifest=record.active_manifest,
@@ -281,6 +291,15 @@ class RoundLifecycleService:
             activated_at=finalized_at,
         )
         return finalized_record
+
+    def _prepare_method_server_policy(self, record: RoundRecord) -> None:
+        if self.method_descriptor is None:
+            return
+        self.server_policy_executor.prepare_finalize(
+            method_descriptor=self.method_descriptor,
+            round_id=record.round_id,
+            update_count=len(record.updates),
+        )
 
     @staticmethod
     def _validate_open_request(request: RoundOpenRequest) -> None:

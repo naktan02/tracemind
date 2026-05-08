@@ -88,6 +88,13 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_manager_service_from_config,
 )
+from main_server.src.services.federation.rounds.server_policy.executor import (
+    ServerPolicyExecutionSummary,
+)
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
+    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+)
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.building.single import SinglePrototypeBuildStrategy
 from shared.src.contracts.adapter_contracts import (
@@ -143,6 +150,31 @@ class _StaticEmbeddingAdapterFactory:
     def create(cls, spec: EmbeddingAdapterSpec) -> _StaticEmbeddingAdapter:
         del spec
         return _StaticEmbeddingAdapter(cls._vectors)
+
+
+@dataclass(slots=True)
+class _RecordingServerPolicyExecutor:
+    calls: list[tuple[str, str, int]]
+
+    def __init__(self) -> None:
+        self.calls = []
+
+    def prepare_finalize(
+        self,
+        *,
+        method_descriptor: FederatedSslMethodDescriptor,
+        round_id: str,
+        update_count: int,
+    ) -> ServerPolicyExecutionSummary:
+        self.calls.append((method_descriptor.name, round_id, update_count))
+        return ServerPolicyExecutionSummary(
+            method_name=method_descriptor.name,
+            round_id=round_id,
+            server_aggregator_name=method_descriptor.server_step.server_aggregator_name,
+            round_policy_name=method_descriptor.server_step.round_policy_name,
+            server_aggregate_hint=method_descriptor.server_step.server_aggregate_hint,
+            update_count=update_count,
+        )
 
 
 TEST_SHIFT_ADAPTER_KIND = "test_shift_round_family"
@@ -555,6 +587,36 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
     )
     with pytest.raises(FileNotFoundError):
         service.get_current_round()
+
+
+def test_round_lifecycle_runs_method_server_policy_before_finalize(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, _ = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    policy_executor = _RecordingServerPolicyExecutor()
+    service.method_descriptor = FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    service.server_policy_executor = policy_executor
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update = _build_update(
+        tmp_path=tmp_path,
+        round_id=record.round_id,
+        task_id=record.training_task.task_id,
+    )
+    service.accept_update_submission(record.round_id, update)
+
+    service.finalize_round(
+        record.round_id,
+        RoundFinalizeRequest(
+            next_prototype_version="proto_001",
+            next_model_revision="rev_001",
+        ),
+    )
+
+    assert policy_executor.calls == [("fedavg_pseudo_label", record.round_id, 1)]
 
 
 def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:

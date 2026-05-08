@@ -37,6 +37,7 @@ from main_server.src.services.federation.rounds.runtime.compatibility import (
 from main_server.src.services.federation.rounds.runtime.config import (
     ServerRoundRuntimeConfig,
 )
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 
 from ...prototypes.stored_input_rebuild_service import (
@@ -111,6 +112,14 @@ def build_round_lifecycle_service_from_config(
     effective_update_payload_repository = (
         update_payload_repository or SharedAdapterUpdateRepository()
     )
+    compatibility = validate_server_round_runtime_config(config)
+    method_descriptor = (
+        None
+        if compatibility.method_descriptor_name is None
+        else resolve_federated_ssl_method_descriptor(
+            compatibility.method_descriptor_name
+        )
+    )
     return RoundLifecycleService(
         round_repository=round_repository or RoundRepository(),
         update_payload_repository=effective_update_payload_repository,
@@ -133,5 +142,6 @@ def build_round_lifecycle_service_from_config(
         update_acceptance_policy=(
             update_acceptance_policy or StrictRoundUpdateAcceptancePolicy()
         ),
+        method_descriptor=method_descriptor,
         clock=effective_clock,
     )
