@@ -16,12 +16,15 @@ from methods.adaptation.common.checkpointing import BestModelCheckpoint
 from methods.adaptation.common.classification_evaluation import (
     build_classification_evaluation_report,
 )
+from methods.adaptation.common.training_history import (
+    build_selection_epoch_record,
+    format_selection_epoch_summary,
+)
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.io.labeled_query_rows import LabeledQueryRow
 from scripts.reporting.classification_report import (
     render_confusion_table,
     render_per_category_table,
-    safe_divide,
 )
 from scripts.runtime_adapters.embedding_runtime import (
     create_embedding_adapter,
@@ -210,21 +213,15 @@ def train_classifier_head(
             eval_batch_size=train_batch_size,
             device=training_device,
         )
-        epoch_record = {
-            "epoch": epoch,
-            "train_loss": round(
-                safe_divide(epoch_loss_total, len(train_targets)),
-                6,
-            ),
-            "selection_loss": selection_report["loss"],
-            "selection_accuracy_top_1": selection_report["accuracy_top_1"],
-        }
+        epoch_record = build_selection_epoch_record(
+            epoch=epoch,
+            train_loss_total=epoch_loss_total,
+            train_loss_denominator=len(train_targets),
+            selection_report=selection_report,
+        )
         history.append(epoch_record)
         print(
-            f"[epoch={epoch}] "
-            f"train_loss={epoch_record['train_loss']:.4f} "
-            f"selection_loss={epoch_record['selection_loss']:.4f} "
-            f"selection_accuracy={epoch_record['selection_accuracy_top_1']:.4f}",
+            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
             flush=True,
         )
 

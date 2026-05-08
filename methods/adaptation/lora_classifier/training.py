@@ -14,6 +14,10 @@ from methods.adaptation.common.checkpointing import BestModelCheckpoint
 from methods.adaptation.common.classification_evaluation import (
     build_classification_evaluation_report,
 )
+from methods.adaptation.common.training_history import (
+    build_selection_epoch_record,
+    format_selection_epoch_summary,
+)
 from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
@@ -186,18 +190,15 @@ def train_classifier(
             categories=categories,
             device=device,
         )
-        epoch_record = {
-            "epoch": epoch,
-            "train_loss": round(safe_divide(epoch_loss_total, epoch_rows), 6),
-            "selection_loss": selection_report["loss"],
-            "selection_accuracy_top_1": selection_report["accuracy_top_1"],
-        }
+        epoch_record = build_selection_epoch_record(
+            epoch=epoch,
+            train_loss_total=epoch_loss_total,
+            train_loss_denominator=epoch_rows,
+            selection_report=selection_report,
+        )
         history.append(epoch_record)
         print(
-            f"[epoch={epoch}] "
-            f"train_loss={epoch_record['train_loss']:.4f} "
-            f"selection_loss={epoch_record['selection_loss']:.4f} "
-            f"selection_accuracy={epoch_record['selection_accuracy_top_1']:.4f}",
+            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
             flush=True,
         )
 
@@ -275,21 +276,6 @@ def _format_running_scalars(
         for name, total in metric_sums.items()
     )
     return " ".join(fields)
-
-
-def _format_epoch_scalars(epoch_record: dict[str, Any]) -> str:
-    metric_fields = [
-        f"{name}={value:.4f}"
-        for name, value in epoch_record.items()
-        if name.startswith("train_")
-    ]
-    metric_fields.extend(
-        [
-            f"selection_loss={epoch_record['selection_loss']:.4f}",
-            f"selection_accuracy={epoch_record['selection_accuracy_top_1']:.4f}",
-        ]
-    )
-    return " ".join(metric_fields)
 
 
 def train_query_ssl_classifier(
@@ -407,23 +393,25 @@ def train_query_ssl_classifier(
             categories=categories,
             device=device,
         )
-        epoch_record = {
-            "epoch": epoch,
-            "train_loss": round(safe_divide(step_total_loss_sum, step_count), 6),
-            **_build_average_scalar_record(
-                sums=step_component_sums,
-                step_count=step_count,
-            ),
-            **_build_average_scalar_record(
-                sums=step_metric_sums,
-                step_count=step_count,
-            ),
-            "selection_loss": selection_report["loss"],
-            "selection_accuracy_top_1": selection_report["accuracy_top_1"],
-        }
+        epoch_record = build_selection_epoch_record(
+            epoch=epoch,
+            train_loss_total=step_total_loss_sum,
+            train_loss_denominator=step_count,
+            selection_report=selection_report,
+            extra_train_metrics={
+                **_build_average_scalar_record(
+                    sums=step_component_sums,
+                    step_count=step_count,
+                ),
+                **_build_average_scalar_record(
+                    sums=step_metric_sums,
+                    step_count=step_count,
+                ),
+            },
+        )
         history.append(epoch_record)
         print(
-            f"[epoch={epoch}] " + _format_epoch_scalars(epoch_record),
+            f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}",
             flush=True,
         )
 

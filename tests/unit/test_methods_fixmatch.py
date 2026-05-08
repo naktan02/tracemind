@@ -31,8 +31,11 @@ class _SequentialLogitModel(nn.Module):
         return next(self._outputs)
 
 
-class _RejectAllMaskingHook:
-    hook_name = "reject_all"
+class _FreeMatchLikeAdaptiveMaskingHook:
+    hook_name = "freematch_like_adaptive_threshold"
+
+    def __init__(self) -> None:
+        self.last_threshold: float | None = None
 
     def build_mask(
         self,
@@ -40,12 +43,13 @@ class _RejectAllMaskingHook:
         probs_x_ulb_w: torch.Tensor,
         p_cutoff: float,
     ) -> torch.Tensor:
-        del p_cutoff
-        return torch.zeros(
-            probs_x_ulb_w.shape[0],
-            dtype=probs_x_ulb_w.dtype,
-            device=probs_x_ulb_w.device,
+        max_probs, _ = torch.max(probs_x_ulb_w, dim=-1)
+        threshold = torch.minimum(
+            torch.tensor(p_cutoff, dtype=max_probs.dtype, device=max_probs.device),
+            max_probs.mean(),
         )
+        self.last_threshold = float(threshold.detach().cpu().item())
+        return max_probs.ge(threshold).to(max_probs.dtype)
 
 
 def test_build_fixmatch_pseudo_label_keeps_usb_temperature_behavior() -> None:
@@ -152,11 +156,11 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
     )
 
 
-def test_compute_fixmatch_step_allows_masking_hook_replacement() -> None:
+def test_compute_fixmatch_step_allows_freematch_like_masking_hook_replacement() -> None:
     model = _SequentialLogitModel(
         outputs=[
             torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32),
-            torch.tensor([[6.0, 0.0], [0.8, 0.0]], dtype=torch.float32),
+            torch.tensor([[1.2, 0.0], [1.0, 0.0]], dtype=torch.float32),
         ]
     )
     unlabeled_batch = {
@@ -166,6 +170,7 @@ def test_compute_fixmatch_step_allows_masking_hook_replacement() -> None:
         "strong_attention_mask": torch.ones((2, 2), dtype=torch.long),
     }
     base_hooks = build_fixmatch_objective_hooks()
+    adaptive_masking = _FreeMatchLikeAdaptiveMaskingHook()
 
     output = compute_fixmatch_step(
         model=model,  # type: ignore[arg-type]
@@ -180,14 +185,15 @@ def test_compute_fixmatch_step_allows_masking_hook_replacement() -> None:
         ),
         hooks=SslObjectiveHooks(
             pseudo_labeling=base_hooks.pseudo_labeling,
-            masking=_RejectAllMaskingHook(),
+            masking=adaptive_masking,
             consistency_loss=base_hooks.consistency_loss,
         ),
     )
 
-    assert torch.equal(output.mask, torch.zeros(2))
-    assert torch.isclose(output.unsup_loss, torch.tensor(0.0))
-    assert torch.isclose(output.util_ratio, torch.tensor(0.0))
+    assert adaptive_masking.last_threshold is not None
+    assert adaptive_masking.last_threshold < 0.95
+    assert torch.equal(output.mask, torch.tensor([1.0, 0.0]))
+    assert torch.isclose(output.util_ratio, torch.tensor(0.5))
 
 
 def test_compute_fixmatch_step_supports_unlabeled_only_ablation() -> None:
