@@ -1,9 +1,12 @@
-"""Compatibility catalog snapshot for agent-owned local training registries.
+"""Compatibility catalog snapshot for agent-owned local runtime registries.
 
 `main_server` workspace catalog는 architecture guard상 `agent` 구현을 직접 import할
 수 없으므로 이 snapshot을 읽는다. Agent runtime registry wiring의 catalog entry는
 각 implementation module 옆에 둔다. 이 파일은 long-term source of truth가 아니라
 cross-layer catalog compatibility facade다.
+
+methods-owned local update/scoring backend catalog는 이 파일에 복제하지 않고
+methods registry에 위임한다.
 
 새 experiment-only backend나 method-specific runtime을 여기에 추가하지 않는다. 새 항목이
 필요하면 먼저 implementation-local catalog entry와 runtime capability 경계를 정하고,
@@ -12,51 +15,13 @@ workspace UI/catalog 노출이 필요한 stable 항목만 snapshot으로 반영�
 
 from __future__ import annotations
 
-from methods.adaptation.classifier_head.scoring import (
-    CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
-)
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
-    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-)
+from methods.adaptation import local_update_registry, scoring_registry
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
     dedupe_registry_catalog_entries,
 )
 
 ANY_ADAPTER_KIND = "*"
-
-DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="diagonal_scale_heuristic",
-    display_name="diagonal_scale_heuristic",
-    implementation_module=("methods.adaptation.diagonal_scale.training_backend"),
-    core_method_name="diagonal_scale_heuristic",
-    family_name=DIAGONAL_SCALE_ADAPTER_KIND,
-    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
-    accepted_payload_formats=(DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,),
-    metadata={"payload_format": DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT},
-)
-
-LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="lora_classifier_trainer",
-    display_name="lora_classifier_trainer",
-    implementation_module=("methods.adaptation.lora_classifier.training_backend"),
-    core_method_name="lora_classifier_trainer",
-    family_name=LORA_CLASSIFIER_ADAPTER_KIND,
-    supported_adapter_kinds=(LORA_CLASSIFIER_ADAPTER_KIND,),
-    accepted_payload_formats=(LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,),
-    tags=("requires_raw_text", "artifact_ref_update"),
-    metadata={
-        "payload_format": LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-        "requires_raw_text": True,
-        "produces_artifact_refs": True,
-        "supports_live_stored_event_runtime": False,
-    },
-)
 
 PROTOTYPE_RESCORE_EXAMPLE_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="prototype_rescore",
@@ -108,14 +73,9 @@ PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 def list_shared_adapter_training_backend_catalog_entries() -> tuple[
     RegistryCatalogEntry, ...
 ]:
-    """Agent local training backend catalog entry 목록."""
+    """methods-owned local update backend catalog entry 목록."""
 
-    return dedupe_registry_catalog_entries(
-        (
-            DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CATALOG_ENTRY,
-            LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
-        )
-    )
+    return local_update_registry.list_shared_adapter_training_backend_catalog_entries()
 
 
 def list_training_example_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
@@ -138,11 +98,11 @@ def list_pseudo_label_evidence_backend_catalog_entries() -> tuple[
 
 
 def list_scoring_backend_catalog_entries() -> tuple[RegistryCatalogEntry, ...]:
-    """Agent scoring backend catalog entry 목록."""
+    """Agent-local scorer와 methods-owned shared adapter scorer catalog 목록."""
 
     return dedupe_registry_catalog_entries(
         (
             PROTOTYPE_SIMILARITY_SCORING_BACKEND_CATALOG_ENTRY,
-            CLASSIFIER_HEAD_LOGITS_SCORING_BACKEND_CATALOG_ENTRY,
+            *scoring_registry.list_shared_adapter_scoring_backend_catalog_entries(),
         )
     )
