@@ -320,6 +320,7 @@ dict/list table, 작은 helper로 낮춘다.
   - 대상: 깨진 한국어 주석과 active backlog의 단계 기준.
   - 완료 기준: 계약 의미와 payload shape 변경 없이 주석/계획만 정리한다.
 - E1. `scripts` runner 표현 단순화
+  - 상태: 완료.
   - 대상: `scripts/experiments/fixed_classifier/runner.py`,
     `scripts/experiments/query_lora_ssl/runners/*`.
   - 진행: fixed classifier의 data model과 artifact write/load를
@@ -339,6 +340,10 @@ dict/list table, 작은 helper로 낮춘다.
     `io/labeled_row_export.py`로 분리했다.
   - 진행: pseudo-label self-training runner의 input source resolve와 query_id 검증을
     `pseudo_label_inputs.py`로 분리했다.
+  - 완료 판단: `fixed_classifier/runner.py`는 158 lines, `bootstrap_teacher.py`는 199 lines,
+    `pseudo_label.py`는 203 lines로 낮아졌다. `consistency.py`, `query_adaptation.py`,
+    `supervised.py`는 core training, IO, context build를 이미 별도 module에 위임하고 있어
+    이번 배치에서는 추가 분리하지 않는다.
   - 방향: entrypoint는 config load, core 호출, artifact 저장 호출만 남기고 학습/평가/예측
     세부 loop는 작은 module 함수로 분리한다. `Any`는 외부 library boundary 또는 Hydra raw
     config boundary에만 남긴다.
