@@ -372,6 +372,8 @@ dict/list table, 작은 helper로 낮춘다.
 - E4. `methods` descriptor/config/fallback 표현 축소
   - 대상: `methods/federated_ssl/base.py`, `runtime_fallbacks.py`,
     `methods/adaptation/lora_classifier/config.py`.
+  - 진행: `runtime_fallbacks.py`의 반복 objective getter와 fallback mapping merge 코드를
+    작은 helper로 낮췄다. fallback 값의 source-of-truth와 profile dataclass 의미는 유지한다.
   - 방향: method core의 tensor/objective 계산은 유지하고, descriptor/config/fallback 선언부에서
     단일 구현 전용 추상화와 장황한 generic type을 줄인다.
 - E5. `shared` contract 파일 크기와 설명 품질 정리

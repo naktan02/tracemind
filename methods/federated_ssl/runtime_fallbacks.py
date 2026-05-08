@@ -28,6 +28,16 @@ def _freeze_mapping(
     return MappingProxyType(dict(source))
 
 
+def _merged_mapping(
+    source: Mapping[str, TrainingConfigScalar],
+    overrides: Mapping[str, TrainingConfigScalar] | None,
+) -> dict[str, TrainingConfigScalar]:
+    merged = dict(source)
+    if overrides is not None:
+        merged.update(dict(overrides))
+    return merged
+
+
 @dataclass(frozen=True, slots=True)
 class RuntimeTrainingTaskDefaults:
     """round open/task 생성에 쓰는 top-level runtime fallback 값."""
@@ -69,80 +79,47 @@ class RuntimeFallbackTrainingProfile:
 
     @property
     def acceptance_policy_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "acceptance_policy_name",
-        )
+        return self._objective_str("acceptance_policy_name")
 
     @property
     def pseudo_label_algorithm_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "pseudo_label_algorithm_name",
-        )
+        return self._objective_str("pseudo_label_algorithm_name")
 
     @property
     def training_backend_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "training_backend_name",
-        )
+        return self._objective_str("training_backend_name")
 
     @property
     def algorithm_profile_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "algorithm_profile_name",
-        )
+        return self._objective_str("algorithm_profile_name")
 
     @property
     def example_generation_backend_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "example_generation_backend_name",
-        )
+        return self._objective_str("example_generation_backend_name")
 
     @property
     def evidence_backend_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "evidence_backend_name",
-        )
+        return self._objective_str("evidence_backend_name")
 
     @property
     def scorer_backend_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "scorer_backend_name",
-        )
+        return self._objective_str("scorer_backend_name")
 
     @property
     def score_policy_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "score_policy_name",
-        )
+        return self._objective_str("score_policy_name")
 
     @property
     def confidence_threshold(self) -> float:
-        return self._require_float(
-            self.objective_mapping,
-            "confidence_threshold",
-        )
+        return self._objective_float("confidence_threshold")
 
     @property
     def margin_threshold(self) -> float:
-        return self._require_float(
-            self.objective_mapping,
-            "margin_threshold",
-        )
+        return self._objective_float("margin_threshold")
 
     @property
     def privacy_guard_name(self) -> str:
-        return self._require_str(
-            self.objective_mapping,
-            "privacy_guard_name",
-        )
+        return self._objective_str("privacy_guard_name")
 
     @property
     def max_examples(self) -> int | None:
@@ -182,30 +159,33 @@ class RuntimeFallbackTrainingProfile:
         *,
         overrides: Mapping[str, TrainingConfigScalar] | None = None,
     ) -> TrainingObjectiveConfig:
-        source = dict(self.objective_mapping)
-        if overrides is not None:
-            source.update(dict(overrides))
-        return TrainingObjectiveConfig.from_mapping(source)
+        return TrainingObjectiveConfig.from_mapping(
+            _merged_mapping(self.objective_mapping, overrides)
+        )
 
     def build_selection_policy(
         self,
         *,
         overrides: Mapping[str, TrainingConfigScalar] | None = None,
     ) -> TrainingSelectionPolicy:
-        source = dict(self.selection_mapping)
-        if overrides is not None:
-            source.update(dict(overrides))
-        return TrainingSelectionPolicy.from_mapping(source)
+        return TrainingSelectionPolicy.from_mapping(
+            _merged_mapping(self.selection_mapping, overrides)
+        )
 
     def build_secure_aggregation_config(
         self,
         *,
         overrides: Mapping[str, TrainingConfigScalar] | None = None,
     ) -> SecureAggregationConfig:
-        source = dict(self.secure_aggregation_mapping)
-        if overrides is not None:
-            source.update(dict(overrides))
-        return SecureAggregationConfig.from_mapping(source)
+        return SecureAggregationConfig.from_mapping(
+            _merged_mapping(self.secure_aggregation_mapping, overrides)
+        )
+
+    def _objective_str(self, key: str) -> str:
+        return self._require_str(self.objective_mapping, key)
+
+    def _objective_float(self, key: str) -> float:
+        return self._require_float(self.objective_mapping, key)
 
     @staticmethod
     def _require_str(
