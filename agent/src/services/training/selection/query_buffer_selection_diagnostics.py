@@ -12,6 +12,9 @@ from typing import TypeVar
 from agent.src.infrastructure.repositories.query_buffer_repository import (
     QueryBufferRecord,
 )
+from agent.src.services.training.selection.diagnostics_serialization import (
+    dataclass_to_diagnostics_mapping,
+)
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
@@ -37,13 +40,14 @@ class QueryBufferSelectionScalarStats:
     maximum: float | None
     mean: float | None
 
-    def to_mapping(self) -> dict[str, float | int | None]:
-        return {
-            "count": self.count,
-            "min": self.minimum,
-            "max": self.maximum,
-            "mean": self.mean,
-        }
+    def to_mapping(self) -> dict[str, object]:
+        return dataclass_to_diagnostics_mapping(
+            self,
+            field_aliases={
+                "minimum": "min",
+                "maximum": "max",
+            },
+        )
 
 
 @dataclass(slots=True)
@@ -93,53 +97,7 @@ class QueryBufferSelectionTraceRow:
     query_buffer_metadata: dict[str, _MetadataScalar]
 
     def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema_version": self.schema_version,
-            "query_id": self.query_id,
-            "occurred_at": self.occurred_at.isoformat(),
-            "locale": self.locale,
-            "source_type": self.source_type,
-            "model_revision": self.model_revision,
-            "query_buffer_label": self.query_buffer_label,
-            "query_buffer_confidence": self.query_buffer_confidence,
-            "query_buffer_margin": self.query_buffer_margin,
-            "query_buffer_runner_up_label": self.query_buffer_runner_up_label,
-            "query_buffer_runner_up_score": self.query_buffer_runner_up_score,
-            "query_buffer_confidence_kind": self.query_buffer_confidence_kind,
-            "pseudo_label": self.pseudo_label,
-            "confidence": self.confidence,
-            "margin": self.margin,
-            "runner_up_label": self.runner_up_label,
-            "runner_up_score": self.runner_up_score,
-            "confidence_kind": self.confidence_kind,
-            "sample_weight": self.sample_weight,
-            "threshold_accepted": self.threshold_accepted,
-            "selected_by_cap": self.selected_by_cap,
-            "final_accepted": self.final_accepted,
-            "selection_stage": self.selection_stage,
-            "pre_cap_rank": self.pre_cap_rank,
-            "confidence_threshold": self.confidence_threshold,
-            "margin_threshold": self.margin_threshold,
-            "max_examples": self.max_examples,
-            "task_id": self.task_id,
-            "round_id": self.round_id,
-            "pseudo_label_algorithm_name": self.pseudo_label_algorithm_name,
-            "evidence_backend_name": self.evidence_backend_name,
-            "evidence_view_kind": self.evidence_view_kind,
-            "evidence_ref": self.evidence_ref,
-            "top1_label": self.top1_label,
-            "top1_score": self.top1_score,
-            "top2_label": self.top2_label,
-            "top2_score": self.top2_score,
-            "raw_scores": dict(sorted(self.raw_scores.items())),
-            "label_distribution": (
-                None
-                if self.label_distribution is None
-                else dict(sorted(self.label_distribution.items()))
-            ),
-            "candidate_metadata": dict(sorted(self.candidate_metadata.items())),
-            "query_buffer_metadata": dict(sorted(self.query_buffer_metadata.items())),
-        }
+        return dataclass_to_diagnostics_mapping(self)
 
 
 @dataclass(slots=True)
@@ -169,39 +127,7 @@ class QueryBufferSelectionSummary:
     margin_stats: QueryBufferSelectionScalarStats
 
     def to_mapping(self) -> dict[str, object]:
-        return {
-            "schema_version": self.schema_version,
-            "total_candidates": self.total_candidates,
-            "final_accepted_count": self.final_accepted_count,
-            "accepted_ratio": self.accepted_ratio,
-            "stage_counts": dict(sorted(self.stage_counts.items())),
-            "pseudo_label_counts": dict(sorted(self.pseudo_label_counts.items())),
-            "accepted_label_counts": dict(sorted(self.accepted_label_counts.items())),
-            "locale_counts": dict(sorted(self.locale_counts.items())),
-            "source_type_counts": dict(sorted(self.source_type_counts.items())),
-            "model_revision_counts": dict(sorted(self.model_revision_counts.items())),
-            "confidence_kind_counts": dict(sorted(self.confidence_kind_counts.items())),
-            "evidence_backend_name_counts": dict(
-                sorted(self.evidence_backend_name_counts.items())
-            ),
-            "evidence_view_kind_counts": dict(
-                sorted(self.evidence_view_kind_counts.items())
-            ),
-            "pseudo_label_algorithm_name_counts": dict(
-                sorted(self.pseudo_label_algorithm_name_counts.items())
-            ),
-            "confidence_threshold_counts": dict(
-                sorted(self.confidence_threshold_counts.items())
-            ),
-            "margin_threshold_counts": dict(
-                sorted(self.margin_threshold_counts.items())
-            ),
-            "max_examples_counts": dict(sorted(self.max_examples_counts.items())),
-            "task_id_counts": dict(sorted(self.task_id_counts.items())),
-            "round_id_counts": dict(sorted(self.round_id_counts.items())),
-            "confidence_stats": self.confidence_stats.to_mapping(),
-            "margin_stats": self.margin_stats.to_mapping(),
-        }
+        return dataclass_to_diagnostics_mapping(self)
 
 
 @dataclass(slots=True)
@@ -453,25 +379,6 @@ def _coerce_metadata_scalar(value: object) -> _MetadataScalar:
     raise TypeError(
         f"Selection diagnostics metadata must be a scalar value, got {type(value)!r}."
     )
-
-
-def _optional_float(value: object) -> float | None:
-    if value is None:
-        return None
-    return float(value)
-
-
-def _optional_int(value: object) -> int | None:
-    if value is None:
-        return None
-    return int(value)
-
-
-def _optional_str(value: object) -> str | None:
-    if value is None:
-        return None
-    text = str(value)
-    return text if text.strip() else None
 
 
 def _stringify_count_key(value: object) -> str:

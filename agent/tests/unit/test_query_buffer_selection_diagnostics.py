@@ -139,6 +139,10 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
     }
     assert summary.confidence_stats.count == 3
     assert summary.confidence_stats.maximum == pytest.approx(0.95)
+    summary_payload = summary.to_mapping()
+    confidence_stats_payload = summary_payload["confidence_stats"]
+    assert isinstance(confidence_stats_payload, dict)
+    assert confidence_stats_payload["max"] == pytest.approx(0.95)
 
     trace_by_query_id = {
         row.query_id: row for row in diagnostics.trace_rows
@@ -164,6 +168,17 @@ def test_query_buffer_selection_diagnostics_service_builds_summary_and_trace() -
         "scorer_backend_name": "prototype_similarity",
         "was_translated": False,
     }
+    q1_payload = trace_by_query_id["q1"].to_mapping()
+    assert q1_payload["occurred_at"] == pair_1[0].occurred_at.isoformat()
+    assert list(q1_payload["raw_scores"]) == [
+        "anxiety",
+        "depression",
+        "normal",
+    ]
+    assert list(q1_payload["query_buffer_metadata"]) == [
+        "scorer_backend_name",
+        "was_translated",
+    ]
     assert trace_by_query_id["q2"].selection_stage == "dropped_by_cap"
     assert trace_by_query_id["q2"].selected_by_cap is False
     assert trace_by_query_id["q2"].pre_cap_rank == 2

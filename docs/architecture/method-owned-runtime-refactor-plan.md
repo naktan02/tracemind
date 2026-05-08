@@ -334,15 +334,16 @@ facade는 제거했다. model input 처리와 runner orchestration은 각 family
 
 ### Batch 6. Runtime Adapter와 Artifact Writer 정리
 
-상태: 진행 중. artifact/report builder-writer 분리와 federated agent runtime adapter
-package 분리는 완료됐고, diagnostics serializer 반복 정리가 남아 있다.
+상태: 완료. artifact/report builder-writer 분리와 federated agent runtime adapter
+package 분리는 완료됐고, selection diagnostics dataclass 직렬화 반복은
+`agent/src/services/training/selection/diagnostics_serialization.py` helper로
+정리했다.
 
 - `scripts/runtime_adapters/*`는 request mapper, repository wiring, runtime bridge로
   나눈다.
 - artifact/report builder와 writer/exporter를 분리한다.
 - compatibility facade는 제거 기준과 public boundary 여부를 문서화한다.
-- diagnostics dataclass의 manual `to_mapping()` 반복은 serializer helper 또는 typed
-  model로 줄인다.
+- diagnostics dataclass의 manual `to_mapping()` 반복은 serializer helper로 줄였다.
 
 완료 기준:
 
