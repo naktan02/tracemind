@@ -30,28 +30,15 @@ def test_train_lora_pseudo_label_classifier_entrypoint_imports_direct_runner() -
     )
 
 
-def test_train_lora_fixmatch_entrypoint_imports_direct_runner() -> None:
+def test_train_lora_query_ssl_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.train_lora_fixmatch"
+        "scripts.experiments.central_ssl_control.train_lora_query_ssl"
     )
     runner = importlib.import_module(
         "scripts.experiments.query_lora_ssl.runners.consistency"
     )
 
-    assert entrypoint.run_fixmatch_lora_baseline is runner.run_fixmatch_lora_baseline
-
-
-def test_train_lora_pseudolabel_entrypoint_imports_direct_runner() -> None:
-    entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.train_lora_pseudolabel"
-    )
-    runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.runners.consistency"
-    )
-
-    assert (
-        entrypoint.run_pseudolabel_lora_baseline is runner.run_pseudolabel_lora_baseline
-    )
+    assert entrypoint.run_query_ssl_lora_baseline is runner.run_query_ssl_lora_baseline
 
 
 def test_train_lora_bootstrap_classifier_teacher_entrypoint_imports_direct_runner() -> (

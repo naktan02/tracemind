@@ -179,13 +179,15 @@ uv run python scripts/experiments/central_ssl_control/train_lora_bootstrap_class
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_pseudolabel.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
+  output_dir=runs/train_lora_query_ssl_pseudolabel
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```
 
 FL simulation:

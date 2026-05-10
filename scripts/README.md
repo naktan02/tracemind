@@ -93,13 +93,15 @@ uv run python scripts/experiments/central_ssl_control/train_lora_pseudo_label_cl
 중앙 LoRA USB PseudoLabel control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_pseudolabel.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
+  output_dir=runs/train_lora_query_ssl_pseudolabel
 ```
 
 중앙 LoRA FixMatch control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```
 
 FL SSL simulation smoke:

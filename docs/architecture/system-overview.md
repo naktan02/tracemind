@@ -137,8 +137,7 @@ Reddit Labeled Data
 | LoRA supervised entrypoint | `scripts/experiments/central_ssl_control/train_lora_classifier.py` |
 | pseudo-label bootstrap entrypoint | `scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py` |
 | pseudo-label self-training entrypoint | `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py` |
-| USB PseudoLabel entrypoint | `scripts/experiments/central_ssl_control/train_lora_pseudolabel.py` |
-| FixMatch entrypoint | `scripts/experiments/central_ssl_control/train_lora_fixmatch.py` |
+| Query SSL method entrypoint | `scripts/experiments/central_ssl_control/train_lora_query_ssl.py` |
 | 중앙/FL 공통 LoRA SSL harness | `scripts/experiments/query_lora_ssl/*` |
 | trainer core | `methods/adaptation/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |

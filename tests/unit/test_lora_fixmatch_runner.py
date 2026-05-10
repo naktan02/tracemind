@@ -72,7 +72,7 @@ def _build_cfg() -> object:
             "weight_decay": 0.01,
             "max_grad_norm": 1.0,
             "log_every_steps": 10,
-            "output_dir": "runs/train_lora_fixmatch",
+            "output_dir": "runs/train_lora_query_ssl",
             "adapter_output_dir": "data/processed/lora_adapters",
             "classifier_output_dir": "data/processed/lora_classifier_heads",
         }
@@ -322,7 +322,6 @@ def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
             "require_multiview": False,
         }
     )
-    del cfg["query_ssl_augmenter"]
 
     class _DummyModel:
         pass

@@ -36,10 +36,12 @@ Hydra entrypoint를 실행한다.
 
 - `scripts/experiments/central_ssl_control/train_lora_classifier.py`
 - `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py`
-- `scripts/experiments/central_ssl_control/train_lora_pseudolabel.py`
-- `scripts/experiments/central_ssl_control/train_lora_fixmatch.py`
+- `scripts/experiments/central_ssl_control/train_lora_query_ssl.py`
 - `scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
 
 공통으로 재사용될 알고리즘 core는 이 패키지 안에서 키우지 않고 `methods/`로
 올린다. cross-boundary contract/domain은 `shared/`, runtime bridge는
 `scripts/runtime_adapters/`에 둔다.
+
+새 Query SSL 알고리즘은 원칙적으로 `train_lora_query_ssl.py`를 재사용하고
+`strategy_axes/ssl/consistency_method` Hydra config만 추가/교체한다.
