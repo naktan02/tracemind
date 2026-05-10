@@ -19,7 +19,7 @@ from agent.src.services.training.execution.local_training_service import (
 from agent.src.services.training.selection.pseudo_label_service import (
     PseudoLabelSelectionResult,
 )
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
     make_diagonal_delta_payload,
     make_identity_state_payload,

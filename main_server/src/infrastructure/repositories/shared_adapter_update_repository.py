@@ -5,8 +5,10 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.io import (
     dump_shared_adapter_update_payload,
     load_shared_adapter_update_payload,
 )

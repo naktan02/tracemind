@@ -25,15 +25,21 @@ from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAggregationStrategy,
 )
 from methods.federated.aggregation.registry import build_federated_aggregation_strategy
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadDelta,
     ClassifierHeadState,
-    LoraClassifierDelta,
-    LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterDelta,
     VectorAdapterState,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierDelta,
+    LoraClassifierState,
 )
 
 

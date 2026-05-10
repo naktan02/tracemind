@@ -18,8 +18,10 @@ from agent.src.services.assets.shared_adapters.runtime_service import (
 from agent.src.services.assets.shared_adapters.sync_service import (
     SharedAdapterSyncService,
 )
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
 from shared.src.contracts.prototype_contracts import (

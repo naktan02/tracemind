@@ -21,7 +21,9 @@ from agent.src.services.assets.prototypes.runtime_service import PrototypeRuntim
 from agent.src.services.assets.shared_adapters.runtime_service import (
     SharedAdapterRuntimeService,
 )
-from shared.src.contracts.adapter_contracts import make_identity_state_payload
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_identity_state_payload,
+)
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 

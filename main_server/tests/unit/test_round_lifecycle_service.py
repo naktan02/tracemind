@@ -100,11 +100,15 @@ from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.building.single import SinglePrototypeBuildStrategy
-from shared.src.contracts.adapter_contracts import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DiagonalScaleAdapterStatePayload,
+    DiagonalScaleAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_payload_family,
 )
 from shared.src.contracts.model_contracts import ModelManifest

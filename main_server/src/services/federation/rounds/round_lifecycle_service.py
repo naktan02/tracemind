@@ -45,8 +45,10 @@ from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
     ServerPolicyExecutor,
 )
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
 from shared.src.contracts.training_contracts import TrainingUpdateSubmission

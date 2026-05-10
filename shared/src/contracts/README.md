@@ -43,12 +43,11 @@
   - round open 요청자는 manifest를 제출하지 않고, 서버 current manifest를
     기준으로 training task가 생성된다
 
-### `adapter_contracts.py` and `adapter_contract_families/`
+### `adapter_contract_families/`
 
 Shared adapter 상태와 update payload를 정의한다.
 
-기존 import path `shared.src.contracts.adapter_contracts`는 compatibility facade로
-유지한다. 실제 family별 구현은 `adapter_contract_families/base.py`,
+Family별 구현은 `adapter_contract_families/base.py`,
 `adapter_contract_families/diagonal_scale.py`,
 `adapter_contract_families/classifier_head.py`,
 `adapter_contract_families/lora_classifier.py`,
@@ -60,6 +59,8 @@ Family별 `adapter_kind`와 canonical/accepted update payload format은 각
 `adapter_contract_families/<family>.py` payload contract 옆에 둔다. 중앙
 adapter family metadata catalog는 두지 않고, registry는 payload type lookup과
 parse/serialize contract helper만 소유한다.
+기존 compatibility facade였던 `shared.src.contracts.adapter_contracts`는 제거됐고,
+runtime과 test는 family별 direct import를 사용한다.
 
 - `SharedAdapterStatePayload`
   - 서버가 현재 배포하는 전역 shared adapter 상태 공통 필드

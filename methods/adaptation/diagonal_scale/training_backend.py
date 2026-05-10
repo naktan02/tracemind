@@ -18,12 +18,12 @@ from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterUpdatePayload,
+)
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
     DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
-)
-from shared.src.contracts.adapter_contracts import (
-    SharedAdapterUpdatePayload,
     VectorAdapterDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest

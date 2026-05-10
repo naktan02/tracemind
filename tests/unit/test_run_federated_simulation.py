@@ -52,9 +52,11 @@ from scripts.runtime_adapters.federated_server.initial_state_factory import (
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
 )
-from shared.src.contracts.adapter_contracts import (
-    LoraClassifierState,
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterState,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierState,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload

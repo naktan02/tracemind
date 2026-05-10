@@ -25,7 +25,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
     RoundValidationError,
 )
-from shared.src.contracts.adapter_contracts import CurrentSharedAdapterStatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    CurrentSharedAdapterStatePayload,
+)
 from shared.src.contracts.model_contracts import ModelManifestPayload
 from shared.src.contracts.training_contracts import TrainingUpdateSubmissionPayload
 

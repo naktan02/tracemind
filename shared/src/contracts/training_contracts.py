@@ -32,8 +32,10 @@ from pydantic import (
     model_validator,
 )
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.registry import (
     parse_shared_adapter_update_payload,
 )
 from shared.src.contracts.secure_aggregation_contracts import (

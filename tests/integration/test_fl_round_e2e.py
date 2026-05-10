@@ -50,10 +50,12 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
-from shared.src.contracts.adapter_contracts import (
-    dump_vector_adapter_state_payload,
+from shared.src.contracts.adapter_contract_families.factories import (
     make_diagonal_delta_payload,
     make_identity_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.io import (
+    dump_vector_adapter_state_payload,
 )
 from shared.src.contracts.model_contracts import (
     ModelManifest,

@@ -25,12 +25,16 @@ from methods.adaptation.diagonal_scale.config import (  # noqa: E402
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.adapter_contracts import (  # noqa: E402
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
-    LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierState,
 )
 from shared.src.contracts.model_contracts import (  # noqa: E402
     ModelManifest,

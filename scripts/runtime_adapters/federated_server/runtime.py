@@ -31,7 +31,7 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.prototype.building.base import PrototypeBuildStrategy
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

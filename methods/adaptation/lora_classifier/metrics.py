@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from shared.src.contracts.adapter_contracts import LoraClassifierDelta
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierDelta,
+)
 from shared.src.contracts.training_contracts import ClientMetricKeys
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,

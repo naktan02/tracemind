@@ -11,7 +11,9 @@ from methods.adaptation.lora_classifier.local_update import (
     build_lora_classifier_delta_from_rows,
     resolve_lora_classifier_label_schema,
 )
-from shared.src.contracts.adapter_contracts import LoraClassifierDelta
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierDelta,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 

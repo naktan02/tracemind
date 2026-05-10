@@ -20,8 +20,6 @@ from methods.federated.aggregation.fedavg.strategy import (
 )
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
-)
-from shared.src.contracts.adapter_contracts import (
     ClassifierHeadDelta,
     ClassifierHeadState,
 )

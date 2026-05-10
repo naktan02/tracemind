@@ -8,7 +8,9 @@ from dataclasses import dataclass, field
 
 import httpx
 
-from shared.src.contracts.adapter_contracts import CurrentSharedAdapterStatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    CurrentSharedAdapterStatePayload,
+)
 from shared.src.contracts.fl_round_contracts import ActiveRoundPayload
 from shared.src.contracts.training_contracts import (
     TrainingTaskPayload,

@@ -13,7 +13,9 @@ from agent.src.services.training.execution.agent_training_task_runner_service im
     AgentTrainingTaskRunnerService,
     AgentTrainingTaskRunRequest,
 )
-from shared.src.contracts.adapter_contracts import make_identity_state_payload
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_identity_state_payload,
+)
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (

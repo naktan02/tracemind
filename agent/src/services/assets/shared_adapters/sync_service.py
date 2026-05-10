@@ -10,7 +10,9 @@ from agent.src.infrastructure.repositories.shared_adapter_state_repository impor
     SharedAdapterStateActivationPointer,
     SharedAdapterStateRepository,
 )
-from shared.src.contracts.adapter_contracts import CurrentSharedAdapterStatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    CurrentSharedAdapterStatePayload,
+)
 
 
 @dataclass(slots=True)

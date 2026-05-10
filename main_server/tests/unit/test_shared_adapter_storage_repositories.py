@@ -11,7 +11,7 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.infrastructure.repositories import (
     shared_adapter_update_repository as update_repository_module,
 )
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
 )

@@ -20,8 +20,6 @@ from methods.federated.aggregation.fedavg.strategy import (
 )
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
-)
-from shared.src.contracts.adapter_contracts import (
     VectorAdapterDelta,
     VectorAdapterState,
 )

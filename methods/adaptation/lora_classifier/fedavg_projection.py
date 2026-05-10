@@ -23,8 +23,6 @@ from methods.federated.aggregation.fedavg.strategy import (
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
-)
-from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
     LoraClassifierState,
 )

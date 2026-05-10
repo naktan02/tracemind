@@ -44,7 +44,9 @@ from methods.prototype.building.kmeans import (
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
-from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    VectorAdapterState,
+)
 from shared.src.domain.services.clock import FixedClock
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 

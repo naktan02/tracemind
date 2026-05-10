@@ -17,21 +17,25 @@ from agent.src.services.inference.scoring_backends.registry import (
 from agent.src.services.training.backends.inputs import (
     registry as training_example_backend_registry,
 )
-from methods.adaptation.local_update_registry import (
-    register_shared_adapter_training_backend,
-)
 from agent.src.services.training.execution.local_training_service import (
     EmbeddedTrainingExample,
     LocalTrainingRequest,
     LocalTrainingService,
 )
-from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
-from shared.src.contracts.adapter_contracts import (
+from methods.adaptation.local_update_registry import (
+    register_shared_adapter_training_backend,
+)
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterDelta,
+)
+from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_update_payload_type,
 )
 from shared.src.contracts.model_contracts import ModelManifest
+from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,

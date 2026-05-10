@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
     make_identity_state_payload,
 )

@@ -6,7 +6,9 @@ from collections.abc import Callable
 from datetime import datetime
 from typing import TYPE_CHECKING, Protocol
 
-from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterUpdatePayload,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

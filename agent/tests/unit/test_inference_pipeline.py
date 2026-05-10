@@ -18,7 +18,9 @@ from agent.src.services.inference.pipeline_service import (
     InferencePipelineService,
 )
 from agent.src.services.language.preprocess_service import PreprocessService
-from shared.src.contracts.adapter_contracts import make_identity_state_payload
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_identity_state_payload,
+)
 from shared.src.contracts.model_contracts import make_embedding_manifest
 from shared.src.domain.entities.inference.events import QueryEvent, ScoredEvent
 

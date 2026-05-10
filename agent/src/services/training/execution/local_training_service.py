@@ -31,7 +31,9 @@ from methods.adaptation.privacy_guards.base import (
 from methods.adaptation.privacy_guards.noop import (
     NoOpSharedAdapterPrivacyGuard,
 )
-from shared.src.contracts.adapter_contracts import SharedAdapterUpdatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterUpdatePayload,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingTask,

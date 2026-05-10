@@ -8,9 +8,11 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     CLASSIFIER_HEAD_STATE_V1,
     LORA_CLASSIFIER_DELTA_V1,
+)
+from shared.src.contracts.adapter_contract_families.registry import (
     parse_shared_adapter_state_payload,
     parse_shared_adapter_update_payload,
 )

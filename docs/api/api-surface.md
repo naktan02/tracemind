@@ -143,7 +143,7 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `RoundRecordPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `RoundFinalizeRequestPayload` | `main_server/src/services/federation/rounds/boundary/payloads.py` |
 | `ModelManifestPayload` | `shared/src/contracts/model_contracts.py` |
-| `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contracts.py` |
+| `CurrentSharedAdapterStatePayload` | `shared/src/contracts/adapter_contract_families/base.py` |
 | `TrainingUpdateSubmissionPayload` | `shared/src/contracts/training_contracts.py` |
 
 ### Prototype Packs

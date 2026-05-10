@@ -5,7 +5,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
 )
@@ -55,9 +55,7 @@ def make_model_manifest_payload(
             "prototype_version": "proto_001",
             "training_scope": TrainingScope.ADAPTER_ONLY,
             "training_enabled": True,
-            "compatible_task_types": (
-                TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
-            ),
+            "compatible_task_types": (TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,),
         }
         return ModelManifestPayload(**(defaults | overrides))
 

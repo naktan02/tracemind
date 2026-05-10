@@ -7,7 +7,9 @@ from dataclasses import dataclass, field
 from agent.src.infrastructure.repositories.shared_adapter_state_repository import (
     SharedAdapterStateRepository,
 )
-from shared.src.contracts.adapter_contracts import SharedAdapterStatePayload
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterStatePayload,
+)
 from shared.src.contracts.model_contracts import ModelManifestPayload
 
 

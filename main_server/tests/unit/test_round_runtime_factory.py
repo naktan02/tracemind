@@ -39,7 +39,7 @@ from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_lifecycle_service_from_config,
     build_round_manager_service_from_config,
 )
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
 )

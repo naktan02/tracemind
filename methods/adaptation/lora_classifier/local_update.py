@@ -8,9 +8,11 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Protocol
 
-from shared.src.contracts.adapter_contracts import (
-    LoraClassifierDelta,
+from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask

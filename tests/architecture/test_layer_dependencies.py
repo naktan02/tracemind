@@ -5,6 +5,8 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+from shared.src.contracts.adapter_contract_families.base import AdapterKind
+
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
@@ -121,6 +123,32 @@ def test_shared_contracts_do_not_keep_central_adapter_family_metadata_catalog() 
         "shared는 중앙 adapter family metadata catalog를 소유하지 않는다. "
         "payload shape, adapter_kind, parse/serialize 규칙은 "
         "adapter_contract_families/<family>.py와 registry.py에 둔다."
+    )
+
+
+def test_shared_adapter_contracts_do_not_keep_legacy_facade() -> None:
+    forbidden_path = SHARED_SRC / "contracts" / "adapter_contracts.py"
+    assert not forbidden_path.exists(), (
+        "shared adapter payload contract는 adapter_contract_families/의 family별 "
+        "module과 base/factories/io/registry를 direct import한다. "
+        "legacy compatibility facade인 adapter_contracts.py는 재도입하지 않는다."
+    )
+
+
+def test_python_modules_do_not_import_legacy_shared_adapter_contract_facade() -> None:
+    legacy_module = "shared.src.contracts.adapter_contracts"
+    violations: list[tuple[Path, str]] = []
+    for root in PYTHON_SOURCE_ROOTS:
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(legacy_module,),
+            )
+        )
+    assert not violations, (
+        "shared adapter payload는 adapter_contract_families/ direct import를 사용한다. "
+        "legacy facade import를 재도입하지 않는다.\n"
+        f"{_format_violations(violations)}"
     )
 
 
@@ -796,7 +824,6 @@ def test_main_server_aggregation_methods_do_not_define_family_specific_services(
     package_root = (
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "aggregation"
     )
-    from shared.src.contracts.adapter_contracts import AdapterKind
 
     family_name_prefixes = {
         "".join(part.capitalize() for part in adapter_kind.value.split("_"))

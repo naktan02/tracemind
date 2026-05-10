@@ -4,25 +4,35 @@ from pathlib import Path
 
 import pytest
 
-from shared.src.contracts.adapter_contract_families.registry import (
-    get_shared_adapter_canonical_update_payload_format,
-    get_shared_adapter_update_payload_formats,
-)
-from shared.src.contracts.adapter_contracts import (
-    ClassifierHeadAdapterStatePayload,
-    ClassifierHeadAdapterUpdatePayload,
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
-    LoraClassifierAdapterStatePayload,
-    LoraClassifierAdapterUpdatePayload,
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadAdapterStatePayload,
+    ClassifierHeadAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DiagonalScaleAdapterStatePayload,
+    DiagonalScaleAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_lora_classifier_delta_payload,
+    make_lora_classifier_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.io import (
     dump_shared_adapter_state_payload,
     dump_shared_adapter_update_payload,
     load_shared_adapter_state_payload,
     load_shared_adapter_update_payload,
-    make_lora_classifier_delta_payload,
-    make_lora_classifier_state_payload,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierAdapterStatePayload,
+    LoraClassifierAdapterUpdatePayload,
+)
+from shared.src.contracts.adapter_contract_families.registry import (
+    get_shared_adapter_canonical_update_payload_format,
+    get_shared_adapter_update_payload_formats,
     register_shared_adapter_payload_family,
 )
 from shared.src.contracts.training_contracts import UpdatePayloadFormat

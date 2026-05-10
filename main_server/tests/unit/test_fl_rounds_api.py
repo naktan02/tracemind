@@ -34,7 +34,7 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
 )

@@ -12,11 +12,9 @@ from methods.adaptation.diagonal_scale.config import (
     TRAINING_BACKEND_EXTRA_SCOPE,
     DiagonalScaleHeuristicTrainingBackendConfig,
 )
+from shared.src.contracts.adapter_contract_families.base import VECTOR_ADAPTER_DELTA_V1
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
-)
-from shared.src.contracts.adapter_contracts import (
-    VECTOR_ADAPTER_DELTA_V1,
     VectorAdapterDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest

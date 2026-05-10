@@ -5,10 +5,14 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
-    LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterState,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierState,
 )
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,

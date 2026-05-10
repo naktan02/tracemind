@@ -12,13 +12,13 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainExecutor,
 )
+from shared.src.contracts.adapter_contract_families.base import (
+    SharedAdapterUpdatePayload,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-)
-from shared.src.contracts.adapter_contracts import (
     LoraClassifierDelta,
-    SharedAdapterUpdatePayload,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (

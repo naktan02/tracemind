@@ -11,6 +11,16 @@ import pytest
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
 )
+from agent.src.services.training.examples.models import EmbeddedTrainingExample
+from agent.src.services.training.execution.local_training_service import (
+    LocalTrainingRequest,
+    LocalTrainingService,
+)
+from methods.adaptation.local_update_registry import (
+    build_shared_adapter_training_backend,
+    list_registered_shared_adapter_training_backend_names,
+    list_shared_adapter_training_backend_catalog_entries,
+)
 from methods.adaptation.lora_classifier import (
     config as lora_config,
 )
@@ -23,17 +33,9 @@ from methods.adaptation.lora_classifier.local_update import (
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from methods.adaptation.local_update_registry import (
-    build_shared_adapter_training_backend,
-    list_registered_shared_adapter_training_backend_names,
-    list_shared_adapter_training_backend_catalog_entries,
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LoraClassifierDelta,
 )
-from agent.src.services.training.examples.models import EmbeddedTrainingExample
-from agent.src.services.training.execution.local_training_service import (
-    LocalTrainingRequest,
-    LocalTrainingService,
-)
-from shared.src.contracts.adapter_contracts import LoraClassifierDelta
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

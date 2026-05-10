@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.factories import (
     make_diagonal_delta_payload,
     make_lora_classifier_delta_payload,
 )

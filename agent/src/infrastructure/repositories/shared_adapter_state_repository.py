@@ -9,8 +9,10 @@ from pathlib import Path
 
 from pydantic import BaseModel, ConfigDict
 
-from shared.src.contracts.adapter_contracts import (
+from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
+)
+from shared.src.contracts.adapter_contract_families.io import (
     dump_shared_adapter_state_payload,
     load_shared_adapter_state_payload,
 )

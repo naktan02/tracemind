@@ -32,7 +32,9 @@ from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.adapter_contracts import VectorAdapterState
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    VectorAdapterState,
+)
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
