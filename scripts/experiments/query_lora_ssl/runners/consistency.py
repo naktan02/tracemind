@@ -31,6 +31,9 @@ from scripts.experiments.query_lora_ssl.query_ssl.common import (
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
+from scripts.experiments.query_lora_ssl.runtime_metrics import (
+    run_with_training_runtime_metrics,
+)
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     load_labeled_query_rows,
@@ -107,20 +110,32 @@ def run_consistency_query_ssl_lora_baseline(
         context=context,
     )
     algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
-    model, history, best_selection_report = train_query_ssl_lora_classifier(
-        model=context.model,
-        train_loader=context.train_loader,
-        unlabeled_loader=unlabeled_loader,
-        selection_loader=context.selection_loader,
-        categories=context.categories,
+    (
+        (model, history, best_selection_report),
+        runtime_metrics,
+    ) = run_with_training_runtime_metrics(
+        lambda: train_query_ssl_lora_classifier(
+            model=context.model,
+            train_loader=context.train_loader,
+            unlabeled_loader=unlabeled_loader,
+            selection_loader=context.selection_loader,
+            categories=context.categories,
+            device=context.training_device,
+            epochs=int(cfg.epochs),
+            learning_rate=float(cfg.learning_rate),
+            classifier_learning_rate=float(cfg.classifier_learning_rate),
+            weight_decay=float(cfg.weight_decay),
+            max_grad_norm=float(cfg.max_grad_norm),
+            log_every_steps=int(cfg.log_every_steps),
+            algorithm=algorithm,
+        ),
+        training_example_count=(
+            (len(context.effective_train_rows) if algorithm.uses_labeled_batches else 0)
+            + len(context.effective_unlabeled_rows)
+        )
+        * int(cfg.epochs),
+        parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
-        epochs=int(cfg.epochs),
-        learning_rate=float(cfg.learning_rate),
-        classifier_learning_rate=float(cfg.classifier_learning_rate),
-        weight_decay=float(cfg.weight_decay),
-        max_grad_norm=float(cfg.max_grad_norm),
-        log_every_steps=int(cfg.log_every_steps),
-        algorithm=algorithm,
     )
     results = evaluate_query_ssl_run_context(
         model=model,
@@ -135,6 +150,7 @@ def run_consistency_query_ssl_lora_baseline(
         else str(cfg.unlabeled_jsonl),
         "unlabeled_row_count": len(context.effective_unlabeled_rows),
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
+        "runtime_metrics": runtime_metrics,
     }
     effective_extra_manifest.update(context.initial_checkpoint_manifest)
     if (

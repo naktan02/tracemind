@@ -14,6 +14,9 @@ from scripts.experiments.query_lora_ssl.harness.common import (
     prepare_supervised_lora_run_context,
 )
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
+from scripts.experiments.query_lora_ssl.runtime_metrics import (
+    run_with_training_runtime_metrics,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
@@ -45,18 +48,28 @@ def run_supervised_lora_baseline(
         eval_set_refs=eval_set_refs,
         trainer_version_override=trainer_version_override,
     )
-    model, history, best_selection_report = train_query_lora_classifier(
-        model=context.model,
-        train_loader=context.train_loader,
-        selection_loader=context.selection_loader,
-        categories=context.categories,
+    (
+        (model, history, best_selection_report),
+        runtime_metrics,
+    ) = run_with_training_runtime_metrics(
+        lambda: train_query_lora_classifier(
+            model=context.model,
+            train_loader=context.train_loader,
+            selection_loader=context.selection_loader,
+            categories=context.categories,
+            device=context.training_device,
+            epochs=int(context.cfg.epochs),
+            learning_rate=float(context.cfg.learning_rate),
+            classifier_learning_rate=float(context.cfg.classifier_learning_rate),
+            weight_decay=float(context.cfg.weight_decay),
+            max_grad_norm=float(context.cfg.max_grad_norm),
+            log_every_steps=int(context.cfg.log_every_steps),
+        ),
+        training_example_count=(
+            len(context.effective_train_rows) * int(context.cfg.epochs)
+        ),
+        parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
-        epochs=int(context.cfg.epochs),
-        learning_rate=float(context.cfg.learning_rate),
-        classifier_learning_rate=float(context.cfg.classifier_learning_rate),
-        weight_decay=float(context.cfg.weight_decay),
-        max_grad_norm=float(context.cfg.max_grad_norm),
-        log_every_steps=int(context.cfg.log_every_steps),
     )
 
     results = evaluate_supervised_lora_run_context(
@@ -67,6 +80,7 @@ def run_supervised_lora_baseline(
     )
 
     effective_extra_manifest = dict(context.initial_checkpoint_manifest)
+    effective_extra_manifest["runtime_metrics"] = runtime_metrics
     if extra_manifest:
         effective_extra_manifest.update(dict(extra_manifest))
 

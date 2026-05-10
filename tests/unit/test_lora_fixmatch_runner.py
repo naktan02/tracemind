@@ -222,6 +222,11 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         captured["extra_manifest"]["query_ssl_augmenter_preparation"]["mode"]
         == "precomputed_usb_candidates"
     )
+    runtime_metrics = captured["extra_manifest"]["runtime_metrics"]
+    assert runtime_metrics["training_example_count"] == 2
+    assert runtime_metrics["train_seconds"] > 0
+    assert runtime_metrics["examples_per_second"] > 0
+    assert runtime_metrics["trainable_param_ratio"] == 0.5
 
 
 def test_run_query_ssl_lora_baseline_uses_methods_descriptor(

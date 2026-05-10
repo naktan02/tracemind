@@ -139,6 +139,13 @@ projection_manifest=...
 `per_category`에는 class별 `support`, `predicted`, `correct`, `precision`,
 `recall`, `f1`, confidence/margin 평균이 들어간다.
 
+`manifest.runtime_metrics`에는 run-level 학습 비용 지표가 들어간다.
+
+- `train_seconds`: 학습 loop에 걸린 wall-clock 초.
+- `training_example_count`: throughput 계산에 사용한 학습 row 수.
+- `examples_per_second`: `training_example_count / train_seconds`.
+- `trainable_param_ratio`: 전체 parameter 중 학습 대상 parameter 비율.
+
 `projection_manifest`는 eval set마다 아래 파일을 가리킨다.
 
 - `<eval_set>.projection.jsonl`: `x`, `y`, 실제 label, 예측 label, 정오답,

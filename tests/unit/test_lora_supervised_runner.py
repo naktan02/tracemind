@@ -164,3 +164,8 @@ def test_run_supervised_lora_baseline_wires_common_context_and_artifacts(
         captured["extra_manifest"]["query_adaptation_initial_checkpoint"]["mode"]
         == "none"
     )
+    runtime_metrics = captured["extra_manifest"]["runtime_metrics"]
+    assert runtime_metrics["training_example_count"] == 1
+    assert runtime_metrics["train_seconds"] > 0
+    assert runtime_metrics["examples_per_second"] > 0
+    assert runtime_metrics["trainable_param_ratio"] == 0.5
