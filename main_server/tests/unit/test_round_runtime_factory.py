@@ -7,13 +7,8 @@ from datetime import datetime
 from typing import Sequence
 
 import pytest
-from fastapi.middleware.cors import CORSMiddleware
 
-from main_server.src.api.main import (
-    DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS,
-    create_app,
-    load_experiment_web_allowed_origins_from_env,
-)
+from main_server.src.api.main import create_app
 from main_server.src.services.federation.rounds.aggregation.models import (
     SharedAdapterAggregationBackend,
 )
@@ -241,14 +236,6 @@ def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
         service.round_manager_service.adapter_family.aggregation_backend.adapter_kind
         == TEST_ADAPTER_KIND
     )
-    cors_middleware = next(
-        middleware
-        for middleware in app.user_middleware
-        if middleware.cls is CORSMiddleware
-    )
-    assert cors_middleware.kwargs["allow_origins"] == list(
-        DEFAULT_EXPERIMENT_WEB_ALLOWED_ORIGINS
-    )
 
 
 def test_runtime_config_loader_reads_environment_mapping() -> None:
@@ -265,21 +252,6 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
     assert config.method_descriptor_name == "fedavg_pseudo_label"
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
-
-
-def test_experiment_web_origin_loader_reads_environment_mapping() -> None:
-    origins = load_experiment_web_allowed_origins_from_env(
-        environ={
-            "EXPERIMENT_WEB_ALLOWED_ORIGINS": (
-                "http://localhost:5173, https://experiment.example.com "
-            )
-        }
-    )
-
-    assert origins == (
-        "http://localhost:5173",
-        "https://experiment.example.com",
-    )
 
 
 def test_main_server_app_uses_environment_runtime_config(

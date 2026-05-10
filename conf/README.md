@@ -106,4 +106,4 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - 새 reusable group은 위치만 보고도 역할이 드러나야 한다.
 - preset이 1개뿐이고 해당 entrypoint 전용이면 group으로 만들지 않는다.
 - YAML은 실행 조합표와 파라미터를 담고, Python 구현이나 복잡한 계산 로직은 두지 않는다.
-- namespace 이동은 Hydra config test, experiment catalog, active docs 갱신을 같이 닫는다.
+- namespace 이동은 Hydra config test와 active docs 갱신을 같이 닫는다.

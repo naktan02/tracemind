@@ -9,11 +9,6 @@
 - `federation/prototypes/`
   - prototype pack/build-state rebuild, publication, activation 같은
     server-owned prototype artifact lifecycle
-- `experiment_workspace/`
-  - 개발자용 experiment workspace catalog/compile/run/save backend
-  - `catalog/`, `compiler/`, `run_execution/`가 각각 선택지 노출, Hydra preview 번역,
-    local run orchestration을 맡는다.
-
 ## newcomer용 읽기 순서
 
 ### 1. round lifecycle부터 보고 싶을 때
@@ -39,8 +34,6 @@
   않는다. artifact 종류가 필요하면 resource/capability 이름으로 좁힌 package를 둔다.
 - prototype rebuild input row는 `ServerReferencePrototypeSourceRow`로 표현되는
   server-owned reference만 허용한다. agent raw/query text는 이 경로로 승격하지 않는다.
-- 개발자 실험 웹용 catalog/compile/workspace/run surface는
-  `experiment_workspace/`가 소유한다.
 - 공용 계약은 `shared/src/contracts/`를 기준으로 읽는다.
 - 새 adapter family나 FL SSL method 때문에 `federation/rounds/families/`에
   family/method-specific 파일을 추가하지 않는다. 이 폴더는 shared payload registry와

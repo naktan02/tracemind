@@ -9,7 +9,7 @@
 | 앱 | import path | 기본 역할 |
 |---|---|---|
 | Agent API | `agent.src.api.main:app` | 로컬 수집, inference, query/local state, training participation, family/wellbeing output |
-| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication, experiment workspace backend |
+| Main Server API | `main_server.src.api.main:app` | FL round orchestration, prototype publication |
 
 로컬 실행 예시:
 
@@ -25,7 +25,7 @@ uv run uvicorn agent.src.api.main:app --reload --port 8001
 | raw text는 agent local boundary에 남긴다 | 서버 API는 query buffer 원문을 읽지 않는다 |
 | shared contract는 코드가 source of truth다 | API 문서가 payload 필드를 복제해 정본이 되지 않는다 |
 | route는 orchestration edge다 | domain rule과 training/inference mechanism은 services/domain 계층에 둔다 |
-| CORS는 dev UI origin 중심이다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
+| CORS/auth는 local app 노출 경계에서 별도 확인한다 | production auth/security hardening 문서는 아직 별도 canonical 문서가 없다 |
 
 현재 route-level 인증 dependency는 명시적으로 두껍게 걸려 있지 않다. 외부 노출 전에는 API key, local-only binding, reverse proxy policy, family PIN/session 경계를 별도 security pass로 닫아야 한다.
 
@@ -161,31 +161,6 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | `PrototypePackPayload` | `shared/src/contracts/prototype_contracts.py` |
 | `PrototypePackActivation*` | `shared/src/contracts/prototype_contracts.py` |
 
-### Experiment Workspace
-
-모든 path는 `/api/v1/experiments` prefix를 가진다.
-
-| Method | Path | 역할 | Source |
-|---|---|---|---|
-| GET | `/api/v1/experiments/catalog` | 현재 코드/설정 기준 read-only experiment catalog | `main_server/src/api/experiment_catalog_routes.py` |
-| POST | `/api/v1/experiments/compile` | workspace manifest를 Hydra/script preview로 compile | `main_server/src/api/experiment_catalog_routes.py` |
-| GET | `/api/v1/experiments/workspaces` | saved workspace 목록 조회 | `main_server/src/api/experiment_workspace_routes.py` |
-| POST | `/api/v1/experiments/workspaces` | workspace manifest compile 후 저장 | `main_server/src/api/experiment_workspace_routes.py` |
-| GET | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 상세 조회 | `main_server/src/api/experiment_workspace_routes.py` |
-| DELETE | `/api/v1/experiments/workspaces/{workspace_id}` | saved workspace 삭제 | `main_server/src/api/experiment_workspace_routes.py` |
-| GET | `/api/v1/experiments/runs` | local experiment run 목록 조회 | `main_server/src/api/experiment_run_routes.py` |
-| POST | `/api/v1/experiments/runs` | local experiment run 시작 | `main_server/src/api/experiment_run_routes.py` |
-| GET | `/api/v1/experiments/runs/{run_id}` | experiment run 상태 조회 | `main_server/src/api/experiment_run_routes.py` |
-| GET | `/api/v1/experiments/runs/{run_id}/logs/{stream_name}` | stdout/stderr log 반환 | `main_server/src/api/experiment_run_routes.py` |
-
-주요 contract:
-
-| Contract | Source |
-|---|---|
-| `WorkspaceManifestPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
-| `ResolvedExperimentPlanPayload` | `shared/src/contracts/workspace_manifest_contracts.py` |
-| `ExperimentCatalogPayload` | `main_server/src/services/experiment_workspace/payloads.py` |
-
 ## 5. API 변경 시 갱신 기준
 
 | 변경 | 같이 확인할 것 |
@@ -194,4 +169,3 @@ Main server app은 `main_server/src/api/main.py`에서 router를 조합한다.
 | agent route 변경 | `agent/tests/unit/*_api.py`, `docs/api/api-surface.md`, relevant app consumer |
 | main_server route 변경 | `main_server/tests/unit/*_api.py`, root integration tests, `docs/api/api-surface.md` |
 | family/wellbeing route 변경 | `apps/family_extension`, generated types, `docs/family_extension_wellbeing_signal_mvp_plan.md` |
-| experiment workspace route 변경 | `apps/experiment_web`, generated types, `shared/src/contracts/workspace_manifest_contracts.py` |

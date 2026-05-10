@@ -8,7 +8,7 @@
 4. 관련 contract, Hydra config, code, test를 확인한다.
 
 Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
-`tests/`, `docs/`, `apps/`, `apps/experiment_web/`, `apps/family_extension/`.
+`tests/`, `docs/`, `apps/`, `apps/family_extension/`.
 
 ## Working Rules
 

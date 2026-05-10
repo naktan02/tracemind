@@ -15,9 +15,6 @@ AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
 SCRIPTS_SRC = REPO_ROOT / "scripts"
 SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
-EXPERIMENT_COMPILER_SRC = (
-    MAIN_SERVER_SRC / "services" / "experiment_workspace" / "compiler"
-)
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
@@ -689,55 +686,6 @@ def test_scripts_do_not_wrap_shared_labeled_query_rows() -> None:
         "labeled query row canonical contract는 shared contract가 소유한다. "
         "scripts/io에는 단순 re-export wrapper를 두지 않는다.\n"
         f"facade path={_relative_repo_path(facade_path)}"
-    )
-
-
-def test_experiment_compiler_does_not_keep_policy_monolith() -> None:
-    monolith_path = EXPERIMENT_COMPILER_SRC / "policies.py"
-
-    assert not monolith_path.exists(), (
-        "experiment compiler policy contract, registry primitive, default wiring, "
-        "concrete policy 구현은 분리한다. 중앙 policies.py monolith를 다시 만들지 "
-        "않는다.\n"
-        f"monolith path={_relative_repo_path(monolith_path)}"
-    )
-
-
-def test_experiment_compiler_service_does_not_own_selection_or_override_building() -> (
-    None
-):
-    service_path = EXPERIMENT_COMPILER_SRC / "service.py"
-    required_files = (
-        EXPERIMENT_COMPILER_SRC / "catalog_lookup.py",
-        EXPERIMENT_COMPILER_SRC / "hydra_overrides.py",
-        EXPERIMENT_COMPILER_SRC / "selection_compiler.py",
-    )
-    source = service_path.read_text(encoding="utf-8")
-    forbidden_snippets = (
-        "for selection in manifest.selections",
-        "selection.override_patch",
-        "item.default_override_patch",
-        "_format_hydra_value",
-        "_merge_group_assignments",
-        "_parse_hydra_override_map",
-        "_selector_group_for_item",
-        "_validate_selection_against_item",
-    )
-    violations = [snippet for snippet in forbidden_snippets if snippet in source]
-    missing_files = [
-        _relative_repo_path(path) for path in required_files if not path.exists()
-    ]
-
-    assert not missing_files, (
-        "experiment compiler는 catalog lookup, selection compile, Hydra override "
-        "utility를 service.py 밖의 전용 module로 분리한다.\n"
-        f"{chr(10).join(f'- {path}' for path in missing_files)}"
-    )
-    assert not violations, (
-        "ExperimentCompilerService는 compile orchestration만 맡는다. selection "
-        "검증/selector build/override formatting 세부사항은 selection_compiler.py와 "
-        "hydra_overrides.py가 맡는다.\n"
-        f"violations={violations}"
     )
 
 

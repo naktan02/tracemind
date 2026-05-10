@@ -30,7 +30,6 @@ path_specific_instructions:
   - tests/AGENTS.md
   - docs/AGENTS.md
   - apps/AGENTS.md
-  - apps/experiment_web/AGENTS.md
   - apps/family_extension/AGENTS.md
 
 active_entrypoints:
@@ -132,16 +131,6 @@ task_routes:
     verify:
       - Hydra config remains source of truth
       - script-only logic does not absorb runtime core
-
-  experiment_web:
-    read_order:
-      - AGENTS.md
-      - apps/AGENTS.md
-      - apps/experiment_web/AGENTS.md
-      - shared/src/contracts/README.md
-    verify:
-      - UI remains a contract/API consumer
-      - generated src/types.ts is not manually edited
 
   docs_sync:
     read_order:

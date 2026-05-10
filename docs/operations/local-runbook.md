@@ -116,16 +116,6 @@ curl http://127.0.0.1:8001/api/v1/system/health
 
 ## 5. Frontend 실행
 
-Developer experiment web:
-
-```bash
-cd apps/experiment_web
-npm install
-npm run dev
-```
-
-기본 dev origin은 `http://localhost:5173` 또는 `http://127.0.0.1:5173`이다.
-
 Family extension UI:
 
 ```bash
@@ -154,10 +144,9 @@ ollama serve
 ollama pull exaone3.5:2.4b
 ```
 
-각 app build:
+App build:
 
 ```bash
-cd apps/experiment_web && npm run build
 cd apps/family_extension && npm run build
 ```
 

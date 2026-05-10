@@ -39,9 +39,9 @@ central fixed embedding + classifier seed
 | Methods | SSL, adaptation, prototype, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
-| Main server API/runtime | FL round, aggregation, prototype publication, experiment workspace backend | `main_server/src/api/*`, `main_server/src/services/*` |
+| Main server API/runtime | FL round, aggregation, prototype publication | `main_server/src/api/*`, `main_server/src/services/*` |
 | Scripts | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/prototypes/*` |
-| Apps | developer experiment UI와 family extension UI shell | `apps/experiment_web/*`, `apps/family_extension/*` |
+| Apps | family extension UI shell과 future 제품 UI shell | `apps/family_extension/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 
 ## 3. 활성 레일
@@ -195,9 +195,9 @@ Raw Event / Local Signal
 | `methods/` | 교체 가능한 SSL, adaptation, prototype, FL aggregation 계산 core와 method-local recipe metadata/policy | FastAPI, repository, Hydra entrypoint, runtime state를 소유하지 않는다 |
 | `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | method identity/local objective와 서버 round orchestration/aggregation policy를 소유하지 않는다 |
-| `main_server/` | round lifecycle, aggregation, publication, experiment workspace backend | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
+| `main_server/` | round lifecycle, aggregation, publication | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
 | `scripts/` | Hydra 기반 실험 entrypoint, sweep, report, compatibility wrapper | 운영 후보 알고리즘 코어를 먼저 만들고 나중에 복사하지 않는다 |
-| `apps/` | UI shell, compile/run consumer, wellbeing output consumer | 계약 의미, 전략 이름, 실행 기본값을 재정의하지 않는다 |
+| `apps/` | UI shell, wellbeing output consumer | 계약 의미, 전략 이름, 실행 기본값을 재정의하지 않는다 |
 | `tests/` | cross-boundary integration/e2e, architecture 검증 | package 내부 단위 테스트를 불필요하게 루트로 올리지 않는다 |
 
 ## 5. 상태와 산출물 위치
@@ -213,11 +213,11 @@ Raw Event / Local Signal
 
 ## 6. 현재 운영 상태
 
-현재 저장소는 Python package와 Vite app 중심으로 구성되어 있다.
+현재 저장소는 Python package와 family extension Vite app 중심으로 구성되어 있다.
 
 - Python dependency source of truth: `pyproject.toml`, `uv.lock`
 - Python API app: `agent.src.api.main:app`, `main_server.src.api.main:app`
-- Frontend apps: `apps/experiment_web`, `apps/family_extension`
+- Frontend apps: `apps/family_extension`
 - 현재 repo에는 Docker Compose나 `infra/` manifest가 없다.
 
 로컬 실행 절차는 `docs/operations/local-runbook.md`를 기준으로 본다.

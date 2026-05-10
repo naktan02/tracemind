@@ -2,7 +2,7 @@
 
 ## 역할
 
-`apps/`는 개발자용 실험 UI와 future 제품 UI shell을 두는 계층이다.
+`apps/`는 family extension과 future 제품 UI shell을 두는 계층이다.
 
 중요:
 
@@ -15,7 +15,7 @@
 - UI가 contract 의미를 다시 정의하지 않는다.
 - backend payload shape를 프런트 전용 임의 포맷으로 조용히 바꾸지 않는다.
 - lane 분리는 화면에서도 유지한다.
-  - `experiment_web`
+  - `family_extension`
   - future `youth_*`
   - future `guardian_*`
 - developer tool과 product UI의 문구/권한/정보 노출을 섞지 않는다.
@@ -25,5 +25,4 @@
 
 - 기본은 `TypeScript` 기반으로 간다.
 - 앱 shell은 얇게 유지하고, 공통 타입/클라이언트는 재사용 가능한 위치로 분리할 수 있게 만든다.
-- `experiment_web`는 compile/run consumer이지 Hydra/script contract owner가 아니다.
 - future youth/guardian UI는 output/view-model consumer이지 inference/training owner가 아니다.

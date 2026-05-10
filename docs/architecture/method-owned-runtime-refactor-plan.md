@@ -65,9 +65,8 @@ selection hook 중복 제거, method-specific runtime guard를 닫았다. 단,
 - acceptance policy는 SSL selection hook과 중복 판단을 하지 않고 metadata/compatibility
   역할로 축소한다.
 - evidence/input/scoring registry는 implementation-local registration으로 정리한다.
-- local training registry catalog snapshot은 `shared`가 아니라 `main_server`
-  experiment workspace catalog가 소유한다. implementation source of truth는 각
-  runtime adapter 옆 registry metadata다.
+- local training registry metadata는 implementation 옆 registry metadata를 source로
+  두고, 별도 UI catalog snapshot을 source of truth로 삼지 않는다.
 - `agent` local update backend는 method identity를 소유하지 않는 runtime adapter로
   명명/문서화한다.
 - architecture guard로 `agent`/`main_server` method-specific runtime module 추가를 막는다.
@@ -239,9 +238,8 @@ FedAvg core/projection은 각 family-owned
 `main_server` aggregation package에는 generic executor/registry와 server-owned artifact
 ref 생성/JSON loading capability만 남긴다. `assets/prototypes`는 catch-all assets package에서
 `federation/prototypes` server-owned artifact lifecycle package로 좁혔다.
-experiment workspace catalog의 method-owned local update/scoring/privacy guard 항목은
-methods registry로 위임했고, main_server snapshot에는 agent-local example/evidence
-runtime catalog만 남겼다.
+method-owned local update/scoring/privacy guard 항목은 methods registry로 위임했고,
+runtime adapter는 agent-local example/evidence capability만 노출한다.
 
 `main_server`에도 agent와 같은 문제가 생길 수 있으므로 별도 batch로 다룬다.
 
@@ -381,10 +379,7 @@ recipe, round-state exchange, compatibility validator, registry 경계를 검증
   artifact store와 aggregation context capability로 붙였다. `main_server`는
   `aggregation_artifact::` ref를 읽고, LoRA/classifier delta 의미는 methods
   projection이 해석한다.
-- 닫힘: experiment workspace catalog의 method-owned training/scoring/privacy guard 항목은
-  methods registry에서 읽는다. main_server snapshot은 agent-local example/evidence
-  runtime catalog compatibility facade로만 남긴다.
-- 위험: compiler policy는 policy 판단과 config patch 조립이 한 파일에 남아 있다.
+- 닫힘: method-owned training/scoring/privacy guard 항목은 methods registry에서 읽는다.
 - 진행 중: live server runtime의 method descriptor 기반 `server_policy_executor`와
   `round_state_exchange` capability는 기본/no-op 경로와 client metric summary 경로까지
   연결했다. 복잡한 FL method가 custom state machine을 요구하면 먼저 method-local

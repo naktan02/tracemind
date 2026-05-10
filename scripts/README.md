@@ -130,7 +130,6 @@ uv run python scripts/experiments/prototype_analysis/prototype_strategy_experime
 Type generation:
 
 ```bash
-uv run python scripts/codegen/generate_experiment_web_types.py
 uv run python scripts/codegen/generate_family_extension_types.py
 ```
 
@@ -156,7 +155,6 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
   - `initial_state_factory.py`: adapter family별 initial shared state 생성.
   - `round_request_mapper.py`: experiment task config -> round open request 변환.
 - `prototype_publication_runtime.py`: prototype pack publication/sync bridge.
-- `experiment_web_schema_runtime.py`: app type 생성용 main_server payload bridge.
 
 새 bridge를 추가하기 전에 먼저 확인한다.
 
