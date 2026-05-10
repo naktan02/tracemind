@@ -455,5 +455,11 @@ def train_fixmatch_classifier(
         weight_decay=weight_decay,
         max_grad_norm=max_grad_norm,
         log_every_steps=log_every_steps,
-        algorithm=FixMatchAlgorithm(config=fixmatch_config),
+        algorithm=FixMatchAlgorithm(
+            temperature=fixmatch_config.temperature,
+            p_cutoff=fixmatch_config.p_cutoff,
+            hard_label=fixmatch_config.hard_label,
+            lambda_u=fixmatch_config.lambda_u,
+            supervised_loss_weight=fixmatch_config.supervised_loss_weight,
+        ),
     )

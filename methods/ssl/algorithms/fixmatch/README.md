@@ -10,6 +10,13 @@
 - labeled supervised loss와 unlabeled consistency loss 결합
 - query SSL trainer가 호출하는 `FixMatchAlgorithm` adapter 제공
 
+입력 경계:
+
+- 저장 row surface는 strict USB형 `text + aug_0 + aug_1`이다.
+- dataloader가 `text`를 weak view로, 첫 번째 후보 `aug_0`을 strong view로
+  `weak_input_ids/strong_input_ids` batch key로 변환한다.
+- legacy `weak_text/strong_text` row는 dataloader compatibility 경로에서만 허용한다.
+
 ## 제외
 
 - unlabeled row 준비와 augmentation cache 생성

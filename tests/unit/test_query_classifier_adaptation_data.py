@@ -23,22 +23,17 @@ def _row(query_id: str, text: str) -> LabeledQueryRow:
     )
 
 
-def test_text_multiview_dataset_uses_usb_aug_candidates(monkeypatch) -> None:
+def test_text_multiview_dataset_uses_first_usb_aug_candidate() -> None:
     row = _row("q1", "I feel anxious today.")
     row["aug_0"] = "I feel nervous today."
     row["aug_1"] = "Today I feel uneasy."
-
-    monkeypatch.setattr(
-        "methods.adaptation.query_classifier_adaptation.data.random.choice",
-        lambda choices: choices[1],
-    )
 
     dataset = TextMultiviewDataset(rows=[row], task_prefix="label: ")
     item = dataset[0]
 
     assert item["query_id"] == "q1"
     assert item["weak_text"] == "label: I feel anxious today."
-    assert item["strong_text"] == "label: Today I feel uneasy."
+    assert item["strong_text"] == "label: I feel nervous today."
 
 
 def test_text_multiview_dataset_keeps_legacy_weak_strong_compatibility() -> None:

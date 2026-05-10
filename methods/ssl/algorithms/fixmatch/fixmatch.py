@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
 from typing import Any
 
 import torch
@@ -24,25 +23,40 @@ from ...hooks.pseudo_labeling import (
 from ...registry import register_query_ssl_algorithm
 
 
-@dataclass(frozen=True, slots=True)
 class FixMatchConfig:
-    """USB FixMatch와 같은 핵심 하이퍼파라미터 묶음."""
+    """기존 FixMatch wrapper가 넘기는 핵심 하이퍼파라미터 묶음."""
 
-    temperature: float
-    p_cutoff: float
-    hard_label: bool = True
-    lambda_u: float = 1.0
-    supervised_loss_weight: float = 1.0
+    def __init__(
+        self,
+        *,
+        temperature: float,
+        p_cutoff: float,
+        hard_label: bool = True,
+        lambda_u: float = 1.0,
+        supervised_loss_weight: float = 1.0,
+    ) -> None:
+        self.temperature = float(temperature)
+        self.p_cutoff = float(p_cutoff)
+        self.hard_label = bool(hard_label)
+        self.lambda_u = float(lambda_u)
+        self.supervised_loss_weight = float(supervised_loss_weight)
 
 
-@dataclass(slots=True)
 class FixMatchStepOutput:
     """FixMatch 한 step의 loss/diagnostics 결과."""
 
-    total_loss: Tensor
-    sup_loss: Tensor
-    unsup_loss: Tensor
-    mask: Tensor
+    def __init__(
+        self,
+        *,
+        total_loss: Tensor,
+        sup_loss: Tensor,
+        unsup_loss: Tensor,
+        mask: Tensor,
+    ) -> None:
+        self.total_loss = total_loss
+        self.sup_loss = sup_loss
+        self.unsup_loss = unsup_loss
+        self.mask = mask
 
     @property
     def util_ratio(self) -> Tensor:
@@ -70,17 +84,31 @@ def build_fixmatch_objective_hooks() -> SslObjectiveHooks:
     )
 
 
-@dataclass(frozen=True, slots=True)
 class FixMatchAlgorithm:
     """FixMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
-    config: FixMatchConfig
-    hooks: SslObjectiveHooks = field(default_factory=build_fixmatch_objective_hooks)
     algorithm_name: str = "fixmatch"
+
+    def __init__(
+        self,
+        *,
+        temperature: float,
+        p_cutoff: float,
+        hard_label: bool = True,
+        lambda_u: float = 1.0,
+        supervised_loss_weight: float = 1.0,
+        hooks: SslObjectiveHooks | None = None,
+    ) -> None:
+        self.temperature = float(temperature)
+        self.p_cutoff = float(p_cutoff)
+        self.hard_label = bool(hard_label)
+        self.lambda_u = float(lambda_u)
+        self.supervised_loss_weight = float(supervised_loss_weight)
+        self.hooks = hooks or build_fixmatch_objective_hooks()
 
     @property
     def uses_labeled_batches(self) -> bool:
-        return self.config.supervised_loss_weight > 0
+        return self.supervised_loss_weight > 0
 
     def validate_loaders(
         self,
@@ -90,7 +118,7 @@ class FixMatchAlgorithm:
     ) -> None:
         if unlabeled_loader_length == 0:
             raise ValueError("FixMatch unlabeled_loader must not be empty.")
-        if self.config.supervised_loss_weight > 0 and train_loader_length == 0:
+        if self.supervised_loss_weight > 0 and train_loader_length == 0:
             raise ValueError(
                 "FixMatch labeled train_loader must not be empty when "
                 "supervised_loss_weight > 0."
@@ -107,7 +135,11 @@ class FixMatchAlgorithm:
             model=model,
             labeled_batch=labeled_batch,
             unlabeled_batch=unlabeled_batch,
-            config=self.config,
+            temperature=self.temperature,
+            p_cutoff=self.p_cutoff,
+            hard_label=self.hard_label,
+            lambda_u=self.lambda_u,
+            supervised_loss_weight=self.supervised_loss_weight,
             hooks=self.hooks,
         )
 
@@ -117,10 +149,25 @@ def compute_fixmatch_step(
     model: TextBatchClassifier,
     labeled_batch: dict[str, Tensor] | None,
     unlabeled_batch: dict[str, Tensor],
-    config: FixMatchConfig,
+    temperature: float,
+    p_cutoff: float,
+    hard_label: bool = True,
+    lambda_u: float = 1.0,
+    supervised_loss_weight: float = 1.0,
     hooks: SslObjectiveHooks | None = None,
 ) -> FixMatchStepOutput:
     """USB `semilearn/algorithms/fixmatch/fixmatch.py::train_step` 핵심."""
+
+    if labeled_batch is None:
+        sup_loss = None
+    else:
+        logits_x_lb = model(
+            input_ids=labeled_batch["input_ids"],
+            attention_mask=labeled_batch["attention_mask"],
+        )
+        sup_loss = F.cross_entropy(
+            logits_x_lb, labeled_batch["labels"], reduction="mean"
+        )
 
     logits_x_ulb_s = model(
         input_ids=unlabeled_batch["strong_input_ids"],
@@ -131,28 +178,20 @@ def compute_fixmatch_step(
             input_ids=unlabeled_batch["weak_input_ids"],
             attention_mask=unlabeled_batch["weak_attention_mask"],
         )
-
-    if labeled_batch is None:
+    if sup_loss is None:
         sup_loss = logits_x_ulb_s.new_zeros(())
-    else:
-        logits_x_lb = model(
-            input_ids=labeled_batch["input_ids"],
-            attention_mask=labeled_batch["attention_mask"],
-        )
-        sup_loss = F.cross_entropy(
-            logits_x_lb, labeled_batch["labels"], reduction="mean"
-        )
+
     probs_x_ulb_w = compute_prob(logits_x_ulb_w.detach())
     effective_hooks = hooks or build_fixmatch_objective_hooks()
     mask = effective_hooks.masking.build_mask(
         probs_x_ulb_w=probs_x_ulb_w,
-        p_cutoff=config.p_cutoff,
+        p_cutoff=p_cutoff,
     )
     pseudo_label = effective_hooks.pseudo_labeling.generate_targets(
         probs_x_ulb_w=probs_x_ulb_w,
         config=PseudoLabelingConfig(
-            use_hard_label=config.hard_label,
-            temperature=config.temperature,
+            use_hard_label=hard_label,
+            temperature=temperature,
         ),
     )
     unsup_loss = effective_hooks.consistency_loss.compute_loss(
@@ -160,7 +199,7 @@ def compute_fixmatch_step(
         targets=pseudo_label,
         mask=mask,
     )
-    total_loss = config.supervised_loss_weight * sup_loss + config.lambda_u * unsup_loss
+    total_loss = supervised_loss_weight * sup_loss + lambda_u * unsup_loss
     return FixMatchStepOutput(
         total_loss=total_loss,
         sup_loss=sup_loss,
@@ -173,7 +212,7 @@ def compute_fixmatch_step(
     "fixmatch",
     display_name="FixMatch",
     required_views=QuerySslRequiredViews(
-        view_names=("weak_text", "strong_text"),
+        view_names=("text", "aug_0", "aug_1"),
         view_builder_name="usb_multiview",
     ),
     default_uses_labeled_batches=True,
@@ -182,11 +221,9 @@ def build_fixmatch_algorithm(parameters: Mapping[str, Any]) -> FixMatchAlgorithm
     """Hydra method parameter mapping으로 FixMatch algorithm을 만든다."""
 
     return FixMatchAlgorithm(
-        config=FixMatchConfig(
-            temperature=float(parameters["temperature"]),
-            p_cutoff=float(parameters["p_cutoff"]),
-            hard_label=bool(parameters.get("hard_label", True)),
-            lambda_u=float(parameters.get("lambda_u", 1.0)),
-            supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
-        )
+        temperature=float(parameters["temperature"]),
+        p_cutoff=float(parameters["p_cutoff"]),
+        hard_label=bool(parameters.get("hard_label", True)),
+        lambda_u=float(parameters.get("lambda_u", 1.0)),
+        supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
     )

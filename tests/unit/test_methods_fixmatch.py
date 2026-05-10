@@ -7,7 +7,6 @@ from torch import nn
 
 from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
-    FixMatchConfig,
     build_fixmatch_objective_hooks,
     compute_fixmatch_step,
 )
@@ -84,7 +83,7 @@ def test_query_ssl_algorithm_registry_builds_fixmatch_algorithm() -> None:
 
     assert isinstance(algorithm, FixMatchAlgorithm)
     assert algorithm.algorithm_name == "fixmatch"
-    assert algorithm.config.p_cutoff == 0.95
+    assert algorithm.p_cutoff == 0.95
 
 
 def test_query_ssl_algorithm_descriptor_exposes_fixmatch_view_spec() -> None:
@@ -92,7 +91,7 @@ def test_query_ssl_algorithm_descriptor_exposes_fixmatch_view_spec() -> None:
 
     assert descriptor.algorithm_name == "fixmatch"
     assert descriptor.display_name == "FixMatch"
-    assert descriptor.required_views.view_names == ("weak_text", "strong_text")
+    assert descriptor.required_views.view_names == ("text", "aug_0", "aug_1")
     assert descriptor.required_views.view_builder_name == "usb_multiview"
     assert descriptor.default_uses_labeled_batches is True
 
@@ -100,9 +99,9 @@ def test_query_ssl_algorithm_descriptor_exposes_fixmatch_view_spec() -> None:
 def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
     model = _SequentialLogitModel(
         outputs=[
+            torch.tensor([[4.0, 0.0], [0.0, 4.0]], dtype=torch.float32),
             torch.tensor([[5.0, 0.0], [0.0, 5.0]], dtype=torch.float32),
             torch.tensor([[6.0, 0.0], [0.8, 0.0]], dtype=torch.float32),
-            torch.tensor([[4.0, 0.0], [0.0, 4.0]], dtype=torch.float32),
         ]
     )
     labeled_batch = {
@@ -121,13 +120,11 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
         model=model,  # type: ignore[arg-type]
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
-        config=FixMatchConfig(
-            temperature=0.5,
-            p_cutoff=0.95,
-            hard_label=True,
-            lambda_u=1.0,
-            supervised_loss_weight=1.0,
-        ),
+        temperature=0.5,
+        p_cutoff=0.95,
+        hard_label=True,
+        lambda_u=1.0,
+        supervised_loss_weight=1.0,
     )
 
     weak_probs = torch.softmax(torch.tensor([[6.0, 0.0], [0.8, 0.0]]), dim=-1)
@@ -176,13 +173,11 @@ def test_compute_fixmatch_step_allows_freematch_like_masking_hook_replacement() 
         model=model,  # type: ignore[arg-type]
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
-        config=FixMatchConfig(
-            temperature=0.5,
-            p_cutoff=0.95,
-            hard_label=True,
-            lambda_u=1.0,
-            supervised_loss_weight=0.0,
-        ),
+        temperature=0.5,
+        p_cutoff=0.95,
+        hard_label=True,
+        lambda_u=1.0,
+        supervised_loss_weight=0.0,
         hooks=SslObjectiveHooks(
             pseudo_labeling=base_hooks.pseudo_labeling,
             masking=adaptive_masking,
@@ -214,13 +209,11 @@ def test_compute_fixmatch_step_supports_unlabeled_only_ablation() -> None:
         model=model,  # type: ignore[arg-type]
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
-        config=FixMatchConfig(
-            temperature=0.5,
-            p_cutoff=0.95,
-            hard_label=True,
-            lambda_u=1.0,
-            supervised_loss_weight=0.0,
-        ),
+        temperature=0.5,
+        p_cutoff=0.95,
+        hard_label=True,
+        lambda_u=1.0,
+        supervised_loss_weight=0.0,
     )
 
     weak_probs = torch.softmax(torch.tensor([[6.0, 0.0], [0.8, 0.0]]), dim=-1)

@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-import random
 from typing import Any
 
 import torch
@@ -60,7 +59,7 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         aug_1 = row.get("aug_1")
         if aug_0 is not None and aug_1 is not None:
             weak_text = str(row["text"])
-            strong_text = str(random.choice((aug_0, aug_1)))
+            strong_text = str(aug_0)
         else:
             weak_text = row.get("weak_text")
             strong_text = row.get("strong_text")

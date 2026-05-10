@@ -297,11 +297,13 @@ def test_train_lora_fixmatch_supports_query_ssl_augmenter_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
-            overrides=["strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1"],
+            overrides=[
+                "strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1"
+            ],
         )
 
-    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
-    assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
+    assert cfg.query_ssl_augmenter.name == "backtranslation_nllb_en_de_fr_usb_v1"
+    assert cfg.query_ssl_augmenter.augmenter_type == "nllb_backtranslation"
 
 
 def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
@@ -808,13 +810,20 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
     assert cfg.query_ssl_method.p_cutoff == 0.95
     assert cfg.query_ssl_method.lambda_u == 1.0
     assert cfg.query_ssl_method.supervised_loss_weight == 1.0
-    assert cfg.query_ssl_augmenter.name == "backtranslation_nllb_en_de_fr_usb_v1"
-    assert cfg.query_ssl_augmenter.source_lang == "eng_Latn"
-    assert list(cfg.query_ssl_augmenter.pivot_languages) == [
-        "deu_Latn",
-        "fra_Latn",
-    ]
-    assert cfg.query_ssl_augmenter.torch_dtype == "auto"
+    assert (
+        cfg.query_source.name
+        == "ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+    )
+    assert cfg.train_jsonl.endswith(
+        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.unlabeled_jsonl.endswith(
+        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
+    )
+    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
     assert cfg.unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
 
 

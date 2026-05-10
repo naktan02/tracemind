@@ -154,8 +154,11 @@
      USB PseudoLabel처럼 unlabeled `text` weak view만 사용한다.
 4. `central_ssl_control/train_lora_fixmatch.py`
    - 같은 supervised LoRA seed manifest에서 warm-start하고,
-     `strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1`로
-     strict USB형 `text + aug_0 + aug_1` input을 생성한다.
+     기본값으로 materialized `labeled_train.with_views.jsonl` /
+     `unlabeled_pool.with_views.jsonl`과
+     `strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1`를 사용한다.
+     실행 중 역번역을 다시 만들지 않고 strict USB형 `text + aug_0 + aug_1`
+     input이 없으면 실패한다.
    - `query_ssl_method.supervised_loss_weight=0.0`을 주면
      local labeled loss를 끄는 `unlabeled-only` ablation을 돌릴 수 있다.
 

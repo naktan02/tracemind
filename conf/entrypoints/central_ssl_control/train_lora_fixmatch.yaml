@@ -6,9 +6,9 @@ defaults:
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
   - /track_presets/central_ssl_control/training_preset: default
-  - /track_presets/central_ssl_control/query_source: dataset_default
+  - /track_presets/central_ssl_control/query_source: ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/ssl/augmentation: backtranslation_nllb_en_de_fr_usb_v1
+  - /strategy_axes/ssl/augmentation: precomputed_usb_candidates_v1
   - /strategy_axes/adaptation/initial_checkpoint: canonical_fixed_classifier_seed
   - /track_presets/central_ssl_control/lora_classifier_defaults: default
   - override /hydra/job_logging: disabled

@@ -197,9 +197,9 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
 
     assert outputs["output_dir"] == "runs/fake_fixmatch"
     assert captured["history"] == [{"epoch": 1, "train_loss": 0.1}]
-    assert captured["algorithm"].config.p_cutoff == 0.95
-    assert captured["algorithm"].config.hard_label is True
-    assert captured["algorithm"].config.supervised_loss_weight == 1.0
+    assert captured["algorithm"].p_cutoff == 0.95
+    assert captured["algorithm"].hard_label is True
+    assert captured["algorithm"].supervised_loss_weight == 1.0
     assert captured["extra_manifest"]["unlabeled_row_count"] == 1
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
