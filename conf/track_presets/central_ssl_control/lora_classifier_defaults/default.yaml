@@ -4,8 +4,8 @@ fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
 eval_sets:
-  validation: ${dataset.validation_jsonl}
-  test: ${dataset.test_labeled_jsonl}
+  validation: ${query_source.validation_jsonl}
+  test: ${query_source.test_jsonl}
 selection_set: ${lora_run_preset.selection_set}
 seed: ${lora_run_preset.seed}
 train_batch_size: ${lora_run_preset.train_batch_size}

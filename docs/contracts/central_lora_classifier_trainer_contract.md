@@ -98,6 +98,17 @@ Query Buffer (raw text)
   `text + aug_0 + aug_1` canonical shape로 둔다.
   즉 weak는 `text`, strong은 `aug_0` 또는 `aug_1` 중 랜덤 1개를 사용한다.
   `aug_0`, `aug_1` 생성/caching은 `strategy_axes/ssl/augmentation` 축이 담당한다.
+- 중앙 SSL 알고리즘 비교용 canonical query source는
+  `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
+  `data/processed/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
+  1024개를 labeled train으로 뽑고, 나머지 train row 전체를 unlabeled pool로
+  둔다. validation/test는 합치지 않고 기존 validation/test split을 유지한다.
+  unlabeled artifact에는 audit과 stratified metric을 위해 원 라벨 필드를 보존하지만,
+  중앙 SSL unlabeled loader와 algorithm core는 이 라벨을 소비하지 않는다.
+- backtranslation strong view는 split과 분리된
+  `data/processed/query_ssl_views/<split>/<augmenter>/` artifact로 materialize한다.
+  SemiLearn/USB 계열 알고리즘 비교에서는 `text`를 weak view로, `aug_0`/`aug_1`을
+  strong candidate로 읽고, 알고리즘별 실행 중 backtranslation을 다시 수행하지 않는다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
   newly accepted query-derived rows only로 `LoRA + classifier` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로

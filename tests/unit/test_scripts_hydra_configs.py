@@ -158,6 +158,8 @@ def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() 
 
     assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
     assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
+    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
@@ -206,6 +208,8 @@ def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
     assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
     assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
     assert cfg.unlabeled_jsonl.endswith("teacher_unlabeled_pool.jsonl")
+    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
     assert cfg.epochs == 1
     assert cfg.log_every_steps == 20
@@ -756,6 +760,55 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
     ]
     assert cfg.query_ssl_augmenter.torch_dtype == "auto"
     assert cfg.unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
+
+
+def test_train_lora_fixmatch_supports_canonical_query_ssl_split_source() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
+            overrides=[
+                "track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_v1",
+            ],
+        )
+
+    assert cfg.query_source.name == "ourafla_ssl_labeled1024_per_class_seed42_v1"
+    assert cfg.train_jsonl.endswith(
+        "query_ssl_splits/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "labeled_train.jsonl"
+    )
+    assert cfg.unlabeled_jsonl.endswith(
+        "query_ssl_splits/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "unlabeled_pool.jsonl"
+    )
+    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+
+
+def test_train_lora_fixmatch_supports_canonical_query_ssl_view_source() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_fixmatch",
+            overrides=[
+                "track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1",
+                "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
+            ],
+        )
+
+    assert (
+        cfg.query_source.name
+        == "ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+    )
+    assert cfg.train_jsonl.endswith(
+        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.unlabeled_jsonl.endswith(
+        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
+    )
+    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
 
 
 def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student(  # noqa: E501
