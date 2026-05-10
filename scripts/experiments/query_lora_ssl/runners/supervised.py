@@ -84,6 +84,7 @@ def run_supervised_lora_baseline(
         best_selection_report=best_selection_report,
         results=results,
         extra_manifest=effective_extra_manifest,
+        eval_loaders=context.eval_loaders,
     )
     for key, value in outputs.items():
         print(f"{key}={value}")

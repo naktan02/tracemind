@@ -49,12 +49,26 @@ class LoraTextClassifier(nn.Module):
         input_ids,
         attention_mask,
     ):
+        pooled = self.extract_pooled_features(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+        )
+        pooled = self.dropout(pooled).to(self.classifier.weight.dtype)
+        return self.classifier(pooled)
+
+    def extract_pooled_features(
+        self,
+        *,
+        input_ids,
+        attention_mask,
+    ):
+        """분포 시각화용 dropout 전 pooled backbone representation을 반환한다."""
+
         outputs = self.backbone(input_ids=input_ids, attention_mask=attention_mask)
         hidden = outputs.last_hidden_state
         mask = attention_mask.unsqueeze(-1).to(hidden.dtype)
         pooled = (hidden * mask).sum(dim=1) / mask.sum(dim=1).clamp(min=1.0)
-        pooled = self.dropout(pooled).to(self.classifier.weight.dtype)
-        return self.classifier(pooled)
+        return pooled.to(self.classifier.weight.dtype)
 
 
 def count_parameters(model: nn.Module) -> dict[str, int]:

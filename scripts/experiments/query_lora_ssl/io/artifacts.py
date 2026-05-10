@@ -13,6 +13,9 @@ from scripts.experiments.query_lora_ssl.io.artifact_paths import (
 from scripts.experiments.query_lora_ssl.io.artifact_writer import (
     QueryLoraRunArtifactWriter,
 )
+from scripts.experiments.query_lora_ssl.io.embedding_projection import (
+    write_query_lora_projection_artifacts,
+)
 from scripts.experiments.query_lora_ssl.io.manifest_builder import (
     build_query_lora_eval_report,
     build_query_lora_run_manifest,
@@ -37,6 +40,7 @@ def write_run_artifacts(
     best_selection_report: dict[str, Any],
     results: dict[str, Any],
     extra_manifest: Mapping[str, Any] | None = None,
+    eval_loaders: Mapping[str, Any] | None = None,
 ) -> dict[str, str]:
     paths = build_query_lora_run_artifact_paths(
         cfg=cfg,
@@ -50,6 +54,17 @@ def write_run_artifacts(
         categories=categories,
         paths=paths,
     )
+    projection_artifacts = write_query_lora_projection_artifacts(
+        model=model,
+        eval_loaders=eval_loaders,
+        categories=categories,
+        device=training_device,
+        paths=paths,
+        seed=int(cfg.seed),
+    )
+    effective_extra_manifest = dict(extra_manifest or {})
+    if projection_artifacts is not None:
+        effective_extra_manifest["projection_artifacts"] = projection_artifacts
     manifest = build_query_lora_run_manifest(
         cfg=cfg,
         trainer_version=trainer_version,
@@ -60,7 +75,7 @@ def write_run_artifacts(
         best_selection_report=best_selection_report,
         categories=categories,
         paths=paths,
-        extra_manifest=extra_manifest,
+        extra_manifest=effective_extra_manifest,
     )
     report = build_query_lora_eval_report(
         trainer_version=trainer_version,

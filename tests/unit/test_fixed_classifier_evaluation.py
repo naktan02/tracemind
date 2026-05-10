@@ -28,6 +28,10 @@ def test_evaluate_classifier_builds_report_and_prints_summary(capsys) -> None:
     assert report["rows_total"] == 2
     assert report["correct_top_1"] == 2
     assert report["accuracy_top_1"] == 1.0
+    assert report["macro_f1"] == 1.0
+    assert report["weighted_f1"] == 1.0
+    assert report["balanced_accuracy"] == 1.0
+    assert report["expected_calibration_error"] == pytest.approx(0.083314)
     assert report["mean_true_label_probability"] == pytest.approx(
         0.916686,
         rel=1e-6,
@@ -40,6 +44,7 @@ def test_evaluate_classifier_builds_report_and_prints_summary(capsys) -> None:
     print_evaluation_report(dataset_name="validation", report=report)
 
     output = capsys.readouterr().out
-    assert "[validation] accuracy_top_1=1.0000 rows=2" in output
+    assert "[validation] accuracy_top_1=1.0000 macro_f1=1.0000" in output
+    assert "ece=0.0833 rows=2" in output
     assert "| actual \\ predicted | anxiety | depression |" in output
     assert "| category | support | precision | recall | f1 |" in output

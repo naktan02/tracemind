@@ -8,6 +8,8 @@ from pathlib import Path
 from types import SimpleNamespace
 
 import torch
+from torch import nn
+from torch.utils.data import DataLoader
 
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
 
@@ -26,6 +28,22 @@ class _DummyClassifier:
 
     def state_dict(self) -> dict[str, list[float]]:
         return {"weights": [0.1, 0.2, 0.3]}
+
+
+class _ProjectionModel:
+    def __init__(self) -> None:
+        self.backbone = _DummySaver("backbone.txt")
+        self.classifier = nn.Linear(2, 2)
+        with torch.no_grad():
+            self.classifier.weight.copy_(torch.eye(2))
+            self.classifier.bias.zero_()
+
+    def eval(self) -> None:
+        self.classifier.eval()
+
+    def extract_pooled_features(self, *, input_ids, attention_mask):
+        del attention_mask
+        return input_ids.float()
 
 
 def test_write_run_artifacts_writes_model_manifest_and_report(
@@ -91,3 +109,64 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     assert report["schema_version"] == "central_lora_classifier_eval.v1"
     assert report["manifest"] == manifest
     assert report["results"] == {"test": {"accuracy": 0.8}}
+
+
+def test_write_run_artifacts_writes_projection_artifacts(tmp_path: Path) -> None:
+    cfg = SimpleNamespace(
+        output_dir=tmp_path / "runs",
+        adapter_output_dir=tmp_path / "adapters",
+        classifier_output_dir=tmp_path / "classifiers",
+        train_jsonl=tmp_path / "train.jsonl",
+        selection_set="validation",
+        seed=7,
+        epochs=1,
+        train_batch_size=2,
+        eval_batch_size=2,
+        learning_rate=0.001,
+        classifier_learning_rate=0.002,
+        weight_decay=0.01,
+        max_grad_norm=1.0,
+    )
+    eval_loader = DataLoader(
+        [
+            {
+                "input_ids": torch.tensor([2.0, 0.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(0),
+            },
+            {
+                "input_ids": torch.tensor([0.0, 3.0]),
+                "attention_mask": torch.tensor([1, 1]),
+                "labels": torch.tensor(1),
+            },
+        ],
+        batch_size=2,
+    )
+
+    outputs = write_run_artifacts(
+        cfg=cfg,
+        trainer_version="run-002",
+        created_at=datetime(2026, 1, 2, 3, 4, 5, tzinfo=timezone.utc),
+        model=_ProjectionModel(),
+        tokenizer=_DummySaver("tokenizer.txt"),
+        categories=["alpha", "beta"],
+        eval_set_map={"validation": tmp_path / "validation.jsonl"},
+        training_device="cpu",
+        backbone_summary={"name": "dummy-backbone"},
+        history=[],
+        best_selection_report={"macro_f1": 1.0},
+        results={"validation": {"accuracy_top_1": 1.0}},
+        eval_loaders={"validation": eval_loader},
+    )
+
+    manifest = json.loads(Path(outputs["manifest"]).read_text(encoding="utf-8"))
+    projection_manifest_path = Path(outputs["projection_manifest"])
+    projection_manifest = json.loads(
+        projection_manifest_path.read_text(encoding="utf-8")
+    )
+    validation_projection = projection_manifest["datasets"]["validation"]
+
+    assert manifest["projection_artifacts"]["enabled"] is True
+    assert validation_projection["row_count"] == 2
+    assert Path(validation_projection["points_jsonl"]).exists()
+    assert Path(validation_projection["figure_png"]).exists()

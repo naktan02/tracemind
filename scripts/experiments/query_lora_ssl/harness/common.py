@@ -257,6 +257,8 @@ def evaluate_supervised_lora_run_context(
         print(
             f"[{dataset_name}] "
             f"accuracy_top_1={report['accuracy_top_1']:.4f} "
+            f"macro_f1={float(report.get('macro_f1', 0.0)):.4f} "
+            f"ece={float(report.get('expected_calibration_error', 0.0)):.4f} "
             f"rows={report['rows_total']} "
             f"mean_true_prob={report['mean_true_label_probability']:.4f} "
             f"mean_margin={report['mean_margin_top1_top2']:.4f}",

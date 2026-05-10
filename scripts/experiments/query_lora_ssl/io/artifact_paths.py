@@ -21,6 +21,7 @@ class QueryLoraRunArtifactPaths:
     classifier_manifest_path: Path
     report_path: Path
     logs_dir: Path
+    projections_dir: Path
 
     def ensure_directories(self) -> None:
         self.output_dir.mkdir(parents=True, exist_ok=True)
@@ -28,6 +29,7 @@ class QueryLoraRunArtifactPaths:
         self.classifier_output_dir.mkdir(parents=True, exist_ok=True)
         self.report_path.parent.mkdir(parents=True, exist_ok=True)
         self.logs_dir.mkdir(parents=True, exist_ok=True)
+        self.projections_dir.mkdir(parents=True, exist_ok=True)
 
     def to_output_mapping(self) -> dict[str, str]:
         return {
@@ -36,6 +38,9 @@ class QueryLoraRunArtifactPaths:
             "classifier_path": str(self.classifier_path),
             "manifest": str(self.classifier_manifest_path),
             "report_json": str(self.report_path),
+            "projection_manifest": str(
+                self.projections_dir / "projection_manifest.json"
+            ),
         }
 
 
@@ -62,4 +67,5 @@ def build_query_lora_run_artifact_paths(
         ),
         report_path=output_dir / "reports" / "report.json",
         logs_dir=output_dir / "logs",
+        projections_dir=output_dir / "projections",
     )

@@ -9,18 +9,20 @@
 실제 학습 실행 전에는 먼저 compose 결과를 확인한다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py --cfg job
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py --cfg job
 ```
 
-FixMatch 중앙 SSL control:
+공통 Query SSL control 기본 실행은 현재 FixMatch다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_fixmatch.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```
 
-현재 FixMatch 기본값은 materialized view 파일을 사용한다.
+공통 기본값:
 
 ```text
+runtime=gpu_local
+query_ssl_method=fixmatch_usb_v1
 query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1
 augmentation=precomputed_usb_candidates_v1
 train_jsonl=data/processed/query_ssl_views/.../labeled_train.with_views.jsonl
@@ -29,23 +31,122 @@ unlabeled_jsonl=data/processed/query_ssl_views/.../unlabeled_pool.with_views.jso
 
 `precomputed_usb_candidates_v1`는 실행 중 역번역을 다시 만들지 않고,
 row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설정이다.
-FixMatch는 single strong-view 알고리즘이므로 `text`를 weak, `aug_0`을 strong으로
-사용한다.
 
-USB PseudoLabel 중앙 SSL control:
+## 방법론별 실행
+
+### FixMatch
+
+기본 실행:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_pseudolabel.py
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
+```
+
+명시 실행:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
+  track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1 \
+  strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1 \
+  output_dir=runs/train_lora_query_ssl_fixmatch
+```
+
+입력 view:
+
+- `text`: weak view
+- `aug_0`: strong view
+- `aug_1`: 저장은 유지하지만 FixMatch single strong-view 경로에서는 소비하지 않는다.
+
+자주 쓰는 override:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  query_ssl_method.p_cutoff=0.9 \
+  query_ssl_method.lambda_u=1.0 \
+  query_ssl_method.supervised_loss_weight=1.0
+```
+
+### USB PseudoLabel
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
+  output_dir=runs/train_lora_query_ssl_pseudolabel
 ```
 
 PseudoLabel은 weak view만 필요하므로 unlabeled `text`를 사용하고,
-strong augmentation 설정을 요구하지 않는다.
+strong augmentation 설정을 소비하지 않는다. 공통 entrypoint 기본값에 남아 있는
+augmentation axis는 multiview method에서만 runner manifest와 row 준비에 반영된다.
+
+입력 view:
+
+- `text`: weak view
+- `aug_0/aug_1`: 소비하지 않는다.
+
+자주 쓰는 override:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
+  query_ssl_method.p_cutoff=0.9 \
+  query_ssl_method.unsup_warm_up=0.2 \
+  output_dir=runs/train_lora_query_ssl_pseudolabel_p090
+```
 
 Supervised LoRA seed control:
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 ```
+
+## 산출물과 metric
+
+실행이 끝나면 stdout에 아래 경로가 출력된다.
+
+```text
+output_dir=...
+adapter_dir=...
+classifier_path=...
+manifest=...
+report_json=...
+projection_manifest=...
+```
+
+주요 파일:
+
+- `adapter_dir`: 학습된 LoRA adapter와 tokenizer.
+- `classifier_path`: classifier head `.pt`.
+- `manifest`: 실행 설정, method config, history, best selection report.
+- `report_json`: validation/test 결과 전체.
+- `projection_manifest`: eval set별 최종 representation 분포도 artifact 목록.
+
+`report_json.results.<eval_set>`의 논문 비교용 주요 metric:
+
+- `accuracy_top_1`
+- `macro_precision`, `macro_recall`, `macro_f1`
+- `weighted_precision`, `weighted_recall`, `weighted_f1`
+- `balanced_accuracy`
+- `worst_category_f1`, `worst_category_f1_value`
+- `worst_category_precision`, `worst_category_recall`
+- `expected_calibration_error`, `max_calibration_error`
+- `overconfidence_gap`
+- `mean_correct_top_1_probability`, `mean_incorrect_top_1_probability`
+- `loss`, `correct_top_1`, `rows_total`
+- `mean_true_label_probability`, `mean_top_1_probability`, `mean_margin_top1_top2`
+- `confusion_matrix`, `per_category`
+
+`per_category`에는 class별 `support`, `predicted`, `correct`, `precision`,
+`recall`, `f1`, confidence/margin 평균이 들어간다.
+
+`projection_manifest`는 eval set마다 아래 파일을 가리킨다.
+
+- `<eval_set>.projection.jsonl`: `x`, `y`, 실제 label, 예측 label, 정오답,
+  top-1 probability.
+- `<eval_set>.projection.png`: 최종 LoRA pooled backbone feature의 2D 분포도.
+
+projection은 UMAP을 우선 사용하고, UMAP 실행이 불가능하면 PCA 또는 zero-pad
+fallback으로 저장하며 fallback 이유를 manifest에 남긴다.
 
 ## 알고리즘 추가 방식
 
@@ -61,6 +162,5 @@ uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 `strategy_axes/ssl/consistency_method` 교체로 표현하고, Python entrypoint는 공통
 Query SSL runner를 호출하는 얇은 wrapper로 수렴시키는 것이 맞다.
 
-다만 현재는 기존 비교 명령의 안정성을 위해 `train_lora_pseudolabel.py`와
-`train_lora_fixmatch.py`를 유지한다. 새 알고리즘을 추가할 때 별도 entrypoint가 꼭
-필요한지는 먼저 확인하고, 실행 의미가 같다면 Hydra config 추가만 우선한다.
+새 알고리즘을 추가할 때 별도 entrypoint가 꼭 필요한지는 먼저 확인하고, 실행
+의미가 같다면 Hydra config 추가만 우선한다.

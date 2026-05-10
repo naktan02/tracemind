@@ -85,6 +85,8 @@ def print_evaluation_report(
     print(
         f"[{dataset_name}] "
         f"accuracy_top_1={report['accuracy_top_1']:.4f} "
+        f"macro_f1={report['macro_f1']:.4f} "
+        f"ece={report['expected_calibration_error']:.4f} "
         f"rows={report['rows_total']} "
         f"mean_true_prob={report['mean_true_label_probability']:.4f} "
         f"mean_margin={report['mean_margin_top1_top2']:.4f}",

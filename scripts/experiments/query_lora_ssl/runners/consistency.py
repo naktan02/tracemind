@@ -137,7 +137,10 @@ def run_consistency_query_ssl_lora_baseline(
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
     }
     effective_extra_manifest.update(context.initial_checkpoint_manifest)
-    if getattr(cfg, "query_ssl_augmenter", None) is not None:
+    if (
+        descriptor.required_views.view_builder_name == "usb_multiview"
+        and getattr(cfg, "query_ssl_augmenter", None) is not None
+    ):
         effective_extra_manifest["query_ssl_augmenter"] = (
             build_query_ssl_augmenter_manifest(cfg)
         )
@@ -159,6 +162,7 @@ def run_consistency_query_ssl_lora_baseline(
         best_selection_report=best_selection_report,
         results=results,
         extra_manifest=effective_extra_manifest,
+        eval_loaders=context.eval_loaders,
     )
     for key, value in outputs.items():
         print(f"{key}={value}")
