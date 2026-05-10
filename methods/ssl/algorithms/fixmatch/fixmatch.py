@@ -23,25 +23,6 @@ from ...hooks.pseudo_labeling import (
 from ...registry import register_query_ssl_algorithm
 
 
-class FixMatchConfig:
-    """기존 FixMatch wrapper가 넘기는 핵심 하이퍼파라미터 묶음."""
-
-    def __init__(
-        self,
-        *,
-        temperature: float,
-        p_cutoff: float,
-        hard_label: bool = True,
-        lambda_u: float = 1.0,
-        supervised_loss_weight: float = 1.0,
-    ) -> None:
-        self.temperature = float(temperature)
-        self.p_cutoff = float(p_cutoff)
-        self.hard_label = bool(hard_label)
-        self.lambda_u = float(lambda_u)
-        self.supervised_loss_weight = float(supervised_loss_weight)
-
-
 class FixMatchStepOutput:
     """FixMatch 한 step의 loss/diagnostics 결과."""
 

@@ -161,7 +161,10 @@ def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() 
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.train_batch_size == 8
+    assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
+    assert cfg.max_train_steps == 100
     assert cfg.log_every_steps == 20
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
@@ -211,12 +214,13 @@ def test_train_lora_query_ssl_supports_source_and_run_preset_overrides() -> None
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.train_batch_size == 8
+    assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
+    assert cfg.max_train_steps == 100
     assert cfg.log_every_steps == 20
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == (
-        "canonical_fixed_classifier_seed"
-    )
+    assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
 
@@ -781,6 +785,14 @@ def test_train_lora_query_ssl_defaults_to_fixmatch_precomputed_views() -> None:
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.train_batch_size == 8
+    assert cfg.eval_batch_size == 32
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.epochs == 5
+    assert cfg.max_train_steps == 3000
+    assert cfg.query_adaptation_initial_checkpoint.name == "none"
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
     assert cfg.output_dir == "runs/train_lora_query_ssl"
 
 

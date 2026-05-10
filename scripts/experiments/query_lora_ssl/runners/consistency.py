@@ -110,6 +110,7 @@ def run_consistency_query_ssl_lora_baseline(
         context=context,
     )
     algorithm = descriptor.build_algorithm(build_query_ssl_method_parameters(cfg))
+    max_train_steps = _resolve_max_train_steps(cfg)
     (
         (model, history, best_selection_report),
         runtime_metrics,
@@ -122,6 +123,7 @@ def run_consistency_query_ssl_lora_baseline(
             categories=context.categories,
             device=context.training_device,
             epochs=int(cfg.epochs),
+            max_train_steps=max_train_steps,
             learning_rate=float(cfg.learning_rate),
             classifier_learning_rate=float(cfg.classifier_learning_rate),
             weight_decay=float(cfg.weight_decay),
@@ -129,11 +131,13 @@ def run_consistency_query_ssl_lora_baseline(
             log_every_steps=int(cfg.log_every_steps),
             algorithm=algorithm,
         ),
-        training_example_count=(
-            (len(context.effective_train_rows) if algorithm.uses_labeled_batches else 0)
-            + len(context.effective_unlabeled_rows)
-        )
-        * int(cfg.epochs),
+        training_example_count=_estimate_query_ssl_training_example_count(
+            cfg=cfg,
+            algorithm=algorithm,
+            max_train_steps=max_train_steps,
+            train_row_count=len(context.effective_train_rows),
+            unlabeled_row_count=len(context.effective_unlabeled_rows),
+        ),
         parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
     )
@@ -183,6 +187,33 @@ def run_consistency_query_ssl_lora_baseline(
     for key, value in outputs.items():
         print(f"{key}={value}")
     return outputs
+
+
+def _resolve_max_train_steps(cfg: Any) -> int | None:
+    raw_value = getattr(cfg, "max_train_steps", None)
+    if raw_value is None:
+        return None
+    return int(raw_value)
+
+
+def _estimate_query_ssl_training_example_count(
+    *,
+    cfg: Any,
+    algorithm: Any,
+    max_train_steps: int | None,
+    train_row_count: int,
+    unlabeled_row_count: int,
+) -> int:
+    if max_train_steps is None:
+        return (
+            (train_row_count if algorithm.uses_labeled_batches else 0)
+            + unlabeled_row_count
+        ) * int(cfg.epochs)
+    labeled_batch_size = (
+        int(cfg.train_batch_size) if algorithm.uses_labeled_batches else 0
+    )
+    unlabeled_batch_size = int(cfg.query_ssl_method.unlabeled_batch_size)
+    return int(max_train_steps) * (labeled_batch_size + unlabeled_batch_size)
 
 
 def run_fixmatch_lora_baseline(

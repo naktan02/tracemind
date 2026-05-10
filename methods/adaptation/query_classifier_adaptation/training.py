@@ -15,8 +15,5 @@ from methods.adaptation.lora_classifier.training import (
     train_classifier as train_classifier,
 )
 from methods.adaptation.lora_classifier.training import (
-    train_fixmatch_classifier as train_fixmatch_classifier,
-)
-from methods.adaptation.lora_classifier.training import (
     train_query_ssl_classifier as train_query_ssl_classifier,
 )

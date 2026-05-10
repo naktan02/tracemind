@@ -11,6 +11,7 @@ seed: ${lora_run_preset.seed}
 train_batch_size: ${lora_run_preset.train_batch_size}
 eval_batch_size: ${lora_run_preset.eval_batch_size}
 epochs: ${lora_run_preset.epochs}
+max_train_steps: ${lora_run_preset.max_train_steps}
 learning_rate: ${lora_run_preset.learning_rate}
 classifier_learning_rate: ${lora_run_preset.classifier_learning_rate}
 weight_decay: ${lora_run_preset.weight_decay}

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import random
 from collections.abc import Iterator, Mapping
+from math import ceil
 from typing import Any
 
 import torch
@@ -16,10 +17,6 @@ from methods.adaptation.common.classification_evaluation import (
 from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
-)
-from methods.ssl.algorithms.fixmatch.fixmatch import (
-    FixMatchAlgorithm,
-    FixMatchConfig,
 )
 from methods.ssl.base import (
     QuerySslAlgorithm,
@@ -143,6 +140,7 @@ def train_classifier(
     weight_decay: float,
     max_grad_norm: float,
     log_every_steps: int,
+    max_train_steps: int | None = None,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """Supervised LoRA + classifier scaffold를 학습한다."""
 
@@ -153,13 +151,35 @@ def train_classifier(
         weight_decay=weight_decay,
     )
     criterion = nn.CrossEntropyLoss()
+    full_epoch_steps = len(train_loader)
+    if max_train_steps is not None and max_train_steps <= 0:
+        raise ValueError("max_train_steps must be positive when provided.")
+    total_train_steps = (
+        int(max_train_steps)
+        if max_train_steps is not None
+        else int(epochs) * full_epoch_steps
+    )
+    steps_per_epoch_budget = max(1, ceil(total_train_steps / max(1, int(epochs))))
+    effective_epochs = min(max(1, int(epochs)), total_train_steps)
+    completed_steps = 0
 
     def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
+        nonlocal completed_steps
+
         model.train()
         epoch_loss_total = 0.0
         epoch_rows = 0
+        train_iterator = iter(train_loader)
+        epoch_steps = min(
+            steps_per_epoch_budget,
+            total_train_steps - completed_steps,
+        )
 
-        for step_index, batch in enumerate(train_loader, start=1):
+        for step_index in range(1, epoch_steps + 1):
+            batch, train_iterator = _next_batch(
+                loader=train_loader,
+                iterator=train_iterator,
+            )
             input_ids = batch["input_ids"].to(device)
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
@@ -173,6 +193,7 @@ def train_classifier(
             optimizer.step()
 
             batch_rows = len(labels)
+            completed_steps += 1
             epoch_rows += batch_rows
             epoch_loss_total += float(loss.item()) * batch_rows
 
@@ -199,7 +220,7 @@ def train_classifier(
 
     history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        epochs=epochs,
+        epochs=effective_epochs,
         train_epoch=train_epoch,
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=(
@@ -286,6 +307,7 @@ def train_query_ssl_classifier(
     categories: list[str],
     device: str,
     epochs: int,
+    max_train_steps: int | None,
     learning_rate: float,
     classifier_learning_rate: float,
     weight_decay: float,
@@ -305,14 +327,23 @@ def train_query_ssl_classifier(
             f"{algorithm.algorithm_name} labeled train_loader must not be empty "
             "when the algorithm uses labeled batches."
         )
-    epoch_steps = (
+    full_epoch_steps = (
         max(len(train_loader), len(unlabeled_loader))
         if labeled_updates_enabled
         else len(unlabeled_loader)
     )
+    if max_train_steps is not None and max_train_steps <= 0:
+        raise ValueError("max_train_steps must be positive when provided.")
+    total_train_steps = (
+        int(max_train_steps)
+        if max_train_steps is not None
+        else int(epochs) * full_epoch_steps
+    )
+    steps_per_epoch_budget = max(1, ceil(total_train_steps / max(1, int(epochs))))
+    effective_epochs = min(max(1, int(epochs)), total_train_steps)
     configure_query_ssl_algorithm_training(
         algorithm,
-        num_train_iter=max(1, int(epochs) * epoch_steps),
+        num_train_iter=max(1, total_train_steps),
     )
 
     optimizer = build_optimizer(
@@ -322,7 +353,11 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
 
+    completed_steps = 0
+
     def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
+        nonlocal completed_steps
+
         model.train()
         step_total_loss_sum = 0.0
         step_component_sums: dict[str, float] = {}
@@ -332,6 +367,10 @@ def train_query_ssl_classifier(
         labeled_iterator = None if not labeled_updates_enabled else iter(train_loader)
         unlabeled_iterator = iter(unlabeled_loader)
 
+        epoch_steps = min(
+            steps_per_epoch_budget,
+            total_train_steps - completed_steps,
+        )
         for step_index in range(1, epoch_steps + 1):
             if labeled_updates_enabled:
                 assert labeled_iterator is not None
@@ -366,6 +405,7 @@ def train_query_ssl_classifier(
             optimizer.step()
 
             step_count += 1
+            completed_steps += 1
             step_total_loss_sum += float(step_output.total_loss.detach().item())
             _accumulate_scalar_tensors(
                 sums=step_component_sums,
@@ -413,7 +453,7 @@ def train_query_ssl_classifier(
 
     history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        epochs=epochs,
+        epochs=effective_epochs,
         train_epoch=train_epoch,
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=(
@@ -422,44 +462,3 @@ def train_query_ssl_classifier(
         log_epoch_summary=lambda message: print(message, flush=True),
     )
     return model, history, best_selection_report
-
-
-def train_fixmatch_classifier(
-    *,
-    model: LoraTextClassifier,
-    train_loader: DataLoader[dict[str, Any]],
-    unlabeled_loader: DataLoader[dict[str, Any]],
-    selection_loader: DataLoader[dict[str, torch.Tensor]],
-    categories: list[str],
-    device: str,
-    epochs: int,
-    learning_rate: float,
-    classifier_learning_rate: float,
-    weight_decay: float,
-    max_grad_norm: float,
-    log_every_steps: int,
-    fixmatch_config: FixMatchConfig,
-) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
-    """기존 FixMatch 호출자를 위한 compatibility wrapper."""
-
-    return train_query_ssl_classifier(
-        model=model,
-        train_loader=train_loader,
-        unlabeled_loader=unlabeled_loader,
-        selection_loader=selection_loader,
-        categories=categories,
-        device=device,
-        epochs=epochs,
-        learning_rate=learning_rate,
-        classifier_learning_rate=classifier_learning_rate,
-        weight_decay=weight_decay,
-        max_grad_norm=max_grad_norm,
-        log_every_steps=log_every_steps,
-        algorithm=FixMatchAlgorithm(
-            temperature=fixmatch_config.temperature,
-            p_cutoff=fixmatch_config.p_cutoff,
-            hard_label=fixmatch_config.hard_label,
-            lambda_u=fixmatch_config.lambda_u,
-            supervised_loss_weight=fixmatch_config.supervised_loss_weight,
-        ),
-    )

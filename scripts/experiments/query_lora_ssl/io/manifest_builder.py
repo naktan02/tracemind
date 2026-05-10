@@ -32,6 +32,11 @@ def build_query_lora_run_manifest(
         "device": training_device,
         "seed": int(cfg.seed),
         "epochs": int(cfg.epochs),
+        "max_train_steps": (
+            None
+            if getattr(cfg, "max_train_steps", None) is None
+            else int(cfg.max_train_steps)
+        ),
         "train_batch_size": int(cfg.train_batch_size),
         "eval_batch_size": int(cfg.eval_batch_size),
         "learning_rate": float(cfg.learning_rate),

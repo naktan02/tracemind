@@ -25,12 +25,24 @@ runtime=gpu_local
 query_ssl_method=fixmatch_usb_v1
 query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1
 augmentation=precomputed_usb_candidates_v1
+initial_checkpoint=none
+max_train_steps=3000
+train_batch_size=8
+query_ssl_method.unlabeled_batch_size=8
+eval_batch_size=32
 train_jsonl=data/processed/query_ssl_views/.../labeled_train.with_views.jsonl
 unlabeled_jsonl=data/processed/query_ssl_views/.../unlabeled_pool.with_views.jsonl
 ```
 
 `precomputed_usb_candidates_v1`는 실행 중 역번역을 다시 만들지 않고,
 row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설정이다.
+기본 실행은 USB식 cold-start 비교에 맞춰 기존 classifier seed를 로드하지 않고,
+LoRA adapter와 classifier head를 새로 초기화한다.
+학습 예산도 USB처럼 전체 데이터 epoch replay가 아니라 `max_train_steps` 총
+optimizer update 수로 고정한다. `epochs`는 selection 평가/history cadence를
+나누는 단위이며, 기본값은 `3000` steps다.
+16GB급 GPU 기준 기본 batch는 labeled `8`, unlabeled `8`로 둔다. FixMatch는
+한 step에서 labeled/weak/strong forward를 수행하므로 VRAM 여유를 우선한다.
 
 ## 방법론별 실행
 
@@ -65,6 +77,22 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   query_ssl_method.p_cutoff=0.9 \
   query_ssl_method.lambda_u=1.0 \
   query_ssl_method.supervised_loss_weight=1.0
+```
+
+Budget ablation:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  max_train_steps=1000 \
+  output_dir=runs/train_lora_query_ssl_fixmatch_s1000
+
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  max_train_steps=3000 \
+  output_dir=runs/train_lora_query_ssl_fixmatch_s3000
+
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  max_train_steps=10000 \
+  output_dir=runs/train_lora_query_ssl_fixmatch_s10000
 ```
 
 ### USB PseudoLabel

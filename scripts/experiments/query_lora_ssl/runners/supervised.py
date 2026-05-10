@@ -48,6 +48,7 @@ def run_supervised_lora_baseline(
         eval_set_refs=eval_set_refs,
         trainer_version_override=trainer_version_override,
     )
+    max_train_steps = _resolve_max_train_steps(context.cfg)
     (
         (model, history, best_selection_report),
         runtime_metrics,
@@ -59,14 +60,17 @@ def run_supervised_lora_baseline(
             categories=context.categories,
             device=context.training_device,
             epochs=int(context.cfg.epochs),
+            max_train_steps=max_train_steps,
             learning_rate=float(context.cfg.learning_rate),
             classifier_learning_rate=float(context.cfg.classifier_learning_rate),
             weight_decay=float(context.cfg.weight_decay),
             max_grad_norm=float(context.cfg.max_grad_norm),
             log_every_steps=int(context.cfg.log_every_steps),
         ),
-        training_example_count=(
-            len(context.effective_train_rows) * int(context.cfg.epochs)
+        training_example_count=_estimate_supervised_training_example_count(
+            cfg=context.cfg,
+            max_train_steps=max_train_steps,
+            train_row_count=len(context.effective_train_rows),
         ),
         parameter_counts=context.backbone_summary["parameter_counts"],
         device=context.training_device,
@@ -103,3 +107,21 @@ def run_supervised_lora_baseline(
     for key, value in outputs.items():
         print(f"{key}={value}")
     return outputs
+
+
+def _resolve_max_train_steps(cfg: Any) -> int | None:
+    raw_value = getattr(cfg, "max_train_steps", None)
+    if raw_value is None:
+        return None
+    return int(raw_value)
+
+
+def _estimate_supervised_training_example_count(
+    *,
+    cfg: Any,
+    max_train_steps: int | None,
+    train_row_count: int,
+) -> int:
+    if max_train_steps is None:
+        return train_row_count * int(cfg.epochs)
+    return int(max_train_steps) * int(cfg.train_batch_size)

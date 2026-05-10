@@ -171,8 +171,12 @@ Query Buffer (raw text)
 
 1. backbone/tokenizer: `strategy_axes/adaptation/transformer_backbone=mxbai_encoder`
 2. LoRA config: `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
-3. initial checkpoint: `canonical_fixed_classifier_seed`
-4. label schema, split, seed, metric은 FL SSL main comparison 규약을 따른다.
+3. initial checkpoint: 중앙 Query SSL method 비교 기본값은 `none`이다. 기존
+   `canonical_fixed_classifier_seed` warm-start는 continual adaptation 또는
+   ablation run에서 명시적으로 선택한다.
+4. train budget: USB처럼 `max_train_steps` 총 optimizer update 수를 고정한다.
+   `epochs`는 selection 평가/history cadence이며 전체 unlabeled pool replay 횟수가 아니다.
+5. label schema, split, seed, metric은 FL SSL main comparison 규약을 따른다.
 
 위 값을 바꾸는 run은 method 비교가 아니라 scaffold 비교 또는 ablation로 기록한다.
 

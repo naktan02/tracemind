@@ -33,7 +33,7 @@ central fixed embedding + classifier seed
 | Embedding adapter | `mxbai`, `hash_debug` | `execution_context/embedding_adapter` | entrypoint defaults | 활성 |
 | Runtime env | `cpu_local`, `gpu_local`, `gpu_online`, `auto_local`, `auto_online` | `execution_context/runtime_env` | entrypoint defaults | 활성 |
 | Transformer backbone | `mxbai_encoder` | `strategy_axes/adaptation/transformer_backbone` | central SSL defaults | 중앙 control |
-| Initial checkpoint | `canonical_fixed_classifier_seed`, `none`, `required` | `strategy_axes/adaptation/initial_checkpoint` | central SSL defaults | 중앙 control |
+| Initial checkpoint | `canonical_fixed_classifier_seed`, `none`, `required` | `strategy_axes/adaptation/initial_checkpoint` | Query SSL method comparison defaults to `none` | 중앙 control |
 
 ## SSL/adaptation 축
 
