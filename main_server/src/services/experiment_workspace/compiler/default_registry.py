@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from main_server.src.services.experiment_workspace.compiler.entrypoint_policies import (
     FederatedSimulationCompilePolicy,
-    FixMatchCompilePolicy,
+    QuerySslCompilePolicy,
 )
 from main_server.src.services.experiment_workspace.compiler.registry import (
     ExperimentCompilePolicyRegistry,
@@ -23,7 +23,11 @@ def build_default_experiment_compile_policy_registry() -> (
     )
     registry.register(
         "train_lora_fixmatch",
-        FixMatchCompilePolicy(),
+        QuerySslCompilePolicy(),
+    )
+    registry.register(
+        "train_lora_pseudolabel",
+        QuerySslCompilePolicy(),
     )
     return registry
 

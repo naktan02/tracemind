@@ -90,6 +90,12 @@ uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 uv run python scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py
 ```
 
+중앙 LoRA USB PseudoLabel control:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_pseudolabel.py
+```
+
 중앙 LoRA FixMatch control:
 
 ```bash

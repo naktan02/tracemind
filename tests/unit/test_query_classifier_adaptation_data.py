@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from methods.adaptation.query_classifier_adaptation.data import (
     TextMultiviewDataset,
+    TextWeakDataset,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -50,3 +51,23 @@ def test_text_multiview_dataset_keeps_legacy_weak_strong_compatibility() -> None
 
     assert item["weak_text"] == "weak::I feel low."
     assert item["strong_text"] == "strong::I feel low."
+
+
+def test_text_weak_dataset_uses_original_text_as_usb_weak_view() -> None:
+    row = _row("q3", "I feel anxious today.")
+
+    dataset = TextWeakDataset(rows=[row], task_prefix="label: ")
+    item = dataset[0]
+
+    assert item["query_id"] == "q3"
+    assert item["weak_text"] == "label: I feel anxious today."
+
+
+def test_text_weak_dataset_keeps_legacy_weak_text_compatibility() -> None:
+    row = _row("q4", "I feel low.")
+    row["weak_text"] = "weak::I feel low."
+
+    dataset = TextWeakDataset(rows=[row], task_prefix="")
+    item = dataset[0]
+
+    assert item["weak_text"] == "weak::I feel low."

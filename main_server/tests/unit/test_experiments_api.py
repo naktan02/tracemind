@@ -72,6 +72,9 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert all(
         field.field_name != "algorithm_name" for field in fixmatch.override_fields
     )
+    pseudolabel = _find_item(central_ssl_methods, "pseudolabel_usb_v1")
+    assert pseudolabel.core_method_name == "pseudolabel"
+    assert pseudolabel.metadata["require_multiview"] is False
 
     dataset_presets = _find_section(
         payload,
@@ -169,6 +172,12 @@ def test_experiment_catalog_api_lists_current_strategy_inventory() -> None:
     assert (
         fixmatch_entrypoint.script_path
         == "scripts/experiments/central_ssl_control/train_lora_fixmatch.py"
+    )
+    pseudolabel_entrypoint = _find_item(central_entrypoints, "train_lora_pseudolabel")
+    assert pseudolabel_entrypoint.compile_support == "entrypoint"
+    assert (
+        pseudolabel_entrypoint.script_path
+        == "scripts/experiments/central_ssl_control/train_lora_pseudolabel.py"
     )
 
     federated_aggregations = _find_section(
@@ -350,6 +359,46 @@ def test_experiment_compile_api_builds_central_adaptation_preview() -> None:
     assert "query_ssl_method.temperature=0.7" in plan.hydra_overrides
     assert "lora.rank=16" in plan.hydra_overrides
     assert "train_batch_size=32" in plan.hydra_overrides
+
+
+def test_experiment_compile_api_builds_pseudolabel_preview() -> None:
+    repo_root = Path(__file__).resolve().parents[3]
+    catalog_service = ExperimentCatalogService(repo_root=repo_root)
+    compiler_service = ExperimentCompilerService(catalog_service=catalog_service)
+
+    plan = experiments_api.compile_experiment_manifest(
+        WorkspaceManifestPayload(
+            manifest_id="manifest_pseudolabel",
+            track_name="central_adaptation",
+            entrypoint_name="train_lora_pseudolabel",
+            selections=(
+                WorkspaceSelectionPayload(
+                    slot_name="ssl_method",
+                    section_name="query_ssl_methods",
+                    core_method_name="pseudolabel",
+                    variant_profile_name="pseudolabel_usb_v1",
+                    family_name="ssl_method",
+                    override_patch={"unsup_warm_up": 0.2},
+                ),
+                WorkspaceSelectionPayload(
+                    slot_name="train_source",
+                    section_name="query_sources",
+                    variant_profile_name="bootstrap_teacher_split30_2026_04_14",
+                    family_name="train_source",
+                ),
+            ),
+        ),
+        service=compiler_service,
+    )
+
+    assert (
+        plan.script_path
+        == "scripts/experiments/central_ssl_control/train_lora_pseudolabel.py"
+    )
+    assert "strategy_axes/ssl/consistency_method=pseudolabel_usb_v1" in (
+        plan.selection_default_groups
+    )
+    assert "query_ssl_method.unsup_warm_up=0.2" in plan.hydra_overrides
 
 
 def test_experiment_compile_api_builds_preview_from_generated_artifacts() -> None:

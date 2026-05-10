@@ -23,7 +23,7 @@
 
 - 같은 초기 seed checkpoint와 accepted query-derived rows를 기준으로
   `LoRA + classifier` continual adaptation 위에서
-  `supervised -> pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
+  `supervised -> USB PseudoLabel -> teacher pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
   pooled/offline control table로 비교한다.
 
 ### Phase 4. FL SSL non-IID 메인 비교

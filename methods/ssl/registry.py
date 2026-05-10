@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from collections.abc import Callable, Mapping
 from typing import Any
 
@@ -18,6 +20,13 @@ _QUERY_SSL_ALGORITHM_REGISTRY = MethodRegistry[QuerySslAlgorithmDescriptor](
     item_label="query SSL algorithm descriptor",
 )
 _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED = False
+_QUERY_SSL_ALGORITHMS_PACKAGE = "methods.ssl.algorithms"
+_SKIPPED_QUERY_SSL_ALGORITHM_MODULES = frozenset(
+    {
+        "base",
+        "registry",
+    }
+)
 
 
 def register_query_ssl_algorithm(
@@ -47,13 +56,21 @@ def register_query_ssl_algorithm(
 
 
 def load_builtin_query_ssl_algorithms() -> None:
-    """built-in Query SSL algorithm module을 명시적으로 import한다."""
+    """built-in Query SSL algorithm module을 convention으로 import한다."""
 
     global _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED
     if _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED:
         return
 
-    from .algorithms.fixmatch import fixmatch as _fixmatch_algorithm  # noqa: F401
+    package = importlib.import_module(_QUERY_SSL_ALGORITHMS_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is not None:
+        for module_info in pkgutil.iter_modules(package_paths):
+            if module_info.name in _SKIPPED_QUERY_SSL_ALGORITHM_MODULES:
+                continue
+            importlib.import_module(
+                f"{_QUERY_SSL_ALGORITHMS_PACKAGE}.{module_info.name}.{module_info.name}"
+            )
 
     _BUILTIN_QUERY_SSL_ALGORITHMS_LOADED = True
 

@@ -39,6 +39,7 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central_classifier_seed/train_softmax_classifier",
         "entrypoints/central_ssl_control/train_lora_classifier",
+        "entrypoints/central_ssl_control/train_lora_pseudolabel",
         "entrypoints/central_ssl_control/train_lora_fixmatch",
         "entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
         "entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
@@ -195,6 +196,18 @@ def test_train_lora_fixmatch_supports_auto_local_runtime_override() -> None:
     assert cfg.runtime.local_files_only is True
 
 
+def test_train_lora_pseudolabel_supports_auto_local_runtime_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_pseudolabel",
+            overrides=["execution_context/runtime_env=auto_local"],
+        )
+
+    assert cfg.runtime.name == "auto_local"
+    assert cfg.runtime.device == "auto"
+    assert cfg.runtime.local_files_only is True
+
+
 def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -221,6 +234,30 @@ def test_train_lora_fixmatch_supports_source_and_run_preset_overrides() -> None:
     assert cfg.initial_classifier_path == ""
 
 
+def test_train_lora_pseudolabel_supports_source_and_run_preset_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_pseudolabel",
+            overrides=[
+                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
+            ],
+        )
+
+    assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
+    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
+    assert cfg.unlabeled_jsonl.endswith("teacher_unlabeled_pool.jsonl")
+    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.epochs == 1
+    assert cfg.log_every_steps == 20
+    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == (
+        "canonical_fixed_classifier_seed"
+    )
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
+
+
 def test_train_lora_fixmatch_supports_query_ssl_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -235,6 +272,25 @@ def test_train_lora_fixmatch_supports_query_ssl_method_override() -> None:
     assert cfg.query_ssl_method.p_cutoff == 0.9
     assert cfg.query_ssl_method.unlabeled_batch_size == 8
     assert cfg.query_ssl_method.hard_label is True
+
+
+def test_train_lora_pseudolabel_supports_query_ssl_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_pseudolabel",
+            overrides=[
+                "query_ssl_method.p_cutoff=0.9",
+                "query_ssl_method.unsup_warm_up=0.2",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "pseudolabel_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
+    assert cfg.query_ssl_method.p_cutoff == 0.9
+    assert cfg.query_ssl_method.unsup_warm_up == 0.2
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is False
 
 
 def test_train_lora_fixmatch_supports_query_ssl_augmenter_override() -> None:
@@ -759,6 +815,30 @@ def test_train_lora_fixmatch_defaults_to_gpu_online_and_usb_fixmatch_method() ->
         "fra_Latn",
     ]
     assert cfg.query_ssl_augmenter.torch_dtype == "auto"
+    assert cfg.unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
+
+
+def test_train_lora_pseudolabel_defaults_to_gpu_online_and_usb_method() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_pseudolabel"
+        )
+
+    assert cfg.dataset.name == "ourafla"
+    assert cfg.runtime.name == "gpu_online"
+    assert cfg.runtime.device == "cuda"
+    assert cfg.paper_backbone.name == "mxbai_encoder"
+    assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
+    assert cfg.lora.target_modules == "all-linear"
+    assert cfg.selection_set == "validation"
+    assert cfg.query_ssl_method.name == "pseudolabel_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
+    assert cfg.query_ssl_method.p_cutoff == 0.95
+    assert cfg.query_ssl_method.unsup_warm_up == 0.4
+    assert cfg.query_ssl_method.lambda_u == 1.0
+    assert cfg.query_ssl_method.supervised_loss_weight == 1.0
+    assert cfg.query_ssl_method.require_multiview is False
+    assert "query_ssl_augmenter" not in cfg
     assert cfg.unlabeled_jsonl == cfg.query_source.unlabeled_jsonl
 
 

@@ -12,6 +12,9 @@ from methods.adaptation.lora_classifier.training import (
 from methods.adaptation.query_classifier_adaptation.data import (
     build_multiview_dataloader as build_query_lora_multiview_dataloader,
 )
+from methods.adaptation.query_classifier_adaptation.data import (
+    build_weak_dataloader as build_query_lora_weak_dataloader,
+)
 from methods.ssl.base import QuerySslAlgorithmDescriptor
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
@@ -19,6 +22,7 @@ from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
     PreparedQuerySslUnlabeledRows,
     build_query_ssl_augmenter_manifest,
     prepare_usb_multiview_unlabeled_rows,
+    prepare_usb_weak_unlabeled_rows,
 )
 from scripts.experiments.query_lora_ssl.query_ssl.common import (
     QuerySslRunContext,
@@ -193,6 +197,38 @@ def run_fixmatch_lora_baseline(
     )
 
 
+def run_pseudolabel_lora_baseline(
+    cfg,
+    *,
+    train_rows: list[LabeledQueryRow] | None = None,
+    unlabeled_rows: list[LabeledQueryRow] | None = None,
+    eval_rows_by_name: Mapping[str, list[LabeledQueryRow]] | None = None,
+    selection_set_name: str | None = None,
+    extra_manifest: Mapping[str, Any] | None = None,
+    categories_override: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, str]:
+    """USB PseudoLabel core를 Query SSL runner 위에서 실행한다."""
+
+    descriptor = resolve_query_ssl_algorithm_descriptor(
+        str(cfg.query_ssl_method.algorithm_name)
+    )
+    if descriptor.algorithm_name.strip().lower() != "pseudolabel":
+        raise ValueError(
+            "run_pseudolabel_lora_baseline requires "
+            "query_ssl_method.algorithm_name=pseudolabel."
+        )
+    return run_consistency_query_ssl_lora_baseline(
+        cfg=cfg,
+        descriptor=descriptor,
+        train_rows=train_rows,
+        unlabeled_rows=unlabeled_rows,
+        eval_rows_by_name=eval_rows_by_name,
+        selection_set_name=selection_set_name,
+        extra_manifest=extra_manifest,
+        categories_override=categories_override,
+    )
+
+
 def _prepare_unlabeled_rows(
     *,
     cfg,
@@ -205,6 +241,11 @@ def _prepare_unlabeled_rows(
             cfg,
             rows=rows,
             source_jsonl=source_jsonl,
+            algorithm_name=descriptor.display_name,
+        )
+    if descriptor.required_views.view_builder_name == "usb_weak":
+        return prepare_usb_weak_unlabeled_rows(
+            rows=rows,
             algorithm_name=descriptor.display_name,
         )
     raise ValueError(
@@ -221,6 +262,15 @@ def _build_unlabeled_loader(
 ):
     if descriptor.required_views.view_builder_name == "usb_multiview":
         return build_query_lora_multiview_dataloader(
+            rows=context.effective_unlabeled_rows,
+            tokenizer=context.tokenizer,
+            batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
+            max_length=int(cfg.paper_backbone.max_length),
+            task_prefix=str(cfg.paper_backbone.task_prefix),
+            shuffle=True,
+        )
+    if descriptor.required_views.view_builder_name == "usb_weak":
+        return build_query_lora_weak_dataloader(
             rows=context.effective_unlabeled_rows,
             tokenizer=context.tokenizer,
             batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),

@@ -187,6 +187,12 @@ Pseudo-label bootstrap:
 uv run python scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py
 ```
 
+USB PseudoLabel baseline:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_pseudolabel.py
+```
+
 FixMatch baseline:
 
 ```bash

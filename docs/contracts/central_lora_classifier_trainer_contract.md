@@ -88,7 +88,10 @@ Query Buffer (raw text)
 
 주의:
 
-- 첫 pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
+- USB `PseudoLabel` baseline은 weak/original view `text`만 사용해 online
+  pseudo-label target과 confidence mask를 만들고, strong backtranslation view를
+  요구하지 않는다.
+- 첫 teacher-bootstrap pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
   pseudo-label을 붙이고, `LoRA + classifier` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
 - first-stage bootstrap/adaptation에서 LoRA seed artifact가 아직 없으면 canonical fixed classifier seed manifest로 classifier head를 warm-start할 수 있다.

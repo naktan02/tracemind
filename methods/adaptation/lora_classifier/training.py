@@ -21,7 +21,10 @@ from methods.ssl.algorithms.fixmatch.fixmatch import (
     FixMatchAlgorithm,
     FixMatchConfig,
 )
-from methods.ssl.base import QuerySslAlgorithm
+from methods.ssl.base import (
+    QuerySslAlgorithm,
+    configure_query_ssl_algorithm_training,
+)
 from shared.src.domain.services.classification_report import (
     safe_divide,
 )
@@ -302,6 +305,15 @@ def train_query_ssl_classifier(
             f"{algorithm.algorithm_name} labeled train_loader must not be empty "
             "when the algorithm uses labeled batches."
         )
+    epoch_steps = (
+        max(len(train_loader), len(unlabeled_loader))
+        if labeled_updates_enabled
+        else len(unlabeled_loader)
+    )
+    configure_query_ssl_algorithm_training(
+        algorithm,
+        num_train_iter=max(1, int(epochs) * epoch_steps),
+    )
 
     optimizer = build_optimizer(
         model=model,
@@ -319,11 +331,6 @@ def train_query_ssl_classifier(
 
         labeled_iterator = None if not labeled_updates_enabled else iter(train_loader)
         unlabeled_iterator = iter(unlabeled_loader)
-        epoch_steps = (
-            max(len(train_loader), len(unlabeled_loader))
-            if labeled_updates_enabled
-            else len(unlabeled_loader)
-        )
 
         for step_index in range(1, epoch_steps + 1):
             if labeled_updates_enabled:

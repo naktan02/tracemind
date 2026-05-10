@@ -11,7 +11,7 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
   - `supervised.py`: frozen backbone + LoRA + classifier supervised baseline.
   - `pseudo_label.py`: pseudo-label self-training wrapper.
   - `bootstrap_teacher.py`: fixed classifier teacher -> LoRA student bootstrap.
-  - `consistency.py`: FixMatch 등 consistency-family Query SSL runner.
+  - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
   - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `harness/`
   - LoRA model/data/eval 공통 scaffolding.
@@ -36,6 +36,7 @@ Hydra entrypoint를 실행한다.
 
 - `scripts/experiments/central_ssl_control/train_lora_classifier.py`
 - `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py`
+- `scripts/experiments/central_ssl_control/train_lora_pseudolabel.py`
 - `scripts/experiments/central_ssl_control/train_lora_fixmatch.py`
 - `scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py`
 

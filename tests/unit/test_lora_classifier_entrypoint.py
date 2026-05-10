@@ -41,6 +41,19 @@ def test_train_lora_fixmatch_entrypoint_imports_direct_runner() -> None:
     assert entrypoint.run_fixmatch_lora_baseline is runner.run_fixmatch_lora_baseline
 
 
+def test_train_lora_pseudolabel_entrypoint_imports_direct_runner() -> None:
+    entrypoint = importlib.import_module(
+        "scripts.experiments.central_ssl_control.train_lora_pseudolabel"
+    )
+    runner = importlib.import_module(
+        "scripts.experiments.query_lora_ssl.runners.consistency"
+    )
+
+    assert (
+        entrypoint.run_pseudolabel_lora_baseline is runner.run_pseudolabel_lora_baseline
+    )
+
+
 def test_train_lora_bootstrap_classifier_teacher_entrypoint_imports_direct_runner() -> (
     None
 ):
@@ -65,4 +78,5 @@ def test_lora_classifier_package_keeps_concrete_helpers_out_of_package_surface()
     assert not hasattr(package, "run_supervised_lora_baseline")
     assert not hasattr(package, "run_query_adaptation_supervised_baseline")
     assert not hasattr(package, "run_fixmatch_lora_baseline")
+    assert not hasattr(package, "run_pseudolabel_lora_baseline")
     assert not hasattr(package, "run_pseudo_label_self_training")

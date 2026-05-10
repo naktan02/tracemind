@@ -81,6 +81,32 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         }
 
 
+class TextWeakDataset(Dataset[dict[str, Any]]):
+    """USB PseudoLabel처럼 weak/original unlabeled view만 배치로 노출한다."""
+
+    def __init__(
+        self,
+        *,
+        rows: list[LabeledQueryRow],
+        task_prefix: str,
+    ) -> None:
+        self._rows = rows
+        self._task_prefix = task_prefix
+
+    def __len__(self) -> int:
+        return len(self._rows)
+
+    def __getitem__(self, index: int) -> dict[str, Any]:
+        row = self._rows[index]
+        weak_text = str(row.get("weak_text") or row["text"])
+        if self._task_prefix:
+            weak_text = f"{self._task_prefix}{weak_text}"
+        return {
+            "query_id": str(row["query_id"]),
+            "weak_text": weak_text,
+        }
+
+
 def build_label_index(
     rows: list[LabeledQueryRow],
 ) -> tuple[list[str], dict[str, int]]:
@@ -120,6 +146,45 @@ def build_dataloader(
         )
         encoded["labels"] = torch.tensor(labels, dtype=torch.long)
         return encoded
+
+    return DataLoader(
+        dataset,
+        batch_size=batch_size,
+        shuffle=shuffle,
+        collate_fn=collate,
+    )
+
+
+def build_weak_dataloader(
+    *,
+    rows: list[LabeledQueryRow],
+    tokenizer: Any,
+    batch_size: int,
+    max_length: int,
+    task_prefix: str,
+    shuffle: bool,
+) -> DataLoader[dict[str, Any]]:
+    """weak/original unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
+
+    dataset = TextWeakDataset(
+        rows=rows,
+        task_prefix=task_prefix,
+    )
+
+    def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
+        weak_texts = [str(item["weak_text"]) for item in batch]
+        weak_encoded = tokenizer(
+            weak_texts,
+            padding=True,
+            truncation=True,
+            max_length=max_length,
+            return_tensors="pt",
+        )
+        return {
+            "query_ids": [str(item["query_id"]) for item in batch],
+            "weak_input_ids": weak_encoded["input_ids"],
+            "weak_attention_mask": weak_encoded["attention_mask"],
+        }
 
     return DataLoader(
         dataset,

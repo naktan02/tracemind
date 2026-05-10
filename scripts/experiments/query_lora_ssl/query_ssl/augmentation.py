@@ -217,6 +217,33 @@ def prepare_usb_multiview_unlabeled_rows(
     )
 
 
+def prepare_usb_weak_unlabeled_rows(
+    *,
+    rows: Sequence[LabeledQueryRow],
+    algorithm_name: str,
+) -> PreparedQuerySslUnlabeledRows:
+    """USB PseudoLabel처럼 원문 weak view만 필요한 unlabeled row를 검증한다."""
+
+    effective_rows = list(rows)
+    if not effective_rows:
+        raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
+    missing_query_ids = [
+        str(row["query_id"])
+        for row in effective_rows
+        if not str(row.get("weak_text") or row.get("text", "")).strip()
+    ]
+    if missing_query_ids:
+        raise ValueError(
+            f"{algorithm_name} requires each unlabeled row to include text or "
+            f"weak_text. Missing examples: {missing_query_ids[:5]}."
+        )
+    return PreparedQuerySslUnlabeledRows(
+        rows=effective_rows,
+        mode="raw_weak_text",
+        cache_hit=False,
+    )
+
+
 def prepare_fixmatch_unlabeled_rows(
     cfg,
     *,

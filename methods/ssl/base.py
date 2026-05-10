@@ -64,6 +64,20 @@ class QuerySslAlgorithm(Protocol):
         """model과 batch로 algorithm-specific optimization step을 계산한다."""
 
 
+def configure_query_ssl_algorithm_training(
+    algorithm: QuerySslAlgorithm,
+    *,
+    num_train_iter: int,
+) -> None:
+    """algorithm이 필요로 할 때만 전체 train iteration 수를 전달한다."""
+
+    if num_train_iter <= 0:
+        raise ValueError("num_train_iter must be positive.")
+    configure_training = getattr(algorithm, "configure_training", None)
+    if callable(configure_training):
+        configure_training(num_train_iter=num_train_iter)
+
+
 def _require_non_empty(value: str, *, field_name: str) -> str:
     normalized = value.strip()
     if not normalized:

@@ -222,6 +222,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             relative_paths=(
                 "conf/entrypoints/central_ssl_control/train_lora_classifier.yaml",
                 "conf/entrypoints/central_ssl_control/train_lora_pseudo_label_classifier.yaml",
+                "conf/entrypoints/central_ssl_control/train_lora_pseudolabel.yaml",
                 "conf/entrypoints/central_ssl_control/train_lora_fixmatch.yaml",
                 "conf/entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher.yaml",
             ),
@@ -297,8 +298,8 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
             section_name="query_sources",
             display_name="Query 데이터 소스",
             description=(
-                "supervised, teacher bootstrap, FixMatch가 공유하는 train/"
-                "unlabeled source preset입니다."
+                "supervised, teacher bootstrap, PseudoLabel, FixMatch가 공유하는 "
+                "train/unlabeled source preset입니다."
             ),
             relative_dir="conf/track_presets/central_ssl_control/query_source",
             family_name="train_source",
@@ -341,6 +342,7 @@ CENTRAL_ADAPTATION_TRACK_SPEC = CatalogTrackSpec(
                 "algorithm_name",
                 "temperature",
                 "p_cutoff",
+                "unsup_warm_up",
                 "hard_label",
                 "lambda_u",
                 "supervised_loss_weight",

@@ -83,8 +83,8 @@ class FederatedSimulationCompilePolicy:
 
 
 @dataclass(frozen=True, slots=True)
-class FixMatchCompilePolicy:
-    """FixMatch entrypoint의 dataset readiness validation policy."""
+class QuerySslCompilePolicy:
+    """Query SSL entrypoint의 unlabeled dataset readiness validation policy."""
 
     def collect_warnings(
         self,
@@ -113,7 +113,7 @@ class FixMatchCompilePolicy:
         )
         if train_source_name is None:
             raise ValueError(
-                "FixMatch compile readiness check failed: "
+                "Query SSL compile readiness check failed: "
                 "query_source preset을 결정할 수 없습니다."
             )
         train_source_raw = context.catalog_service.load_config_group_item(
@@ -123,7 +123,7 @@ class FixMatchCompilePolicy:
         source_unlabeled = _string_or_none(train_source_raw.get("unlabeled_jsonl"))
         if source_unlabeled is None or source_unlabeled == "null":
             raise ValueError(
-                "FixMatch compile readiness check failed: "
+                "Query SSL compile readiness check failed: "
                 f"query_source={train_source_name} 에 "
                 "unlabeled_jsonl이 없습니다."
             )
@@ -137,7 +137,7 @@ class FixMatchCompilePolicy:
         )
         if dataset_name is None:
             raise ValueError(
-                "FixMatch compile readiness check failed: "
+                "Query SSL compile readiness check failed: "
                 "dataset preset을 결정할 수 없습니다."
             )
         dataset_raw = context.catalog_service.load_config_group_item(
@@ -149,7 +149,7 @@ class FixMatchCompilePolicy:
         )
         if dataset_unlabeled is None or dataset_unlabeled == "null":
             raise ValueError(
-                "FixMatch compile readiness check failed: "
+                "Query SSL compile readiness check failed: "
                 f"dataset={dataset_name} 는 "
                 "unlabeled_query_pool_jsonl이 아직 비어 있습니다. "
                 "다른 query_source preset을 고르거나 "
