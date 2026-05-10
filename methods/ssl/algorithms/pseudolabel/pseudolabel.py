@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
 from typing import Any
 
 from torch import Tensor
@@ -21,25 +20,23 @@ from ...hooks.pseudo_labeling import (
 from ...registry import register_query_ssl_algorithm
 
 
-@dataclass(frozen=True, slots=True)
-class PseudoLabelConfig:
-    """USB PseudoLabel 핵심 하이퍼파라미터 묶음."""
-
-    p_cutoff: float
-    unsup_warm_up: float = 0.4
-    lambda_u: float = 1.0
-    supervised_loss_weight: float = 1.0
-
-
-@dataclass(slots=True)
 class PseudoLabelStepOutput:
     """PseudoLabel 한 step의 loss/diagnostics 결과."""
 
-    total_loss: Tensor
-    sup_loss: Tensor
-    unsup_loss: Tensor
-    mask: Tensor
-    unsup_warmup: Tensor
+    def __init__(
+        self,
+        *,
+        total_loss: Tensor,
+        sup_loss: Tensor,
+        unsup_loss: Tensor,
+        mask: Tensor,
+        unsup_warmup: Tensor,
+    ) -> None:
+        self.total_loss = total_loss
+        self.sup_loss = sup_loss
+        self.unsup_loss = unsup_loss
+        self.mask = mask
+        self.unsup_warmup = unsup_warmup
 
     @property
     def util_ratio(self) -> Tensor:
@@ -70,19 +67,31 @@ def build_pseudolabel_objective_hooks() -> SslObjectiveHooks:
     )
 
 
-@dataclass(slots=True)
 class PseudoLabelAlgorithm:
     """USB PseudoLabel을 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
-    config: PseudoLabelConfig
-    hooks: SslObjectiveHooks = field(default_factory=build_pseudolabel_objective_hooks)
     algorithm_name: str = "pseudolabel"
-    _iteration: int = field(default=0, init=False)
-    _num_train_iter: int = field(default=1, init=False)
+
+    def __init__(
+        self,
+        *,
+        p_cutoff: float,
+        unsup_warm_up: float = 0.4,
+        lambda_u: float = 1.0,
+        supervised_loss_weight: float = 1.0,
+        hooks: SslObjectiveHooks | None = None,
+    ) -> None:
+        self.p_cutoff = float(p_cutoff)
+        self.unsup_warm_up = float(unsup_warm_up)
+        self.lambda_u = float(lambda_u)
+        self.supervised_loss_weight = float(supervised_loss_weight)
+        self.hooks = hooks or build_pseudolabel_objective_hooks()
+        self._iteration = 0
+        self._num_train_iter = 1
 
     @property
     def uses_labeled_batches(self) -> bool:
-        return self.config.supervised_loss_weight > 0
+        return self.supervised_loss_weight > 0
 
     def configure_training(self, *, num_train_iter: int) -> None:
         """USB `self.num_train_iter`에 해당하는 warm-up denominator를 설정한다."""
@@ -100,7 +109,7 @@ class PseudoLabelAlgorithm:
     ) -> None:
         if unlabeled_loader_length == 0:
             raise ValueError("PseudoLabel unlabeled_loader must not be empty.")
-        if self.config.supervised_loss_weight > 0 and train_loader_length == 0:
+        if self.supervised_loss_weight > 0 and train_loader_length == 0:
             raise ValueError(
                 "PseudoLabel labeled train_loader must not be empty when "
                 "supervised_loss_weight > 0."
@@ -117,10 +126,13 @@ class PseudoLabelAlgorithm:
             model=model,
             labeled_batch=labeled_batch,
             unlabeled_batch=unlabeled_batch,
-            config=self.config,
-            hooks=self.hooks,
+            p_cutoff=self.p_cutoff,
+            unsup_warm_up=self.unsup_warm_up,
+            lambda_u=self.lambda_u,
+            supervised_loss_weight=self.supervised_loss_weight,
             iteration=self._iteration,
             num_train_iter=self._num_train_iter,
+            hooks=self.hooks,
         )
         self._iteration += 1
         return output
@@ -131,9 +143,12 @@ def compute_pseudolabel_step(
     model: TextBatchClassifier,
     labeled_batch: dict[str, Tensor] | None,
     unlabeled_batch: dict[str, Tensor],
-    config: PseudoLabelConfig,
+    p_cutoff: float,
     iteration: int,
     num_train_iter: int,
+    unsup_warm_up: float = 0.4,
+    lambda_u: float = 1.0,
+    supervised_loss_weight: float = 1.0,
     hooks: SslObjectiveHooks | None = None,
 ) -> PseudoLabelStepOutput:
     """USB `semilearn/algorithms/pseudolabel/pseudolabel.py::train_step` 핵심."""
@@ -166,7 +181,7 @@ def compute_pseudolabel_step(
     probs_x_ulb = compute_prob(logits_x_ulb.detach())
     mask = effective_hooks.masking.build_mask(
         probs_x_ulb_w=probs_x_ulb,
-        p_cutoff=config.p_cutoff,
+        p_cutoff=p_cutoff,
     )
     pseudo_label = effective_hooks.pseudo_labeling.generate_targets(
         probs_x_ulb_w=logits_x_ulb,
@@ -180,13 +195,13 @@ def compute_pseudolabel_step(
     unsup_warmup = logits_x_ulb.new_tensor(
         _compute_usb_unsup_warmup(
             iteration=iteration,
-            unsup_warm_up=config.unsup_warm_up,
+            unsup_warm_up=unsup_warm_up,
             num_train_iter=num_train_iter,
         )
     )
     total_loss = (
-        config.supervised_loss_weight * sup_loss
-        + config.lambda_u * unsup_loss * unsup_warmup
+        supervised_loss_weight * sup_loss
+        + lambda_u * unsup_loss * unsup_warmup
     )
     return PseudoLabelStepOutput(
         total_loss=total_loss,
@@ -223,10 +238,8 @@ def build_pseudolabel_algorithm(parameters: Mapping[str, Any]) -> PseudoLabelAlg
     """Hydra method parameter mapping으로 PseudoLabel algorithm을 만든다."""
 
     return PseudoLabelAlgorithm(
-        config=PseudoLabelConfig(
-            p_cutoff=float(parameters["p_cutoff"]),
-            unsup_warm_up=float(parameters.get("unsup_warm_up", 0.4)),
-            lambda_u=float(parameters.get("lambda_u", 1.0)),
-            supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
-        )
+        p_cutoff=float(parameters["p_cutoff"]),
+        unsup_warm_up=float(parameters.get("unsup_warm_up", 0.4)),
+        lambda_u=float(parameters.get("lambda_u", 1.0)),
+        supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
     )

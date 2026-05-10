@@ -7,7 +7,6 @@ from torch import nn
 
 from methods.ssl.algorithms.pseudolabel.pseudolabel import (
     PseudoLabelAlgorithm,
-    PseudoLabelConfig,
     compute_pseudolabel_step,
 )
 from methods.ssl.registry import (
@@ -39,7 +38,7 @@ def test_query_ssl_algorithm_registry_builds_pseudolabel_algorithm() -> None:
 
     assert isinstance(algorithm, PseudoLabelAlgorithm)
     assert algorithm.algorithm_name == "pseudolabel"
-    assert algorithm.config.p_cutoff == 0.95
+    assert algorithm.p_cutoff == 0.95
 
 
 def test_query_ssl_algorithm_descriptor_exposes_pseudolabel_view_spec() -> None:
@@ -70,12 +69,10 @@ def test_compute_pseudolabel_step_matches_usb_masked_warmup_loss() -> None:
         model=model,  # type: ignore[arg-type]
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
-        config=PseudoLabelConfig(
-            p_cutoff=0.7,
-            unsup_warm_up=0.4,
-            lambda_u=1.0,
-            supervised_loss_weight=1.0,
-        ),
+        p_cutoff=0.7,
+        unsup_warm_up=0.4,
+        lambda_u=1.0,
+        supervised_loss_weight=1.0,
         iteration=2,
         num_train_iter=10,
     )
@@ -130,9 +127,7 @@ def test_pseudolabel_algorithm_uses_usb_iteration_before_increment() -> None:
         "weak_input_ids": torch.ones((1, 2), dtype=torch.long),
         "weak_attention_mask": torch.ones((1, 2), dtype=torch.long),
     }
-    algorithm = PseudoLabelAlgorithm(
-        config=PseudoLabelConfig(p_cutoff=0.95, unsup_warm_up=0.5)
-    )
+    algorithm = PseudoLabelAlgorithm(p_cutoff=0.95, unsup_warm_up=0.5)
     algorithm.configure_training(num_train_iter=4)
 
     first_output = algorithm.compute_step(

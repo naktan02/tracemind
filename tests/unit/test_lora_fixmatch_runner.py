@@ -404,7 +404,7 @@ def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
 
     assert outputs["output_dir"] == "runs/fake_pseudolabel"
     assert captured["algorithm"].algorithm_name == "pseudolabel"
-    assert captured["algorithm"].config.unsup_warm_up == 0.4
+    assert captured["algorithm"].unsup_warm_up == 0.4
     assert "strong_input_ids" not in unlabeled_batch
     assert (
         captured["extra_manifest"]["query_ssl_method"]["preset_name"]
