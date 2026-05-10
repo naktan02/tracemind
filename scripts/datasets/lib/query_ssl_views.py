@@ -10,6 +10,9 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
+from scripts.runtime_adapters.backtranslation_runtime import (
+    build_nllb_backtranslation_candidate_pairs_from_params,
+)
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     count_labeled_query_rows_by_label,
@@ -214,11 +217,8 @@ def build_nllb_backtranslation_candidate_pair_builder(
     """NLLB runtime config로 candidate pair builder를 만든다."""
 
     def _build(texts: Sequence[str]) -> Sequence[QuerySslBacktranslationPair]:
-        from agent.src.services.language.backtranslation_service import (
-            NllbBacktranslationService,
-        )
-
-        service = NllbBacktranslationService(
+        return build_nllb_backtranslation_candidate_pairs_from_params(
+            texts=texts,
             source_lang=config.source_lang,
             pivot_languages=config.pivot_languages,
             model_id=config.model_id,
@@ -230,7 +230,6 @@ def build_nllb_backtranslation_candidate_pair_builder(
             cache_dir=config.cache_dir,
             local_files_only=config.local_files_only,
         )
-        return service.build_candidate_pairs(texts=list(texts))
 
     return _build
 

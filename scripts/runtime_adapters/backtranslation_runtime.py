@@ -2,7 +2,43 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from typing import Any
+
+
+def build_nllb_backtranslation_candidate_pairs_from_params(
+    *,
+    texts: Sequence[str],
+    source_lang: str,
+    pivot_languages: tuple[str, str],
+    model_id: str,
+    revision: str,
+    device: str,
+    batch_size: int,
+    max_new_tokens: int,
+    torch_dtype: str,
+    cache_dir: str | None,
+    local_files_only: bool,
+) -> Any:
+    """명시 파라미터로 NLLB candidate pair를 생성한다."""
+
+    from agent.src.services.language.backtranslation_service import (
+        NllbBacktranslationService,
+    )
+
+    service = NllbBacktranslationService(
+        source_lang=source_lang,
+        pivot_languages=pivot_languages,
+        model_id=model_id,
+        revision=revision,
+        device=device,
+        batch_size=batch_size,
+        max_new_tokens=max_new_tokens,
+        torch_dtype=torch_dtype,
+        cache_dir=cache_dir,
+        local_files_only=local_files_only,
+    )
+    return service.build_candidate_pairs(texts=list(texts))
 
 
 def build_nllb_backtranslation_candidate_pairs(
@@ -12,11 +48,8 @@ def build_nllb_backtranslation_candidate_pairs(
 ) -> Any:
     """Hydra augmenter config로 NLLB candidate pair를 생성한다."""
 
-    from agent.src.services.language.backtranslation_service import (
-        NllbBacktranslationService,
-    )
-
-    service = NllbBacktranslationService(
+    return build_nllb_backtranslation_candidate_pairs_from_params(
+        texts=texts,
         source_lang=str(cfg.query_ssl_augmenter.source_lang),
         pivot_languages=tuple(
             str(language) for language in cfg.query_ssl_augmenter.pivot_languages
@@ -30,4 +63,3 @@ def build_nllb_backtranslation_candidate_pairs(
         cache_dir=str(cfg.query_ssl_augmenter.cache_dir),
         local_files_only=bool(cfg.query_ssl_augmenter.local_files_only),
     )
-    return service.build_candidate_pairs(texts=texts)
