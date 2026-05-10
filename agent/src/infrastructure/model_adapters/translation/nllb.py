@@ -73,14 +73,15 @@ class NllbTranslationAdapter:
             if getattr(model, "generation_config", None) is not None:
                 generation_config = deepcopy(model.generation_config)
                 generation_config.max_length = None
+                generation_config.max_new_tokens = self.max_new_tokens
+                generation_config.forced_bos_token_id = forced_bos_token_id
             with torch.no_grad():
-                generate_kwargs = {
-                    **encoded,
-                    "forced_bos_token_id": forced_bos_token_id,
-                    "max_new_tokens": self.max_new_tokens,
-                }
+                generate_kwargs = {**encoded}
                 if generation_config is not None:
                     generate_kwargs["generation_config"] = generation_config
+                else:
+                    generate_kwargs["max_new_tokens"] = self.max_new_tokens
+                    generate_kwargs["forced_bos_token_id"] = forced_bos_token_id
                 generated = model.generate(
                     **generate_kwargs,
                 )

@@ -47,11 +47,27 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--max-new-tokens", type=int, default=256)
     parser.add_argument("--torch-dtype", default="auto")
     parser.add_argument(
+        "--chunk-size",
+        type=int,
+        default=256,
+        help="Number of source rows translated and appended per checkpoint.",
+    )
+    parser.add_argument(
         "--cache-dir",
         default="data/processed/query_ssl_views/model_cache",
         help="Model cache directory for the NLLB runtime.",
     )
     parser.add_argument("--local-files-only", action="store_true")
+    parser.add_argument(
+        "--no-resume",
+        action="store_true",
+        help="Ignore existing .tmp JSONL progress. Use with --overwrite to restart.",
+    )
+    parser.add_argument(
+        "--overwrite",
+        action="store_true",
+        help="Delete existing output/progress files before materialization.",
+    )
     parser.add_argument(
         "--output-root",
         type=Path,
@@ -84,6 +100,9 @@ def main() -> None:
         candidate_pair_builder=build_nllb_backtranslation_candidate_pair_builder(
             runtime_config
         ),
+        chunk_size=int(args.chunk_size),
+        resume=not bool(args.no_resume),
+        overwrite=bool(args.overwrite),
     )
 
     print(f"labeled_train_with_views_jsonl={artifacts.labeled_train_with_views_jsonl}")
@@ -92,6 +111,7 @@ def main() -> None:
     )
     print(f"manifest_json={artifacts.manifest_json}")
     print(f"summary_json={artifacts.summary_json}")
+    print(f"progress_json={artifacts.progress_json}")
 
 
 if __name__ == "__main__":

@@ -82,6 +82,10 @@ def test_materialize_query_ssl_views_writes_labeled_and_unlabeled_views(
     }
     assert manifest["view_counts"]["labeled_train"]["empty_aug_0_count"] == 0
     assert manifest["view_counts"]["unlabeled_pool"]["empty_aug_1_count"] == 0
+    progress = json.loads(artifacts.progress_json.read_text(encoding="utf-8"))
+    assert progress["status"] == "completed"
+    assert progress["partitions"]["labeled_train"]["processed_count"] == 2
+    assert progress["partitions"]["unlabeled_pool"]["processed_count"] == 1
 
 
 def test_materialize_query_ssl_views_rejects_empty_candidate_text(
@@ -104,3 +108,58 @@ def test_materialize_query_ssl_views_rejects_empty_candidate_text(
             augmenter_manifest={"augmenter_type": "fake"},
             candidate_pair_builder=_bad_builder,
         )
+
+
+def test_materialize_query_ssl_views_resumes_from_tmp_jsonl(
+    tmp_path: Path,
+) -> None:
+    split_dir = tmp_path / "split"
+    split_dir.mkdir()
+    dump_labeled_query_rows(
+        split_dir / "labeled_train.jsonl",
+        [_row("l1", "anxiety"), _row("l2", "depression")],
+    )
+    dump_labeled_query_rows(split_dir / "unlabeled_pool.jsonl", [])
+
+    calls = 0
+
+    def _fails_after_first_chunk(texts):
+        nonlocal calls
+        calls += 1
+        if calls > 1:
+            raise RuntimeError("planned interruption")
+        return _fake_builder(texts)
+
+    with pytest.raises(RuntimeError, match="planned interruption"):
+        materialize_query_ssl_backtranslation_views(
+            split_dir=split_dir,
+            split_name="unit_split",
+            augmenter_name="fake_backtranslation",
+            output_root=tmp_path / "views",
+            augmenter_manifest={"augmenter_type": "fake"},
+            candidate_pair_builder=_fails_after_first_chunk,
+            chunk_size=1,
+        )
+
+    output_dir = tmp_path / "views" / "unit_split" / "fake_backtranslation"
+    tmp_jsonl = output_dir / "labeled_train.with_views.jsonl.tmp"
+    progress_json = output_dir / "progress.json"
+    assert tmp_jsonl.exists()
+    assert len(load_labeled_query_rows(tmp_jsonl)) == 1
+    progress = json.loads(progress_json.read_text(encoding="utf-8"))
+    assert progress["partitions"]["labeled_train"]["processed_count"] == 1
+
+    artifacts = materialize_query_ssl_backtranslation_views(
+        split_dir=split_dir,
+        split_name="unit_split",
+        augmenter_name="fake_backtranslation",
+        output_root=tmp_path / "views",
+        augmenter_manifest={"augmenter_type": "fake"},
+        candidate_pair_builder=_fake_builder,
+        chunk_size=1,
+    )
+
+    assert not tmp_jsonl.exists()
+    assert len(load_labeled_query_rows(artifacts.labeled_train_with_views_jsonl)) == 2
+    manifest = json.loads(artifacts.manifest_json.read_text(encoding="utf-8"))
+    assert manifest["resume"]["labeled_train"]["resumed_from_count"] == 1

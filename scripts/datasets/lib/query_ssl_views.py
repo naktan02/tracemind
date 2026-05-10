@@ -6,17 +6,18 @@ import json
 from collections import Counter
 from collections.abc import Callable, Sequence
 from dataclasses import dataclass
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Protocol
 
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
     count_labeled_query_rows_by_label,
-    dump_labeled_query_rows,
     load_labeled_query_rows,
 )
 
 QUERY_SSL_VIEWS_SCHEMA_VERSION = "query_ssl_views.v1"
+QUERY_SSL_VIEWS_PROGRESS_SCHEMA_VERSION = "query_ssl_views_progress.v1"
 
 
 class QuerySslBacktranslationPair(Protocol):
@@ -42,6 +43,22 @@ class QuerySslViewArtifacts:
     unlabeled_pool_with_views_jsonl: Path
     manifest_json: Path
     summary_json: Path
+    progress_json: Path
+
+
+@dataclass(frozen=True, slots=True)
+class _ViewPartitionArtifacts:
+    partition_name: str
+    source_jsonl: Path
+    final_jsonl: Path
+    tmp_jsonl: Path
+
+
+@dataclass(frozen=True, slots=True)
+class _ViewPartitionResult:
+    partition_name: str
+    rows: list[LabeledQueryRow]
+    resumed_from_count: int
 
 
 @dataclass(frozen=True, slots=True)
@@ -83,8 +100,15 @@ def materialize_query_ssl_backtranslation_views(
     output_root: Path,
     augmenter_manifest: dict[str, object],
     candidate_pair_builder: QuerySslCandidatePairBuilder,
+    chunk_size: int = 256,
+    resume: bool = True,
+    overwrite: bool = False,
 ) -> QuerySslViewArtifacts:
-    """labeled/unlabeled rows에 `aug_0`, `aug_1` strong view를 저장한다."""
+    """labeled/unlabeled rows에 `aug_0`, `aug_1` strong view를 저장한다.
+
+    긴 NLLB 작업을 안전하게 재시작할 수 있도록 partition별 `.tmp` JSONL에
+    chunk 단위로 append하고, 완료 시 final JSONL로 atomic replace한다.
+    """
 
     normalized_split_name = split_name.strip()
     normalized_augmenter_name = augmenter_name.strip()
@@ -92,17 +116,8 @@ def materialize_query_ssl_backtranslation_views(
         raise ValueError("split_name must not be empty.")
     if not normalized_augmenter_name:
         raise ValueError("augmenter_name must not be empty.")
-
-    labeled_rows = load_labeled_query_rows(split_dir / "labeled_train.jsonl")
-    unlabeled_rows = load_labeled_query_rows(split_dir / "unlabeled_pool.jsonl")
-    labeled_with_views = _attach_backtranslation_views(
-        rows=labeled_rows,
-        candidate_pair_builder=candidate_pair_builder,
-    )
-    unlabeled_with_views = _attach_backtranslation_views(
-        rows=unlabeled_rows,
-        candidate_pair_builder=candidate_pair_builder,
-    )
+    if chunk_size <= 0:
+        raise ValueError("chunk_size must be positive.")
 
     output_dir = output_root / normalized_split_name / normalized_augmenter_name
     output_dir.mkdir(parents=True, exist_ok=True)
@@ -111,22 +126,67 @@ def materialize_query_ssl_backtranslation_views(
         unlabeled_pool_with_views_jsonl=output_dir / "unlabeled_pool.with_views.jsonl",
         manifest_json=output_dir / "manifest.json",
         summary_json=output_dir / "summary.json",
+        progress_json=output_dir / "progress.json",
     )
-    dump_labeled_query_rows(
-        artifacts.labeled_train_with_views_jsonl, labeled_with_views
-    )
-    dump_labeled_query_rows(
-        artifacts.unlabeled_pool_with_views_jsonl,
-        unlabeled_with_views,
+    partitions = (
+        _ViewPartitionArtifacts(
+            partition_name="labeled_train",
+            source_jsonl=split_dir / "labeled_train.jsonl",
+            final_jsonl=artifacts.labeled_train_with_views_jsonl,
+            tmp_jsonl=artifacts.labeled_train_with_views_jsonl.with_suffix(
+                ".jsonl.tmp"
+            ),
+        ),
+        _ViewPartitionArtifacts(
+            partition_name="unlabeled_pool",
+            source_jsonl=split_dir / "unlabeled_pool.jsonl",
+            final_jsonl=artifacts.unlabeled_pool_with_views_jsonl,
+            tmp_jsonl=artifacts.unlabeled_pool_with_views_jsonl.with_suffix(
+                ".jsonl.tmp"
+            ),
+        ),
     )
 
+    if overwrite:
+        _remove_existing_view_artifacts(artifacts=artifacts, partitions=partitions)
+    elif _final_artifacts_exist(artifacts):
+        return artifacts
+
+    progress = _build_initial_progress(
+        split_dir=split_dir,
+        split_name=normalized_split_name,
+        augmenter_name=normalized_augmenter_name,
+        augmenter_manifest=augmenter_manifest,
+        chunk_size=chunk_size,
+        artifacts=artifacts,
+        partitions=partitions,
+    )
+    _write_progress(artifacts.progress_json, progress)
+
+    partition_results: list[_ViewPartitionResult] = []
+    for partition in partitions:
+        partition_results.append(
+            _materialize_view_partition(
+                partition=partition,
+                progress_path=artifacts.progress_json,
+                progress=progress,
+                candidate_pair_builder=candidate_pair_builder,
+                chunk_size=chunk_size,
+                resume=resume,
+            )
+        )
+
+    labeled_rows = partition_results[0].rows
+    unlabeled_rows = partition_results[1].rows
     manifest = _build_query_ssl_views_manifest(
         split_dir=split_dir,
         split_name=normalized_split_name,
         augmenter_name=normalized_augmenter_name,
         augmenter_manifest=augmenter_manifest,
-        labeled_rows=labeled_with_views,
-        unlabeled_rows=unlabeled_with_views,
+        chunk_size=chunk_size,
+        labeled_rows=labeled_rows,
+        unlabeled_rows=unlabeled_rows,
+        partition_results=partition_results,
         artifacts=artifacts,
     )
     artifacts.manifest_json.write_text(
@@ -140,6 +200,11 @@ def materialize_query_ssl_backtranslation_views(
         + "\n",
         encoding="utf-8",
     )
+    progress["status"] = "completed"
+    progress["completed_at"] = _utc_now()
+    progress["manifest_json"] = str(artifacts.manifest_json)
+    progress["summary_json"] = str(artifacts.summary_json)
+    _write_progress(artifacts.progress_json, progress)
     return artifacts
 
 
@@ -168,6 +233,121 @@ def build_nllb_backtranslation_candidate_pair_builder(
         return service.build_candidate_pairs(texts=list(texts))
 
     return _build
+
+
+def _materialize_view_partition(
+    *,
+    partition: _ViewPartitionArtifacts,
+    progress_path: Path,
+    progress: dict[str, object],
+    candidate_pair_builder: QuerySslCandidatePairBuilder,
+    chunk_size: int,
+    resume: bool,
+) -> _ViewPartitionResult:
+    source_rows = load_labeled_query_rows(partition.source_jsonl)
+    if partition.final_jsonl.exists():
+        final_rows = load_labeled_query_rows(partition.final_jsonl)
+        if len(final_rows) != len(source_rows):
+            raise ValueError(
+                f"{partition.final_jsonl} exists but has {len(final_rows)} rows; "
+                f"expected {len(source_rows)}. Use --overwrite to regenerate."
+            )
+        _update_partition_progress(
+            progress=progress,
+            partition=partition,
+            total_count=len(source_rows),
+            processed_count=len(final_rows),
+            status="completed",
+        )
+        _write_progress(progress_path, progress)
+        return _ViewPartitionResult(
+            partition_name=partition.partition_name,
+            rows=final_rows,
+            resumed_from_count=len(final_rows),
+        )
+
+    processed_ids = (
+        _load_existing_tmp_query_ids(partition.tmp_jsonl) if resume else set()
+    )
+    if processed_ids and not _source_prefix_matches_tmp(
+        source_rows=source_rows,
+        processed_ids=processed_ids,
+    ):
+        raise ValueError(
+            f"{partition.tmp_jsonl} does not match the source row prefix. "
+            "Use --overwrite to regenerate."
+        )
+    if not resume and partition.tmp_jsonl.exists():
+        partition.tmp_jsonl.unlink()
+        processed_ids = set()
+
+    resumed_from_count = len(processed_ids)
+    _update_partition_progress(
+        progress=progress,
+        partition=partition,
+        total_count=len(source_rows),
+        processed_count=resumed_from_count,
+        status="running",
+    )
+    _write_progress(progress_path, progress)
+
+    if not source_rows:
+        partition.tmp_jsonl.parent.mkdir(parents=True, exist_ok=True)
+        partition.tmp_jsonl.write_text("", encoding="utf-8")
+
+    pending_rows = [
+        row for row in source_rows if str(row["query_id"]) not in processed_ids
+    ]
+    for chunk in _iter_chunks(pending_rows, chunk_size):
+        rows_with_views = _attach_backtranslation_views(
+            rows=chunk,
+            candidate_pair_builder=candidate_pair_builder,
+        )
+        _append_labeled_query_rows(partition.tmp_jsonl, rows_with_views)
+        processed_ids.update(str(row["query_id"]) for row in rows_with_views)
+        _update_partition_progress(
+            progress=progress,
+            partition=partition,
+            total_count=len(source_rows),
+            processed_count=len(processed_ids),
+            status="running",
+        )
+        _write_progress(progress_path, progress)
+        print(
+            "query_ssl_views=chunk_complete "
+            f"partition={partition.partition_name} "
+            f"processed={len(processed_ids)}/{len(source_rows)} "
+            f"tmp_jsonl={partition.tmp_jsonl}",
+            flush=True,
+        )
+
+    tmp_rows = load_labeled_query_rows(partition.tmp_jsonl)
+    if len(tmp_rows) != len(source_rows):
+        raise ValueError(
+            f"{partition.tmp_jsonl} has {len(tmp_rows)} rows after materialization; "
+            f"expected {len(source_rows)}."
+        )
+    partition.tmp_jsonl.replace(partition.final_jsonl)
+    _update_partition_progress(
+        progress=progress,
+        partition=partition,
+        total_count=len(source_rows),
+        processed_count=len(source_rows),
+        status="completed",
+    )
+    _write_progress(progress_path, progress)
+    print(
+        "query_ssl_views=partition_complete "
+        f"partition={partition.partition_name} "
+        f"rows={len(source_rows)} "
+        f"final_jsonl={partition.final_jsonl}",
+        flush=True,
+    )
+    return _ViewPartitionResult(
+        partition_name=partition.partition_name,
+        rows=tmp_rows,
+        resumed_from_count=resumed_from_count,
+    )
 
 
 def _attach_backtranslation_views(
@@ -216,8 +396,10 @@ def _build_query_ssl_views_manifest(
     split_name: str,
     augmenter_name: str,
     augmenter_manifest: dict[str, object],
+    chunk_size: int,
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
+    partition_results: Sequence[_ViewPartitionResult],
     artifacts: QuerySslViewArtifacts,
 ) -> dict[str, object]:
     return {
@@ -227,6 +409,7 @@ def _build_query_ssl_views_manifest(
         "source_split_manifest_json": str(split_dir / "manifest.json"),
         "augmenter_name": augmenter_name,
         "augmenter": augmenter_manifest,
+        "chunk_size": chunk_size,
         "weak_view_policy": {
             "labeled": "text",
             "unlabeled": "text",
@@ -247,6 +430,12 @@ def _build_query_ssl_views_manifest(
             "labeled_train": _count_view_metadata(labeled_rows),
             "unlabeled_pool": _count_view_metadata(unlabeled_rows),
         },
+        "resume": {
+            result.partition_name: {
+                "resumed_from_count": result.resumed_from_count,
+            }
+            for result in partition_results
+        },
         "artifacts": {
             "labeled_train_with_views_jsonl": str(
                 artifacts.labeled_train_with_views_jsonl
@@ -256,6 +445,7 @@ def _build_query_ssl_views_manifest(
             ),
             "manifest_json": str(artifacts.manifest_json),
             "summary_json": str(artifacts.summary_json),
+            "progress_json": str(artifacts.progress_json),
         },
     }
 
@@ -267,9 +457,11 @@ def _build_query_ssl_views_summary(
         "schema_version": manifest["schema_version"],
         "split_name": manifest["split_name"],
         "augmenter_name": manifest["augmenter_name"],
+        "chunk_size": manifest["chunk_size"],
         "row_counts": manifest["row_counts"],
         "label_counts": manifest["label_counts"],
         "view_counts": manifest["view_counts"],
+        "resume": manifest["resume"],
     }
 
 
@@ -292,3 +484,148 @@ def _count_view_metadata(rows: Sequence[LabeledQueryRow]) -> dict[str, object]:
         "empty_aug_0_count": empty_aug_0_count,
         "empty_aug_1_count": empty_aug_1_count,
     }
+
+
+def _build_initial_progress(
+    *,
+    split_dir: Path,
+    split_name: str,
+    augmenter_name: str,
+    augmenter_manifest: dict[str, object],
+    chunk_size: int,
+    artifacts: QuerySslViewArtifacts,
+    partitions: Sequence[_ViewPartitionArtifacts],
+) -> dict[str, object]:
+    return {
+        "schema_version": QUERY_SSL_VIEWS_PROGRESS_SCHEMA_VERSION,
+        "status": "running",
+        "created_at": _utc_now(),
+        "updated_at": _utc_now(),
+        "split_name": split_name,
+        "source_split_dir": str(split_dir),
+        "augmenter_name": augmenter_name,
+        "augmenter": augmenter_manifest,
+        "chunk_size": chunk_size,
+        "partitions": {
+            partition.partition_name: {
+                "status": "pending",
+                "source_jsonl": str(partition.source_jsonl),
+                "tmp_jsonl": str(partition.tmp_jsonl),
+                "final_jsonl": str(partition.final_jsonl),
+                "total_count": None,
+                "processed_count": 0,
+                "progress_ratio": 0.0,
+            }
+            for partition in partitions
+        },
+        "manifest_json": str(artifacts.manifest_json),
+        "summary_json": str(artifacts.summary_json),
+    }
+
+
+def _update_partition_progress(
+    *,
+    progress: dict[str, object],
+    partition: _ViewPartitionArtifacts,
+    total_count: int,
+    processed_count: int,
+    status: str,
+) -> None:
+    partitions = progress["partitions"]
+    if not isinstance(partitions, dict):
+        raise TypeError("progress['partitions'] must be a mapping.")
+    partition_progress = partitions[partition.partition_name]
+    if not isinstance(partition_progress, dict):
+        raise TypeError("partition progress must be a mapping.")
+    partition_progress["status"] = status
+    partition_progress["total_count"] = total_count
+    partition_progress["processed_count"] = processed_count
+    partition_progress["progress_ratio"] = (
+        0.0 if total_count == 0 else (processed_count / total_count)
+    )
+    progress["updated_at"] = _utc_now()
+
+
+def _write_progress(path: Path, progress: dict[str, object]) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    tmp_path = path.with_suffix(".json.tmp")
+    tmp_path.write_text(
+        json.dumps(progress, indent=2, ensure_ascii=True) + "\n",
+        encoding="utf-8",
+    )
+    tmp_path.replace(path)
+
+
+def _append_labeled_query_rows(
+    path: Path,
+    rows: Sequence[LabeledQueryRow],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("a", encoding="utf-8") as file:
+        for row in rows:
+            file.write(json.dumps(row, ensure_ascii=True) + "\n")
+
+
+def _load_existing_tmp_query_ids(path: Path) -> set[str]:
+    if not path.exists():
+        return set()
+    query_ids: set[str] = set()
+    for row in load_labeled_query_rows(path):
+        _validate_view_rows([row])
+        query_id = str(row["query_id"])
+        if query_id in query_ids:
+            raise ValueError(f"{path} contains duplicate query_id={query_id!r}.")
+        query_ids.add(query_id)
+    return query_ids
+
+
+def _source_prefix_matches_tmp(
+    *,
+    source_rows: Sequence[LabeledQueryRow],
+    processed_ids: set[str],
+) -> bool:
+    expected_prefix_ids = {
+        str(row["query_id"]) for row in source_rows[: len(processed_ids)]
+    }
+    return expected_prefix_ids == processed_ids
+
+
+def _iter_chunks(
+    rows: Sequence[LabeledQueryRow],
+    chunk_size: int,
+) -> Sequence[Sequence[LabeledQueryRow]]:
+    return [
+        rows[start_index : start_index + chunk_size]
+        for start_index in range(0, len(rows), chunk_size)
+    ]
+
+
+def _remove_existing_view_artifacts(
+    *,
+    artifacts: QuerySslViewArtifacts,
+    partitions: Sequence[_ViewPartitionArtifacts],
+) -> None:
+    for path in (
+        artifacts.manifest_json,
+        artifacts.summary_json,
+        artifacts.progress_json,
+    ):
+        if path.exists():
+            path.unlink()
+    for partition in partitions:
+        for path in (partition.final_jsonl, partition.tmp_jsonl):
+            if path.exists():
+                path.unlink()
+
+
+def _final_artifacts_exist(artifacts: QuerySslViewArtifacts) -> bool:
+    return (
+        artifacts.labeled_train_with_views_jsonl.exists()
+        and artifacts.unlabeled_pool_with_views_jsonl.exists()
+        and artifacts.manifest_json.exists()
+        and artifacts.summary_json.exists()
+    )
+
+
+def _utc_now() -> str:
+    return datetime.now(timezone.utc).isoformat()
