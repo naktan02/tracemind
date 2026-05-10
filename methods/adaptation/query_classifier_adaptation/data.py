@@ -75,6 +75,7 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
             strong_text = f"{self._task_prefix}{strong_text}"
         return {
             "query_id": str(row["query_id"]),
+            "row_index": int(index),
             "weak_text": weak_text,
             "strong_text": strong_text,
         }
@@ -102,6 +103,7 @@ class TextWeakDataset(Dataset[dict[str, Any]]):
             weak_text = f"{self._task_prefix}{weak_text}"
         return {
             "query_id": str(row["query_id"]),
+            "row_index": int(index),
             "weak_text": weak_text,
         }
 
@@ -181,6 +183,9 @@ def build_weak_dataloader(
         )
         return {
             "query_ids": [str(item["query_id"]) for item in batch],
+            "row_indices": torch.tensor(
+                [int(item["row_index"]) for item in batch], dtype=torch.long
+            ),
             "weak_input_ids": weak_encoded["input_ids"],
             "weak_attention_mask": weak_encoded["attention_mask"],
         }
@@ -228,6 +233,9 @@ def build_multiview_dataloader(
         )
         return {
             "query_ids": [str(item["query_id"]) for item in batch],
+            "row_indices": torch.tensor(
+                [int(item["row_index"]) for item in batch], dtype=torch.long
+            ),
             "weak_input_ids": weak_encoded["input_ids"],
             "weak_attention_mask": weak_encoded["attention_mask"],
             "strong_input_ids": strong_encoded["input_ids"],

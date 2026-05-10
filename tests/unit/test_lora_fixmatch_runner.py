@@ -310,6 +310,109 @@ def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
     assert captured["algorithm"].uses_labeled_batches is True
 
 
+def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+    cfg = _build_cfg()
+    cfg.query_ssl_method = OmegaConf.create(
+        {
+            "name": "flexmatch_usb_v1",
+            "algorithm_name": "flexmatch",
+            "temperature": 0.5,
+            "p_cutoff": 0.95,
+            "hard_label": True,
+            "thresh_warmup": True,
+            "lambda_u": 1.0,
+            "supervised_loss_weight": 1.0,
+            "unlabeled_batch_size": 4,
+            "require_multiview": True,
+        }
+    )
+
+    class _DummyModel:
+        pass
+
+    class _DummyTokenizer:
+        def __call__(self, texts, **_kwargs):
+            batch = len(texts)
+            return {
+                "input_ids": torch.ones((batch, 2), dtype=torch.long),
+                "attention_mask": torch.ones((batch, 2), dtype=torch.long),
+            }
+
+    def _fake_train_query_ssl_classifier(**kwargs):
+        captured["algorithm"] = kwargs["algorithm"]
+        captured["unlabeled_loader"] = kwargs["unlabeled_loader"]
+        return (
+            kwargs["model"],
+            [{"epoch": 1, "train_loss": 0.1}],
+            {
+                "loss": 0.2,
+                "accuracy_top_1": 0.75,
+                "rows_total": 2,
+                "mean_true_label_probability": 0.7,
+                "mean_top_1_probability": 0.8,
+                "mean_margin_top1_top2": 0.3,
+                "confusion_matrix": {},
+                "per_category": {},
+            },
+        )
+
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.harness.common.build_query_lora_model",
+        lambda **_kwargs: (
+            _DummyModel(),
+            _DummyTokenizer(),
+            {"parameter_counts": {"trainable": 10, "total": 20}},
+        ),
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.runners.consistency."
+        "train_query_ssl_lora_classifier",
+        _fake_train_query_ssl_classifier,
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.harness.common.evaluate_query_lora_classifier",
+        lambda **_kwargs: {
+            "loss": 0.1,
+            "accuracy_top_1": 0.8,
+            "rows_total": 2,
+            "mean_true_label_probability": 0.75,
+            "mean_top_1_probability": 0.85,
+            "mean_margin_top1_top2": 0.4,
+            "confusion_matrix": {},
+            "per_category": {},
+        },
+    )
+    monkeypatch.setattr(
+        "scripts.experiments.query_lora_ssl.runners.consistency.write_run_artifacts",
+        lambda **_kwargs: {
+            "output_dir": "runs/fake_flexmatch",
+            "report_json": "runs/fake_flexmatch/report.json",
+        },
+    )
+
+    run_query_ssl_lora_baseline(
+        cfg=cfg,
+        train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
+        unlabeled_rows=[
+            _usb_unlabeled_row("u1", "depression", "우울해요"),
+            _usb_unlabeled_row("u2", "normal", "괜찮아요"),
+        ],
+        eval_rows_by_name={
+            "validation": [_labeled_row("v1", "anxiety", "검증")],
+            "test": [_labeled_row("t1", "depression", "테스트")],
+        },
+    )
+    unlabeled_batch = next(iter(captured["unlabeled_loader"]))
+
+    assert captured["algorithm"].algorithm_name == "flexmatch"
+    assert captured["algorithm"].thresh_warmup is True
+    assert "strong_input_ids" in unlabeled_batch
+    assert unlabeled_batch["row_indices"].tolist() == [0, 1]
+
+
 def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
     monkeypatch,
 ) -> None:

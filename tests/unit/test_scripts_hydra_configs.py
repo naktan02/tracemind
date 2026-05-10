@@ -261,6 +261,26 @@ def test_train_lora_query_ssl_supports_pseudolabel_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is False
 
 
+def test_train_lora_query_ssl_supports_flexmatch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            overrides=[
+                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "query_ssl_method.p_cutoff=0.9",
+                "query_ssl_method.thresh_warmup=false",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "flexmatch"
+    assert cfg.query_ssl_method.p_cutoff == 0.9
+    assert cfg.query_ssl_method.thresh_warmup is False
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_train_lora_query_ssl_supports_query_ssl_augmenter_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
@@ -785,9 +805,9 @@ def test_train_lora_query_ssl_defaults_to_fixmatch_precomputed_views() -> None:
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
-    assert cfg.train_batch_size == 8
+    assert cfg.train_batch_size == 12
     assert cfg.eval_batch_size == 32
-    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.unlabeled_batch_size == 12
     assert cfg.epochs == 5
     assert cfg.max_train_steps == 3000
     assert cfg.query_adaptation_initial_checkpoint.name == "none"

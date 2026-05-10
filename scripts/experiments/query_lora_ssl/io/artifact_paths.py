@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from datetime import datetime
 from pathlib import Path
@@ -50,8 +51,12 @@ def build_query_lora_run_artifact_paths(
     trainer_version: str,
     created_at: datetime,
 ) -> QueryLoraRunArtifactPaths:
+    base_output_dir = Path(str(cfg.output_dir))
+    run_group = _resolve_query_ssl_run_group(cfg)
+    if run_group is not None:
+        base_output_dir = base_output_dir / run_group
     output_dir = build_run_dir(
-        cfg.output_dir,
+        base_output_dir,
         run_id=trainer_version,
         created_at=created_at,
     )
@@ -69,3 +74,14 @@ def build_query_lora_run_artifact_paths(
         logs_dir=output_dir / "logs",
         projections_dir=output_dir / "projections",
     )
+
+
+def _resolve_query_ssl_run_group(cfg: Any) -> str | None:
+    query_ssl_method = getattr(cfg, "query_ssl_method", None)
+    if query_ssl_method is None:
+        return None
+    method_name = str(getattr(query_ssl_method, "name", "") or "").strip()
+    if not method_name:
+        return None
+    safe_name = re.sub(r"[^A-Za-z0-9_.-]+", "_", method_name)
+    return safe_name.strip("._-") or None

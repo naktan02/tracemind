@@ -5,6 +5,7 @@ from __future__ import annotations
 from methods.adaptation.query_classifier_adaptation.data import (
     TextMultiviewDataset,
     TextWeakDataset,
+    build_multiview_dataloader,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -32,6 +33,7 @@ def test_text_multiview_dataset_uses_first_usb_aug_candidate() -> None:
     item = dataset[0]
 
     assert item["query_id"] == "q1"
+    assert item["row_index"] == 0
     assert item["weak_text"] == "label: I feel anxious today."
     assert item["strong_text"] == "label: I feel nervous today."
 
@@ -55,6 +57,7 @@ def test_text_weak_dataset_uses_original_text_as_usb_weak_view() -> None:
     item = dataset[0]
 
     assert item["query_id"] == "q3"
+    assert item["row_index"] == 0
     assert item["weak_text"] == "label: I feel anxious today."
 
 
@@ -66,3 +69,32 @@ def test_text_weak_dataset_keeps_legacy_weak_text_compatibility() -> None:
     item = dataset[0]
 
     assert item["weak_text"] == "weak::I feel low."
+
+
+def test_multiview_dataloader_emits_stable_row_indices() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    rows = [_row("q1", "first"), _row("q2", "second")]
+    for row in rows:
+        row["aug_0"] = f"de::{row['text']}"
+        row["aug_1"] = f"fr::{row['text']}"
+
+    loader = build_multiview_dataloader(
+        rows=rows,
+        tokenizer=_Tokenizer(),
+        batch_size=2,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+    )
+    batch = next(iter(loader))
+
+    assert batch["query_ids"] == ["q1", "q2"]
+    assert batch["row_indices"].tolist() == [0, 1]

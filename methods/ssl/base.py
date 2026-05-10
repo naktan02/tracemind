@@ -78,6 +78,26 @@ def configure_query_ssl_algorithm_training(
         configure_training(num_train_iter=num_train_iter)
 
 
+def configure_query_ssl_algorithm_dataset(
+    algorithm: QuerySslAlgorithm,
+    *,
+    num_classes: int,
+    unlabeled_row_count: int,
+) -> None:
+    """algorithm이 필요로 할 때만 dataset-level state 크기를 전달한다."""
+
+    if num_classes <= 0:
+        raise ValueError("num_classes must be positive.")
+    if unlabeled_row_count <= 0:
+        raise ValueError("unlabeled_row_count must be positive.")
+    configure_dataset = getattr(algorithm, "configure_dataset", None)
+    if callable(configure_dataset):
+        configure_dataset(
+            num_classes=num_classes,
+            unlabeled_row_count=unlabeled_row_count,
+        )
+
+
 def _require_non_empty(value: str, *, field_name: str) -> str:
     normalized = value.strip()
     if not normalized:

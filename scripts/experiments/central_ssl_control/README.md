@@ -27,8 +27,8 @@ query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1
 augmentation=precomputed_usb_candidates_v1
 initial_checkpoint=none
 max_train_steps=3000
-train_batch_size=8
-query_ssl_method.unlabeled_batch_size=8
+train_batch_size=12
+query_ssl_method.unlabeled_batch_size=12
 eval_batch_size=32
 train_jsonl=data/processed/query_ssl_views/.../labeled_train.with_views.jsonl
 unlabeled_jsonl=data/processed/query_ssl_views/.../unlabeled_pool.with_views.jsonl
@@ -41,7 +41,7 @@ LoRA adapter와 classifier head를 새로 초기화한다.
 학습 예산도 USB처럼 전체 데이터 epoch replay가 아니라 `max_train_steps` 총
 optimizer update 수로 고정한다. `epochs`는 selection 평가/history cadence를
 나누는 단위이며, 기본값은 `3000` steps다.
-16GB급 GPU 기준 기본 batch는 labeled `8`, unlabeled `8`로 둔다. FixMatch는
+16GB급 GPU 기준 기본 batch는 labeled `12`, unlabeled `12`로 둔다. FixMatch는
 한 step에서 labeled/weak/strong forward를 수행하므로 VRAM 여유를 우선한다.
 
 ## 방법론별 실행
@@ -60,8 +60,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
   track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1 \
-  strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1 \
-  output_dir=runs/train_lora_query_ssl_fixmatch
+  strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1
 ```
 
 입력 view:
@@ -83,24 +82,20 @@ Budget ablation:
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
-  max_train_steps=1000 \
-  output_dir=runs/train_lora_query_ssl_fixmatch_s1000
+  max_train_steps=1000
 
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
-  max_train_steps=3000 \
-  output_dir=runs/train_lora_query_ssl_fixmatch_s3000
+  max_train_steps=3000
 
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
-  max_train_steps=10000 \
-  output_dir=runs/train_lora_query_ssl_fixmatch_s10000
+  max_train_steps=10000
 ```
 
 ### USB PseudoLabel
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
-  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_lora_query_ssl_pseudolabel
+  strategy_axes/ssl/consistency_method=pseudolabel_usb_v1
 ```
 
 PseudoLabel은 weak view만 필요하므로 unlabeled `text`를 사용하고,
@@ -118,8 +113,34 @@ augmentation axis는 multiview method에서만 runner manifest와 row 준비에 
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
   query_ssl_method.p_cutoff=0.9 \
-  query_ssl_method.unsup_warm_up=0.2 \
-  output_dir=runs/train_lora_query_ssl_pseudolabel_p090
+  query_ssl_method.unsup_warm_up=0.2
+```
+
+### FlexMatch
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=flexmatch_usb_v1
+```
+
+FlexMatch는 USB 원본처럼 FixMatch의 weak/strong objective 위에
+`idx_ulb` 기반 classwise adaptive threshold state를 추가한다. 실행 입력은
+FixMatch와 동일하게 precomputed USB 후보를 사용한다.
+
+입력 view:
+
+- `text`: weak view
+- `aug_0`: strong view
+- `aug_1`: 저장은 유지하지만 FlexMatch single strong-view 경로에서는 소비하지 않는다.
+
+자주 쓰는 override:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
+  query_ssl_method.p_cutoff=0.9 \
+  query_ssl_method.thresh_warmup=true \
+  query_ssl_method.lambda_u=1.0
 ```
 
 Supervised LoRA seed control:
@@ -133,7 +154,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 실행이 끝나면 stdout에 아래 경로가 출력된다.
 
 ```text
-output_dir=...
+output_dir=runs/train_lora_query_ssl/<method_name>/<run_id>
 adapter_dir=...
 classifier_path=...
 manifest=...

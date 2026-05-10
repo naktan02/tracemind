@@ -20,6 +20,7 @@ from methods.adaptation.common.selection_training_loop import (
 )
 from methods.ssl.base import (
     QuerySslAlgorithm,
+    configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
 from shared.src.domain.services.classification_report import (
@@ -327,6 +328,11 @@ def train_query_ssl_classifier(
             f"{algorithm.algorithm_name} labeled train_loader must not be empty "
             "when the algorithm uses labeled batches."
         )
+    configure_query_ssl_algorithm_dataset(
+        algorithm,
+        num_classes=len(categories),
+        unlabeled_row_count=len(unlabeled_loader.dataset),
+    )
     full_epoch_steps = (
         max(len(train_loader), len(unlabeled_loader))
         if labeled_updates_enabled
