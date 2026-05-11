@@ -156,6 +156,10 @@
      input이 없으면 실패한다.
    - `query_ssl_method.supervised_loss_weight=0.0`을 주면
      local labeled loss를 끄는 `unlabeled-only` ablation을 돌릴 수 있다.
+   - FlexMatch, FreeMatch, AdaMatch는 같은 entrypoint에서
+     `strategy_axes/ssl/consistency_method=<method>_usb_v1`만 바꿔 실행한다.
+     AdaMatch는 labeled probability를 alignment/threshold에 쓰므로 labeled batch를
+     끄는 ablation 대상은 아니다.
 
 현재 바로 복사해서 쓸 명령은 `scripts/README.md`의
 중앙 LoRA/SSL 실행 명령과 각 entrypoint의 `--cfg job` preview를 기준으로 본다.

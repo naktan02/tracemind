@@ -164,6 +164,29 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   query_ssl_method.use_quantile=false
 ```
 
+### AdaMatch
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=adamatch_usb_v1
+```
+
+AdaMatch는 USB 원본처럼 FixMatch의 weak/strong objective 위에 labeled/weak
+prediction 기반 distribution alignment와 relative confidence threshold를 추가한다.
+실행 입력은 FixMatch와 동일하게 precomputed USB 후보를 사용한다. 단, alignment와
+relative threshold가 labeled probability를 사용하므로 `supervised_loss_weight=0.0`
+ablation에서도 labeled batch는 필요하다.
+
+자주 쓰는 override:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=adamatch_usb_v1 \
+  query_ssl_method.p_cutoff=0.95 \
+  query_ssl_method.ema_p=0.999 \
+  query_ssl_method.lambda_u=1.0
+```
+
 Supervised LoRA seed control:
 
 ```bash
