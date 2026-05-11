@@ -17,6 +17,6 @@ classifier_learning_rate: ${lora_run_preset.classifier_learning_rate}
 weight_decay: ${lora_run_preset.weight_decay}
 max_grad_norm: ${lora_run_preset.max_grad_norm}
 log_every_steps: ${lora_run_preset.log_every_steps}
-adapter_output_dir: data/processed/lora_adapters
-classifier_output_dir: data/processed/lora_classifier_heads
+adapter_output_dir: data/artifacts/lora_adapters
+classifier_output_dir: data/artifacts/lora_classifier_heads
 trainer_version: ""

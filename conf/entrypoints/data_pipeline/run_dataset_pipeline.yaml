@@ -12,10 +12,10 @@ paths:
   raw_dir: data/raw
   labeled_query_set_dir: data/processed/labeled_query_sets
   split_dir: data/processed/splits
-  prototype_pack_dir: data/processed/prototype_packs
-  prototype_build_state_dir: data/processed/prototype_build_states
+  prototype_pack_dir: data/artifacts/prototype_packs
+  prototype_build_state_dir: data/artifacts/prototype_build_states
   pipeline_run_dir: data/processed/pipeline_runs
-  cache_dir: hf_cache
+  cache_dir: data/cache/hf
 
 only_stages: []
 list_datasets: false

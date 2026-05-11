@@ -203,11 +203,14 @@ Raw Event / Local Signal
 
 | 위치 | 의미 | Git 기준 |
 |---|---|---|
-| `data/processed/` | 재사용 가능한 dataset/model artifact | ignore |
+| `data/datasets/` | 새 dataset별 raw/mapped/split/query_ssl/view artifact | ignore |
+| `data/artifacts/` | 새 model/prototype/adapter artifact | ignore |
+| `data/cache/` | 새 model/translation/query cache | ignore |
+| `data/processed/` | legacy dataset/model artifact | ignore |
 | `runs/` | 실험 1회 실행 결과와 report | ignore |
 | `agent/state/` | 로컬 agent runtime state | ignore |
 | `main_server/state/` | server runtime state와 publication artifact | ignore |
-| `hf_cache/` | Hugging Face/model cache | ignore |
+| `hf_cache/` | legacy Hugging Face/model cache | ignore |
 | `apps/*/dist`, `apps/*/node_modules` | frontend build/dependency output | ignore |
 
 ## 6. 현재 운영 상태

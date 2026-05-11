@@ -6,7 +6,7 @@ defaults:
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
   - /track_presets/central_ssl_control/training_preset: default
-  - /track_presets/central_ssl_control/query_source: dataset_default
+  - /execution_context/query_split: dataset_default
   - /strategy_axes/ssl/pseudo_label_selection: margin_threshold_v1
   - /strategy_axes/adaptation/initial_checkpoint: canonical_fixed_classifier_seed
   - /track_presets/central_ssl_control/lora_classifier_defaults: default
@@ -16,7 +16,7 @@ defaults:
 
 train_jsonl: ${query_source.train_jsonl}
 pseudo_label_jsonl: null
-pseudo_label_export_root: data/processed/lora_pseudo_label
+pseudo_label_export_root: data/artifacts/lora_pseudo_label
 include_seed_train_rows: false
 output_dir: runs/train_lora_pseudo_label_classifier
 

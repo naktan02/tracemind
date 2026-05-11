@@ -70,7 +70,7 @@ def run_query_adaptation_supervised_baseline(
     train_dataset: Any,
     selection_dataset: Any | None = None,
     eval_datasets: Mapping[str, Any] | None = None,
-    export_root: str | Path = "data/processed/query_adaptation_lora",
+    export_root: str | Path = "data/artifacts/query_adaptation_lora",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
@@ -105,7 +105,7 @@ def prepare_query_adaptation_supervised_run(
     train_dataset: Any,
     selection_dataset: Any | None = None,
     eval_datasets: Mapping[str, Any] | None = None,
-    export_root: str | Path = "data/processed/query_adaptation_lora",
+    export_root: str | Path = "data/artifacts/query_adaptation_lora",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> PreparedQueryAdaptationSupervisedRun:

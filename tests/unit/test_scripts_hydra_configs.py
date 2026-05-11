@@ -179,7 +179,7 @@ def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() 
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_classifier",
             overrides=[
-                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
                 "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
@@ -231,7 +231,7 @@ def test_train_lora_query_ssl_supports_source_and_run_preset_overrides() -> None
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
             overrides=[
-                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
                 "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
@@ -351,17 +351,16 @@ def test_train_lora_query_ssl_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_train_lora_query_ssl_supports_query_ssl_augmenter_override() -> None:
+def test_train_lora_query_ssl_uses_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
-            overrides=[
-                "strategy_axes/ssl/augmentation=backtranslation_nllb_en_de_fr_usb_v1"
-            ],
+            overrides=["strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1"],
         )
 
-    assert cfg.query_ssl_augmenter.name == "backtranslation_nllb_en_de_fr_usb_v1"
-    assert cfg.query_ssl_augmenter.augmenter_type == "nllb_backtranslation"
+    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
+    assert cfg.query_ssl_augmenter.cache_dir == "data/cache/query_ssl_augmentations"
 
 
 def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
@@ -370,7 +369,7 @@ def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
             overrides=[
-                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
                 "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
@@ -423,7 +422,7 @@ def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
             overrides=[
-                "track_presets/central_ssl_control/query_source=bootstrap_teacher_split30_2026_04_14",
+                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
                 "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
@@ -911,7 +910,7 @@ def test_train_lora_query_ssl_supports_canonical_query_ssl_split_source() -> Non
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
             overrides=[
-                "track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_v1",
+                "execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_v1",
             ],
         )
 
@@ -933,7 +932,7 @@ def test_train_lora_query_ssl_supports_canonical_query_ssl_view_source() -> None
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
             overrides=[
-                "track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1",
+                "execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1",
                 "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
             ],
         )
@@ -960,7 +959,7 @@ def test_train_lora_query_ssl_supports_kaggle_general_labeled_source() -> None:
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
             overrides=[
-                "track_presets/central_ssl_control/query_source=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1",
+                "execution_context/query_split=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1",
                 "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
             ],
         )

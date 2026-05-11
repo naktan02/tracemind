@@ -55,7 +55,7 @@
     공통 consistency baseline entrypoint.
   - method/source/augmentation/initial checkpoint source of truth는
     `strategy_axes/ssl/consistency_method`,
-    `track_presets/central_ssl_control/query_source`,
+    `execution_context/query_split`,
     `strategy_axes/ssl/augmentation`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
 - `central_ssl_control/train_lora_bootstrap_classifier_teacher.py`

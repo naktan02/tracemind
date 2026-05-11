@@ -2,7 +2,7 @@
 
 defaults:
   - /execution_context/runtime_env: gpu_online
-  - /track_presets/central_ssl_control/query_view_materialization: szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
+  - /execution_context/query_view: szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_

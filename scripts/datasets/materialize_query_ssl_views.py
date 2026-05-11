@@ -55,7 +55,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--cache-dir",
-        default="data/processed/query_ssl_views/model_cache",
+        default="data/cache/query_ssl_views/model_cache",
         help="Model cache directory for the NLLB runtime.",
     )
     parser.add_argument("--local-files-only", action="store_true")
@@ -72,8 +72,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-root",
         type=Path,
-        default=Path("data/processed/query_ssl_views"),
-        help="Root directory where view artifacts are written.",
+        default=Path("data/artifacts/query_ssl_views"),
+        help=(
+            "Root directory where view artifacts are written. Prefer a "
+            "dataset-scoped data/datasets/<dataset_id>/views path in Hydra presets."
+        ),
     )
     return parser.parse_args()
 

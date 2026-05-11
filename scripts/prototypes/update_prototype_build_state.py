@@ -66,13 +66,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--prototype-pack-output-dir",
         type=Path,
-        default=Path("data/processed/prototype_packs"),
+        default=Path("data/artifacts/prototype_packs"),
         help="Directory where updated prototype packs are written.",
     )
     parser.add_argument(
         "--build-state-output-dir",
         type=Path,
-        default=Path("data/processed/prototype_build_states"),
+        default=Path("data/artifacts/prototype_build_states"),
         help="Directory where updated build states are written.",
     )
     parser.add_argument(
@@ -84,7 +84,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=Path("hf_cache"),
+        default=Path("data/cache/hf"),
         help="Cache directory for model files.",
     )
     parser.add_argument(

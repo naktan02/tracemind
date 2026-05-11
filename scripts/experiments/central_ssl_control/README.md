@@ -63,7 +63,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
-  track_presets/central_ssl_control/query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1 \
+  execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1 \
   strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1
 ```
 

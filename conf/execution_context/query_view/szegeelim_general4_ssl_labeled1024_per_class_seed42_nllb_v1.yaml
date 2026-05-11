@@ -14,7 +14,7 @@ device: ${runtime.device}
 batch_size: 64
 max_new_tokens: 256
 torch_dtype: auto
-cache_dir: data/processed/query_ssl_views/model_cache
+cache_dir: data/cache/query_ssl_views/model_cache
 local_files_only: ${runtime.local_files_only}
 chunk_size: 128
 output_root: data/datasets/szegeelim_mental_health/views

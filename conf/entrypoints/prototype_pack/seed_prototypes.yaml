@@ -10,8 +10,8 @@ defaults:
   - _self_
 
 input_jsonl: ${dataset.prototype_input_jsonl}
-output_dir: data/processed/prototype_packs
-build_state_output_dir: data/processed/prototype_build_states
+output_dir: data/artifacts/prototype_packs
+build_state_output_dir: data/artifacts/prototype_build_states
 prototype_version: ""
 translation_model_id: null
 translation_model_revision: null

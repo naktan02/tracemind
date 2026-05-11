@@ -42,7 +42,7 @@ def main(cfg: DictConfig) -> None:
         translation_model_revision=cfg.translation_model_revision,
         translation_direction=cfg.translation_direction,
         batch_size=embedding_spec.batch_size,
-        cache_dir=Path(embedding_spec.cache_dir or "hf_cache"),
+        cache_dir=Path(embedding_spec.cache_dir or "data/cache/hf"),
         device=embedding_spec.device,
         task_prefix=embedding_spec.task_prefix,
         local_files_only=embedding_spec.local_files_only,

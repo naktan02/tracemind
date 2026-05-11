@@ -29,8 +29,10 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | 기본값 | 상태 |
 |---|---|---|---|---|
-| Dataset asset | `ourafla`, `cssrs` | `execution_context/dataset_asset` | entrypoint defaults | 활성 |
+| Dataset asset | `ourafla`, `cssrs`, `mental_health_kaggle` | `execution_context/dataset_asset` | entrypoint defaults | 활성 |
 | Embedding adapter | `mxbai`, `hash_debug` | `execution_context/embedding_adapter` | entrypoint defaults | 활성 |
+| Query split | `dataset_default`, `ourafla_ssl_*`, `szegeelim_general4_*` | `execution_context/query_split` | entrypoint defaults | 활성 |
+| Query text view | `szegeelim_general4_*_nllb_v1` | `execution_context/query_view` | data pipeline entrypoint defaults | 활성 |
 | Runtime env | `cpu_local`, `gpu_local`, `gpu_online`, `auto_local`, `auto_online` | `execution_context/runtime_env` | entrypoint defaults | 활성 |
 | Transformer backbone | `mxbai_encoder` | `strategy_axes/adaptation/transformer_backbone` | central SSL defaults | 중앙 control |
 | Initial checkpoint | `canonical_fixed_classifier_seed`, `none`, `required` | `strategy_axes/adaptation/initial_checkpoint` | Query SSL method comparison defaults to `none` | 중앙 control |
@@ -41,7 +43,7 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Pseudo-label selection | `fixed_confidence_095`, `margin_threshold_v1` | `strategy_axes/ssl/pseudo_label_selection` | `methods/ssl/hooks/*` | 활성/중앙 control |
 | Consistency method | `pseudolabel_usb_v1`, `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`, `adamatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` | 중앙 control |
-| SSL augmentation | `precomputed_usb_candidates_v1`, `backtranslation_nllb_en_de_fr_usb_v1` | `strategy_axes/ssl/augmentation` | scripts runner + agent bridge | 중앙 control |
+| SSL augmentation | `precomputed_usb_candidates_v1` | `strategy_axes/ssl/augmentation` | scripts runner | 중앙 control |
 | Query classifier adaptation | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/lora_classifier/*` + query data glue | 중앙 control |
 | PEFT adapter | `lora`, `rslora` | `strategy_axes/adaptation/peft_adapter` | `methods/adaptation/*` | 중앙 control seam |
 

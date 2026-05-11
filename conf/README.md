@@ -27,6 +27,8 @@ conf/
 ├── execution_context/
 │   ├── dataset_asset/
 │   ├── embedding_adapter/
+│   ├── query_split/
+│   ├── query_view/
 │   └── runtime_env/
 ├── strategy_axes/
 │   ├── adaptation/
@@ -47,8 +49,6 @@ conf/
 └── track_presets/
     ├── central_ssl_control/
     │   ├── lora_classifier_defaults/
-    │   ├── query_view_materialization/
-    │   ├── query_source/
     │   └── training_preset/
     └── fl_ssl/
         └── simulation_preset/
@@ -128,13 +128,19 @@ data/datasets/<dataset_id>/
 `raw`, `mapped`, `splits`, `pipeline_runs` 위치만 override한다. Query SSL
 labeled/unlabeled split은 `materialize_query_ssl_split.py --output-root`로
 `data/datasets/<dataset_id>/query_ssl` 아래에 만들고, NLLB view materialization은
-`query_view_materialization.output_root`로 `data/datasets/<dataset_id>/views` 아래에
+`execution_context/query_view` preset의 `output_root`로 `data/datasets/<dataset_id>/views` 아래에
 만든다. 모델 cache처럼 dataset artifact가 아닌 파일은 공유 cache 경로를 유지할 수 있다.
+새 model/prototype/adapter 산출물은 `data/artifacts/`, cache성 파일은 `data/cache/`
+아래에 두고, 기존 `data/processed/` 산출물은 legacy로 유지한다.
 
-## Central SSL Query View Materialization
+## Query Split And View Context
 
-`track_presets/central_ssl_control/query_view_materialization`은 중앙 Query SSL에서
-미리 저장할 weak/strong text view artifact의 생성 파라미터를 소유한다.
+`execution_context/query_split`은 `train_jsonl`, `unlabeled_jsonl`, `validation_jsonl`,
+`test_jsonl`로 구성된 query-domain split artifact를 소유한다. 중앙 SSL뿐 아니라
+FL simulation도 같은 artifact를 참조할 수 있으므로 track preset 아래에 두지 않는다.
+
+`execution_context/query_view`는 미리 저장할 weak/strong text view artifact의 생성
+파라미터를 소유한다. NLLB 역번역은 method가 아니라 데이터 view를 만드는 실행 재료다.
 
 - `split_name`, `split_dir`: 어떤 query SSL split을 증강할지 결정한다.
 - `augmenter_name`, `source_lang`, `pivot_languages`, `model_id`: NLLB 역번역 view
@@ -142,4 +148,5 @@ labeled/unlabeled split은 `materialize_query_ssl_split.py --output-root`로
 - `batch_size`, `chunk_size`, `cache_dir`, `resume`, `overwrite`: 긴 materialization
   작업의 실행/재시작 방식을 결정한다.
 
-학습에서 생성된 view를 읽는 경로는 별도 `query_source` preset이 소유한다.
+Hydra package shape는 기존 runner compatibility를 위해 각각 `cfg.query_source`와
+`cfg.query_view_materialization`을 유지한다.

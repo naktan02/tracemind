@@ -45,7 +45,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--cache-dir",
         type=Path,
-        default=Path("hf_cache"),
+        default=Path("data/cache/hf"),
         help="HuggingFace cache directory.",
     )
     parser.add_argument(

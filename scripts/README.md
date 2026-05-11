@@ -81,7 +81,7 @@ uv run python scripts/datasets/materialize_query_ssl_split.py \
 
 ```bash
 uv run python scripts/datasets/materialize_query_ssl_views_hydra.py \
-  track_presets/central_ssl_control/query_view_materialization=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
+  execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 
 Prototype pack 생성:
@@ -197,7 +197,10 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
 
 ## 산출물
 
-- `data/processed/`: 재사용 가능한 dataset/model/prototype artifact.
+- `data/datasets/`: 새 dataset별 raw/mapped/split/query_ssl/view artifact.
+- `data/artifacts/`: 새 model/prototype/adapter artifact.
+- `data/cache/`: 새 model/translation/query cache.
+- `data/processed/`: legacy dataset/model/prototype artifact.
 - `runs/<job>/<run_id>/`: 실험 1회 실행 결과, report, dump.
 - `agent/state/`: agent runtime state.
 - `main_server/state/`: server runtime state와 publication artifact.
