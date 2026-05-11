@@ -104,6 +104,13 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```
 
+중앙 LoRA FreeMatch control:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=freematch_usb_v1
+```
+
 FL SSL simulation smoke:
 
 ```bash

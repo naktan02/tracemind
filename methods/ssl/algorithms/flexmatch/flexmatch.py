@@ -9,18 +9,22 @@ from typing import Any
 
 import torch
 from torch import Tensor
-from torch.nn import functional as F
 
-from ...base import QuerySslRequiredViews, QuerySslStepOutput, TextBatchClassifier
+from ...base import QuerySslStepOutput, TextBatchClassifier
 from ...common import compute_prob
-from ...hooks.consistency import CrossEntropyConsistencyLossHook
-from ...hooks.masking import FixedThresholdMaskingHook
-from ...hooks.objective import SslObjectiveHooks
+from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
+    PseudoLabelingHook,
 )
 from ...registry import register_query_ssl_algorithm
+from ..usb_consistency import (
+    USB_MULTIVIEW_REQUIRED_VIEWS,
+    compute_labeled_cross_entropy_loss,
+    compute_unlabeled_weak_strong_logits,
+    validate_usb_consistency_loaders,
+)
 
 
 class FlexMatchThresholdingHook:
@@ -61,8 +65,6 @@ class FlexMatchThresholdingHook:
                 wo_negative_one = deepcopy(pseudo_counter)
                 if -1 in wo_negative_one.keys():
                     wo_negative_one.pop(-1)
-                if not wo_negative_one:
-                    return
                 for i in range(self.num_classes):
                     self.classwise_acc[i] = pseudo_counter[i] / max(
                         wo_negative_one.values()
@@ -139,16 +141,6 @@ class FlexMatchStepOutput:
         return {"util_ratio": self.util_ratio}
 
 
-def build_flexmatch_objective_hooks() -> SslObjectiveHooks:
-    """FlexMatch baseline의 tensor-level hook 조합을 만든다."""
-
-    return SslObjectiveHooks(
-        pseudo_labeling=HardOrSoftPseudoLabelingHook(),
-        masking=FixedThresholdMaskingHook(),
-        consistency_loss=CrossEntropyConsistencyLossHook(),
-    )
-
-
 class FlexMatchAlgorithm:
     """FlexMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
@@ -163,7 +155,8 @@ class FlexMatchAlgorithm:
         thresh_warmup: bool = True,
         lambda_u: float = 1.0,
         supervised_loss_weight: float = 1.0,
-        hooks: SslObjectiveHooks | None = None,
+        pseudo_labeling_hook: PseudoLabelingHook | None = None,
+        consistency_loss_hook: ConsistencyLossHook | None = None,
     ) -> None:
         self.temperature = float(temperature)
         self.p_cutoff = float(p_cutoff)
@@ -171,7 +164,12 @@ class FlexMatchAlgorithm:
         self.thresh_warmup = bool(thresh_warmup)
         self.lambda_u = float(lambda_u)
         self.supervised_loss_weight = float(supervised_loss_weight)
-        self.hooks = hooks or build_flexmatch_objective_hooks()
+        self.pseudo_labeling_hook = (
+            pseudo_labeling_hook or HardOrSoftPseudoLabelingHook()
+        )
+        self.consistency_loss_hook = (
+            consistency_loss_hook or CrossEntropyConsistencyLossHook()
+        )
         self.masking_hook: FlexMatchThresholdingHook | None = None
 
     @property
@@ -184,7 +182,7 @@ class FlexMatchAlgorithm:
         num_classes: int,
         unlabeled_row_count: int,
     ) -> None:
-        """USB `ulb_dest_len`/`num_classes` 기반 masking hook state를 초기화한다."""
+        """USB `ulb_dest_len`/`num_classes` 기반 hook state를 초기화한다."""
 
         self.masking_hook = FlexMatchThresholdingHook(
             ulb_dest_len=unlabeled_row_count,
@@ -198,13 +196,12 @@ class FlexMatchAlgorithm:
         train_loader_length: int,
         unlabeled_loader_length: int,
     ) -> None:
-        if unlabeled_loader_length == 0:
-            raise ValueError("FlexMatch unlabeled_loader must not be empty.")
-        if self.supervised_loss_weight > 0 and train_loader_length == 0:
-            raise ValueError(
-                "FlexMatch labeled train_loader must not be empty when "
-                "supervised_loss_weight > 0."
-            )
+        validate_usb_consistency_loaders(
+            algorithm_name="FlexMatch",
+            train_loader_length=train_loader_length,
+            unlabeled_loader_length=unlabeled_loader_length,
+            supervised_loss_weight=self.supervised_loss_weight,
+        )
 
     def compute_step(
         self,
@@ -226,7 +223,8 @@ class FlexMatchAlgorithm:
             hard_label=self.hard_label,
             lambda_u=self.lambda_u,
             supervised_loss_weight=self.supervised_loss_weight,
-            hooks=self.hooks,
+            pseudo_labeling_hook=self.pseudo_labeling_hook,
+            consistency_loss_hook=self.consistency_loss_hook,
             masking_hook=self.masking_hook,
             algorithm=self,
         )
@@ -242,37 +240,25 @@ def compute_flexmatch_step(
     hard_label: bool = True,
     lambda_u: float = 1.0,
     supervised_loss_weight: float = 1.0,
-    hooks: SslObjectiveHooks | None = None,
+    pseudo_labeling_hook: PseudoLabelingHook | None = None,
+    consistency_loss_hook: ConsistencyLossHook | None = None,
     masking_hook: FlexMatchThresholdingHook,
     algorithm: FlexMatchAlgorithm | None = None,
 ) -> FlexMatchStepOutput:
     """USB `semilearn/algorithms/flexmatch/flexmatch.py::train_step` 핵심."""
 
-    if labeled_batch is None:
-        sup_loss = None
-    else:
-        logits_x_lb = model(
-            input_ids=labeled_batch["input_ids"],
-            attention_mask=labeled_batch["attention_mask"],
-        )
-        sup_loss = F.cross_entropy(
-            logits_x_lb, labeled_batch["labels"], reduction="mean"
-        )
-
-    logits_x_ulb_s = model(
-        input_ids=unlabeled_batch["strong_input_ids"],
-        attention_mask=unlabeled_batch["strong_attention_mask"],
+    sup_loss = compute_labeled_cross_entropy_loss(
+        model=model,
+        labeled_batch=labeled_batch,
     )
-    with torch.no_grad():
-        logits_x_ulb_w = model(
-            input_ids=unlabeled_batch["weak_input_ids"],
-            attention_mask=unlabeled_batch["weak_attention_mask"],
-        )
+    logits_x_ulb_s, logits_x_ulb_w = compute_unlabeled_weak_strong_logits(
+        model=model,
+        unlabeled_batch=unlabeled_batch,
+    )
     if sup_loss is None:
         sup_loss = logits_x_ulb_s.new_zeros(())
 
     probs_x_ulb_w = compute_prob(logits_x_ulb_w.detach())
-    effective_hooks = hooks or build_flexmatch_objective_hooks()
     masking_algorithm = algorithm or _FlexMatchMaskingAlgorithm(p_cutoff=p_cutoff)
     mask = masking_hook.masking(
         masking_algorithm,
@@ -280,14 +266,20 @@ def compute_flexmatch_step(
         softmax_x_ulb=False,
         idx_ulb=_require_row_indices(unlabeled_batch).to(probs_x_ulb_w.device),
     )
-    pseudo_label = effective_hooks.pseudo_labeling.generate_targets(
+    effective_pseudo_labeling_hook = (
+        pseudo_labeling_hook or HardOrSoftPseudoLabelingHook()
+    )
+    pseudo_label = effective_pseudo_labeling_hook.generate_targets(
         probs_x_ulb_w=probs_x_ulb_w,
         config=PseudoLabelingConfig(
             use_hard_label=hard_label,
             temperature=temperature,
         ),
     )
-    unsup_loss = effective_hooks.consistency_loss.compute_loss(
+    effective_consistency_loss_hook = (
+        consistency_loss_hook or CrossEntropyConsistencyLossHook()
+    )
+    unsup_loss = effective_consistency_loss_hook.compute_loss(
         logits=logits_x_ulb_s,
         targets=pseudo_label,
         mask=mask,
@@ -317,10 +309,7 @@ def _require_row_indices(unlabeled_batch: Mapping[str, Any]) -> Tensor:
 @register_query_ssl_algorithm(
     "flexmatch",
     display_name="FlexMatch",
-    required_views=QuerySslRequiredViews(
-        view_names=("text", "aug_0", "aug_1"),
-        view_builder_name="usb_multiview",
-    ),
+    required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
 )
 def build_flexmatch_algorithm(parameters: Mapping[str, Any]) -> FlexMatchAlgorithm:

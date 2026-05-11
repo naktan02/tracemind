@@ -46,6 +46,7 @@ def test_pseudo_labeling_hook_builds_hard_and_soft_targets() -> None:
     import torch
 
     probs = torch.tensor([[0.8, 0.2], [0.4, 0.6]], dtype=torch.float32)
+    logits = torch.tensor([[2.0, 0.0], [0.0, 1.0]], dtype=torch.float32)
     hook = HardOrSoftPseudoLabelingHook()
 
     hard_targets = hook.generate_targets(
@@ -56,10 +57,18 @@ def test_pseudo_labeling_hook_builds_hard_and_soft_targets() -> None:
         probs_x_ulb_w=probs,
         config=PseudoLabelingConfig(use_hard_label=False, temperature=0.5),
     )
+    soft_targets_from_logits = hook.generate_targets_from_logits(
+        logits_x_ulb_w=logits,
+        config=PseudoLabelingConfig(use_hard_label=False, temperature=0.5),
+    )
 
     assert hook.hook_name == "hard_or_soft_pseudo_labeling"
     assert hard_targets.tolist() == [0, 1]
     assert torch.equal(soft_targets, probs)
+    assert torch.allclose(
+        soft_targets_from_logits,
+        torch.softmax(logits / 0.5, dim=-1),
+    )
 
 
 def test_fixed_threshold_masking_hook_builds_usb_style_mask() -> None:

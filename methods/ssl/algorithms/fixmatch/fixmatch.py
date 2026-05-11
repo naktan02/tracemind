@@ -5,14 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-import torch
 from torch import Tensor
-from torch.nn import functional as F
 
-from ...base import QuerySslRequiredViews, QuerySslStepOutput, TextBatchClassifier
-from ...common import (
-    compute_prob,
-)
+from ...base import QuerySslStepOutput, TextBatchClassifier
+from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
 from ...hooks.objective import SslObjectiveHooks
@@ -21,6 +17,12 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingConfig,
 )
 from ...registry import register_query_ssl_algorithm
+from ..usb_consistency import (
+    USB_MULTIVIEW_REQUIRED_VIEWS,
+    compute_labeled_cross_entropy_loss,
+    compute_unlabeled_weak_strong_logits,
+    validate_usb_consistency_loaders,
+)
 
 
 class FixMatchStepOutput:
@@ -97,13 +99,12 @@ class FixMatchAlgorithm:
         train_loader_length: int,
         unlabeled_loader_length: int,
     ) -> None:
-        if unlabeled_loader_length == 0:
-            raise ValueError("FixMatch unlabeled_loader must not be empty.")
-        if self.supervised_loss_weight > 0 and train_loader_length == 0:
-            raise ValueError(
-                "FixMatch labeled train_loader must not be empty when "
-                "supervised_loss_weight > 0."
-            )
+        validate_usb_consistency_loaders(
+            algorithm_name="FixMatch",
+            train_loader_length=train_loader_length,
+            unlabeled_loader_length=unlabeled_loader_length,
+            supervised_loss_weight=self.supervised_loss_weight,
+        )
 
     def compute_step(
         self,
@@ -139,26 +140,14 @@ def compute_fixmatch_step(
 ) -> FixMatchStepOutput:
     """USB `semilearn/algorithms/fixmatch/fixmatch.py::train_step` 핵심."""
 
-    if labeled_batch is None:
-        sup_loss = None
-    else:
-        logits_x_lb = model(
-            input_ids=labeled_batch["input_ids"],
-            attention_mask=labeled_batch["attention_mask"],
-        )
-        sup_loss = F.cross_entropy(
-            logits_x_lb, labeled_batch["labels"], reduction="mean"
-        )
-
-    logits_x_ulb_s = model(
-        input_ids=unlabeled_batch["strong_input_ids"],
-        attention_mask=unlabeled_batch["strong_attention_mask"],
+    sup_loss = compute_labeled_cross_entropy_loss(
+        model=model,
+        labeled_batch=labeled_batch,
     )
-    with torch.no_grad():
-        logits_x_ulb_w = model(
-            input_ids=unlabeled_batch["weak_input_ids"],
-            attention_mask=unlabeled_batch["weak_attention_mask"],
-        )
+    logits_x_ulb_s, logits_x_ulb_w = compute_unlabeled_weak_strong_logits(
+        model=model,
+        unlabeled_batch=unlabeled_batch,
+    )
     if sup_loss is None:
         sup_loss = logits_x_ulb_s.new_zeros(())
 
@@ -192,10 +181,7 @@ def compute_fixmatch_step(
 @register_query_ssl_algorithm(
     "fixmatch",
     display_name="FixMatch",
-    required_views=QuerySslRequiredViews(
-        view_names=("text", "aug_0", "aug_1"),
-        view_builder_name="usb_multiview",
-    ),
+    required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
     default_uses_labeled_batches=True,
 )
 def build_fixmatch_algorithm(parameters: Mapping[str, Any]) -> FixMatchAlgorithm:

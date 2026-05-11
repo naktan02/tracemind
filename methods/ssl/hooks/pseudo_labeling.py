@@ -30,6 +30,14 @@ class PseudoLabelingHook(Protocol):
     ) -> Tensor:
         """weak-view probability로 hard/soft target을 만든다."""
 
+    def generate_targets_from_logits(
+        self,
+        *,
+        logits_x_ulb_w: Tensor,
+        config: PseudoLabelingConfig,
+    ) -> Tensor:
+        """weak-view logits로 hard/soft target을 만든다."""
+
 
 @dataclass(frozen=True, slots=True)
 class HardOrSoftPseudoLabelingHook:
@@ -49,6 +57,18 @@ class HardOrSoftPseudoLabelingHook:
             temperature=config.temperature,
         )
 
+    def generate_targets_from_logits(
+        self,
+        *,
+        logits_x_ulb_w: Tensor,
+        config: PseudoLabelingConfig,
+    ) -> Tensor:
+        return build_pseudo_label_from_logits(
+            logits_x_ulb_w=logits_x_ulb_w,
+            use_hard_label=config.use_hard_label,
+            temperature=config.temperature,
+        )
+
 
 def build_pseudo_label_from_probs(
     *,
@@ -63,3 +83,17 @@ def build_pseudo_label_from_probs(
     if use_hard_label:
         return torch.argmax(detached_probs, dim=-1)
     return detached_probs
+
+
+def build_pseudo_label_from_logits(
+    *,
+    logits_x_ulb_w: Tensor,
+    use_hard_label: bool,
+    temperature: float,
+) -> Tensor:
+    """USB `PseudoLabelingHook.gen_ulb_targets(..., softmax=True)` 경로."""
+
+    detached_logits = logits_x_ulb_w.detach()
+    if use_hard_label:
+        return torch.argmax(detached_logits, dim=-1)
+    return torch.softmax(detached_logits / temperature, dim=-1)

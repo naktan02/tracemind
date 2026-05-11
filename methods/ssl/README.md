@@ -1,6 +1,6 @@
 # SSL Methods
 
-`methods/ssl/`는 FixMatch, FlexMatch, UDA, pseudo-label self-training 같은
+`methods/ssl/`는 FixMatch, FlexMatch, FreeMatch, UDA, pseudo-label self-training 같은
 semi-supervised learning objective framework surface를 둔다.
 
 `methods/ssl/algorithms/`에는 method-specific step 계산과 algorithm descriptor를

@@ -281,6 +281,28 @@ def test_train_lora_query_ssl_supports_flexmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
+def test_train_lora_query_ssl_supports_freematch_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            overrides=[
+                "strategy_axes/ssl/consistency_method=freematch_usb_v1",
+                "query_ssl_method.ema_p=0.9",
+                "query_ssl_method.ent_loss_ratio=0.02",
+                "query_ssl_method.use_quantile=true",
+                "query_ssl_method.unlabeled_batch_size=8",
+            ],
+        )
+
+    assert cfg.query_ssl_method.name == "freematch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "freematch"
+    assert cfg.query_ssl_method.ema_p == 0.9
+    assert cfg.query_ssl_method.ent_loss_ratio == 0.02
+    assert cfg.query_ssl_method.use_quantile is True
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.query_ssl_method.require_multiview is True
+
+
 def test_train_lora_query_ssl_supports_query_ssl_augmenter_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

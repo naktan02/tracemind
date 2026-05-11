@@ -51,6 +51,8 @@ aggregation backend, adapter projection, prototype builder는 축별 패키지�
 ## 하위 패키지 지도
 
 - `methods/ssl/algorithms/fixmatch/`: USB 스타일 FixMatch objective core
+- `methods/ssl/algorithms/freematch/`: USB 스타일 FreeMatch adaptive threshold
+  objective core
 - `methods/ssl/algorithms/pseudolabel/`: USB 스타일 PseudoLabel objective core
 - `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
   selection hook

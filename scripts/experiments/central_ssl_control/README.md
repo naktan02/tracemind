@@ -143,6 +143,27 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
   query_ssl_method.lambda_u=1.0
 ```
 
+### FreeMatch
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=freematch_usb_v1
+```
+
+FreeMatch는 USB 원본처럼 FixMatch의 weak/strong objective 위에 `time_p`,
+`p_model`, `label_hist` 기반 self-adaptive threshold와 entropy regularization을
+추가한다. 실행 입력은 FixMatch와 동일하게 precomputed USB 후보를 사용한다.
+
+자주 쓰는 override:
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+  strategy_axes/ssl/consistency_method=freematch_usb_v1 \
+  query_ssl_method.ema_p=0.999 \
+  query_ssl_method.ent_loss_ratio=0.01 \
+  query_ssl_method.use_quantile=false
+```
+
 Supervised LoRA seed control:
 
 ```bash

@@ -1,0 +1,408 @@
+"""USB FreeMatch core를 TraceMind reusable SSL method로 옮긴 구현."""
+
+from __future__ import annotations
+
+from collections.abc import Mapping
+from typing import Any
+
+import torch
+from torch import Tensor
+
+from ...base import QuerySslStepOutput, TextBatchClassifier
+from ...common import compute_prob
+from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
+from ...hooks.pseudo_labeling import (
+    HardOrSoftPseudoLabelingHook,
+    PseudoLabelingConfig,
+    PseudoLabelingHook,
+)
+from ...registry import register_query_ssl_algorithm
+from ..usb_consistency import (
+    USB_MULTIVIEW_REQUIRED_VIEWS,
+    compute_labeled_cross_entropy_loss,
+    compute_unlabeled_weak_strong_logits,
+    validate_usb_consistency_loaders,
+)
+
+
+def replace_inf_to_zero(val: Tensor) -> Tensor:
+    """USB FreeMatch의 inf-to-zero scaler 처리."""
+
+    val[val == float("inf")] = 0.0
+    return val
+
+
+def entropy_loss(
+    mask: Tensor,
+    logits_s: Tensor,
+    prob_model: Tensor,
+    label_hist: Tensor,
+) -> tuple[Tensor, Tensor]:
+    """USB FreeMatch `entropy_loss`의 self-adaptive fairness regularization."""
+
+    mask = mask.bool()
+    logits_s = logits_s[mask]
+
+    prob_s = logits_s.softmax(dim=-1)
+    _, pred_label_s = torch.max(prob_s, dim=-1)
+
+    hist_s = torch.bincount(pred_label_s, minlength=logits_s.shape[1]).to(
+        logits_s.dtype
+    )
+    hist_s = hist_s / hist_s.sum()
+
+    prob_model = prob_model.reshape(1, -1)
+    label_hist = label_hist.reshape(1, -1)
+    prob_model_scaler = replace_inf_to_zero(1 / label_hist).detach()
+    mod_prob_model = prob_model * prob_model_scaler
+    mod_prob_model = mod_prob_model / mod_prob_model.sum(dim=-1, keepdim=True)
+
+    mean_prob_scaler_s = replace_inf_to_zero(1 / hist_s).detach()
+    mod_mean_prob_s = prob_s.mean(dim=0, keepdim=True) * mean_prob_scaler_s
+    mod_mean_prob_s = mod_mean_prob_s / mod_mean_prob_s.sum(dim=-1, keepdim=True)
+
+    loss = mod_prob_model * torch.log(mod_mean_prob_s + 1e-12)
+    loss = loss.sum(dim=1)
+    return loss.mean(), hist_s.mean()
+
+
+class FreeMatchThresholdingHook:
+    """USB `FreeMatchThresholingHook`의 SAT thresholding state."""
+
+    hook_name: str = "freematch_thresholding"
+
+    def __init__(
+        self,
+        *,
+        num_classes: int,
+        momentum: float = 0.999,
+    ) -> None:
+        if num_classes <= 0:
+            raise ValueError("num_classes must be positive.")
+        self.num_classes = int(num_classes)
+        self.m = float(momentum)
+        self.p_model = torch.ones((self.num_classes,)) / self.num_classes
+        self.label_hist = torch.ones((self.num_classes,)) / self.num_classes
+        self.time_p = self.p_model.mean()
+
+    @torch.no_grad()
+    def update(self, algorithm: FreeMatchAlgorithm, probs_x_ulb: Tensor) -> None:
+        max_probs, max_idx = torch.max(probs_x_ulb, dim=-1, keepdim=True)
+
+        if algorithm.use_quantile:
+            self.time_p = self.time_p * self.m + (1 - self.m) * torch.quantile(
+                max_probs, 0.8
+            )
+        else:
+            self.time_p = self.time_p * self.m + (1 - self.m) * max_probs.mean()
+
+        if algorithm.clip_thresh:
+            self.time_p = torch.clip(self.time_p, 0.0, 0.95)
+
+        self.p_model = self.p_model * self.m + (1 - self.m) * probs_x_ulb.mean(dim=0)
+        hist = torch.bincount(
+            max_idx.reshape(-1),
+            minlength=self.p_model.shape[0],
+        ).to(self.p_model.dtype)
+        self.label_hist = self.label_hist * self.m + (1 - self.m) * (
+            hist / hist.sum()
+        )
+
+        algorithm.p_model = self.p_model
+        algorithm.label_hist = self.label_hist
+        algorithm.time_p = self.time_p
+
+    @torch.no_grad()
+    def masking(
+        self,
+        algorithm: FreeMatchAlgorithm,
+        logits_x_ulb: Tensor,
+        softmax_x_ulb: bool = True,
+        *args,
+        **kwargs,
+    ) -> Tensor:
+        """USB FreeMatch SAT mask 수식."""
+
+        del args, kwargs
+        self._move_state_to_device(logits_x_ulb.device)
+
+        if softmax_x_ulb:
+            probs_x_ulb = compute_prob(logits_x_ulb.detach())
+        else:
+            probs_x_ulb = logits_x_ulb.detach()
+
+        self.update(algorithm, probs_x_ulb)
+
+        max_probs, max_idx = probs_x_ulb.max(dim=-1)
+        mod = self.p_model / torch.max(self.p_model, dim=-1)[0]
+        return max_probs.ge(self.time_p * mod[max_idx]).to(max_probs.dtype)
+
+    def _move_state_to_device(self, device: torch.device) -> None:
+        if self.p_model.device != device:
+            self.p_model = self.p_model.to(device)
+        if self.label_hist.device != device:
+            self.label_hist = self.label_hist.to(device)
+        if self.time_p.device != device:
+            self.time_p = self.time_p.to(device)
+
+
+class FreeMatchStepOutput:
+    """FreeMatch 한 step의 loss/diagnostics 결과."""
+
+    def __init__(
+        self,
+        *,
+        total_loss: Tensor,
+        sup_loss: Tensor,
+        unsup_loss: Tensor,
+        ent_loss: Tensor,
+        mask: Tensor,
+        time_p: Tensor,
+        p_model: Tensor,
+        label_hist: Tensor,
+    ) -> None:
+        self.total_loss = total_loss
+        self.sup_loss = sup_loss
+        self.unsup_loss = unsup_loss
+        self.ent_loss = ent_loss
+        self.mask = mask
+        self.time_p = time_p
+        self.p_model = p_model
+        self.label_hist = label_hist
+
+    @property
+    def util_ratio(self) -> Tensor:
+        return self.mask.float().mean()
+
+    @property
+    def loss_components(self) -> dict[str, Tensor]:
+        return {
+            "sup_loss": self.sup_loss,
+            "unsup_loss": self.unsup_loss,
+            "ent_loss": self.ent_loss,
+        }
+
+    @property
+    def metrics(self) -> dict[str, Tensor]:
+        return {
+            "util_ratio": self.util_ratio,
+            "time_p": self.time_p,
+        }
+
+
+class FreeMatchAlgorithm:
+    """FreeMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
+
+    algorithm_name: str = "freematch"
+
+    def __init__(
+        self,
+        *,
+        temperature: float,
+        hard_label: bool = True,
+        ema_p: float = 0.999,
+        ent_loss_ratio: float = 0.01,
+        use_quantile: bool = False,
+        clip_thresh: bool = False,
+        lambda_u: float = 1.0,
+        supervised_loss_weight: float = 1.0,
+        pseudo_labeling_hook: PseudoLabelingHook | None = None,
+        consistency_loss_hook: ConsistencyLossHook | None = None,
+    ) -> None:
+        self.temperature = float(temperature)
+        self.hard_label = bool(hard_label)
+        self.ema_p = float(ema_p)
+        self.ent_loss_ratio = float(ent_loss_ratio)
+        self.use_quantile = bool(use_quantile)
+        self.clip_thresh = bool(clip_thresh)
+        self.lambda_u = float(lambda_u)
+        self.supervised_loss_weight = float(supervised_loss_weight)
+        self.pseudo_labeling_hook = (
+            pseudo_labeling_hook or HardOrSoftPseudoLabelingHook()
+        )
+        self.consistency_loss_hook = (
+            consistency_loss_hook or CrossEntropyConsistencyLossHook()
+        )
+        self.masking_hook: FreeMatchThresholdingHook | None = None
+        self.p_model: Tensor | None = None
+        self.label_hist: Tensor | None = None
+        self.time_p: Tensor | None = None
+
+    @property
+    def uses_labeled_batches(self) -> bool:
+        return self.supervised_loss_weight > 0
+
+    def configure_dataset(
+        self,
+        *,
+        num_classes: int,
+        unlabeled_row_count: int,
+    ) -> None:
+        """USB `num_classes` 기반 masking hook state를 초기화한다."""
+
+        del unlabeled_row_count
+        self.masking_hook = FreeMatchThresholdingHook(
+            num_classes=num_classes,
+            momentum=self.ema_p,
+        )
+        self.p_model = self.masking_hook.p_model
+        self.label_hist = self.masking_hook.label_hist
+        self.time_p = self.masking_hook.time_p
+
+    def validate_loaders(
+        self,
+        *,
+        train_loader_length: int,
+        unlabeled_loader_length: int,
+    ) -> None:
+        validate_usb_consistency_loaders(
+            algorithm_name="FreeMatch",
+            train_loader_length=train_loader_length,
+            unlabeled_loader_length=unlabeled_loader_length,
+            supervised_loss_weight=self.supervised_loss_weight,
+        )
+
+    def compute_step(
+        self,
+        *,
+        model: TextBatchClassifier,
+        labeled_batch: dict[str, Tensor] | None,
+        unlabeled_batch: dict[str, Any],
+    ) -> QuerySslStepOutput:
+        if self.masking_hook is None:
+            raise ValueError(
+                "FreeMatch requires configure_dataset before compute_step."
+            )
+        return compute_freematch_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            unlabeled_batch=unlabeled_batch,
+            temperature=self.temperature,
+            hard_label=self.hard_label,
+            lambda_u=self.lambda_u,
+            ent_loss_ratio=self.ent_loss_ratio,
+            supervised_loss_weight=self.supervised_loss_weight,
+            pseudo_labeling_hook=self.pseudo_labeling_hook,
+            consistency_loss_hook=self.consistency_loss_hook,
+            masking_hook=self.masking_hook,
+            algorithm=self,
+        )
+
+
+def compute_freematch_step(
+    *,
+    model: TextBatchClassifier,
+    labeled_batch: dict[str, Tensor] | None,
+    unlabeled_batch: dict[str, Any],
+    temperature: float,
+    hard_label: bool = True,
+    lambda_u: float = 1.0,
+    ent_loss_ratio: float = 0.01,
+    supervised_loss_weight: float = 1.0,
+    pseudo_labeling_hook: PseudoLabelingHook | None = None,
+    consistency_loss_hook: ConsistencyLossHook | None = None,
+    masking_hook: FreeMatchThresholdingHook,
+    algorithm: FreeMatchAlgorithm | None = None,
+) -> FreeMatchStepOutput:
+    """USB `semilearn/algorithms/freematch/freematch.py::train_step` 핵심."""
+
+    sup_loss = compute_labeled_cross_entropy_loss(
+        model=model,
+        labeled_batch=labeled_batch,
+    )
+    logits_x_ulb_s, logits_x_ulb_w = compute_unlabeled_weak_strong_logits(
+        model=model,
+        unlabeled_batch=unlabeled_batch,
+    )
+    if sup_loss is None:
+        sup_loss = logits_x_ulb_s.new_zeros(())
+
+    masking_algorithm = algorithm or _FreeMatchMaskingAlgorithm()
+    mask = masking_hook.masking(
+        masking_algorithm,
+        logits_x_ulb=logits_x_ulb_w,
+        softmax_x_ulb=True,
+    )
+    pseudo_label = build_freematch_pseudo_label(
+        pseudo_labeling=pseudo_labeling_hook or HardOrSoftPseudoLabelingHook(),
+        logits_x_ulb_w=logits_x_ulb_w,
+        hard_label=hard_label,
+        temperature=temperature,
+    )
+    effective_consistency_loss_hook = (
+        consistency_loss_hook or CrossEntropyConsistencyLossHook()
+    )
+    unsup_loss = effective_consistency_loss_hook.compute_loss(
+        logits=logits_x_ulb_s,
+        targets=pseudo_label,
+        mask=mask,
+    )
+    if mask.sum() > 0:
+        ent_loss, _ = entropy_loss(
+            mask,
+            logits_x_ulb_s,
+            masking_hook.p_model,
+            masking_hook.label_hist,
+        )
+    else:
+        ent_loss = logits_x_ulb_s.new_zeros(())
+    total_loss = (
+        supervised_loss_weight * sup_loss
+        + lambda_u * unsup_loss
+        + ent_loss_ratio * ent_loss
+    )
+    return FreeMatchStepOutput(
+        total_loss=total_loss,
+        sup_loss=sup_loss,
+        unsup_loss=unsup_loss,
+        ent_loss=ent_loss,
+        mask=mask,
+        time_p=masking_hook.time_p,
+        p_model=masking_hook.p_model,
+        label_hist=masking_hook.label_hist,
+    )
+
+
+class _FreeMatchMaskingAlgorithm:
+    use_quantile = False
+    clip_thresh = False
+
+
+def build_freematch_pseudo_label(
+    *,
+    pseudo_labeling: PseudoLabelingHook | None = None,
+    logits_x_ulb_w: Tensor,
+    hard_label: bool,
+    temperature: float,
+) -> Tensor:
+    """USB FreeMatch `PseudoLabelingHook(..., softmax=True)` 경로."""
+
+    effective_pseudo_labeling = pseudo_labeling or HardOrSoftPseudoLabelingHook()
+    return effective_pseudo_labeling.generate_targets_from_logits(
+        logits_x_ulb_w=logits_x_ulb_w,
+        config=PseudoLabelingConfig(
+            use_hard_label=hard_label,
+            temperature=temperature,
+        ),
+    )
+
+
+@register_query_ssl_algorithm(
+    "freematch",
+    display_name="FreeMatch",
+    required_views=USB_MULTIVIEW_REQUIRED_VIEWS,
+    default_uses_labeled_batches=True,
+)
+def build_freematch_algorithm(parameters: Mapping[str, Any]) -> FreeMatchAlgorithm:
+    """Hydra method parameter mapping으로 FreeMatch algorithm을 만든다."""
+
+    return FreeMatchAlgorithm(
+        temperature=float(parameters["temperature"]),
+        hard_label=bool(parameters.get("hard_label", True)),
+        ema_p=float(parameters.get("ema_p", 0.999)),
+        ent_loss_ratio=float(parameters.get("ent_loss_ratio", 0.01)),
+        use_quantile=bool(parameters.get("use_quantile", False)),
+        clip_thresh=bool(parameters.get("clip_thresh", False)),
+        lambda_u=float(parameters.get("lambda_u", 1.0)),
+        supervised_loss_weight=float(parameters.get("supervised_loss_weight", 1.0)),
+    )
