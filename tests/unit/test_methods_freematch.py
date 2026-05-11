@@ -165,19 +165,26 @@ def test_compute_freematch_step_matches_usb_adaptive_threshold_flow() -> None:
     )
     expected_unsup_loss = strong_losses.mean()
 
-    assert torch.equal(output.mask, torch.tensor([1.0, 1.0]))
-    assert torch.isclose(output.sup_loss, expected_sup_loss)
-    assert torch.isclose(output.unsup_loss, expected_unsup_loss)
-    assert output.ent_loss.ndim == 0
+    assert torch.equal(output.debug_tensors["mask"], torch.tensor([1.0, 1.0]))
+    assert torch.isclose(output.loss_components["sup_loss"], expected_sup_loss)
+    assert torch.isclose(output.loss_components["unsup_loss"], expected_unsup_loss)
+    assert output.loss_components["ent_loss"].ndim == 0
     assert torch.isclose(
         output.total_loss,
-        expected_sup_loss + expected_unsup_loss + 0.01 * output.ent_loss,
+        expected_sup_loss
+        + expected_unsup_loss
+        + 0.01 * output.loss_components["ent_loss"],
     )
-    assert output.loss_components["ent_loss"] is output.ent_loss
-    assert torch.isclose(output.metrics["util_ratio"], output.util_ratio)
-    assert output.metrics["time_p"] is output.time_p
-    assert torch.allclose(output.p_model, algorithm.masking_hook.p_model)
-    assert torch.allclose(output.label_hist, algorithm.masking_hook.label_hist)
+    assert torch.isclose(output.metrics["util_ratio"], torch.tensor(1.0))
+    assert output.metrics["time_p"] is algorithm.masking_hook.time_p
+    assert torch.allclose(
+        output.debug_tensors["p_model"],
+        algorithm.masking_hook.p_model,
+    )
+    assert torch.allclose(
+        output.debug_tensors["label_hist"],
+        algorithm.masking_hook.label_hist,
+    )
 
 
 def test_freematch_algorithm_requires_dataset_state_before_step() -> None:

@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from ...base import QuerySslStepOutput, TextBatchClassifier
+from ...base import QuerySslStepResult, TextBatchClassifier
 from ...common import compute_prob
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
@@ -146,50 +146,6 @@ class FreeMatchThresholdingHook:
             self.time_p = self.time_p.to(device)
 
 
-class FreeMatchStepOutput:
-    """FreeMatch 한 step의 loss/diagnostics 결과."""
-
-    def __init__(
-        self,
-        *,
-        total_loss: Tensor,
-        sup_loss: Tensor,
-        unsup_loss: Tensor,
-        ent_loss: Tensor,
-        mask: Tensor,
-        time_p: Tensor,
-        p_model: Tensor,
-        label_hist: Tensor,
-    ) -> None:
-        self.total_loss = total_loss
-        self.sup_loss = sup_loss
-        self.unsup_loss = unsup_loss
-        self.ent_loss = ent_loss
-        self.mask = mask
-        self.time_p = time_p
-        self.p_model = p_model
-        self.label_hist = label_hist
-
-    @property
-    def util_ratio(self) -> Tensor:
-        return self.mask.float().mean()
-
-    @property
-    def loss_components(self) -> dict[str, Tensor]:
-        return {
-            "sup_loss": self.sup_loss,
-            "unsup_loss": self.unsup_loss,
-            "ent_loss": self.ent_loss,
-        }
-
-    @property
-    def metrics(self) -> dict[str, Tensor]:
-        return {
-            "util_ratio": self.util_ratio,
-            "time_p": self.time_p,
-        }
-
-
 class FreeMatchAlgorithm:
     """FreeMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
@@ -268,7 +224,7 @@ class FreeMatchAlgorithm:
         model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Any],
-    ) -> QuerySslStepOutput:
+    ) -> QuerySslStepResult:
         if self.masking_hook is None:
             raise ValueError(
                 "FreeMatch requires configure_dataset before compute_step."
@@ -303,7 +259,7 @@ def compute_freematch_step(
     consistency_loss_hook: ConsistencyLossHook | None = None,
     masking_hook: FreeMatchThresholdingHook,
     algorithm: FreeMatchAlgorithm | None = None,
-) -> FreeMatchStepOutput:
+) -> QuerySslStepResult:
     """USB `semilearn/algorithms/freematch/freematch.py::train_step` 핵심."""
 
     sup_loss = compute_labeled_cross_entropy_loss(
@@ -351,15 +307,22 @@ def compute_freematch_step(
         + lambda_u * unsup_loss
         + ent_loss_ratio * ent_loss
     )
-    return FreeMatchStepOutput(
+    return QuerySslStepResult(
         total_loss=total_loss,
-        sup_loss=sup_loss,
-        unsup_loss=unsup_loss,
-        ent_loss=ent_loss,
-        mask=mask,
-        time_p=masking_hook.time_p,
-        p_model=masking_hook.p_model,
-        label_hist=masking_hook.label_hist,
+        loss_components={
+            "sup_loss": sup_loss,
+            "unsup_loss": unsup_loss,
+            "ent_loss": ent_loss,
+        },
+        metrics={
+            "util_ratio": mask.float().mean(),
+            "time_p": masking_hook.time_p,
+        },
+        debug_tensors={
+            "mask": mask,
+            "p_model": masking_hook.p_model,
+            "label_hist": masking_hook.label_hist,
+        },
     )
 
 

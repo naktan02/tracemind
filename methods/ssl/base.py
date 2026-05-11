@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Protocol
 
 from torch import Tensor
@@ -11,18 +11,14 @@ from torch import Tensor
 QuerySslAlgorithmFactory = Callable[[Mapping[str, Any]], "QuerySslAlgorithm"]
 
 
-class QuerySslStepOutput(Protocol):
+@dataclass(frozen=True, slots=True)
+class QuerySslStepResult:
     """Query SSL algorithm 한 step의 loss와 metric 결과."""
 
     total_loss: Tensor
-
-    @property
-    def loss_components(self) -> Mapping[str, Tensor]:
-        """epoch history에 `train_{name}`으로 기록할 loss component."""
-
-    @property
-    def metrics(self) -> Mapping[str, Tensor]:
-        """epoch history에 `train_{name}`으로 기록할 scalar metric."""
+    loss_components: Mapping[str, Tensor]
+    metrics: Mapping[str, Tensor]
+    debug_tensors: Mapping[str, Tensor] = field(default_factory=dict)
 
 
 class TextBatchClassifier(Protocol):
@@ -60,7 +56,7 @@ class QuerySslAlgorithm(Protocol):
         model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Any],
-    ) -> QuerySslStepOutput:
+    ) -> QuerySslStepResult:
         """model과 batch로 algorithm-specific optimization step을 계산한다."""
 
 

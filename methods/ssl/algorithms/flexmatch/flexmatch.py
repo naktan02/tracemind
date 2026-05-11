@@ -10,7 +10,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from ...base import QuerySslStepOutput, TextBatchClassifier
+from ...base import QuerySslStepResult, TextBatchClassifier
 from ...common import compute_prob
 from ...hooks.consistency import ConsistencyLossHook, CrossEntropyConsistencyLossHook
 from ...hooks.pseudo_labeling import (
@@ -107,40 +107,6 @@ class FlexMatchThresholdingHook:
         return mask
 
 
-class FlexMatchStepOutput:
-    """FlexMatch 한 step의 loss/diagnostics 결과."""
-
-    def __init__(
-        self,
-        *,
-        total_loss: Tensor,
-        sup_loss: Tensor,
-        unsup_loss: Tensor,
-        mask: Tensor,
-        classwise_acc: Tensor,
-    ) -> None:
-        self.total_loss = total_loss
-        self.sup_loss = sup_loss
-        self.unsup_loss = unsup_loss
-        self.mask = mask
-        self.classwise_acc = classwise_acc
-
-    @property
-    def util_ratio(self) -> Tensor:
-        return self.mask.float().mean()
-
-    @property
-    def loss_components(self) -> dict[str, Tensor]:
-        return {
-            "sup_loss": self.sup_loss,
-            "unsup_loss": self.unsup_loss,
-        }
-
-    @property
-    def metrics(self) -> dict[str, Tensor]:
-        return {"util_ratio": self.util_ratio}
-
-
 class FlexMatchAlgorithm:
     """FlexMatch를 공통 Query SSL trainer seam에 맞춘 algorithm adapter."""
 
@@ -209,7 +175,7 @@ class FlexMatchAlgorithm:
         model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Any],
-    ) -> QuerySslStepOutput:
+    ) -> QuerySslStepResult:
         if self.masking_hook is None:
             raise ValueError(
                 "FlexMatch requires configure_dataset before compute_step."
@@ -244,7 +210,7 @@ def compute_flexmatch_step(
     consistency_loss_hook: ConsistencyLossHook | None = None,
     masking_hook: FlexMatchThresholdingHook,
     algorithm: FlexMatchAlgorithm | None = None,
-) -> FlexMatchStepOutput:
+) -> QuerySslStepResult:
     """USB `semilearn/algorithms/flexmatch/flexmatch.py::train_step` 핵심."""
 
     sup_loss = compute_labeled_cross_entropy_loss(
@@ -285,12 +251,17 @@ def compute_flexmatch_step(
         mask=mask,
     )
     total_loss = supervised_loss_weight * sup_loss + lambda_u * unsup_loss
-    return FlexMatchStepOutput(
+    return QuerySslStepResult(
         total_loss=total_loss,
-        sup_loss=sup_loss,
-        unsup_loss=unsup_loss,
-        mask=mask,
-        classwise_acc=masking_hook.classwise_acc,
+        loss_components={
+            "sup_loss": sup_loss,
+            "unsup_loss": unsup_loss,
+        },
+        metrics={"util_ratio": mask.float().mean()},
+        debug_tensors={
+            "mask": mask,
+            "classwise_acc": masking_hook.classwise_acc,
+        },
     )
 
 

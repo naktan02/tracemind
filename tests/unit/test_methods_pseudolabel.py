@@ -91,18 +91,15 @@ def test_compute_pseudolabel_step_matches_usb_masked_warmup_loss() -> None:
     expected_unsup_loss = (unsup_losses * expected_mask).mean()
     expected_warmup = torch.tensor(0.5)
 
-    assert torch.equal(output.mask, expected_mask)
-    assert torch.isclose(output.sup_loss, expected_sup_loss)
-    assert torch.isclose(output.unsup_loss, expected_unsup_loss)
-    assert torch.isclose(output.unsup_warmup, expected_warmup)
+    assert torch.equal(output.debug_tensors["mask"], expected_mask)
+    assert torch.isclose(output.loss_components["sup_loss"], expected_sup_loss)
+    assert torch.isclose(output.loss_components["unsup_loss"], expected_unsup_loss)
+    assert torch.isclose(output.metrics["unsup_warmup"], expected_warmup)
     assert torch.isclose(
         output.total_loss,
         expected_sup_loss + expected_unsup_loss * expected_warmup,
     )
-    assert output.loss_components["sup_loss"] is output.sup_loss
-    assert output.loss_components["unsup_loss"] is output.unsup_loss
-    assert torch.isclose(output.metrics["util_ratio"], output.util_ratio)
-    assert torch.isclose(output.metrics["unsup_warmup"], output.unsup_warmup)
+    assert torch.isclose(output.metrics["util_ratio"], expected_mask.mean())
 
 
 def test_pseudolabel_algorithm_uses_usb_iteration_before_increment() -> None:
@@ -141,5 +138,5 @@ def test_pseudolabel_algorithm_uses_usb_iteration_before_increment() -> None:
         unlabeled_batch=unlabeled_batch,
     )
 
-    assert torch.isclose(first_output.unsup_warmup, torch.tensor(0.0))
-    assert torch.isclose(second_output.unsup_warmup, torch.tensor(0.5))
+    assert torch.isclose(first_output.metrics["unsup_warmup"], torch.tensor(0.0))
+    assert torch.isclose(second_output.metrics["unsup_warmup"], torch.tensor(0.5))

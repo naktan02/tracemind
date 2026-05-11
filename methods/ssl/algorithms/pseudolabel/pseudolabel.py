@@ -8,7 +8,7 @@ from typing import Any
 from torch import Tensor
 from torch.nn import functional as F
 
-from ...base import QuerySslRequiredViews, QuerySslStepOutput, TextBatchClassifier
+from ...base import QuerySslRequiredViews, QuerySslStepResult, TextBatchClassifier
 from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
@@ -18,43 +18,6 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingConfig,
 )
 from ...registry import register_query_ssl_algorithm
-
-
-class PseudoLabelStepOutput:
-    """PseudoLabel 한 step의 loss/diagnostics 결과."""
-
-    def __init__(
-        self,
-        *,
-        total_loss: Tensor,
-        sup_loss: Tensor,
-        unsup_loss: Tensor,
-        mask: Tensor,
-        unsup_warmup: Tensor,
-    ) -> None:
-        self.total_loss = total_loss
-        self.sup_loss = sup_loss
-        self.unsup_loss = unsup_loss
-        self.mask = mask
-        self.unsup_warmup = unsup_warmup
-
-    @property
-    def util_ratio(self) -> Tensor:
-        return self.mask.float().mean()
-
-    @property
-    def loss_components(self) -> dict[str, Tensor]:
-        return {
-            "sup_loss": self.sup_loss,
-            "unsup_loss": self.unsup_loss,
-        }
-
-    @property
-    def metrics(self) -> dict[str, Tensor]:
-        return {
-            "util_ratio": self.util_ratio,
-            "unsup_warmup": self.unsup_warmup,
-        }
 
 
 def build_pseudolabel_objective_hooks() -> SslObjectiveHooks:
@@ -121,7 +84,7 @@ class PseudoLabelAlgorithm:
         model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Tensor],
-    ) -> QuerySslStepOutput:
+    ) -> QuerySslStepResult:
         output = compute_pseudolabel_step(
             model=model,
             labeled_batch=labeled_batch,
@@ -150,7 +113,7 @@ def compute_pseudolabel_step(
     lambda_u: float = 1.0,
     supervised_loss_weight: float = 1.0,
     hooks: SslObjectiveHooks | None = None,
-) -> PseudoLabelStepOutput:
+) -> QuerySslStepResult:
     """USB `semilearn/algorithms/pseudolabel/pseudolabel.py::train_step` 핵심."""
 
     if num_train_iter <= 0:
@@ -203,12 +166,17 @@ def compute_pseudolabel_step(
         supervised_loss_weight * sup_loss
         + lambda_u * unsup_loss * unsup_warmup
     )
-    return PseudoLabelStepOutput(
+    return QuerySslStepResult(
         total_loss=total_loss,
-        sup_loss=sup_loss,
-        unsup_loss=unsup_loss,
-        mask=mask,
-        unsup_warmup=unsup_warmup,
+        loss_components={
+            "sup_loss": sup_loss,
+            "unsup_loss": unsup_loss,
+        },
+        metrics={
+            "util_ratio": mask.float().mean(),
+            "unsup_warmup": unsup_warmup,
+        },
+        debug_tensors={"mask": mask},
     )
 
 

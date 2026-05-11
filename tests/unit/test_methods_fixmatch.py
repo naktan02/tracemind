@@ -141,12 +141,10 @@ def test_compute_fixmatch_step_matches_usb_masked_consistency_loss() -> None:
     )
     expected_unsup_loss = (strong_losses * expected_mask).mean()
 
-    assert torch.allclose(output.mask, expected_mask)
-    assert torch.isclose(output.sup_loss, expected_sup_loss)
-    assert torch.isclose(output.unsup_loss, expected_unsup_loss)
-    assert output.loss_components["sup_loss"] is output.sup_loss
-    assert output.loss_components["unsup_loss"] is output.unsup_loss
-    assert torch.isclose(output.metrics["util_ratio"], output.util_ratio)
+    assert torch.allclose(output.debug_tensors["mask"], expected_mask)
+    assert torch.isclose(output.loss_components["sup_loss"], expected_sup_loss)
+    assert torch.isclose(output.loss_components["unsup_loss"], expected_unsup_loss)
+    assert torch.isclose(output.metrics["util_ratio"], expected_mask.mean())
     assert torch.isclose(
         output.total_loss,
         expected_sup_loss + expected_unsup_loss,
@@ -187,8 +185,8 @@ def test_compute_fixmatch_step_allows_freematch_like_masking_hook_replacement() 
 
     assert adaptive_masking.last_threshold is not None
     assert adaptive_masking.last_threshold < 0.95
-    assert torch.equal(output.mask, torch.tensor([1.0, 0.0]))
-    assert torch.isclose(output.util_ratio, torch.tensor(0.5))
+    assert torch.equal(output.debug_tensors["mask"], torch.tensor([1.0, 0.0]))
+    assert torch.isclose(output.metrics["util_ratio"], torch.tensor(0.5))
 
 
 def test_compute_fixmatch_step_supports_unlabeled_only_ablation() -> None:
@@ -225,7 +223,7 @@ def test_compute_fixmatch_step_supports_unlabeled_only_ablation() -> None:
     )
     expected_unsup_loss = (strong_losses * expected_mask).mean()
 
-    assert torch.allclose(output.mask, expected_mask)
-    assert torch.isclose(output.sup_loss, torch.tensor(0.0))
-    assert torch.isclose(output.unsup_loss, expected_unsup_loss)
+    assert torch.allclose(output.debug_tensors["mask"], expected_mask)
+    assert torch.isclose(output.loss_components["sup_loss"], torch.tensor(0.0))
+    assert torch.isclose(output.loss_components["unsup_loss"], expected_unsup_loss)
     assert torch.isclose(output.total_loss, expected_unsup_loss)

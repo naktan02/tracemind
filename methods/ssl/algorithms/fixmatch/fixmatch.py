@@ -7,7 +7,7 @@ from typing import Any
 
 from torch import Tensor
 
-from ...base import QuerySslStepOutput, TextBatchClassifier
+from ...base import QuerySslStepResult, TextBatchClassifier
 from ...common import compute_prob
 from ...hooks.consistency import CrossEntropyConsistencyLossHook
 from ...hooks.masking import FixedThresholdMaskingHook
@@ -23,38 +23,6 @@ from ..usb_consistency import (
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )
-
-
-class FixMatchStepOutput:
-    """FixMatch 한 step의 loss/diagnostics 결과."""
-
-    def __init__(
-        self,
-        *,
-        total_loss: Tensor,
-        sup_loss: Tensor,
-        unsup_loss: Tensor,
-        mask: Tensor,
-    ) -> None:
-        self.total_loss = total_loss
-        self.sup_loss = sup_loss
-        self.unsup_loss = unsup_loss
-        self.mask = mask
-
-    @property
-    def util_ratio(self) -> Tensor:
-        return self.mask.float().mean()
-
-    @property
-    def loss_components(self) -> dict[str, Tensor]:
-        return {
-            "sup_loss": self.sup_loss,
-            "unsup_loss": self.unsup_loss,
-        }
-
-    @property
-    def metrics(self) -> dict[str, Tensor]:
-        return {"util_ratio": self.util_ratio}
 
 
 def build_fixmatch_objective_hooks() -> SslObjectiveHooks:
@@ -112,7 +80,7 @@ class FixMatchAlgorithm:
         model: TextBatchClassifier,
         labeled_batch: dict[str, Tensor] | None,
         unlabeled_batch: dict[str, Tensor],
-    ) -> QuerySslStepOutput:
+    ) -> QuerySslStepResult:
         return compute_fixmatch_step(
             model=model,
             labeled_batch=labeled_batch,
@@ -137,7 +105,7 @@ def compute_fixmatch_step(
     lambda_u: float = 1.0,
     supervised_loss_weight: float = 1.0,
     hooks: SslObjectiveHooks | None = None,
-) -> FixMatchStepOutput:
+) -> QuerySslStepResult:
     """USB `semilearn/algorithms/fixmatch/fixmatch.py::train_step` 핵심."""
 
     sup_loss = compute_labeled_cross_entropy_loss(
@@ -170,11 +138,14 @@ def compute_fixmatch_step(
         mask=mask,
     )
     total_loss = supervised_loss_weight * sup_loss + lambda_u * unsup_loss
-    return FixMatchStepOutput(
+    return QuerySslStepResult(
         total_loss=total_loss,
-        sup_loss=sup_loss,
-        unsup_loss=unsup_loss,
-        mask=mask,
+        loss_components={
+            "sup_loss": sup_loss,
+            "unsup_loss": unsup_loss,
+        },
+        metrics={"util_ratio": mask.float().mean()},
+        debug_tensors={"mask": mask},
     )
 
 
