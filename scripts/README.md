@@ -60,6 +60,30 @@ Dataset pipeline:
 uv run python scripts/datasets/run_dataset_pipeline.py
 ```
 
+새 dataset asset은 가능하면 `data/datasets/<dataset_id>/` 아래에 `raw`, `mapped`,
+`splits`, `query_ssl`, `views`를 모은다. 기존 stage 중심 `data/processed/*` 자산은
+이동하지 않고 유지한다.
+
+중앙 Query SSL labeled/unlabeled split 생성:
+
+```bash
+uv run python scripts/datasets/materialize_query_ssl_split.py \
+  --source-train-jsonl data/datasets/<dataset_id>/splits/train_split.v1.train.jsonl \
+  --source-validation-jsonl data/datasets/<dataset_id>/splits/train_split.v1.validation.jsonl \
+  --source-test-jsonl <test_jsonl> \
+  --split-name labeled1024_per_class_seed42_v1 \
+  --labeled-count-per-class 1024 \
+  --seed 42 \
+  --output-root data/datasets/<dataset_id>/query_ssl
+```
+
+중앙 Query SSL NLLB weak/strong view 생성:
+
+```bash
+uv run python scripts/datasets/materialize_query_ssl_views_hydra.py \
+  track_presets/central_ssl_control/query_view_materialization=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
+```
+
 Prototype pack 생성:
 
 ```bash

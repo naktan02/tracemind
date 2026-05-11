@@ -47,6 +47,7 @@ conf/
 └── track_presets/
     ├── central_ssl_control/
     │   ├── lora_classifier_defaults/
+    │   ├── query_view_materialization/
     │   ├── query_source/
     │   └── training_preset/
     └── fl_ssl/
@@ -107,3 +108,38 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - preset이 1개뿐이고 해당 entrypoint 전용이면 group으로 만들지 않는다.
 - YAML은 실행 조합표와 파라미터를 담고, Python 구현이나 복잡한 계산 로직은 두지 않는다.
 - namespace 이동은 Hydra config test와 active docs 갱신을 같이 닫는다.
+
+## Dataset Output Convention
+
+기존 `ourafla` 자산은 stage 중심 legacy 경로를 유지한다. 새 dataset asset은
+가능하면 dataset 중심 root를 선언한다.
+
+```text
+data/datasets/<dataset_id>/
+├── raw/
+├── mapped/
+├── splits/
+├── query_ssl/
+├── views/
+└── pipeline_runs/
+```
+
+`execution_context/dataset_asset/<name>.yaml`의 `output_paths`는 dataset pipeline의
+`raw`, `mapped`, `splits`, `pipeline_runs` 위치만 override한다. Query SSL
+labeled/unlabeled split은 `materialize_query_ssl_split.py --output-root`로
+`data/datasets/<dataset_id>/query_ssl` 아래에 만들고, NLLB view materialization은
+`query_view_materialization.output_root`로 `data/datasets/<dataset_id>/views` 아래에
+만든다. 모델 cache처럼 dataset artifact가 아닌 파일은 공유 cache 경로를 유지할 수 있다.
+
+## Central SSL Query View Materialization
+
+`track_presets/central_ssl_control/query_view_materialization`은 중앙 Query SSL에서
+미리 저장할 weak/strong text view artifact의 생성 파라미터를 소유한다.
+
+- `split_name`, `split_dir`: 어떤 query SSL split을 증강할지 결정한다.
+- `augmenter_name`, `source_lang`, `pivot_languages`, `model_id`: NLLB 역번역 view
+  생성 정책을 결정한다.
+- `batch_size`, `chunk_size`, `cache_dir`, `resume`, `overwrite`: 긴 materialization
+  작업의 실행/재시작 방식을 결정한다.
+
+학습에서 생성된 view를 읽는 경로는 별도 `query_source` preset이 소유한다.

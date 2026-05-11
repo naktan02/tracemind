@@ -16,6 +16,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 from scripts.datasets.lib.download import (  # noqa: E402
     build_default_output_path,
     download_huggingface_dataset_to_csv,
+    download_kaggle_dataset_file_to_csv,
 )
 from scripts.datasets.lib.label_mapping import (  # noqa: E402
     build_labeled_query_set,
@@ -53,6 +54,26 @@ def _resolve_project_path(raw_path: str | None) -> Path | None:
     if path.is_absolute():
         return path
     return PROJECT_ROOT / path
+
+
+def resolve_pipeline_output_dir(
+    *,
+    cfg: DictConfig,
+    dataset_cfg: DictConfig,
+    path_key: str,
+) -> Path:
+    """dataset별 output override가 있으면 우선하고 없으면 entrypoint 기본값을 쓴다."""
+
+    dataset_output_paths = dataset_cfg.get("output_paths")
+    if dataset_output_paths is not None:
+        dataset_path = dataset_output_paths.get(path_key)
+        if dataset_path is not None:
+            return _resolve_project_path(str(dataset_path)) or PROJECT_ROOT
+
+    entrypoint_path = cfg.paths.get(path_key)
+    if entrypoint_path is None:
+        raise ValueError(f"Missing output path: paths.{path_key}")
+    return _resolve_project_path(str(entrypoint_path)) or PROJECT_ROOT
 
 
 def _require_string(value: Any, *, field_name: str) -> str:
@@ -201,32 +222,55 @@ def _run_download_stage(
     raw_outputs: dict[str, str] = {}
     for source_name, source_cfg in dataset_cfg.sources.items():
         source_kind = _require_string(source_cfg.get("kind"), field_name="kind")
-        if source_kind != "huggingface":
+        if source_kind == "huggingface":
+            output_path = resolve_dataset_output_path(
+                source_cfg=source_cfg,
+                raw_dir=raw_dir,
+            )
+            download_huggingface_dataset_to_csv(
+                dataset_id=_require_string(
+                    source_cfg.get("dataset_id"),
+                    field_name=f"sources.{source_name}.dataset_id",
+                ),
+                split=_require_string(
+                    source_cfg.get("split"),
+                    field_name=f"sources.{source_name}.split",
+                ),
+                output_dir=raw_dir,
+                cache_dir=cache_dir,
+                data_file=source_cfg.get("data_file"),
+                output_path=output_path,
+                revision=source_cfg.get("revision"),
+            )
+            raw_outputs[source_name] = str(output_path)
+            continue
+
+        if source_kind == "kaggle":
+            output_path = resolve_dataset_output_path(
+                source_cfg=source_cfg,
+                raw_dir=raw_dir,
+            )
+            download_kaggle_dataset_file_to_csv(
+                dataset_ref=_require_string(
+                    source_cfg.get("dataset_ref") or source_cfg.get("dataset_id"),
+                    field_name=f"sources.{source_name}.dataset_ref",
+                ),
+                data_file=_require_string(
+                    source_cfg.get("data_file"),
+                    field_name=f"sources.{source_name}.data_file",
+                ),
+                output_path=output_path,
+                dataset_version_number=source_cfg.get("dataset_version_number"),
+                download_url=source_cfg.get("download_url"),
+            )
+            raw_outputs[source_name] = str(output_path)
+            continue
+
+        if source_kind not in {"huggingface", "kaggle"}:
             raise ValueError(
                 f"Dataset '{dataset_cfg.name}' source '{source_name}' has "
                 f"unsupported kind '{source_kind}'."
             )
-
-        output_path = resolve_dataset_output_path(
-            source_cfg=source_cfg,
-            raw_dir=raw_dir,
-        )
-        download_huggingface_dataset_to_csv(
-            dataset_id=_require_string(
-                source_cfg.get("dataset_id"),
-                field_name=f"sources.{source_name}.dataset_id",
-            ),
-            split=_require_string(
-                source_cfg.get("split"),
-                field_name=f"sources.{source_name}.split",
-            ),
-            output_dir=raw_dir,
-            cache_dir=cache_dir,
-            data_file=source_cfg.get("data_file"),
-            output_path=output_path,
-            revision=source_cfg.get("revision"),
-        )
-        raw_outputs[source_name] = str(output_path)
     return raw_outputs
 
 
@@ -475,21 +519,41 @@ def run_dataset(
     only_stages = {str(stage) for stage in cfg.only_stages}
     selected_stages = _selected_stages(dataset_cfg, only_stages)
 
-    raw_dir = _resolve_project_path(str(cfg.paths.raw_dir)) or PROJECT_ROOT
-    labeled_query_set_dir = (
-        _resolve_project_path(str(cfg.paths.labeled_query_set_dir)) or PROJECT_ROOT
+    raw_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="raw_dir",
     )
-    split_dir = _resolve_project_path(str(cfg.paths.split_dir)) or PROJECT_ROOT
-    prototype_pack_dir = (
-        _resolve_project_path(str(cfg.paths.prototype_pack_dir)) or PROJECT_ROOT
+    labeled_query_set_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="labeled_query_set_dir",
     )
-    prototype_build_state_dir = (
-        _resolve_project_path(str(cfg.paths.prototype_build_state_dir)) or PROJECT_ROOT
+    split_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="split_dir",
     )
-    pipeline_run_dir = (
-        _resolve_project_path(str(cfg.paths.pipeline_run_dir)) or PROJECT_ROOT
+    prototype_pack_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="prototype_pack_dir",
     )
-    cache_dir = _resolve_project_path(str(cfg.paths.cache_dir)) or PROJECT_ROOT
+    prototype_build_state_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="prototype_build_state_dir",
+    )
+    pipeline_run_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="pipeline_run_dir",
+    )
+    cache_dir = resolve_pipeline_output_dir(
+        cfg=cfg,
+        dataset_cfg=dataset_cfg,
+        path_key="cache_dir",
+    )
 
     raw_outputs: dict[str, str] = {}
     mapped_outputs: dict[str, dict[str, Path]] = {}

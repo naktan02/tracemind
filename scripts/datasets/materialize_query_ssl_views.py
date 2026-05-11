@@ -7,6 +7,7 @@ from pathlib import Path
 
 from scripts.datasets.lib.query_ssl_views import (
     NllbBacktranslationRuntimeConfig,
+    QuerySslViewArtifacts,
     build_nllb_backtranslation_candidate_pair_builder,
     materialize_query_ssl_backtranslation_views,
 )
@@ -77,9 +78,61 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def run_query_ssl_view_materialization(
+    *,
+    split_dir: Path,
+    split_name: str,
+    augmenter_name: str,
+    source_lang: str,
+    pivot_languages: tuple[str, str],
+    model_id: str,
+    revision: str,
+    device: str,
+    batch_size: int,
+    max_new_tokens: int,
+    torch_dtype: str,
+    cache_dir: str | None,
+    local_files_only: bool,
+    chunk_size: int,
+    output_root: Path,
+    resume: bool,
+    overwrite: bool,
+) -> QuerySslViewArtifacts:
+    """CLI와 Hydra wrapper가 공유하는 Query SSL view materialization 실행부."""
+
+    runtime_config = NllbBacktranslationRuntimeConfig(
+        source_lang=source_lang,
+        pivot_languages=pivot_languages,
+        model_id=model_id,
+        revision=revision,
+        device=device,
+        batch_size=batch_size,
+        max_new_tokens=max_new_tokens,
+        torch_dtype=torch_dtype,
+        cache_dir=cache_dir,
+        local_files_only=local_files_only,
+    )
+    return materialize_query_ssl_backtranslation_views(
+        split_dir=split_dir,
+        split_name=split_name,
+        augmenter_name=augmenter_name,
+        output_root=output_root,
+        augmenter_manifest=runtime_config.to_manifest(),
+        candidate_pair_builder=build_nllb_backtranslation_candidate_pair_builder(
+            runtime_config
+        ),
+        chunk_size=chunk_size,
+        resume=resume,
+        overwrite=overwrite,
+    )
+
+
 def main() -> None:
     args = parse_args()
-    runtime_config = NllbBacktranslationRuntimeConfig(
+    artifacts = run_query_ssl_view_materialization(
+        split_dir=args.split_dir,
+        split_name=str(args.split_name),
+        augmenter_name=str(args.augmenter_name),
         source_lang=str(args.source_lang),
         pivot_languages=(str(args.pivot_languages[0]), str(args.pivot_languages[1])),
         model_id=str(args.model_id),
@@ -90,17 +143,8 @@ def main() -> None:
         torch_dtype=str(args.torch_dtype),
         cache_dir=None if args.cache_dir == "" else str(args.cache_dir),
         local_files_only=bool(args.local_files_only),
-    )
-    artifacts = materialize_query_ssl_backtranslation_views(
-        split_dir=args.split_dir,
-        split_name=args.split_name,
-        augmenter_name=str(args.augmenter_name),
-        output_root=args.output_root,
-        augmenter_manifest=runtime_config.to_manifest(),
-        candidate_pair_builder=build_nllb_backtranslation_candidate_pair_builder(
-            runtime_config
-        ),
         chunk_size=int(args.chunk_size),
+        output_root=args.output_root,
         resume=not bool(args.no_resume),
         overwrite=bool(args.overwrite),
     )

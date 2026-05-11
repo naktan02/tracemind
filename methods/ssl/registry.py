@@ -68,6 +68,8 @@ def load_builtin_query_ssl_algorithms() -> None:
         for module_info in pkgutil.iter_modules(package_paths):
             if module_info.name in _SKIPPED_QUERY_SSL_ALGORITHM_MODULES:
                 continue
+            if not module_info.ispkg:
+                continue
             importlib.import_module(
                 f"{_QUERY_SSL_ALGORITHMS_PACKAGE}.{module_info.name}.{module_info.name}"
             )

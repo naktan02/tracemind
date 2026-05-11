@@ -34,6 +34,10 @@ train_jsonl=data/processed/query_ssl_views/.../labeled_train.with_views.jsonl
 unlabeled_jsonl=data/processed/query_ssl_views/.../unlabeled_pool.with_views.jsonl
 ```
 
+기존 `ourafla` 기본값은 legacy `data/processed/*` 경로를 읽는다. 새 dataset asset은
+`data/datasets/<dataset_id>/query_ssl`과 `data/datasets/<dataset_id>/views` 아래에
+query SSL split/view artifact를 두는 것을 기본 규칙으로 한다.
+
 `precomputed_usb_candidates_v1`는 실행 중 역번역을 다시 만들지 않고,
 row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설정이다.
 기본 실행은 USB식 cold-start 비교에 맞춰 기존 classifier seed를 로드하지 않고,
@@ -252,6 +256,7 @@ fallback으로 저장하며 fallback 이유를 manifest에 남긴다.
 
 새 Query SSL 알고리즘을 추가할 때 기본 변경 위치는 아래다.
 
+- `methods/ssl/NEW_METHOD.md`: 추가 절차와 현재 seam으로 쉽게 들어오는지 판단하는 기준
 - `methods/ssl/algorithms/<method>/`: 알고리즘 objective core
 - `conf/strategy_axes/ssl/consistency_method/<method>_*.yaml`: method identity와 파라미터
 - `tests/unit/test_methods_<method>.py`: tensor-level objective 검증

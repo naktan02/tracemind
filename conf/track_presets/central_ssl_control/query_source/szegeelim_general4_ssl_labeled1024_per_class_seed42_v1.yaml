@@ -1,0 +1,7 @@
+# @package query_source
+
+name: szegeelim_general4_ssl_labeled1024_per_class_seed42_v1
+train_jsonl: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1/labeled_train.jsonl
+unlabeled_jsonl: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1/unlabeled_pool.jsonl
+validation_jsonl: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1/validation.jsonl
+test_jsonl: data/datasets/szegeelim_mental_health/query_ssl/labeled1024_per_class_seed42_v1/test.jsonl

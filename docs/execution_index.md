@@ -53,8 +53,9 @@ Seed / central SSL:
 7. `scripts/experiments/query_lora_ssl/*`
 8. `methods/adaptation/lora_classifier/*`
 9. `methods/adaptation/query_classifier_adaptation/*`
-10. `methods/ssl/*`
-11. `methods/adaptation/*`
+10. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+11. `methods/ssl/*`
+12. `methods/adaptation/*`
 
 Agent runtime:
 

@@ -49,6 +49,7 @@ active_entrypoints:
   - docs/quality/test-strategy.md
   - docs/governance/document-governance.md
   - methods/README.md
+  - methods/ssl/NEW_METHOD.md
   - conf/README.md
   - scripts/README.md
 

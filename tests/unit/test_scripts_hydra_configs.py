@@ -32,6 +32,7 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
     "config_name",
     [
         "entrypoints/data_pipeline/run_dataset_pipeline",
+        "entrypoints/data_pipeline/materialize_query_ssl_views",
         "entrypoints/prototype_pack/seed_prototypes",
         "entrypoints/prototype_pack/evaluate_prototype_pack",
         "entrypoints/prototype_analysis/prototype_strategy",
@@ -54,6 +55,33 @@ def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
     assert cfg.hydra.hydra_logging.root.level == "ERROR"
     assert cfg.hydra.hydra_logging.disable_existing_loggers is True
     assert "handlers" not in cfg.hydra.hydra_logging.root
+
+
+def test_query_ssl_view_materialization_entrypoint_uses_szegeelim_nllb_preset() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/data_pipeline/materialize_query_ssl_views"
+        )
+
+    assert (
+        cfg.query_view_materialization.name
+        == "szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1"
+    )
+    assert cfg.query_view_materialization.split_name == (
+        "labeled1024_per_class_seed42_v1"
+    )
+    assert cfg.query_view_materialization.split_dir.endswith(
+        "data/datasets/szegeelim_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1"
+    )
+    assert cfg.query_view_materialization.output_root.endswith(
+        "data/datasets/szegeelim_mental_health/views"
+    )
+    assert cfg.query_view_materialization.batch_size == 64
+    assert cfg.query_view_materialization.chunk_size == 128
+    assert cfg.query_view_materialization.device == "cuda"
+    assert cfg.query_view_materialization.local_files_only is False
+    assert cfg.query_view_materialization.pivot_languages == ["deu_Latn", "fra_Latn"]
 
 
 def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
@@ -925,6 +953,42 @@ def test_train_lora_query_ssl_supports_canonical_query_ssl_view_source() -> None
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+
+
+def test_train_lora_query_ssl_supports_kaggle_general_labeled_source() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            overrides=[
+                "track_presets/central_ssl_control/query_source=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1",
+                "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
+            ],
+        )
+
+    assert (
+        cfg.query_source.name
+        == "szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+    )
+    assert cfg.train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.unlabeled_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
+    )
+    assert cfg.eval_sets.validation.endswith(
+        "data/datasets/szegeelim_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/"
+        "validation.jsonl"
+    )
+    assert cfg.eval_sets.test.endswith(
+        "data/datasets/szegeelim_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/"
+        "test.jsonl"
+    )
 
 
 def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student(  # noqa: E501

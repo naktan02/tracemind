@@ -13,3 +13,5 @@ tokenized weak/strong forward처럼 batch contract나 실행 순서를 실제로
 둔다.
 Hydra 조립, dataset loading, augmentation materialization, artifact 저장은
 `scripts/` runtime adapter가 담당한다.
+
+새 algorithm 추가 절차와 비-USB 계열 판단 기준은 `../NEW_METHOD.md`를 따른다.
