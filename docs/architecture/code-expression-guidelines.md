@@ -35,13 +35,20 @@ framework 표현을 퍼뜨리지 않는 것을 목표로 한다.
   코드 가까이에 짧은 한국어로 둔다.
 - 새 helper를 만들 때는 삭제 테스트를 생각한다. 지워도 caller가 한 단계 직접 호출만 하면
   되는 helper는 얕은 추상화일 가능성이 높다.
+- 단순히 호출 이름만 바꾸는 helper는 만들지 않는다. 예를 들어
+  `hook.compute_loss(...)`, `hook.generate_targets(...)`, `compute_prob(x.detach())`,
+  `tensor.new_zeros(())` 같은 한 줄짜리 wrapper는 여러 곳에서 반복돼도 기본적으로
+  caller에 직접 둔다. helper가 유지되려면 batch/view contract, 외부 framework 경계,
+  validation 전제, 여러 줄의 순서 의존 로직처럼 숨길 만한 구현을 가져야 한다.
 
 ## 계층별 적용
 
 - `shared`: 타입 엄격성을 낮추지 않는다. 대신 의미 단위 파일 분리, 짧은 필드 설명,
   compatibility 격리로 읽기 비용을 줄인다.
 - `methods`: algorithm core는 원본 수식과 단계 이름을 보존한다. descriptor/config/fallback
-  선언부는 반복 generic과 boilerplate를 줄인다.
+  선언부는 반복 generic과 boilerplate를 줄인다. 논문/USB method를 이식할 때는
+  원본 framework를 그대로 흉내 내기보다 TraceMind seam에 맞추되, 수식 조립이 보이는
+  편을 우선한다. 공통 helper는 view/loader/forward contract처럼 의미가 있을 때만 둔다.
 - `agent`, `main_server`: 큰 흐름 orchestration을 먼저 보이게 한다. method-specific 의미는
   runtime adapter로 흡수하지 않고 `methods`에 남긴다.
 - `scripts`: Hydra config load, core 호출, artifact dump 흐름을 얇게 유지한다. 새 method
