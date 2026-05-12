@@ -5,7 +5,7 @@
 - 비공개 labeled query는 `.gitignore`에 지정한 Git 비추적 경로에 둔다.
 - 레포에는 스키마, dataset card, 합성 fixture만 남긴다.
 - dataset pipeline 실행 source of truth는 `conf/execution_context/dataset_asset/*.yaml`와
-  `conf/entrypoints/data_pipeline/*.yaml`이다.
+  `conf/entrypoints/dataset_pipeline/*.yaml`이다.
 - 새 dataset asset은 가능하면 `data/datasets/<dataset_id>/` 아래에 `raw`,
   `mapped`, `splits`, `query_ssl`, `views`, `pipeline_runs`를 모은다.
 - 기존 ourafla 같은 legacy 자산은 `data/raw/`, `data/processed/` 아래 경로를

@@ -1,76 +1,43 @@
-"""중앙 Query SSL labeled/unlabeled split materialization CLI."""
+"""Hydra config 기반 중앙 Query SSL labeled/unlabeled split materialization."""
 
 from __future__ import annotations
 
-import argparse
 from pathlib import Path
+
+import hydra
+from omegaconf import DictConfig
 
 from scripts.datasets.lib.query_ssl_split import (
     materialize_class_balanced_query_ssl_split,
 )
 
-
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(
-        description=(
-            "Materialize a central Query SSL split with class-balanced labeled "
-            "rows and a remaining-row unlabeled pool."
-        )
-    )
-    parser.add_argument(
-        "--source-train-jsonl",
-        required=True,
-        type=Path,
-        help="Train pool JSONL used as the source for labeled/unlabeled split.",
-    )
-    parser.add_argument(
-        "--source-validation-jsonl",
-        required=True,
-        type=Path,
-        help="Validation JSONL copied into the split artifact.",
-    )
-    parser.add_argument(
-        "--source-test-jsonl",
-        required=True,
-        type=Path,
-        help="Test JSONL copied into the split artifact.",
-    )
-    parser.add_argument(
-        "--split-name",
-        required=True,
-        help="Stable split directory name.",
-    )
-    parser.add_argument(
-        "--labeled-count-per-class",
-        type=int,
-        default=1024,
-        help="Number of labeled rows to sample from each mapped_label_4 bucket.",
-    )
-    parser.add_argument(
-        "--seed",
-        type=int,
-        default=42,
-        help="Deterministic split seed.",
-    )
-    parser.add_argument(
-        "--output-root",
-        type=Path,
-        default=Path("data/processed/query_ssl_splits"),
-        help="Root directory where the split directory is written.",
-    )
-    return parser.parse_args()
+PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 
-def main() -> None:
-    args = parse_args()
+def _resolve_project_path(raw_path: str) -> Path:
+    path = Path(raw_path)
+    if path.is_absolute():
+        return path
+    return PROJECT_ROOT / path
+
+
+def run_query_ssl_split_materialization_from_hydra(
+    *,
+    cfg: DictConfig,
+) -> None:
+    """Hydra 설정을 Query SSL split materializer 실행 파라미터로 변환한다."""
+
+    split_cfg = cfg.query_ssl_split_materialization
     artifacts = materialize_class_balanced_query_ssl_split(
-        source_train_jsonl=args.source_train_jsonl,
-        source_validation_jsonl=args.source_validation_jsonl,
-        source_test_jsonl=args.source_test_jsonl,
-        split_name=args.split_name,
-        labeled_count_per_class=args.labeled_count_per_class,
-        seed=args.seed,
-        output_root=args.output_root,
+        source_train_jsonl=_resolve_project_path(str(split_cfg.source_train_jsonl)),
+        source_validation_jsonl=_resolve_project_path(
+            str(split_cfg.source_validation_jsonl)
+        ),
+        source_test_jsonl=_resolve_project_path(str(split_cfg.source_test_jsonl)),
+        split_name=str(split_cfg.name),
+        labeled_count_per_class=int(split_cfg.labeled_count_per_class),
+        seed=int(split_cfg.seed),
+        output_root=_resolve_project_path(str(split_cfg.output_root)),
     )
 
     print(f"labeled_train_jsonl={artifacts.labeled_train_jsonl}")
@@ -79,6 +46,15 @@ def main() -> None:
     print(f"test_jsonl={artifacts.test_jsonl}")
     print(f"manifest_json={artifacts.manifest_json}")
     print(f"summary_json={artifacts.summary_json}")
+
+
+@hydra.main(
+    version_base=None,
+    config_path="../../conf",
+    config_name="entrypoints/dataset_pipeline/materialize_query_ssl_split",
+)
+def main(cfg: DictConfig) -> None:
+    run_query_ssl_split_materialization_from_hydra(cfg=cfg)
 
 
 if __name__ == "__main__":

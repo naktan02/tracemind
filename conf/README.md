@@ -20,7 +20,7 @@ conf/
 ├── entrypoints/
 │   ├── central_classifier_seed/
 │   ├── central_ssl_control/
-│   ├── data_pipeline/
+│   ├── dataset_pipeline/
 │   ├── fl_ssl/
 │   ├── prototype_analysis/
 │   └── prototype_pack/
@@ -133,10 +133,13 @@ data/datasets/<dataset_id>/
 
 `execution_context/dataset_asset/<name>.yaml`의 `output_paths`는 dataset pipeline의
 `raw`, `mapped`, `splits`, `pipeline_runs` 위치만 override한다. Query SSL
-labeled/unlabeled split은 `materialize_query_ssl_split.py --output-root`로
+labeled/unlabeled split은
+`entrypoints/dataset_pipeline/materialize_query_ssl_split`로
 `data/datasets/<dataset_id>/query_ssl` 아래에 만들고, NLLB view materialization은
-`execution_context/query_view` preset의 `output_root`로 `data/datasets/<dataset_id>/views` 아래에
-만든다. 모델 cache처럼 dataset artifact가 아닌 파일은 공유 cache 경로를 유지할 수 있다.
+`execution_context/query_view` preset과
+`entrypoints/dataset_pipeline/materialize_query_ssl_views`로
+`data/datasets/<dataset_id>/views` 아래에 만든다. 모델 cache처럼 dataset artifact가
+아닌 파일은 공유 cache 경로를 유지할 수 있다.
 새 model/prototype/adapter 산출물은 `data/artifacts/`, cache성 파일은 `data/cache/`
 아래에 두고, 기존 `data/processed/` 산출물은 legacy로 유지한다.
 

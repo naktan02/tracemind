@@ -2,6 +2,7 @@
 
 name: ourafla
 description: ourafla mental health 4-class dataset
+output_root: data/datasets/ourafla_mental_health
 raw_train_csv: data/raw/ourafla_train.csv
 raw_test_csv: data/raw/ourafla_test.csv
 train_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification.v1.jsonl

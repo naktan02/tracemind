@@ -158,6 +158,16 @@ Dataset pipeline:
 uv run python scripts/datasets/run_dataset_pipeline.py
 ```
 
+Query SSL split/view materialization:
+
+```bash
+uv run python scripts/datasets/materialize_query_ssl_split.py \
+  execution_context/dataset_asset=mental_health_kaggle
+
+uv run python scripts/datasets/materialize_query_ssl_views.py \
+  execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
+```
+
 Fixed classifier seed:
 
 ```bash

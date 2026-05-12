@@ -31,8 +31,9 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
 @pytest.mark.parametrize(
     "config_name",
     [
-        "entrypoints/data_pipeline/run_dataset_pipeline",
-        "entrypoints/data_pipeline/materialize_query_ssl_views",
+        "entrypoints/dataset_pipeline/run_dataset_pipeline",
+        "entrypoints/dataset_pipeline/materialize_query_ssl_split",
+        "entrypoints/dataset_pipeline/materialize_query_ssl_views",
         "entrypoints/prototype_pack/seed_prototypes",
         "entrypoints/prototype_pack/evaluate_prototype_pack",
         "entrypoints/prototype_analysis/prototype_strategy",
@@ -58,7 +59,7 @@ def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
 def test_query_ssl_view_materialization_entrypoint_uses_szegeelim_nllb_preset() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/data_pipeline/materialize_query_ssl_views"
+            config_name="entrypoints/dataset_pipeline/materialize_query_ssl_views"
         )
 
     assert (
@@ -80,6 +81,33 @@ def test_query_ssl_view_materialization_entrypoint_uses_szegeelim_nllb_preset() 
     assert cfg.query_view_materialization.device == "cuda"
     assert cfg.query_view_materialization.local_files_only is False
     assert cfg.query_view_materialization.pivot_languages == ["deu_Latn", "fra_Latn"]
+
+
+def test_query_ssl_split_materialization_entrypoint_uses_dataset_scoped_root() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/dataset_pipeline/materialize_query_ssl_split",
+            overrides=["execution_context/dataset_asset=mental_health_kaggle"],
+        )
+
+    assert cfg.query_ssl_split_materialization.name == (
+        "labeled1024_per_class_seed42_v1"
+    )
+    assert cfg.query_ssl_split_materialization.source_train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/splits/train_split.v1.train.jsonl"
+    )
+    assert cfg.query_ssl_split_materialization.source_validation_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/splits/train_split.v1.validation.jsonl"
+    )
+    assert cfg.query_ssl_split_materialization.source_test_jsonl.endswith(
+        "data/processed/labeled_query_sets/"
+        "ourafla_mental_health_text_classification_test.v1.jsonl"
+    )
+    assert cfg.query_ssl_split_materialization.output_root.endswith(
+        "data/datasets/szegeelim_mental_health/query_ssl"
+    )
+    assert cfg.query_ssl_split_materialization.labeled_count_per_class == 1024
+    assert cfg.query_ssl_split_materialization.seed == 42
 
 
 def test_seed_prototypes_default_runtime_is_gpu_online() -> None:
@@ -927,7 +955,7 @@ def test_train_lora_ssl_classifier_can_select_validation_and_test_independently(
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(config_name="entrypoints/data_pipeline/run_dataset_pipeline")
+        cfg = compose(config_name="entrypoints/dataset_pipeline/run_dataset_pipeline")
 
     assert cfg.dataset.name == "ourafla"
     assert cfg.dataset.test_jsonl == cfg.dataset.test_labeled_jsonl

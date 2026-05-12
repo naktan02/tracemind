@@ -68,19 +68,14 @@ uv run python scripts/datasets/run_dataset_pipeline.py
 
 ```bash
 uv run python scripts/datasets/materialize_query_ssl_split.py \
-  --source-train-jsonl data/datasets/<dataset_id>/splits/train_split.v1.train.jsonl \
-  --source-validation-jsonl data/datasets/<dataset_id>/splits/train_split.v1.validation.jsonl \
-  --source-test-jsonl <test_jsonl> \
-  --split-name labeled1024_per_class_seed42_v1 \
-  --labeled-count-per-class 1024 \
-  --seed 42 \
-  --output-root data/datasets/<dataset_id>/query_ssl
+  execution_context/dataset_asset=mental_health_kaggle \
+  query_ssl_split_materialization.name=labeled1024_per_class_seed42_v1
 ```
 
 중앙 Query SSL NLLB weak/strong view 생성:
 
 ```bash
-uv run python scripts/datasets/materialize_query_ssl_views_hydra.py \
+uv run python scripts/datasets/materialize_query_ssl_views.py \
   execution_context/query_view=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_v1
 ```
 

@@ -615,7 +615,7 @@ def run_dataset(
 @hydra.main(
     version_base=None,
     config_path="../../conf",
-    config_name="entrypoints/data_pipeline/run_dataset_pipeline",
+    config_name="entrypoints/dataset_pipeline/run_dataset_pipeline",
 )
 def main(cfg: DictConfig) -> None:
     if bool(cfg.list_datasets):

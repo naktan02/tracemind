@@ -166,15 +166,15 @@ def _extract_zip_member_to_file(
     except BadZipFile as exc:
         preview = zip_payload[:120].decode("utf-8", errors="replace")
         raise BadZipFile(
-            "Kaggle download did not return a ZIP payload. "
-            f"payload_preview={preview!r}"
+            f"Kaggle download did not return a ZIP payload. payload_preview={preview!r}"
         ) from exc
 
     with archive:
         member_name = _resolve_zip_member_name(archive=archive, data_file=data_file)
-        with archive.open(member_name) as source_file, output_path.open(
-            "wb"
-        ) as output_file:
+        with (
+            archive.open(member_name) as source_file,
+            output_path.open("wb") as output_file,
+        ):
             output_file.write(source_file.read())
 
 
@@ -187,6 +187,5 @@ def _resolve_zip_member_name(*, archive: ZipFile, data_file: str) -> str:
         if Path(member_name).name == normalized_data_file:
             return member_name
     raise FileNotFoundError(
-        f"Kaggle ZIP does not contain {data_file!r}. "
-        f"members={archive.namelist()[:10]}"
+        f"Kaggle ZIP does not contain {data_file!r}. members={archive.namelist()[:10]}"
     )

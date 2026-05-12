@@ -17,6 +17,9 @@ import pytest
         "scripts.experiments.central_classifier_seed.train_softmax_classifier",
         "scripts.experiments.central_ssl_control.train_lora_supervised_classifier",
         "scripts.experiments.central_ssl_control.train_lora_ssl_classifier",
+        "scripts.datasets.run_dataset_pipeline",
+        "scripts.datasets.materialize_query_ssl_split",
+        "scripts.datasets.materialize_query_ssl_views",
     ],
 )
 def test_experiment_entrypoints_import_without_symbol_errors(
