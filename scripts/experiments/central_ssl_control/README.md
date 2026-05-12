@@ -9,13 +9,13 @@
 실제 학습 실행 전에는 먼저 compose 결과를 확인한다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py --cfg job
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py --cfg job
 ```
 
 공통 Query SSL control 기본 실행은 현재 FixMatch다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
 ```
 
 공통 기본값:
@@ -23,20 +23,21 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
 ```text
 runtime=gpu_local
 query_ssl_method=fixmatch_usb_v1
-query_source=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1
+query_data_selection=all ourafla_reddit
 augmentation=precomputed_usb_candidates_v1
 initial_checkpoint=none
 max_train_steps=3000
 train_batch_size=12
 query_ssl_method.unlabeled_batch_size=12
 eval_batch_size=32
-train_jsonl=data/processed/query_ssl_views/.../labeled_train.with_views.jsonl
-unlabeled_jsonl=data/processed/query_ssl_views/.../unlabeled_pool.with_views.jsonl
+train_jsonl=data/datasets/ourafla_mental_health/views/.../labeled_train.with_views.jsonl
+unlabeled_jsonl=data/datasets/ourafla_mental_health/views/.../unlabeled_pool.with_views.jsonl
 ```
 
-기존 `ourafla` 기본값은 legacy `data/processed/*` 경로를 읽는다. 새 dataset asset은
-`data/datasets/<dataset_id>/query_ssl`과 `data/datasets/<dataset_id>/views` 아래에
-query SSL split/view artifact를 두는 것을 기본 규칙으로 한다.
+중앙 Query SSL 기본값은 `execution_context/query_data_source`의 `ourafla_reddit`
+source를 읽는다. 기존 legacy `data/processed/*` 산출물은 호환용으로 유지하지만,
+Query SSL 주소록은 `data/datasets/<dataset_id>/query_ssl`과
+`data/datasets/<dataset_id>/views` 아래 dataset-scoped artifact를 기본으로 삼는다.
 
 `precomputed_usb_candidates_v1`는 실행 중 역번역을 다시 만들지 않고,
 row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설정이다.
@@ -48,6 +49,52 @@ optimizer update 수로 고정한다. `epochs`는 selection 평가/history caden
 16GB급 GPU 기준 기본 batch는 labeled `12`, unlabeled `12`로 둔다. FixMatch는
 한 step에서 labeled/weak/strong forward를 수행하므로 VRAM 여유를 우선한다.
 
+## 데이터 소스 비교
+
+Query data source는 `query_data_sources` 주소록에 source별 labeled train,
+unlabeled pool, validation, test JSONL을 등록하고, 실행 시
+`query_data_selection`만 바꾼다.
+FixMatch/FlexMatch/FreeMatch/AdaMatch처럼 strong view가 필요한 method는 주소록의
+`*.with_views.jsonl` entry를 사용한다.
+
+```bash
+# labeled Reddit + unlabeled Reddit + Reddit validation/test
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+  query_data_selection.labeled=ourafla_reddit \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
+
+# labeled general + unlabeled Reddit + Reddit validation/test
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
+
+# labeled general + unlabeled general + Reddit validation/test
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.unlabeled=szegeelim_general4 \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit
+```
+
+기본 `output_dir`는
+`runs/train_lora_ssl_classifier/consistency/labeled-..._unlabeled-..._validation-..._test-...`
+형태로 설정된다. 주소록은
+`conf/execution_context/query_data_source/default.yaml`이 소유한다.
+
+이미 생성된 pseudo-label JSONL을 재생하는 경우도 같은 entrypoint를 쓴다.
+이 경로는 새 teacher/student 구조를 뜻하지 않고, 입력 train row를 pseudo-label
+artifact로 바꾸는 replay/self-training 모드다.
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+  ssl_input_mode=pseudo_label_replay \
+  pseudo_label_jsonl=data/artifacts/lora_pseudo_label/<run_id>/pseudo_label_train.jsonl
+```
+
 ## 방법론별 실행
 
 ### FixMatch
@@ -55,15 +102,18 @@ optimizer update 수로 고정한다. `epochs`는 selection 평가/history caden
 기본 실행:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
 ```
 
 명시 실행:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
-  execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1 \
+  query_data_selection.labeled=ourafla_reddit \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit \
   strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1
 ```
 
@@ -76,7 +126,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 자주 쓰는 override:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   query_ssl_method.p_cutoff=0.9 \
   query_ssl_method.lambda_u=1.0 \
   query_ssl_method.supervised_loss_weight=1.0
@@ -85,20 +135,20 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 Budget ablation:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   max_train_steps=1000
 
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   max_train_steps=3000
 
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   max_train_steps=10000
 ```
 
 ### USB PseudoLabel
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1
 ```
 
@@ -114,7 +164,7 @@ augmentation axis는 multiview method에서만 runner manifest와 row 준비에 
 자주 쓰는 override:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
   query_ssl_method.p_cutoff=0.9 \
   query_ssl_method.unsup_warm_up=0.2
@@ -123,7 +173,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 ### FlexMatch
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1
 ```
 
@@ -140,7 +190,7 @@ FixMatch와 동일하게 precomputed USB 후보를 사용한다.
 자주 쓰는 override:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
   query_ssl_method.p_cutoff=0.9 \
   query_ssl_method.thresh_warmup=true \
@@ -150,7 +200,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 ### FreeMatch
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=freematch_usb_v1
 ```
 
@@ -161,7 +211,7 @@ FreeMatch는 USB 원본처럼 FixMatch의 weak/strong objective 위에 `time_p`,
 자주 쓰는 override:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=freematch_usb_v1 \
   query_ssl_method.ema_p=0.999 \
   query_ssl_method.ent_loss_ratio=0.01 \
@@ -171,7 +221,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 ### AdaMatch
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=adamatch_usb_v1
 ```
 
@@ -184,7 +234,7 @@ ablation에서도 labeled batch는 필요하다.
 자주 쓰는 override:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=adamatch_usb_v1 \
   query_ssl_method.p_cutoff=0.95 \
   query_ssl_method.ema_p=0.999 \
@@ -194,7 +244,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
 Supervised LoRA seed control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py
 ```
 
 ## 산출물과 metric
@@ -202,7 +252,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
 실행이 끝나면 stdout에 아래 경로가 출력된다.
 
 ```text
-output_dir=runs/train_lora_query_ssl/<method_name>/<run_id>
+output_dir=runs/train_lora_ssl_classifier/consistency/<selection_slug>/<method_name>/<run_id>
 adapter_dir=...
 classifier_path=...
 manifest=...

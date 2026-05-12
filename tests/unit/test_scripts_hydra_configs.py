@@ -39,10 +39,8 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
         "entrypoints/prototype_analysis/prototype_threshold_sweep",
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central_classifier_seed/train_softmax_classifier",
-        "entrypoints/central_ssl_control/train_lora_classifier",
-        "entrypoints/central_ssl_control/train_lora_query_ssl",
-        "entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
-        "entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
+        "entrypoints/central_ssl_control/train_lora_supervised_classifier",
+        "entrypoints/central_ssl_control/train_lora_ssl_classifier",
     ],
 )
 def test_script_configs_disable_hydra_file_logging(config_name: str) -> None:
@@ -162,50 +160,12 @@ def test_prototype_strategy_supports_short_group_override() -> None:
     assert cfg.runner.score_top_k == 2
 
 
-def test_train_lora_classifier_supports_auto_local_runtime_override() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_classifier",
-            overrides=["execution_context/runtime_env=auto_local"],
-        )
-
-    assert cfg.runtime.name == "auto_local"
-    assert cfg.runtime.device == "auto"
-    assert cfg.runtime.local_files_only is True
-
-
-def test_train_lora_classifier_supports_train_source_and_run_preset_overrides() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_classifier",
-            overrides=[
-                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
-                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
-            ],
-        )
-
-    assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
-    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
-    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
-    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
-    assert cfg.train_batch_size == 8
-    assert cfg.eval_batch_size == 32
-    assert cfg.epochs == 1
-    assert cfg.max_train_steps == 100
-    assert cfg.log_every_steps == 20
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == "none"
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
-
-
-def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override() -> (
+def test_train_lora_supervised_classifier_supports_auto_local_runtime_override() -> (
     None
 ):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
+            config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
             overrides=["execution_context/runtime_env=auto_local"],
         )
 
@@ -214,31 +174,22 @@ def test_train_lora_pseudo_label_classifier_supports_auto_local_runtime_override
     assert cfg.runtime.local_files_only is True
 
 
-def test_train_lora_query_ssl_supports_auto_local_runtime_override() -> None:
+def test_train_lora_supervised_classifier_supports_source_preset_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
-            overrides=["execution_context/runtime_env=auto_local"],
-        )
-
-    assert cfg.runtime.name == "auto_local"
-    assert cfg.runtime.device == "auto"
-    assert cfg.runtime.local_files_only is True
-
-
-def test_train_lora_query_ssl_supports_source_and_run_preset_overrides() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
             overrides=[
-                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
+                "query_data_selection.labeled=szegeelim_general4",
                 "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
             ],
         )
 
-    assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
-    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
-    assert cfg.unlabeled_jsonl.endswith("teacher_unlabeled_pool.jsonl")
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.lora_run_preset.name == "smoke_verbose_e1"
@@ -253,10 +204,59 @@ def test_train_lora_query_ssl_supports_source_and_run_preset_overrides() -> None
     assert cfg.initial_classifier_path == ""
 
 
-def test_train_lora_query_ssl_supports_query_ssl_method_override() -> None:
+def test_train_lora_ssl_classifier_supports_auto_local_runtime_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
+            overrides=["execution_context/runtime_env=auto_local"],
+        )
+
+    assert cfg.runtime.name == "auto_local"
+    assert cfg.runtime.device == "auto"
+    assert cfg.runtime.local_files_only is True
+
+
+def test_train_lora_ssl_classifier_supports_source_and_run_preset_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
+            overrides=[
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.unlabeled=ourafla_reddit",
+                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
+            ],
+        )
+
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
+    assert cfg.train_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.unlabeled_jsonl.endswith(
+        "data/datasets/ourafla_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
+    )
+    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
+    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.train_batch_size == 8
+    assert cfg.eval_batch_size == 32
+    assert cfg.epochs == 1
+    assert cfg.max_train_steps == 100
+    assert cfg.log_every_steps == 20
+    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
+    assert cfg.query_adaptation_initial_checkpoint.name == "none"
+    assert cfg.initial_adapter_dir == ""
+    assert cfg.initial_classifier_path == ""
+
+
+def test_train_lora_ssl_classifier_supports_query_ssl_method_override() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "query_ssl_method.p_cutoff=0.9",
                 "query_ssl_method.unlabeled_batch_size=8",
@@ -269,10 +269,10 @@ def test_train_lora_query_ssl_supports_query_ssl_method_override() -> None:
     assert cfg.query_ssl_method.hard_label is True
 
 
-def test_train_lora_query_ssl_supports_pseudolabel_method_override() -> None:
+def test_train_lora_ssl_classifier_supports_pseudolabel_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "strategy_axes/ssl/consistency_method=pseudolabel_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -289,10 +289,10 @@ def test_train_lora_query_ssl_supports_pseudolabel_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is False
 
 
-def test_train_lora_query_ssl_supports_flexmatch_method_override() -> None:
+def test_train_lora_ssl_classifier_supports_flexmatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -309,10 +309,10 @@ def test_train_lora_query_ssl_supports_flexmatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_train_lora_query_ssl_supports_freematch_method_override() -> None:
+def test_train_lora_ssl_classifier_supports_freematch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "strategy_axes/ssl/consistency_method=freematch_usb_v1",
                 "query_ssl_method.ema_p=0.9",
@@ -331,10 +331,10 @@ def test_train_lora_query_ssl_supports_freematch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_train_lora_query_ssl_supports_adamatch_method_override() -> None:
+def test_train_lora_ssl_classifier_supports_adamatch_method_override() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "strategy_axes/ssl/consistency_method=adamatch_usb_v1",
                 "query_ssl_method.p_cutoff=0.9",
@@ -351,10 +351,10 @@ def test_train_lora_query_ssl_supports_adamatch_method_override() -> None:
     assert cfg.query_ssl_method.require_multiview is True
 
 
-def test_train_lora_query_ssl_uses_precomputed_query_views() -> None:
+def test_train_lora_ssl_classifier_uses_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=["strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1"],
         )
 
@@ -363,102 +363,25 @@ def test_train_lora_query_ssl_uses_precomputed_query_views() -> None:
     assert cfg.query_ssl_augmenter.cache_dir == "data/cache/query_ssl_augmentations"
 
 
-def test_train_lora_pseudo_label_classifier_supports_train_source_and_run_preset_overrides(  # noqa: E501
-) -> None:
+def test_train_lora_ssl_classifier_supports_pseudo_label_replay_mode() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
-                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
-                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
+                "ssl_input_mode=pseudo_label_replay",
+                "pseudo_label_jsonl=data/artifacts/lora_pseudo_label/run/pseudo_label_train.jsonl",
+                "include_seed_train_rows=true",
             ],
         )
 
-    assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
-    assert cfg.train_jsonl.endswith("teacher_seed_train.jsonl")
-    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
-    assert cfg.epochs == 1
-    assert cfg.log_every_steps == 20
-    assert cfg.include_seed_train_rows is False
+    assert cfg.ssl_input_mode == "pseudo_label_replay"
+    assert cfg.pseudo_label_jsonl.endswith("pseudo_label_train.jsonl")
+    assert cfg.include_seed_train_rows is True
+    assert cfg.pseudo_label_export_root == "data/artifacts/lora_pseudo_label"
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == (
-        "canonical_fixed_classifier_seed"
-    )
+    assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
-
-
-def test_train_lora_pseudo_label_classifier_supports_pseudo_label_algorithm_override() -> (  # noqa: E501
-    None
-):
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier",
-            overrides=["strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095"],
-        )
-
-    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
-    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
-    assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_confidence_only")
-
-
-def test_train_lora_bootstrap_classifier_teacher_supports_auto_local_runtime_override(  # noqa: E501
-) -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
-            overrides=["execution_context/runtime_env=auto_local"],
-        )
-
-    assert cfg.runtime.name == "auto_local"
-    assert cfg.runtime.device == "auto"
-    assert cfg.runtime.local_files_only is True
-
-
-def test_train_lora_bootstrap_classifier_teacher_supports_source_and_run_preset_overrides(  # noqa: E501
-) -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
-            overrides=[
-                "execution_context/query_split=bootstrap_teacher_split30_2026_04_14",
-                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
-            ],
-        )
-
-    assert cfg.query_source.name == "bootstrap_teacher_split30_2026_04_14"
-    assert cfg.teacher_train_jsonl.endswith("teacher_seed_train.jsonl")
-    assert cfg.teacher_unlabeled_jsonl.endswith("teacher_unlabeled_pool.jsonl")
-    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
-    assert cfg.epochs == 1
-    assert cfg.log_every_steps == 20
-    assert (
-        cfg.teacher_reuse_manifest_path
-        == "data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json"
-    )
-    assert cfg.student_include_seed_train_rows is False
-    assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
-    assert cfg.query_adaptation_initial_checkpoint.name == (
-        "canonical_fixed_classifier_seed"
-    )
-    assert cfg.initial_adapter_dir == ""
-    assert cfg.initial_classifier_path == ""
-
-
-def test_train_lora_bootstrap_classifier_teacher_supports_pseudo_label_algorithm_override() -> (  # noqa: E501
-    None
-):
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher",
-            overrides=["strategy_axes/ssl/pseudo_label_selection=fixed_confidence_095"],
-        )
-
-    assert cfg.pseudo_label_algorithm.name == "fixed_confidence_095"
-    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.95
-    assert cfg.pseudo_label_algorithm.margin_threshold == 0.0
-    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_confidence_only")
 
 
 def test_threshold_sweep_supports_short_leaf_override() -> None:
@@ -817,10 +740,10 @@ def test_federated_simulation_supports_ssl_method_override() -> None:
     ]
 
 
-def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() -> None:
+def test_train_lora_supervised_classifier_defaults_to_gpu_online_scaffold() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_classifier"
+            config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier"
         )
 
     assert cfg.dataset.name == "ourafla"
@@ -830,47 +753,37 @@ def test_train_lora_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold() 
     assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
     assert cfg.lora.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
+    assert cfg.output_dir == "runs/train_lora_supervised_classifier"
 
 
-def test_train_lora_pseudo_label_classifier_defaults_to_gpu_online_and_fixed_lora_scaffold(  # noqa: E501
-) -> None:
+def test_train_lora_ssl_classifier_defaults_to_fixmatch_precomputed_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_pseudo_label_classifier"
-        )
-
-    assert cfg.dataset.name == "ourafla"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.paper_backbone.name == "mxbai_encoder"
-    assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
-    assert cfg.lora.target_modules == "all-linear"
-    assert cfg.selection_set == "validation"
-    assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
-    assert cfg.pseudo_label_jsonl is None
-
-
-def test_train_lora_query_ssl_defaults_to_fixmatch_precomputed_views() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl"
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier"
         )
 
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.device == "cuda"
     assert cfg.runtime.local_files_only is True
+    assert cfg.ssl_input_mode == "consistency"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
     assert (
-        cfg.query_source.name
-        == "ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
+        "validation_ourafla_reddit_test_ourafla_reddit"
     )
+    assert cfg.query_data_selection.labeled == "ourafla_reddit"
+    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
+    assert cfg.query_data_selection.validation == "ourafla_reddit"
+    assert cfg.query_data_selection.test == "ourafla_reddit"
     assert cfg.train_jsonl.endswith(
-        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "data/datasets/ourafla_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
     assert cfg.unlabeled_jsonl.endswith(
-        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "data/datasets/ourafla_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
@@ -882,16 +795,20 @@ def test_train_lora_query_ssl_defaults_to_fixmatch_precomputed_views() -> None:
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
     assert cfg.initial_classifier_path == ""
-    assert cfg.output_dir == "runs/train_lora_query_ssl"
+    assert cfg.output_dir == (
+        "runs/train_lora_ssl_classifier/consistency/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit"
+    )
 
 
-def test_train_lora_query_ssl_switches_method_by_hydra_name() -> None:
+def test_train_lora_ssl_classifier_switches_method_by_hydra_name() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "strategy_axes/ssl/consistency_method=pseudolabel_usb_v1",
-                "output_dir=runs/train_lora_query_ssl_pseudolabel",
+                "output_dir=runs/train_lora_ssl_classifier_pseudolabel",
             ],
         )
 
@@ -899,74 +816,68 @@ def test_train_lora_query_ssl_switches_method_by_hydra_name() -> None:
     assert cfg.query_ssl_method.algorithm_name == "pseudolabel"
     assert cfg.query_ssl_method.require_multiview is False
     assert (
-        cfg.query_source.name
-        == "ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+        cfg.query_source.name == "labeled_ourafla_reddit_unlabeled_ourafla_reddit_"
+        "validation_ourafla_reddit_test_ourafla_reddit"
     )
-    assert cfg.output_dir == "runs/train_lora_query_ssl_pseudolabel"
+    assert cfg.output_dir == "runs/train_lora_ssl_classifier_pseudolabel"
 
 
-def test_train_lora_query_ssl_supports_canonical_query_ssl_split_source() -> None:
+def test_train_lora_ssl_classifier_supports_general_labeled_reddit_pool() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
-                "execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_v1",
-            ],
-        )
-
-    assert cfg.query_source.name == "ourafla_ssl_labeled1024_per_class_seed42_v1"
-    assert cfg.train_jsonl.endswith(
-        "query_ssl_splits/ourafla_ssl_labeled1024_per_class_seed42_v1/"
-        "labeled_train.jsonl"
-    )
-    assert cfg.unlabeled_jsonl.endswith(
-        "query_ssl_splits/ourafla_ssl_labeled1024_per_class_seed42_v1/"
-        "unlabeled_pool.jsonl"
-    )
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
-    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
-
-
-def test_train_lora_query_ssl_supports_canonical_query_ssl_view_source() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
-            overrides=[
-                "execution_context/query_split=ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1",
-                "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.unlabeled=ourafla_reddit",
+                "query_data_selection.validation=ourafla_reddit",
+                "query_data_selection.test=ourafla_reddit",
             ],
         )
 
     assert (
-        cfg.query_source.name
-        == "ourafla_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+        cfg.query_source.name == "labeled_szegeelim_general4_unlabeled_ourafla_reddit_"
+        "validation_ourafla_reddit_test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
-        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
     )
     assert cfg.unlabeled_jsonl.endswith(
-        "query_ssl_views/ourafla_ssl_labeled1024_per_class_seed42_v1/"
+        "data/datasets/ourafla_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
-    assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
-    assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
-    assert cfg.eval_sets.test == cfg.query_source.test_jsonl
+    assert cfg.eval_sets.validation.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/validation.jsonl"
+    )
+    assert cfg.eval_sets.test.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test.jsonl"
+    )
+    assert cfg.output_dir.endswith(
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit"
+    )
 
 
-def test_train_lora_query_ssl_supports_kaggle_general_labeled_source() -> None:
+def test_train_lora_ssl_classifier_supports_general_pool_with_reddit_eval() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_query_ssl",
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
-                "execution_context/query_split=szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1",
-                "strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1",
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.unlabeled=szegeelim_general4",
+                "query_data_selection.validation=ourafla_reddit",
+                "query_data_selection.test=ourafla_reddit",
             ],
         )
 
     assert (
         cfg.query_source.name
-        == "szegeelim_general4_ssl_labeled1024_per_class_seed42_nllb_views_v1"
+        == "labeled_szegeelim_general4_unlabeled_szegeelim_general4_"
+        "validation_ourafla_reddit_test_ourafla_reddit"
     )
     assert cfg.train_jsonl.endswith(
         "data/datasets/szegeelim_mental_health/views/"
@@ -979,35 +890,39 @@ def test_train_lora_query_ssl_supports_kaggle_general_labeled_source() -> None:
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
     assert cfg.eval_sets.validation.endswith(
-        "data/datasets/szegeelim_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/"
-        "validation.jsonl"
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/validation.jsonl"
     )
     assert cfg.eval_sets.test.endswith(
-        "data/datasets/szegeelim_mental_health/query_ssl/"
-        "labeled1024_per_class_seed42_v1/"
-        "test.jsonl"
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test.jsonl"
+    )
+    assert cfg.output_dir.endswith(
+        "labeled-szegeelim_general4_unlabeled-szegeelim_general4_"
+        "validation-ourafla_reddit_test-ourafla_reddit"
     )
 
 
-def test_train_lora_bootstrap_classifier_teacher_defaults_to_classifier_teacher_then_fixed_lora_student(  # noqa: E501
-) -> None:
+def test_train_lora_ssl_classifier_can_select_validation_and_test_independently() -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_lora_bootstrap_classifier_teacher"
+            config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
+            overrides=[
+                "query_data_selection.validation=szegeelim_general4",
+                "query_data_selection.test=ourafla_reddit",
+            ],
         )
 
-    assert cfg.dataset.name == "ourafla"
-    assert cfg.embedding.backend == "transformers_mxbai"
-    assert cfg.runtime.name == "gpu_online"
-    assert cfg.runtime.device == "cuda"
-    assert cfg.paper_backbone.model_id == "mixedbread-ai/mxbai-embed-large-v1"
-    assert cfg.lora.target_modules == "all-linear"
-    assert cfg.pseudo_label_algorithm.name == "margin_threshold_v1"
-    assert cfg.pseudo_label_algorithm.confidence_threshold == 0.6
-    assert cfg.pseudo_label_algorithm.margin_threshold == 0.02
-    assert cfg.pseudo_label_algorithm.algorithm_name == ("top1_margin_threshold")
-    assert cfg.bootstrap_split.enabled is False
+    assert cfg.eval_sets.validation.endswith(
+        "data/datasets/szegeelim_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/validation.jsonl"
+    )
+    assert cfg.eval_sets.test.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/test.jsonl"
+    )
 
 
 def test_dataset_pipeline_defaults_to_ourafla_and_gpu_online() -> None:

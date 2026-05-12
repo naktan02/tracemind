@@ -27,6 +27,7 @@ conf/
 ├── execution_context/
 │   ├── dataset_asset/
 │   ├── embedding_adapter/
+│   ├── query_data_source/
 │   ├── query_split/
 │   ├── query_view/
 │   └── runtime_env/
@@ -60,6 +61,12 @@ conf/
 - execution context는 방법론 비교가 아니라 실행 재료다.
 - strategy axis는 실제로 교체 가능한 계산/정책 축이다.
 - track preset은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 옵션 묶음이다.
+
+`execution_context/query_data_source`는 query-domain 데이터 주소록과 선택값을
+소유한다. `query_data_sources`에 source별 labeled/unlabeled/validation/test JSONL을
+등록하고, 실행 시 `query_data_selection.labeled`, `unlabeled`, `validation`,
+`test`만 override한다. 이 context는 기존 runner가 읽는 `train_jsonl`,
+`unlabeled_jsonl`, `eval_sets.*`로 선택값을 변환한다.
 
 ## FL SSL config contract
 
@@ -136,8 +143,14 @@ labeled/unlabeled split은 `materialize_query_ssl_split.py --output-root`로
 ## Query Split And View Context
 
 `execution_context/query_split`은 `train_jsonl`, `unlabeled_jsonl`, `validation_jsonl`,
-`test_jsonl`로 구성된 query-domain split artifact를 소유한다. 중앙 SSL뿐 아니라
-FL simulation도 같은 artifact를 참조할 수 있으므로 track preset 아래에 두지 않는다.
+`test_jsonl`로 구성된 단일 query-domain split artifact를 소유한다. 한 source 안의
+고정 split artifact를 참조할 때 쓰며, 여러 source의 labeled/unlabeled/eval을
+교차 조합하는 실행 선택 축은 아니다.
+
+중앙 Query SSL처럼 labeled, unlabeled, validation, test source를 독립적으로 바꾸는
+실험은 `execution_context/query_data_source`의 `query_data_sources` 주소록과
+`query_data_selection.*` override를 사용한다.
+이렇게 해야 source 조합마다 `query_split` YAML을 새로 만들지 않는다.
 
 `execution_context/query_view`는 미리 저장할 weak/strong text view artifact의 생성
 파라미터를 소유한다. NLLB 역번역은 method가 아니라 데이터 view를 만드는 실행 재료다.

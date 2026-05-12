@@ -105,33 +105,27 @@ uv run python scripts/experiments/central_classifier_seed/train_softmax_classifi
 중앙 LoRA supervised control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
-```
-
-중앙 LoRA pseudo-label control:
-
-```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py
 ```
 
 중앙 LoRA USB PseudoLabel control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_lora_query_ssl_pseudolabel
+  output_dir=runs/train_lora_ssl_classifier_pseudolabel
 ```
 
 중앙 LoRA FixMatch control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
 ```
 
 중앙 LoRA FreeMatch control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=freematch_usb_v1
 ```
 

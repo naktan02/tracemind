@@ -1,7 +1,7 @@
 # Query SSL New Method Guide
 
 이 문서는 중앙 Query SSL control에 새 SSL objective를 추가할 때의 최소 경계를
-고정한다. 대상은 `scripts/experiments/central_ssl_control/train_lora_query_ssl.py`
+고정한다. 대상은 `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
 공통 entrypoint가 실행할 수 있는 `methods/ssl` algorithm이다.
 
 중앙 SSL은 pooled/offline control이다. live agent training runtime이나

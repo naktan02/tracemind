@@ -47,15 +47,14 @@ Seed / central SSL:
 1. relevant `conf/**`
 2. `docs/contracts/query_buffer_v1.md`
 3. `docs/contracts/central_lora_classifier_trainer_contract.md`
-4. `scripts/experiments/central_ssl_control/train_lora_classifier.py`
-5. `scripts/experiments/central_ssl_control/train_lora_pseudo_label_classifier.py`
-6. `scripts/experiments/central_ssl_control/train_lora_query_ssl.py`
-7. `scripts/experiments/query_lora_ssl/*`
-8. `methods/adaptation/lora_classifier/*`
-9. `methods/adaptation/query_classifier_adaptation/*`
-10. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-11. `methods/ssl/*`
-12. `methods/adaptation/*`
+4. `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
+5. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
+6. `scripts/experiments/query_lora_ssl/*`
+7. `methods/adaptation/lora_classifier/*`
+8. `methods/adaptation/query_classifier_adaptation/*`
+9. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+10. `methods/ssl/*`
+11. `methods/adaptation/*`
 
 Agent runtime:
 

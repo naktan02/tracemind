@@ -21,7 +21,7 @@ def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
         from transformers import AutoModel, AutoTokenizer
     except ImportError as exc:  # pragma: no cover - optional dependency gate
         raise RuntimeError(
-            "train_lora_classifier requires the experiments extra with "
+            "LoRA classifier experiments require the experiments extra with "
             "transformers and peft installed. Example: uv sync --extra experiments"
         ) from exc
     return AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel

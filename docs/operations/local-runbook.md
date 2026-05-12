@@ -167,27 +167,21 @@ uv run python scripts/experiments/central_classifier_seed/train_softmax_classifi
 LoRA supervised baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py
-```
-
-Pseudo-label bootstrap:
-
-```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_bootstrap_classifier_teacher.py
+uv run python scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py
 ```
 
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py \
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_lora_query_ssl_pseudolabel
+  output_dir=runs/train_lora_ssl_classifier_pseudolabel
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_query_ssl.py
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
 ```
 
 FL simulation:
@@ -210,7 +204,7 @@ GPU/mxbai 실행 결과만 사용한다.
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_classifier.py --cfg job
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py --cfg job
 ```
 
 ## 7. Runtime Profiles

@@ -35,6 +35,9 @@ hf_cache/
 *.onnx
 
 data/private/
+data/datasets/
+data/artifacts/
+data/cache/
 data/raw/
 data/interim/
 data/processed/

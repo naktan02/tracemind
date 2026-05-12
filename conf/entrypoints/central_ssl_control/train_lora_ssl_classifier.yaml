@@ -2,23 +2,24 @@
 
 defaults:
   - /execution_context/dataset_asset: ourafla
-  - /execution_context/runtime_env: gpu_online
+  - /execution_context/runtime_env: gpu_local
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
   - /track_presets/central_ssl_control/training_preset: default
-  - /execution_context/query_split: dataset_default
-  - /strategy_axes/ssl/pseudo_label_selection: margin_threshold_v1
-  - /strategy_axes/adaptation/initial_checkpoint: canonical_fixed_classifier_seed
+  - /execution_context/query_data_source: default
+  - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
+  - /strategy_axes/ssl/augmentation: precomputed_usb_candidates_v1
+  - /strategy_axes/adaptation/initial_checkpoint: none
   - /track_presets/central_ssl_control/lora_classifier_defaults: default
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
 
-train_jsonl: ${query_source.train_jsonl}
+ssl_input_mode: consistency
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/artifacts/lora_pseudo_label
 include_seed_train_rows: false
-output_dir: runs/train_lora_pseudo_label_classifier
+output_dir: runs/train_lora_ssl_classifier/${ssl_input_mode}/${query_data_selection_slug}
 
 hydra:
   run:

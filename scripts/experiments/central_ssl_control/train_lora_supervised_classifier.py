@@ -13,7 +13,7 @@ from scripts.experiments.query_lora_ssl.runners.supervised import (
 @hydra.main(
     version_base=None,
     config_path="../../../conf",
-    config_name="entrypoints/central_ssl_control/train_lora_classifier",
+    config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
 )
 def main(cfg: DictConfig) -> None:
     run_supervised_lora_baseline(cfg)

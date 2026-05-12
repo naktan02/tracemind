@@ -77,6 +77,9 @@ def build_query_lora_run_artifact_paths(
 
 
 def _resolve_query_ssl_run_group(cfg: Any) -> str | None:
+    ssl_input_mode = str(getattr(cfg, "ssl_input_mode", "") or "").strip()
+    if ssl_input_mode and ssl_input_mode != "consistency":
+        return None
     query_ssl_method = getattr(cfg, "query_ssl_method", None)
     if query_ssl_method is None:
         return None

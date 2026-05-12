@@ -31,7 +31,8 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Dataset asset | `ourafla`, `cssrs`, `mental_health_kaggle` | `execution_context/dataset_asset` | entrypoint defaults | 활성 |
 | Embedding adapter | `mxbai`, `hash_debug` | `execution_context/embedding_adapter` | entrypoint defaults | 활성 |
-| Query split | `dataset_default`, `ourafla_ssl_*`, `szegeelim_general4_*` | `execution_context/query_split` | entrypoint defaults | 활성 |
+| Query split artifact | `dataset_default`, `ourafla_ssl_*`, `szegeelim_general4_*` | `execution_context/query_split` | entrypoint defaults | 활성 |
+| Query data source selection | `ourafla_reddit`, `szegeelim_general4` for labeled/unlabeled/validation/test | `execution_context/query_data_source` + `query_data_selection.*` | all `ourafla_reddit` | 활성 |
 | Query text view | `szegeelim_general4_*_nllb_v1` | `execution_context/query_view` | data pipeline entrypoint defaults | 활성 |
 | Runtime env | `cpu_local`, `gpu_local`, `gpu_online`, `auto_local`, `auto_online` | `execution_context/runtime_env` | entrypoint defaults | 활성 |
 | Transformer backbone | `mxbai_encoder` | `strategy_axes/adaptation/transformer_backbone` | central SSL defaults | 중앙 control |
