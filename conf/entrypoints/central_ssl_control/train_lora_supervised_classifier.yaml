@@ -5,10 +5,10 @@ defaults:
   - /execution_context/runtime_env: gpu_online
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
-  - /track_presets/central_ssl_control/training_preset: default
+  - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
   - /strategy_axes/adaptation/initial_checkpoint: none
-  - /track_presets/central_ssl_control/lora_classifier_defaults: default
+  - /run_controls/central_ssl/runner_defaults: default
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_

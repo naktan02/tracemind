@@ -202,13 +202,15 @@ def test_train_lora_supervised_classifier_supports_auto_local_runtime_override()
     assert cfg.runtime.local_files_only is True
 
 
-def test_train_lora_supervised_classifier_supports_source_preset_overrides() -> None:
+def test_train_lora_supervised_classifier_supports_source_and_budget_overrides() -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
             overrides=[
                 "query_data_selection.labeled=szegeelim_general4",
-                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
+                "run_controls/central_ssl/budget=smoke",
             ],
         )
 
@@ -220,12 +222,15 @@ def test_train_lora_supervised_classifier_supports_source_preset_overrides() -> 
     )
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
-    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
     assert cfg.max_train_steps == 100
-    assert cfg.log_every_steps == 20
+    assert cfg.learning_rate == 0.0002
+    assert cfg.classifier_learning_rate == 0.0002
+    assert cfg.weight_decay == 0.01
+    assert cfg.log_every_steps == 100
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""
@@ -244,14 +249,15 @@ def test_train_lora_ssl_classifier_supports_auto_local_runtime_override() -> Non
     assert cfg.runtime.local_files_only is True
 
 
-def test_train_lora_ssl_classifier_supports_source_and_run_preset_overrides() -> None:
+def test_train_lora_ssl_classifier_supports_source_budget_and_leaf_overrides() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
             overrides=[
                 "query_data_selection.labeled=szegeelim_general4",
                 "query_data_selection.unlabeled=ourafla_reddit",
-                "track_presets/central_ssl_control/training_preset=smoke_verbose_e1",
+                "run_controls/central_ssl/budget=smoke",
+                "log_every_steps=20",
             ],
         )
 
@@ -269,11 +275,14 @@ def test_train_lora_ssl_classifier_supports_source_and_run_preset_overrides() ->
     )
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
-    assert cfg.lora_run_preset.name == "smoke_verbose_e1"
+    assert cfg.central_ssl_budget.name == "smoke"
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
     assert cfg.max_train_steps == 100
+    assert cfg.learning_rate == 0.0002
+    assert cfg.classifier_learning_rate == 0.0002
+    assert cfg.weight_decay == 0.01
     assert cfg.log_every_steps == 20
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
@@ -442,7 +451,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
-    assert cfg.federated_run_preset.name == "smoke"
+    assert cfg.federated_run_budget.name == "smoke"
     assert cfg.local_update_profile.algorithm_profile_name == (
         "prototype_pseudo_label_v1"
     )
@@ -461,9 +470,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     )
     assert cfg.validation.confidence_threshold == 0.6
     assert cfg.validation.margin_threshold == 0.02
-    assert cfg.federated_run_preset.output_dir == "runs/federated_simulation_smoke"
-    assert cfg.federated_run_preset.client_count == 4
-    assert cfg.federated_run_preset.rounds == 3
+    assert cfg.federated_run_budget.output_dir == "runs/federated_simulation_smoke"
+    assert cfg.federated_run_budget.client_count == 4
+    assert cfg.federated_run_budget.rounds == 3
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.local_files_only is True
     assert cfg.seed_sweep.output_dir == "runs/federated_simulation_seed_sweep"
@@ -667,31 +676,31 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "track_presets/fl_ssl/simulation_preset=standard",
-                "federated_run_preset.rounds=3",
-                "federated_run_preset.client_count=8",
+                "run_controls/fl_ssl/budget=main",
+                "federated_run_budget.rounds=3",
+                "federated_run_budget.client_count=8",
                 "strategy_axes/prototype/build_strategy=kmeans",
                 "prototype_builder.candidate_ks=[2]",
             ],
         )
 
-    assert cfg.federated_run_preset.name == "standard"
-    assert cfg.federated_run_preset.rounds == 3
-    assert cfg.federated_run_preset.client_count == 8
-    assert cfg.federated_run_preset.output_dir == "runs/federated_simulation"
+    assert cfg.federated_run_budget.name == "main"
+    assert cfg.federated_run_budget.rounds == 3
+    assert cfg.federated_run_budget.client_count == 8
+    assert cfg.federated_run_budget.output_dir == "runs/federated_simulation"
     assert cfg.prototype_builder.name == "kmeans"
     assert list(cfg.prototype_builder.candidate_ks) == [2]
 
 
-def test_federated_simulation_standard_preset_fixes_main_comparison_budget() -> None:
+def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=["track_presets/fl_ssl/simulation_preset=standard"],
+            overrides=["run_controls/fl_ssl/budget=main"],
         )
 
-    assert cfg.federated_run_preset.client_count == 10
-    assert cfg.federated_run_preset.rounds == 50
+    assert cfg.federated_run_budget.client_count == 10
+    assert cfg.federated_run_budget.rounds == 50
     assert cfg.training_task.local_epochs == 1
     assert cfg.training_task.max_steps == 50
 

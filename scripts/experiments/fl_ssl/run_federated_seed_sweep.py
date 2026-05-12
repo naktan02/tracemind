@@ -133,8 +133,8 @@ def build_seed_sweep_summary_payload(
         "seed_count": int(cfg.report.seed_count),
         "seeds": [run_result.seed for run_result in run_results],
         "protocol": {
-            "client_count": int(cfg.federated_run_preset.client_count),
-            "round_budget": int(cfg.federated_run_preset.rounds),
+            "client_count": int(cfg.federated_run_budget.client_count),
+            "round_budget": int(cfg.federated_run_budget.rounds),
             "ssl_method": str(cfg.ssl_method.name),
             "shard_policy": str(cfg.shard_policy.name),
             "labeled_ratio": float(cfg.client_pool_split.labeled_ratio),

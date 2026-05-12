@@ -1,0 +1,22 @@
+# @package _global_
+
+fixed_categories: ${dataset.prototype_expected_categories}
+initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
+initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}
+eval_sets:
+  validation: ${query_source.validation_jsonl}
+  test: ${query_source.test_jsonl}
+selection_set: validation
+seed: 42
+train_batch_size: ${central_ssl_budget.train_batch_size}
+eval_batch_size: ${central_ssl_budget.eval_batch_size}
+epochs: ${central_ssl_budget.epochs}
+max_train_steps: ${central_ssl_budget.max_train_steps}
+learning_rate: 0.0002
+classifier_learning_rate: 0.0002
+weight_decay: 0.01
+max_grad_norm: 1.0
+log_every_steps: 100
+adapter_output_dir: data/artifacts/lora_adapters
+classifier_output_dir: data/artifacts/lora_classifier_heads
+trainer_version: ""

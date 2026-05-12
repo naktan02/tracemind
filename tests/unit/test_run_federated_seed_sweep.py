@@ -27,7 +27,7 @@ def _cfg(*, seeds: list[int], seed_count: int = 3):
                 "track": "fl_ssl_main_comparison",
                 "seed_count": seed_count,
             },
-            "federated_run_preset": {
+            "federated_run_budget": {
                 "client_count": 10,
                 "rounds": 50,
             },

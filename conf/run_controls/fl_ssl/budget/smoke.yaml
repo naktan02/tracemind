@@ -1,4 +1,4 @@
-# @package federated_run_preset
+# @package federated_run_budget
 
 name: smoke
 output_dir: runs/federated_simulation_smoke

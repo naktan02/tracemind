@@ -6,7 +6,7 @@ defaults:
   - /execution_context/runtime_env: gpu_local
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
-  - /track_presets/fl_ssl/simulation_preset: smoke
+  - /run_controls/fl_ssl/budget: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
   - /strategy_axes/fl/local_update_profile: prototype_pseudo_label_v1
@@ -73,7 +73,7 @@ training_task:
   batch_size: 16
   learning_rate: 0.0001
   max_steps: 50
-  min_required_examples: ${federated_run_preset.min_required_examples}
+  min_required_examples: ${federated_run_budget.min_required_examples}
   gradient_clip_norm: 0.5
   objective:
     algorithm_profile_name: ${local_update_profile.algorithm_profile_name}
@@ -108,7 +108,7 @@ training_task:
     "lora_classifier.text_metadata_keys": strong_text,training_text,raw_text,text,weak_text
     "lora_classifier.label_schema": anxiety,depression,normal,suicidal
   selection_policy:
-    max_examples: ${federated_run_preset.max_examples}
+    max_examples: ${federated_run_budget.max_examples}
 
 validation:
   similarity_name: cosine

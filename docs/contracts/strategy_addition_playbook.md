@@ -252,7 +252,7 @@
 - local training runtime fallback:
   - [methods/federated_ssl/runtime_fallbacks.py](../../methods/federated_ssl/runtime_fallbacks.py)
 - 실험 실행 기본 조합:
-  - `conf/strategy_axes/fl/` 또는 `conf/track_presets/`
+  - `conf/strategy_axes/fl/` 또는 `conf/run_controls/`
 - server round runtime 기본 aggregation:
   - [main_server/src/services/federation/rounds/runtime/config.py](../../main_server/src/services/federation/rounds/runtime/config.py)
 - experiment preset:

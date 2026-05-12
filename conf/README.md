@@ -13,7 +13,7 @@
 - `entrypoints/`: `@hydra.main(config_name=...)`이 읽는 실행 시작점별 root config.
 - `execution_context/`: 여러 실험이 공유하는 데이터 자산, embedding adapter, runtime 환경.
 - `strategy_axes/`: 중앙 SSL과 FL SSL이 공유하거나 각 track에서 교체하는 전략 축.
-- `track_presets/`: 논문 비교 track 안에서만 의미가 생기는 preset.
+- `run_controls/`: 논문 비교 track의 실행 budget과 runner bridge.
 
 ```text
 conf/
@@ -47,12 +47,12 @@ conf/
 │       ├── augmentation/
 │       ├── consistency_method/
 │       └── pseudo_label_selection/
-└── track_presets/
-    ├── central_ssl_control/
-    │   ├── lora_classifier_defaults/
-    │   └── training_preset/
+└── run_controls/
+    ├── central_ssl/
+    │   ├── budget/
+    │   └── runner_defaults/
     └── fl_ssl/
-        └── simulation_preset/
+        └── budget/
 ```
 
 ## 이름 기준
@@ -60,7 +60,7 @@ conf/
 - entrypoint config는 실행 스크립트의 시작점이다.
 - execution context는 방법론 비교가 아니라 실행 재료다.
 - strategy axis는 실제로 교체 가능한 계산/정책 축이다.
-- track preset은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 옵션 묶음이다.
+- run control은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 실행 조건 묶음이다.
 
 `execution_context/query_data_source`는 query-domain 데이터 주소록과 선택값을
 소유한다. `query_data_sources`에 source별 labeled/unlabeled/validation/test JSONL을
@@ -93,9 +93,16 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.
-- `track_presets/fl_ssl/simulation_preset`
-  - client 수, round budget, output dir 같은 track 실행 budget을 소유한다.
+- `run_controls/fl_ssl/budget`
+  - client 수, round budget, output dir 같은 FL SSL 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
+- `run_controls/central_ssl/budget`
+  - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
+- `run_controls/central_ssl/runner_defaults`
+  - 기존 중앙 SSL runner가 읽는 root field로 budget/context와 기본 optimizer/log
+    값을 연결하는 bridge다. 데이터셋이나 method 의미를 소유하지 않는다.
+  - optimizer/log 값은 독립 ablation 축이 되기 전까지 별도 group으로 만들지 않고
+    `learning_rate=...`, `log_every_steps=...` 같은 leaf override로 조절한다.
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
@@ -112,7 +119,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 
 - 새 실행 시작점은 `entrypoints/<track_or_stage>/` 아래에 둔다.
 - 새 reusable group은 위치만 보고도 역할이 드러나야 한다.
-- preset이 1개뿐이고 해당 entrypoint 전용이면 group으로 만들지 않는다.
+- 실행 조건 묶음이 1개뿐이고 해당 entrypoint 전용이면 group으로 만들지 않는다.
 - YAML은 실행 조합표와 파라미터를 담고, Python 구현이나 복잡한 계산 로직은 두지 않는다.
 - namespace 이동은 Hydra config test와 active docs 갱신을 같이 닫는다.
 

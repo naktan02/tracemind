@@ -118,9 +118,9 @@ def build_simulation_request_from_config(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
         validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
         output_dir=output_dir,
-        client_count=int(cfg.federated_run_preset.client_count),
-        rounds=int(cfg.federated_run_preset.rounds),
-        bootstrap_ratio=float(cfg.federated_run_preset.bootstrap_ratio),
+        client_count=int(cfg.federated_run_budget.client_count),
+        rounds=int(cfg.federated_run_budget.rounds),
+        bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
         seed=int(cfg.seed if seed is None else seed),
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
@@ -196,7 +196,7 @@ def main(cfg: DictConfig) -> None:
     created_at = datetime.now(timezone.utc)
     run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
     output_dir = build_run_dir(
-        cfg.federated_run_preset.output_dir,
+        cfg.federated_run_budget.output_dir,
         run_id=run_id,
         created_at=created_at,
     )

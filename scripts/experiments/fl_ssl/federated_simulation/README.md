@@ -86,7 +86,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     선택한다.
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
 - `shard_policy`
-- `federated_run_preset`
+- `federated_run_budget`
 - `seed_sweep.seeds`
 - `seed_sweep.output_dir`
 - `client_pool_split.labeled_ratio`
@@ -114,7 +114,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 
 ```bash
 python -m scripts.experiments.fl_ssl.run_federated_simulation \
-  track_presets/fl_ssl/simulation_preset=standard \
+  run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label \
   strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1 \
@@ -125,7 +125,7 @@ Seed sweep:
 
 ```bash
 python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
-  track_presets/fl_ssl/simulation_preset=standard \
+  run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
@@ -133,10 +133,10 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
   기본값은 `round_runtime_profile`에서 파생된다.
-- FL SSL main split은 `track_presets/fl_ssl/simulation_preset=standard`와
+- FL SSL main split은 `run_controls/fl_ssl/budget=main`과
   `strategy_axes/fl/shard_policy=dirichlet_alpha03`를 기본 조합으로 본다.
   stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
-- `track_presets/fl_ssl/simulation_preset=standard`는 `10 clients`, `50 rounds`를 main budget으로
+- `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 main budget으로
   쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
 - `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
 - method spec source of truth는 `methods/federated_ssl/`이다.

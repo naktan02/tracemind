@@ -43,7 +43,7 @@
 4. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
 5. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server/` adapter를 추가한다.
 6. 실험 실행은 `scripts/experiments/` entrypoint나 기존 runner에 얇게 연결한다.
-7. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, track preset은 `conf/track_presets/`에 둔다.
+7. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, 실행 조건 묶음은 `conf/run_controls/`에 둔다.
 8. core unit test와 경계 integration test를 추가한다.
 9. architecture guard가 금지 import를 잡는지 확인한다.
 
@@ -62,7 +62,7 @@
 - `threshold=0.95`, `rank=8`, `alpha=0.3`, `rounds=50` 같은 값은 YAML 값이다.
 - 논문/방법 단위로 독립 테스트와 README가 필요하면 폴더로 둔다.
 - 사람이 직접 실행하는 조합은 `conf/entrypoints/`.
-- 비교 track의 반복 preset은 `conf/track_presets/`.
+- 비교 track의 반복 실행 조건은 `conf/run_controls/`.
 - 교체 가능한 leaf 전략은 `conf/strategy_axes/`.
 
 ## 금지 패턴

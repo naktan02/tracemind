@@ -32,7 +32,7 @@ runtime/service adapter는 `agent/`와 `main_server/`가 소유한다.
 - `conf/strategy_axes/adaptation/`: PEFT adapter, transformer backbone, initial checkpoint.
 - `conf/strategy_axes/fl/`: shard policy, method descriptor, client training profile.
 - `conf/strategy_axes/prototype/`: prototype build strategy.
-- `conf/track_presets/`: central SSL control과 FL SSL track별 preset.
+- `conf/run_controls/`: central SSL control과 FL SSL track별 실행 budget.
 
 기본 실행 방식:
 
@@ -128,14 +128,14 @@ FL SSL simulation smoke:
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
-  track_presets/fl_ssl/simulation_preset=smoke
+  run_controls/fl_ssl/budget=smoke
 ```
 
 FL SSL seed sweep:
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
-  track_presets/fl_ssl/simulation_preset=standard \
+  run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 

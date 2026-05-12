@@ -1,6 +1,6 @@
-# @package federated_run_preset
+# @package federated_run_budget
 
-name: standard
+name: main
 output_dir: runs/federated_simulation
 client_count: 10
 rounds: 50
