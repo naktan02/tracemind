@@ -220,6 +220,10 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         == "backtranslation_nllb_en_de_fr_usb_v1"
     )
     assert (
+        captured["extra_manifest"]["query_ssl_strong_view_policy"]["policy"]
+        == "first_aug"
+    )
+    assert (
         captured["extra_manifest"]["query_ssl_augmenter_preparation"]["mode"]
         == "precomputed_usb_candidates"
     )

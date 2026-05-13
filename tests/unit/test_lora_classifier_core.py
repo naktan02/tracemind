@@ -173,6 +173,71 @@ def test_query_ssl_training_stops_at_max_train_steps() -> None:
     assert len(history) == 3
 
 
+def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
+    tmp_path,
+) -> None:
+    torch.manual_seed(7)
+    checkpoint_dir = tmp_path / "checkpoints"
+    model = LoraTextClassifier(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    first_algorithm = _CountingQuerySslAlgorithm()
+
+    _, first_history, _ = train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=2,
+        max_train_steps=2,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=first_algorithm,
+        resume_checkpoint_output_dir=checkpoint_dir,
+        resume_checkpoint_every_epochs=1,
+    )
+    checkpoint_path = checkpoint_dir / "latest_training_checkpoint.pt"
+
+    resumed_model = LoraTextClassifier(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    resumed_algorithm = _CountingQuerySslAlgorithm()
+    _, resumed_history, _ = train_query_ssl_classifier(
+        model=resumed_model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=3,
+        max_train_steps=3,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=resumed_algorithm,
+        resume_checkpoint_path=checkpoint_path,
+    )
+
+    assert checkpoint_path.exists()
+    assert first_algorithm.steps == 2
+    assert len(first_history) == 2
+    assert resumed_algorithm.steps == 1
+    assert len(resumed_history) == 3
+
+
 def test_query_classifier_adaptation_paths_remain_compatibility_shims() -> None:
     assert legacy_modeling.LoraTextClassifier is LoraTextClassifier
     assert legacy_training.train_classifier is train_classifier

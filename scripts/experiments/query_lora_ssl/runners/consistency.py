@@ -130,6 +130,15 @@ def run_consistency_query_ssl_lora_baseline(
             max_grad_norm=float(cfg.max_grad_norm),
             log_every_steps=int(cfg.log_every_steps),
             algorithm=algorithm,
+            resume_checkpoint_path=getattr(cfg, "resume_checkpoint_path", None),
+            resume_checkpoint_output_dir=getattr(
+                cfg,
+                "resume_checkpoint_output_dir",
+                None,
+            ),
+            resume_checkpoint_every_epochs=int(
+                getattr(cfg, "resume_checkpoint_every_epochs", 0)
+            ),
         ),
         training_example_count=_estimate_query_ssl_training_example_count(
             cfg=cfg,
@@ -154,6 +163,7 @@ def run_consistency_query_ssl_lora_baseline(
         else str(cfg.unlabeled_jsonl),
         "unlabeled_row_count": len(context.effective_unlabeled_rows),
         "query_ssl_method": build_query_ssl_method_manifest(cfg),
+        "query_ssl_resume": _build_query_ssl_resume_manifest(cfg),
         "runtime_metrics": runtime_metrics,
     }
     effective_extra_manifest.update(context.initial_checkpoint_manifest)
@@ -163,6 +173,9 @@ def run_consistency_query_ssl_lora_baseline(
     ):
         effective_extra_manifest["query_ssl_augmenter"] = (
             build_query_ssl_augmenter_manifest(cfg)
+        )
+        effective_extra_manifest["query_ssl_strong_view_policy"] = (
+            _build_query_ssl_strong_view_policy_manifest(cfg)
         )
     effective_extra_manifest.update(prepared_unlabeled_rows.build_run_manifest())
     if extra_manifest is not None:
@@ -319,6 +332,7 @@ def _build_unlabeled_loader(
             max_length=int(cfg.paper_backbone.max_length),
             task_prefix=str(cfg.paper_backbone.task_prefix),
             shuffle=True,
+            strong_view_policy=_resolve_strong_view_policy(cfg),
         )
     if descriptor.required_views.view_builder_name == "usb_weak":
         return build_query_lora_weak_dataloader(
@@ -333,6 +347,34 @@ def _build_unlabeled_loader(
         "Unsupported Query SSL view builder: "
         f"{descriptor.required_views.view_builder_name}."
     )
+
+
+def _resolve_strong_view_policy(cfg: Any) -> str:
+    raw_policy = getattr(cfg, "query_ssl_strong_view_policy", None)
+    if raw_policy is None:
+        return "first_aug"
+    return str(getattr(raw_policy, "policy", raw_policy))
+
+
+def _build_query_ssl_strong_view_policy_manifest(cfg: Any) -> dict[str, object]:
+    return {"policy": _resolve_strong_view_policy(cfg)}
+
+
+def _build_query_ssl_resume_manifest(cfg: Any) -> dict[str, object]:
+    resume_checkpoint_path = getattr(cfg, "resume_checkpoint_path", None)
+    resume_checkpoint_output_dir = getattr(cfg, "resume_checkpoint_output_dir", None)
+    return {
+        "resume_checkpoint_path": None
+        if resume_checkpoint_path is None or not str(resume_checkpoint_path).strip()
+        else str(resume_checkpoint_path),
+        "checkpoint_output_dir": None
+        if resume_checkpoint_output_dir is None
+        or not str(resume_checkpoint_output_dir).strip()
+        else str(resume_checkpoint_output_dir),
+        "checkpoint_every_epochs": int(
+            getattr(cfg, "resume_checkpoint_every_epochs", 0)
+        ),
+    }
 
 
 def _build_trainer_version_prefix(descriptor: QuerySslAlgorithmDescriptor) -> str:

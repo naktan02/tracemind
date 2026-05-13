@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
 
@@ -32,6 +32,10 @@ def run_selection_tracked_training_loop(
     evaluate_selection: Callable[[], dict[str, Any]],
     best_checkpoint_error_message: str,
     log_epoch_summary: Callable[[str], None] | None = None,
+    initial_history: Sequence[Mapping[str, Any]] | None = None,
+    initial_best_checkpoint_state: dict[str, Any] | None = None,
+    after_epoch: Callable[[int, list[dict[str, Any]], dict[str, Any]], None]
+    | None = None,
 ) -> tuple[list[dict[str, Any]], dict[str, Any]]:
     """epoch 학습 결과를 selection 평가, history, best checkpoint로 닫는다.
 
@@ -40,14 +44,20 @@ def run_selection_tracked_training_loop(
     selection-set 기반 검증/기록/복원 흐름만 담당한다.
     """
 
-    history: list[dict[str, Any]] = []
-    best_checkpoint = BestModelCheckpoint()
+    history: list[dict[str, Any]] = (
+        [] if initial_history is None else [dict(record) for record in initial_history]
+    )
+    best_checkpoint = BestModelCheckpoint(
+        initial_state=initial_best_checkpoint_state,
+    )
 
+    initial_epoch_count = len(history)
     for epoch in range(1, epochs + 1):
-        train_result = train_epoch(epoch)
+        epoch_number = initial_epoch_count + epoch
+        train_result = train_epoch(epoch_number)
         selection_report = evaluate_selection()
         epoch_record = build_selection_epoch_record(
-            epoch=epoch,
+            epoch=epoch_number,
             train_loss_total=train_result.train_loss_total,
             train_loss_denominator=train_result.train_loss_denominator,
             selection_report=selection_report,
@@ -56,9 +66,11 @@ def run_selection_tracked_training_loop(
         history.append(epoch_record)
         if log_epoch_summary is not None:
             log_epoch_summary(
-                f"[epoch={epoch}] {format_selection_epoch_summary(epoch_record)}"
+                f"[epoch={epoch_number}] {format_selection_epoch_summary(epoch_record)}"
             )
         best_checkpoint.update(model=model, selection_report=selection_report)
+        if after_epoch is not None:
+            after_epoch(epoch_number, history, best_checkpoint.state_dict())
 
     best_selection_report = best_checkpoint.restore_best(
         model=model,

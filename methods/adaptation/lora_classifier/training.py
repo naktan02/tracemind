@@ -5,6 +5,7 @@ from __future__ import annotations
 import random
 from collections.abc import Iterator, Mapping
 from math import ceil
+from pathlib import Path
 from typing import Any
 
 import torch
@@ -13,6 +14,10 @@ from torch.utils.data import DataLoader
 
 from methods.adaptation.common.classification_evaluation import (
     build_classification_evaluation_report,
+)
+from methods.adaptation.common.query_ssl_training_resume import (
+    load_query_ssl_training_checkpoint,
+    save_query_ssl_training_checkpoint,
 )
 from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
@@ -315,6 +320,9 @@ def train_query_ssl_classifier(
     max_grad_norm: float,
     log_every_steps: int,
     algorithm: QuerySslAlgorithm,
+    resume_checkpoint_path: str | Path | None = None,
+    resume_checkpoint_output_dir: str | Path | None = None,
+    resume_checkpoint_every_epochs: int = 0,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
@@ -359,7 +367,31 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
 
-    completed_steps = 0
+    resume_state = load_query_ssl_training_checkpoint(
+        path=resume_checkpoint_path,
+        model=model,
+        optimizer=optimizer,
+        algorithm=algorithm,
+        categories=categories,
+        device=device,
+    )
+    completed_steps = resume_state.completed_steps
+    initial_history = resume_state.history
+    initial_best_checkpoint_state = resume_state.best_checkpoint_state
+    remaining_steps = max(0, total_train_steps - completed_steps)
+    effective_epochs = min(
+        max(1, int(epochs)),
+        max(1, ceil(remaining_steps / steps_per_epoch_budget)),
+    )
+    checkpoint_every_epochs = int(resume_checkpoint_every_epochs)
+    if checkpoint_every_epochs < 0:
+        raise ValueError("resume_checkpoint_every_epochs must not be negative.")
+    checkpoint_output_dir = (
+        None
+        if resume_checkpoint_output_dir is None
+        or not str(resume_checkpoint_output_dir).strip()
+        else Path(resume_checkpoint_output_dir)
+    )
 
     def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
         nonlocal completed_steps
@@ -457,6 +489,27 @@ def train_query_ssl_classifier(
             device=device,
         )
 
+    def save_resume_checkpoint_after_epoch(
+        epoch: int,
+        history: list[dict[str, Any]],
+        best_checkpoint_state: dict[str, Any],
+    ) -> None:
+        if checkpoint_output_dir is None or checkpoint_every_epochs <= 0:
+            return
+        if epoch % checkpoint_every_epochs != 0 and completed_steps < total_train_steps:
+            return
+        save_query_ssl_training_checkpoint(
+            checkpoint_output_dir=checkpoint_output_dir,
+            algorithm=algorithm,
+            model=model,
+            optimizer=optimizer,
+            completed_steps=completed_steps,
+            total_train_steps=total_train_steps,
+            history=history,
+            best_checkpoint_state=best_checkpoint_state,
+            categories=categories,
+        )
+
     history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
         epochs=effective_epochs,
@@ -466,5 +519,8 @@ def train_query_ssl_classifier(
             f"{algorithm.algorithm_name} training did not produce a best checkpoint."
         ),
         log_epoch_summary=lambda message: print(message, flush=True),
+        initial_history=initial_history,
+        initial_best_checkpoint_state=initial_best_checkpoint_state,
+        after_epoch=save_resume_checkpoint_after_epoch,
     )
     return model, history, best_selection_report
