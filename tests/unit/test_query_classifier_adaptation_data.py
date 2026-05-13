@@ -38,6 +38,37 @@ def test_text_multiview_dataset_uses_first_usb_aug_candidate() -> None:
     assert item["strong_text"] == "label: I feel nervous today."
 
 
+def test_text_multiview_dataset_can_use_second_usb_aug_candidate() -> None:
+    row = _row("q1", "I feel anxious today.")
+    row["aug_0"] = "I feel nervous today."
+    row["aug_1"] = "Today I feel uneasy."
+
+    dataset = TextMultiviewDataset(
+        rows=[row],
+        task_prefix="",
+        strong_view_policy="second_aug",
+    )
+    item = dataset[0]
+
+    assert item["strong_text"] == "Today I feel uneasy."
+
+
+def test_text_multiview_dataset_can_alternate_usb_aug_candidate_by_row() -> None:
+    rows = [_row("q1", "first"), _row("q2", "second")]
+    for row in rows:
+        row["aug_0"] = f"de::{row['text']}"
+        row["aug_1"] = f"fr::{row['text']}"
+
+    dataset = TextMultiviewDataset(
+        rows=rows,
+        task_prefix="",
+        strong_view_policy="row_parity_aug",
+    )
+
+    assert dataset[0]["strong_text"] == "de::first"
+    assert dataset[1]["strong_text"] == "fr::second"
+
+
 def test_text_multiview_dataset_keeps_legacy_weak_strong_compatibility() -> None:
     row = _row("q2", "I feel low.")
     row["weak_text"] = "weak::I feel low."

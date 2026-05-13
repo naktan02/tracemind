@@ -44,7 +44,7 @@ conf/
 │   ├── prototype/
 │   │   └── build_strategy/
 │   └── ssl/
-│       ├── augmentation/
+│       ├── augmentation_source/
 │       ├── consistency_method/
 │       └── pseudo_label_selection/
 └── run_controls/
@@ -173,3 +173,17 @@ labeled/unlabeled split은
 
 Hydra package shape는 기존 runner compatibility를 위해 각각 `cfg.query_source`와
 `cfg.query_view_materialization`을 유지한다.
+
+중앙 SSL 학습에서 materialized view를 소비하는 축은 둘로 나눈다.
+
+- `strategy_axes/ssl/augmentation_source`
+  - `cfg.query_ssl_augmenter`로 compose된다.
+  - 학습 입력 strong candidate를 어디서 확보할지 결정한다.
+  - 기본 `precomputed_usb_candidates_v1`는 이미 JSONL에 저장된
+    `text + aug_0 + aug_1`을 읽고, 학습 중 NLLB 역번역을 다시 수행하지 않는다.
+- `query_ssl_strong_view_policy`
+  - `run_controls/central_ssl/runner_defaults`의 단순 scalar 값이다.
+  - 저장된 후보 중 어떤 strong view를 학습 batch에 노출할지 결정한다.
+  - 기본 `first_aug`는 기존 동작처럼 `aug_0`만 strong view로 사용한다.
+  - 선택지가 복잡한 parameter set이 아니므로 별도 Hydra strategy group으로
+    승격하지 않는다.

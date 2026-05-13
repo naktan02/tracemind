@@ -392,12 +392,16 @@ def test_train_lora_ssl_classifier_uses_precomputed_query_views() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
-            overrides=["strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1"],
+            overrides=[
+                "strategy_axes/ssl/augmentation_source=precomputed_usb_candidates_v1",
+                "query_ssl_strong_view_policy=first_aug",
+            ],
         )
 
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
     assert cfg.query_ssl_augmenter.augmenter_type == "precomputed_usb_candidates"
     assert cfg.query_ssl_augmenter.cache_dir == "data/cache/query_ssl_augmentations"
+    assert cfg.query_ssl_strong_view_policy == "first_aug"
 
 
 def test_train_lora_ssl_classifier_supports_pseudo_label_replay_mode() -> None:
@@ -824,6 +828,7 @@ def test_train_lora_ssl_classifier_defaults_to_fixmatch_precomputed_views() -> N
         "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
     )
     assert cfg.query_ssl_augmenter.name == "precomputed_usb_candidates_v1"
+    assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.train_batch_size == 12
     assert cfg.eval_batch_size == 32
     assert cfg.query_ssl_method.unlabeled_batch_size == 12

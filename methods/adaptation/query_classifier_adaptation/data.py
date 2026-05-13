@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 from typing import Any
 
 import torch
@@ -46,9 +47,11 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         *,
         rows: list[LabeledQueryRow],
         task_prefix: str,
+        strong_view_policy: str = "first_aug",
     ) -> None:
         self._rows = rows
         self._task_prefix = task_prefix
+        self._strong_view_policy = _normalize_strong_view_policy(strong_view_policy)
 
     def __len__(self) -> int:
         return len(self._rows)
@@ -59,7 +62,13 @@ class TextMultiviewDataset(Dataset[dict[str, Any]]):
         aug_1 = row.get("aug_1")
         if aug_0 is not None and aug_1 is not None:
             weak_text = str(row["text"])
-            strong_text = str(aug_0)
+            strong_text = _select_usb_strong_view(
+                aug_0=str(aug_0),
+                aug_1=str(aug_1),
+                row_index=index,
+                query_id=str(row["query_id"]),
+                policy=self._strong_view_policy,
+            )
         else:
             weak_text = row.get("weak_text")
             strong_text = row.get("strong_text")
@@ -206,12 +215,14 @@ def build_multiview_dataloader(
     max_length: int,
     task_prefix: str,
     shuffle: bool,
+    strong_view_policy: str = "first_aug",
 ) -> DataLoader[dict[str, Any]]:
     """weak/strong unlabeled row를 Query SSL 입력 DataLoader로 변환한다."""
 
     dataset = TextMultiviewDataset(
         rows=rows,
         task_prefix=task_prefix,
+        strong_view_policy=strong_view_policy,
     )
 
     def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
@@ -248,3 +259,41 @@ def build_multiview_dataloader(
         shuffle=shuffle,
         collate_fn=collate,
     )
+
+
+def _normalize_strong_view_policy(value: str) -> str:
+    policy = str(value).strip()
+    if not policy:
+        raise ValueError("strong_view_policy must not be empty.")
+    supported = {
+        "first_aug",
+        "second_aug",
+        "row_parity_aug",
+        "query_id_hash_aug",
+    }
+    if policy not in supported:
+        raise ValueError(
+            "Unsupported strong_view_policy. "
+            f"Expected one of {sorted(supported)}, got {policy!r}."
+        )
+    return policy
+
+
+def _select_usb_strong_view(
+    *,
+    aug_0: str,
+    aug_1: str,
+    row_index: int,
+    query_id: str,
+    policy: str,
+) -> str:
+    if policy == "first_aug":
+        return aug_0
+    if policy == "second_aug":
+        return aug_1
+    if policy == "row_parity_aug":
+        return aug_0 if row_index % 2 == 0 else aug_1
+    if policy == "query_id_hash_aug":
+        digest = hashlib.sha256(query_id.encode("utf-8")).digest()
+        return aug_0 if digest[0] % 2 == 0 else aug_1
+    raise ValueError(f"Unsupported strong_view_policy: {policy!r}.")

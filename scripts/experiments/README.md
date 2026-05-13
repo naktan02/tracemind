@@ -56,10 +56,11 @@
   - `ssl_input_mode=consistency`는 `strategy_axes/ssl/consistency_method`를 실행한다.
   - `ssl_input_mode=pseudo_label_replay`는 이미 생성된 pseudo-label JSONL을
     같은 scaffold에서 replay/self-training 입력으로 사용한다.
-  - method/source/augmentation/initial checkpoint source of truth는
+  - method/source/augmentation/strong-view/initial checkpoint source of truth는
     `strategy_axes/ssl/consistency_method`,
     `execution_context/query_data_source`,
-    `strategy_axes/ssl/augmentation`,
+    `strategy_axes/ssl/augmentation_source`,
+    `query_ssl_strong_view_policy`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
 - `query_lora_ssl/`
   - query-domain LoRA scaffold의 helper 모듈
@@ -138,7 +139,8 @@
      기본 `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`로 FixMatch를 실행한다.
      기본값으로 materialized `labeled_train.with_views.jsonl` /
      `unlabeled_pool.with_views.jsonl`과
-     `strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1`를 사용한다.
+     `strategy_axes/ssl/augmentation_source=precomputed_usb_candidates_v1`와
+     `query_ssl_strong_view_policy=first_aug`를 사용한다.
      실행 중 역번역을 다시 만들지 않고 strict USB형 `text + aug_0 + aug_1`
      input이 없으면 실패한다.
    - `query_ssl_method.supervised_loss_weight=0.0`을 주면

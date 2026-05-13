@@ -99,10 +99,13 @@ Query Buffer (raw text)
   strong view에 consistency CE를 적용하는 별도 비교축으로 둔다.
 - NLP strict USB baseline에서는 `FixMatch` unlabeled input을
   `text + aug_0 + aug_1` canonical shape로 둔다.
-  즉 weak는 `text`, strong은 `aug_0` 또는 `aug_1` 중 랜덤 1개를 사용한다.
+  즉 weak는 `text`, strong은 `query_ssl_strong_view_policy`가 선택한
+  `aug_0` 또는 `aug_1` 후보를 사용한다. 기본값은 기존 동작 보존을 위해
+  `first_aug`다.
   `aug_0`, `aug_1` 생성/caching은 `execution_context/query_view`의 view
-  materialization config가 담당한다. 학습의 `strategy_axes/ssl/augmentation`은
-  이미 저장된 `text + aug_0 + aug_1` row를 읽는 loader policy만 고른다.
+  materialization config가 담당한다. 학습의
+  `strategy_axes/ssl/augmentation_source`는 이미 저장된
+  `text + aug_0 + aug_1` row를 읽을지, 실행 중 생성할지를 고른다.
 - 중앙 SSL 알고리즘 비교용 canonical query source는
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
   `data/processed/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별

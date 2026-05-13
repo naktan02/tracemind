@@ -8,7 +8,7 @@ defaults:
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/ssl/augmentation: precomputed_usb_candidates_v1
+  - /strategy_axes/ssl/augmentation_source: precomputed_usb_candidates_v1
   - /strategy_axes/adaptation/initial_checkpoint: none
   - /run_controls/central_ssl/runner_defaults: default
   - override /hydra/job_logging: disabled

@@ -24,7 +24,8 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 runtime=gpu_local
 query_ssl_method=fixmatch_usb_v1
 query_data_selection=all ourafla_reddit
-augmentation=precomputed_usb_candidates_v1
+augmentation_source=precomputed_usb_candidates_v1
+strong_view_policy=first_aug
 initial_checkpoint=none
 max_train_steps=3000
 train_batch_size=12
@@ -41,6 +42,8 @@ Query SSL 주소록은 `data/datasets/<dataset_id>/query_ssl`과
 
 `precomputed_usb_candidates_v1`는 실행 중 역번역을 다시 만들지 않고,
 row에 strict USB형 `text + aug_0 + aug_1`이 없으면 실패하게 하는 설정이다.
+`first_aug`는 기존 동작처럼 저장된 후보 중 `aug_0`만 strong view로 학습에
+노출한다.
 기본 실행은 USB식 cold-start 비교에 맞춰 기존 classifier seed를 로드하지 않고,
 LoRA adapter와 classifier head를 새로 초기화한다.
 학습 예산도 USB처럼 전체 데이터 epoch replay가 아니라 `max_train_steps` 총
@@ -48,6 +51,11 @@ optimizer update 수로 고정한다. `epochs`는 selection 평가/history caden
 나누는 단위이며, 기본값은 `3000` steps다.
 16GB급 GPU 기준 기본 batch는 labeled `12`, unlabeled `12`로 둔다. FixMatch는
 한 step에서 labeled/weak/strong forward를 수행하므로 VRAM 여유를 우선한다.
+
+Resume checkpoint는 기본적으로 꺼져 있다. `resume_checkpoint_every_epochs > 0`을
+주면 `resume_checkpoint_output_dir/latest_training_checkpoint.pt`에 model,
+optimizer, Query SSL algorithm state, RNG, history, best-selection state를 함께
+저장한다. 재개할 때는 `resume_checkpoint_path`로 이 파일을 지정한다.
 
 ## 데이터 소스 비교
 
@@ -109,19 +117,20 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
-  strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
-  query_data_selection.labeled=ourafla_reddit \
-  query_data_selection.unlabeled=ourafla_reddit \
+  strategy_axes/ssl/consistency_method=adamatch_usb_v1 \
+  query_data_selection.labeled=szegeelim_general4 \
+  query_data_selection.unlabeled=szegeelim_general4 \
   query_data_selection.validation=ourafla_reddit \
   query_data_selection.test=ourafla_reddit \
-  strategy_axes/ssl/augmentation=precomputed_usb_candidates_v1
+  strategy_axes/ssl/augmentation_source=precomputed_usb_candidates_v1 \
+  query_ssl_strong_view_policy=first_aug
 ```
 
 입력 view:
 
 - `text`: weak view
-- `aug_0`: strong view
-- `aug_1`: 저장은 유지하지만 FixMatch single strong-view 경로에서는 소비하지 않는다.
+- `aug_0`: `first_aug` 기본 strong view
+- `aug_1`: `second_aug`, `row_parity_aug`, `query_id_hash_aug` 정책에서 사용할 수 있는 strong candidate
 
 자주 쓰는 override:
 
@@ -153,8 +162,9 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 ```
 
 PseudoLabel은 weak view만 필요하므로 unlabeled `text`를 사용하고,
-strong augmentation 설정을 소비하지 않는다. 공통 entrypoint 기본값에 남아 있는
-augmentation axis는 multiview method에서만 runner manifest와 row 준비에 반영된다.
+strong augmentation source/policy 설정을 소비하지 않는다. 공통 entrypoint
+기본값에 남아 있는 augmentation source와 strong-view policy는 multiview
+method에서만 runner manifest와 row 준비에 반영된다.
 
 입력 view:
 
@@ -184,8 +194,7 @@ FixMatch와 동일하게 precomputed USB 후보를 사용한다.
 입력 view:
 
 - `text`: weak view
-- `aug_0`: strong view
-- `aug_1`: 저장은 유지하지만 FlexMatch single strong-view 경로에서는 소비하지 않는다.
+- `aug_0/aug_1`: `query_ssl_strong_view_policy`가 선택하는 strong candidate
 
 자주 쓰는 override:
 
@@ -310,7 +319,10 @@ fallback으로 저장하며 fallback 이유를 manifest에 남긴다.
 - `methods/ssl/algorithms/<method>/`: 알고리즘 objective core
 - `conf/strategy_axes/ssl/consistency_method/<method>_*.yaml`: method identity와 파라미터
 - `tests/unit/test_methods_<method>.py`: tensor-level objective 검증
-- 필요 시 `conf/strategy_axes/ssl/augmentation/*.yaml`: weak/strong view 준비 방식
+- 필요 시 `conf/strategy_axes/ssl/augmentation_source/*.yaml`: strong candidate 확보 방식
+- 필요 시 `query_ssl_strong_view_policy`: 저장된 후보 중 strong view 선택 방식.
+  단순 선택값이면 runner default scalar로 유지하고, parameter set이 생길 때만
+  별도 config group 승격을 검토한다.
 
 방법론이 늘어날 때마다 `scripts/experiments/central_ssl_control/train_lora_<method>.py`
 파일을 계속 추가하는 방식은 장기 구조로 보지 않는다. method 차이는 Hydra

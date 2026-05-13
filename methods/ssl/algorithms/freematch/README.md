@@ -16,7 +16,6 @@ train-step core를 TraceMind Query SSL seam에 맞춰 둔다.
 입력 경계:
 
 - 저장 row surface는 strict USB형 `text + aug_0 + aug_1`이다.
-- dataloader가 `text`를 weak view로, 첫 번째 후보 `aug_0`을 strong view로
+- dataloader가 `text`를 weak view로, `strong_view_policy`가 선택한
+  `aug_0` 또는 `aug_1`을 strong view로
   `weak_input_ids/strong_input_ids` batch key로 변환한다.
-- `aug_1`은 이후 strong view 2개를 쓰는 알고리즘을 위해 저장하지만 FreeMatch
-  single strong-view 경로에서는 소비하지 않는다.
