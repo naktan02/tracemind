@@ -115,8 +115,9 @@ Query Buffer (raw text)
   중앙 SSL unlabeled loader와 algorithm core는 이 라벨을 소비하지 않는다.
 - backtranslation strong view는 split과 분리된 artifact로 materialize한다.
   새 dataset은 `data/datasets/<dataset_id>/views/<split>/<augmenter>/`를 기본으로
-  쓰고, 기존 ourafla 산출물은 legacy `data/processed/query_ssl_views/*` 경로를
-  유지한다.
+  쓴다. 기존 `data/processed/query_ssl_*` 산출물은 canonical
+  `data/datasets/<dataset_id>/query_ssl`와 `data/datasets/<dataset_id>/views`로
+  전환하고 보존하지 않는다.
   SemiLearn/USB 계열 알고리즘 비교에서는 `text`를 weak view로, `aug_0`/`aug_1`을
   strong candidate로 읽고, 알고리즘별 실행 중 backtranslation을 다시 수행하지 않는다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
