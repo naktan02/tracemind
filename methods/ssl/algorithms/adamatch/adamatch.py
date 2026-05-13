@@ -18,6 +18,13 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingHook,
 )
 from ...registry import register_query_ssl_algorithm
+from ...state import (
+    build_query_ssl_algorithm_state,
+    is_configured_query_ssl_algorithm_state,
+    load_tensor_state_field,
+    require_matching_int_state_value,
+    require_query_ssl_algorithm_state,
+)
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,
     compute_unlabeled_weak_strong_logits,
@@ -82,9 +89,7 @@ class AdaMatchDistAlignHook:
             self.p_model = self.p_model * self.m + probs_x_ulb.mean(dim=0) * (
                 1 - self.m
             )
-        self.p_target = self.p_target * self.m + probs_x_lb.mean(dim=0) * (
-            1 - self.m
-        )
+        self.p_target = self.p_target * self.m + probs_x_lb.mean(dim=0) * (1 - self.m)
 
     def _move_state_to_device(self, device: torch.device) -> None:
         if self.p_target.device != device:
@@ -178,6 +183,63 @@ class AdaMatchAlgorithm:
         if train_loader_length == 0:
             raise ValueError("AdaMatch labeled train_loader must not be empty.")
 
+    def export_state(self) -> Mapping[str, Any]:
+        """중단 재개용 AdaMatch distribution-alignment state를 내보낸다."""
+
+        if self.dist_align_hook is None:
+            return build_query_ssl_algorithm_state(
+                algorithm_name=self.algorithm_name,
+                configured=False,
+            )
+        return build_query_ssl_algorithm_state(
+            algorithm_name=self.algorithm_name,
+            configured=True,
+            metadata={
+                "num_classes": self.dist_align_hook.num_classes,
+                "ema_p": self.ema_p,
+            },
+            tensors={
+                "p_model": self.dist_align_hook.p_model,
+                "p_target": self.dist_align_hook.p_target,
+            },
+        )
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """저장된 AdaMatch distribution-alignment state를 복원한다."""
+
+        if self.dist_align_hook is None:
+            raise ValueError("AdaMatch requires configure_dataset before load_state.")
+        state = require_query_ssl_algorithm_state(
+            state=state,
+            algorithm_name=self.algorithm_name,
+        )
+        if not is_configured_query_ssl_algorithm_state(state):
+            return
+        require_matching_int_state_value(
+            state=state,
+            field_name="num_classes",
+            expected=self.dist_align_hook.num_classes,
+            algorithm_name="AdaMatch",
+        )
+        device = self.dist_align_hook.p_target.device
+        self.dist_align_hook.p_model = load_tensor_state_field(
+            state=state,
+            field_name="p_model",
+            device=device,
+            algorithm_name="AdaMatch",
+            allow_none=True,
+        )
+        p_target = load_tensor_state_field(
+            state=state,
+            field_name="p_target",
+            device=device,
+            algorithm_name="AdaMatch",
+        )
+        assert p_target is not None
+        self.dist_align_hook.p_target = p_target
+        self.p_model = self.dist_align_hook.p_model
+        self.p_target = self.dist_align_hook.p_target
+
     def compute_step(
         self,
         *,
@@ -186,9 +248,7 @@ class AdaMatchAlgorithm:
         unlabeled_batch: dict[str, Any],
     ) -> QuerySslStepResult:
         if self.dist_align_hook is None:
-            raise ValueError(
-                "AdaMatch requires configure_dataset before compute_step."
-            )
+            raise ValueError("AdaMatch requires configure_dataset before compute_step.")
         return compute_adamatch_step(
             model=model,
             labeled_batch=labeled_batch,

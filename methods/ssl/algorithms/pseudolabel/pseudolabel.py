@@ -18,6 +18,10 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingConfig,
 )
 from ...registry import register_query_ssl_algorithm
+from ...state import (
+    build_query_ssl_algorithm_state,
+    require_query_ssl_algorithm_state,
+)
 
 
 def build_pseudolabel_objective_hooks() -> SslObjectiveHooks:
@@ -77,6 +81,28 @@ class PseudoLabelAlgorithm:
                 "PseudoLabel labeled train_loader must not be empty when "
                 "supervised_loss_weight > 0."
             )
+
+    def export_state(self) -> Mapping[str, Any]:
+        """중단 재개용 PseudoLabel warm-up iteration state를 내보낸다."""
+
+        return build_query_ssl_algorithm_state(
+            algorithm_name=self.algorithm_name,
+            configured=True,
+            metadata={
+                "iteration": self._iteration,
+                "num_train_iter": self._num_train_iter,
+            },
+        )
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """저장된 PseudoLabel warm-up iteration state를 복원한다."""
+
+        state = require_query_ssl_algorithm_state(
+            state=state,
+            algorithm_name=self.algorithm_name,
+        )
+        self._iteration = int(state.get("iteration", self._iteration))
+        self._num_train_iter = int(state.get("num_train_iter", self._num_train_iter))
 
     def compute_step(
         self,
@@ -163,8 +189,7 @@ def compute_pseudolabel_step(
         )
     )
     total_loss = (
-        supervised_loss_weight * sup_loss
-        + lambda_u * unsup_loss * unsup_warmup
+        supervised_loss_weight * sup_loss + lambda_u * unsup_loss * unsup_warmup
     )
     return QuerySslStepResult(
         total_loss=total_loss,

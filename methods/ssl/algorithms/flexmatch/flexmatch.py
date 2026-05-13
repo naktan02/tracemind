@@ -19,6 +19,13 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingHook,
 )
 from ...registry import register_query_ssl_algorithm
+from ...state import (
+    build_query_ssl_algorithm_state,
+    is_configured_query_ssl_algorithm_state,
+    load_tensor_state_field,
+    require_matching_int_state_value,
+    require_query_ssl_algorithm_state,
+)
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,
     compute_labeled_cross_entropy_loss,
@@ -168,6 +175,69 @@ class FlexMatchAlgorithm:
             unlabeled_loader_length=unlabeled_loader_length,
             supervised_loss_weight=self.supervised_loss_weight,
         )
+
+    def export_state(self) -> Mapping[str, Any]:
+        """중단 재개용 FlexMatch classwise threshold state를 내보낸다."""
+
+        if self.masking_hook is None:
+            return build_query_ssl_algorithm_state(
+                algorithm_name=self.algorithm_name,
+                configured=False,
+            )
+        return build_query_ssl_algorithm_state(
+            algorithm_name=self.algorithm_name,
+            configured=True,
+            metadata={
+                "ulb_dest_len": self.masking_hook.ulb_dest_len,
+                "num_classes": self.masking_hook.num_classes,
+                "thresh_warmup": self.masking_hook.thresh_warmup,
+            },
+            tensors={
+                "selected_label": self.masking_hook.selected_label,
+                "classwise_acc": self.masking_hook.classwise_acc,
+            },
+        )
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """저장된 FlexMatch classwise threshold state를 복원한다."""
+
+        if self.masking_hook is None:
+            raise ValueError("FlexMatch requires configure_dataset before load_state.")
+        state = require_query_ssl_algorithm_state(
+            state=state,
+            algorithm_name=self.algorithm_name,
+        )
+        if not is_configured_query_ssl_algorithm_state(state):
+            return
+        require_matching_int_state_value(
+            state=state,
+            field_name="ulb_dest_len",
+            expected=self.masking_hook.ulb_dest_len,
+            algorithm_name="FlexMatch",
+        )
+        require_matching_int_state_value(
+            state=state,
+            field_name="num_classes",
+            expected=self.masking_hook.num_classes,
+            algorithm_name="FlexMatch",
+        )
+        device = self.masking_hook.classwise_acc.device
+        selected_label = load_tensor_state_field(
+            state=state,
+            field_name="selected_label",
+            device=device,
+            algorithm_name="FlexMatch",
+        )
+        classwise_acc = load_tensor_state_field(
+            state=state,
+            field_name="classwise_acc",
+            device=device,
+            algorithm_name="FlexMatch",
+        )
+        assert selected_label is not None
+        assert classwise_acc is not None
+        self.masking_hook.selected_label = selected_label
+        self.masking_hook.classwise_acc = classwise_acc
 
     def compute_step(
         self,

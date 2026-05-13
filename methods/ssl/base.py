@@ -60,6 +60,16 @@ class QuerySslAlgorithm(Protocol):
         """model과 batch로 algorithm-specific optimization step을 계산한다."""
 
 
+class StatefulQuerySslAlgorithm(Protocol):
+    """resume checkpoint가 소비하는 선택적 Query SSL algorithm state 계약."""
+
+    def export_state(self) -> Mapping[str, Any]:
+        """학습 재개에 필요한 algorithm-local state를 내보낸다."""
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """저장된 algorithm-local state를 복원한다."""
+
+
 def configure_query_ssl_algorithm_training(
     algorithm: QuerySslAlgorithm,
     *,

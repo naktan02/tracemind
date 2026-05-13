@@ -17,6 +17,13 @@ from ...hooks.pseudo_labeling import (
     PseudoLabelingHook,
 )
 from ...registry import register_query_ssl_algorithm
+from ...state import (
+    build_query_ssl_algorithm_state,
+    is_configured_query_ssl_algorithm_state,
+    load_tensor_state_field,
+    require_matching_int_state_value,
+    require_query_ssl_algorithm_state,
+)
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,
     compute_labeled_cross_entropy_loss,
@@ -104,9 +111,7 @@ class FreeMatchThresholdingHook:
             max_idx.reshape(-1),
             minlength=self.p_model.shape[0],
         ).to(self.p_model.dtype)
-        self.label_hist = self.label_hist * self.m + (1 - self.m) * (
-            hist / hist.sum()
-        )
+        self.label_hist = self.label_hist * self.m + (1 - self.m) * (hist / hist.sum())
 
         algorithm.p_model = self.p_model
         algorithm.label_hist = self.label_hist
@@ -217,6 +222,74 @@ class FreeMatchAlgorithm:
             unlabeled_loader_length=unlabeled_loader_length,
             supervised_loss_weight=self.supervised_loss_weight,
         )
+
+    def export_state(self) -> Mapping[str, Any]:
+        """중단 재개용 FreeMatch thresholding state를 내보낸다."""
+
+        if self.masking_hook is None:
+            return build_query_ssl_algorithm_state(
+                algorithm_name=self.algorithm_name,
+                configured=False,
+            )
+        return build_query_ssl_algorithm_state(
+            algorithm_name=self.algorithm_name,
+            configured=True,
+            metadata={
+                "num_classes": self.masking_hook.num_classes,
+                "ema_p": self.ema_p,
+            },
+            tensors={
+                "p_model": self.masking_hook.p_model,
+                "label_hist": self.masking_hook.label_hist,
+                "time_p": self.masking_hook.time_p,
+            },
+        )
+
+    def load_state(self, state: Mapping[str, Any]) -> None:
+        """저장된 FreeMatch thresholding state를 복원한다."""
+
+        if self.masking_hook is None:
+            raise ValueError("FreeMatch requires configure_dataset before load_state.")
+        state = require_query_ssl_algorithm_state(
+            state=state,
+            algorithm_name=self.algorithm_name,
+        )
+        if not is_configured_query_ssl_algorithm_state(state):
+            return
+        require_matching_int_state_value(
+            state=state,
+            field_name="num_classes",
+            expected=self.masking_hook.num_classes,
+            algorithm_name="FreeMatch",
+        )
+        device = self.masking_hook.p_model.device
+        p_model = load_tensor_state_field(
+            state=state,
+            field_name="p_model",
+            device=device,
+            algorithm_name="FreeMatch",
+        )
+        label_hist = load_tensor_state_field(
+            state=state,
+            field_name="label_hist",
+            device=device,
+            algorithm_name="FreeMatch",
+        )
+        time_p = load_tensor_state_field(
+            state=state,
+            field_name="time_p",
+            device=device,
+            algorithm_name="FreeMatch",
+        )
+        assert p_model is not None
+        assert label_hist is not None
+        assert time_p is not None
+        self.masking_hook.p_model = p_model
+        self.masking_hook.label_hist = label_hist
+        self.masking_hook.time_p = time_p
+        self.p_model = self.masking_hook.p_model
+        self.label_hist = self.masking_hook.label_hist
+        self.time_p = self.masking_hook.time_p
 
     def compute_step(
         self,

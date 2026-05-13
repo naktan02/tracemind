@@ -84,8 +84,8 @@ def test_adamatch_dist_align_hook_matches_usb_model_target_ema_update() -> None:
 
     expected_p_model = torch.tensor([0.6, 0.4], dtype=torch.float32)
     expected_p_target = torch.tensor([0.65, 0.35], dtype=torch.float32)
-    expected_aligned = probs_x_ulb * (expected_p_target + 1e-6) / (
-        expected_p_model + 1e-6
+    expected_aligned = (
+        probs_x_ulb * (expected_p_target + 1e-6) / (expected_p_model + 1e-6)
     )
     expected_aligned = expected_aligned / expected_aligned.sum(
         dim=-1,
@@ -174,8 +174,8 @@ def test_compute_adamatch_step_matches_usb_dist_align_threshold_flow() -> None:
     probs_x_ulb_w = torch.softmax(logits_x_ulb_w, dim=-1)
     expected_p_model = probs_x_ulb_w.mean(dim=0)
     expected_p_target = probs_x_lb.mean(dim=0)
-    aligned_probs = probs_x_ulb_w * (expected_p_target + 1e-6) / (
-        expected_p_model + 1e-6
+    aligned_probs = (
+        probs_x_ulb_w * (expected_p_target + 1e-6) / (expected_p_model + 1e-6)
     )
     aligned_probs = aligned_probs / aligned_probs.sum(dim=-1, keepdim=True)
     expected_mask = aligned_probs.max(dim=-1)[0].ge(
