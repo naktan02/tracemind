@@ -2,9 +2,15 @@
 
 name: cssrs
 description: CSSRS-labelled Reddit SuicideWatch dataset
-raw_train_csv: data/raw/cssrs_train.csv
+output_root: data/datasets/cssrs_reddit
+output_paths:
+  raw_dir: data/datasets/cssrs_reddit/raw
+  labeled_query_set_dir: data/datasets/cssrs_reddit/mapped
+  split_dir: data/datasets/cssrs_reddit/splits
+  pipeline_run_dir: data/datasets/cssrs_reddit/pipeline_runs
+raw_train_csv: data/datasets/cssrs_reddit/raw/cssrs_train.csv
 raw_test_csv: null
-train_labeled_jsonl: data/processed/labeled_query_sets/av9ash_cssrs_reddit.v1.jsonl
+train_labeled_jsonl: data/datasets/cssrs_reddit/mapped/av9ash_cssrs_reddit.v1.jsonl
 test_labeled_jsonl: null
 split_name: null
 train_jsonl: null

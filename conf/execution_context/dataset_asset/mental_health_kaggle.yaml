@@ -11,7 +11,7 @@ output_paths:
 raw_train_csv: data/datasets/szegeelim_mental_health/raw/szegeelim_mental_health.csv
 raw_test_csv: null
 train_labeled_jsonl: data/datasets/szegeelim_mental_health/mapped/szegeelim_mental_health_4cat.v1.jsonl
-test_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl
+test_labeled_jsonl: data/datasets/ourafla_mental_health/mapped/ourafla_mental_health_text_classification_test.v1.jsonl
 split_name: train_split.v1
 train_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.train.jsonl
 validation_jsonl: data/datasets/szegeelim_mental_health/splits/train_split.v1.validation.jsonl

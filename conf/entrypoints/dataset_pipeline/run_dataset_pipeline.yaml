@@ -9,12 +9,12 @@ defaults:
   - _self_
 
 paths:
-  raw_dir: data/raw
-  labeled_query_set_dir: data/processed/labeled_query_sets
-  split_dir: data/processed/splits
+  raw_dir: ${dataset.output_root}/raw
+  labeled_query_set_dir: ${dataset.output_root}/mapped
+  split_dir: ${dataset.output_root}/splits
   prototype_pack_dir: data/artifacts/prototype_packs
   prototype_build_state_dir: data/artifacts/prototype_build_states
-  pipeline_run_dir: data/processed/pipeline_runs
+  pipeline_run_dir: ${dataset.output_root}/pipeline_runs
   cache_dir: data/cache/hf
 
 only_stages: []

@@ -3,13 +3,18 @@
 name: ourafla
 description: ourafla mental health 4-class dataset
 output_root: data/datasets/ourafla_mental_health
-raw_train_csv: data/raw/ourafla_train.csv
-raw_test_csv: data/raw/ourafla_test.csv
-train_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification.v1.jsonl
-test_labeled_jsonl: data/processed/labeled_query_sets/ourafla_mental_health_text_classification_test.v1.jsonl
+output_paths:
+  raw_dir: data/datasets/ourafla_mental_health/raw
+  labeled_query_set_dir: data/datasets/ourafla_mental_health/mapped
+  split_dir: data/datasets/ourafla_mental_health/splits
+  pipeline_run_dir: data/datasets/ourafla_mental_health/pipeline_runs
+raw_train_csv: data/datasets/ourafla_mental_health/raw/ourafla_train.csv
+raw_test_csv: data/datasets/ourafla_mental_health/raw/ourafla_test.csv
+train_labeled_jsonl: data/datasets/ourafla_mental_health/mapped/ourafla_mental_health_text_classification.v1.jsonl
+test_labeled_jsonl: data/datasets/ourafla_mental_health/mapped/ourafla_mental_health_text_classification_test.v1.jsonl
 split_name: ourafla_train_split.v1
-train_jsonl: data/processed/splits/ourafla_train_split.v1.train.jsonl
-validation_jsonl: data/processed/splits/ourafla_train_split.v1.validation.jsonl
+train_jsonl: data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl
+validation_jsonl: data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.validation.jsonl
 test_jsonl: ${dataset.test_labeled_jsonl}
 prototype_input_jsonl: ${dataset.train_jsonl}
 query_dev_jsonl: null

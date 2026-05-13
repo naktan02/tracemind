@@ -108,7 +108,7 @@ Query Buffer (raw text)
   `text + aug_0 + aug_1` row를 읽을지, 실행 중 생성할지를 고른다.
 - 중앙 SSL 알고리즘 비교용 canonical query source는
   `ourafla_ssl_labeled1024_per_class_seed42_v1`이다.
-  `data/processed/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
+  `data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.train.jsonl`에서 각 class별
   1024개를 labeled train으로 뽑고, 나머지 train row 전체를 unlabeled pool로
   둔다. validation/test는 합치지 않고 기존 validation/test split을 유지한다.
   unlabeled artifact에는 audit과 stratified metric을 위해 원 라벨 필드를 보존하지만,

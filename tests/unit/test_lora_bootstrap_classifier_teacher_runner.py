@@ -15,9 +15,11 @@ from shared.src.contracts.labeled_query_row_contracts import (
     dump_labeled_query_rows,
 )
 
-VALIDATION_JSONL = "data/processed/splits/ourafla_train_split.v1.validation.jsonl"
+VALIDATION_JSONL = (
+    "data/datasets/ourafla_mental_health/splits/ourafla_train_split.v1.validation.jsonl"
+)
 TEST_JSONL = (
-    "data/processed/labeled_query_sets/"
+    "data/datasets/ourafla_mental_health/mapped/"
     "ourafla_mental_health_text_classification_test.v1.jsonl"
 )
 

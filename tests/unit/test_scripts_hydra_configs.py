@@ -100,7 +100,7 @@ def test_query_ssl_split_materialization_entrypoint_uses_dataset_scoped_root() -
         "data/datasets/szegeelim_mental_health/splits/train_split.v1.validation.jsonl"
     )
     assert cfg.query_ssl_split_materialization.source_test_jsonl.endswith(
-        "data/processed/labeled_query_sets/"
+        "data/datasets/ourafla_mental_health/mapped/"
         "ourafla_mental_health_text_classification_test.v1.jsonl"
     )
     assert cfg.query_ssl_split_materialization.output_root.endswith(

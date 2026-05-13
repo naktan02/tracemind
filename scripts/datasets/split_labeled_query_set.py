@@ -41,7 +41,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output-dir",
         type=Path,
-        default=Path("data/processed/splits"),
+        default=Path("data/datasets/manual/splits"),
         help="Directory where split outputs are written.",
     )
     return parser.parse_args()

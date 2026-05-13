@@ -26,7 +26,7 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--output-dir",
-        default=Path("data/processed/labeled_query_sets"),
+        default=Path("data/datasets/manual/mapped"),
         type=Path,
         help="Directory where manifest and JSONL outputs are written.",
     )
