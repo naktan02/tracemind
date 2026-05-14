@@ -54,3 +54,5 @@ tmp/
 node_modules/
 dist/
 npm-debug.log*
+apps/experiment_dashboard/data/*.json
+!apps/experiment_dashboard/data/.gitkeep

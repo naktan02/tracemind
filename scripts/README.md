@@ -11,6 +11,7 @@ runtime/service adapter는 `agent/`와 `main_server/`가 소유한다.
 - `scripts/experiments/`: track별 실험 entrypoint와 실험 전용 harness.
 - `scripts/experiments/fl_ssl/federated_simulation/`: FL SSL synthetic harness와 artifact dump.
 - `scripts/experiments/query_lora_ssl/`: 중앙/FL에서 공유 가능한 query-domain LoRA SSL harness와 adaptation IO.
+- `scripts/experiments/result_index/`: `runs` report를 SQLite/dashboard JSON으로 정규화하는 비교/시각화 index.
 - `scripts/runtime_adapters/`: scripts가 불가피하게 agent/main_server runtime을 재사용할 때 쓰는 명시 bridge.
 - `scripts/reporting/`: report/diagnostics helper.
 - `scripts/artifacts/`: run output 경로 helper.
@@ -153,6 +154,22 @@ Type generation:
 
 ```bash
 uv run python scripts/codegen/generate_family_extension_types.py
+```
+
+Experiment result index:
+
+```bash
+uv run python -m scripts.experiments.result_index.ingest \
+  --runs-root runs/train_lora_ssl_classifier \
+  --db data/processed/experiment_index/experiment_results.sqlite \
+  --reset \
+  --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
+```
+
+정적 dashboard preview:
+
+```bash
+python -m http.server 5175 -d apps/experiment_dashboard
 ```
 
 ## Runtime Adapters

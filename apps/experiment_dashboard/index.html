@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>TraceMind Experiment Dashboard</title>
+    <link rel="stylesheet" href="./src/styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <aside class="sidebar">
+        <div class="brand">
+          <p class="eyebrow">TraceMind Research</p>
+          <h1>Experiment Dashboard</h1>
+          <p>
+            SQLite result index에서 export한 정적 JSON으로 method, split, epoch,
+            category metric을 비교한다.
+          </p>
+        </div>
+
+        <section class="filter-panel">
+          <label>
+            Method
+            <select id="method-filter"></select>
+          </label>
+          <label>
+            Eval Set
+            <select id="eval-filter"></select>
+          </label>
+          <label>
+            Split
+            <select id="split-filter"></select>
+          </label>
+          <label>
+            Metric
+            <select id="metric-filter">
+              <option value="macro_f1">macro_f1</option>
+              <option value="accuracy_top_1">accuracy_top_1</option>
+              <option value="expected_calibration_error">ece</option>
+              <option value="loss">loss</option>
+            </select>
+          </label>
+          <label>
+            Selected Run
+            <select id="run-filter"></select>
+          </label>
+        </section>
+      </aside>
+
+      <main class="content">
+        <section id="load-state" class="notice">dashboard data를 읽는 중</section>
+
+        <section class="hero">
+          <div>
+            <p class="eyebrow">Comparison Surface</p>
+            <h2>방법론과 조합을 같은 표면에서 비교</h2>
+          </div>
+          <div class="metric-cards" id="metric-cards"></div>
+        </section>
+
+        <section class="grid two">
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Ranking</p>
+                <h3>Run Metric Bar</h3>
+              </div>
+            </div>
+            <div id="bar-chart" class="bar-chart"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Training Curve</p>
+                <h3>Epoch Progress</h3>
+              </div>
+              <select id="epoch-metric-filter">
+                <option value="selection_macro_f1">selection_macro_f1</option>
+                <option value="selection_accuracy_top_1">
+                  selection_accuracy_top_1
+                </option>
+                <option value="selection_expected_calibration_error">
+                  selection_ece
+                </option>
+                <option value="train_loss">train_loss</option>
+              </select>
+            </div>
+            <div id="epoch-chart" class="line-chart"></div>
+          </article>
+        </section>
+
+        <section class="grid two">
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Class Detail</p>
+                <h3>Per-Class F1</h3>
+              </div>
+            </div>
+            <div id="class-chart" class="bar-chart class-bars"></div>
+          </article>
+
+          <article class="card">
+            <div class="card-header">
+              <div>
+                <p class="eyebrow">Error Shape</p>
+                <h3>Confusion Matrix</h3>
+              </div>
+            </div>
+            <div id="confusion-matrix"></div>
+          </article>
+        </section>
+
+        <section class="card">
+          <div class="card-header">
+            <div>
+              <p class="eyebrow">Paper Table Seed</p>
+              <h3>Selected Runs</h3>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>run</th>
+                  <th>method</th>
+                  <th>split</th>
+                  <th>lr</th>
+                  <th>clf lr</th>
+                  <th>macro_f1</th>
+                  <th>accuracy</th>
+                  <th>ece</th>
+                  <th>rows</th>
+                  <th>worst</th>
+                </tr>
+              </thead>
+              <tbody id="run-table"></tbody>
+            </table>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <script src="./src/app.js" type="module"></script>
+  </body>
+</html>

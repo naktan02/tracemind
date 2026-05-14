@@ -7,6 +7,13 @@ from typing import Any
 
 from shared.src.domain.services.classification_report import safe_divide
 
+_OPTIONAL_SELECTION_METRICS = (
+    ("macro_f1", "selection_macro_f1"),
+    ("expected_calibration_error", "selection_expected_calibration_error"),
+    ("worst_category_f1", "selection_worst_category_f1"),
+    ("worst_category_f1_value", "selection_worst_category_f1_value"),
+)
+
 
 def build_selection_epoch_record(
     *,
@@ -33,6 +40,11 @@ def build_selection_epoch_record(
             "selection_accuracy_top_1": selection_report["accuracy_top_1"],
         }
     )
+    for source_key, target_key in _OPTIONAL_SELECTION_METRICS:
+        if source_key in selection_report:
+            record[target_key] = selection_report[source_key]
+    if "per_category" in selection_report:
+        record["selection_per_category"] = selection_report["per_category"]
     return record
 
 
@@ -50,4 +62,13 @@ def format_selection_epoch_summary(epoch_record: Mapping[str, Any]) -> str:
             f"selection_accuracy={float(epoch_record['selection_accuracy_top_1']):.4f}",
         ]
     )
+    if "selection_macro_f1" in epoch_record:
+        metric_fields.append(
+            f"selection_macro_f1={float(epoch_record['selection_macro_f1']):.4f}"
+        )
+    if "selection_expected_calibration_error" in epoch_record:
+        metric_fields.append(
+            "selection_ece="
+            f"{float(epoch_record['selection_expected_calibration_error']):.4f}"
+        )
     return " ".join(metric_fields)

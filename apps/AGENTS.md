@@ -20,6 +20,8 @@
   - future `guardian_*`
 - developer tool과 product UI의 문구/권한/정보 노출을 섞지 않는다.
 - 저장이 필요해도 대용량 artifact를 앱 로컬 저장소의 source of truth로 두지 않는다.
+- `experiment_dashboard`는 research/developer dashboard lane이다. family extension이나
+  운영 runtime UI와 섞지 않는다.
 
 ## 구현 원칙
 
