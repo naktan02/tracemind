@@ -17,6 +17,7 @@ _CHILD_TABLES = (
     "confusion_matrix_cells",
     "epoch_metrics",
     "epoch_per_class_metrics",
+    "artifacts",
 )
 
 
@@ -78,6 +79,11 @@ def write_result_index_records(
                 connection,
                 table="epoch_per_class_metrics",
                 rows=_as_dicts(result_records.epoch_per_class_metrics),
+            )
+            _insert_rows(
+                connection,
+                table="artifacts",
+                rows=_as_dicts(result_records.artifacts),
             )
 
 

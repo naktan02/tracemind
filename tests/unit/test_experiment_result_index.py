@@ -35,6 +35,9 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
         if metric.category == "normal"
     )
     assert normal_epoch_metric.f1 == 0.7
+    assert records.artifacts[0].artifact_kind == "projection_manifest"
+    assert records.artifacts[1].artifact_kind == "projection_points_jsonl"
+    assert records.artifacts[2].artifact_kind == "projection_png"
 
 
 def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) -> None:
@@ -52,6 +55,9 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
         "validation-ourafla_reddit_test-ourafla_reddit"
     )
+    assert bundle["projection_images"][0]["image_src"].startswith(
+        "data/artifacts/lora_fixmatch_2026_05_13_143419/"
+    )
     assert "data/datasets" not in json.dumps(bundle)
 
     with sqlite3.connect(db_path) as connection:
@@ -61,8 +67,12 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
         confusion_count = connection.execute(
             "select count(*) from confusion_matrix_cells"
         ).fetchone()[0]
+        artifact_count = connection.execute(
+            "select count(*) from artifacts"
+        ).fetchone()[0]
     assert per_class_count == 2
     assert confusion_count == 4
+    assert artifact_count == 3
 
 
 def _write_report(tmp_path: Path) -> Path:
@@ -81,14 +91,19 @@ def _write_report(tmp_path: Path) -> Path:
         / "report.json"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    (projection_dir / "projection_manifest.json").write_text("{}\n", encoding="utf-8")
+    (projection_dir / "validation.projection.jsonl").write_text("", encoding="utf-8")
+    (projection_dir / "validation.projection.png").write_bytes(b"png")
     report_path.write_text(
-        json.dumps(_sample_report(), indent=2) + "\n",
+        json.dumps(_sample_report(projection_dir), indent=2) + "\n",
         encoding="utf-8",
     )
     return report_path
 
 
-def _sample_report() -> dict:
+def _sample_report(projection_dir: Path) -> dict:
     return {
         "schema_version": "central_lora_classifier_eval.v1",
         "trainer_version": "lora_fixmatch_2026_05_13_143419",
@@ -152,6 +167,21 @@ def _sample_report() -> dict:
             "query_ssl_method": {
                 "preset_name": "fixmatch_usb_v1",
                 "algorithm_name": "fixmatch",
+            },
+            "projection_artifacts": {
+                "enabled": True,
+                "manifest_path": str(projection_dir / "projection_manifest.json"),
+                "datasets": {
+                    "validation": {
+                        "reducer": "umap",
+                        "fallback_reason": None,
+                        "row_count": 4,
+                        "points_jsonl": str(
+                            projection_dir / "validation.projection.jsonl"
+                        ),
+                        "figure_png": str(projection_dir / "validation.projection.png"),
+                    }
+                },
             },
         },
         "results": {

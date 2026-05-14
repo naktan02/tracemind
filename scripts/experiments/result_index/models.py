@@ -118,6 +118,16 @@ class EpochPerClassMetricRecord:
 
 
 @dataclass(frozen=True, slots=True)
+class ArtifactRecord:
+    run_id: str
+    eval_set: str | None
+    artifact_kind: str
+    artifact_ref: str
+    reducer: str | None
+    fallback_reason: str | None
+
+
+@dataclass(frozen=True, slots=True)
 class ResultIndexRecords:
     run: ExperimentRunRecord
     eval_metrics: tuple[EvalMetricRecord, ...]
@@ -125,3 +135,4 @@ class ResultIndexRecords:
     confusion_matrix_cells: tuple[ConfusionMatrixCellRecord, ...]
     epoch_metrics: tuple[EpochMetricRecord, ...]
     epoch_per_class_metrics: tuple[EpochPerClassMetricRecord, ...]
+    artifacts: tuple[ArtifactRecord, ...]

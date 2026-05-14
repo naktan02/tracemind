@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import shutil
 import sqlite3
 from pathlib import Path
 from typing import Any
@@ -12,7 +13,11 @@ DEFAULT_DB_PATH = Path("data/processed/experiment_index/experiment_results.sqlit
 DEFAULT_OUTPUT_PATH = Path("apps/experiment_dashboard/data/experiment_dashboard.json")
 
 
-def build_dashboard_bundle(db_path: Path) -> dict[str, Any]:
+def build_dashboard_bundle(
+    db_path: Path,
+    *,
+    artifact_output_dir: Path | None = None,
+) -> dict[str, Any]:
     with sqlite3.connect(db_path) as connection:
         connection.row_factory = sqlite3.Row
         runs = _fetch_rows(connection, "select * from experiment_runs order by run_id")
@@ -39,6 +44,14 @@ def build_dashboard_bundle(db_path: Path) -> dict[str, Any]:
             connection,
             "select * from epoch_per_class_metrics order by run_id, epoch, category",
         )
+        artifacts = _fetch_rows(
+            connection,
+            "select * from artifacts order by run_id, eval_set, artifact_kind",
+        )
+    projection_images = _build_projection_images(
+        artifacts=artifacts,
+        artifact_output_dir=artifact_output_dir,
+    )
 
     return {
         "schema_version": "experiment_dashboard_data.v1",
@@ -53,11 +66,16 @@ def build_dashboard_bundle(db_path: Path) -> dict[str, Any]:
         "confusion_matrix_cells": confusion_matrix_cells,
         "epoch_metrics": epoch_metrics,
         "epoch_per_class_metrics": epoch_per_class_metrics,
+        "projection_images": projection_images,
     }
 
 
 def write_dashboard_bundle(*, db_path: Path, output_path: Path) -> dict[str, Any]:
-    bundle = build_dashboard_bundle(db_path)
+    artifact_output_dir = output_path.parent / "artifacts"
+    bundle = build_dashboard_bundle(
+        db_path,
+        artifact_output_dir=artifact_output_dir,
+    )
     output_path.parent.mkdir(parents=True, exist_ok=True)
     output_path.write_text(
         json.dumps(bundle, indent=2, ensure_ascii=True) + "\n",
@@ -84,6 +102,39 @@ def main(argv: list[str] | None = None) -> None:
 
 def _fetch_rows(connection: sqlite3.Connection, query: str) -> list[dict[str, Any]]:
     return [dict(row) for row in connection.execute(query)]
+
+
+def _build_projection_images(
+    *,
+    artifacts: list[dict[str, Any]],
+    artifact_output_dir: Path | None,
+) -> list[dict[str, Any]]:
+    images: list[dict[str, Any]] = []
+    for artifact in artifacts:
+        if artifact.get("artifact_kind") != "projection_png":
+            continue
+        source_path = Path(str(artifact["artifact_ref"]))
+        if not source_path.exists():
+            continue
+        run_id = str(artifact["run_id"])
+        eval_set = str(artifact["eval_set"] or "unknown")
+        image_src = str(source_path)
+        if artifact_output_dir is not None:
+            target_dir = artifact_output_dir / _safe_path_part(run_id)
+            target_dir.mkdir(parents=True, exist_ok=True)
+            target_path = target_dir / f"{_safe_path_part(eval_set)}.projection.png"
+            shutil.copy2(source_path, target_path)
+            image_src = f"data/artifacts/{target_dir.name}/{target_path.name}"
+        images.append(
+            {
+                "run_id": run_id,
+                "eval_set": eval_set,
+                "image_src": image_src,
+                "reducer": artifact.get("reducer"),
+                "fallback_reason": artifact.get("fallback_reason"),
+            }
+        )
+    return images
 
 
 def _build_filters(
@@ -118,6 +169,13 @@ def _build_filters(
 
 def _unique(values) -> list[Any]:
     return sorted({value for value in values if value is not None})
+
+
+def _safe_path_part(value: str) -> str:
+    return "".join(
+        character if character.isalnum() or character in "._-" else "_"
+        for character in value
+    )
 
 
 if __name__ == "__main__":

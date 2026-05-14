@@ -8,6 +8,7 @@ from pathlib import Path
 from typing import Any
 
 from scripts.experiments.result_index.models import (
+    ArtifactRecord,
     ConfusionMatrixCellRecord,
     EpochMetricRecord,
     EpochPerClassMetricRecord,
@@ -167,6 +168,11 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
             )
         )
 
+    artifacts = _build_artifacts(
+        run_id=trainer_version,
+        projection_artifacts=_as_mapping(manifest.get("projection_artifacts")),
+    )
+
     return ResultIndexRecords(
         run=run,
         eval_metrics=tuple(eval_metrics),
@@ -174,6 +180,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         confusion_matrix_cells=tuple(confusion_matrix_cells),
         epoch_metrics=tuple(epoch_metrics),
         epoch_per_class_metrics=tuple(epoch_per_class_metrics),
+        artifacts=tuple(artifacts),
     )
 
 
@@ -306,6 +313,56 @@ def _build_epoch_per_class_metrics(
                 ),
             )
         )
+    return records
+
+
+def _build_artifacts(
+    *,
+    run_id: str,
+    projection_artifacts: dict[str, Any],
+) -> list[ArtifactRecord]:
+    records: list[ArtifactRecord] = []
+    manifest_path = _optional_str(projection_artifacts.get("manifest_path"))
+    if manifest_path:
+        records.append(
+            ArtifactRecord(
+                run_id=run_id,
+                eval_set=None,
+                artifact_kind="projection_manifest",
+                artifact_ref=manifest_path,
+                reducer=None,
+                fallback_reason=None,
+            )
+        )
+    for eval_set, entry in _as_mapping(projection_artifacts.get("datasets")).items():
+        if not isinstance(entry, dict):
+            continue
+        reducer = _optional_str(entry.get("reducer"))
+        fallback_reason = _optional_str(entry.get("fallback_reason"))
+        points_jsonl = _optional_str(entry.get("points_jsonl"))
+        figure_png = _optional_str(entry.get("figure_png"))
+        if points_jsonl:
+            records.append(
+                ArtifactRecord(
+                    run_id=run_id,
+                    eval_set=str(eval_set),
+                    artifact_kind="projection_points_jsonl",
+                    artifact_ref=points_jsonl,
+                    reducer=reducer,
+                    fallback_reason=fallback_reason,
+                )
+            )
+        if figure_png:
+            records.append(
+                ArtifactRecord(
+                    run_id=run_id,
+                    eval_set=str(eval_set),
+                    artifact_kind="projection_png",
+                    artifact_ref=figure_png,
+                    reducer=reducer,
+                    fallback_reason=fallback_reason,
+                )
+            )
     return records
 
 

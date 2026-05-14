@@ -17,6 +17,14 @@ python -m http.server 5175 -d apps/experiment_dashboard
 
 브라우저에서 `http://127.0.0.1:5175`를 연다.
 
+export는 `projection_artifacts`의 UMAP/PCA PNG를
+`apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와
+`experiment_dashboard.json`은 재생성 가능한 cache라서 git에 올리지 않는다.
+
+화면에서는 method, split, eval set을 고른 뒤 여러 run과 여러 metric을 동시에
+선택해 bar/line chart로 비교할 수 있다. per-class metric과 confusion matrix,
+projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
+
 ## 경계
 
 - 원본 source of truth는 `runs/**/reports/report.json`과 각 run manifest다.

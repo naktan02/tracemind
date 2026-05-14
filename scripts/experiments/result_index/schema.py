@@ -120,8 +120,20 @@ SCHEMA_STATEMENTS = (
         primary key (run_id, epoch, category)
     )
     """,
+    """
+    create table if not exists artifacts (
+        run_id text not null,
+        eval_set text,
+        artifact_kind text not null,
+        artifact_ref text not null,
+        reducer text,
+        fallback_reason text,
+        primary key (run_id, eval_set, artifact_kind)
+    )
+    """,
     "create index if not exists idx_eval_metrics_eval_set on eval_metrics(eval_set)",
     "create index if not exists idx_runs_method on experiment_runs(method_name)",
     "create index if not exists idx_runs_split on experiment_runs(selection_slug)",
     "create index if not exists idx_per_class_category on per_class_metrics(category)",
+    "create index if not exists idx_artifacts_kind on artifacts(artifact_kind)",
 )
