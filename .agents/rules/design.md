@@ -30,15 +30,22 @@ trigger: always_on
    - 무엇이 함께 바뀌는지 본다.
    - 무엇이 서로 독립적으로 바뀌어야 하는지 본다.
    - 무엇이 공통 관심사이고 무엇이 문맥별/사용자별/환경별 관심사인지 본다.
+   - 요구가 모호하면 구현 전에 가정, 선택지, 성공 기준을 먼저 드러낸다.
 2. 계약과 경계를 먼저 세운다.
    - 도메인 객체, 입력/출력 계약, 책임 경계, 상태 소유권, 의존 방향을
      구현보다 먼저 정의하거나 검증한다.
 3. 책임은 의미 기준으로 분리한다.
    - 파일 수보다 역할과 변화 축을 기준으로 나눈다.
    - 서로 다른 이유로 바뀌는 것은 같은 곳에 두지 않는다.
+   - 요청과 직접 연결된 파일만 고치고, 주변 리팩터링은 별도 concern으로 분리한다.
 4. 공통성과 특수성을 구분한다.
    - 여러 문맥에서 안정적으로 공유되는 것은 공통 계층에 둔다.
    - 문맥, 사용자, 환경, 조직, 기능별로 달라지는 것은 지역 계층으로 분리한다.
+   - 두 곳 이상에서 같은 의미, 같은 규칙, 같은 lifecycle이 반복되면 복사하지 말고
+     가장 가까운 공통 owner로 승격한다.
+   - 공통화는 무조건 최상위로 올리는 것이 아니라 반복되는 의미가 살아 있는 가장
+     가까운 공통 경계에 모으는 것이다.
+   - 모양만 비슷하고 의미나 변경 이유가 다르면 공통화하지 않는다.
 5. 패턴 이름을 고집하지 않는다.
    - 패턴은 문제 구조에 맞춰 선택한다.
    - 특정 패턴을 미리 정해 두고 억지로 끼워 맞추지 않는다.
@@ -83,6 +90,8 @@ trigger: always_on
     - contract, producer, consumer, test, 문서까지 한 흐름으로 닫는다.
 20. 검증 가능한 구조를 선호한다.
     - 좋은 구조는 테스트, dump, compose, lint, 실행 결과로 검증 가능해야 한다.
+    - 반복해서 지켜야 하는 ownership, dependency, facade 금지, artifact 해석 규칙은
+      문서에만 두지 말고 architecture guard test나 compose/import smoke로 고정한다.
 21. 임시 단일 구현 후 재리팩터링을 기본값으로 두지 않는다.
     - 같은 family의 후속 알고리즘이나 구현이 예상되면 첫 구현부터 family-level
       extension seam을 만든다.
@@ -118,6 +127,22 @@ trigger: always_on
       공통 계층 중앙 파일에 계속 누적하지 않는다.
     - 공통 계층은 catalog entry schema와 안정 snapshot contract를 소유하고,
       implementation-local module은 자기 registration metadata를 소유한다.
+30. 무분별한 수평 폴더 누적을 피하고 변화 축 중심의 깊은 구조를 선호한다.
+    - 새 기능, method, backend, runtime마다 최상위나 같은 레벨에 sibling 폴더를
+      자동으로 추가하지 않는다.
+    - 먼저 해당 변화가 기존 family, capability, runtime, dataset, artifact 축 중
+      어디에 속하는지 정하고, 그 소유 경계 아래에 깊은 Module로 둘 수 있는지 본다.
+    - 새 top-level 폴더는 새로운 ownership boundary, 배포 단위, 보안 경계,
+      runtime surface가 실제로 생겼을 때 연다.
+    - 단, monorepo의 `apps/*`, `packages/*`, plugin family처럼 각 sibling이 독립
+      product나 bounded context라면 수평 확장은 정상 구조일 수 있다.
+    - 비슷한 역할의 구현 폴더가 parent/family 없이 수평으로 늘어나면 이름 문제가
+      아니라 공통 parent, family contract, profile, adapter seam이 빠진 신호로 본다.
+31. 경계 밖 reference는 owner가 해석하기 전까지 opaque 값으로 다룬다.
+    - `artifact_ref`, `payload_ref`, 외부 id, storage key 같은 값은 caller가 임의로
+      파일 경로나 내부 구조로 해석하지 않는다.
+    - 실제 materialization은 repository, adapter, gateway처럼 그 ref의 저장소와
+      lifecycle을 소유한 경계 안에 둔다.
 
 ## 설계 순서
 
@@ -125,10 +150,12 @@ trigger: always_on
 2. source of truth가 어디인지 정한다.
 3. producer와 consumer가 공유할 canonical representation을 정한다.
 4. extension point가 필요한 변화 축과 그렇지 않은 고정 축을 분리한다.
-5. 필요한 패턴을 조합해 Interface를 만든다.
-6. 첫 implementation을 그 Interface 위에 얹는다.
-7. 두 번째 implementation 또는 test-only extension으로 seam이 실제인지 검증한다.
-8. contract, caller, tests, docs를 같은 흐름으로 닫는다.
+5. 새 폴더가 필요한지 판단하기 전에 기존 ownership boundary와 family 아래에
+   둘 수 있는지 확인한다.
+6. 필요한 패턴을 조합해 Interface를 만든다.
+7. 첫 implementation을 그 Interface 위에 얹는다.
+8. 두 번째 implementation 또는 test-only extension으로 seam이 실제인지 검증한다.
+9. contract, caller, tests, docs를 같은 흐름으로 닫는다.
 
 ## 코드 표현 규칙
 
@@ -146,6 +173,12 @@ trigger: always_on
   artifact IO, report row assembly, plotting, validation boilerplate가 섞이면 분리한다.
 - data declaration과 실행 로직을 섞지 않는다. 긴 catalog/rule table은 helper factory나
   plain table로 낮추고, 실행 함수에는 lookup 흐름만 남긴다.
+- `Request`/`Result` payload는 boundary use case의 입력/출력 의미가 안정적일 때만 둔다.
+  단순히 인자가 많다는 이유로 만들지 않는다.
+- 같은 값 묶음이 여러 caller/test에서 반복되거나 검증, 불변식, serialization, trace의
+  대상이 될 때 이름을 준다.
+- package 공개 표면은 direct-file import로 드러낸다. `__init__.py`는 marker/docstring을
+  기본으로 두고, re-export facade가 필요하면 별도 `.py` module로 이유를 드러낸다.
 - 한 줄짜리 pass-through facade, 단일 사용처용 DTO, 삭제해도 caller가 거의 단순해지는
   helper는 만들지 않는다.
 - type hint는 읽기를 도와야 한다. 긴 union/generic이 핵심 흐름을 가리면 domain alias나
@@ -204,7 +237,9 @@ trigger: always_on
 
 패턴을 적용한 뒤에는 삭제 테스트와 두 번째 구현 테스트를 함께 본다. 패턴 파일을 지웠을 때
 복잡도가 caller 여러 곳으로 다시 퍼지면 깊은 Module이고, 그냥 한 단계 호출만 줄면 얕은
-pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로 seam을 검증한다.
+pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로 seam을 검증하되,
+dummy/test-only implementation은 production tree가 아니라 테스트 fixture나 test-local
+module에 둔다.
 
 패턴별 책임은 제한한다.
 
@@ -270,6 +305,12 @@ pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로
 
 - 바뀔 축이 코드에서 독립적으로 보이는가
 - 공통 계층과 문맥별 계층이 섞이지 않는가
+- 새 sibling 폴더를 늘리기 전에 기존 family/capability/runtime 경계 아래에 둘 수 있는지
+  확인했는가
+- 반복되는 의미, 규칙, state, config, result, lifecycle을 가장 가까운 공통 owner로
+  모았는가
+- 요청 밖 주변 리팩터링을 섞지 않았는가
+- 모호한 요구의 가정, 선택지, 성공 기준을 드러냈는가
 - 계약 파일만 읽어도 필드 의미가 이해되는가
 - codebase-wide 지침과 path-specific 지침이 충돌하지 않는가
 - canonical representation이 경계에서 유지되는가
@@ -277,7 +318,9 @@ pass-through다. 두 번째 실제 구현이 없으면 test-only extension으로
 - producer와 consumer가 같은 계약을 보고 있는가
 - compatibility가 핵심 경로에 새지 않는가
 - 구조 변경의 검증 흔적이 남아 있는가
+- 반복해서 깨질 수 있는 구조 규칙을 architecture guard나 smoke test로 고정했는가
 - 새 implementation 추가 시 기존 구현을 뜯지 않고 확장 가능한가
 - registry가 도메인 의미를 과하게 흡수하지 않는가
 - runtime adapter가 algorithm/method 의미를 흡수하지 않는가
+- boundary ref/id를 owner repository/adapter 밖에서 경로나 내부 구조로 해석하지 않는가
 - "돌아간다"와 "framework seam이 검증됐다"를 구분했는가
