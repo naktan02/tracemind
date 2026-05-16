@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+import importlib
+import pkgutil
 from collections.abc import Callable, Iterable
 
 from methods.common.registry import MethodRegistry
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 
+_FEDERATED_SSL_PACKAGE = "methods.federated_ssl"
 _FEDERATED_SSL_METHOD_DESCRIPTORS = MethodRegistry[FederatedSslMethodDescriptor](
     item_label="federated SSL method descriptor",
 )
@@ -34,16 +37,13 @@ def register_federated_ssl_method_descriptor(
 
 
 def load_builtin_federated_ssl_methods() -> None:
-    """built-in FL SSL method module을 명시적으로 import한다."""
+    """built-in FL SSL method module을 convention으로 import한다."""
 
     global _BUILTIN_FEDERATED_SSL_METHODS_LOADED
     if _BUILTIN_FEDERATED_SSL_METHODS_LOADED:
         return
 
-    from methods.federated_ssl.fedavg_pseudo_label import (  # noqa: F401
-        fedavg_pseudo_label as _fedavg_pseudo_label,
-    )
-
+    _import_federated_ssl_method_modules()
     _BUILTIN_FEDERATED_SSL_METHODS_LOADED = True
 
 
@@ -52,7 +52,8 @@ def resolve_federated_ssl_method_descriptor(
 ) -> FederatedSslMethodDescriptor:
     """method 이름을 FL SSL descriptor로 해석한다."""
 
-    load_builtin_federated_ssl_methods()
+    if not _import_federated_ssl_method_module(name):
+        load_builtin_federated_ssl_methods()
     descriptor = _FEDERATED_SSL_METHOD_DESCRIPTORS.resolve(name)
     if descriptor is None:
         raise NotImplementedError(
@@ -81,3 +82,28 @@ def list_federated_ssl_method_descriptors(
         names=None,
         sort_key=lambda descriptor: descriptor.name,
     )
+
+
+def _import_federated_ssl_method_module(method_name: str) -> bool:
+    normalized_name = method_name.strip().lower().replace("-", "_")
+    method_package = f"{_FEDERATED_SSL_PACKAGE}.{normalized_name}"
+    module_name = f"{method_package}.{normalized_name}"
+    try:
+        importlib.import_module(module_name)
+    except ModuleNotFoundError as error:
+        if error.name not in {method_package, module_name}:
+            raise
+        return False
+    return True
+
+
+def _import_federated_ssl_method_modules() -> None:
+    package = importlib.import_module(_FEDERATED_SSL_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.iter_modules(package_paths):
+        if not module_info.ispkg:
+            continue
+        _import_federated_ssl_method_module(module_info.name)
