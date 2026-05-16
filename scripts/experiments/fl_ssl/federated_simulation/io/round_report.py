@@ -25,6 +25,7 @@ def build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                 "prototype_version": round_summary.prototype_version,
                 "update_count": round_summary.update_count,
                 "validation": evaluation_to_payload(round_summary.validation),
+                "global_validation": evaluation_to_payload(round_summary.validation),
                 "delta_from_previous_round": evaluation_delta(
                     previous=previous_validation,
                     current=round_summary.validation,
@@ -36,6 +37,9 @@ def build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                 "clients": [
                     _client_round_payload(client) for client in round_summary.clients
                 ],
+                "round_time_seconds": round_summary.round_time_seconds,
+                "total_payload_bytes": round_summary.total_payload_bytes,
+                "gpu_memory_peak_mb": round_summary.gpu_memory_peak_mb,
             }
         )
         previous_validation = round_summary.validation
@@ -65,7 +69,18 @@ def build_round_progression(result: SimulationResult) -> dict[str, object]:
         validation_points,
         key=lambda point: point["validation"].loss,
     )
+    best_round = _round_point_to_payload(best_macro_f1)
+    best_round.update(
+        {
+            "selection_metric": "macro_f1",
+            "selection_mode": "max",
+        }
+    )
     return {
+        "validation_curve": [
+            _round_point_to_payload(point) for point in validation_points
+        ],
+        "best_round": best_round,
         "best_macro_f1_round": _round_point_to_payload(best_macro_f1),
         "best_loss_round": _round_point_to_payload(best_loss),
         "early_stop_candidate": _build_early_stop_candidate(result),
@@ -106,6 +121,10 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
         "update_generated": client.update_generated,
         "aggregation_example_count": client.aggregation_example_count,
         "delta_l2_norm": client.delta_l2_norm,
+        "client_train_time_seconds": client.client_train_time_seconds,
+        "client_payload_bytes": client.client_payload_bytes,
+        "candidate_confidence_mean": client.pseudo_label_confidence_mean,
+        "candidate_margin_mean": client.pseudo_label_margin_mean,
         "pseudo_label_confidence_mean": client.pseudo_label_confidence_mean,
         "pseudo_label_margin_mean": client.pseudo_label_margin_mean,
         "pseudo_label_accuracy": safe_ratio(
@@ -129,6 +148,8 @@ def _round_point_to_payload(point: dict[str, object]) -> dict[str, object]:
         "macro_f1": validation.macro_f1,
         "loss": validation.loss,
         "expected_calibration_error": validation.expected_calibration_error,
+        "accepted_ratio": validation.accepted_ratio,
+        "accuracy_top_1": validation.accuracy_top_1,
     }
 
 

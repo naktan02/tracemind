@@ -117,6 +117,7 @@ class SimulationReportBuilder:
                 "round_progression": round_progression,
                 "aggregation": build_aggregation_diagnostics(result),
                 "pseudo_label_quality": build_pseudo_label_quality_diagnostics(result),
+                "communication_cost": communication_cost,
             },
             "metrics": {
                 "primary": primary_metrics,

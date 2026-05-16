@@ -83,11 +83,13 @@ def _aggregate_client_round_summaries(
     candidate_count_by_client: dict[str, int] = {}
     accepted_count_by_client: dict[str, int] = {}
     aggregation_example_count_by_client: dict[str, int] = {}
+    payload_bytes_by_client: dict[str, int] = {}
     update_generated_by_client: dict[str, bool] = {}
     update_generated_round_count_by_client: dict[str, int] = {}
     latest_round_id_by_client: dict[str, str] = {}
     latest_update_generated_by_client: dict[str, bool] = {}
     delta_l2_norms_by_client: dict[str, list[float]] = {}
+    train_times_by_client: dict[str, list[float]] = {}
     confidence_means_by_client: dict[str, list[tuple[float, int]]] = {}
     margin_means_by_client: dict[str, list[tuple[float, int]]] = {}
     pseudo_label_correct_count_by_client: dict[str, int] = {}
@@ -110,6 +112,11 @@ def _aggregate_client_round_summaries(
                 aggregation_example_count_by_client.get(client.client_id, 0)
                 + aggregation_example_count(client)
             )
+            if client.client_payload_bytes is not None:
+                payload_bytes_by_client[client.client_id] = (
+                    payload_bytes_by_client.get(client.client_id, 0)
+                    + client.client_payload_bytes
+                )
             latest_round_id_by_client[client.client_id] = round_summary.round_id
             latest_update_generated_by_client[client.client_id] = (
                 client.update_generated
@@ -122,6 +129,10 @@ def _aggregate_client_round_summaries(
             if client.delta_l2_norm is not None:
                 delta_l2_norms_by_client.setdefault(client.client_id, []).append(
                     client.delta_l2_norm
+                )
+            if client.client_train_time_seconds is not None:
+                train_times_by_client.setdefault(client.client_id, []).append(
+                    client.client_train_time_seconds
                 )
             if client.pseudo_label_confidence_mean is not None:
                 confidence_means_by_client.setdefault(client.client_id, []).append(
@@ -151,6 +162,7 @@ def _aggregate_client_round_summaries(
             candidate_count=candidate_count_by_client.get(client_id, 0),
             accepted_count=accepted_count_by_client.get(client_id, 0),
             aggregation_examples=aggregation_example_count_by_client.get(client_id, 0),
+            payload_bytes=payload_bytes_by_client.get(client_id),
             client_update_generated=update_generated_by_client.get(client_id, False),
             update_generated_round_count=(
                 update_generated_round_count_by_client.get(client_id, 0)
@@ -161,6 +173,7 @@ def _aggregate_client_round_summaries(
                 False,
             ),
             delta_l2_norms=delta_l2_norms_by_client.get(client_id, []),
+            train_times=train_times_by_client.get(client_id, []),
             confidence_means=confidence_means_by_client.get(client_id, []),
             margin_means=margin_means_by_client.get(client_id, []),
             pseudo_label_correct_count=pseudo_label_correct_count_by_client.get(
@@ -189,11 +202,13 @@ def _client_round_summary_payload(
     candidate_count: int,
     accepted_count: int,
     aggregation_examples: int,
+    payload_bytes: int | None,
     client_update_generated: bool,
     update_generated_round_count: int,
     latest_round_id: str | None,
     latest_update_generated: bool,
     delta_l2_norms: list[float],
+    train_times: list[float],
     confidence_means: list[tuple[float, int]],
     margin_means: list[tuple[float, int]],
     pseudo_label_correct_count: int,
@@ -206,6 +221,7 @@ def _client_round_summary_payload(
         "accepted_count": accepted_count,
         "client_accepted_ratio": safe_ratio(accepted_count, candidate_count),
         "aggregation_example_count": aggregation_examples,
+        "client_payload_bytes": payload_bytes,
         "client_update_generated": client_update_generated,
         "latest_round_id": latest_round_id,
         "latest_update_generated": latest_update_generated,
@@ -215,6 +231,8 @@ def _client_round_summary_payload(
         "max_delta_l2_norm": max(delta_l2_norms) if delta_l2_norms else None,
         "update_norm_variance": population_variance(delta_l2_norms),
         "delta_l2_norm_status": "available" if delta_l2_norms else "not_available",
+        "client_train_time_seconds": train_times[-1] if train_times else None,
+        "mean_client_train_time_seconds": mean(train_times),
         "pseudo_label_confidence_mean": _weighted_pairs_mean(confidence_means),
         "pseudo_label_margin_mean": _weighted_pairs_mean(margin_means),
         "pseudo_label_accuracy": safe_ratio(
@@ -260,6 +278,7 @@ def _client_validation_payload(
         "client_accepted_count": round_summary.get("accepted_count"),
         "client_accepted_ratio": round_summary.get("client_accepted_ratio"),
         "aggregation_example_count": round_summary.get("aggregation_example_count"),
+        "client_payload_bytes": round_summary.get("client_payload_bytes"),
         "client_update_generated": round_summary.get(
             "client_update_generated",
             False,
@@ -281,6 +300,12 @@ def _client_validation_payload(
             "delta_l2_norm_status",
             "not_available",
         ),
+        "client_train_time_seconds": round_summary.get("client_train_time_seconds"),
+        "mean_client_train_time_seconds": round_summary.get(
+            "mean_client_train_time_seconds"
+        ),
+        "candidate_confidence_mean": round_summary.get("pseudo_label_confidence_mean"),
+        "candidate_margin_mean": round_summary.get("pseudo_label_margin_mean"),
         "pseudo_label_confidence_mean": round_summary.get(
             "pseudo_label_confidence_mean"
         ),
@@ -302,5 +327,8 @@ def _client_validation_payload(
             "rejected_label_distribution",
             {},
         ),
+        "client_validation_loss": client.validation.loss,
+        "client_validation_macro_f1": client.validation.macro_f1,
+        "client_validation_ece": client.validation.expected_calibration_error,
         "validation": evaluation_to_payload(client.validation),
     }

@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import json
+import time
 from collections import Counter
 from collections.abc import Mapping
 from pathlib import Path
@@ -52,6 +54,7 @@ def run_one_round(
 ) -> RoundExecution:
     """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
 
+    round_started_at = time.perf_counter()
     round_id = f"round_{round_index:04d}"
     round_record = bootstrapped.server_runtime.open_round(
         ssl_method_runtime.build_round_open_request(
@@ -110,6 +113,11 @@ def run_one_round(
             update_count=update_count,
             validation=validation,
             clients=tuple(execution.summary for execution in client_executions),
+            round_time_seconds=time.perf_counter() - round_started_at,
+            total_payload_bytes=sum(
+                execution.summary.client_payload_bytes or 0
+                for execution in client_executions
+            ),
         ),
     )
 
@@ -139,12 +147,14 @@ def _run_client_round(
         client_state_root=request.output_dir / "agents" / shard.client_id,
         training_task=training_task,
     )
+    training_started_at = time.perf_counter()
     local_result = run_federated_local_training(
         local_training_service=local_training_service,
         training_examples=training_examples,
         training_task=training_task,
         model_manifest=active.manifest,
     )
+    client_train_time_seconds = time.perf_counter() - training_started_at
     SelectionDiagnosticsWriter().save(
         output_dir=request.output_dir,
         round_id=round_id,
@@ -173,6 +183,12 @@ def _run_client_round(
             delta_l2_norm=_extract_delta_l2_norm(local_result.update_envelope),
             aggregation_example_count=_extract_aggregation_example_count(
                 local_result.update_envelope
+            ),
+            client_train_time_seconds=client_train_time_seconds,
+            client_payload_bytes=(
+                _payload_byte_count(local_result.update_payload)
+                if update_submitted
+                else None
             ),
             pseudo_label_confidence_mean=selection_quality[
                 "pseudo_label_confidence_mean"
@@ -210,6 +226,23 @@ def _accept_client_update(
         update_payload,
     )
     return True
+
+
+def _payload_byte_count(update_payload: Any | None) -> int | None:
+    if update_payload is None:
+        return None
+    if hasattr(update_payload, "model_dump_json"):
+        return len(update_payload.model_dump_json().encode("utf-8"))
+    if hasattr(update_payload, "model_dump"):
+        update_payload = update_payload.model_dump(mode="json")
+    return len(
+        json.dumps(
+            update_payload,
+            default=str,
+            ensure_ascii=False,
+            sort_keys=True,
+        ).encode("utf-8")
+    )
 
 
 def _extract_delta_l2_norm(

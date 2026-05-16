@@ -51,6 +51,8 @@ class ClientRoundSummary:
     update_generated: bool
     delta_l2_norm: float | None = None
     aggregation_example_count: int | None = None
+    client_train_time_seconds: float | None = None
+    client_payload_bytes: int | None = None
     pseudo_label_confidence_mean: float | None = None
     pseudo_label_margin_mean: float | None = None
     pseudo_label_correct_count: int = 0
@@ -118,6 +120,9 @@ class SimulationRoundSummary:
     update_count: int
     validation: SimulationEvaluation
     clients: tuple[ClientRoundSummary, ...]
+    round_time_seconds: float | None = None
+    total_payload_bytes: int | None = None
+    gpu_memory_peak_mb: float | None = None
 
 
 @dataclass(slots=True)

@@ -6,6 +6,7 @@ from collections import Counter
 from collections.abc import Mapping
 
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
+    numeric_summary,
     safe_ratio,
     weighted_mean,
 )
@@ -65,7 +66,7 @@ def evaluation_to_payload(evaluation: SimulationEvaluation) -> dict[str, object]
 
 
 def build_communication_cost_summary(result: SimulationResult) -> dict[str, object]:
-    """payload byte 계측 전까지 쓰는 FL communication proxy summary."""
+    """FL communication/system cost summary를 만든다."""
 
     total_client_updates = sum(
         round_summary.update_count for round_summary in result.rounds
@@ -80,15 +81,51 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         for round_summary in result.rounds
         for client in round_summary.clients
     )
+    payload_bytes = [
+        client.client_payload_bytes
+        for round_summary in result.rounds
+        for client in round_summary.clients
+        if client.client_payload_bytes is not None
+    ]
+    round_times = [
+        round_summary.round_time_seconds
+        for round_summary in result.rounds
+        if round_summary.round_time_seconds is not None
+    ]
+    client_train_times = [
+        client.client_train_time_seconds
+        for round_summary in result.rounds
+        for client in round_summary.clients
+        if client.client_train_time_seconds is not None
+    ]
+    gpu_memory_peaks = [
+        round_summary.gpu_memory_peak_mb
+        for round_summary in result.rounds
+        if round_summary.gpu_memory_peak_mb is not None
+    ]
     return {
         "unit": "client_update_envelopes",
         "value": total_client_updates,
         "total_client_updates": total_client_updates,
         "total_candidates": total_candidates,
         "total_accepted": total_accepted,
+        "total_payload_bytes": sum(payload_bytes) if payload_bytes else None,
+        "payload_byte_accounting_status": (
+            "measured" if payload_bytes else "not_instrumented"
+        ),
         "accepted_per_update": safe_ratio(total_accepted, total_client_updates),
         "acceptance_ratio": safe_ratio(total_accepted, total_candidates),
-        "status": "proxy_until_payload_byte_accounting",
+        "round_time_seconds": numeric_summary(round_times),
+        "client_train_time_seconds": numeric_summary(client_train_times),
+        "gpu_memory_peak_mb": numeric_summary(gpu_memory_peaks),
+        "system_cost_status": (
+            "partially_measured" if round_times or client_train_times else "proxy_only"
+        ),
+        "status": (
+            "measured_with_update_payload_bytes"
+            if payload_bytes
+            else "proxy_until_payload_byte_accounting"
+        ),
     }
 
 
@@ -126,7 +163,17 @@ def build_pseudo_label_quality_diagnostics(
                 value_key="pseudo_label_confidence_mean",
                 weight_key="candidate_count",
             ),
+            "candidate_confidence_mean": _weighted_round_mean(
+                round_payloads,
+                value_key="pseudo_label_confidence_mean",
+                weight_key="candidate_count",
+            ),
             "pseudo_label_margin_mean": _weighted_round_mean(
+                round_payloads,
+                value_key="pseudo_label_margin_mean",
+                weight_key="candidate_count",
+            ),
+            "candidate_margin_mean": _weighted_round_mean(
                 round_payloads,
                 value_key="pseudo_label_margin_mean",
                 weight_key="candidate_count",
@@ -167,7 +214,17 @@ def _round_pseudo_label_quality(
             value_attr="pseudo_label_confidence_mean",
             weight_attr="candidate_count",
         ),
+        "candidate_confidence_mean": _weighted_client_mean(
+            round_summary.clients,
+            value_attr="pseudo_label_confidence_mean",
+            weight_attr="candidate_count",
+        ),
         "pseudo_label_margin_mean": _weighted_client_mean(
+            round_summary.clients,
+            value_attr="pseudo_label_margin_mean",
+            weight_attr="candidate_count",
+        ),
+        "candidate_margin_mean": _weighted_client_mean(
             round_summary.clients,
             value_attr="pseudo_label_margin_mean",
             weight_attr="candidate_count",

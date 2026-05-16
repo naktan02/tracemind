@@ -153,6 +153,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 prototype_version="proto_sim_0001",
                 update_count=1,
                 validation=_evaluation(macro_f1=0.4, loss=0.8),
+                round_time_seconds=1.5,
+                total_payload_bytes=100,
                 clients=(
                     ClientRoundSummary(
                         client_id="agent_001",
@@ -161,6 +163,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         update_generated=True,
                         delta_l2_norm=2.0,
                         aggregation_example_count=5,
+                        client_train_time_seconds=0.11,
+                        client_payload_bytes=100,
                         pseudo_label_confidence_mean=0.8,
                         pseudo_label_margin_mean=0.2,
                         pseudo_label_correct_count=4,
@@ -173,6 +177,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         candidate_count=10,
                         accepted_count=0,
                         update_generated=False,
+                        client_train_time_seconds=0.07,
                         pseudo_label_confidence_mean=0.4,
                         pseudo_label_margin_mean=0.1,
                         rejected_label_distribution={"depression": 10},
@@ -185,6 +190,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 prototype_version="proto_sim_0002",
                 update_count=2,
                 validation=_evaluation(macro_f1=0.6, loss=0.5),
+                round_time_seconds=2.5,
+                total_payload_bytes=200,
                 clients=(
                     ClientRoundSummary(
                         client_id="agent_001",
@@ -193,6 +200,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         update_generated=True,
                         delta_l2_norm=4.0,
                         aggregation_example_count=4,
+                        client_train_time_seconds=0.2,
+                        client_payload_bytes=80,
                         pseudo_label_confidence_mean=0.9,
                         pseudo_label_margin_mean=0.3,
                         pseudo_label_correct_count=4,
@@ -207,6 +216,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         update_generated=True,
                         delta_l2_norm=6.0,
                         aggregation_example_count=6,
+                        client_train_time_seconds=0.3,
+                        client_payload_bytes=120,
                         pseudo_label_confidence_mean=0.7,
                         pseudo_label_margin_mean=0.2,
                         pseudo_label_correct_count=3,
@@ -263,9 +274,17 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
 
     second_round_aggregation = payload["diagnostics"]["aggregation"]["rounds"][1]
     assert payload["rounds"][0]["round_index"] == 1
+    assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
+    assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
+    assert payload["rounds"][0]["total_payload_bytes"] == 100
     assert payload["rounds"][1]["delta_from_previous_round"]["loss_reduction"] == (
         pytest.approx(0.3)
     )
+    round_progression = payload["diagnostics"]["round_progression"]
+    assert len(round_progression["validation_curve"]) == 3
+    assert round_progression["best_round"]["round_id"] == "round_0002"
+    assert round_progression["best_round"]["selection_metric"] == "macro_f1"
+    assert round_progression["validation_curve"][0]["round_index"] == 0
     assert second_round_aggregation["zero_update_client_count"] == 0
     assert second_round_aggregation["total_aggregation_examples"] == 10
     assert second_round_aggregation["aggregation_example_basis"] == (
@@ -284,10 +303,19 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert pseudo_label_quality["summary"]["pseudo_label_accuracy"] == pytest.approx(
         11 / 15
     )
+    assert pseudo_label_quality["summary"]["candidate_confidence_mean"] == (
+        pytest.approx(0.7)
+    )
     assert pseudo_label_quality["summary"]["accepted_label_distribution"] == {
         "anxiety": 9,
         "depression": 6,
     }
+
+    communication_cost = payload["diagnostics"]["communication_cost"]
+    assert communication_cost["total_payload_bytes"] == 300
+    assert communication_cost["payload_byte_accounting_status"] == "measured"
+    assert communication_cost["round_time_seconds"]["mean"] == pytest.approx(2.0)
+    assert communication_cost["client_train_time_seconds"]["max"] == pytest.approx(0.3)
 
     client_validation = payload["metrics"]["client_validation"]
     agent_001_summary = client_validation["clients"][0]
@@ -300,9 +328,15 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert agent_001_summary["client_candidate_count"] == 20
     assert agent_001_summary["client_accepted_count"] == 9
     assert agent_001_summary["client_accepted_ratio"] == pytest.approx(0.45)
+    assert agent_001_summary["client_payload_bytes"] == 180
     assert agent_001_summary["update_generated_round_count"] == 2
     assert agent_001_summary["client_delta_l2_norm"] == pytest.approx(4.0)
     assert agent_001_summary["mean_delta_l2_norm"] == pytest.approx(3.0)
+    assert agent_001_summary["client_train_time_seconds"] == pytest.approx(0.2)
+    assert agent_001_summary["mean_client_train_time_seconds"] == pytest.approx(0.155)
+    assert agent_001_summary["client_validation_loss"] == pytest.approx(0.3)
+    assert agent_001_summary["client_validation_macro_f1"] == pytest.approx(0.7)
+    assert agent_001_summary["client_validation_ece"] == pytest.approx(0.1)
     assert agent_001_summary["pseudo_label_accuracy"] == pytest.approx(8 / 9)
     assert agent_001_summary["accepted_label_distribution"] == {"anxiety": 9}
 
