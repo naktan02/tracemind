@@ -70,6 +70,9 @@
     재사용 aggregation backend 의미는 `methods/federated/aggregation/`이 소유한다
   - method-only aggregation/server policy 변형은 `methods/federated_ssl/<method>/`가
     소유하고, server-owned artifact ref 생성만 runtime capability로 제공한다
+  - aggregation 결과의 `aggregated_artifacts` 저장은 main_server가 수행하지만,
+    artifact payload 의미와 next-state projection은 `methods/adaptation/<family>/`가
+    소유한다
   - LoRA-classifier FedAvg methods strategy는 inline delta와 server-owned
     `aggregation_artifact::` JSON artifact-ref update를 집계한다. client update는
     base revision 기준 delta이고, 다음 state가 참조하는 server aggregate artifact는
