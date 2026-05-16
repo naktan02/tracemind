@@ -128,6 +128,8 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   preset으로 LoRA-classifier 조합을 시작하거나,
   `experiment_profile=none` 상태에서 `local_update_profile=lora_pseudo_label_v1`와
   `round_runtime_profile=fedavg_lora_classifier`를 직접 compose할 수 있다. 이
-  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지한다. 실제 1-round
-  LoRA weight 집계는 agent-local artifact upload/materialization 또는 inline
-  train-step delta가 붙은 뒤 실행한다.
+  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지한다.
+- `lora_pseudo_label_v1` simulation profile은 서버가 바로 집계할 수 있는
+  `inline_delta` update를 만든다. 이는 FL lifecycle과 LoRA-classifier FedAvg 계약을
+  검증하는 deterministic simulation path이며, 실제 PEFT optimizer가 만든 LoRA
+  weight artifact upload/materialization은 아직 다음 단계다.

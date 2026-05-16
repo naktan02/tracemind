@@ -310,7 +310,7 @@ def _lora_objective_extras() -> dict[str, str | int | float | bool]:
         "lora_classifier.bias": "none",
         "lora_classifier.target_modules": "all-linear",
         "lora_classifier.use_rslora": False,
-        "lora_classifier.delta_format": "agent_local_artifact_ref",
+        "lora_classifier.delta_format": "inline_delta",
         "lora_classifier.artifact_ref_prefix": "agent-local://lora_classifier",
         "lora_classifier.text_metadata_keys": (
             "strong_text,training_text,raw_text,text,weak_text"
@@ -782,6 +782,91 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
     assert result.initial_model_revision == "sim_rev_0000"
     assert result.rounds == ()
     assert result.final_validation == result.initial_validation
+
+
+def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
+    tmp_path,
+) -> None:
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("a3", "panic panic", "anxiety"),
+        _row("d1", "sad sad", "depression"),
+        _row("d2", "sad sad", "depression"),
+        _row("d3", "sad sad", "depression"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+        _row("n3", "calm calm", "normal"),
+        _row("s1", "die die", "suicidal"),
+        _row("s2", "die die", "suicidal"),
+        _row("s3", "die die", "suicidal"),
+    ]
+    validation_rows = [
+        _row("va", "panic panic", "anxiety"),
+        _row("vd", "sad sad", "depression"),
+        _row("vn", "calm calm", "normal"),
+        _row("vs", "die die", "suicidal"),
+    ]
+    output_dir = tmp_path / "lora_inline_round"
+    request = SimulationRunRequest(
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        output_dir=output_dir,
+        client_count=4,
+        rounds=1,
+        bootstrap_ratio=1 / 3,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="mxbai-lora-classifier",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(),
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
+    )
+
+    result = run_simulation_request(request)
+
+    assert result.rounds
+    assert result.rounds[0].update_count > 0
+    assert result.rounds[0].model_revision == "sim_rev_0001"
+    update_paths = sorted(
+        (output_dir / "main_server" / "shared_adapter_updates" / "versions").glob(
+            "*.json"
+        )
+    )
+    assert update_paths
+    update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
+    assert update_payload["delta_format"] == "inline_delta"
+    assert update_payload["lora_delta_artifact_ref"] is None
+    assert update_payload["classifier_head_delta_artifact_ref"] is None
+    assert update_payload["lora_parameter_deltas"]
+    assert update_payload["classifier_head_weight_deltas"]
+    assert "agent-local://" not in json.dumps(update_payload)
 
 
 def test_run_simulation_request_rejects_local_round_family_mismatch(

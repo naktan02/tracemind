@@ -32,8 +32,11 @@ class LoraClassifierTrainingRow:
 class LoraClassifierTrainArtifacts:
     """LoRA train executor가 payload core에 돌려주는 artifact snapshot."""
 
-    lora_delta_artifact_ref: str
-    classifier_head_delta_artifact_ref: str
+    lora_delta_artifact_ref: str | None = None
+    classifier_head_delta_artifact_ref: str | None = None
+    lora_parameter_deltas: Mapping[str, Sequence[float]] | None = None
+    classifier_head_weight_deltas: Mapping[str, Sequence[float]] | None = None
+    classifier_head_bias_deltas: Mapping[str, float] | None = None
     delta_l2_norm: float = 0.0
 
 
@@ -136,6 +139,30 @@ def build_lora_classifier_delta_from_rows(
         lora_delta_artifact_ref=artifacts.lora_delta_artifact_ref,
         classifier_head_delta_artifact_ref=(
             artifacts.classifier_head_delta_artifact_ref
+        ),
+        lora_parameter_deltas=(
+            None
+            if artifacts.lora_parameter_deltas is None
+            else {
+                key: [float(value) for value in values]
+                for key, values in artifacts.lora_parameter_deltas.items()
+            }
+        ),
+        classifier_head_weight_deltas=(
+            None
+            if artifacts.classifier_head_weight_deltas is None
+            else {
+                key: [float(value) for value in values]
+                for key, values in artifacts.classifier_head_weight_deltas.items()
+            }
+        ),
+        classifier_head_bias_deltas=(
+            {}
+            if artifacts.classifier_head_bias_deltas is None
+            else {
+                key: float(value)
+                for key, value in artifacts.classifier_head_bias_deltas.items()
+            }
         ),
         delta_format=config.delta_format,
         mean_confidence=sum(row.confidence for row in rows) / len(rows),

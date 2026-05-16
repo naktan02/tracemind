@@ -755,7 +755,7 @@ def test_federated_simulation_supports_lora_classifier_profiles() -> None:
     assert cfg.training_task.objective["lora_classifier.rank"] == 8
     assert cfg.training_task.objective["lora_classifier.alpha"] == 16
     assert cfg.training_task.objective["lora_classifier.delta_format"] == (
-        "agent_local_artifact_ref"
+        "inline_delta"
     )
     assert "adapter_family_name" not in cfg.local_update_profile
     assert "aggregation_backend_name" not in cfg.local_update_profile

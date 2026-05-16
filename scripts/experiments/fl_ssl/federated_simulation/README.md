@@ -170,6 +170,10 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
   현재는 simulation/row-source 경로가 우선이다.
 - validation의 accepted_ratio는 raw score threshold가 아니라
   runtime과 같은 `evidence backend -> acceptance policy` 경로로 계산한다.
+- `fedavg_lora_classifier` profile은 현재 `inline_delta` simulation executor로
+  LoRA/classifier update를 만든다. 이 경로는 서버 수락, FedAvg 집계, 라운드
+  publication을 검증하기 위한 smoke path이며 실제 PEFT 학습 weight 품질을 의미하지
+  않는다. 실제 LoRA optimizer와 artifact upload/materialization은 후속 단계다.
 ## newcomer 메모
 
 - task shape를 바꾸고 싶으면 이 패키지부터 고치기보다

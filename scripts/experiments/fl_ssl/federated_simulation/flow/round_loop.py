@@ -136,7 +136,8 @@ def _run_client_round(
         objective_config=training_task.objective_config,
     )
     local_training_service = ssl_method_runtime.build_local_training_service(
-        client_state_root=request.output_dir / "agents" / shard.client_id
+        client_state_root=request.output_dir / "agents" / shard.client_id,
+        training_task=training_task,
     )
     local_result = run_federated_local_training(
         local_training_service=local_training_service,

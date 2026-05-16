@@ -72,6 +72,7 @@ class FederatedSslSimulationRuntime(Protocol):
         self,
         *,
         client_state_root: Path,
+        training_task: Any | None = None,
     ) -> Any:
         """client local trainer를 생성한다."""
 
@@ -138,9 +139,11 @@ class DefaultFederatedSslSimulationRuntime:
         self,
         *,
         client_state_root: Path,
+        training_task: Any | None = None,
     ) -> Any:
         return build_federated_local_training_service(
-            client_state_root=client_state_root
+            client_state_root=client_state_root,
+            training_task=training_task,
         )
 
 

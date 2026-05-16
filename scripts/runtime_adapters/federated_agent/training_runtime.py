@@ -9,6 +9,7 @@ from typing import Any
 def build_federated_local_training_service(
     *,
     client_state_root: Path,
+    training_task: Any | None = None,
 ) -> Any:
     """simulation client state root 기준 local training service를 만든다."""
 
@@ -18,9 +19,34 @@ def build_federated_local_training_service(
     from agent.src.services.training.execution.local_training_service import (
         LocalTrainingService,
     )
+    from methods.adaptation.lora_classifier.config import (
+        LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+        build_lora_classifier_training_backend_config,
+    )
+    from methods.adaptation.lora_classifier.training_backend import (
+        LoraClassifierTrainingBackend,
+    )
+    from scripts.runtime_adapters.federated_agent.lora_classifier_inline_delta import (
+        SimulationInlineLoraClassifierTrainExecutor,
+    )
+
+    backend = None
+    objective_config = None if training_task is None else training_task.objective_config
+    if (
+        objective_config is not None
+        and objective_config.training_backend_name
+        == LORA_CLASSIFIER_TRAINING_BACKEND_NAME
+    ):
+        lora_config = build_lora_classifier_training_backend_config(objective_config)
+        if lora_config.delta_format == "inline_delta":
+            backend = LoraClassifierTrainingBackend(
+                config=lora_config,
+                train_executor=SimulationInlineLoraClassifierTrainExecutor(),
+            )
 
     return LocalTrainingService(
-        repository=TrainingArtifactRepository(state_root=client_state_root)
+        repository=TrainingArtifactRepository(state_root=client_state_root),
+        backend=backend,
     )
 
 
