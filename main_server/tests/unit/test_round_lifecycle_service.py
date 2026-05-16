@@ -72,6 +72,7 @@ from main_server.src.services.federation.rounds.families.models import (
     SharedAdapterRoundFamily,
 )
 from main_server.src.services.federation.rounds.families.registry import (
+    build_shared_adapter_round_family,
     register_shared_adapter_round_family,
 )
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
@@ -502,6 +503,10 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
+    service.round_manager_service.adapter_family = build_shared_adapter_round_family(
+        "lora_classifier",
+        aggregation_backend_name="fedavg",
+    )
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update_payload = make_lora_classifier_delta_payload(
         model_id="tracemind-embed",
@@ -629,6 +634,71 @@ def test_round_lifecycle_rejects_base_revision_mismatch(tmp_path: Path) -> None:
 
     with pytest.raises(RoundValidationError):
         service.accept_update_submission(record.round_id, bad_update)
+
+
+def test_round_lifecycle_rejects_payload_format_outside_active_family(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, round_repository = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone={
+            "backbone_model_id": "mxbai",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mxbai",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        lora_config={
+            "peft_adapter_name": "lora",
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.2],
+            "normal": [-0.2],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format="inline_delta",
+        mean_confidence=0.8,
+        mean_margin=0.2,
+    )
+    update = make_training_update_submission(
+        envelope=TrainingUpdateEnvelope(
+            schema_version="training_update_envelope.v1",
+            update_id="lora_update_001",
+            round_id=record.round_id,
+            task_id=record.training_task.task_id,
+            model_id="tracemind-embed",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            payload_ref="client-submission::lora_update_001",
+            payload_format="lora_classifier_update",
+            example_count=2,
+            client_metrics={"mean_loss": 0.2},
+        ),
+        update_payload=update_payload,
+    )
+
+    with pytest.raises(RoundValidationError, match="payload_format"):
+        service.accept_update_submission(record.round_id, update)
+    assert round_repository.load_round(record.round_id).updates == ()
 
 
 def test_round_lifecycle_finalizes_round_and_activates_next_manifest(

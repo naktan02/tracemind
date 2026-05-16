@@ -263,6 +263,19 @@ def _require_ssl_method_config_matches_descriptor(
         expected=expected_custom_exchange_required,
         context=f"ssl_method.round_state_exchange for {ssl_method_config.name}",
     )
+    expected_metric_keys = (
+        []
+        if ssl_method_descriptor.round_state_exchange is None
+        else list(
+            ssl_method_descriptor.round_state_exchange.required_client_metric_keys
+        )
+    )
+    _require_mapping_value(
+        ssl_method_config.round_state_exchange,
+        key="required_client_metric_keys",
+        expected=expected_metric_keys,
+        context=f"ssl_method.round_state_exchange for {ssl_method_config.name}",
+    )
 
 
 def _require_mapping_value(

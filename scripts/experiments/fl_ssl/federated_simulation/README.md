@@ -117,6 +117,7 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label \
+  strategy_axes/fl/experiment_profile=none \
   strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1 \
   training_task.objective.privacy_guard_name=noop
 ```
@@ -133,6 +134,9 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
   기본값은 `round_runtime_profile`에서 파생된다.
+- `local_update_profile` 또는 `round_runtime_profile`을 직접 바꿀 때는
+  `strategy_axes/fl/experiment_profile=none`을 함께 지정한다. preset 이름표까지
+  함께 바꾸려면 `strategy_axes/fl/experiment_profile=<profile>`로 시작한다.
 - FL SSL main split은 `run_controls/fl_ssl/budget=main`과
   `strategy_axes/fl/shard_policy=dirichlet_alpha03`를 기본 조합으로 본다.
   stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.

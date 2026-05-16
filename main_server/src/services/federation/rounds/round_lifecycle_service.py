@@ -50,11 +50,15 @@ from methods.adaptation.server_update_materialization import (
 )
 from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
+    SharedAdapterUpdatePayload,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
-from shared.src.contracts.training_contracts import TrainingUpdateSubmission
+from shared.src.contracts.training_contracts import (
+    TrainingUpdateEnvelope,
+    TrainingUpdateSubmission,
+)
 from shared.src.domain.services.clock import Clock, SystemUtcClock
 from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
@@ -209,6 +213,10 @@ class RoundLifecycleService:
             envelope=submission.envelope,
             training_task=record.training_task,
         )
+        self._validate_update_payload_matches_active_family(
+            envelope=decoded_envelope,
+            update_payload=submission.update_payload,
+        )
         server_payload_ref = self.update_payload_repository.ref_for_update(
             decoded_envelope.update_id
         )
@@ -341,4 +349,23 @@ class RoundLifecycleService:
             raise RoundValidationError(
                 "Requested task_type is not compatible with the active manifest: "
                 f"{request.task_type}"
+            )
+
+    def _validate_update_payload_matches_active_family(
+        self,
+        *,
+        envelope: TrainingUpdateEnvelope,
+        update_payload: SharedAdapterUpdatePayload,
+    ) -> None:
+        adapter_family = self.round_manager_service.adapter_family
+        if envelope.payload_format not in adapter_family.accepted_update_formats:
+            raise RoundValidationError(
+                "Update payload_format is not accepted by the active adapter "
+                f"family {adapter_family.adapter_kind}: {envelope.payload_format}"
+            )
+        if update_payload.adapter_kind != adapter_family.adapter_kind:
+            raise RoundValidationError(
+                "Update payload adapter_kind does not match the active adapter "
+                f"family: {update_payload.adapter_kind} != "
+                f"{adapter_family.adapter_kind}"
             )

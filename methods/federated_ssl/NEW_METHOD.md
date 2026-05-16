@@ -51,6 +51,9 @@ adapter payload 해석/평균 규칙으로 안정화된 계산은 `methods/feder
 
 `experiment_profile`은 compose preset이다. threshold, LoRA rank, round 수 같은
 실행값의 source of truth는 Hydra leaf config에 남긴다.
+`local_update_profile`이나 `round_runtime_profile`을 직접 조합하는 실험은
+`strategy_axes/fl/experiment_profile=none`을 함께 지정해 stale preset metadata를
+비활성화한다.
 
 ## Registry
 

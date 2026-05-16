@@ -2,11 +2,14 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 from hydra import compose, initialize_config_module
 from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_profile_compatibility,
@@ -16,9 +19,18 @@ from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
 )
-from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.federated_ssl.registry import (
+    list_federated_ssl_method_descriptors,
+    resolve_federated_ssl_method_descriptor,
+)
+from scripts.runtime_adapters.federated_agent.backend_resolver import (
+    resolve_federated_training_backend_adapter_kind,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+REPO_ROOT = Path(__file__).resolve().parents[2]
+FL_STRATEGY_AXIS_ROOT = REPO_ROOT / "conf" / "strategy_axes" / "fl"
 
 
 def _plain_dict(source: DictConfig) -> dict[str, object]:
@@ -26,6 +38,104 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
     if not isinstance(raw, dict):
         raise ValueError("Expected DictConfig section to resolve to a dict.")
     return raw
+
+
+def _fl_strategy_axis_names(group_name: str) -> tuple[str, ...]:
+    return tuple(
+        sorted(
+            path.stem
+            for path in (FL_STRATEGY_AXIS_ROOT / group_name).glob("*.yaml")
+            if path.stem != "__init__"
+        )
+    )
+
+
+def _fl_named_experiment_profile_names() -> tuple[str, ...]:
+    return tuple(
+        profile_name
+        for profile_name in _fl_strategy_axis_names("experiment_profile")
+        if profile_name != "none"
+    )
+
+
+def _assert_fl_ssl_method_config_matches_descriptor(cfg: DictConfig) -> None:
+    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+
+    assert cfg.ssl_method.implementation_status == descriptor.implementation_status
+    assert cfg.ssl_method.client_step.task_type == descriptor.local_step.step_name
+    assert (
+        cfg.ssl_method.client_step.custom_method_runtime_required
+        is descriptor.runtime_capabilities.requires_custom_client_runtime
+    )
+    assert (
+        cfg.ssl_method.server_step.custom_round_policy_required
+        is descriptor.runtime_capabilities.requires_custom_server_runtime
+    )
+    expected_exchange_name = (
+        None
+        if descriptor.round_state_exchange is None
+        else descriptor.round_state_exchange.exchange_name
+    )
+    expected_metric_keys = (
+        []
+        if descriptor.round_state_exchange is None
+        else list(descriptor.round_state_exchange.required_client_metric_keys)
+    )
+    assert cfg.ssl_method.round_state_exchange.exchange_name == (expected_exchange_name)
+    assert (
+        list(cfg.ssl_method.round_state_exchange.required_client_metric_keys)
+        == expected_metric_keys
+    )
+
+
+def _assert_composed_fl_profile_is_compatible(cfg: DictConfig) -> None:
+    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+    local_update_profile = LocalUpdateProfile.from_mapping(
+        _plain_dict(cfg.local_update_profile)
+    )
+    objective_config = TrainingObjectiveConfig.from_mapping(
+        _plain_dict(cfg.training_task.objective)
+    )
+
+    require_training_objective_matches_local_update_profile(
+        objective_config=objective_config,
+        local_update_profile=local_update_profile,
+    )
+    assert descriptor.recipe is not None
+    assert descriptor.recipe.supports_local_update_profile(
+        local_update_profile.algorithm_profile_name
+    )
+    assert descriptor.recipe.supports_runtime_pair(
+        adapter_family_name=str(cfg.round_runtime_profile.adapter_family_name),
+        aggregation_backend_name=str(
+            cfg.round_runtime_profile.aggregation_backend_name
+        ),
+    )
+    assert descriptor.recipe.supports_profile_combination(
+        local_update_profile_name=local_update_profile.algorithm_profile_name,
+        round_runtime_profile_name=str(cfg.round_runtime_profile.name),
+    )
+    validate_federated_ssl_profile_compatibility(
+        FederatedSslProfileCompatibilityContext(
+            method_descriptor=descriptor,
+            local_update_profile=local_update_profile,
+            local_update_adapter_kind=resolve_federated_training_backend_adapter_kind(
+                objective_config=objective_config
+            ),
+            round_adapter_family_name=str(cfg.round_runtime.adapter_family_name),
+            round_aggregation_backend_name=str(
+                cfg.round_runtime.aggregation_backend_name
+            ),
+            experiment_profile=(
+                None
+                if "fl_profile" not in cfg or cfg.fl_profile is None
+                else FederatedSslExperimentProfile.from_mapping(
+                    _plain_dict(cfg.fl_profile)
+                )
+            ),
+            round_runtime_profile_name=str(cfg.round_runtime_profile.name),
+        )
+    )
 
 
 @pytest.mark.parametrize(
@@ -527,6 +637,64 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.report.seed_count == 3
 
 
+@pytest.mark.parametrize("profile_name", _fl_named_experiment_profile_names())
+def test_federated_simulation_experiment_profiles_match_methods_recipe(
+    profile_name: str,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[f"strategy_axes/fl/experiment_profile={profile_name}"],
+        )
+
+    assert cfg.fl_profile.name == profile_name
+    assert cfg.fl_profile.method_name == cfg.ssl_method.name
+    assert (
+        cfg.fl_profile.local_update_profile_name
+        == cfg.local_update_profile.algorithm_profile_name
+    )
+    assert cfg.fl_profile.round_runtime_profile_name == cfg.round_runtime_profile.name
+    assert cfg.fl_profile.adapter_family_name == cfg.round_runtime.adapter_family_name
+    assert (
+        cfg.fl_profile.aggregation_backend_name
+        == cfg.round_runtime.aggregation_backend_name
+    )
+    _assert_fl_ssl_method_config_matches_descriptor(cfg)
+    _assert_composed_fl_profile_is_compatible(cfg)
+
+
+@pytest.mark.parametrize(
+    "descriptor",
+    list_federated_ssl_method_descriptors(),
+    ids=lambda descriptor: descriptor.name,
+)
+def test_federated_simulation_method_recipe_profile_combinations_are_composable(
+    descriptor: FederatedSslMethodDescriptor,
+) -> None:
+    assert descriptor.recipe is not None
+
+    for combination in descriptor.recipe.supported_profile_combinations:
+        with initialize_config_module(version_base=None, config_module="conf"):
+            cfg = compose(
+                config_name="entrypoints/fl_ssl/run_federated_simulation",
+                overrides=[
+                    f"strategy_axes/fl/method_descriptor={descriptor.name}",
+                    "strategy_axes/fl/experiment_profile=none",
+                    (
+                        "strategy_axes/fl/local_update_profile="
+                        f"{combination.local_update_profile_name}"
+                    ),
+                    (
+                        "strategy_axes/fl/round_runtime_profile="
+                        f"{combination.round_runtime_profile_name}"
+                    ),
+                ],
+            )
+
+        _assert_fl_ssl_method_config_matches_descriptor(cfg)
+        _assert_composed_fl_profile_is_compatible(cfg)
+
+
 @pytest.mark.parametrize(
     "profile_name",
     [
@@ -542,6 +710,7 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "strategy_axes/fl/experiment_profile=none",
                 f"strategy_axes/fl/local_update_profile={profile_name}",
             ],
         )
@@ -565,6 +734,7 @@ def test_federated_simulation_supports_lora_classifier_profiles() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "strategy_axes/fl/experiment_profile=none",
                 "strategy_axes/fl/local_update_profile=lora_pseudo_label_v1",
                 "strategy_axes/fl/round_runtime_profile=fedavg_lora_classifier",
             ],
@@ -638,41 +808,8 @@ def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
-    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
-    local_update_profile = LocalUpdateProfile.from_mapping(
-        _plain_dict(cfg.local_update_profile)
-    )
-
-    assert cfg.ssl_method.implementation_status == descriptor.implementation_status
-    assert cfg.ssl_method.client_step.task_type == descriptor.local_step.step_name
-    assert (
-        cfg.ssl_method.client_step.custom_method_runtime_required
-        is descriptor.runtime_capabilities.requires_custom_client_runtime
-    )
-    assert (
-        cfg.ssl_method.server_step.custom_round_policy_required
-        is descriptor.runtime_capabilities.requires_custom_server_runtime
-    )
-    assert cfg.ssl_method.round_state_exchange.exchange_name == (
-        descriptor.round_state_exchange.exchange_name
-    )
-    assert list(
-        cfg.ssl_method.round_state_exchange.required_client_metric_keys
-    ) == list(descriptor.round_state_exchange.required_client_metric_keys)
-    assert descriptor.recipe is not None
-    assert descriptor.recipe.supports_local_update_profile(
-        local_update_profile.algorithm_profile_name
-    )
-    assert descriptor.recipe.supports_runtime_pair(
-        adapter_family_name=str(cfg.round_runtime_profile.adapter_family_name),
-        aggregation_backend_name=str(
-            cfg.round_runtime_profile.aggregation_backend_name
-        ),
-    )
-    assert descriptor.recipe.supports_profile_combination(
-        local_update_profile_name=local_update_profile.algorithm_profile_name,
-        round_runtime_profile_name=str(cfg.round_runtime_profile.name),
-    )
+    _assert_fl_ssl_method_config_matches_descriptor(cfg)
+    _assert_composed_fl_profile_is_compatible(cfg)
 
 
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
@@ -714,6 +851,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
+                "strategy_axes/fl/experiment_profile=none",
                 "strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.example_generation_backend_name=prototype_rescore",

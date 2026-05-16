@@ -559,6 +559,19 @@ def test_federated_ssl_runtime_rejects_method_config_descriptor_drift() -> None:
         _build_validated_ssl_runtime(ssl_method_config)
 
 
+def test_federated_ssl_runtime_rejects_round_state_metric_key_drift() -> None:
+    ssl_method_config = _default_ssl_method_config()
+    ssl_method_config.round_state_exchange["required_client_metric_keys"] = [
+        "client_entropy"
+    ]
+
+    with pytest.raises(
+        ValueError,
+        match="ssl_method.round_state_exchange.*required_client_metric_keys",
+    ):
+        _build_validated_ssl_runtime(ssl_method_config)
+
+
 def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
     tmp_path,
 ) -> None:

@@ -48,6 +48,11 @@ pseudo-label update를 만들 때 쓰는 아래 조합을 묶는 profile이다.
 실제 threshold, LoRA rank, round 수 같은 실행 파라미터는 계속 Hydra config leaf에
 남긴다.
 
+개별 축을 직접 조합해 실험할 때는 `strategy_axes/fl/experiment_profile=none`을
+함께 지정한다. 그러면 실행값 source of truth는 `method_descriptor`,
+`local_update_profile`, `round_runtime_profile`가 되고, 오래된 `fl_profile`
+metadata가 bootstrap 검증에서 잘못된 조합처럼 보이지 않는다.
+
 `fl_profile` metadata는 실행값을 다시 소유하지 않는다. Simulation bootstrap 전
 `FederatedSslExperimentProfile`로 해석해 실제로 compose된 method/local update/round
 runtime profile과 일치하는지만 검증한다. 즉 `fl_profile`은 사람이 고른 preset의

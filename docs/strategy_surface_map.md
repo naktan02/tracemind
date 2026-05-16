@@ -124,8 +124,10 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned
   `aggregation_artifact::` JSON artifact-ref update는 main_server가 제공한 loader로
   materialize하며, `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
-- FL simulation은 `local_update_profile=lora_pseudo_label_v1`와
-  `round_runtime_profile=fedavg_lora_classifier` 조합을 compose할 수 있다. 이
+- FL simulation은 `experiment_profile=fedavg_pseudo_label_lora_classifier_v1`
+  preset으로 LoRA-classifier 조합을 시작하거나,
+  `experiment_profile=none` 상태에서 `local_update_profile=lora_pseudo_label_v1`와
+  `round_runtime_profile=fedavg_lora_classifier`를 직접 compose할 수 있다. 이
   profile은 기존 `fedavg_pseudo_label` method descriptor를 유지한다. 실제 1-round
   LoRA weight 집계는 agent-local artifact upload/materialization 또는 inline
   train-step delta가 붙은 뒤 실행한다.

@@ -66,6 +66,16 @@ def test_training_update_submission_rejects_misaligned_payload() -> None:
         )
 
 
+def test_training_update_submission_rejects_payload_format_mismatch() -> None:
+    with pytest.raises(ValueError, match="payload_format"):
+        make_training_update_submission(
+            envelope=_envelope(
+                payload_format=UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value
+            ),
+            update_payload=_update_payload(),
+        )
+
+
 def test_training_update_submission_parses_lora_classifier_update_payload() -> None:
     update_payload = make_lora_classifier_delta_payload(
         model_id="model",

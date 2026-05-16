@@ -316,7 +316,35 @@ class TrainingUpdateSubmissionPayload(BaseModel):
             raise ValueError(
                 "Submission update_payload.example_count must match envelope."
             )
+        accepted_formats = _accepted_update_payload_formats(update_payload)
+        if accepted_formats and str(envelope.payload_format) not in accepted_formats:
+            raise ValueError(
+                "Submission envelope.payload_format must match update_payload "
+                f"accepted format(s): {accepted_formats}."
+            )
         return self
+
+
+def _accepted_update_payload_formats(
+    update_payload: SharedAdapterUpdatePayload,
+) -> tuple[str, ...]:
+    accepted_formats = tuple(
+        str(payload_format)
+        for payload_format in getattr(
+            update_payload,
+            "accepted_update_payload_formats",
+            (),
+        )
+        if str(payload_format).strip()
+    )
+    canonical_format = getattr(
+        update_payload,
+        "canonical_update_payload_format",
+        None,
+    )
+    if canonical_format is None or str(canonical_format) in accepted_formats:
+        return accepted_formats
+    return (*accepted_formats, str(canonical_format))
 
 
 class DecisionFeedbackSignalPayload(BaseModel):

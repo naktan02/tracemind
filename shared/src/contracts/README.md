@@ -145,6 +145,9 @@ FL orchestration과 로컬 학습 제어용 envelope을 정의한다.
   - agent가 서버에 제출하는 update 요청
   - `envelope`과 inline `update_payload`를 함께 보내며, 서버는 payload를
     server-owned storage에 저장한 뒤 envelope의 `payload_ref`를 덮어씀
+  - `envelope`의 `model_id`, `base_model_revision`, `training_scope`,
+    `example_count`, `payload_format`은 inline `update_payload`와 같은 update를
+    가리켜야 한다
 - `DecisionFeedbackSignalPayload`
   - pseudo-label, 사용자 피드백, 후속 결과 등 로컬 학습용 signal 단위 계약
 
@@ -230,6 +233,9 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
   - 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
 - `payload_format`
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
+  - `TrainingUpdateSubmissionPayload`에서는 update payload type이 허용하는
+    format과 일치해야 하며, main server는 active adapter family가 허용하는
+    format인지 accept 단계에서 다시 확인한다
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
   - 현재 시스템 runtime에서는 주로 `adapter_only`, `head_only`
