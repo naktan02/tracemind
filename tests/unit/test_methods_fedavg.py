@@ -16,6 +16,7 @@ from methods.adaptation.lora_classifier.fedavg import (
     LoraClassifierFedAvgUpdate,
     compute_lora_classifier_fedavg,
 )
+from methods.federated.aggregation import registry as aggregation_registry
 from methods.federated.aggregation.fedavg.update_metrics import (
     FedAvgObservationMetricUpdate,
     aggregate_update_observation_metrics,
@@ -108,6 +109,27 @@ def test_aggregate_update_observation_metrics_uses_example_weights() -> None:
     assert result["mean_margin_observed_count"] == 1.0
     assert result["mean_margin_missing_count"] == 1.0
     assert result["mean_delta_l2_norm"] == pytest.approx(0.4)
+
+
+def test_federated_aggregation_registry_resolves_alias_without_package_scan(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def _fail_package_scan() -> None:
+        raise AssertionError("package-wide adaptation projection scan must not run")
+
+    monkeypatch.setattr(
+        aggregation_registry,
+        "_import_adaptation_projection_modules",
+        _fail_package_scan,
+    )
+
+    spec = get_federated_aggregation_method_spec(
+        adapter_kind="classifier_head",
+        method_name="classifier_head_fedavg",
+    )
+
+    assert spec.method_name == "fedavg"
+    assert spec.core_function_name == "compute_classifier_head_fedavg"
 
 
 def test_federated_aggregation_registry_rejects_duplicate_strategy() -> None:

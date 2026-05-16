@@ -72,7 +72,7 @@
     소유하고, server-owned artifact ref 생성만 runtime capability로 제공한다
   - LoRA-classifier FedAvg methods strategy는 inline delta와 server-owned
     `aggregation_artifact::` JSON artifact-ref update를 집계한다. `agent-local://`
-    ref는 upload/materialization 경로가 붙기 전까지 거부한다
+    ref는 upload/materialization 경로가 붙기 전까지 update accept 단계에서 거부한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 

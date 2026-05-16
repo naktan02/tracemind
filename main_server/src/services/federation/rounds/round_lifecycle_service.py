@@ -45,6 +45,9 @@ from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
     ServerPolicyExecutor,
 )
+from methods.adaptation.server_update_materialization import (
+    require_server_materializable_update_payload,
+)
 from shared.src.contracts.adapter_contract_families.base import (
     CurrentSharedAdapterStatePayload,
 )
@@ -217,6 +220,10 @@ class RoundLifecycleService:
             update=server_owned_envelope,
             accepted_at=accepted_at,
         )
+        try:
+            require_server_materializable_update_payload(submission.update_payload)
+        except ValueError as error:
+            raise RoundValidationError(str(error)) from error
         updated_record = record
         if not decision.is_idempotent:
             self.update_payload_repository.save_shared_adapter_update(

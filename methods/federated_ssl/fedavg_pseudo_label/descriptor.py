@@ -73,6 +73,7 @@ FEDAVG_PSEUDO_LABEL_DESCRIPTOR = FederatedSslMethodDescriptor(
         step_name=FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.objective_name,
         client_trainer_name=FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.trainer_hint,
         pseudo_labeler_name=(FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.pseudo_labeler_hint),
+        training_row_source=(FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE.training_row_source),
     ),
     server_step=FederatedSslServerStepSpec(
         server_aggregator_name=FEDAVG_PSEUDO_LABEL_SERVER_POLICY.policy_name,

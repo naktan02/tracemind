@@ -30,6 +30,7 @@ from scripts.runtime_adapters.federated_agent.selection_runtime import (
 from scripts.runtime_adapters.federated_agent.training_example_mapper import (
     build_federated_training_examples,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
@@ -74,6 +75,7 @@ def evaluate_rows(
     scoring_service: Any,
     confidence_threshold: float,
     margin_threshold: float,
+    task_type: TrainingTaskType = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     objective_config: TrainingObjectiveConfig | None = None,
 ) -> SimulationEvaluation:
     """validation row에 대해 top1 accuracy와 pseudo-label acceptance 비율을 계산한다."""
@@ -100,6 +102,7 @@ def evaluate_rows(
             model_id=model_id,
             model_revision=adapter_state.model_revision,
             training_scope=adapter_state.training_scope,
+            task_type=task_type,
             objective_config=effective_objective_config,
         ),
     )
@@ -159,6 +162,7 @@ def evaluate_simulation_validation(
         ),
         confidence_threshold=request.validation_config.confidence_threshold,
         margin_threshold=request.validation_config.margin_threshold,
+        task_type=request.training_task_config.task_type,
         objective_config=objective_config,
     )
 
@@ -182,6 +186,7 @@ def _build_validation_task(
     model_id: str,
     model_revision: str,
     training_scope: str,
+    task_type: TrainingTaskType,
     objective_config: TrainingObjectiveConfig,
 ) -> TrainingTask:
     return TrainingTask(
@@ -190,7 +195,7 @@ def _build_validation_task(
         round_id="simulation_validation_round",
         model_id=model_id,
         model_revision=model_revision,
-        task_type="pseudo_label_self_training",
+        task_type=task_type,
         training_scope=training_scope,
         local_epochs=1,
         batch_size=1,

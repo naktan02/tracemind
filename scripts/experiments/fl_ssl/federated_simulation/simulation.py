@@ -43,6 +43,9 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
@@ -136,6 +139,11 @@ def _require_fl_profile_compatibility(
 ) -> None:
     """method/local update/round runtime 조합을 bootstrap 전에 검증한다."""
 
+    _require_training_task_type_matches_method(
+        request=request,
+        ssl_method_descriptor=ssl_method_descriptor,
+    )
+    _require_round_runtime_matches_training_objective(request)
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
@@ -152,6 +160,38 @@ def _require_fl_profile_compatibility(
             round_runtime_profile_name=request.round_runtime_config.profile_name,
         )
     )
+
+
+def _require_round_runtime_matches_training_objective(
+    request: SimulationRunRequest,
+) -> None:
+    adapter_family_name = (
+        request.round_runtime_config.adapter_family_name.strip().lower()
+    )
+    if adapter_family_name != LORA_CLASSIFIER_ADAPTER_KIND:
+        return
+    lora_runtime_config = request.round_runtime_config.lora_classifier
+    if lora_runtime_config is None:
+        raise ValueError(
+            "lora_classifier round runtime requires lora_classifier bootstrap config."
+        )
+    lora_runtime_config.require_shared_payload_matches_objective(
+        request.training_task_config.objective_config
+    )
+
+
+def _require_training_task_type_matches_method(
+    *,
+    request: SimulationRunRequest,
+    ssl_method_descriptor: FederatedSslMethodDescriptor,
+) -> None:
+    actual = request.training_task_config.task_type
+    expected = ssl_method_descriptor.local_step.step_name
+    if str(actual) != expected:
+        raise ValueError(
+            "training_task_config.task_type must match the registered method "
+            f"descriptor local step: {actual!r} != {expected!r}."
+        )
 
 
 def _build_validated_ssl_runtime(

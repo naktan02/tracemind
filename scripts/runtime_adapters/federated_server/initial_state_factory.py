@@ -6,12 +6,15 @@ from datetime import datetime
 from typing import Any
 
 from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_ADAPTER_KIND,
     ClassifierHeadState,
 )
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_ADAPTER_KIND,
     VectorAdapterState,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierState,
 )
 from shared.src.contracts.prototype_contracts import (
@@ -33,7 +36,7 @@ def build_initial_shared_state(
 ) -> SharedAdapterState:
     """simulation bootstrap용 초기 shared state를 family별로 만든다."""
     adapter_family_name = str(round_runtime_config.adapter_family_name).strip().lower()
-    if adapter_family_name == "classifier_head":
+    if adapter_family_name == CLASSIFIER_HEAD_ADAPTER_KIND:
         return ClassifierHeadState.zero_initialized(
             model_id=model_id,
             model_revision=model_revision,
@@ -42,7 +45,7 @@ def build_initial_shared_state(
             training_scope=training_scope,
             updated_at=updated_at,
         )
-    if adapter_family_name == "lora_classifier":
+    if adapter_family_name == LORA_CLASSIFIER_ADAPTER_KIND:
         lora_config = getattr(round_runtime_config, "lora_classifier", None)
         if lora_config is None:
             raise ValueError(
@@ -61,13 +64,15 @@ def build_initial_shared_state(
             classifier_head_artifact_ref=lora_config.classifier_head_artifact_ref,
             artifact_format=lora_config.artifact_format,
         )
-    return VectorAdapterState.identity(
-        model_id=model_id,
-        model_revision=model_revision,
-        training_scope=training_scope,
-        embedding_dim=embedding_dim,
-        updated_at=updated_at,
-    )
+    if adapter_family_name == DIAGONAL_SCALE_ADAPTER_KIND:
+        return VectorAdapterState.identity(
+            model_id=model_id,
+            model_revision=model_revision,
+            training_scope=training_scope,
+            embedding_dim=embedding_dim,
+            updated_at=updated_at,
+        )
+    raise ValueError(f"Unsupported simulation adapter family: {adapter_family_name}")
 
 
 def build_classifier_head_state_from_prototype_pack(

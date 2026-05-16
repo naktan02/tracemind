@@ -11,6 +11,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.training_contracts import (
     TrainingConfigScalar,
     TrainingObjectiveConfig,
@@ -22,6 +23,7 @@ FederatedRoundOpenRequest = RoundOpenDraftRequest
 
 def build_federated_training_task_config(
     *,
+    task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     local_epochs: int,
     batch_size: int,
     learning_rate: float,
@@ -38,6 +40,7 @@ def build_federated_training_task_config(
     """FL simulation용 RoundTaskConfig 생성을 main_server bridge로 격리한다."""
 
     return RoundTaskConfig(
+        task_type=TrainingTaskType(task_type),
         local_epochs=local_epochs,
         batch_size=batch_size,
         learning_rate=learning_rate,

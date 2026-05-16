@@ -8,6 +8,9 @@ from pathlib import Path
 
 import pytest
 
+from methods.adaptation.lora_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.prototype.building.single import (
@@ -26,6 +29,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
+    FederatedClientShard,
     FederatedDiagnosticsConfig,
     FederatedLoraClassifierRuntimeConfig,
     FederatedPrototypeRebuildConfig,
@@ -57,6 +61,7 @@ from shared.src.contracts.adapter_contract_families.diagonal_scale import (
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
@@ -137,9 +142,11 @@ def _default_training_task_config(
     scorer_backend_name: str = "prototype_similarity",
     score_policy_name: str = "max_cosine",
     score_top_k: int | None = None,
+    task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     objective_extras: dict[str, str | int | float | bool] | None = None,
 ) -> object:
     return build_federated_training_task_config(
+        task_type=task_type,
         local_epochs=1,
         batch_size=16,
         learning_rate=1e-4,
@@ -268,20 +275,22 @@ def _default_round_runtime_config(
 
 def _lora_runtime_config() -> FederatedLoraClassifierRuntimeConfig:
     return FederatedLoraClassifierRuntimeConfig(
-        backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
-        backbone_revision="main",
-        tokenizer_model_id="mixedbread-ai/mxbai-embed-large-v1",
-        tokenizer_revision="main",
-        pooling="mean",
-        max_length=256,
-        task_prefix="",
-        peft_adapter_name="lora",
-        rank=8,
-        alpha=16,
-        dropout=0.1,
-        bias="none",
-        target_modules="all-linear",
-        use_rslora=False,
+        training_backend_config=LoraClassifierTrainingBackendConfig(
+            backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
+            backbone_revision="main",
+            tokenizer_model_id="mixedbread-ai/mxbai-embed-large-v1",
+            tokenizer_revision="main",
+            pooling="mean",
+            max_length=256,
+            task_prefix="",
+            peft_adapter_name="lora",
+            rank=8,
+            alpha=16,
+            dropout=0.1,
+            bias="none",
+            target_modules="all-linear",
+            use_rslora=False,
+        ),
     )
 
 
@@ -483,6 +492,18 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
     assert request.selection_policy is training_task_config.selection_policy
 
 
+def test_federated_training_task_config_accepts_method_task_type() -> None:
+    training_task_config = _default_training_task_config(
+        confidence_threshold=0.6,
+        margin_threshold=0.02,
+        max_examples=8,
+        gradient_clip_norm=0.5,
+        task_type="feedback_supervised",
+    )
+
+    assert training_task_config.task_type == TrainingTaskType.FEEDBACK_SUPERVISED
+
+
 def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
     descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
 
@@ -497,6 +518,24 @@ def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")
+
+
+def test_federated_ssl_runtime_uses_method_training_row_source() -> None:
+    runtime = build_federated_ssl_simulation_runtime("fedavg_pseudo_label")
+    labeled_row = _row("l1", "labeled", "normal")
+    unlabeled_row = _row("u1", "unlabeled", "anxiety")
+
+    selected_rows = runtime.select_training_rows(
+        shard=FederatedClientShard(
+            client_id="agent_001",
+            rows=[labeled_row, unlabeled_row],
+            labeled_rows=[labeled_row],
+            unlabeled_rows=[unlabeled_row],
+            client_pool_split_enforced=True,
+        )
+    )
+
+    assert selected_rows == [unlabeled_row]
 
 
 def test_simulation_server_runtime_wires_method_descriptor(tmp_path: Path) -> None:
@@ -520,6 +559,52 @@ def test_federated_ssl_runtime_rejects_method_config_descriptor_drift() -> None:
         _build_validated_ssl_runtime(ssl_method_config)
 
 
+def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
+    tmp_path,
+) -> None:
+    request = SimulationRunRequest(
+        train_rows=[
+            _row("a1", "panic panic", "anxiety"),
+            _row("n1", "calm calm", "normal"),
+        ],
+        validation_rows=[_row("va", "panic panic", "anxiety")],
+        output_dir=tmp_path / "task_type_mismatch",
+        client_count=2,
+        rounds=0,
+        bootstrap_ratio=0.5,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="tracemind-embed-sim",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            task_type=TrainingTaskType.FEEDBACK_SUPERVISED,
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
+    )
+
+    with pytest.raises(ValueError, match="training_task_config.task_type"):
+        run_simulation_request(request)
+
+
 def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
@@ -539,6 +624,90 @@ def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     assert state.label_schema == ["anxiety", "normal"]
     assert state.lora_config.rank == 8
     assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
+
+
+def test_build_initial_shared_state_rejects_unknown_family() -> None:
+    with pytest.raises(ValueError, match="Unsupported simulation adapter family"):
+        build_initial_shared_state(
+            round_runtime_config=_default_round_runtime_config(
+                adapter_family_name="future_family"
+            ),
+            model_id="future-model",
+            model_revision="sim_rev_0000",
+            training_scope="adapter_only",
+            embedding_dim=2,
+            labels=["anxiety", "normal"],
+            updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        )
+
+
+def test_run_simulation_request_rejects_lora_runtime_objective_drift(
+    tmp_path,
+) -> None:
+    drifted_lora_runtime = FederatedLoraClassifierRuntimeConfig(
+        training_backend_config=LoraClassifierTrainingBackendConfig(
+            backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
+            backbone_revision="main",
+            tokenizer_model_id="mixedbread-ai/mxbai-embed-large-v1",
+            tokenizer_revision="main",
+            pooling="mean",
+            max_length=256,
+            task_prefix="",
+            peft_adapter_name="lora",
+            rank=4,
+            alpha=16,
+            dropout=0.1,
+            bias="none",
+            target_modules="all-linear",
+            use_rslora=False,
+        )
+    )
+    request = SimulationRunRequest(
+        train_rows=[
+            _row("a1", "panic panic", "anxiety"),
+            _row("n1", "calm calm", "normal"),
+        ],
+        validation_rows=[_row("va", "panic panic", "anxiety")],
+        output_dir=tmp_path / "lora_drift",
+        client_count=2,
+        rounds=0,
+        bootstrap_ratio=0.5,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="mxbai-lora-classifier",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=drifted_lora_runtime,
+        ),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(),
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
+    )
+
+    with pytest.raises(ValueError, match="LoRA-classifier.*training_task.objective"):
+        run_simulation_request(request)
 
 
 def test_run_simulation_request_bootstraps_lora_classifier_profile(

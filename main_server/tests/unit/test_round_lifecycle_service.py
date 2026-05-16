@@ -108,6 +108,9 @@ from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
 )
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_lora_classifier_delta_payload,
+)
 from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_payload_family,
 )
@@ -489,6 +492,68 @@ def test_round_lifecycle_rejects_duplicate_update_id(tmp_path: Path) -> None:
     assert acceptance.update_count == 1
     with pytest.raises(RoundConflictError):
         service.accept_update_submission(record.round_id, update)
+
+
+def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, round_repository = _build_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone={
+            "backbone_model_id": "mxbai",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mxbai",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        lora_config={
+            "peft_adapter_name": "lora",
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_delta_artifact_ref="agent-local://agent_001/lora_delta",
+        classifier_head_delta_artifact_ref=(
+            "agent-local://agent_001/classifier_head_delta"
+        ),
+        mean_confidence=0.8,
+        mean_margin=0.2,
+    )
+    update = make_training_update_submission(
+        envelope=TrainingUpdateEnvelope(
+            schema_version="training_update_envelope.v1",
+            update_id="lora_update_001",
+            round_id=record.round_id,
+            task_id=record.training_task.task_id,
+            model_id="tracemind-embed",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            payload_ref="client-submission::lora_update_001",
+            payload_format="lora_classifier_update",
+            example_count=2,
+            client_metrics={"mean_loss": 0.2},
+        ),
+        update_payload=update_payload,
+    )
+
+    with pytest.raises(RoundValidationError, match="agent-local artifact"):
+        service.accept_update_submission(record.round_id, update)
+    assert round_repository.load_round(record.round_id).updates == ()
 
 
 def test_round_lifecycle_can_accept_idempotent_duplicate_update(tmp_path: Path) -> None:

@@ -6,10 +6,18 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any, Protocol
 
-from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.base import (
+    TRAINING_ROW_SOURCE_ALL_ROWS,
+    TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE,
+    TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
+    FederatedSslMethodDescriptor,
+)
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_training_examples,
+)
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedClientShard,
 )
 from scripts.runtime_adapters.federated_agent.training_runtime import (
     build_federated_local_training_service,
@@ -52,6 +60,13 @@ class FederatedSslSimulationRuntime(Protocol):
         objective_config: TrainingObjectiveConfig,
     ) -> tuple[Any, ...]:
         """client shard row를 method별 local training 입력으로 변환한다."""
+
+    def select_training_rows(
+        self,
+        *,
+        shard: FederatedClientShard,
+    ) -> list[LabeledQueryRow]:
+        """client shard에서 이번 local step이 사용할 row를 고른다."""
 
     def build_local_training_service(
         self,
@@ -98,6 +113,26 @@ class DefaultFederatedSslSimulationRuntime:
             scoring_service=scoring_service,
             objective_config=objective_config,
         )
+
+    def select_training_rows(
+        self,
+        *,
+        shard: FederatedClientShard,
+    ) -> list[LabeledQueryRow]:
+        row_source = self.descriptor.local_step.training_row_source
+        if row_source == TRAINING_ROW_SOURCE_ALL_ROWS:
+            return list(shard.rows)
+        if (
+            row_source == TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
+            and shard.client_pool_split_enforced
+        ):
+            return list(shard.unlabeled_rows)
+        if (
+            row_source == TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE
+            and shard.client_pool_split_enforced
+        ):
+            return list(shard.labeled_rows)
+        return list(shard.rows)
 
     def build_local_training_service(
         self,

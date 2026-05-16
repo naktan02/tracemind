@@ -26,6 +26,7 @@ from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -110,6 +111,7 @@ def bootstrap_simulation(
         initial_model_revision=initial_model_revision,
         initial_prototype_version=initial_prototype_version,
         initial_state_ref=initial_state_ref,
+        compatible_task_type=request.training_task_config.task_type,
         published_at=now,
     )
     run_artifact_writer.save_model_manifest(
@@ -201,6 +203,7 @@ def _build_bootstrap_manifest(
     initial_model_revision: str,
     initial_prototype_version: str,
     initial_state_ref: str,
+    compatible_task_type: TrainingTaskType,
     published_at: datetime,
 ) -> ModelManifest:
     return ModelManifest(
@@ -213,7 +216,7 @@ def _build_bootstrap_manifest(
         prototype_version=initial_prototype_version,
         training_scope=request.training_scope,
         training_enabled=True,
-        compatible_task_types=("pseudo_label_self_training",),
+        compatible_task_types=(compatible_task_type,),
         base_model_id=request.embedding_spec.model_id,
         base_model_revision=request.embedding_spec.revision,
         notes="round_active_pair_only bootstrap manifest",

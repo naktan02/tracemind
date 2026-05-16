@@ -2,9 +2,14 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
+from methods.adaptation.lora_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+    build_lora_classifier_training_backend_config,
+)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
@@ -13,6 +18,7 @@ from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
@@ -204,49 +210,96 @@ class FederatedSslMethodConfig:
 class FederatedLoraClassifierRuntimeConfig:
     """LoRA-classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
 
-    backbone_model_id: str
-    backbone_revision: str
-    tokenizer_model_id: str
-    tokenizer_revision: str
-    pooling: str
-    max_length: int
-    task_prefix: str
-    peft_adapter_name: str
-    rank: int
-    alpha: int
-    dropout: float
-    bias: str
-    target_modules: str
-    use_rslora: bool
+    training_backend_config: LoraClassifierTrainingBackendConfig
     artifact_format: str = "simulation_lora_classifier_state_ref"
     lora_adapter_artifact_ref: str | None = None
     classifier_head_artifact_ref: str | None = None
 
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object],
+    ) -> "FederatedLoraClassifierRuntimeConfig":
+        """Hydra round_runtime.lora_classifier mapping을 typed config로 해석한다."""
+
+        artifact_format = str(
+            source.get("artifact_format", "simulation_lora_classifier_state_ref")
+        ).strip()
+        if not artifact_format:
+            raise ValueError("round_runtime.lora_classifier.artifact_format invalid.")
+        return cls(
+            training_backend_config=LoraClassifierTrainingBackendConfig.from_mapping(
+                {
+                    key: value
+                    for key, value in source.items()
+                    if key not in _LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS
+                }
+            ),
+            artifact_format=artifact_format,
+            lora_adapter_artifact_ref=_optional_str(
+                source.get("lora_adapter_artifact_ref")
+            ),
+            classifier_head_artifact_ref=_optional_str(
+                source.get("classifier_head_artifact_ref")
+            ),
+        )
+
     def backbone_payload(self) -> dict[str, str | int]:
         """shared lora_classifier state에 넣을 backbone/tokenizer snapshot."""
 
-        return {
-            "backbone_model_id": self.backbone_model_id,
-            "backbone_revision": self.backbone_revision,
-            "tokenizer_model_id": self.tokenizer_model_id,
-            "tokenizer_revision": self.tokenizer_revision,
-            "pooling": self.pooling,
-            "max_length": self.max_length,
-            "task_prefix": self.task_prefix,
-        }
+        return self.training_backend_config.to_backbone_payload()
 
     def lora_config_payload(self) -> dict[str, str | int | float | bool]:
         """shared lora_classifier state에 넣을 LoRA config snapshot."""
 
-        return {
-            "peft_adapter_name": self.peft_adapter_name,
-            "rank": self.rank,
-            "alpha": self.alpha,
-            "dropout": self.dropout,
-            "bias": self.bias,
-            "target_modules": self.target_modules,
-            "use_rslora": self.use_rslora,
-        }
+        return self.training_backend_config.to_lora_config_payload()
+
+    def require_shared_payload_matches_objective(
+        self,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> None:
+        """bootstrap state와 local update가 같은 backbone/LoRA snapshot을 쓰게 한다."""
+
+        objective_backend_config = build_lora_classifier_training_backend_config(
+            objective_config
+        )
+        mismatches: dict[str, object] = {}
+        if self.backbone_payload() != objective_backend_config.to_backbone_payload():
+            mismatches["backbone"] = {
+                "round_runtime": self.backbone_payload(),
+                "training_objective": (objective_backend_config.to_backbone_payload()),
+            }
+        if (
+            self.lora_config_payload()
+            != objective_backend_config.to_lora_config_payload()
+        ):
+            mismatches["lora_config"] = {
+                "round_runtime": self.lora_config_payload(),
+                "training_objective": (
+                    objective_backend_config.to_lora_config_payload()
+                ),
+            }
+        if mismatches:
+            raise ValueError(
+                "LoRA-classifier round_runtime.lora_classifier must match "
+                f"training_task.objective shared payload config: {mismatches}."
+            )
+
+
+_LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS = frozenset(
+    {
+        "artifact_format",
+        "lora_adapter_artifact_ref",
+        "classifier_head_artifact_ref",
+    }
+)
+
+
+def _optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    normalized = str(value).strip()
+    return normalized or None
 
 
 @dataclass(slots=True)

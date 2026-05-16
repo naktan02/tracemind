@@ -53,6 +53,7 @@ def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:
 def _build_training_task_config(
     cfg: DictConfig,
     *,
+    task_type: str,
     local_update_profile: LocalUpdateProfile,
 ) -> FederatedTrainingTaskConfig:
     objective_config = _to_plain_dict(cfg.objective)
@@ -63,6 +64,7 @@ def _build_training_task_config(
         local_update_profile=local_update_profile,
     )
     return build_federated_training_task_config(
+        task_type=task_type,
         local_epochs=int(cfg.local_epochs),
         batch_size=int(cfg.batch_size),
         learning_rate=float(cfg.learning_rate),
@@ -81,7 +83,9 @@ def _build_lora_classifier_runtime_config(
 ) -> FederatedLoraClassifierRuntimeConfig | None:
     if "lora_classifier" not in cfg or cfg.lora_classifier is None:
         return None
-    return FederatedLoraClassifierRuntimeConfig(**_to_plain_dict(cfg.lora_classifier))
+    return FederatedLoraClassifierRuntimeConfig.from_mapping(
+        _to_plain_dict(cfg.lora_classifier)
+    )
 
 
 def _build_experiment_profile(
@@ -105,6 +109,7 @@ def build_simulation_request_from_config(
     )
     training_task_config = _build_training_task_config(
         cfg.training_task,
+        task_type=str(cfg.ssl_method.client_step.task_type),
         local_update_profile=local_update_profile,
     )
     round_runtime_config = FederatedRoundRuntimeConfig(

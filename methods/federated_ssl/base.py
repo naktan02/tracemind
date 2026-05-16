@@ -5,6 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Protocol
 
+TRAINING_ROW_SOURCE_ALL_ROWS = "all_rows"
+TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE = "unlabeled_pool_when_available"
+TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE = "labeled_pool_when_available"
+TRAINING_ROW_SOURCES = frozenset(
+    {
+        TRAINING_ROW_SOURCE_ALL_ROWS,
+        TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
+        TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE,
+    }
+)
+
 
 def _require_non_empty(value: str, *, field_name: str) -> str:
     normalized = value.strip()
@@ -90,11 +101,17 @@ class FederatedSslLocalStepSpec:
     step_name: str
     client_trainer_name: str
     pseudo_labeler_name: str
+    training_row_source: str = TRAINING_ROW_SOURCE_ALL_ROWS
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "step_name")
         _set_non_empty(self, "client_trainer_name")
         _set_non_empty(self, "pseudo_labeler_name")
+        _set_non_empty(self, "training_row_source")
+        if self.training_row_source not in TRAINING_ROW_SOURCES:
+            raise ValueError(
+                f"training_row_source must be one of {sorted(TRAINING_ROW_SOURCES)}."
+            )
 
 
 @dataclass(frozen=True, slots=True)

@@ -14,6 +14,7 @@ method-specific 파일을 만들지 않는다.
 - `classifier_head/`: classifier-head shared adapter family FedAvg core/projection
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
+- `server_update_materialization.py`: 서버가 수락 가능한 update artifact materialization preflight
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft/`: PEFT adapter builder protocol과 registry
 - `lora/`: LoRA/RSLoRA builder core

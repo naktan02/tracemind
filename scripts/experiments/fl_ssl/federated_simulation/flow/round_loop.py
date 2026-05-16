@@ -30,7 +30,6 @@ from scripts.runtime_adapters.federated_agent.training_runtime import (
     run_federated_local_training,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 from shared.src.contracts.training_contracts import (
     ClientMetricKeys,
@@ -124,7 +123,7 @@ def _run_client_round(
     training_task: Any,
     training_scoring_service: Any,
 ) -> ClientRoundExecution:
-    training_rows = _resolve_client_training_rows(shard)
+    training_rows = ssl_method_runtime.select_training_rows(shard=shard)
     training_examples = ssl_method_runtime.build_training_examples(
         rows=training_rows,
         adapter=bootstrapped.adapter,
@@ -168,14 +167,6 @@ def _run_client_round(
         ),
         update_submitted=update_submitted,
     )
-
-
-def _resolve_client_training_rows(
-    shard: FederatedClientShard,
-) -> list[LabeledQueryRow]:
-    if shard.client_pool_split_enforced:
-        return list(shard.unlabeled_rows)
-    return list(shard.rows)
 
 
 def _accept_client_update(

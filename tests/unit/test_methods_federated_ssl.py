@@ -218,6 +218,16 @@ def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:
         )
 
 
+def test_federated_ssl_local_step_rejects_unknown_training_row_source() -> None:
+    with pytest.raises(ValueError, match="training_row_source"):
+        FederatedSslLocalStepSpec(
+            step_name="pseudo_label_self_training",
+            client_trainer_name="local_training_service",
+            pseudo_labeler_name="ssl_pseudo_label_selection_hook",
+            training_row_source="unknown_rows",
+        )
+
+
 def test_federated_ssl_method_descriptor_rejects_recipe_name_drift() -> None:
     with pytest.raises(ValueError, match="same method name"):
         FederatedSslMethodDescriptor(

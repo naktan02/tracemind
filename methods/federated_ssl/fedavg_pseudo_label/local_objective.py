@@ -4,6 +4,10 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from methods.federated_ssl.base import (
+    TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FedAvgPseudoLabelLocalObjective:
@@ -12,6 +16,7 @@ class FedAvgPseudoLabelLocalObjective:
     objective_name: str = "pseudo_label_self_training"
     trainer_hint: str = "local_training_service"
     pseudo_labeler_hint: str = "ssl_pseudo_label_selection_hook"
+    training_row_source: str = TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
 
 
 FEDAVG_PSEUDO_LABEL_LOCAL_OBJECTIVE = FedAvgPseudoLabelLocalObjective()
