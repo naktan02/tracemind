@@ -12,9 +12,6 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.common.classification_evaluation import (
-    build_classification_evaluation_report,
-)
 from methods.adaptation.common.query_ssl_training_resume import (
     load_query_ssl_training_checkpoint,
     save_query_ssl_training_checkpoint,
@@ -22,6 +19,9 @@ from methods.adaptation.common.query_ssl_training_resume import (
 from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
+)
+from methods.evaluation.classification_report import (
+    build_classification_evaluation_report,
 )
 from methods.ssl.base import (
     QuerySslAlgorithm,

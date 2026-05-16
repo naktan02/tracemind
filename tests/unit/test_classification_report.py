@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from methods.evaluation.classification_report import (
+    build_classification_evaluation_report,
+)
 from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
@@ -89,3 +92,24 @@ def test_render_table_uses_requested_metric_headers() -> None:
     assert "actual \\ predicted" in confusion
     assert "mean_true_score" in table
     assert "mean_top1_score" in table
+
+
+def test_build_classification_evaluation_report_exposes_paper_metrics() -> None:
+    report = build_classification_evaluation_report(
+        categories=["a", "b"],
+        actual_labels=["a", "a", "b"],
+        predicted_labels=["a", "b", "b"],
+        true_probs=[0.9, 0.2, 0.8],
+        top_1_values=[0.9, 0.7, 0.8],
+        margins=[0.4, 0.1, 0.3],
+        total_loss=1.25,
+        total_rows=3,
+    )
+
+    assert report["rows_total"] == 3
+    assert report["loss"] == pytest.approx(0.416667)
+    assert report["accuracy_top_1"] == pytest.approx(0.666667)
+    assert report["macro_f1"] == pytest.approx(0.666667)
+    assert report["weighted_f1"] == pytest.approx(0.666667)
+    assert report["worst_category_f1"] == "a"
+    assert "max_calibration_error" in report

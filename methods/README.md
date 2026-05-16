@@ -68,6 +68,7 @@ aggregation backend, adapter projection, prototype builder는 축별 패키지�
   core/projection
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
+- `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper
 - `methods/federated/aggregation/fedavg/`: FedAvg 공통 가중 평균 산술과 generic
   strategy wiring
 - `methods/federated/shard_policy/`: FL non-IID client shard assignment 계산

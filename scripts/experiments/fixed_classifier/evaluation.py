@@ -7,7 +7,7 @@ from typing import Any
 import torch
 from torch import nn
 
-from methods.adaptation.common.classification_evaluation import (
+from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
 from shared.src.domain.services.classification_report import (
