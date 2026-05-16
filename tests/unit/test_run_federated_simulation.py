@@ -211,7 +211,12 @@ def _default_report_config() -> FederatedReportConfig:
         seed_count=3,
         primary_metrics=["macro_f1", "worst_client_macro_f1"],
         secondary_metrics=[
+            "loss",
+            "weighted_f1",
+            "balanced_accuracy",
+            "worst_category_f1_value",
             "expected_calibration_error",
+            "max_calibration_error",
             "communication_cost",
             "per_client_macro_f1_variance",
         ],
@@ -736,6 +741,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["protocol"]["labeled_unlabeled_split"]["status"] == (
         "enforced_by_client_pool_split"
     )
+    assert report["protocol"]["labeled_unlabeled_split"]["label_distribution"]
+    assert report["protocol"]["labeled_unlabeled_split"]["clients"][0][
+        "label_distribution"
+    ]
     assert (
         report["protocol"]["labeled_unlabeled_split"]["actual_labeled_count"]
         + report["protocol"]["labeled_unlabeled_split"]["actual_unlabeled_count"]
@@ -744,6 +753,26 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["protocol"]["local_update_budget"]["local_epochs"] == 1
     assert report["metrics"]["primary"]["macro_f1"] == (
         result.final_validation.macro_f1
+    )
+    assert report["metrics"]["secondary"]["loss"] == result.final_validation.loss
+    assert "weighted_f1" in report["metrics"]["secondary"]
+    assert "max_calibration_error" in report["metrics"]["secondary"]
+    assert report["metrics"]["final_validation"]["loss_kind"] == (
+        "negative_log_likelihood_from_score_distribution"
+    )
+    assert report["metrics"]["final_validation"]["score_distribution_kind"] == (
+        "softmax_raw_scores_temperature_1.0"
+    )
+    assert report["metrics"]["round_progression"]["round_count"] == 1
+    assert (
+        report["rounds"][0]["delta_from_previous_round"]["macro_f1_delta"]
+        == report["rounds"][0]["delta_from_initial"]["macro_f1_delta"]
+    )
+    assert report["diagnostics"]["aggregation"]["weight_basis"] == (
+        "accepted_count_proxy"
+    )
+    assert report["diagnostics"]["aggregation"]["rounds"][0]["update_count"] == (
+        result.rounds[0].update_count
     )
     assert (
         report["metrics"]["secondary"]["communication_cost"]["unit"]
@@ -922,8 +951,15 @@ def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None
 
     assert result.top1_accuracy == 1.0
     assert result.accepted_ratio == 0.0
+    assert result.loss >= 0.0
+    assert result.loss_kind == "negative_log_likelihood_from_score_distribution"
+    assert result.accuracy_top_1 == 1.0
+    assert result.correct_top_1 == 1
     assert result.macro_f1 == 1.0
+    assert result.weighted_f1 == 1.0
     assert result.expected_calibration_error >= 0.0
+    assert result.score_distribution_kind == "softmax_raw_scores_temperature_1.0"
+    assert result.classification_report["loss"] == result.loss
     assert result.confusion_matrix == {"anxiety": {"anxiety": 1}}
     assert result.per_label["anxiety"]["f1"] == 1.0
 

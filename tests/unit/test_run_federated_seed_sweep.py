@@ -42,13 +42,29 @@ def _cfg(*, seeds: list[int], seed_count: int = 3):
     )
 
 
-def _evaluation(*, macro_f1: float, ece: float = 0.1) -> SimulationEvaluation:
+def _evaluation(
+    *,
+    macro_f1: float,
+    ece: float = 0.1,
+    loss: float | None = None,
+) -> SimulationEvaluation:
+    effective_loss = (1.0 - macro_f1) if loss is None else loss
     return SimulationEvaluation(
         row_count=10,
         top1_accuracy=macro_f1,
         accepted_ratio=0.5,
+        loss=effective_loss,
+        loss_kind="negative_log_likelihood_from_score_distribution",
+        accuracy_top_1=macro_f1,
+        correct_top_1=round(macro_f1 * 10),
         macro_f1=macro_f1,
+        macro_precision=macro_f1,
+        macro_recall=macro_f1,
+        weighted_f1=macro_f1,
+        balanced_accuracy=macro_f1,
         expected_calibration_error=ece,
+        max_calibration_error=ece,
+        score_distribution_kind="softmax_raw_scores_temperature_1.0",
     )
 
 
@@ -112,5 +128,11 @@ def test_build_seed_sweep_summary_payload_aggregates_runs(tmp_path: Path) -> Non
     assert payload["seed_count"] == 2
     assert payload["seeds"] == [42, 43]
     assert payload["aggregate"]["macro_f1_mean"] == pytest.approx(0.3)
+    assert payload["aggregate"]["loss_mean"] == pytest.approx(0.7)
+    assert payload["aggregate"]["weighted_f1_mean"] == pytest.approx(0.3)
     assert payload["aggregate"]["worst_client_macro_f1_min"] == pytest.approx(0.15)
     assert payload["aggregate"]["completed_rounds_min"] == 1
+    assert payload["runs"][0]["metrics"]["secondary"]["loss"] == pytest.approx(0.8)
+    assert payload["runs"][0]["metrics"]["final_validation"]["loss_kind"] == (
+        "negative_log_likelihood_from_score_distribution"
+    )

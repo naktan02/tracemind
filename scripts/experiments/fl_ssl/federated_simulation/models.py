@@ -55,10 +55,38 @@ class SimulationEvaluation:
     row_count: int
     top1_accuracy: float
     accepted_ratio: float
+    loss: float = 0.0
+    loss_kind: str = "not_computed"
+    accuracy_top_1: float = 0.0
+    correct_top_1: int = 0
     macro_f1: float = 0.0
+    macro_precision: float = 0.0
+    macro_recall: float = 0.0
+    weighted_f1: float = 0.0
+    balanced_accuracy: float = 0.0
+    worst_category_f1: str | None = None
+    worst_category_f1_value: float | None = None
+    worst_category_recall: float | None = None
+    worst_category_precision: float | None = None
     expected_calibration_error: float = 0.0
+    max_calibration_error: float = 0.0
+    overconfidence_gap: float = 0.0
+    mean_true_label_probability: float = 0.0
+    mean_top_1_probability: float = 0.0
+    mean_margin_top1_top2: float = 0.0
+    mean_correct_top_1_probability: float = 0.0
+    mean_incorrect_top_1_probability: float = 0.0
+    score_distribution_kind: str = "not_computed"
+    selection_confidence_kind: str | None = None
+    mean_selection_confidence: float = 0.0
+    mean_selection_margin: float = 0.0
     per_label: dict[str, dict[str, int | float]] = field(default_factory=dict)
     confusion_matrix: dict[str, dict[str, int]] = field(default_factory=dict)
+    classification_report: dict[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.accuracy_top_1 == 0.0 and self.top1_accuracy != 0.0:
+            self.accuracy_top_1 = self.top1_accuracy
 
 
 @dataclass(slots=True)

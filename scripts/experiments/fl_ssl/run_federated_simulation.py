@@ -158,6 +158,9 @@ def render_simulation_result_lines(
         (
             "initial_validation="
             f"accuracy:{result.initial_validation.top1_accuracy:.4f},"
+            f"loss:{result.initial_validation.loss:.4f},"
+            f"macro_f1:{result.initial_validation.macro_f1:.4f},"
+            f"ece:{result.initial_validation.expected_calibration_error:.4f},"
             f"accepted_ratio:{result.initial_validation.accepted_ratio:.4f}"
         ),
     ]
@@ -170,6 +173,9 @@ def render_simulation_result_lines(
                 (
                     "final_validation="
                     f"accuracy:{result.final_validation.top1_accuracy:.4f},"
+                    f"loss:{result.final_validation.loss:.4f},"
+                    f"macro_f1:{result.final_validation.macro_f1:.4f},"
+                    f"ece:{result.final_validation.expected_calibration_error:.4f},"
                     f"accepted_ratio:{result.final_validation.accepted_ratio:.4f}"
                 ),
                 f"round_count={len(result.rounds)}",

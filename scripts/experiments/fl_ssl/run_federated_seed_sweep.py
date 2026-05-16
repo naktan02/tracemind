@@ -119,6 +119,13 @@ def build_seed_sweep_summary_payload(
     macro_f1_values = [
         float(payload["metrics"]["primary"]["macro_f1"]) for payload in run_payloads
     ]
+    loss_values = [
+        float(payload["metrics"]["secondary"]["loss"]) for payload in run_payloads
+    ]
+    weighted_f1_values = [
+        float(payload["metrics"]["secondary"]["weighted_f1"])
+        for payload in run_payloads
+    ]
     worst_client_macro_f1_values = [
         float(payload["metrics"]["primary"]["worst_client_macro_f1"])
         for payload in run_payloads
@@ -144,6 +151,10 @@ def build_seed_sweep_summary_payload(
             "macro_f1_mean": _mean(macro_f1_values),
             "macro_f1_min": min(macro_f1_values) if macro_f1_values else None,
             "macro_f1_max": max(macro_f1_values) if macro_f1_values else None,
+            "loss_mean": _mean(loss_values),
+            "loss_min": min(loss_values) if loss_values else None,
+            "loss_max": max(loss_values) if loss_values else None,
+            "weighted_f1_mean": _mean(weighted_f1_values),
             "worst_client_macro_f1_mean": _mean(worst_client_macro_f1_values),
             "worst_client_macro_f1_min": (
                 min(worst_client_macro_f1_values)
@@ -190,6 +201,13 @@ def _run_result_to_payload(run_result: SeedSweepRunResult) -> dict[str, object]:
                 ),
             },
             "secondary": {
+                "loss": result.final_validation.loss,
+                "weighted_f1": result.final_validation.weighted_f1,
+                "balanced_accuracy": result.final_validation.balanced_accuracy,
+                "worst_category_f1_value": (
+                    result.final_validation.worst_category_f1_value
+                ),
+                "max_calibration_error": result.final_validation.max_calibration_error,
                 "expected_calibration_error": (
                     result.final_validation.expected_calibration_error
                 ),
@@ -211,10 +229,24 @@ def _run_result_to_payload(run_result: SeedSweepRunResult) -> dict[str, object]:
 def _evaluation_to_payload(evaluation: SimulationEvaluation) -> dict[str, object]:
     return {
         "row_count": evaluation.row_count,
+        "rows_total": evaluation.row_count,
         "top1_accuracy": evaluation.top1_accuracy,
+        "accuracy_top_1": evaluation.accuracy_top_1,
+        "correct_top_1": evaluation.correct_top_1,
         "accepted_ratio": evaluation.accepted_ratio,
+        "loss": evaluation.loss,
+        "loss_kind": evaluation.loss_kind,
         "macro_f1": evaluation.macro_f1,
+        "macro_precision": evaluation.macro_precision,
+        "macro_recall": evaluation.macro_recall,
+        "weighted_f1": evaluation.weighted_f1,
+        "balanced_accuracy": evaluation.balanced_accuracy,
+        "worst_category_f1": evaluation.worst_category_f1,
+        "worst_category_f1_value": evaluation.worst_category_f1_value,
         "expected_calibration_error": evaluation.expected_calibration_error,
+        "max_calibration_error": evaluation.max_calibration_error,
+        "score_distribution_kind": evaluation.score_distribution_kind,
+        "selection_confidence_kind": evaluation.selection_confidence_kind,
     }
 
 

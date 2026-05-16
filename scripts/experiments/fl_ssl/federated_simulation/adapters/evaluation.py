@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
-from collections import defaultdict
+import math
 from typing import Any
 
+from methods.evaluation.classification_report import (
+    build_classification_evaluation_report,
+)
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_training_objective_config,
 )
+from methods.prototype.evidence.helpers import softmax_distribution
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
@@ -101,28 +105,13 @@ def evaluate_rows(
     )
     true_labels = [str(row["mapped_label_4"]) for row in rows]
     predicted_labels = [candidate.label for candidate in selection_result.candidates]
-    correctness = [
-        predicted == true
-        for true, predicted in zip(true_labels, predicted_labels, strict=True)
-    ]
-    macro_f1, per_label, confusion_matrix = _build_classification_metrics(
+    return _build_simulation_evaluation(
+        row_count=len(rows),
         true_labels=true_labels,
         predicted_labels=predicted_labels,
-    )
-
-    return SimulationEvaluation(
-        row_count=len(rows),
-        top1_accuracy=sum(correctness) / len(rows),
+        candidates=list(selection_result.candidates),
+        evidences=list(selection_result.evidences),
         accepted_ratio=selection_result.accepted_ratio,
-        macro_f1=macro_f1,
-        expected_calibration_error=_compute_expected_calibration_error(
-            confidences=[
-                candidate.confidence for candidate in selection_result.candidates
-            ],
-            correctness=correctness,
-        ),
-        per_label=per_label,
-        confusion_matrix=confusion_matrix,
     )
 
 
@@ -212,84 +201,225 @@ def _build_validation_task(
     )
 
 
-def _build_classification_metrics(
+def _build_simulation_evaluation(
     *,
+    row_count: int,
     true_labels: list[str],
     predicted_labels: list[str],
-) -> tuple[float, dict[str, dict[str, int | float]], dict[str, dict[str, int]]]:
-    labels = sorted(set(true_labels) | set(predicted_labels))
-    confusion: dict[str, dict[str, int]] = {label: defaultdict(int) for label in labels}
-    for true_label, predicted_label in zip(true_labels, predicted_labels, strict=True):
-        confusion[true_label][predicted_label] += 1
-
-    confusion_matrix = {
-        label: dict(sorted(counts.items()))
-        for label, counts in sorted(confusion.items())
-    }
-    per_label: dict[str, dict[str, int | float]] = {}
-    f1_values: list[float] = []
-    for label in labels:
-        true_positive = confusion[label].get(label, 0)
-        false_positive = sum(
-            confusion[other_label].get(label, 0)
-            for other_label in labels
-            if other_label != label
+    candidates: list[Any],
+    evidences: list[Any],
+    accepted_ratio: float,
+) -> SimulationEvaluation:
+    categories = sorted(set(true_labels) | set(predicted_labels))
+    distributions: list[dict[str, float]] = []
+    distribution_kinds: list[str] = []
+    for candidate, evidence in zip(candidates, evidences, strict=True):
+        distribution, distribution_kind = _label_probability_distribution(
+            candidate=candidate,
+            evidence=evidence,
         )
-        false_negative = sum(
-            count
-            for predicted_label, count in confusion[label].items()
-            if predicted_label != label
+        distributions.append(distribution)
+        distribution_kinds.append(distribution_kind)
+
+    true_probs = [
+        distribution.get(true_label, 0.0)
+        for true_label, distribution in zip(true_labels, distributions, strict=True)
+    ]
+    top_1_values = [
+        distribution.get(predicted_label, 0.0)
+        for predicted_label, distribution in zip(
+            predicted_labels,
+            distributions,
+            strict=True,
         )
-        support = true_positive + false_negative
-        predicted_count = true_positive + false_positive
-        precision = true_positive / predicted_count if predicted_count > 0 else 0.0
-        recall = true_positive / support if support > 0 else 0.0
-        f1 = (
-            2 * precision * recall / (precision + recall)
-            if precision + recall > 0
-            else 0.0
+    ]
+    margins = [
+        _probability_margin(distribution=distribution, predicted_label=predicted_label)
+        for predicted_label, distribution in zip(
+            predicted_labels,
+            distributions,
+            strict=True,
         )
-        per_label[label] = {
-            "support": support,
-            "predicted_count": predicted_count,
-            "true_positive": true_positive,
-            "false_positive": false_positive,
-            "false_negative": false_negative,
-            "precision": precision,
-            "recall": recall,
-            "f1": f1,
-        }
-        f1_values.append(f1)
+    ]
+    total_loss = sum(-math.log(max(probability, 1e-12)) for probability in true_probs)
+    report = build_classification_evaluation_report(
+        categories=categories,
+        actual_labels=true_labels,
+        predicted_labels=predicted_labels,
+        true_probs=true_probs,
+        top_1_values=top_1_values,
+        margins=margins,
+        total_loss=total_loss,
+        total_rows=row_count,
+    )
+    return _evaluation_from_report(
+        report=report,
+        row_count=row_count,
+        accepted_ratio=accepted_ratio,
+        candidates=candidates,
+        distribution_kind=_summarize_distribution_kind(distribution_kinds),
+    )
 
-    macro_f1 = sum(f1_values) / len(f1_values) if f1_values else 0.0
-    return macro_f1, per_label, confusion_matrix
 
-
-def _compute_expected_calibration_error(
+def _label_probability_distribution(
     *,
-    confidences: list[float],
-    correctness: list[bool],
-    bin_count: int = 10,
-) -> float:
-    if not confidences:
-        return 0.0
-    if len(confidences) != len(correctness):
-        raise ValueError("confidences and correctness must have the same length.")
-
-    bins: list[list[tuple[float, bool]]] = [[] for _ in range(bin_count)]
-    for confidence, is_correct in zip(confidences, correctness, strict=True):
-        clamped_confidence = min(1.0, max(0.0, confidence))
-        bin_index = min(int(clamped_confidence * bin_count), bin_count - 1)
-        bins[bin_index].append((clamped_confidence, is_correct))
-
-    total = len(confidences)
-    ece = 0.0
-    for bucket in bins:
-        if not bucket:
-            continue
-        bucket_confidence = sum(item[0] for item in bucket) / len(bucket)
-        bucket_accuracy = sum(1 for _, item_correct in bucket if item_correct) / len(
-            bucket
+    candidate: Any,
+    evidence: Any,
+) -> tuple[dict[str, float], str]:
+    label_distribution = getattr(evidence, "label_distribution", None)
+    if label_distribution:
+        return (
+            _float_distribution(label_distribution),
+            "evidence_label_distribution",
         )
-        ece += (len(bucket) / total) * abs(bucket_accuracy - bucket_confidence)
-    return ece
+
+    raw_scores = getattr(evidence, "raw_scores", None)
+    if raw_scores:
+        return (
+            softmax_distribution(raw_scores, temperature=1.0),
+            "softmax_raw_scores_temperature_1.0",
+        )
+
+    sparse_scores = {str(candidate.label): float(candidate.confidence)}
+    if candidate.runner_up_label is not None:
+        sparse_scores[str(candidate.runner_up_label)] = float(
+            candidate.runner_up_score or 0.0
+        )
+    if len(sparse_scores) > 1:
+        distribution = softmax_distribution(sparse_scores, temperature=1.0)
+    else:
+        distribution = {str(candidate.label): 1.0}
+    return (
+        distribution,
+        "softmax_candidate_top2_sparse_fallback",
+    )
+
+
+def _float_distribution(
+    distribution: dict[str, float],
+) -> dict[str, float]:
+    return {
+        str(label): float(probability) for label, probability in distribution.items()
+    }
+
+
+def _probability_margin(
+    *,
+    distribution: dict[str, float],
+    predicted_label: str,
+) -> float:
+    top_value = float(distribution.get(predicted_label, 0.0))
+    runner_up = max(
+        (
+            float(value)
+            for label, value in distribution.items()
+            if label != predicted_label
+        ),
+        default=0.0,
+    )
+    return top_value - runner_up
+
+
+def _evaluation_from_report(
+    *,
+    report: dict[str, object],
+    row_count: int,
+    accepted_ratio: float,
+    candidates: list[Any],
+    distribution_kind: str,
+) -> SimulationEvaluation:
+    return SimulationEvaluation(
+        row_count=row_count,
+        top1_accuracy=float(report["accuracy_top_1"]),
+        accepted_ratio=accepted_ratio,
+        loss=float(report["loss"]),
+        loss_kind="negative_log_likelihood_from_score_distribution",
+        accuracy_top_1=float(report["accuracy_top_1"]),
+        correct_top_1=int(report["correct_top_1"]),
+        macro_f1=float(report["macro_f1"]),
+        macro_precision=float(report["macro_precision"]),
+        macro_recall=float(report["macro_recall"]),
+        weighted_f1=float(report["weighted_f1"]),
+        balanced_accuracy=float(report["balanced_accuracy"]),
+        worst_category_f1=_optional_str(report["worst_category_f1"]),
+        worst_category_f1_value=_optional_float(report["worst_category_f1_value"]),
+        worst_category_recall=_optional_float(report["worst_category_recall"]),
+        worst_category_precision=_optional_float(report["worst_category_precision"]),
+        expected_calibration_error=float(report["expected_calibration_error"]),
+        max_calibration_error=float(report["max_calibration_error"]),
+        overconfidence_gap=float(report["overconfidence_gap"]),
+        mean_true_label_probability=float(report["mean_true_label_probability"]),
+        mean_top_1_probability=float(report["mean_top_1_probability"]),
+        mean_margin_top1_top2=float(report["mean_margin_top1_top2"]),
+        mean_correct_top_1_probability=float(report["mean_correct_top_1_probability"]),
+        mean_incorrect_top_1_probability=float(
+            report["mean_incorrect_top_1_probability"]
+        ),
+        score_distribution_kind=distribution_kind,
+        selection_confidence_kind=_summarize_selection_confidence_kind(candidates),
+        mean_selection_confidence=_mean(
+            [float(candidate.confidence) for candidate in candidates]
+        ),
+        mean_selection_margin=_mean(
+            [float(candidate.margin) for candidate in candidates]
+        ),
+        per_label=_typed_per_label(report["per_category"]),
+        confusion_matrix=_typed_confusion_matrix(report["confusion_matrix"]),
+        classification_report=dict(report),
+    )
+
+
+def _summarize_distribution_kind(distribution_kinds: list[str]) -> str:
+    unique_kinds = sorted(set(distribution_kinds))
+    if not unique_kinds:
+        return "not_computed"
+    if len(unique_kinds) == 1:
+        return unique_kinds[0]
+    return "mixed:" + ",".join(unique_kinds)
+
+
+def _summarize_selection_confidence_kind(candidates: list[Any]) -> str | None:
+    unique_kinds = sorted(
+        {
+            str(candidate.confidence_kind)
+            for candidate in candidates
+            if candidate.confidence_kind is not None
+        }
+    )
+    if not unique_kinds:
+        return None
+    if len(unique_kinds) == 1:
+        return unique_kinds[0]
+    return "mixed:" + ",".join(unique_kinds)
+
+
+def _mean(values: list[float]) -> float:
+    return sum(values) / len(values) if values else 0.0
+
+
+def _optional_float(value: object) -> float | None:
+    return None if value is None else float(value)
+
+
+def _optional_str(value: object) -> str | None:
+    return None if value is None else str(value)
+
+
+def _typed_per_label(value: object) -> dict[str, dict[str, int | float]]:
+    if not isinstance(value, dict):
+        raise TypeError("per_category must be a dict.")
+    return {
+        str(label): dict(metrics)
+        for label, metrics in value.items()
+        if isinstance(metrics, dict)
+    }
+
+
+def _typed_confusion_matrix(value: object) -> dict[str, dict[str, int]]:
+    if not isinstance(value, dict):
+        raise TypeError("confusion_matrix must be a dict.")
+    return {
+        str(actual): {str(predicted): int(count) for predicted, count in row.items()}
+        for actual, row in value.items()
+        if isinstance(row, dict)
+    }

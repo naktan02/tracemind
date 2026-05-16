@@ -129,7 +129,12 @@ report:
     - macro_f1
     - worst_client_macro_f1
   secondary_metrics:
+    - loss
+    - weighted_f1
+    - balanced_accuracy
+    - worst_category_f1_value
     - expected_calibration_error
+    - max_calibration_error
     - communication_cost
     - per_client_macro_f1_variance
 
