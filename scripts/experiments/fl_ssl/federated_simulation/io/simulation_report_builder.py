@@ -7,6 +7,15 @@ from collections import Counter
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from scripts.experiments.fl_ssl.federated_simulation.io.report_metrics import (
+    build_communication_cost_summary,
+    evaluation_to_payload,
+    mean,
+    numeric_summary,
+    population_std,
+    population_variance,
+    safe_ratio,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
     FederatedClientPoolSplitConfig,
@@ -15,11 +24,13 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
-    FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     SimulationEvaluation,
     SimulationResult,
     SimulationRoundSummary,
+)
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
 )
 
 
@@ -47,8 +58,38 @@ class SimulationReportBuilder:
             result=result,
             dataset_split=dataset_split,
         )
-        communication_cost = _build_communication_cost_summary(result)
+        communication_cost = build_communication_cost_summary(result)
         round_progression = _build_round_progression(result)
+        primary_metrics = {
+            "macro_f1": result.final_validation.macro_f1,
+            "worst_client_macro_f1": client_metric_summary["worst_client_macro_f1"],
+        }
+        secondary_metrics = {
+            "loss": result.final_validation.loss,
+            "weighted_f1": result.final_validation.weighted_f1,
+            "balanced_accuracy": result.final_validation.balanced_accuracy,
+            "worst_category_f1_value": (
+                result.final_validation.worst_category_f1_value
+            ),
+            "max_calibration_error": result.final_validation.max_calibration_error,
+            "expected_calibration_error": (
+                result.final_validation.expected_calibration_error
+            ),
+            "communication_cost": communication_cost,
+            "per_client_macro_f1_variance": (
+                client_metric_summary["macro_f1_variance"]
+            ),
+        }
+        _require_report_metric_names_present(
+            configured_metric_names=report_config.primary_metrics,
+            payload=primary_metrics,
+            section_name="primary",
+        )
+        _require_report_metric_names_present(
+            configured_metric_names=report_config.secondary_metrics,
+            payload=secondary_metrics,
+            section_name="secondary",
+        )
         return {
             "schema_version": report_config.schema_version,
             "track": report_config.track,
@@ -105,34 +146,12 @@ class SimulationReportBuilder:
                 "aggregation": _build_aggregation_diagnostics(result),
             },
             "metrics": {
-                "primary": {
-                    "macro_f1": result.final_validation.macro_f1,
-                    "worst_client_macro_f1": (
-                        client_metric_summary["worst_client_macro_f1"]
-                    ),
-                },
-                "secondary": {
-                    "loss": result.final_validation.loss,
-                    "weighted_f1": result.final_validation.weighted_f1,
-                    "balanced_accuracy": result.final_validation.balanced_accuracy,
-                    "worst_category_f1_value": (
-                        result.final_validation.worst_category_f1_value
-                    ),
-                    "max_calibration_error": (
-                        result.final_validation.max_calibration_error
-                    ),
-                    "expected_calibration_error": (
-                        result.final_validation.expected_calibration_error
-                    ),
-                    "communication_cost": communication_cost,
-                    "per_client_macro_f1_variance": (
-                        client_metric_summary["macro_f1_variance"]
-                    ),
-                },
+                "primary": primary_metrics,
+                "secondary": secondary_metrics,
                 "primary_metric_names": list(report_config.primary_metrics),
                 "secondary_metric_names": list(report_config.secondary_metrics),
-                "initial_validation": _evaluation_to_payload(result.initial_validation),
-                "final_validation": _evaluation_to_payload(result.final_validation),
+                "initial_validation": evaluation_to_payload(result.initial_validation),
+                "final_validation": evaluation_to_payload(result.final_validation),
                 "client_validation": client_metric_summary,
                 "round_progression": round_progression,
             },
@@ -140,56 +159,29 @@ class SimulationReportBuilder:
         }
 
 
-def _evaluation_to_payload(evaluation: SimulationEvaluation) -> dict[str, object]:
-    payload = dict(evaluation.classification_report)
-    payload.update(
-        {
-            "row_count": evaluation.row_count,
-            "rows_total": evaluation.row_count,
-            "top1_accuracy": evaluation.top1_accuracy,
-            "accuracy_top_1": evaluation.accuracy_top_1,
-            "correct_top_1": evaluation.correct_top_1,
-            "accepted_ratio": evaluation.accepted_ratio,
-            "loss": evaluation.loss,
-            "loss_kind": evaluation.loss_kind,
-            "macro_f1": evaluation.macro_f1,
-            "macro_precision": evaluation.macro_precision,
-            "macro_recall": evaluation.macro_recall,
-            "weighted_f1": evaluation.weighted_f1,
-            "balanced_accuracy": evaluation.balanced_accuracy,
-            "worst_category_f1": evaluation.worst_category_f1,
-            "worst_category_f1_value": evaluation.worst_category_f1_value,
-            "worst_category_recall": evaluation.worst_category_recall,
-            "worst_category_precision": evaluation.worst_category_precision,
-            "expected_calibration_error": evaluation.expected_calibration_error,
-            "max_calibration_error": evaluation.max_calibration_error,
-            "overconfidence_gap": evaluation.overconfidence_gap,
-            "mean_true_label_probability": evaluation.mean_true_label_probability,
-            "mean_top_1_probability": evaluation.mean_top_1_probability,
-            "mean_margin_top1_top2": evaluation.mean_margin_top1_top2,
-            "mean_correct_top_1_probability": (
-                evaluation.mean_correct_top_1_probability
-            ),
-            "mean_incorrect_top_1_probability": (
-                evaluation.mean_incorrect_top_1_probability
-            ),
-            "score_distribution_kind": evaluation.score_distribution_kind,
-            "selection_confidence_kind": evaluation.selection_confidence_kind,
-            "mean_selection_confidence": evaluation.mean_selection_confidence,
-            "mean_selection_margin": evaluation.mean_selection_margin,
-            "per_label": evaluation.per_label,
-            "per_category": evaluation.per_label,
-            "confusion_matrix": evaluation.confusion_matrix,
-        }
-    )
-    return payload
+def _require_report_metric_names_present(
+    *,
+    configured_metric_names: list[str],
+    payload: Mapping[str, object],
+    section_name: str,
+) -> None:
+    missing_names = [
+        metric_name
+        for metric_name in configured_metric_names
+        if metric_name not in payload
+    ]
+    if missing_names:
+        raise ValueError(
+            f"report.{section_name}_metrics contains metric names missing from "
+            f"metrics.{section_name}: {missing_names}"
+        )
 
 
 def _build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
     previous_validation = result.initial_validation
     payloads: list[dict[str, object]] = []
     for round_index, round_summary in enumerate(result.rounds, start=1):
-        validation_payload = _evaluation_to_payload(round_summary.validation)
+        validation_payload = evaluation_to_payload(round_summary.validation)
         payloads.append(
             {
                 "round_id": round_summary.round_id,
@@ -211,7 +203,7 @@ def _build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                         "client_id": client.client_id,
                         "candidate_count": client.candidate_count,
                         "accepted_count": client.accepted_count,
-                        "accepted_ratio": _safe_ratio(
+                        "accepted_ratio": safe_ratio(
                             client.accepted_count,
                             client.candidate_count,
                         ),
@@ -371,8 +363,8 @@ def _round_aggregation_diagnostics(
     zero_update_client_count = sum(
         1 for client in round_summary.clients if not client.update_generated
     )
-    aggregation_weight_summary = _numeric_summary(normalized_weights)
-    delta_l2_norm_summary = _numeric_summary(delta_l2_norms)
+    aggregation_weight_summary = numeric_summary(normalized_weights)
+    delta_l2_norm_summary = numeric_summary(delta_l2_norms)
     return {
         "round_id": round_summary.round_id,
         "participating_client_count": len(round_summary.clients),
@@ -384,22 +376,12 @@ def _round_aggregation_diagnostics(
         "total_accepted_count": total_accepted,
         "total_aggregation_examples": total_accepted,
         "aggregation_example_basis": "accepted_count_proxy",
-        "accepted_count_summary": _numeric_summary(accepted_counts),
+        "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_weight_summary": aggregation_weight_summary,
         "delta_l2_norm_summary": delta_l2_norm_summary,
         "mean_delta_l2_norm": delta_l2_norm_summary["mean"],
         "max_delta_l2_norm": delta_l2_norm_summary["max"],
         "update_norm_variance": delta_l2_norm_summary["variance"],
-    }
-
-
-def _numeric_summary(values: list[float] | list[int]) -> dict[str, float | int | None]:
-    return {
-        "count": len(values),
-        "min": min(values) if values else None,
-        "max": max(values) if values else None,
-        "mean": _mean([float(value) for value in values]),
-        "variance": _population_variance([float(value) for value in values]),
     }
 
 
@@ -428,13 +410,13 @@ def _build_client_metric_summary(
         "best_client_macro_f1": best_client_macro_f1,
         "worst_client_loss": worst_client_loss,
         "best_client_loss": best_client_loss,
-        "macro_f1_mean": _mean(macro_f1_values),
-        "macro_f1_variance": _population_variance(macro_f1_values),
-        "macro_f1_std": _population_std(macro_f1_values),
-        "loss_mean": _mean(loss_values),
-        "loss_variance": _population_variance(loss_values),
-        "loss_std": _population_std(loss_values),
-        "weighted_f1_mean": _mean(weighted_f1_values),
+        "macro_f1_mean": mean(macro_f1_values),
+        "macro_f1_variance": population_variance(macro_f1_values),
+        "macro_f1_std": population_std(macro_f1_values),
+        "loss_mean": mean(loss_values),
+        "loss_variance": population_variance(loss_values),
+        "loss_std": population_std(loss_values),
+        "weighted_f1_mean": mean(weighted_f1_values),
         "fairness_gap": (
             None
             if best_client_macro_f1 is None or worst_client_macro_f1 is None
@@ -520,15 +502,15 @@ def _client_round_summary_payload(
     return {
         "candidate_count": candidate_count,
         "accepted_count": accepted_count,
-        "client_accepted_ratio": _safe_ratio(accepted_count, candidate_count),
+        "client_accepted_ratio": safe_ratio(accepted_count, candidate_count),
         "client_update_generated": client_update_generated,
         "latest_round_id": latest_round_id,
         "latest_update_generated": latest_update_generated,
         "update_generated_round_count": update_generated_round_count,
         "client_delta_l2_norm": delta_l2_norms[-1] if delta_l2_norms else None,
-        "mean_delta_l2_norm": _mean(delta_l2_norms),
+        "mean_delta_l2_norm": mean(delta_l2_norms),
         "max_delta_l2_norm": max(delta_l2_norms) if delta_l2_norms else None,
-        "update_norm_variance": _population_variance(delta_l2_norms),
+        "update_norm_variance": population_variance(delta_l2_norms),
         "delta_l2_norm_status": "available" if delta_l2_norms else "not_available",
     }
 
@@ -577,35 +559,7 @@ def _client_validation_payload(
             "delta_l2_norm_status",
             "not_available",
         ),
-        "validation": _evaluation_to_payload(client.validation),
-    }
-
-
-def _build_communication_cost_summary(
-    result: SimulationResult,
-) -> dict[str, object]:
-    total_client_updates = sum(
-        round_summary.update_count for round_summary in result.rounds
-    )
-    total_candidates = sum(
-        client.candidate_count
-        for round_summary in result.rounds
-        for client in round_summary.clients
-    )
-    total_accepted = sum(
-        client.accepted_count
-        for round_summary in result.rounds
-        for client in round_summary.clients
-    )
-    return {
-        "unit": "client_update_envelopes",
-        "value": total_client_updates,
-        "total_client_updates": total_client_updates,
-        "total_candidates": total_candidates,
-        "total_accepted": total_accepted,
-        "accepted_per_update": _safe_ratio(total_accepted, total_client_updates),
-        "acceptance_ratio": _safe_ratio(total_accepted, total_candidates),
-        "status": "proxy_until_payload_byte_accounting",
+        "validation": evaluation_to_payload(client.validation),
     }
 
 
@@ -677,8 +631,8 @@ def _client_pool_split_to_payload(
         ),
         "actual_labeled_count": labeled_count,
         "actual_unlabeled_count": unlabeled_count,
-        "actual_labeled_ratio": _safe_ratio(labeled_count, total_rows),
-        "actual_unlabeled_ratio": _safe_ratio(unlabeled_count, total_rows),
+        "actual_labeled_ratio": safe_ratio(labeled_count, total_rows),
+        "actual_unlabeled_ratio": safe_ratio(unlabeled_count, total_rows),
         "label_distribution": label_distribution,
         "label_distribution_entropy": _label_entropy(label_distribution),
         "min_client_size": min(client_sizes) if client_sizes else None,
@@ -688,8 +642,8 @@ def _client_pool_split_to_payload(
         ),
         "tiny_client_threshold": tiny_client_threshold,
         "label_skew_summary": {
-            "dominant_label_ratio": _numeric_summary(dominant_ratios),
-            "label_distribution_entropy": _numeric_summary(entropies),
+            "dominant_label_ratio": numeric_summary(dominant_ratios),
+            "label_distribution_entropy": numeric_summary(entropies),
         },
         "clients": client_payloads,
     }
@@ -722,30 +676,6 @@ def _config_to_mapping(value: object) -> dict[str, object]:
     if isinstance(value, Mapping):
         return dict(value)
     raise TypeError(f"Unsupported config mapping type: {type(value).__name__}")
-
-
-def _mean(values: list[float]) -> float | None:
-    return sum(values) / len(values) if values else None
-
-
-def _population_variance(values: list[float]) -> float | None:
-    if not values:
-        return None
-    mean = sum(values) / len(values)
-    return sum((value - mean) ** 2 for value in values) / len(values)
-
-
-def _population_std(values: list[float]) -> float | None:
-    variance = _population_variance(values)
-    if variance is None:
-        return None
-    return math.sqrt(variance)
-
-
-def _safe_ratio(numerator: int, denominator: int) -> float | None:
-    if denominator <= 0:
-        return None
-    return numerator / denominator
 
 
 def _label_distribution(rows: list[object]) -> dict[str, int]:

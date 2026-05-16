@@ -25,7 +25,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
-    FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     SimulationRunRequest,
 )
@@ -34,6 +33,9 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
+)
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,

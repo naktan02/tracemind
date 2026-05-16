@@ -2,13 +2,22 @@
 
 from __future__ import annotations
 
-from typing import Any
+from collections.abc import Mapping
 
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundOpenDraftRequest,
     RoundTaskConfig,
 )
-from shared.src.contracts.model_contracts import ModelManifest
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
+)
+from shared.src.contracts.training_contracts import (
+    TrainingConfigScalar,
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
+)
+
+FederatedRoundOpenRequest = RoundOpenDraftRequest
 
 
 def build_federated_training_task_config(
@@ -19,9 +28,13 @@ def build_federated_training_task_config(
     max_steps: int,
     min_required_examples: int,
     gradient_clip_norm: float | None,
-    objective_config: Any,
-    selection_policy: Any,
-) -> Any:
+    objective_config: (
+        TrainingObjectiveConfig | Mapping[str, TrainingConfigScalar] | None
+    ),
+    selection_policy: (
+        TrainingSelectionPolicy | Mapping[str, TrainingConfigScalar] | None
+    ),
+) -> FederatedTrainingTaskConfig:
     """FL simulation용 RoundTaskConfig 생성을 main_server bridge로 격리한다."""
 
     return RoundTaskConfig(
@@ -38,13 +51,11 @@ def build_federated_training_task_config(
 
 def build_round_open_request(
     *,
-    active_manifest: ModelManifest,
     round_id: str,
-    training_task_config: Any,
-) -> Any:
+    training_task_config: FederatedTrainingTaskConfig,
+) -> FederatedRoundOpenRequest:
     """simulation task template을 canonical round open request로 변환한다."""
 
-    del active_manifest
     return RoundOpenDraftRequest(
         round_id=round_id,
         task_type=training_task_config.task_type,

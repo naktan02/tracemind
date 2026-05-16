@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -33,7 +34,11 @@ from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 from ..io.run_artifact_writer import RunArtifactWriter
 
 
-def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulation:
+def bootstrap_simulation(
+    request: SimulationRunRequest,
+    *,
+    ssl_method_descriptor: FederatedSslMethodDescriptor,
+) -> BootstrappedSimulation:
     """초기 shared state, prototype, manifest를 만들고 active pair로 고정한다."""
 
     dataset_split = split_rows_for_federation(
@@ -59,6 +64,7 @@ def bootstrap_simulation(request: SimulationRunRequest) -> BootstrappedSimulatio
         output_dir=request.output_dir,
         round_runtime_config=request.round_runtime_config,
         prototype_build_strategy=request.prototype_build_strategy,
+        method_descriptor=ssl_method_descriptor,
     )
 
     initial_model_revision = "sim_rev_0000"

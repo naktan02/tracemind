@@ -270,3 +270,49 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert split["min_client_size"] == 2
     assert split["max_client_size"] == 3
     assert split["label_skew_summary"]["dominant_label_ratio"]["max"] == 1.0
+
+
+def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
+    report_config = _report_config()
+    report_config.primary_metrics.append("missing_metric")
+    result = SimulationResult(
+        initial_model_revision="sim_rev_0000",
+        initial_prototype_version="proto_sim_0000",
+        initial_validation=_evaluation(macro_f1=0.2, loss=0.9),
+        final_validation=_evaluation(macro_f1=0.6, loss=0.5),
+        rounds=(),
+        client_evaluations=(),
+    )
+
+    with pytest.raises(ValueError, match="report.primary_metrics"):
+        simulation_report_builder.SimulationReportBuilder().build_payload(
+            result=result,
+            report_config=report_config,
+            client_count=2,
+            round_budget=2,
+            bootstrap_ratio=0.2,
+            seed=7,
+            shard_policy=FederatedShardPolicyConfig(
+                name="label_dominant",
+                client_id_prefix="agent",
+                dominant_ratio=0.75,
+            ),
+            dataset_split=_dataset_split(),
+            ssl_method_config=_ssl_method_config(),
+            client_pool_split_config=FederatedClientPoolSplitConfig(
+                labeled_ratio=0.1,
+                unlabeled_ratio=0.9,
+            ),
+            training_task_config=_training_task_config(),
+            validation_config=FederatedValidationConfig(
+                similarity_name="cosine",
+                scorer_backend_name="prototype_similarity",
+                score_policy_name="max_cosine",
+                confidence_threshold=0.0,
+                margin_threshold=0.0,
+            ),
+            round_runtime_config=FederatedRoundRuntimeConfig(
+                adapter_family_name="diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
+        )

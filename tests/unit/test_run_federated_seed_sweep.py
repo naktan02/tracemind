@@ -124,7 +124,7 @@ def test_build_seed_sweep_summary_payload_aggregates_runs(tmp_path: Path) -> Non
         ),
     )
 
-    assert payload["schema_version"] == "fl_ssl_seed_sweep_summary.v1"
+    assert payload["schema_version"] == "fl_ssl_seed_sweep_summary.v2"
     assert payload["seed_count"] == 2
     assert payload["seeds"] == [42, 43]
     assert payload["aggregate"]["macro_f1_mean"] == pytest.approx(0.3)
@@ -133,6 +133,12 @@ def test_build_seed_sweep_summary_payload_aggregates_runs(tmp_path: Path) -> Non
     assert payload["aggregate"]["worst_client_macro_f1_min"] == pytest.approx(0.15)
     assert payload["aggregate"]["completed_rounds_min"] == 1
     assert payload["runs"][0]["metrics"]["secondary"]["loss"] == pytest.approx(0.8)
+    communication_cost = payload["runs"][0]["metrics"]["secondary"][
+        "communication_cost"
+    ]
+    assert communication_cost["status"] == "proxy_until_payload_byte_accounting"
+    assert communication_cost["total_candidates"] == 0
     assert payload["runs"][0]["metrics"]["final_validation"]["loss_kind"] == (
         "negative_log_likelihood_from_score_distribution"
     )
+    assert "confusion_matrix" in payload["runs"][0]["metrics"]["final_validation"]

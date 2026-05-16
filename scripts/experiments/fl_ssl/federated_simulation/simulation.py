@@ -32,7 +32,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
-    FederatedTrainingTaskConfig,
     FederatedValidationConfig,
     SimulationResult,
     SimulationRoundSummary,
@@ -40,6 +39,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
+)
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
@@ -100,7 +102,10 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
 
     ssl_method_runtime = _build_validated_ssl_runtime(request.ssl_method_config)
     _require_fl_profile_compatibility(request, ssl_method_runtime.descriptor)
-    bootstrapped = bootstrap_simulation(request)
+    bootstrapped = bootstrap_simulation(
+        request,
+        ssl_method_descriptor=ssl_method_runtime.descriptor,
+    )
     active = bootstrapped.active
     round_summaries: list[SimulationRoundSummary] = []
 

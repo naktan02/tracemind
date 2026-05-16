@@ -11,17 +11,16 @@ from methods.federated_ssl.registry import resolve_federated_ssl_method_descript
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_training_examples,
 )
-from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import (
-    build_round_open_request,
-)
-from scripts.experiments.fl_ssl.federated_simulation.models import (
-    FederatedTrainingTaskConfig,
-)
 from scripts.runtime_adapters.federated_agent.training_runtime import (
     build_federated_local_training_service,
 )
+from scripts.runtime_adapters.federated_server.round_request_mapper import (
+    build_round_open_request,
+)
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
@@ -36,7 +35,6 @@ class FederatedSslSimulationRuntime(Protocol):
     def build_round_open_request(
         self,
         *,
-        active_manifest: ModelManifest,
         round_id: str,
         training_task_config: FederatedTrainingTaskConfig,
     ) -> Any:
@@ -72,12 +70,10 @@ class DefaultFederatedSslSimulationRuntime:
     def build_round_open_request(
         self,
         *,
-        active_manifest: ModelManifest,
         round_id: str,
         training_task_config: FederatedTrainingTaskConfig,
     ) -> Any:
         return build_round_open_request(
-            active_manifest=active_manifest,
             round_id=round_id,
             training_task_config=training_task_config,
         )

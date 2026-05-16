@@ -24,9 +24,6 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
-from scripts.experiments.fl_ssl.federated_simulation.adapters.task_config import (
-    build_round_open_request,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
@@ -51,14 +48,15 @@ from scripts.runtime_adapters.federated_server.initial_state_factory import (
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
+    build_round_open_request,
 )
+from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterState,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
-from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
@@ -472,18 +470,6 @@ def test_federated_training_task_config_reuses_round_task_config() -> None:
     )
 
     request = build_round_open_request(
-        active_manifest=ModelManifest(
-            schema_version="model_manifest.v1",
-            model_id="tracemind-embed",
-            model_revision="rev_000",
-            published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
-            artifact_kind="shared_adapter_state",
-            artifact_ref="shared_adapter_state::rev_000",
-            prototype_version="proto_000",
-            training_scope="adapter_only",
-            training_enabled=True,
-            compatible_task_types=("pseudo_label_self_training",),
-        ),
         round_id="round_0001",
         training_task_config=training_task_config,
     )
@@ -511,6 +497,19 @@ def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")
+
+
+def test_simulation_server_runtime_wires_method_descriptor(tmp_path: Path) -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
+
+    runtime = SimulationServerRuntime.build(
+        output_dir=tmp_path,
+        round_runtime_config=_default_round_runtime_config(),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        method_descriptor=descriptor,
+    )
+
+    assert runtime.lifecycle_service.method_descriptor is descriptor
 
 
 def test_federated_ssl_runtime_rejects_method_config_descriptor_drift() -> None:

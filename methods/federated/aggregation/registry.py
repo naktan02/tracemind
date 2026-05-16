@@ -53,14 +53,22 @@ def register_federated_aggregation_strategy(
         aliases=tuple(alias.strip().lower() for alias in aliases),
         metadata=dict(metadata or {}),
     )
-    for name in (spec.method_name, *spec.aliases):
-        normalized_name = name.strip().lower()
-        _FEDERATED_AGGREGATION_STRATEGY_REGISTRY[
-            (spec.adapter_kind, normalized_name)
-        ] = (factory, spec)
-        _FEDERATED_AGGREGATION_METHOD_REGISTRY[(spec.adapter_kind, normalized_name)] = (
-            spec
+    registered_names = tuple(name for name in (spec.method_name, *spec.aliases) if name)
+    if len(set(registered_names)) != len(registered_names):
+        raise ValueError(
+            "Federated aggregation strategy names must be unique per registration: "
+            f"adapter_kind={spec.adapter_kind}, names={registered_names}"
         )
+    for name in registered_names:
+        normalized_name = name.strip().lower()
+        registry_key = (spec.adapter_kind, normalized_name)
+        if registry_key in _FEDERATED_AGGREGATION_STRATEGY_REGISTRY:
+            raise ValueError(
+                "Duplicate federated aggregation strategy registration: "
+                f"adapter_kind={spec.adapter_kind}, method_name={normalized_name}"
+            )
+        _FEDERATED_AGGREGATION_STRATEGY_REGISTRY[registry_key] = (factory, spec)
+        _FEDERATED_AGGREGATION_METHOD_REGISTRY[registry_key] = spec
 
 
 def get_federated_aggregation_method_spec(

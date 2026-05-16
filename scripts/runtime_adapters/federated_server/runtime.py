@@ -30,6 +30,7 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.prototype.building.base import PrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
@@ -78,6 +79,7 @@ class SimulationServerRuntime:
         output_dir: Path,
         round_runtime_config: Any,
         prototype_build_strategy: PrototypeBuildStrategy,
+        method_descriptor: FederatedSslMethodDescriptor | None = None,
     ) -> "SimulationServerRuntime":
         """simulation output root 기준 main_server runtime adapter를 만든다."""
 
@@ -107,6 +109,7 @@ class SimulationServerRuntime:
             ),
             round_manager_service=round_manager,
             prototype_rebuild_runtime_service=stored_rebuild_service,
+            method_descriptor=method_descriptor,
         )
         return cls(
             output_dir=output_dir,

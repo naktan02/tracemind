@@ -5,10 +5,12 @@ from __future__ import annotations
 from collections.abc import Sequence
 from dataclasses import dataclass
 
+from methods.federated.aggregation.fedavg.update_metrics import (
+    FedAvgObservationMetricUpdate,
+    aggregate_update_observation_metrics,
+)
 from methods.federated.aggregation.fedavg.weighted_average import (
-    WeightedScalarUpdate,
     WeightedVectorUpdate,
-    weighted_average_scalars,
     weighted_average_vectors,
 )
 
@@ -76,34 +78,14 @@ def compute_diagonal_scale_fedavg(
 def _aggregate_common_metrics(
     updates: Sequence[DiagonalScaleFedAvgUpdate],
 ) -> dict[str, float]:
-    return {
-        "client_count": float(len(updates)),
-        "example_count": float(sum(update.example_count for update in updates)),
-        "mean_confidence": weighted_average_scalars(
-            [
-                WeightedScalarUpdate(
-                    value=update.mean_confidence,
-                    weight=float(update.example_count),
-                )
-                for update in updates
-            ]
-        ),
-        "mean_margin": weighted_average_scalars(
-            [
-                WeightedScalarUpdate(
-                    value=update.mean_margin or 0.0,
-                    weight=float(update.example_count),
-                )
-                for update in updates
-            ]
-        ),
-        "mean_delta_l2_norm": weighted_average_scalars(
-            [
-                WeightedScalarUpdate(
-                    value=update.delta_l2_norm,
-                    weight=float(update.example_count),
-                )
-                for update in updates
-            ]
-        ),
-    }
+    return aggregate_update_observation_metrics(
+        [
+            FedAvgObservationMetricUpdate(
+                example_count=update.example_count,
+                mean_confidence=update.mean_confidence,
+                mean_margin=update.mean_margin,
+                delta_l2_norm=update.delta_l2_norm,
+            )
+            for update in updates
+        ]
+    )

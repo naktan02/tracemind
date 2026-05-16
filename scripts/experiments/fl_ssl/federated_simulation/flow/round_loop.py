@@ -54,7 +54,6 @@ def run_one_round(
     round_id = f"round_{round_index:04d}"
     round_record = bootstrapped.server_runtime.open_round(
         ssl_method_runtime.build_round_open_request(
-            active_manifest=active.manifest,
             round_id=round_id,
             training_task_config=request.training_task_config,
         )

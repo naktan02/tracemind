@@ -476,6 +476,24 @@ def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     )
 
 
+def test_fl_simulation_does_not_keep_task_config_facade() -> None:
+    facade_path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "task_config.py"
+    )
+
+    assert not facade_path.exists(), (
+        "FL simulation task config 변환은 runtime bridge의 task_config_surface.py와 "
+        "round_request_mapper.py에 둔다. adapters/task_config.py pass-through facade를 "
+        "다시 만들지 않는다.\n"
+        f"facade path={_relative_repo_path(facade_path)}"
+    )
+
+
 def test_fl_simulation_report_builder_does_not_write_report_json() -> None:
     builder_path = FL_SIMULATION_IO_SRC / "simulation_report_builder.py"
     writer_path = FL_SIMULATION_IO_SRC / "simulation_report_writer.py"
@@ -823,6 +841,7 @@ def test_fedavg_aggregation_package_stays_generic() -> None:
     allowed_files = {
         package_root / "__init__.py",
         package_root / "strategy.py",
+        package_root / "update_metrics.py",
         package_root / "weighted_average.py",
     }
     violations = [

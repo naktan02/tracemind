@@ -16,6 +16,10 @@ from methods.adaptation.lora_classifier.fedavg import (
     LoraClassifierFedAvgUpdate,
     compute_lora_classifier_fedavg,
 )
+from methods.federated.aggregation.fedavg.update_metrics import (
+    FedAvgObservationMetricUpdate,
+    aggregate_update_observation_metrics,
+)
 from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedScalarUpdate,
     WeightedVectorMappingUpdate,
@@ -26,6 +30,7 @@ from methods.federated.aggregation.fedavg.weighted_average import (
 )
 from methods.federated.aggregation.registry import (
     get_federated_aggregation_method_spec,
+    register_federated_aggregation_strategy,
 )
 
 
@@ -76,6 +81,51 @@ def test_weighted_average_vector_mappings_rejects_key_mismatch() -> None:
         )
 
 
+def test_aggregate_update_observation_metrics_uses_example_weights() -> None:
+    result = aggregate_update_observation_metrics(
+        [
+            FedAvgObservationMetricUpdate(
+                example_count=2,
+                mean_confidence=0.9,
+                mean_margin=0.3,
+                delta_l2_norm=0.5,
+            ),
+            FedAvgObservationMetricUpdate(
+                example_count=1,
+                mean_confidence=None,
+                mean_margin=None,
+                delta_l2_norm=0.2,
+            ),
+        ]
+    )
+
+    assert result["client_count"] == 2.0
+    assert result["example_count"] == 3.0
+    assert result["mean_confidence"] == pytest.approx(0.9)
+    assert result["mean_confidence_observed_count"] == 1.0
+    assert result["mean_confidence_missing_count"] == 1.0
+    assert result["mean_margin"] == pytest.approx(0.3)
+    assert result["mean_margin_observed_count"] == 1.0
+    assert result["mean_margin_missing_count"] == 1.0
+    assert result["mean_delta_l2_norm"] == pytest.approx(0.4)
+
+
+def test_federated_aggregation_registry_rejects_duplicate_strategy() -> None:
+    get_federated_aggregation_method_spec(
+        adapter_kind="diagonal_scale",
+        method_name="fedavg",
+    )
+
+    with pytest.raises(ValueError, match="Duplicate federated aggregation strategy"):
+        register_federated_aggregation_strategy(
+            adapter_kind="diagonal_scale",
+            method_name="fedavg",
+            implementation_module="tests.duplicate",
+            core_function_name="duplicate",
+            factory=lambda _overrides: None,
+        )
+
+
 def test_diagonal_scale_fedavg_clamps_next_scales_and_reports_metrics() -> None:
     result = compute_diagonal_scale_fedavg(
         base_dimension_scales=[1.0, 1.0],
@@ -104,7 +154,7 @@ def test_diagonal_scale_fedavg_clamps_next_scales_and_reports_metrics() -> None:
     assert result.aggregated_metrics["client_count"] == 2.0
     assert result.aggregated_metrics["example_count"] == 3.0
     assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
-    assert result.aggregated_metrics["mean_margin"] == pytest.approx(0.2)
+    assert result.aggregated_metrics["mean_margin"] == pytest.approx(0.3)
     assert result.aggregated_metrics["mean_delta_l2_norm"] == pytest.approx(0.4)
 
 

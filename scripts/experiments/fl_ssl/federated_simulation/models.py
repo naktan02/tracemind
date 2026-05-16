@@ -4,18 +4,15 @@ from __future__ import annotations
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Protocol
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.prototype.building.base import PrototypeBuildStrategy
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.training_contracts import (
-    TrainingObjectiveConfig,
-    TrainingSelectionPolicy,
+from scripts.runtime_adapters.federated_server.task_config_surface import (
+    FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
@@ -121,27 +118,6 @@ class SimulationResult:
     rounds: tuple[SimulationRoundSummary, ...]
     client_evaluations: tuple[ClientEvaluationSummary, ...] = ()
     report_path: str | None = None
-
-
-class FederatedTrainingTaskConfig(Protocol):
-    """federated simulation이 요구하는 round task config surface."""
-
-    local_epochs: int
-    batch_size: int
-    learning_rate: float
-    max_steps: int
-    min_required_examples: int
-    gradient_clip_norm: float | None
-    objective_config: TrainingObjectiveConfig
-    selection_policy: TrainingSelectionPolicy
-
-    def to_round_open_request(
-        self,
-        *,
-        active_manifest: ModelManifest,
-        round_id: str,
-    ) -> Any:
-        """main_server round open request로 변환한다."""
 
 
 @dataclass(slots=True)

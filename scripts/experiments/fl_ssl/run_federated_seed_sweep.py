@@ -11,9 +11,14 @@ import hydra
 from omegaconf import DictConfig
 
 from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.experiments.fl_ssl.federated_simulation.io.report_metrics import (
+    build_communication_cost_summary,
+    evaluation_to_payload,
+    mean,
+    population_variance,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
-    SimulationEvaluation,
     SimulationResult,
 )
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
@@ -24,7 +29,7 @@ from scripts.experiments.fl_ssl.run_federated_simulation import (
     render_simulation_result_lines,
 )
 
-SUMMARY_SCHEMA_VERSION = "fl_ssl_seed_sweep_summary.v1"
+SUMMARY_SCHEMA_VERSION = "fl_ssl_seed_sweep_summary.v2"
 
 
 @dataclass(frozen=True, slots=True)
@@ -148,14 +153,14 @@ def build_seed_sweep_summary_payload(
             "unlabeled_ratio": float(cfg.client_pool_split.unlabeled_ratio),
         },
         "aggregate": {
-            "macro_f1_mean": _mean(macro_f1_values),
+            "macro_f1_mean": mean(macro_f1_values),
             "macro_f1_min": min(macro_f1_values) if macro_f1_values else None,
             "macro_f1_max": max(macro_f1_values) if macro_f1_values else None,
-            "loss_mean": _mean(loss_values),
+            "loss_mean": mean(loss_values),
             "loss_min": min(loss_values) if loss_values else None,
             "loss_max": max(loss_values) if loss_values else None,
-            "weighted_f1_mean": _mean(weighted_f1_values),
-            "worst_client_macro_f1_mean": _mean(worst_client_macro_f1_values),
+            "weighted_f1_mean": mean(weighted_f1_values),
+            "worst_client_macro_f1_mean": mean(worst_client_macro_f1_values),
             "worst_client_macro_f1_min": (
                 min(worst_client_macro_f1_values)
                 if worst_client_macro_f1_values
@@ -211,8 +216,8 @@ def _run_result_to_payload(run_result: SeedSweepRunResult) -> dict[str, object]:
                 "expected_calibration_error": (
                     result.final_validation.expected_calibration_error
                 ),
-                "communication_cost": _communication_cost(result),
-                "per_client_macro_f1_variance": _population_variance(
+                "communication_cost": build_communication_cost_summary(result),
+                "per_client_macro_f1_variance": population_variance(
                     [
                         client.validation.macro_f1
                         for client in result.client_evaluations
@@ -220,33 +225,9 @@ def _run_result_to_payload(run_result: SeedSweepRunResult) -> dict[str, object]:
                     ]
                 ),
             },
-            "initial_validation": _evaluation_to_payload(result.initial_validation),
-            "final_validation": _evaluation_to_payload(result.final_validation),
+            "initial_validation": evaluation_to_payload(result.initial_validation),
+            "final_validation": evaluation_to_payload(result.final_validation),
         },
-    }
-
-
-def _evaluation_to_payload(evaluation: SimulationEvaluation) -> dict[str, object]:
-    return {
-        "row_count": evaluation.row_count,
-        "rows_total": evaluation.row_count,
-        "top1_accuracy": evaluation.top1_accuracy,
-        "accuracy_top_1": evaluation.accuracy_top_1,
-        "correct_top_1": evaluation.correct_top_1,
-        "accepted_ratio": evaluation.accepted_ratio,
-        "loss": evaluation.loss,
-        "loss_kind": evaluation.loss_kind,
-        "macro_f1": evaluation.macro_f1,
-        "macro_precision": evaluation.macro_precision,
-        "macro_recall": evaluation.macro_recall,
-        "weighted_f1": evaluation.weighted_f1,
-        "balanced_accuracy": evaluation.balanced_accuracy,
-        "worst_category_f1": evaluation.worst_category_f1,
-        "worst_category_f1_value": evaluation.worst_category_f1_value,
-        "expected_calibration_error": evaluation.expected_calibration_error,
-        "max_calibration_error": evaluation.max_calibration_error,
-        "score_distribution_kind": evaluation.score_distribution_kind,
-        "selection_confidence_kind": evaluation.selection_confidence_kind,
     }
 
 
@@ -259,28 +240,6 @@ def _worst_client_macro_f1(
         if client.validation.row_count > 0
     ]
     return min(values) if values else None
-
-
-def _communication_cost(result: SimulationResult) -> dict[str, object]:
-    total_client_updates = sum(
-        round_summary.update_count for round_summary in result.rounds
-    )
-    return {
-        "unit": "client_update_envelopes",
-        "value": total_client_updates,
-        "total_client_updates": total_client_updates,
-    }
-
-
-def _mean(values: list[float]) -> float | None:
-    return sum(values) / len(values) if values else None
-
-
-def _population_variance(values: list[float]) -> float | None:
-    if not values:
-        return None
-    mean = sum(values) / len(values)
-    return sum((value - mean) ** 2 for value in values) / len(values)
 
 
 @hydra.main(
