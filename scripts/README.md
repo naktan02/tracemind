@@ -140,6 +140,14 @@ uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
+FL SSL client-count sweep:
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_client_count_sweep.py \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03
+```
+
 FL SSL 실험 기본값은 `execution_context/runtime_env=gpu_local`과
 `execution_context/embedding_adapter=mxbai`다. `gpu_online`은 cache warm-up/최초
 다운로드용이고, `cpu_local + hash_debug`는 entrypoint wiring smoke나 빠른 디버그에만 쓴다.

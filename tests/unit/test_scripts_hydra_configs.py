@@ -591,6 +591,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.runtime.local_files_only is True
     assert cfg.seed_sweep.output_dir == "runs/federated_simulation_seed_sweep"
     assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
+    assert cfg.client_count_sweep.output_dir == (
+        "runs/federated_simulation_client_count_sweep"
+    )
+    assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
     assert cfg.ssl_method.name == "fedavg_pseudo_label"

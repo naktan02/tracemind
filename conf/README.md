@@ -106,6 +106,11 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
+- `client_count_sweep`
+  - FL SSL client-count sweep runner가 순회할 client 수 목록과 sweep output root를
+    소유한다.
+  - method semantics, shard policy, local update profile은 기존 FL config 축을
+    그대로 쓰고 client 수만 바꾼다.
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.

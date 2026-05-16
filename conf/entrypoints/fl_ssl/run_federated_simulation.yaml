@@ -29,6 +29,20 @@ seed_sweep:
     - 43
     - 44
 
+client_count_sweep:
+  output_dir: runs/federated_simulation_client_count_sweep
+  client_counts:
+    - 1
+    - 2
+    - 3
+    - 4
+    - 5
+    - 6
+    - 7
+    - 8
+    - 9
+    - 10
+
 prototype_rebuild:
   embedding_backend: simulation
   mapping_version: ourafla_to_4cat.v1
