@@ -9,7 +9,6 @@
 uv run python -m scripts.experiments.result_index.ingest \
   --runs-root runs/train_lora_ssl_classifier \
   --db data/processed/experiment_index/experiment_results.sqlite \
-  --reset \
   --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
 
 python -m http.server 5175 -d apps/experiment_dashboard
@@ -17,13 +16,22 @@ python -m http.server 5175 -d apps/experiment_dashboard
 
 브라우저에서 `http://127.0.0.1:5175`를 연다.
 
+`--reset`은 전체 cache를 다시 만들 때만 붙인다. 기본 ingest는 같은 `run_id`를
+upsert하고 새 run을 누적한다. 실험 runner가 SQLite를 직접 쓰지 않기 때문에 새
+실험이 끝난 뒤 위 ingest/export 명령을 다시 실행해야 화면에 반영된다.
+
 export는 `projection_artifacts`의 UMAP/PCA PNG를
 `apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와
 `experiment_dashboard.json`은 재생성 가능한 cache라서 git에 올리지 않는다.
 
-화면에서는 method, split, eval set을 고른 뒤 여러 run과 여러 metric을 동시에
-선택해 bar/line chart로 비교할 수 있다. per-class metric과 confusion matrix,
+왼쪽 track navigation은 `Central SSL`과 `FL SSL`을 분리한다. 현재 기존 화면은
+`Central SSL` track이며 method, split, eval set을 고른 뒤 여러 run과 여러 metric을
+동시에 선택해 bar/line chart로 비교할 수 있다. per-class metric과 confusion matrix,
 projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
+
+`FL SSL` track은 중앙 SSL ranking과 섞지 않는 별도 표면이다. FL SSL 전용 result
+index export가 들어오면 worst-client macro-F1, communication cost, per-client
+variance, round/client metric을 이 패널에서 소비한다.
 
 ## 경계
 

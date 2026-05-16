@@ -1,7 +1,9 @@
 const DATA_URL = "./data/experiment_dashboard.json";
+const CENTRAL_SSL_TRACK = "central_lora_ssl";
 
 const state = {
   bundle: null,
+  activeTrack: "central_ssl",
   overviewEvalSet: "validation",
   overviewMetric: "macro_f1",
   comparisonEvalSet: "validation",
@@ -25,6 +27,8 @@ const state = {
 
 const elements = {
   loadState: document.querySelector("#load-state"),
+  trackButtons: document.querySelectorAll("[data-track]"),
+  trackPanels: document.querySelectorAll("[data-track-panel]"),
   tabButtons: document.querySelectorAll("[data-tab]"),
   tabPanels: document.querySelectorAll("[data-panel]"),
   overviewEvalFilter: document.querySelector("#overview-eval-filter"),
@@ -55,6 +59,8 @@ const elements = {
   projectionRunCheckboxes: document.querySelector("#projection-run-checkboxes"),
   projectionGallery: document.querySelector("#projection-gallery"),
   runTable: document.querySelector("#run-table"),
+  flMetricCards: document.querySelector("#fl-metric-cards"),
+  flRunSummary: document.querySelector("#fl-run-summary"),
 };
 
 init();
@@ -81,6 +87,12 @@ async function init() {
 }
 
 function bindEvents() {
+  elements.trackButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      state.activeTrack = button.dataset.track;
+      render();
+    });
+  });
   elements.tabButtons.forEach((button) => {
     button.addEventListener("click", () => {
       state.activeTab = button.dataset.tab;
@@ -225,8 +237,7 @@ function bindEvents() {
 }
 
 function hydrateFilters() {
-  const filters = state.bundle.filters;
-  const evalSets = filters.eval_sets;
+  const evalSets = centralEvalSets();
   ensureEvalDefaults(evalSets);
   fillSelect(elements.overviewEvalFilter, evalSets, state.overviewEvalSet);
   fillSelect(elements.comparisonEvalFilter, evalSets, state.comparisonEvalSet);
@@ -239,6 +250,7 @@ function render() {
   if (!state.bundle) {
     return;
   }
+  renderTrackPanels();
   renderTabs();
   const overviewRows = selectedMetricRows(
     state.overviewEvalSet,
@@ -267,6 +279,19 @@ function render() {
   renderConfusionMatrix();
   renderProjectionGallery();
   renderRunTable(overviewRows);
+  renderFlSslPanel();
+}
+
+function renderTrackPanels() {
+  elements.trackButtons.forEach((button) => {
+    button.classList.toggle("active", button.dataset.track === state.activeTrack);
+  });
+  elements.trackPanels.forEach((panel) => {
+    panel.classList.toggle(
+      "active",
+      panel.dataset.trackPanel === state.activeTrack,
+    );
+  });
 }
 
 function renderTabs() {
@@ -280,6 +305,9 @@ function renderTabs() {
 
 function ensureEvalDefaults(evalSets) {
   const fallback = evalSets.includes("validation") ? "validation" : evalSets[0];
+  if (!fallback) {
+    return;
+  }
   for (const key of [
     "overviewEvalSet",
     "comparisonEvalSet",
@@ -293,7 +321,7 @@ function ensureEvalDefaults(evalSets) {
 }
 
 function renderEvalFilters() {
-  const evalSets = state.bundle.filters.eval_sets;
+  const evalSets = centralEvalSets();
   fillSelect(elements.overviewEvalFilter, evalSets, state.overviewEvalSet);
   elements.overviewMetricFilter.value = state.overviewMetric;
   fillSelect(elements.comparisonEvalFilter, evalSets, state.comparisonEvalSet);
@@ -306,8 +334,128 @@ function selectedMetricRows(evalSet, sortMetric = "macro_f1") {
   return state.bundle.eval_metrics
     .filter((metric) => metric.eval_set === evalSet)
     .map((metric) => ({ ...runsById.get(metric.run_id), ...metric }))
-    .filter((row) => row.run_id)
+    .filter((row) => row.run_id && row.track === CENTRAL_SSL_TRACK)
     .sort((a, b) => compareMetric(a, b, sortMetric));
+}
+
+function centralEvalSets() {
+  const runIds = new Set(
+    state.bundle.runs
+      .filter((run) => run.track === CENTRAL_SSL_TRACK)
+      .map((run) => run.run_id),
+  );
+  return uniqueValues(
+    state.bundle.eval_metrics
+      .filter((metric) => runIds.has(metric.run_id))
+      .map((metric) => metric.eval_set),
+  ).sort();
+}
+
+function renderFlSslPanel() {
+  const rows = flSslRows();
+  const methods = new Set(rows.map((row) => flMethodName(row))).size;
+  const macroF1Values = rows
+    .map((row) => numberOrNull(flMetric(row, "macro_f1")))
+    .filter((value) => value !== null);
+  const worstClientValues = rows
+    .map((row) => numberOrNull(flMetric(row, "worst_client_macro_f1")))
+    .filter((value) => value !== null);
+
+  elements.flMetricCards.innerHTML = [
+    card("runs", rows.length),
+    card("methods", methods),
+    card(
+      "best macro_f1",
+      macroF1Values.length ? formatMetric(Math.max(...macroF1Values)) : "-",
+    ),
+    card(
+      "worst client",
+      worstClientValues.length ? formatMetric(Math.min(...worstClientValues)) : "-",
+    ),
+  ].join("");
+
+  if (rows.length === 0) {
+    elements.flRunSummary.innerHTML = `
+      <p class="empty">
+        아직 dashboard bundle에 FL SSL run이 없습니다. 현재 화면은 Central SSL과
+        FL SSL을 섞지 않기 위한 track 경계만 먼저 열어 둔 상태입니다.
+      </p>
+    `;
+    return;
+  }
+
+  elements.flRunSummary.innerHTML = rows
+    .slice(0, 12)
+    .map(
+      (row) => `
+        <article>
+          <strong>${escapeHtml(flMethodName(row))} · ${escapeHtml(flRunId(row))}</strong>
+          <span>${escapeHtml(flRunDescriptor(row))}</span>
+          <span>
+            macro_f1=${formatMetric(flMetric(row, "macro_f1"))} ·
+            worst_client=${formatMetric(flMetric(row, "worst_client_macro_f1"))} ·
+            ece=${formatMetric(flMetric(row, "expected_calibration_error"))}
+          </span>
+        </article>
+      `,
+    )
+    .join("");
+}
+
+function flSslRows() {
+  if (Array.isArray(state.bundle.fl_ssl_runs)) {
+    return state.bundle.fl_ssl_runs;
+  }
+  return state.bundle.runs.filter((run) => isFlSslTrack(run.track));
+}
+
+function isFlSslTrack(track) {
+  return String(track ?? "").startsWith("fl_ssl");
+}
+
+function flRunId(row) {
+  return row.run_id ?? row.id ?? "-";
+}
+
+function flMethodName(row) {
+  return (
+    row.method_name ??
+    row.ssl_method_name ??
+    row.method ??
+    row.protocol?.ssl_method?.name ??
+    "-"
+  );
+}
+
+function flMetric(row, metric) {
+  if (row[metric] !== undefined) {
+    return row[metric];
+  }
+  if (row.metrics?.primary?.[metric] !== undefined) {
+    return row.metrics.primary[metric];
+  }
+  if (row.metrics?.secondary?.[metric] !== undefined) {
+    return row.metrics.secondary[metric];
+  }
+  if (metric === "expected_calibration_error") {
+    return row.metrics?.final_validation?.expected_calibration_error;
+  }
+  if (metric === "macro_f1") {
+    return row.metrics?.final_validation?.macro_f1;
+  }
+  return null;
+}
+
+function flRunDescriptor(row) {
+  const protocol = row.protocol ?? {};
+  const cost = flMetric(row, "communication_cost");
+  const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
+  return [
+    `clients=${row.client_count ?? protocol.client_count ?? "-"}`,
+    `rounds=${row.completed_rounds ?? protocol.completed_rounds ?? "-"}/${row.round_budget ?? protocol.round_budget ?? "-"}`,
+    `updates=${costValue ?? "-"}`,
+    `seed=${row.seed ?? protocol.seed ?? "-"}`,
+  ].join(" · ");
 }
 
 function resetScopedSelections() {

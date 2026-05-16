@@ -162,9 +162,11 @@ Experiment result index:
 uv run python -m scripts.experiments.result_index.ingest \
   --runs-root runs/train_lora_ssl_classifier \
   --db data/processed/experiment_index/experiment_results.sqlite \
-  --reset \
   --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
 ```
+
+기본 ingest는 같은 `run_id`를 upsert하고 새 run을 누적한다. cache를 전체
+재빌드해야 할 때만 `--reset`을 추가한다.
 
 정적 dashboard preview:
 
