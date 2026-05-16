@@ -32,7 +32,10 @@ from scripts.runtime_adapters.federated_agent.training_runtime import (
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
-from shared.src.contracts.training_contracts import TrainingUpdateEnvelope
+from shared.src.contracts.training_contracts import (
+    ClientMetricKeys,
+    TrainingUpdateEnvelope,
+)
 
 from ..io.run_artifact_writer import RunArtifactWriter
 from ..io.selection_diagnostics_writer import SelectionDiagnosticsWriter
@@ -162,6 +165,7 @@ def _run_client_round(
             candidate_count=local_result.selection_result.total_count,
             accepted_count=local_result.selection_result.accepted_count,
             update_generated=update_submitted,
+            delta_l2_norm=_extract_delta_l2_norm(local_result.update_envelope),
         ),
         update_submitted=update_submitted,
     )
@@ -192,6 +196,17 @@ def _accept_client_update(
         update_payload,
     )
     return True
+
+
+def _extract_delta_l2_norm(
+    update_envelope: TrainingUpdateEnvelope | None,
+) -> float | None:
+    if update_envelope is None:
+        return None
+    value = update_envelope.client_metrics.get(ClientMetricKeys.DELTA_L2_NORM)
+    if value is None:
+        return None
+    return float(value)
 
 
 def _finalize_round_publication(

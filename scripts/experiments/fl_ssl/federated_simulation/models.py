@@ -46,6 +46,7 @@ class ClientRoundSummary:
     candidate_count: int
     accepted_count: int
     update_generated: bool
+    delta_l2_norm: float | None = None
 
 
 @dataclass(slots=True)

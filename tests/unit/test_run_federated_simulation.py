@@ -745,6 +745,12 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["protocol"]["labeled_unlabeled_split"]["clients"][0][
         "label_distribution"
     ]
+    assert report["protocol"]["labeled_unlabeled_split"]["min_client_size"] >= 0
+    assert (
+        report["protocol"]["labeled_unlabeled_split"]["max_client_size"]
+        >= (report["protocol"]["labeled_unlabeled_split"]["min_client_size"])
+    )
+    assert "label_skew_summary" in report["protocol"]["labeled_unlabeled_split"]
     assert (
         report["protocol"]["labeled_unlabeled_split"]["actual_labeled_count"]
         + report["protocol"]["labeled_unlabeled_split"]["actual_unlabeled_count"]
@@ -765,6 +771,13 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     )
     assert report["metrics"]["round_progression"]["round_count"] == 1
     assert (
+        report["metrics"]["round_progression"]["early_stop_candidate"]["status"]
+        == "insufficient_rounds"
+    )
+    assert report["rounds"][0]["round_index"] == 1
+    assert "accepted_ratio" in report["rounds"][0]["clients"][0]
+    assert "delta_l2_norm" in report["rounds"][0]["clients"][0]
+    assert (
         report["rounds"][0]["delta_from_previous_round"]["macro_f1_delta"]
         == report["rounds"][0]["delta_from_initial"]["macro_f1_delta"]
     )
@@ -775,10 +788,34 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         result.rounds[0].update_count
     )
     assert (
+        "aggregation_weight_summary"
+        in (report["diagnostics"]["aggregation"]["rounds"][0])
+    )
+    assert (
+        report["diagnostics"]["aggregation"]["rounds"][0]["total_aggregation_examples"]
+        >= 0
+    )
+    assert (
+        "zero_update_client_count" in report["diagnostics"]["aggregation"]["rounds"][0]
+    )
+    assert (
+        "delta_l2_norm_summary" in (report["diagnostics"]["aggregation"]["rounds"][0])
+    )
+    assert (
         report["metrics"]["secondary"]["communication_cost"]["unit"]
         == "client_update_envelopes"
     )
-    assert report["metrics"]["client_validation"]["evaluated_client_count"] > 0
+    client_validation = report["metrics"]["client_validation"]
+    assert client_validation["evaluated_client_count"] > 0
+    assert "macro_f1_std" in client_validation
+    assert "loss_std" in client_validation
+    assert "fairness_gap" in client_validation
+    assert client_validation["clients"][0]["client_train_size"] is not None
+    assert client_validation["clients"][0]["client_labeled_count"] is not None
+    assert client_validation["clients"][0]["client_unlabeled_count"] is not None
+    assert "client_accepted_ratio" in client_validation["clients"][0]
+    assert "client_update_generated" in client_validation["clients"][0]
+    assert "delta_l2_norm_status" in client_validation["clients"][0]
 
 
 def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:

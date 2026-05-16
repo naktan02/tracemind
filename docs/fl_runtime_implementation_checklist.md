@@ -24,8 +24,13 @@ source of truth로 본다.
 - [x] final/initial/round/client validation에 `loss`, accuracy, macro/weighted F1,
   balanced accuracy, worst-category metric, ECE/max-ECE를 남긴다.
 - [x] round progression, best macro-F1 round, best loss round, round delta를 남긴다.
-- [x] client split label distribution, entropy, labeled/unlabeled count를 남긴다.
-- [x] accepted-count 기반 aggregation weight proxy와 communication proxy를 남긴다.
+- [x] client split label distribution, entropy, labeled/unlabeled count와
+  split skew summary를 남긴다.
+- [x] client별 validation 요약에 train/labeled/unlabeled count, accepted ratio,
+  update 생성 여부, update norm 진단을 함께 남긴다.
+- [x] accepted-count 기반 aggregation weight proxy, zero-update client, update norm,
+  communication proxy를 남긴다.
+- [x] round index와 early-stop 후보 진단을 남긴다.
 - [x] 중앙 SSL control report와 FL SSL main comparison report를 같은 ranking으로
   합치지 않는다.
 - [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
