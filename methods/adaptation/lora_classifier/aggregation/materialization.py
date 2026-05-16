@@ -1,4 +1,4 @@
-"""LoRA-classifier FedAvg artifact materialization helpers."""
+"""LoRA-classifier aggregation artifact materialization helpers."""
 
 from __future__ import annotations
 
@@ -22,7 +22,7 @@ CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
 
 @dataclass(frozen=True, slots=True)
 class LoraClassifierMaterializedUpdate:
-    """FedAvg 산술이 소비하는 materialized client delta."""
+    """LoRA-classifier aggregation core가 소비하는 materialized client delta."""
 
     lora_parameter_deltas: dict[str, list[float]]
     classifier_head_weight_deltas: dict[str, list[float]]
@@ -88,14 +88,16 @@ def materialize_lora_classifier_update(
     payload: LoraClassifierDelta,
     context: FederatedAggregationContext,
 ) -> LoraClassifierMaterializedUpdate:
-    """inline delta 또는 server-owned artifact ref update를 FedAvg 입력으로 읽는다."""
+    """inline delta 또는 server-owned artifact ref update를 delta mapping으로 읽는다."""
 
     loader = None
     if (
         payload.lora_parameter_deltas is None
         or payload.classifier_head_weight_deltas is None
     ):
-        loader = context.require_artifact_loader(context="LoRA-classifier FedAvg")
+        loader = context.require_artifact_loader(
+            context="LoRA-classifier aggregation materialization"
+        )
 
     if payload.lora_parameter_deltas is not None:
         lora_parameter_deltas = _normalize_vector_mapping(

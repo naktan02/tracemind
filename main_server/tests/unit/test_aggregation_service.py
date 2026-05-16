@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -328,6 +329,101 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     assert result.update_count == 2
 
 
+def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(
+    tmp_path,
+) -> None:
+    artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
+    backend = build_shared_adapter_aggregation_backend(
+        adapter_kind="lora_classifier",
+        backend_name="fedavg",
+        overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        artifact_store=artifact_store,
+    )
+
+    first_result = backend.aggregate(
+        base_state=_build_lora_state(),
+        update_payloads=(
+            _build_lora_update(
+                lora_deltas={"encoder.q_proj.lora_A": [0.2, 0.4]},
+                head_weight_deltas={
+                    "anxiety": [0.2, -0.1],
+                    "normal": [-0.2, 0.1],
+                },
+                head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+                example_count=2,
+                mean_confidence=0.9,
+            ),
+        ),
+        next_model_revision="rev_001",
+        aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
+    )
+    second_result = backend.aggregate(
+        base_state=first_result.next_state,
+        update_payloads=(
+            _build_lora_update(
+                base_model_revision="rev_001",
+                lora_deltas={
+                    "encoder.q_proj.lora_A": [0.3, -0.3],
+                    "encoder.q_proj.lora_B": [0.1, 0.1],
+                },
+                head_weight_deltas={
+                    "anxiety": [0.1, 0.2],
+                    "normal": [-0.1, -0.2],
+                },
+                head_bias_deltas={"anxiety": 0.02},
+                example_count=1,
+                mean_confidence=0.7,
+            ),
+            _build_lora_update(
+                base_model_revision="rev_001",
+                lora_deltas={
+                    "encoder.q_proj.lora_A": [0.0, 0.3],
+                    "encoder.q_proj.lora_B": [0.2, -0.2],
+                },
+                head_weight_deltas={
+                    "anxiety": [0.4, -0.1],
+                    "normal": [-0.4, 0.1],
+                },
+                head_bias_deltas={"normal": -0.03},
+                example_count=3,
+                mean_confidence=0.8,
+            ),
+        ),
+        next_model_revision="rev_002",
+        aggregated_at=datetime(2026, 4, 8, 2, tzinfo=timezone.utc),
+    )
+
+    first_lora = artifact_store.load_json_artifact(
+        artifact_ref=first_result.next_state.lora_adapter_artifact_ref
+    )
+    first_head = artifact_store.load_json_artifact(
+        artifact_ref=first_result.next_state.classifier_head_artifact_ref
+    )
+    second_lora = artifact_store.load_json_artifact(
+        artifact_ref=second_result.next_state.lora_adapter_artifact_ref
+    )
+    second_head = artifact_store.load_json_artifact(
+        artifact_ref=second_result.next_state.classifier_head_artifact_ref
+    )
+
+    _assert_vector_mapping_accumulates(
+        before=first_lora["lora_parameters"],
+        delta=second_lora["applied_lora_parameter_deltas"],
+        after=second_lora["lora_parameters"],
+    )
+    _assert_vector_mapping_accumulates(
+        before=first_head["classifier_head_weights"],
+        delta=second_head["applied_classifier_head_weight_deltas"],
+        after=second_head["classifier_head_weights"],
+    )
+    _assert_scalar_mapping_accumulates(
+        before=first_head["classifier_head_biases"],
+        delta=second_head["applied_classifier_head_bias_deltas"],
+        after=second_head["classifier_head_biases"],
+    )
+    assert second_result.next_state.model_revision == "rev_002"
+
+
 def test_lora_classifier_fedavg_materializes_server_owned_artifact_updates(
     tmp_path,
 ) -> None:
@@ -483,6 +579,7 @@ def _build_lora_state(
 
 def _build_lora_update(
     *,
+    base_model_revision: str = "rev_000",
     lora_deltas: dict[str, list[float]],
     head_weight_deltas: dict[str, list[float]],
     head_bias_deltas: dict[str, float],
@@ -491,7 +588,7 @@ def _build_lora_update(
 ) -> LoraClassifierDelta:
     return make_lora_classifier_delta_payload(
         model_id="tracemind-lora",
-        base_model_revision="rev_000",
+        base_model_revision=base_model_revision,
         training_scope="adapter_only",
         backbone=_lora_backbone(),
         lora_config=_lora_config(),
@@ -505,3 +602,52 @@ def _build_lora_update(
         mean_margin=0.2,
         created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
     )
+
+
+def _assert_vector_mapping_accumulates(
+    *,
+    before: object,
+    delta: object,
+    after: object,
+) -> None:
+    assert isinstance(before, Mapping)
+    assert isinstance(delta, Mapping)
+    assert isinstance(after, Mapping)
+    for key in sorted(set(before) | set(delta)):
+        before_values = before.get(key, [])
+        delta_values = delta.get(key, [])
+        after_values = after[key]
+        assert isinstance(before_values, Sequence)
+        assert isinstance(delta_values, Sequence)
+        assert isinstance(after_values, Sequence)
+        if not before_values:
+            assert list(after_values) == pytest.approx(list(delta_values))
+            continue
+        if not delta_values:
+            assert list(after_values) == pytest.approx(list(before_values))
+            continue
+        assert list(after_values) == pytest.approx(
+            [
+                float(before_value) + float(delta_value)
+                for before_value, delta_value in zip(
+                    before_values,
+                    delta_values,
+                    strict=True,
+                )
+            ]
+        )
+
+
+def _assert_scalar_mapping_accumulates(
+    *,
+    before: object,
+    delta: object,
+    after: object,
+) -> None:
+    assert isinstance(before, Mapping)
+    assert isinstance(delta, Mapping)
+    assert isinstance(after, Mapping)
+    for key in sorted(set(before) | set(delta)):
+        assert float(after[key]) == pytest.approx(
+            float(before.get(key, 0.0)) + float(delta.get(key, 0.0))
+        )

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -904,9 +905,40 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         / "sim_rev_0002"
         / "lora_adapter.json"
     )
+    second_head_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0002"
+        / "classifier_head.json"
+    )
     assert second_lora_aggregate_path.exists()
-    assert json.loads(second_lora_aggregate_path.read_text(encoding="utf-8")) != (
-        json.loads(lora_aggregate_path.read_text(encoding="utf-8"))
+    assert second_head_aggregate_path.exists()
+    first_lora_artifact = json.loads(lora_aggregate_path.read_text(encoding="utf-8"))
+    first_head_artifact = json.loads(head_aggregate_path.read_text(encoding="utf-8"))
+    second_lora_artifact = json.loads(
+        second_lora_aggregate_path.read_text(encoding="utf-8")
+    )
+    second_head_artifact = json.loads(
+        second_head_aggregate_path.read_text(encoding="utf-8")
+    )
+    assert second_lora_artifact != first_lora_artifact
+    _assert_vector_mapping_accumulates(
+        before=first_lora_artifact["lora_parameters"],
+        delta=second_lora_artifact["applied_lora_parameter_deltas"],
+        after=second_lora_artifact["lora_parameters"],
+    )
+    _assert_vector_mapping_accumulates(
+        before=first_head_artifact["classifier_head_weights"],
+        delta=second_head_artifact["applied_classifier_head_weight_deltas"],
+        after=second_head_artifact["classifier_head_weights"],
+    )
+    _assert_scalar_mapping_accumulates(
+        before=first_head_artifact["classifier_head_biases"],
+        delta=second_head_artifact["applied_classifier_head_bias_deltas"],
+        after=second_head_artifact["classifier_head_biases"],
     )
 
 
@@ -1410,3 +1442,48 @@ def test_build_training_examples_supports_multiview_row_fields_when_present() ->
     assert examples[0].strong_embedding == pytest.approx(
         [0.9701425001453318, 0.24253562503633294]
     )
+
+
+def _assert_vector_mapping_accumulates(
+    *,
+    before: Mapping[str, object],
+    delta: Mapping[str, object],
+    after: Mapping[str, object],
+) -> None:
+    for key in sorted(set(before) | set(delta)):
+        before_values = _sequence_values(before.get(key, []))
+        delta_values = _sequence_values(delta.get(key, []))
+        after_values = _sequence_values(after[key])
+        if not before_values:
+            assert after_values == pytest.approx(delta_values)
+            continue
+        if not delta_values:
+            assert after_values == pytest.approx(before_values)
+            continue
+        assert after_values == pytest.approx(
+            [
+                before_value + delta_value
+                for before_value, delta_value in zip(
+                    before_values,
+                    delta_values,
+                    strict=True,
+                )
+            ]
+        )
+
+
+def _assert_scalar_mapping_accumulates(
+    *,
+    before: Mapping[str, object],
+    delta: Mapping[str, object],
+    after: Mapping[str, object],
+) -> None:
+    for key in sorted(set(before) | set(delta)):
+        assert float(after[key]) == pytest.approx(
+            float(before.get(key, 0.0)) + float(delta.get(key, 0.0))
+        )
+
+
+def _sequence_values(value: object) -> list[float]:
+    assert isinstance(value, Sequence)
+    return [float(item) for item in value]
