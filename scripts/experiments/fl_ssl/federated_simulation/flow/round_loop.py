@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from collections import Counter
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -157,6 +159,10 @@ def _run_client_round(
         update_envelope=local_result.update_envelope,
         update_payload=local_result.update_payload,
     )
+    selection_quality = _build_selection_quality_summary(
+        selection_result=local_result.selection_result,
+        training_rows=training_rows,
+    )
     return ClientRoundExecution(
         summary=ClientRoundSummary(
             client_id=shard.client_id,
@@ -164,6 +170,23 @@ def _run_client_round(
             accepted_count=local_result.selection_result.accepted_count,
             update_generated=update_submitted,
             delta_l2_norm=_extract_delta_l2_norm(local_result.update_envelope),
+            aggregation_example_count=_extract_aggregation_example_count(
+                local_result.update_envelope
+            ),
+            pseudo_label_confidence_mean=selection_quality[
+                "pseudo_label_confidence_mean"
+            ],
+            pseudo_label_margin_mean=selection_quality["pseudo_label_margin_mean"],
+            pseudo_label_correct_count=selection_quality["pseudo_label_correct_count"],
+            pseudo_label_evaluated_count=selection_quality[
+                "pseudo_label_evaluated_count"
+            ],
+            accepted_label_distribution=selection_quality[
+                "accepted_label_distribution"
+            ],
+            rejected_label_distribution=selection_quality[
+                "rejected_label_distribution"
+            ],
         ),
         update_submitted=update_submitted,
     )
@@ -197,6 +220,77 @@ def _extract_delta_l2_norm(
     if value is None:
         return None
     return float(value)
+
+
+def _extract_aggregation_example_count(
+    update_envelope: TrainingUpdateEnvelope | None,
+) -> int | None:
+    if update_envelope is None:
+        return None
+    return int(update_envelope.example_count)
+
+
+def _build_selection_quality_summary(
+    *,
+    selection_result: Any,
+    training_rows: list[Mapping[str, object]],
+) -> dict[str, Any]:
+    """simulation label을 아는 경우 accepted pseudo-label 품질을 요약한다."""
+
+    candidates = tuple(selection_result.candidates)
+    accepted_candidates = tuple(
+        candidate for candidate in candidates if candidate.accepted
+    )
+    rejected_candidates = tuple(
+        candidate for candidate in candidates if not candidate.accepted
+    )
+    true_label_by_query_id = {
+        str(row["query_id"]): str(row["mapped_label_4"])
+        for row in training_rows
+        if "query_id" in row and "mapped_label_4" in row
+    }
+    evaluated_candidates = tuple(
+        candidate
+        for candidate in accepted_candidates
+        if str(candidate.source_event_ref) in true_label_by_query_id
+    )
+    correct_count = sum(
+        1
+        for candidate in evaluated_candidates
+        if true_label_by_query_id[str(candidate.source_event_ref)]
+        == str(candidate.label)
+    )
+    return {
+        "pseudo_label_confidence_mean": _mean_candidate_value(
+            candidates,
+            "confidence",
+        ),
+        "pseudo_label_margin_mean": _mean_candidate_value(candidates, "margin"),
+        "pseudo_label_correct_count": correct_count,
+        "pseudo_label_evaluated_count": len(evaluated_candidates),
+        "accepted_label_distribution": _candidate_label_distribution(
+            accepted_candidates
+        ),
+        "rejected_label_distribution": _candidate_label_distribution(
+            rejected_candidates
+        ),
+    }
+
+
+def _mean_candidate_value(
+    candidates: tuple[Any, ...],
+    field_name: str,
+) -> float | None:
+    values = [float(getattr(candidate, field_name)) for candidate in candidates]
+    if not values:
+        return None
+    return sum(values) / len(values)
+
+
+def _candidate_label_distribution(candidates: tuple[Any, ...]) -> dict[str, int]:
+    return dict(
+        sorted(Counter(str(candidate.label) for candidate in candidates).items())
+    )
 
 
 def _finalize_round_publication(

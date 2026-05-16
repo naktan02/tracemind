@@ -11,11 +11,13 @@ import hydra
 from omegaconf import DictConfig
 
 from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
+    mean,
+    population_variance,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.report_metrics import (
     build_communication_cost_summary,
     evaluation_to_payload,
-    mean,
-    population_variance,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,

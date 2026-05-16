@@ -2,12 +2,18 @@
 
 from __future__ import annotations
 
-import math
-from collections.abc import Sequence
+from collections import Counter
+from collections.abc import Mapping
 
+from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
+    safe_ratio,
+    weighted_mean,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    ClientRoundSummary,
     SimulationEvaluation,
     SimulationResult,
+    SimulationRoundSummary,
 )
 
 
@@ -86,35 +92,128 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
     }
 
 
-def numeric_summary(values: Sequence[float | int]) -> dict[str, float | int | None]:
+def build_pseudo_label_quality_diagnostics(
+    result: SimulationResult,
+) -> dict[str, object]:
+    """round/client selection result에서 pseudo-label 품질 요약을 만든다."""
+
+    round_payloads = [
+        _round_pseudo_label_quality(round_summary) for round_summary in result.rounds
+    ]
+    total_candidates = sum(
+        int(payload["candidate_count"]) for payload in round_payloads
+    )
+    total_accepted = sum(int(payload["accepted_count"]) for payload in round_payloads)
+    total_correct = sum(
+        int(payload["pseudo_label_correct_count"]) for payload in round_payloads
+    )
+    total_evaluated = sum(
+        int(payload["pseudo_label_evaluated_count"]) for payload in round_payloads
+    )
     return {
-        "count": len(values),
-        "min": min(values) if values else None,
-        "max": max(values) if values else None,
-        "mean": mean([float(value) for value in values]),
-        "variance": population_variance([float(value) for value in values]),
+        "summary": {
+            "candidate_count": total_candidates,
+            "accepted_count": total_accepted,
+            "accepted_ratio": safe_ratio(total_accepted, total_candidates),
+            "pseudo_label_accuracy": safe_ratio(total_correct, total_evaluated),
+            "pseudo_label_correct_count": total_correct,
+            "pseudo_label_evaluated_count": total_evaluated,
+            "pseudo_label_accuracy_basis": (
+                "accepted_candidates_with_simulation_labels"
+            ),
+            "pseudo_label_confidence_mean": _weighted_round_mean(
+                round_payloads,
+                value_key="pseudo_label_confidence_mean",
+                weight_key="candidate_count",
+            ),
+            "pseudo_label_margin_mean": _weighted_round_mean(
+                round_payloads,
+                value_key="pseudo_label_margin_mean",
+                weight_key="candidate_count",
+            ),
+            "accepted_label_distribution": _sum_distributions(
+                payload["accepted_label_distribution"] for payload in round_payloads
+            ),
+            "rejected_label_distribution": _sum_distributions(
+                payload["rejected_label_distribution"] for payload in round_payloads
+            ),
+        },
+        "rounds": round_payloads,
     }
 
 
-def mean(values: Sequence[float]) -> float | None:
-    return sum(values) / len(values) if values else None
+def _round_pseudo_label_quality(
+    round_summary: SimulationRoundSummary,
+) -> dict[str, object]:
+    candidate_count = sum(client.candidate_count for client in round_summary.clients)
+    accepted_count = sum(client.accepted_count for client in round_summary.clients)
+    correct_count = sum(
+        client.pseudo_label_correct_count for client in round_summary.clients
+    )
+    evaluated_count = sum(
+        client.pseudo_label_evaluated_count for client in round_summary.clients
+    )
+    return {
+        "round_id": round_summary.round_id,
+        "candidate_count": candidate_count,
+        "accepted_count": accepted_count,
+        "accepted_ratio": safe_ratio(accepted_count, candidate_count),
+        "pseudo_label_accuracy": safe_ratio(correct_count, evaluated_count),
+        "pseudo_label_correct_count": correct_count,
+        "pseudo_label_evaluated_count": evaluated_count,
+        "pseudo_label_accuracy_basis": "accepted_candidates_with_simulation_labels",
+        "pseudo_label_confidence_mean": _weighted_client_mean(
+            round_summary.clients,
+            value_attr="pseudo_label_confidence_mean",
+            weight_attr="candidate_count",
+        ),
+        "pseudo_label_margin_mean": _weighted_client_mean(
+            round_summary.clients,
+            value_attr="pseudo_label_margin_mean",
+            weight_attr="candidate_count",
+        ),
+        "accepted_label_distribution": _sum_distributions(
+            client.accepted_label_distribution for client in round_summary.clients
+        ),
+        "rejected_label_distribution": _sum_distributions(
+            client.rejected_label_distribution for client in round_summary.clients
+        ),
+    }
 
 
-def population_variance(values: Sequence[float]) -> float | None:
-    if not values:
-        return None
-    average = sum(values) / len(values)
-    return sum((value - average) ** 2 for value in values) / len(values)
+def _weighted_client_mean(
+    clients: tuple[ClientRoundSummary, ...],
+    *,
+    value_attr: str,
+    weight_attr: str,
+) -> float | None:
+    return weighted_mean(
+        (getattr(client, value_attr), int(getattr(client, weight_attr)))
+        for client in clients
+    )
 
 
-def population_std(values: Sequence[float]) -> float | None:
-    variance = population_variance(values)
-    if variance is None:
-        return None
-    return math.sqrt(variance)
+def _weighted_round_mean(
+    round_payloads: list[dict[str, object]],
+    *,
+    value_key: str,
+    weight_key: str,
+) -> float | None:
+    return weighted_mean(
+        (
+            None if payload[value_key] is None else float(payload[value_key]),
+            int(payload[weight_key]),
+        )
+        for payload in round_payloads
+    )
 
 
-def safe_ratio(numerator: int, denominator: int) -> float | None:
-    if denominator <= 0:
-        return None
-    return numerator / denominator
+def _sum_distributions(
+    distributions: object,
+) -> dict[str, int]:
+    total: Counter[str] = Counter()
+    for distribution in distributions:
+        if not isinstance(distribution, Mapping):
+            continue
+        total.update({str(label): int(count) for label, count in distribution.items()})
+    return dict(sorted(total.items()))

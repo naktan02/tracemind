@@ -50,6 +50,13 @@ class ClientRoundSummary:
     accepted_count: int
     update_generated: bool
     delta_l2_norm: float | None = None
+    aggregation_example_count: int | None = None
+    pseudo_label_confidence_mean: float | None = None
+    pseudo_label_margin_mean: float | None = None
+    pseudo_label_correct_count: int = 0
+    pseudo_label_evaluated_count: int = 0
+    accepted_label_distribution: dict[str, int] = field(default_factory=dict)
+    rejected_label_distribution: dict[str, int] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

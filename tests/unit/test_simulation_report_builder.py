@@ -160,12 +160,22 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         accepted_count=5,
                         update_generated=True,
                         delta_l2_norm=2.0,
+                        aggregation_example_count=5,
+                        pseudo_label_confidence_mean=0.8,
+                        pseudo_label_margin_mean=0.2,
+                        pseudo_label_correct_count=4,
+                        pseudo_label_evaluated_count=5,
+                        accepted_label_distribution={"anxiety": 5},
+                        rejected_label_distribution={"normal": 5},
                     ),
                     ClientRoundSummary(
                         client_id="agent_002",
                         candidate_count=10,
                         accepted_count=0,
                         update_generated=False,
+                        pseudo_label_confidence_mean=0.4,
+                        pseudo_label_margin_mean=0.1,
+                        rejected_label_distribution={"depression": 10},
                     ),
                 ),
             ),
@@ -182,6 +192,13 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         accepted_count=4,
                         update_generated=True,
                         delta_l2_norm=4.0,
+                        aggregation_example_count=4,
+                        pseudo_label_confidence_mean=0.9,
+                        pseudo_label_margin_mean=0.3,
+                        pseudo_label_correct_count=4,
+                        pseudo_label_evaluated_count=4,
+                        accepted_label_distribution={"anxiety": 4},
+                        rejected_label_distribution={"normal": 6},
                     ),
                     ClientRoundSummary(
                         client_id="agent_002",
@@ -189,6 +206,13 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         accepted_count=6,
                         update_generated=True,
                         delta_l2_norm=6.0,
+                        aggregation_example_count=6,
+                        pseudo_label_confidence_mean=0.7,
+                        pseudo_label_margin_mean=0.2,
+                        pseudo_label_correct_count=3,
+                        pseudo_label_evaluated_count=6,
+                        accepted_label_distribution={"depression": 6},
+                        rejected_label_distribution={"normal": 4},
                     ),
                 ),
             ),
@@ -244,12 +268,26 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     )
     assert second_round_aggregation["zero_update_client_count"] == 0
     assert second_round_aggregation["total_aggregation_examples"] == 10
+    assert second_round_aggregation["aggregation_example_basis"] == (
+        "update_envelope.example_count"
+    )
     assert second_round_aggregation["aggregation_weight_summary"]["max"] == (
         pytest.approx(0.6)
     )
     assert second_round_aggregation["mean_delta_l2_norm"] == pytest.approx(5.0)
     assert second_round_aggregation["max_delta_l2_norm"] == pytest.approx(6.0)
     assert second_round_aggregation["update_norm_variance"] == pytest.approx(1.0)
+
+    pseudo_label_quality = payload["diagnostics"]["pseudo_label_quality"]
+    assert pseudo_label_quality["summary"]["candidate_count"] == 40
+    assert pseudo_label_quality["summary"]["accepted_count"] == 15
+    assert pseudo_label_quality["summary"]["pseudo_label_accuracy"] == pytest.approx(
+        11 / 15
+    )
+    assert pseudo_label_quality["summary"]["accepted_label_distribution"] == {
+        "anxiety": 9,
+        "depression": 6,
+    }
 
     client_validation = payload["metrics"]["client_validation"]
     agent_001_summary = client_validation["clients"][0]
@@ -265,6 +303,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert agent_001_summary["update_generated_round_count"] == 2
     assert agent_001_summary["client_delta_l2_norm"] == pytest.approx(4.0)
     assert agent_001_summary["mean_delta_l2_norm"] == pytest.approx(3.0)
+    assert agent_001_summary["pseudo_label_accuracy"] == pytest.approx(8 / 9)
+    assert agent_001_summary["accepted_label_distribution"] == {"anxiety": 9}
 
     split = payload["protocol"]["labeled_unlabeled_split"]
     assert split["min_client_size"] == 2
