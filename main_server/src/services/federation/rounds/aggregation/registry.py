@@ -17,6 +17,7 @@ from shared.src.contracts.registry_catalog_metadata import (
     dedupe_registry_catalog_entries,
 )
 
+from .artifact_refs import AggregationArtifactStore
 from .executor import MethodAggregationBackend
 from .models import AggregationConfigScalar
 
@@ -57,6 +58,7 @@ def build_shared_adapter_aggregation_backend(
     adapter_kind: str,
     backend_name: str,
     overrides: Mapping[str, AggregationConfigScalar] | None = None,
+    artifact_store: AggregationArtifactStore | None = None,
 ) -> SharedAdapterAggregationBackend:
     """adapter family와 backend 이름으로 aggregation backend를 조립한다."""
 
@@ -72,6 +74,7 @@ def build_shared_adapter_aggregation_backend(
             overrides=overrides,
         ),
         overrides=overrides,
+        artifact_loader=artifact_store or AggregationArtifactStore(),
     )
 
 

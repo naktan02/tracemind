@@ -16,6 +16,9 @@ from main_server.src.infrastructure.repositories import (
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
 )
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
 from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
@@ -90,6 +93,7 @@ class SimulationServerRuntime:
                 aggregation_backend_name=(
                     round_runtime_config.aggregation_backend_name
                 ),
+                output_dir=output_dir,
             ),
             artifact_repository=state_repository,
         )
@@ -238,9 +242,13 @@ def build_simulation_round_family(
     *,
     adapter_family_name: str,
     aggregation_backend_name: str,
+    output_dir: Path,
 ):
     """simulation이 사용할 round family 조합을 만든다."""
     return build_shared_adapter_round_family(
         adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
+        aggregation_artifact_store=AggregationArtifactStore(
+            state_root=output_dir / "main_server" / "aggregation_artifacts"
+        ),
     )

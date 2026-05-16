@@ -867,6 +867,32 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
     assert update_payload["lora_parameter_deltas"]
     assert update_payload["classifier_head_weight_deltas"]
     assert "agent-local://" not in json.dumps(update_payload)
+    lora_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0001"
+        / "lora_adapter.json"
+    )
+    head_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0001"
+        / "classifier_head.json"
+    )
+    assert lora_aggregate_path.exists()
+    assert head_aggregate_path.exists()
+    assert json.loads(lora_aggregate_path.read_text(encoding="utf-8"))[
+        "lora_parameter_deltas"
+    ]
+    assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
+        "classifier_head_weight_deltas"
+    ]
 
 
 def test_run_simulation_request_rejects_local_round_family_mismatch(

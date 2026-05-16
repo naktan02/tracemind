@@ -209,6 +209,14 @@ def aggregate_lora_classifier_fedavg(
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="LoRA-classifier FedAvg"
     )
+    lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
+        next_model_revision=context.next_model_revision,
+        artifact_name=LORA_ADAPTER_ARTIFACT_SLOT,
+    )
+    classifier_head_artifact_ref = artifact_ref_resolver.build_ref(
+        next_model_revision=context.next_model_revision,
+        artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
+    )
     next_state = LoraClassifierState(
         schema_version=base_state.schema_version,
         adapter_kind=base_state.adapter_kind,
@@ -219,20 +227,27 @@ def aggregate_lora_classifier_fedavg(
         backbone=base_state.backbone,
         lora_config=base_state.lora_config,
         label_schema=base_state.label_schema,
-        lora_adapter_artifact_ref=artifact_ref_resolver.build_ref(
-            next_model_revision=context.next_model_revision,
-            artifact_name=LORA_ADAPTER_ARTIFACT_SLOT,
-        ),
-        classifier_head_artifact_ref=artifact_ref_resolver.build_ref(
-            next_model_revision=context.next_model_revision,
-            artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
-        ),
+        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        classifier_head_artifact_ref=classifier_head_artifact_ref,
         artifact_format=artifact_ref_resolver.artifact_format,
     )
     return FederatedAggregationResult(
         next_state=next_state,
         aggregated_metrics=method_result.aggregated_metrics,
         update_count=method_result.update_count,
+        aggregated_artifacts={
+            lora_adapter_artifact_ref: {
+                "lora_parameter_deltas": method_result.lora_parameter_deltas,
+            },
+            classifier_head_artifact_ref: {
+                "classifier_head_weight_deltas": (
+                    method_result.classifier_head_weight_deltas
+                ),
+                "classifier_head_bias_deltas": (
+                    method_result.classifier_head_bias_deltas
+                ),
+            },
+        },
     )
 
 

@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Protocol
 
@@ -91,6 +91,7 @@ class FederatedAggregationResult:
     next_state: SharedAdapterState
     aggregated_metrics: dict[str, float]
     update_count: int
+    aggregated_artifacts: dict[str, dict[str, object]] = field(default_factory=dict)
 
 
 class FederatedAggregationStrategy(Protocol):

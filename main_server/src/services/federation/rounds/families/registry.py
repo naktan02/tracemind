@@ -9,6 +9,7 @@ from shared.src.contracts.adapter_contract_families.registry import (
     list_registered_shared_adapter_payload_adapter_kinds,
 )
 
+from ..aggregation.artifact_refs import AggregationArtifactStore
 from ..aggregation.models import AggregationConfigScalar
 from ..aggregation.registry import build_shared_adapter_aggregation_backend
 from .models import (
@@ -41,6 +42,7 @@ def build_shared_adapter_round_family(
     *,
     aggregation_backend_name: str,
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] | None = None,
+    aggregation_artifact_store: AggregationArtifactStore | None = None,
 ) -> SharedAdapterRoundFamily:
     """adapter family와 aggregation backend 이름으로 서버 조합 객체를 만든다."""
 
@@ -56,6 +58,7 @@ def build_shared_adapter_round_family(
             adapter_kind=adapter_kind,
             backend_name=aggregation_backend_name,
             overrides=aggregation_backend_overrides,
+            artifact_store=aggregation_artifact_store,
         ),
     )
 

@@ -64,11 +64,25 @@ class MethodAggregationBackend:
                 artifact_loader=self.artifact_loader,
             ),
         )
+        self._save_aggregated_artifacts(method_result.aggregated_artifacts)
         return AggregationResult(
             next_state=method_result.next_state,
             aggregated_metrics=method_result.aggregated_metrics,
             update_count=method_result.update_count,
+            aggregated_artifacts=method_result.aggregated_artifacts,
         )
+
+    def _save_aggregated_artifacts(
+        self,
+        artifacts: Mapping[str, Mapping[str, object]],
+    ) -> None:
+        """methods strategy가 만든 server-owned aggregate artifact를 저장한다."""
+
+        for artifact_ref, payload in artifacts.items():
+            self.artifact_loader.save_json_artifact_ref(
+                artifact_ref=artifact_ref,
+                payload=dict(payload),
+            )
 
 
 def _build_aggregated_artifact_ref_builder(

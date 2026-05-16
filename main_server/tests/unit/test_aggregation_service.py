@@ -210,11 +210,15 @@ def test_classifier_head_fedavg_aggregation_updates_weights_and_biases() -> None
     )
 
 
-def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs() -> None:
+def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
+    tmp_path,
+) -> None:
+    artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
     backend = build_shared_adapter_aggregation_backend(
         adapter_kind="lora_classifier",
         backend_name="fedavg",
         overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
+        artifact_store=artifact_store,
     )
     base_state = _build_lora_state()
 
@@ -263,6 +267,23 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs() -> None:
         "server-aggregate://test_lora/rev_001/classifier_head"
     )
     assert result.next_state.artifact_format == "server_aggregated_artifact_ref"
+    assert result.aggregated_artifacts
+    lora_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.lora_adapter_artifact_ref
+    )
+    head_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.classifier_head_artifact_ref
+    )
+    assert lora_artifact["lora_parameter_deltas"] == {
+        "encoder.q_proj.lora_A": pytest.approx([0.13333333333333333, 0.3]),
+        "encoder.q_proj.lora_B": pytest.approx([0.13333333333333333, 0.0]),
+    }
+    assert head_artifact["classifier_head_weight_deltas"]["anxiety"] == pytest.approx(
+        [0.16666666666666666, 0.0]
+    )
+    assert head_artifact["classifier_head_bias_deltas"]["normal"] == pytest.approx(
+        -0.03333333333333333
+    )
     assert result.aggregated_metrics["client_count"] == 2.0
     assert result.aggregated_metrics["example_count"] == 3.0
     assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)

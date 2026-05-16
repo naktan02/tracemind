@@ -11,6 +11,9 @@ from main_server.src.infrastructure.repositories import (  # noqa: E402
 from main_server.src.infrastructure.repositories import (  # noqa: E402
     shared_adapter_update_repository as shared_adapter_update_repository_module,
 )
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
 from main_server.src.services.federation.rounds.boundary.models import (  # noqa: E402
     RoundOpenRequest,
 )
@@ -212,6 +215,9 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
             aggregation_backend_overrides={
                 "artifact_ref_prefix": "server-aggregate://test_lora"
             },
+            aggregation_artifact_store=AggregationArtifactStore(
+                state_root=tmp_path / "aggregate_artifacts"
+            ),
         ),
         artifact_repository=repository,
         update_payload_repository=update_repository,
@@ -262,6 +268,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
     assert publication.next_state.classifier_head_artifact_ref == (
         "server-aggregate://test_lora/rev_001/classifier_head"
     )
+    assert publication.aggregated_metrics["lora_parameter_count"] == 1.0
     loaded = repository.load_shared_adapter_state_from_ref(
         publication.next_manifest.artifact_ref
     )

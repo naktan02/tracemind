@@ -9,6 +9,7 @@ from typing import Any
 
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[5]
 AGGREGATION_ARTIFACT_REF_PREFIX = "aggregation_artifact::"
+SERVER_AGGREGATE_REF_PREFIX = "server-aggregate://"
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,6 +83,21 @@ class AggregationArtifactStore:
         )
         return path
 
+    def save_json_artifact_ref(
+        self,
+        *,
+        artifact_ref: str,
+        payload: dict[str, Any],
+    ) -> Path:
+        """server-owned artifact ref가 가리키는 JSON artifact를 저장한다."""
+
+        artifact_id = self.artifact_id_from_ref(artifact_ref)
+        if artifact_id is None:
+            raise ValueError(
+                f"Unsupported aggregation artifact ref for save: {artifact_ref}"
+            )
+        return self.save_json_artifact(artifact_id, payload)
+
     def load_json_artifact(
         self,
         *,
@@ -93,7 +109,8 @@ class AggregationArtifactStore:
         if artifact_id is None:
             raise FileNotFoundError(
                 "Unsupported aggregation artifact ref. Expected server-owned "
-                f"{AGGREGATION_ARTIFACT_REF_PREFIX!r} ref: {artifact_ref}"
+                f"{AGGREGATION_ARTIFACT_REF_PREFIX!r} or "
+                f"{SERVER_AGGREGATE_REF_PREFIX!r} ref: {artifact_ref}"
             )
         path = self.path_for_artifact(artifact_id)
         if not path.exists():
@@ -109,10 +126,13 @@ class AggregationArtifactStore:
     def artifact_id_from_ref(artifact_ref: str) -> str | None:
         """opaque artifact ref에서 repository-local artifact id를 추출한다."""
 
-        if not artifact_ref.startswith(AGGREGATION_ARTIFACT_REF_PREFIX):
-            return None
-        artifact_id = artifact_ref.removeprefix(AGGREGATION_ARTIFACT_REF_PREFIX)
-        return "/".join(_safe_artifact_id_parts(artifact_id))
+        if artifact_ref.startswith(AGGREGATION_ARTIFACT_REF_PREFIX):
+            artifact_id = artifact_ref.removeprefix(AGGREGATION_ARTIFACT_REF_PREFIX)
+            return "/".join(_safe_artifact_id_parts(artifact_id))
+        if artifact_ref.startswith(SERVER_AGGREGATE_REF_PREFIX):
+            artifact_id = artifact_ref.removeprefix(SERVER_AGGREGATE_REF_PREFIX)
+            return "/".join(_safe_artifact_id_parts(artifact_id))
+        return None
 
 
 def _slug_ref_part(value: str) -> str:
