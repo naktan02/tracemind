@@ -1,124 +1,111 @@
 # FL Runtime Implementation Checklist
 
-이 문서는 시스템 FL 트랙의 짧은 구현 체크리스트다. 전체 연구 순서는
-`docs/project_execution_plan.md`, 현재 경계는 `docs/architecture/system-overview.md`를
+이 문서는 FL 트랙의 현재 구현 상태와 다음 작업만 남기는 짧은 체크리스트다.
+연구 순서는 `docs/project_execution_plan.md`, 코드 경계는
+`docs/architecture/system-overview.md`, 전략 축은 `docs/strategy_surface_map.md`를
 source of truth로 본다.
 
-## 목표
+## 현재 상태
 
-- `agent`는 local inference/training과 FL participant runtime을 소유한다.
-- `main_server`는 round lifecycle, update ingestion, aggregation, publication을 소유한다.
-- `scripts`는 synthetic simulation, benchmark, evaluation harness로만 남긴다.
-- 알고리즘 계산 core는 `methods`, 계약은 `shared`에 둔다.
+- `main_server`는 round lifecycle, update ingest, aggregation, publication
+  scaffold를 갖고 있다.
+- `agent`는 active round fetch, local training, pseudo-label selection, update
+  upload scaffold를 갖고 있다.
+- `scripts/experiments/fl_ssl`는 FL SSL simulation, seed sweep, report dump를
+  갖고 있다.
+- 활성 FL SSL method baseline은 `fedavg_pseudo_label`이다.
+- `diagonal_scale`와 `lora_classifier` adapter family의 FedAvg core/projection은
+  `methods/adaptation/<family>/`에 있다.
+- 공통 분류 metric 계산은 `methods/evaluation`이 소유하고, FL report는 중앙 SSL과
+  같은 metric shape를 재사용한다.
 
-## 구현 표면
+## Report / Evaluation
 
-- main_server round 생성, 조회, update ingest, finalize, publication.
-- agent round client와 local training service.
-- adapter family 기반 aggregation wiring.
-- methods-owned `fedavg` aggregation core와 main_server generic executor.
-- prototype rebuild/publication path.
-- FL simulation harness와 artifact/report dump.
-- architecture guard로 `scripts -> agent/main_server` 직접 import 제한.
+- [x] final/initial/round/client validation에 `loss`, accuracy, macro/weighted F1,
+  balanced accuracy, worst-category metric, ECE/max-ECE를 남긴다.
+- [x] round progression, best macro-F1 round, best loss round, round delta를 남긴다.
+- [x] client split label distribution, entropy, labeled/unlabeled count를 남긴다.
+- [x] accepted-count 기반 aggregation weight proxy와 communication proxy를 남긴다.
+- [x] 중앙 SSL control report와 FL SSL main comparison report를 같은 ranking으로
+  합치지 않는다.
+- [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
+- [ ] 실제 main run 산출물에서 report schema를 샘플로 고정하고 dashboard/index
+  소비 필드를 확정한다.
 
-## 약한 경계
+주의: FL prototype score의 `loss`는 현재 raw score를 softmax 분포로 바꾼 NLL
+proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야 한다.
 
-- classifier-first baseline의 live agent path 확장.
-- FedMatch/FedLGMatch/(FL)^2 같은 FL SSL method 실제 구현.
-- `lora_classifier` family의 FL simulation research path, runtime translation
-  payload와 aggregation.
-- learned scorer artifact lifecycle.
-- secure aggregation/DP runtime.
-- long-running multi-agent integration smoke 안정화.
+## Method Extension
 
-## Phase 0. 결정 고정
+- [x] method identity와 recipe metadata는 `methods/federated_ssl/<method>/`가
+  소유한다.
+- [x] registry는 `<method>/<method>.py` convention import를 사용한다. 같은
+  convention을 따르면 새 method 추가 시 registry 목록을 수정하지 않는다.
+- [x] Hydra 실행 조합은 `conf/strategy_axes/fl/*`가 소유한다.
+- [x] incompatible method/profile/runtime 조합은 simulation bootstrap 전에
+  compatibility validator에서 실패한다.
+- [ ] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
+- [ ] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
+  먼저 문서화한다.
 
-- [x] server-owned canonical prototype rebuild input.
-- [x] polling 기반 agent participation.
-- [x] update idempotency/duplicate 정책.
-- [x] manual finalize 기반 round close.
-- [ ] secure aggregation/DP 도입 시점 결정.
+새 method 기본 변경 위치:
 
-## Phase 1. Main Server Runtime
+```text
+methods/federated_ssl/<method>/
+conf/strategy_axes/fl/method_descriptor/<method>.yaml
+conf/strategy_axes/fl/local_update_profile/*.yaml      # 필요할 때만
+conf/strategy_axes/fl/round_runtime_profile/*.yaml     # 필요할 때만
+tests/unit/test_methods_federated_ssl.py
+tests/unit/test_scripts_hydra_configs.py
+```
 
-- [x] round lifecycle service.
-- [x] round repository.
-- [x] FL round API.
-- [x] update acceptance.
-- [x] aggregation adapter.
-- [x] model/prototype publication.
+`agent`나 `main_server`에 method 이름 파일을 추가해야 한다면 먼저 capability seam이
+부족한지 점검한다.
 
-완료 기준: 서버만 띄워도 round open, update ingest, finalize, publication이 된다.
+## Prototype / Scoring Extension
 
-## Phase 2. Agent Runtime
+- [x] prototype build/scoring/evidence/training input core는 `methods/prototype/*`에
+  분리되어 있다.
+- [x] FL validation은 scoring/evidence 결과를 공통 classification report payload로
+  변환한다.
+- [ ] prototype-only 또는 prototype-SSL 평가 파일이 필요하면 `scripts`에
+  entrypoint/thin wrapper로 추가한다.
+- [ ] 두 개 이상 실험에서 안정적으로 공유되는 prototype 평가 metric만
+  `methods/evaluation`으로 승격한다.
 
-- [x] active round/task fetch.
-- [x] local training task execution.
-- [x] pseudo-label selection.
-- [x] update build/upload.
-- [x] unsupported backend 조기 종료.
-- [ ] classifier-head live path coverage 강화.
+새 prototype 평가 기본 위치:
 
-완료 기준: agent가 raw/private state를 서버로 보내지 않고 update payload만 업로드한다.
+```text
+scripts/experiments/prototype_analysis/        # prototype-only 분석
+scripts/experiments/fl_ssl/federated_simulation/
+methods/evaluation/                            # stable metric helper만
+```
 
-## Phase 3. Simulation Harness
+## Runtime Translation
 
-- [x] synthetic client shard.
-- [x] runtime core를 쓰는 FL SSL smoke.
-- [x] artifact dump와 report.
-- [x] method descriptor와 shard policy config.
-- [x] seed sweep runner와 summary report.
-- [ ] 논문 method 비교군 추가.
-
-완료 기준: 같은 split/seed/budget에서 method별 report를 재현할 수 있다.
-
-## Phase 4. FL SSL Main Comparison
-
-- [ ] `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds` main run.
-- [ ] Dirichlet `alpha=0.1` stress run.
-- [x] `10% labeled / 90% unlabeled` client pool 고정.
-- [ ] macro-F1, worst-client macro-F1, ECE, communication cost report.
-- [ ] 중앙 SSL control table과 FL SSL ranking 분리.
-
-## Phase 5. Runtime Translation
-
-- [x] `lora_classifier` simulation family의 state/update shape를 먼저 smoke 검증.
-- [ ] winner method가 요구하는 shared family/state/update payload 정의.
-- [x] agent local trainer scaffold 구현. raw text는 agent-local 입력으로만 쓰고
-  update payload에는 artifact ref와 통계만 남긴다.
-- [ ] agent LoRA artifact upload/materialization 구현.
-- [x] main_server aggregation/publication adapter scaffold 구현. inline delta FedAvg와
-  server-owned `aggregation_artifact::` JSON artifact-ref update를 검증한다.
-- [x] main_server LoRA artifact materializer/loader 1차 구현. 현재 범위는
-  server-owned JSON artifact ref이며, `agent-local://` ref는 upload 경로가 붙기
-  전까지 거부한다.
+- [x] `lora_classifier` family의 state/update shape와 inline/server-owned artifact-ref
+  FedAvg core를 smoke로 검증했다.
 - [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
-  `fedavg_lora_classifier` round-runtime profile을 선택할 수 있게 연결한다.
-- [ ] backward-compatible manifest/version 정책 확인.
-- [ ] architecture guard와 integration smoke 추가.
+  `fedavg_lora_classifier` round-runtime profile을 compose할 수 있다.
+- [ ] agent-local LoRA artifact upload/materialization 경로를 닫는다.
+- [ ] LoRA 1-round smoke를 실행한다.
+- [ ] winner method가 요구하는 shared family/state/update payload를 확정한다.
+- [ ] backward-compatible manifest/version 정책을 확인한다.
 
-## LoRA-classifier 검증 게이트
+## Main Comparison Gate
 
-- [x] unit: payload parse/serialize, training algorithm profile, LoRA config snapshot.
-- [x] unit: `LoraTextClassifier` 1-batch train/eval step.
-- [x] unit: methods-owned LoRA-classifier FedAvg inline delta shape/version과
-  server-owned artifact-ref materialization.
-- [x] smoke: `hash_debug + cpu_local` baseline `2 clients / 1 round / 1 seed`.
-- [x] small: `hash_debug + cpu_local` baseline `3 clients / 2 rounds / 1 seed`.
-- [x] LoRA bootstrap: `lora_pseudo_label_v1 + fedavg_lora_classifier`
-  `2 clients / 0 rounds / 1 seed`.
-- [ ] LoRA smoke: `2 clients / 1 round / 1 seed`.
-  methods-owned LoRA-classifier FedAvg strategy는 inline delta와 server-owned
-  artifact-ref update를 집계한다. 실제 1-round smoke는 agent가 만든
-  `agent-local://` LoRA artifact를 server-owned artifact ref로 upload/materialize하는
-  경로가 붙은 뒤 실행한다.
-- [ ] standard 전 runtime trace: GPU memory, update size, round time.
+- [ ] main split: `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds`.
+- [ ] stress split: Dirichlet `alpha=0.1`.
+- [x] client pool split: `10% labeled / 90% unlabeled`.
+- [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다.
+- [ ] CPU/hash debug 결과를 논문 성능 근거로 쓰지 않도록 report metadata를 확인한다.
 
 ## 완료 기준
 
 - raw text와 개인 해석 상태는 agent-local boundary에 남는다.
 - server는 round, aggregation, publication만 소유한다.
-- scripts 없이도 agent/main_server runtime contract가 설명된다.
 - scripts simulation은 production core를 복사하지 않고 호출한다.
 - 새 method 추가 위치가 `methods/federated_ssl/<method>/`, `conf`, 필요한 capability
   adapter, test로 분명히 나뉜다.
+- report 파일만으로 split, round progression, client variance, calibration,
+  communication proxy를 확인할 수 있다.

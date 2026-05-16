@@ -49,6 +49,7 @@ active_entrypoints:
   - docs/quality/test-strategy.md
   - docs/governance/document-governance.md
   - methods/README.md
+  - methods/evaluation/README.md
   - methods/ssl/NEW_METHOD.md
   - conf/README.md
   - scripts/README.md
@@ -91,7 +92,7 @@ task_routes:
       - FL SSL main budget uses 50 communication rounds and local_epochs=1 unless a new decision changes it
       - current active FL SSL method baseline is strategy_axes/fl/method_descriptor=fedavg_pseudo_label
       - do not add paper-method implementation files before the method list is explicitly selected
-      - winner criteria include macro-F1 and worst-client macro-F1, with ECE, communication cost, and per-client variance as risk metrics
+      - winner criteria include macro-F1 and worst-client macro-F1, with loss, weighted-F1, ECE/max-ECE, communication cost, and per-client variance as risk metrics
 
   strategy_addition:
     read_order:

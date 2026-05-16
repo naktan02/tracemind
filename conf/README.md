@@ -114,6 +114,11 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
   - ratio 값은 `client_pool_split`에서 파생된 report protocol field다.
   - `seed_count`는 `seed_sweep` runner에서 실행 seed 수와 일치하는지 검증한다.
+- `report.primary_metrics`, `report.secondary_metrics`
+  - primary는 `macro_f1`, `worst_client_macro_f1`이다.
+  - secondary는 loss, weighted/balanced metric, worst-category metric,
+    ECE/max-ECE, communication proxy, per-client variance를 포함한다.
+  - 실제 metric 계산 shape는 `methods/evaluation`과 FL report builder가 소유한다.
 
 ## 정리 기준
 

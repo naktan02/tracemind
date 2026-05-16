@@ -52,8 +52,12 @@ central fixed embedding + classifier seed
 - FL SSL main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`으로 고정한다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
-- tie-breaker/risk 지표는 `ECE`, communication cost, per-client variance다.
+- tie-breaker/risk 지표는 `loss`, `weighted-F1`, `balanced accuracy`,
+  worst-category F1, `ECE/max-ECE`, communication cost, per-client variance다.
 - FL SSL report는 `fl_ssl_main_comparison` track으로 저장하고 중앙 SSL control report와 같은 ranking으로 합치지 않는다.
+- FL SSL report는 round progression, round delta, client split label
+  distribution, aggregation proxy diagnostics를 함께 남긴다. `theta` 같은
+  method 내부 파라미터는 기본 report에 노출하지 않는다.
 - 현재 FL SSL method 축의 활성 baseline은 `fedavg_pseudo_label`이다.
 - FedMatch/FedLGMatch/(FL)^2 같은 논문 method 구현은 후보 비교 후 확정된 method부터 연다.
 - FL SSL smoke/main/sweep 실행 기본 runtime은 `execution_context/runtime_env=gpu_local`,
@@ -99,7 +103,12 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - local update budget: `local_epochs=1`, `max_steps=50`
 - labeled/unlabeled ratio: `10% / 90%` per client
 - primary metrics: `macro-F1`, `worst-client macro-F1`
-- secondary metrics: `ECE`, communication cost, per-client variance
+- secondary metrics: `loss`, `weighted-F1`, `balanced accuracy`,
+  worst-category F1, `ECE/max-ECE`, communication cost, per-client variance
+- progression diagnostics: round별 validation delta, best macro-F1 round,
+  best loss round
+- split/aggregation diagnostics: client별 label distribution, entropy,
+  accepted-count 기반 aggregation weight proxy
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
 - method selection: `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
@@ -126,6 +135,7 @@ Runtime translation:
 - query buffer: `docs/contracts/query_buffer_v1.md`
 - central SSL scaffold: `docs/contracts/central_lora_classifier_trainer_contract.md`
 - FL runtime worklist: `docs/fl_runtime_implementation_checklist.md`
+- evaluation metrics: `methods/evaluation/README.md`
 - runtime overview: `docs/architecture/system-overview.md`
 - strategy axes: `docs/strategy_surface_map.md`
 
@@ -164,15 +174,17 @@ Runtime translation:
 2. threshold/policy selection과 manual label override hook을 고정한다.
 3. central SSL control의 supervised baseline을 연다.
 4. 같은 scaffold에서 pseudo-label, prototype SSL, FixMatch, R-Drop, MixText를 비교한다.
-5. FL SSL main comparison smoke를 `strategy_axes/fl/shard_policy=dirichlet_alpha03`와
-   `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`로 실행해 report를 확인한다.
-6. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
-7. `lora_classifier` family를 먼저 FL simulation research path에 얇게 열고,
-   contract와 aggregation shape를 smoke로 확인한다.
-8. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
+5. FL SSL report scaffold를 기준으로 `fedavg_pseudo_label` smoke/main 실행을
+   확인한다.
+6. 필요 시 prototype-only/prototype-SSL 평가 파일을 `scripts`에 thin wrapper로
+   추가하고, 안정 metric은 `methods/evaluation`으로만 승격한다.
+7. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
+8. `lora_classifier` family의 1-round smoke를 agent-local artifact
+   upload/materialization 경로까지 닫는다.
+9. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
    경계에 구현한다.
-9. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
-10. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+10. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
+11. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

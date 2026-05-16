@@ -73,6 +73,7 @@ central fixed embedding + classifier seed
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
+| Evaluation report metric | classification report payload | FL/central evaluation adapter | `methods/evaluation/*` | 활성 |
 
 주의:
 
@@ -98,6 +99,10 @@ central fixed embedding + classifier seed
 
 Prototype SSL 비교군은 위 prototype mechanism을 SSL objective/selection과 조합한
 method다. `PrototypePack` 자체가 최종 판정기라는 뜻은 아니다.
+
+Prototype-only 평가 파일이 필요하면 `scripts/experiments/prototype_analysis/`나
+FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 metric 의미가
+안정되면 계산 helper만 `methods/evaluation/`으로 승격한다.
 
 ## Metadata-only 또는 주의 축
 

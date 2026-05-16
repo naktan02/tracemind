@@ -26,6 +26,7 @@ central fixed embedding + classifier seed
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
 | `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
+| `methods/evaluation/README.md` | 중앙/FL 공통 evaluation metric helper 경계 |
 | `conf/README.md` | Hydra config group과 strategy/runtime 축 |
 
 ## Research Docs
@@ -51,10 +52,11 @@ Seed / central SSL:
 5. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
 6. `scripts/experiments/query_lora_ssl/*`
 7. `methods/adaptation/lora_classifier/*`
-8. `methods/adaptation/query_classifier_adaptation/*`
-9. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-10. `methods/ssl/*`
-11. `methods/adaptation/*`
+8. `methods/evaluation/*`
+9. `methods/adaptation/query_classifier_adaptation/*`
+10. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+11. `methods/ssl/*`
+12. `methods/adaptation/*`
 
 Agent runtime:
 

@@ -36,7 +36,7 @@ central fixed embedding + classifier seed
 | 구성요소 | 역할 | 주요 코드 |
 |---|---|---|
 | Shared contract/domain | agent, main_server, scripts가 함께 읽는 canonical payload와 domain entity | `shared/src/contracts/*`, `shared/src/domain/entities/*` |
-| Methods | SSL, adaptation, prototype, FL aggregation의 교체 가능한 계산 core | `methods/*` |
+| Methods | SSL, adaptation, prototype, evaluation, FL aggregation의 교체 가능한 계산 core | `methods/*` |
 | Hydra config | 실행 조합, strategy axis, track preset | `conf/*` |
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication | `main_server/src/api/*`, `main_server/src/services/*` |
@@ -138,6 +138,7 @@ Reddit Labeled Data
 | LoRA SSL entrypoint | `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py` |
 | 중앙/FL 공통 LoRA SSL harness | `scripts/experiments/query_lora_ssl/*` |
 | trainer core | `methods/adaptation/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
+| evaluation metric core | `methods/evaluation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |
 
@@ -177,6 +178,7 @@ Raw Event / Local Signal
 | FL SSL method descriptor/recipe metadata/policy | `methods/federated_ssl/*` |
 | method-only aggregation variant | `methods/federated_ssl/<method>/aggregation.py` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/method_runtime.py` |
+| FL report/evaluation payload | `methods/evaluation/*`, `scripts/experiments/fl_ssl/federated_simulation/io/*` |
 | adapter family wiring | `main_server/src/services/federation/rounds/families/registry.py`, `families/models.py` |
 | agent round client/runtime | `agent/src/services/federation/rounds/*` |
 | agent current-task application flow | `agent/src/services/training/execution/agent_training_task_runner_service.py` |
