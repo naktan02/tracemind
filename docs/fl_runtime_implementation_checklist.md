@@ -11,8 +11,8 @@ source of truth로 본다.
   scaffold를 갖고 있다.
 - `agent`는 active round fetch, local training, pseudo-label selection, update
   upload scaffold를 갖고 있다.
-- `scripts/experiments/fl_ssl`는 FL SSL simulation, seed sweep, report dump를
-  갖고 있다.
+- `scripts/experiments/fl_ssl`는 FL SSL simulation, seed sweep, client-count
+  sweep, report dump를 갖고 있다.
 - 활성 FL SSL method baseline은 `fedavg_pseudo_label`이다.
 - `diagonal_scale`와 `lora_classifier` adapter family의 FedAvg core/projection은
   `methods/adaptation/<family>/`에 있다.
@@ -31,6 +31,8 @@ source of truth로 본다.
 - [x] accepted-count 기반 aggregation weight proxy, zero-update client, update norm,
   communication proxy를 남긴다.
 - [x] round index와 early-stop 후보 진단을 남긴다.
+- [x] validation curve, primary 기준 best round, round/client time과 payload byte
+  계측 상태를 report에 남긴다.
 - [x] 중앙 SSL control report와 FL SSL main comparison report를 같은 ranking으로
   합치지 않는다.
 - [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
@@ -92,8 +94,15 @@ methods/evaluation/                            # stable metric helper만
   FedAvg core를 smoke로 검증했다.
 - [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
   `fedavg_lora_classifier` round-runtime profile을 compose할 수 있다.
+- [x] LoRA-classifier FedAvg는 두 라운드에서
+  `previous global snapshot + round aggregated delta = next global snapshot`
+  수식을 테스트로 고정했다.
+- [x] FL simulation inline-delta 경로도 `sim_rev_0002 = sim_rev_0001 +
+  round2 applied delta` 수식을 테스트로 고정했다.
+- [ ] 실제 PEFT LoRA + classifier train executor를 붙여 simulation hash delta를
+  대체한다.
 - [ ] agent-local LoRA artifact upload/materialization 경로를 닫는다.
-- [ ] LoRA 1-round smoke를 실행한다.
+- [ ] 실제 PEFT executor 기준 LoRA 1-round smoke를 실행한다.
 - [ ] winner method가 요구하는 shared family/state/update payload를 확정한다.
 - [ ] backward-compatible manifest/version 정책을 확인한다.
 
@@ -102,6 +111,7 @@ methods/evaluation/                            # stable metric helper만
 - [ ] main split: `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds`.
 - [ ] stress split: Dirichlet `alpha=0.1`.
 - [x] client pool split: `10% labeled / 90% unlabeled`.
+- [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
 - [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다.
 - [ ] CPU/hash debug 결과를 논문 성능 근거로 쓰지 않도록 report metadata를 확인한다.
 

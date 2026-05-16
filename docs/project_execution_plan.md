@@ -170,21 +170,24 @@ Runtime translation:
 
 ## Next Priorities
 
-1. query buffer 필드와 retention을 고정한다.
-2. threshold/policy selection과 manual label override hook을 고정한다.
-3. central SSL control의 supervised baseline을 연다.
-4. 같은 scaffold에서 pseudo-label, prototype SSL, FixMatch, R-Drop, MixText를 비교한다.
-5. FL SSL report scaffold를 기준으로 `fedavg_pseudo_label` smoke/main 실행을
-   확인한다.
-6. 필요 시 prototype-only/prototype-SSL 평가 파일을 `scripts`에 thin wrapper로
-   추가하고, 안정 metric은 `methods/evaluation`으로만 승격한다.
-7. 후보 논문 method를 비교해 실제 구현할 FL SSL method를 확정한다.
-8. `lora_classifier` family의 1-round smoke를 agent-local artifact
-   upload/materialization 경로까지 닫는다.
-9. 확정된 method부터 `agent` local runtime과 필요한 `main_server` round/aggregation
-   경계에 구현한다.
-10. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
-11. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+1. 실제 PEFT 기반 `LoRA + classifier` local train executor를 구현한다. 현재
+   `inline_delta`는 FL lifecycle/FedAvg 계약 검증용 deterministic simulation path다.
+2. 실제 LoRA/classifier delta artifact 저장, upload, server-owned materialization
+   경로를 닫는다.
+3. `FedAvg + FixMatch` 첫 FL SSL baseline을 고정한다. local objective는 교체 가능한
+   profile로 두고 server aggregation은 FedAvg로 잠근다.
+4. 실제 PEFT executor 기준 LoRA 1-round smoke를 실행하고 report/artifact schema를
+   샘플로 고정한다.
+5. `client_count=1..10` sweep과 seed sweep을 `gpu_local + mxbai`에서 실행해
+   산출물 위치와 summary JSON을 남긴다.
+6. main split `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds`와
+   stress split `alpha=0.1`을 실행한다.
+7. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
+   round-state exchange/server policy capability를 먼저 문서화한다.
+8. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
+   capability adapter, test 순서로 추가한다.
+9. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
+10. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 
