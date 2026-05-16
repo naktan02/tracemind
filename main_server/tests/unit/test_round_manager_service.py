@@ -182,8 +182,6 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
             backbone=_lora_backbone(),
             lora_config=_lora_config(),
             label_schema=("anxiety", "normal"),
-            lora_adapter_artifact_ref="shared://rev_000/lora_adapter",
-            classifier_head_artifact_ref="shared://rev_000/classifier_head",
             updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
         )
     )

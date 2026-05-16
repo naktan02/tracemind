@@ -173,9 +173,9 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
 - `fedavg_lora_classifier` profile은 현재 `inline_delta` simulation executor로
   LoRA/classifier update를 만든다. 이 경로는 서버 수락, FedAvg 집계, 라운드
   publication을 검증하기 위한 smoke path이며 실제 PEFT 학습 weight 품질을 의미하지
-  않는다. simulation output에는 다음 state가 참조하는 server aggregate artifact
-  JSON도 저장된다. 실제 LoRA optimizer와 artifact upload/materialization은 후속
-  단계다.
+  않는다. simulation output에는 다음 state가 참조하는 누적 global LoRA/head
+  parameter snapshot JSON도 저장된다. 실제 LoRA optimizer와 artifact
+  upload/materialization은 후속 단계다.
 
 ## newcomer 메모
 

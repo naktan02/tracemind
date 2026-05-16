@@ -84,8 +84,21 @@ class LoraClassifierAdapterStatePayload(SharedAdapterStatePayload):
     backbone: LoraClassifierBackbonePayload
     lora_config: LoraClassifierConfigPayload
     label_schema: list[str]
-    lora_adapter_artifact_ref: str | None = None
-    classifier_head_artifact_ref: str | None = None
+    lora_adapter_artifact_ref: str | None = Field(
+        default=None,
+        description=(
+            "Server-published LoRA state artifact. In FL delta mode this points "
+            "to the accumulated global LoRA parameters, not a client delta."
+        ),
+    )
+    classifier_head_artifact_ref: str | None = Field(
+        default=None,
+        description=(
+            "Server-published classifier-head state artifact. In FL delta mode "
+            "this points to accumulated global head weights/biases, not a "
+            "client delta."
+        ),
+    )
     artifact_format: str = "artifact_ref"
 
     @model_validator(mode="after")

@@ -214,13 +214,42 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
+    artifact_store.save_json_artifact(
+        "rev_000/lora_adapter",
+        {
+            "lora_parameters": {
+                "encoder.q_proj.lora_A": [1.0, 1.0],
+                "encoder.extra.lora_A": [0.5],
+            }
+        },
+    )
+    artifact_store.save_json_artifact(
+        "rev_000/classifier_head",
+        {
+            "classifier_head_weights": {
+                "anxiety": [1.0, 0.0],
+                "normal": [0.0, 1.0],
+            },
+            "classifier_head_biases": {
+                "anxiety": 0.1,
+                "normal": -0.1,
+            },
+        },
+    )
     backend = build_shared_adapter_aggregation_backend(
         adapter_kind="lora_classifier",
         backend_name="fedavg",
         overrides={"artifact_ref_prefix": "server-aggregate://test_lora"},
         artifact_store=artifact_store,
     )
-    base_state = _build_lora_state()
+    base_state = _build_lora_state(
+        lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
+            "rev_000/lora_adapter"
+        ),
+        classifier_head_artifact_ref=artifact_store.ref_for_artifact(
+            "rev_000/classifier_head"
+        ),
+    )
 
     result = backend.aggregate(
         base_state=base_state,
@@ -274,15 +303,23 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     head_artifact = artifact_store.load_json_artifact(
         artifact_ref=result.next_state.classifier_head_artifact_ref
     )
-    assert lora_artifact["lora_parameter_deltas"] == {
-        "encoder.q_proj.lora_A": pytest.approx([0.13333333333333333, 0.3]),
+    assert lora_artifact["lora_parameters"] == {
+        "encoder.extra.lora_A": pytest.approx([0.5]),
+        "encoder.q_proj.lora_A": pytest.approx([1.1333333333333333, 1.3]),
         "encoder.q_proj.lora_B": pytest.approx([0.13333333333333333, 0.0]),
     }
-    assert head_artifact["classifier_head_weight_deltas"]["anxiety"] == pytest.approx(
-        [0.16666666666666666, 0.0]
+    assert lora_artifact["applied_lora_parameter_deltas"][
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.13333333333333333, 0.3])
+    assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
+        [1.1666666666666667, 0.0]
     )
-    assert head_artifact["classifier_head_bias_deltas"]["normal"] == pytest.approx(
-        -0.03333333333333333
+    assert head_artifact["classifier_head_weights"]["normal"] == pytest.approx(
+        [-0.16666666666666669, 1.0]
+    )
+    assert head_artifact["classifier_head_biases"]["anxiety"] == pytest.approx(0.14)
+    assert head_artifact["classifier_head_biases"]["normal"] == pytest.approx(
+        -0.13333333333333333
     )
     assert result.aggregated_metrics["client_count"] == 2.0
     assert result.aggregated_metrics["example_count"] == 3.0
@@ -426,7 +463,11 @@ def _lora_config() -> dict[str, str | int | float | bool]:
     }
 
 
-def _build_lora_state() -> LoraClassifierState:
+def _build_lora_state(
+    *,
+    lora_adapter_artifact_ref: str | None = None,
+    classifier_head_artifact_ref: str | None = None,
+) -> LoraClassifierState:
     return make_lora_classifier_state_payload(
         model_id="tracemind-lora",
         model_revision="rev_000",
@@ -434,8 +475,8 @@ def _build_lora_state() -> LoraClassifierState:
         backbone=_lora_backbone(),
         lora_config=_lora_config(),
         label_schema=("anxiety", "normal"),
-        lora_adapter_artifact_ref="shared://rev_000/lora_adapter",
-        classifier_head_artifact_ref="shared://rev_000/classifier_head",
+        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
+        classifier_head_artifact_ref=classifier_head_artifact_ref,
         updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
     )
 

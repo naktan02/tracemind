@@ -784,7 +784,7 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
     assert result.final_validation == result.initial_validation
 
 
-def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
+def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
     tmp_path,
 ) -> None:
     train_rows = [
@@ -813,7 +813,7 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
         validation_rows=validation_rows,
         output_dir=output_dir,
         client_count=4,
-        rounds=1,
+        rounds=2,
         bootstrap_ratio=1 / 3,
         seed=7,
         embedding_spec=EmbeddingAdapterSpec(
@@ -854,6 +854,8 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
     assert result.rounds
     assert result.rounds[0].update_count > 0
     assert result.rounds[0].model_revision == "sim_rev_0001"
+    assert result.rounds[1].update_count > 0
+    assert result.rounds[1].model_revision == "sim_rev_0002"
     update_paths = sorted(
         (output_dir / "main_server" / "shared_adapter_updates" / "versions").glob(
             "*.json"
@@ -888,11 +890,24 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_round(
     assert lora_aggregate_path.exists()
     assert head_aggregate_path.exists()
     assert json.loads(lora_aggregate_path.read_text(encoding="utf-8"))[
-        "lora_parameter_deltas"
+        "lora_parameters"
     ]
     assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
-        "classifier_head_weight_deltas"
+        "classifier_head_weights"
     ]
+    second_lora_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0002"
+        / "lora_adapter.json"
+    )
+    assert second_lora_aggregate_path.exists()
+    assert json.loads(second_lora_aggregate_path.read_text(encoding="utf-8")) != (
+        json.loads(lora_aggregate_path.read_text(encoding="utf-8"))
+    )
 
 
 def test_run_simulation_request_rejects_local_round_family_mismatch(

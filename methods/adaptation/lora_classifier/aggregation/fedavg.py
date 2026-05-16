@@ -39,6 +39,9 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 LORA_ADAPTER_ARTIFACT_SLOT = "lora_adapter"
 CLASSIFIER_HEAD_ARTIFACT_SLOT = "classifier_head"
+LORA_STATE_PARAMETERS_KEY = "lora_parameters"
+CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
+CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
 
 
 @dataclass(frozen=True, slots=True)
@@ -217,6 +220,24 @@ def aggregate_lora_classifier_fedavg(
         next_model_revision=context.next_model_revision,
         artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
     )
+    base_parameters = _materialize_base_lora_classifier_state(
+        base_state=base_state,
+        context=context,
+    )
+    next_lora_parameters = _apply_vector_deltas(
+        base_parameters.lora_parameters,
+        method_result.lora_parameter_deltas,
+        field_name=LORA_STATE_PARAMETERS_KEY,
+    )
+    next_classifier_head_weights = _apply_vector_deltas(
+        base_parameters.classifier_head_weights,
+        method_result.classifier_head_weight_deltas,
+        field_name=CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+    )
+    next_classifier_head_biases = _apply_scalar_deltas(
+        base_parameters.classifier_head_biases,
+        method_result.classifier_head_bias_deltas,
+    )
     next_state = LoraClassifierState(
         schema_version=base_state.schema_version,
         adapter_kind=base_state.adapter_kind,
@@ -237,13 +258,16 @@ def aggregate_lora_classifier_fedavg(
         update_count=method_result.update_count,
         aggregated_artifacts={
             lora_adapter_artifact_ref: {
-                "lora_parameter_deltas": method_result.lora_parameter_deltas,
+                LORA_STATE_PARAMETERS_KEY: next_lora_parameters,
+                "applied_lora_parameter_deltas": (method_result.lora_parameter_deltas),
             },
             classifier_head_artifact_ref: {
-                "classifier_head_weight_deltas": (
+                CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: next_classifier_head_weights,
+                CLASSIFIER_HEAD_STATE_BIASES_KEY: next_classifier_head_biases,
+                "applied_classifier_head_weight_deltas": (
                     method_result.classifier_head_weight_deltas
                 ),
-                "classifier_head_bias_deltas": (
+                "applied_classifier_head_bias_deltas": (
                     method_result.classifier_head_bias_deltas
                 ),
             },
@@ -292,6 +316,57 @@ class _MaterializedLoraClassifierUpdate:
     classifier_head_weight_deltas: dict[str, list[float]]
     classifier_head_bias_deltas: dict[str, float]
     delta_l2_norm: float
+
+
+@dataclass(frozen=True, slots=True)
+class _MaterializedLoraClassifierState:
+    lora_parameters: dict[str, list[float]]
+    classifier_head_weights: dict[str, list[float]]
+    classifier_head_biases: dict[str, float]
+
+
+def _materialize_base_lora_classifier_state(
+    *,
+    base_state: LoraClassifierState,
+    context: FederatedAggregationContext,
+) -> _MaterializedLoraClassifierState:
+    """base global state artifact를 읽고 없으면 zero-initialized state로 본다."""
+
+    loader = None
+    if (
+        base_state.lora_adapter_artifact_ref is not None
+        or base_state.classifier_head_artifact_ref is not None
+    ):
+        loader = context.require_artifact_loader(
+            context="LoRA-classifier base state materialization"
+        )
+
+    lora_parameters: dict[str, list[float]] = {}
+    if base_state.lora_adapter_artifact_ref is not None:
+        if loader is None:
+            raise AssertionError("artifact loader must be resolved before load.")
+        lora_parameters = _load_base_lora_parameters(
+            artifact_ref=base_state.lora_adapter_artifact_ref,
+            loader=loader,
+        )
+
+    classifier_head_weights: dict[str, list[float]] = {}
+    classifier_head_biases: dict[str, float] = {}
+    if base_state.classifier_head_artifact_ref is not None:
+        if loader is None:
+            raise AssertionError("artifact loader must be resolved before load.")
+        classifier_head_weights, classifier_head_biases = (
+            _load_base_classifier_head_parameters(
+                artifact_ref=base_state.classifier_head_artifact_ref,
+                loader=loader,
+            )
+        )
+
+    return _MaterializedLoraClassifierState(
+        lora_parameters=lora_parameters,
+        classifier_head_weights=classifier_head_weights,
+        classifier_head_biases=classifier_head_biases,
+    )
 
 
 def _materialize_lora_classifier_update(
@@ -367,6 +442,45 @@ def _load_lora_parameter_deltas(
     return _normalize_vector_mapping(source, field_name="lora_parameter_deltas")
 
 
+def _load_base_lora_parameters(
+    *,
+    artifact_ref: str,
+    loader: AggregationJsonArtifactLoader,
+) -> dict[str, list[float]]:
+    artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
+    source = artifact.get(
+        LORA_STATE_PARAMETERS_KEY,
+        artifact.get("lora_parameter_deltas", artifact),
+    )
+    return _normalize_vector_mapping(source, field_name=LORA_STATE_PARAMETERS_KEY)
+
+
+def _load_base_classifier_head_parameters(
+    *,
+    artifact_ref: str,
+    loader: AggregationJsonArtifactLoader,
+) -> tuple[dict[str, list[float]], dict[str, float]]:
+    artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
+    weight_source = artifact.get(
+        CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+        artifact.get("classifier_head_weight_deltas", artifact),
+    )
+    bias_source = artifact.get(
+        CLASSIFIER_HEAD_STATE_BIASES_KEY,
+        artifact.get("classifier_head_bias_deltas", {}),
+    )
+    return (
+        _normalize_vector_mapping(
+            weight_source,
+            field_name=CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+        ),
+        _normalize_scalar_mapping(
+            bias_source,
+            field_name=CLASSIFIER_HEAD_STATE_BIASES_KEY,
+        ),
+    )
+
+
 def _load_classifier_head_artifact(
     *,
     payload: LoraClassifierDelta,
@@ -429,6 +543,45 @@ def _normalize_scalar_mapping(
             raise ValueError(f"{field_name} artifact keys must not be empty.")
         result[normalized_key] = float(value)
     return result
+
+
+def _apply_vector_deltas(
+    base_values: Mapping[str, Sequence[float]],
+    deltas: Mapping[str, Sequence[float]],
+    *,
+    field_name: str,
+) -> dict[str, list[float]]:
+    result: dict[str, list[float]] = {}
+    for key in sorted(set(base_values) | set(deltas)):
+        base_vector = [float(value) for value in base_values.get(key, [])]
+        delta_vector = [float(value) for value in deltas.get(key, [])]
+        if base_vector and delta_vector and len(base_vector) != len(delta_vector):
+            raise ValueError(f"{field_name} delta dimension mismatch for {key!r}.")
+        if not base_vector:
+            result[key] = delta_vector
+            continue
+        if not delta_vector:
+            result[key] = base_vector
+            continue
+        result[key] = [
+            base_value + delta_value
+            for base_value, delta_value in zip(
+                base_vector,
+                delta_vector,
+                strict=True,
+            )
+        ]
+    return result
+
+
+def _apply_scalar_deltas(
+    base_values: Mapping[str, float],
+    deltas: Mapping[str, float],
+) -> dict[str, float]:
+    return {
+        key: float(base_values.get(key, 0.0)) + float(deltas.get(key, 0.0))
+        for key in sorted(set(base_values) | set(deltas))
+    }
 
 
 def _l2_norm(

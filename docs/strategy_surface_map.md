@@ -123,8 +123,9 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - LoRA-classifier FedAvg 경로는 inline LoRA parameter delta와 classifier-head
   delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned
   `aggregation_artifact::` JSON artifact-ref update는 main_server가 제공한 loader로
-  materialize하며, 집계된 LoRA/head artifact는 server aggregate store에 저장한다.
-  `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
+  materialize한다. client는 base revision 기준 delta를 보내고, 서버는
+  `base global state + aggregated delta`를 다음 LoRA/head state artifact snapshot으로
+  저장한다. `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
 - FL simulation은 `experiment_profile=fedavg_pseudo_label_lora_classifier_v1`
   preset으로 LoRA-classifier 조합을 시작하거나,
   `experiment_profile=none` 상태에서 `local_update_profile=lora_pseudo_label_v1`와

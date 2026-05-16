@@ -74,6 +74,9 @@ runtime과 test는 family별 direct import를 사용한다.
   - LoRA-classifier concrete 구현
   - frozen backbone/tokenizer, LoRA config, label schema, LoRA adapter artifact ref,
     classifier head artifact ref를 함께 설명한다
+  - FL delta mode에서 state artifact ref는 누적된 전역 LoRA parameter와 classifier
+    head weight/bias snapshot을 가리킨다. client update delta artifact와 같은 의미가
+    아니다
   - raw text나 agent-local query state는 포함하지 않는다
 - `CurrentSharedAdapterStatePayload`
   - 서버 current `ModelManifest`와 실제 `SharedAdapterStatePayload`를 함께
