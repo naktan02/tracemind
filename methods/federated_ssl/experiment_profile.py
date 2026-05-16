@@ -5,6 +5,12 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from methods.common.config_reading import (
+    normalize_non_empty_str,
+    read_str,
+    validate_allowed_keys,
+)
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedSslExperimentProfile:
@@ -30,7 +36,7 @@ class FederatedSslExperimentProfile:
             object.__setattr__(
                 self,
                 field_name,
-                _normalize_non_empty(
+                normalize_non_empty_str(
                     getattr(self, field_name),
                     field_name=f"experiment_profile.{field_name}",
                 ),
@@ -39,7 +45,7 @@ class FederatedSslExperimentProfile:
             object.__setattr__(
                 self,
                 "description",
-                _normalize_non_empty(
+                normalize_non_empty_str(
                     self.description,
                     field_name="experiment_profile.description",
                 ),
@@ -52,42 +58,48 @@ class FederatedSslExperimentProfile:
     ) -> "FederatedSslExperimentProfile":
         """Hydra fl_profile mapping을 compose preset metadata로 해석한다."""
 
-        unknown_keys = sorted(set(source) - _EXPERIMENT_PROFILE_KEYS)
-        if unknown_keys:
-            raise ValueError(f"Unsupported experiment_profile key(s): {unknown_keys}.")
+        validate_allowed_keys(
+            source,
+            allowed_keys=_EXPERIMENT_PROFILE_KEYS,
+            config_name="experiment_profile",
+        )
         return cls(
-            name=_str_value(source, "name"),
-            method_name=_str_value(source, "method_name"),
-            local_update_profile_name=_str_value(
+            name=read_str(
+                source,
+                "name",
+                field_prefix="experiment_profile",
+            ),
+            method_name=read_str(
+                source,
+                "method_name",
+                field_prefix="experiment_profile",
+            ),
+            local_update_profile_name=read_str(
                 source,
                 "local_update_profile_name",
+                field_prefix="experiment_profile",
             ),
-            round_runtime_profile_name=_str_value(
+            round_runtime_profile_name=read_str(
                 source,
                 "round_runtime_profile_name",
+                field_prefix="experiment_profile",
             ),
-            adapter_family_name=_str_value(source, "adapter_family_name"),
-            aggregation_backend_name=_str_value(source, "aggregation_backend_name"),
+            adapter_family_name=read_str(
+                source,
+                "adapter_family_name",
+                field_prefix="experiment_profile",
+            ),
+            aggregation_backend_name=read_str(
+                source,
+                "aggregation_backend_name",
+                field_prefix="experiment_profile",
+            ),
             description=(
                 None
                 if source.get("description") is None
                 else str(source["description"])
             ),
         )
-
-
-def _normalize_non_empty(value: str, *, field_name: str) -> str:
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty.")
-    return normalized
-
-
-def _str_value(source: Mapping[str, object], key: str) -> str:
-    value = source.get(key)
-    if value is None:
-        raise ValueError(f"experiment_profile.{key} is required.")
-    return str(value)
 
 
 _EXPERIMENT_PROFILE_KEYS = frozenset(

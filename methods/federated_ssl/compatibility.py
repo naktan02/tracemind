@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 
+from methods.common.config_reading import normalize_non_empty_str
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
@@ -25,7 +26,7 @@ class FederatedSslProfileCompatibilityContext:
         object.__setattr__(
             self,
             "local_update_adapter_kind",
-            _normalize_non_empty(
+            normalize_non_empty_str(
                 self.local_update_adapter_kind,
                 field_name="local_update_adapter_kind",
             ),
@@ -33,7 +34,7 @@ class FederatedSslProfileCompatibilityContext:
         object.__setattr__(
             self,
             "round_adapter_family_name",
-            _normalize_non_empty(
+            normalize_non_empty_str(
                 self.round_adapter_family_name,
                 field_name="round_adapter_family_name",
             ),
@@ -41,7 +42,7 @@ class FederatedSslProfileCompatibilityContext:
         object.__setattr__(
             self,
             "round_aggregation_backend_name",
-            _normalize_non_empty(
+            normalize_non_empty_str(
                 self.round_aggregation_backend_name,
                 field_name="round_aggregation_backend_name",
             ),
@@ -50,7 +51,7 @@ class FederatedSslProfileCompatibilityContext:
             object.__setattr__(
                 self,
                 "round_runtime_profile_name",
-                _normalize_non_empty(
+                normalize_non_empty_str(
                     self.round_runtime_profile_name,
                     field_name="round_runtime_profile_name",
                 ),
@@ -185,10 +186,3 @@ def _require_profile_value(
         f"profile={profile_name}, field={field_name}, "
         f"actual={actual}, expected={expected}."
     )
-
-
-def _normalize_non_empty(value: str, *, field_name: str) -> str:
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError(f"{field_name} must not be empty.")
-    return normalized

@@ -4,47 +4,21 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 
-DiagonalScaleConfigScalar = str | int | float | bool
+from methods.common.config_reading import (
+    ConfigScalar,
+    freeze_mapping,
+    read_float,
+    validate_allowed_keys,
+)
+
+DiagonalScaleConfigScalar = ConfigScalar
 TRAINING_BACKEND_EXTRA_SCOPE = "training_backend"
 DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS = (
     "delta_scale_multiplier",
     "max_abs_delta",
     "minimum_effective_scale",
 )
-
-
-def _freeze_mapping(
-    source: Mapping[str, DiagonalScaleConfigScalar],
-) -> Mapping[str, DiagonalScaleConfigScalar]:
-    return MappingProxyType(dict(source))
-
-
-def _read_float(
-    source: Mapping[str, DiagonalScaleConfigScalar] | None,
-    key: str,
-    default: float,
-) -> float:
-    if source is None:
-        return default
-    value = source.get(key, default)
-    if isinstance(value, bool):
-        raise ValueError(f"{key} must not be bool.")
-    return float(value)
-
-
-def _validate_allowed_keys(
-    source: Mapping[str, DiagonalScaleConfigScalar] | None,
-    *,
-    allowed_keys: tuple[str, ...],
-    config_name: str,
-) -> None:
-    if source is None:
-        return
-    unexpected_keys = sorted(key for key in source if key not in allowed_keys)
-    if unexpected_keys:
-        raise ValueError(f"Unsupported {config_name} key(s): {unexpected_keys}.")
 
 
 @dataclass(frozen=True, slots=True)
@@ -60,23 +34,23 @@ class DiagonalScaleHeuristicTrainingBackendConfig:
         cls,
         source: Mapping[str, DiagonalScaleConfigScalar] | None,
     ) -> "DiagonalScaleHeuristicTrainingBackendConfig":
-        _validate_allowed_keys(
+        validate_allowed_keys(
             source,
             allowed_keys=DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_EXTRA_KEYS,
             config_name="diagonal-scale heuristic training backend config",
         )
         return cls(
-            delta_scale_multiplier=_read_float(
+            delta_scale_multiplier=read_float(
                 source,
                 "delta_scale_multiplier",
                 DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.delta_scale_multiplier,
             ),
-            max_abs_delta=_read_float(
+            max_abs_delta=read_float(
                 source,
                 "max_abs_delta",
                 DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.max_abs_delta,
             ),
-            minimum_effective_scale=_read_float(
+            minimum_effective_scale=read_float(
                 source,
                 "minimum_effective_scale",
                 DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.minimum_effective_scale,
@@ -84,7 +58,7 @@ class DiagonalScaleHeuristicTrainingBackendConfig:
         )
 
     def to_mapping(self) -> Mapping[str, DiagonalScaleConfigScalar]:
-        return _freeze_mapping(
+        return freeze_mapping(
             {
                 "delta_scale_multiplier": self.delta_scale_multiplier,
                 "max_abs_delta": self.max_abs_delta,
@@ -97,7 +71,7 @@ class DiagonalScaleHeuristicTrainingBackendConfig:
         *,
         scope: str = TRAINING_BACKEND_EXTRA_SCOPE,
     ) -> Mapping[str, DiagonalScaleConfigScalar]:
-        return _freeze_mapping(
+        return freeze_mapping(
             {
                 f"{scope}.delta_scale_multiplier": self.delta_scale_multiplier,
                 f"{scope}.max_abs_delta": self.max_abs_delta,

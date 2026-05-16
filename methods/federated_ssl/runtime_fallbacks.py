@@ -9,23 +9,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from types import MappingProxyType
 
 from methods.adaptation.diagonal_scale.config import (
     DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
 )
+from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
     TrainingConfigScalar,
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
-
-
-def _freeze_mapping(
-    source: Mapping[str, TrainingConfigScalar],
-) -> Mapping[str, TrainingConfigScalar]:
-    return MappingProxyType(dict(source))
 
 
 def _merged_mapping(
@@ -64,17 +58,17 @@ class RuntimeFallbackTrainingProfile:
         object.__setattr__(
             self,
             "objective_mapping",
-            MappingProxyType(dict(self.objective_mapping)),
+            freeze_mapping(self.objective_mapping),
         )
         object.__setattr__(
             self,
             "selection_mapping",
-            MappingProxyType(dict(self.selection_mapping)),
+            freeze_mapping(self.selection_mapping),
         )
         object.__setattr__(
             self,
             "secure_aggregation_mapping",
-            MappingProxyType(dict(self.secure_aggregation_mapping)),
+            freeze_mapping(self.secure_aggregation_mapping),
         )
 
     @property
@@ -212,7 +206,7 @@ class RuntimeFallbackTrainingProfile:
 
 PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
 
-RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = _freeze_mapping(
+RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": "prototype_pseudo_label_v1",
         "training_backend_name": "diagonal_scale_heuristic",
@@ -231,9 +225,9 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = _freeze_mapping(
     }
 )
 
-RUNTIME_FALLBACK_TRAINING_SELECTION_MAPPING = _freeze_mapping({"max_examples": 128})
+RUNTIME_FALLBACK_TRAINING_SELECTION_MAPPING = freeze_mapping({"max_examples": 128})
 
-RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING = _freeze_mapping({"required": False})
+RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING = freeze_mapping({"required": False})
 
 RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS = RuntimeTrainingTaskDefaults(
     local_epochs=1,

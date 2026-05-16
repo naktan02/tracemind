@@ -5,6 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from methods.common.config_reading import (
+    read_float,
+    read_optional_positive_int,
+    read_str,
+    set_normalized_str,
+    validate_allowed_keys,
+)
 from shared.src.contracts.training_contracts import (
     TrainingConfigScalar,
     TrainingObjectiveConfig,
@@ -43,7 +50,12 @@ class LocalUpdateProfile:
             "acceptance_policy_name",
             "privacy_guard_name",
         ):
-            _set_normalized_str(self, field_name, getattr(self, field_name))
+            set_normalized_str(
+                self,
+                field_name,
+                getattr(self, field_name),
+                field_prefix="local_update_profile",
+            )
         if not 0.0 <= self.confidence_threshold <= 1.0:
             raise ValueError("local_update_profile.confidence_threshold invalid.")
         if self.margin_threshold < 0.0:
@@ -62,34 +74,81 @@ class LocalUpdateProfile:
     ) -> "LocalUpdateProfile":
         """Hydra local_update_profile mapping을 typed profile로 해석한다."""
 
-        unknown_keys = sorted(set(source) - _LOCAL_UPDATE_PROFILE_KEYS)
-        if unknown_keys:
-            raise ValueError(
-                f"Unsupported local_update_profile key(s): {unknown_keys}."
-            )
+        validate_allowed_keys(
+            source,
+            allowed_keys=_LOCAL_UPDATE_PROFILE_KEYS,
+            config_name="local_update_profile",
+        )
         return cls(
-            algorithm_profile_name=_str_value(source, "algorithm_profile_name"),
-            training_scope=_str_value(source, "training_scope"),
-            training_backend_name=_str_value(source, "training_backend_name"),
-            confidence_threshold=_float_value(source, "confidence_threshold"),
-            margin_threshold=_float_value(source, "margin_threshold"),
-            example_generation_backend_name=_str_value(
+            algorithm_profile_name=read_str(
+                source,
+                "algorithm_profile_name",
+                field_prefix="local_update_profile",
+            ),
+            training_scope=read_str(
+                source,
+                "training_scope",
+                field_prefix="local_update_profile",
+            ),
+            training_backend_name=read_str(
+                source,
+                "training_backend_name",
+                field_prefix="local_update_profile",
+            ),
+            confidence_threshold=read_float(
+                source,
+                "confidence_threshold",
+                field_prefix="local_update_profile",
+            ),
+            margin_threshold=read_float(
+                source,
+                "margin_threshold",
+                field_prefix="local_update_profile",
+            ),
+            example_generation_backend_name=read_str(
                 source,
                 "example_generation_backend_name",
+                field_prefix="local_update_profile",
             ),
-            evidence_backend_name=_str_value(source, "evidence_backend_name"),
-            scorer_backend_name=_str_value(source, "scorer_backend_name"),
-            score_policy_name=_str_value(source, "score_policy_name"),
-            score_top_k=_optional_positive_int_value(source, "score_top_k"),
-            pseudo_label_algorithm_name=_str_value(
+            evidence_backend_name=read_str(
+                source,
+                "evidence_backend_name",
+                field_prefix="local_update_profile",
+            ),
+            scorer_backend_name=read_str(
+                source,
+                "scorer_backend_name",
+                field_prefix="local_update_profile",
+            ),
+            score_policy_name=read_str(
+                source,
+                "score_policy_name",
+                field_prefix="local_update_profile",
+            ),
+            score_top_k=read_optional_positive_int(
+                source,
+                "score_top_k",
+                field_prefix="local_update_profile",
+            ),
+            pseudo_label_algorithm_name=read_str(
                 source,
                 "pseudo_label_algorithm_name",
+                field_prefix="local_update_profile",
             ),
-            acceptance_policy_name=_str_value(source, "acceptance_policy_name"),
-            privacy_guard_name=_str_value(source, "privacy_guard_name"),
-            evidence_backend_temperature=_float_value(
+            acceptance_policy_name=read_str(
+                source,
+                "acceptance_policy_name",
+                field_prefix="local_update_profile",
+            ),
+            privacy_guard_name=read_str(
+                source,
+                "privacy_guard_name",
+                field_prefix="local_update_profile",
+            ),
+            evidence_backend_temperature=read_float(
                 source,
                 "evidence_backend_temperature",
+                field_prefix="local_update_profile",
             ),
         )
 
@@ -135,46 +194,6 @@ def require_training_objective_matches_local_update_profile(
         raise ValueError(
             f"training_task.objective must match local_update_profile: {mismatches}."
         )
-
-
-def _set_normalized_str(
-    instance: LocalUpdateProfile,
-    field_name: str,
-    value: str,
-) -> None:
-    normalized = value.strip()
-    if not normalized:
-        raise ValueError(f"local_update_profile.{field_name} must not be empty.")
-    object.__setattr__(instance, field_name, normalized)
-
-
-def _str_value(source: Mapping[str, object], key: str) -> str:
-    value = source.get(key)
-    if value is None:
-        raise ValueError(f"local_update_profile.{key} is required.")
-    return str(value)
-
-
-def _float_value(source: Mapping[str, object], key: str) -> float:
-    value = source.get(key)
-    if value is None or isinstance(value, bool):
-        raise ValueError(f"local_update_profile.{key} must be a number.")
-    return float(value)
-
-
-def _optional_positive_int_value(
-    source: Mapping[str, object],
-    key: str,
-) -> int | None:
-    value = source.get(key)
-    if value is None:
-        return None
-    if isinstance(value, bool):
-        raise ValueError(f"local_update_profile.{key} must be int.")
-    parsed = int(value)
-    if parsed <= 0:
-        raise ValueError(f"local_update_profile.{key} must be positive.")
-    return parsed
 
 
 _LOCAL_UPDATE_PROFILE_KEYS = frozenset(
