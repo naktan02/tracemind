@@ -61,11 +61,11 @@ aggregation backend, adapter projection, prototype builder는 축별 패키지�
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
 - `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +
-  classifier head scaffold, 학습/평가 loop, family별 FedAvg core/projection
+  classifier head scaffold, 학습/평가 loop, family별 aggregation adapter
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
-  family별 FedAvg core/projection
-- `methods/adaptation/classifier_head/`: classifier-head family별 FedAvg
-  core/projection
+  family별 aggregation adapter
+- `methods/adaptation/classifier_head/`: classifier-head family별 aggregation/scoring
+  core
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
 - `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper

@@ -17,7 +17,7 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
-from methods.adaptation.diagonal_scale.fedavg_projection import (
+from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
     DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
 )
@@ -97,15 +97,15 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
 
     assert (
         entries["diagonal_scale.fedavg"].implementation_module
-        == "methods.adaptation.diagonal_scale.fedavg"
+        == "methods.adaptation.diagonal_scale.aggregation.fedavg"
     )
     assert (
         entries["classifier_head.fedavg"].implementation_module
-        == "methods.adaptation.classifier_head.fedavg"
+        == "methods.adaptation.classifier_head.aggregation.fedavg"
     )
     assert (
         entries["lora_classifier.fedavg"].implementation_module
-        == "methods.adaptation.lora_classifier.fedavg"
+        == "methods.adaptation.lora_classifier.aggregation.fedavg"
     )
     assert (
         entries["lora_classifier.fedavg"].metadata[

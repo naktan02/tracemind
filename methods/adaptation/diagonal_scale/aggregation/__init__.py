@@ -1,0 +1,1 @@
+"""Diagonal-scale aggregation adapters."""

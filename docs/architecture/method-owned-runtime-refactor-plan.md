@@ -233,8 +233,9 @@ handoff 순서를 따른다.
 
 상태: 4-A 완료, 4-B 진행 중. round family concrete module은 generic runtime으로 접었고,
 aggregation method의 generic core는 `methods/federated/aggregation/`, adapter-family
-FedAvg core/projection은 각 family-owned
-`methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py`로 옮겼다.
+FedAvg core/materialization은 각 family-owned
+`methods/adaptation/<family>/aggregation/fedavg.py`와 필요 시
+`server_update_materialization.py`로 옮겼다.
 `main_server` aggregation package에는 generic executor/registry와 server-owned artifact
 ref 생성/JSON loading capability만 남긴다. `assets/prototypes`는 catch-all assets package에서
 `federation/prototypes` server-owned artifact lifecycle package로 좁혔다.
@@ -247,20 +248,21 @@ runtime adapter는 agent-local example/evidence capability만 노출한다.
   payload registry 기반 generic runtime으로 유지한다.
 - aggregation method 파일은 `main_server`에 두지 않는다. `main_server`는
   `methods/federated/aggregation/`에서 선택된 strategy를 호출하는 executor만 둔다.
-- adapter-family FedAvg core/projection은
-  `methods/adaptation/<family>/fedavg.py`, `fedavg_projection.py` 같은 family-owned
-  module에 둔다.
+- adapter-family FedAvg core/materialization은
+  `methods/adaptation/<family>/aggregation/fedavg.py`와 필요 시
+  `server_update_materialization.py` 같은 family-owned module에 둔다.
 - adapter family별 파일이나 family별 aggregation service/config class를 추가하지 않는다.
 - generic aggregation method 산술/strategy wiring은 `methods/federated/aggregation/`에
   두고, adapter family별 delta 해석과 next-state 계산은
-  `methods/adaptation/<family>/`에 둔다.
+  `methods/adaptation/<family>/aggregation/`에 둔다.
 - method-only aggregation 변형은 `methods/federated_ssl/<method>/aggregation.py` 또는
   `server_policy.py`에 둘 수 있지만, `main_server`에서는 등록된 strategy/capability로만
   호출한다.
 - server-owned `aggregation_artifact::` JSON ref materialization은 main_server
   runtime capability다. LoRA/classifier delta 해석은
-  `methods/adaptation/lora_classifier/fedavg_projection.py`에 남기고, `main_server`
-  artifact store에는 family branch를 두지 않는다.
+  `methods/adaptation/lora_classifier/aggregation/fedavg.py`와
+  `server_update_materialization.py`가 맡고, `main_server` artifact store에는 family
+  branch를 두지 않는다.
 - server-owned prototype artifact lifecycle은 `federation/prototypes`가 소유하고,
   `shared`는 prototype payload contract/serialization만 소유한다.
 - method-specific server/round policy 의미는

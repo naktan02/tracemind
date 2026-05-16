@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from methods.adaptation.classifier_head.fedavg import (
+from methods.adaptation.classifier_head.aggregation.fedavg import (
     ClassifierHeadFedAvgUpdate,
     compute_classifier_head_fedavg,
 )
-from methods.adaptation.diagonal_scale.fedavg import (
+from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
 )
-from methods.adaptation.lora_classifier.fedavg import (
+from methods.adaptation.lora_classifier.aggregation.fedavg import (
     LoraClassifierFedAvgUpdate,
     compute_lora_classifier_fedavg,
 )
@@ -115,11 +115,11 @@ def test_federated_aggregation_registry_resolves_alias_without_package_scan(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     def _fail_package_scan() -> None:
-        raise AssertionError("package-wide adaptation projection scan must not run")
+        raise AssertionError("package-wide adaptation aggregation scan must not run")
 
     monkeypatch.setattr(
         aggregation_registry,
-        "_import_adaptation_projection_modules",
+        "_import_adaptation_aggregation_modules",
         _fail_package_scan,
     )
 
@@ -301,7 +301,10 @@ def test_federated_aggregation_method_registry_points_to_methods_core() -> None:
     )
 
     assert spec.method_name == "fedavg"
-    assert spec.implementation_module == "methods.adaptation.diagonal_scale.fedavg"
+    assert (
+        spec.implementation_module
+        == "methods.adaptation.diagonal_scale.aggregation.fedavg"
+    )
     assert spec.core_function_name == "compute_diagonal_scale_fedavg"
 
 
@@ -312,5 +315,8 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
     )
 
     assert spec.method_name == "fedavg"
-    assert spec.implementation_module == "methods.adaptation.lora_classifier.fedavg"
+    assert (
+        spec.implementation_module
+        == "methods.adaptation.lora_classifier.aggregation.fedavg"
+    )
     assert spec.core_function_name == "compute_lora_classifier_fedavg"

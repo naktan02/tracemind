@@ -1,11 +1,11 @@
 # Classifier Head Adaptation
 
 `methods/adaptation/classifier_head/`는 classifier-head shared adapter family의
-method-owned FedAvg core/projection을 둔다.
+method-owned aggregation/scoring core를 둔다.
 
 ## 책임
 
-- classifier-head delta를 FedAvg 공통 산술로 평균
+- `aggregation/fedavg.py`에서 classifier-head delta를 FedAvg 공통 산술로 평균
 - `ClassifierHeadState`와 `ClassifierHeadDelta`를 family FedAvg core 입력으로 변환
 - label schema와 embedding dimension consistency 검증
 - FedAvg 결과를 다음 classifier-head shared state로 materialize

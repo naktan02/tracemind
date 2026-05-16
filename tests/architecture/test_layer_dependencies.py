@@ -465,6 +465,29 @@ def test_agent_scoring_backends_do_not_keep_adapter_family_modules() -> None:
     )
 
 
+def test_server_update_materialization_dispatcher_stays_family_agnostic() -> None:
+    dispatcher_path = METHODS_SRC / "adaptation" / "server_update_materialization.py"
+    imports = _collect_absolute_imports(dispatcher_path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    violations = sorted(imports & forbidden_imports)
+    source = dispatcher_path.read_text(encoding="utf-8")
+
+    assert not violations, (
+        "server update materialization dispatcher는 adapter family별 payload "
+        "contract를 직접 알지 않는다. family-specific preflight는 "
+        "methods/adaptation/<family>/server_update_materialization.py에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+    assert "agent-local://" not in source, (
+        "agent-local artifact ref 정책은 dispatcher가 아니라 해당 adapter family가 "
+        "소유한다."
+    )
+
+
 def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     facade_path = FL_SIMULATION_IO_SRC / "artifacts.py"
 
@@ -829,10 +852,32 @@ def test_fedavg_strategy_file_stays_generic_without_family_specs() -> None:
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 
     assert not violations, (
-        "FedAvg strategy wiring 파일은 family별 projection/spec을 소유하지 않는다. "
-        "family 상세는 methods/adaptation/<family>/fedavg.py와 "
-        "fedavg_projection.py에 둔다.\n"
+        "FedAvg strategy wiring 파일은 family별 aggregation/spec을 소유하지 않는다. "
+        "family 상세는 methods/adaptation/<family>/aggregation/fedavg.py에 둔다.\n"
         f"violations={violations}"
+    )
+
+
+def test_adapter_family_fedavg_modules_live_under_aggregation_package() -> None:
+    family_roots = (
+        METHODS_SRC / "adaptation" / "diagonal_scale",
+        METHODS_SRC / "adaptation" / "classifier_head",
+        METHODS_SRC / "adaptation" / "lora_classifier",
+    )
+    forbidden_paths = [
+        _relative_repo_path(path)
+        for family_root in family_roots
+        for path in (
+            family_root / "fedavg.py",
+            family_root / "fedavg_projection.py",
+        )
+        if path.exists()
+    ]
+
+    assert not forbidden_paths, (
+        "adapter family별 FedAvg core/projection은 root 수평 파일이 아니라 "
+        "methods/adaptation/<family>/aggregation/fedavg.py에 모은다.\n"
+        f"{chr(10).join(f'- {path}' for path in forbidden_paths)}"
     )
 
 

@@ -79,12 +79,12 @@ def get_federated_aggregation_method_spec(
     """adapter family와 method 이름에 맞는 method metadata를 반환한다."""
 
     normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
-    module_method_name = _projection_method_module_name(
+    module_method_name = _adapter_method_module_name(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=normalized_key[1],
     )
     _import_aggregation_strategy_module(normalized_method_name=module_method_name)
-    _import_adapter_projection_module(
+    _import_adapter_aggregation_module(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=module_method_name,
     )
@@ -106,12 +106,12 @@ def build_federated_aggregation_strategy(
     """adapter family와 aggregation method 이름으로 methods-owned strategy를 만든다."""
 
     normalized_key = (adapter_kind.strip().lower(), method_name.strip().lower())
-    module_method_name = _projection_method_module_name(
+    module_method_name = _adapter_method_module_name(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=normalized_key[1],
     )
     _import_aggregation_strategy_module(normalized_method_name=module_method_name)
-    _import_adapter_projection_module(
+    _import_adapter_aggregation_module(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=module_method_name,
     )
@@ -132,7 +132,7 @@ def list_federated_aggregation_method_specs(
     """등록된 method metadata를 중복 없이 반환한다."""
 
     _import_aggregation_package_modules()
-    _import_adaptation_projection_modules()
+    _import_adaptation_aggregation_modules()
     normalized_adapter_kind = (
         adapter_kind.strip().lower() if adapter_kind is not None else None
     )
@@ -152,7 +152,7 @@ def list_federated_aggregation_method_specs(
     )
 
 
-def _projection_method_module_name(
+def _adapter_method_module_name(
     *,
     normalized_adapter_kind: str,
     normalized_method_name: str,
@@ -176,7 +176,7 @@ def _import_aggregation_strategy_module(*, normalized_method_name: str) -> None:
         ) from error
 
 
-def _import_adapter_projection_module(
+def _import_adapter_aggregation_module(
     *,
     normalized_adapter_kind: str,
     normalized_method_name: str,
@@ -184,15 +184,16 @@ def _import_adapter_projection_module(
     module_name = (
         f"{_ADAPTATION_PACKAGE}."
         f"{normalized_adapter_kind.replace('-', '_')}."
-        f"{normalized_method_name.replace('-', '_')}_projection"
+        "aggregation."
+        f"{normalized_method_name.replace('-', '_')}"
     )
     try:
         importlib.import_module(module_name)
     except ModuleNotFoundError as error:
-        if error.name != module_name:
+        if error.name != module_name and not module_name.startswith(f"{error.name}."):
             raise
         raise ValueError(
-            "Unsupported federated aggregation adapter projection: "
+            "Unsupported federated aggregation adapter module: "
             f"adapter_kind={normalized_adapter_kind}, "
             f"method_name={normalized_method_name}"
         ) from error
@@ -216,7 +217,7 @@ def _import_aggregation_package_modules() -> None:
         importlib.import_module(module_info.name)
 
 
-def _import_adaptation_projection_modules() -> None:
+def _import_adaptation_aggregation_modules() -> None:
     package = importlib.import_module(_ADAPTATION_PACKAGE)
     package_paths = getattr(package, "__path__", None)
     if package_paths is None:
@@ -226,5 +227,8 @@ def _import_adaptation_projection_modules() -> None:
         package_paths,
         prefix=f"{_ADAPTATION_PACKAGE}.",
     ):
-        if module_info.name.endswith("_projection"):
+        relative_parts = module_info.name.removeprefix(f"{_ADAPTATION_PACKAGE}.").split(
+            "."
+        )
+        if len(relative_parts) >= 3 and relative_parts[-2] == "aggregation":
             importlib.import_module(module_info.name)
