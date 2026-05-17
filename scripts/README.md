@@ -194,7 +194,12 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-ssl-method fixmatch_usb_v1 \
   --expected-adapter-family lora_classifier \
   --expected-aggregation fedavg \
-  --expected-delta-format server_uploaded_artifact_ref
+  --expected-delta-format server_uploaded_artifact_ref \
+  --expected-embedding-backend transformers_mxbai \
+  --expected-embedding-device cuda \
+  --expected-embedding-local-files-only true \
+  --expected-local-trainer-device cuda \
+  --expected-local-trainer-local-files-only true
 ```
 
 FL SSL 실험 기본값은 `execution_context/runtime_env=gpu_local`과

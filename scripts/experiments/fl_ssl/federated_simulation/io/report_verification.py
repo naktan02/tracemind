@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping
 
@@ -20,6 +20,14 @@ class FederatedReportExpectation:
     expected_adapter_family: str | None = None
     expected_aggregation: str | None = None
     expected_delta_format: str | None = None
+    expected_embedding_metadata_status: str | None = None
+    expected_embedding_backend: str | None = None
+    expected_embedding_model_id: str | None = None
+    expected_embedding_device: str | None = None
+    expected_embedding_local_files_only: bool | None = None
+    expected_local_trainer_metadata_status: str | None = None
+    expected_local_trainer_device: str | None = None
+    expected_local_trainer_local_files_only: bool | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -56,6 +64,12 @@ def verify_federated_simulation_report_payload(
     objective = _object_mapping(protocol.get("objective") or payload.get("objective"))
     round_runtime = _object_mapping(
         protocol.get("round_runtime") or payload.get("round_runtime")
+    )
+    embedding_adapter = _object_mapping(
+        protocol.get("embedding_adapter") or payload.get("embedding_adapter")
+    )
+    local_trainer_runtime = _object_mapping(
+        protocol.get("local_trainer_runtime") or payload.get("local_trainer_runtime")
     )
 
     _expect_equal(
@@ -105,6 +119,54 @@ def verify_federated_simulation_report_payload(
         "objective.lora_classifier.delta_format",
         _nested_or_flat_value(objective, "lora_classifier", "delta_format"),
         expectation.expected_delta_format,
+    )
+    _expect_equal(
+        errors,
+        "embedding_adapter.metadata_status",
+        embedding_adapter.get("metadata_status"),
+        expectation.expected_embedding_metadata_status,
+    )
+    _expect_equal(
+        errors,
+        "embedding_adapter.backend",
+        embedding_adapter.get("backend"),
+        expectation.expected_embedding_backend,
+    )
+    _expect_equal(
+        errors,
+        "embedding_adapter.model_id",
+        embedding_adapter.get("model_id"),
+        expectation.expected_embedding_model_id,
+    )
+    _expect_equal(
+        errors,
+        "embedding_adapter.device",
+        embedding_adapter.get("device"),
+        expectation.expected_embedding_device,
+    )
+    _expect_equal(
+        errors,
+        "embedding_adapter.local_files_only",
+        embedding_adapter.get("local_files_only"),
+        expectation.expected_embedding_local_files_only,
+    )
+    _expect_equal(
+        errors,
+        "local_trainer_runtime.metadata_status",
+        local_trainer_runtime.get("metadata_status"),
+        expectation.expected_local_trainer_metadata_status,
+    )
+    _expect_equal(
+        errors,
+        "local_trainer_runtime.device",
+        local_trainer_runtime.get("device"),
+        expectation.expected_local_trainer_device,
+    )
+    _expect_equal(
+        errors,
+        "local_trainer_runtime.local_files_only",
+        local_trainer_runtime.get("local_files_only"),
+        expectation.expected_local_trainer_local_files_only,
     )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
 
@@ -189,18 +251,7 @@ def _verify_client_count_sweep_run_reports(
             continue
         result = verify_federated_simulation_report_path(
             report_path,
-            FederatedReportExpectation(
-                expected_completed_rounds=(
-                    report_expectation.expected_completed_rounds
-                ),
-                expected_round_budget=report_expectation.expected_round_budget,
-                expected_client_count=client_count,
-                expected_ssl_algorithm=report_expectation.expected_ssl_algorithm,
-                expected_ssl_method=report_expectation.expected_ssl_method,
-                expected_adapter_family=report_expectation.expected_adapter_family,
-                expected_aggregation=report_expectation.expected_aggregation,
-                expected_delta_format=report_expectation.expected_delta_format,
-            ),
+            replace(report_expectation, expected_client_count=client_count),
         )
         errors.extend(
             f"client_count={client_count}: {error}" for error in result.errors

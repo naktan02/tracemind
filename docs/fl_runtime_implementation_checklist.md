@@ -37,7 +37,8 @@ source of truth로 본다.
   합치지 않는다.
 - [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
 - [x] 기존 FL SSL report와 client-count sweep summary가 기대한 round budget,
-  client count, SSL method, adapter family, aggregation, delta format을 담는지
+  client count, SSL method, adapter family, aggregation, delta format,
+  GPU/mxbai runtime metadata를 담는지
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 재검증할 수 있다.
 - [ ] 실제 main run 산출물에서 report schema를 샘플로 고정하고 dashboard/index
   소비 필드를 확정한다.

@@ -26,6 +26,20 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_adapter_family=args.expected_adapter_family,
         expected_aggregation=args.expected_aggregation,
         expected_delta_format=args.expected_delta_format,
+        expected_embedding_metadata_status=args.expected_embedding_metadata_status,
+        expected_embedding_backend=args.expected_embedding_backend,
+        expected_embedding_model_id=args.expected_embedding_model_id,
+        expected_embedding_device=args.expected_embedding_device,
+        expected_embedding_local_files_only=_parse_optional_bool(
+            args.expected_embedding_local_files_only
+        ),
+        expected_local_trainer_metadata_status=(
+            args.expected_local_trainer_metadata_status
+        ),
+        expected_local_trainer_device=args.expected_local_trainer_device,
+        expected_local_trainer_local_files_only=_parse_optional_bool(
+            args.expected_local_trainer_local_files_only
+        ),
     )
 
     results: list[VerificationResult] = []
@@ -88,11 +102,31 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-adapter-family")
     parser.add_argument("--expected-aggregation")
     parser.add_argument("--expected-delta-format")
+    parser.add_argument("--expected-embedding-metadata-status")
+    parser.add_argument("--expected-embedding-backend")
+    parser.add_argument("--expected-embedding-model-id")
+    parser.add_argument("--expected-embedding-device")
+    parser.add_argument(
+        "--expected-embedding-local-files-only",
+        choices=("true", "false"),
+    )
+    parser.add_argument("--expected-local-trainer-metadata-status")
+    parser.add_argument("--expected-local-trainer-device")
+    parser.add_argument(
+        "--expected-local-trainer-local-files-only",
+        choices=("true", "false"),
+    )
     return parser
 
 
 def _parse_int_csv(value: str) -> tuple[int, ...]:
     return tuple(int(item.strip()) for item in value.split(",") if item.strip())
+
+
+def _parse_optional_bool(value: str | None) -> bool | None:
+    if value is None:
+        return None
+    return value == "true"
 
 
 def _print_result(result: VerificationResult) -> None:
