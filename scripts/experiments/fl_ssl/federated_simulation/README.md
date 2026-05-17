@@ -146,19 +146,25 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 
 ```bash
 python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
-  run_controls/fl_ssl/budget=main \
+  run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  federated_run_budget.client_count=10 \
   fl_client_split_materialization.labeled_policy.mode=all
 ```
+
+위 materialization 예시는 client count와 split policy를 맞추기 위한 것이며
+round loop를 실행하지 않는다.
 
 고정 split 실행:
 
 ```bash
 python -m scripts.experiments.fl_ssl.run_federated_simulation \
-  run_controls/fl_ssl/budget=main \
+  run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  federated_run_budget.client_count=10 \
+  federated_run_budget.rounds=1 \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label
 ```
 
@@ -166,16 +172,19 @@ Seed sweep:
 
 ```bash
 python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
-  run_controls/fl_ssl/budget=main \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  federated_run_budget.client_count=10 \
+  federated_run_budget.rounds=1
 ```
 
 Client-count sweep:
 
 ```bash
 python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
-  run_controls/fl_ssl/budget=main \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  federated_run_budget.rounds=1
 ```
 
 주의:
@@ -189,17 +198,21 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - `diagonal_scale` baseline을 강제로 실행하려면
   `strategy_axes/fl/local_update_profile=prototype_pseudo_label_v1`와
   `round_runtime.adapter_family_name=diagonal_scale`를 함께 override한다.
-- FL SSL main split은 `run_controls/fl_ssl/budget=main`과
-  `strategy_axes/fl/shard_policy=dirichlet_alpha03`를 기본 조합으로 본다.
-  stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
-- `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 main budget으로
-  쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
+- FL SSL archived main split은 `run_controls/fl_ssl/budget=main`과
+  `strategy_axes/fl/shard_policy=dirichlet_alpha03` 조합이었다. stress split은
+  `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
+- `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 담는
+  full-budget preset이다. 현재 사용자 결정에 따라 새 `50-round`/full-budget
+  실행은 하지 않으며, 새 wiring/method 검증은 `1-round` smoke 또는 필요 시
+  `5-round` reduced run으로 제한한다. 기본 smoke preset은 `4 clients`, `3 rounds`다.
 - runner는 accidental long run을 막기 위해 `run_safety.max_total_rounds_without_ack`
   초과 총 예정 round를 시작 전에 차단한다. 총 예정 round는 단일 run이면
   `federated_run_budget.rounds`, seed/client-count sweep이면
   `federated_run_budget.rounds * sweep 항목 수`다. 장시간 실행이 명시 승인된 경우에만
   `run_safety.allow_long_run=true`와
-  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다.
+  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다. 단, 현재
+  FL SSL 트랙의 사용자 결정은 새 `50-round`/full-budget 실행 금지이며, 이 guard
+  override가 그 결정을 대체하지 않는다.
 - `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
