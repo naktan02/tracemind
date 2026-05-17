@@ -622,6 +622,9 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     assert cfg.fl_client_split_materialization.bootstrap_ratio == (
         cfg.federated_run_budget.bootstrap_ratio
     )
+    assert cfg.fl_client_split_materialization.split_id.endswith(
+        "_dirichlet_label_skew_dominantNone_alpha0.3_clients8_seed42"
+    )
     assert cfg.shard_policy.name == "dirichlet_label_skew"
     assert cfg.shard_policy.alpha == 0.3
     assert cfg.fl_client_split_materialization.labeled_policy.mode == "all"

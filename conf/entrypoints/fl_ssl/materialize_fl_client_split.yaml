@@ -11,7 +11,7 @@ defaults:
 seed: 42
 
 fl_client_split_materialization:
-  split_id: ${query_data_selection_slug}_${shard_policy.name}_clients${federated_run_budget.client_count}_seed${seed}
+  split_id: ${query_data_selection_slug}_${shard_policy.name}_dominant${shard_policy.dominant_ratio}_alpha${shard_policy.alpha}_clients${federated_run_budget.client_count}_seed${seed}
   output_root: data/datasets/fl_client_splits
   source_labeled_jsonl: ${query_source.train_jsonl}
   source_unlabeled_jsonl: ${query_source.unlabeled_jsonl}
