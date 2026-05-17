@@ -216,6 +216,10 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-round-budget 1 \
   --expected-round-record-count 1 \
   --expect-round-update-count-matches-client-count \
+  --expected-seed 42 \
+  --expected-shard-policy-name dirichlet_label_skew \
+  --expected-shard-alpha 0.3 \
+  --expected-split-id-contains alpha0.3 \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
   --expected-adapter-family lora_classifier \

@@ -17,6 +17,9 @@ def _report_payload(
     client_count: int,
     completed_rounds: int,
     round_budget: int,
+    seed: int = 42,
+    shard_alpha: float = 0.3,
+    split_id: str = "example_alpha0.3_clients2_seed42",
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
@@ -39,6 +42,14 @@ def _report_payload(
             "client_count": client_count,
             "completed_rounds": completed_rounds,
             "round_budget": round_budget,
+            "seed": seed,
+            "shard_policy": {
+                "name": "dirichlet_label_skew",
+                "alpha": shard_alpha,
+            },
+            "fl_data_source": {
+                "split_id": split_id,
+            },
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
                 "query_ssl.method_name": ssl_method,
@@ -82,6 +93,10 @@ def _expectation(
         expected_completed_rounds=completed_rounds,
         expected_round_budget=round_budget,
         expected_client_count=client_count,
+        expected_seed=42,
+        expected_shard_policy_name="dirichlet_label_skew",
+        expected_shard_alpha=0.3,
+        expected_split_id_contains="alpha0.3",
         expected_ssl_algorithm="fixmatch",
         expected_ssl_method="fixmatch_usb_v1",
         expected_adapter_family="lora_classifier",
@@ -142,6 +157,34 @@ def test_verify_federated_report_flags_method_and_runtime_drift() -> None:
     assert (
         "round_runtime.adapter_family_name expected 'lora_classifier', "
         "got 'diagonal_scale'." in result.errors
+    )
+
+
+def test_verify_federated_report_flags_split_condition_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            seed=43,
+            shard_alpha=0.1,
+            split_id="example_alpha0.1_clients2_seed43",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_seed=42,
+            expected_shard_policy_name="dirichlet_label_skew",
+            expected_shard_alpha=0.3,
+            expected_split_id_contains="alpha0.3",
+        ),
+    )
+
+    assert not result.passed
+    assert "protocol.seed expected 42, got 43." in result.errors
+    assert "protocol.shard_policy.alpha expected 0.3, got 0.1." in result.errors
+    assert (
+        "protocol.fl_data_source.split_id expected to contain 'alpha0.3', "
+        "got 'example_alpha0.1_clients2_seed43'." in result.errors
     )
 
 

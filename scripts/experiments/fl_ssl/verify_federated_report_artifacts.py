@@ -21,6 +21,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_completed_rounds=args.expected_completed_rounds,
         expected_round_budget=args.expected_round_budget,
         expected_client_count=args.expected_client_count,
+        expected_seed=args.expected_seed,
+        expected_shard_policy_name=args.expected_shard_policy_name,
+        expected_shard_alpha=args.expected_shard_alpha,
+        expected_split_id=args.expected_split_id,
+        expected_split_id_contains=args.expected_split_id_contains,
         expected_ssl_algorithm=args.expected_ssl_algorithm,
         expected_ssl_method=args.expected_ssl_method,
         expected_adapter_family=args.expected_adapter_family,
@@ -102,6 +107,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-completed-rounds", type=int)
     parser.add_argument("--expected-round-budget", type=int)
     parser.add_argument("--expected-client-count", type=int)
+    parser.add_argument("--expected-seed", type=int)
+    parser.add_argument("--expected-shard-policy-name")
+    parser.add_argument("--expected-shard-alpha", type=float)
+    parser.add_argument("--expected-split-id")
+    parser.add_argument("--expected-split-id-contains")
     parser.add_argument("--expected-ssl-algorithm")
     parser.add_argument("--expected-ssl-method")
     parser.add_argument("--expected-adapter-family")

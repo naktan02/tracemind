@@ -15,6 +15,11 @@ class FederatedReportExpectation:
     expected_completed_rounds: int | None = None
     expected_round_budget: int | None = None
     expected_client_count: int | None = None
+    expected_seed: int | None = None
+    expected_shard_policy_name: str | None = None
+    expected_shard_alpha: float | None = None
+    expected_split_id: str | None = None
+    expected_split_id_contains: str | None = None
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None
     expected_adapter_family: str | None = None
@@ -71,6 +76,8 @@ def verify_federated_simulation_report_payload(
     embedding_adapter = _object_mapping(
         protocol.get("embedding_adapter") or payload.get("embedding_adapter")
     )
+    shard_policy = _object_mapping(protocol.get("shard_policy"))
+    fl_data_source = _object_mapping(protocol.get("fl_data_source"))
     local_trainer_runtime = _object_mapping(
         protocol.get("local_trainer_runtime") or payload.get("local_trainer_runtime")
     )
@@ -93,6 +100,36 @@ def verify_federated_simulation_report_payload(
         "protocol.client_count",
         protocol.get("client_count"),
         expectation.expected_client_count,
+    )
+    _expect_equal(
+        errors,
+        "protocol.seed",
+        protocol.get("seed"),
+        expectation.expected_seed,
+    )
+    _expect_equal(
+        errors,
+        "protocol.shard_policy.name",
+        shard_policy.get("name"),
+        expectation.expected_shard_policy_name,
+    )
+    _expect_float_equal(
+        errors,
+        "protocol.shard_policy.alpha",
+        shard_policy.get("alpha"),
+        expectation.expected_shard_alpha,
+    )
+    _expect_equal(
+        errors,
+        "protocol.fl_data_source.split_id",
+        fl_data_source.get("split_id"),
+        expectation.expected_split_id,
+    )
+    _expect_contains(
+        errors,
+        "protocol.fl_data_source.split_id",
+        fl_data_source.get("split_id"),
+        expectation.expected_split_id_contains,
     )
     _expect_equal(
         errors,
@@ -360,3 +397,32 @@ def _expect_equal(
 ) -> None:
     if expected is not None and observed != expected:
         errors.append(f"{field} expected {expected!r}, got {observed!r}.")
+
+
+def _expect_float_equal(
+    errors: list[str],
+    field: str,
+    observed: object,
+    expected: float | None,
+) -> None:
+    if expected is None:
+        return
+    if observed is None:
+        errors.append(f"{field} expected {expected!r}, got None.")
+        return
+    if float(observed) != expected:
+        errors.append(f"{field} expected {expected!r}, got {observed!r}.")
+
+
+def _expect_contains(
+    errors: list[str],
+    field: str,
+    observed: object,
+    expected_substring: str | None,
+) -> None:
+    if expected_substring is None:
+        return
+    if not isinstance(observed, str) or expected_substring not in observed:
+        errors.append(
+            f"{field} expected to contain {expected_substring!r}, got {observed!r}."
+        )
