@@ -32,7 +32,7 @@ report/summary를 검증했다.
   report를 dashboard/index record로 정규화한다.
 - FL SSL runner는 총 예정 communication round가 `49`를 넘으면 기본 차단한다.
 
-사용자 승인 전까지 보류된 항목:
+현재 사용자 결정에 따라 새로 실행하지 않는 항목:
 
 - Dirichlet `alpha=0.1` stress의 full `50 rounds` 실행.
 - FlexMatch/FreeMatch/PseudoLabel full-budget ablation.
@@ -52,9 +52,9 @@ report/summary를 검증했다.
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_update_compatibility.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
 | alpha=0.3 main baseline | `runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
-| alpha=0.1 stress | 5-round reduced report verified. full 50-round는 사용자 지시로 보류 | 부분 |
-| FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. full budget은 사용자 지시로 보류 | 부분 |
-| client_count=1..10 sweep | 1-round summary verified and indexed. full sweep은 사용자 지시로 보류 | 부분 |
+| alpha=0.1 stress | 5-round reduced report verified. 새 full 50-round 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
+| FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. 새 full budget 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
+| client_count=1..10 sweep | 1-round summary verified and indexed. 새 full sweep은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | seed sweep은 robustness로 분리 | `seed_sweep` runner/summary는 존재. split seed 42 안정화 뒤 별도 실행 | 대기 |
 | 50-round 재실행 방지 | `scripts/experiments/fl_ssl/run_safety.py`와 `tests/unit/test_fl_ssl_run_safety.py` | 완료 |
 

@@ -212,6 +212,11 @@ FL SSL runner는 accidental long run을 막기 위해 총 예정 communication r
 경우에만 `run_safety.allow_long_run=true`와
 `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 같이 override한다.
 
+현재 FL SSL 트랙에서는 새 `50-round`/full-budget 재실행을 하지 않는다.
+기존 `50-round` alpha=0.3 report는 read-only evidence로만 검증하고, 새 wiring이나
+method 검증은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다. 이 결정을
+바꾸려면 별도 사용자 승인이 필요하다.
+
 기존 FL SSL 산출물 metadata 검증:
 
 ```bash

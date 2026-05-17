@@ -55,7 +55,9 @@ central fixed embedding + classifier seed
 - 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시
   `fl_client_split_materialization.labeled_policy`로 명시하고, 기본값은
   `mode=all`이다.
-- FL SSL main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`으로 고정한다.
+- FL SSL archived main budget은 `50 communication rounds`, `local_epochs=1`,
+  `max_steps=50`이었다. 현재 실행 정책은 새 `50-round`/full-budget 재실행 금지이며,
+  기존 alpha=0.3 full report는 read-only evidence로만 사용한다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
 - tie-breaker/risk 지표는 `loss`, `weighted-F1`, `balanced accuracy`,
@@ -112,7 +114,9 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - main non-IID: Dirichlet label-skew `alpha=0.3`
 - stress non-IID: Dirichlet label-skew `alpha=0.1`
 - split seed: `42`
-- round budget: `50`
+- archived full round budget: `50`
+- current execution policy: 새 `50-round`/full-budget run은 실행하지 않고,
+  wiring/method 검증은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
 - local update budget: `local_epochs=1`, `max_steps=50`
 - labeled/unlabeled source: 기본은 labeled source 전체와 unlabeled source 전체를
   client에 분배한다. 일부 labeled source만 쓰는 경우 `labeled_policy`를 manifest에
@@ -202,8 +206,8 @@ Runtime translation:
   재검증할 수 없고, 현재 코드 기준 runtime metadata는 같은 split의 1-round smoke와
   reduced runs로 확인했다.
 - Dirichlet `alpha=0.1` stress, full-budget FlexMatch/FreeMatch/PseudoLabel
-  ablation, full-budget `client_count=1..10` sweep은 장시간 실행이므로 사용자 승인
-  전까지 보류한다. 현재는 `alpha=0.1` stress와
+  ablation, full-budget `client_count=1..10` sweep은 현재 사용자 결정에 따라
+  새로 실행하지 않는다. 현재는 `alpha=0.1` stress와
   FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
   `client_count=1..10` sweep은 1-round summary로 확인했다.
 - FL SSL runner는 총 예정 communication round가 49를 넘으면 기본 차단한다.
@@ -218,22 +222,18 @@ Runtime translation:
 
 다음 우선순위:
 
-1. full 실행 재개 승인이 있으면 `alpha=0.1` stress부터 실행한다. 같은 split seed
-   42, 같은 local budget, `FixMatch + FedAvg + LoRA-classifier`를 유지한다.
-2. 이어서 FlexMatch/FreeMatch/PseudoLabel full ablation을 같은 split/seed/local
-   budget으로 실행하고, method 이름 변경이 report metadata와 실제 local objective
-   변경으로 둘 다 남는지 확인한다.
-3. `client_count=1..10` full sweep을 `gpu_local + mxbai`에서 실행해 summary JSON과
-   산출물 위치를 고정한다. seed sweep은 split seed 42 고정 결과가 안정된 뒤
-   robustness 목적으로 별도 실행한다.
-4. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
+1. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
    round-state exchange/server policy capability를 먼저 문서화한다.
    선택 전 capability matrix는 `docs/contracts/fl_ssl_method_capability_matrix.md`에
    있으며, 현재 구현 순서 추천은 FedMatch -> FedLGMatch -> (FL)^2다.
-5. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
+2. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
    capability adapter, test 순서로 추가한다.
-6. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
-7. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+3. 확정 method는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+   method metadata와 실제 local/server policy 변경을 검증한다.
+4. full stress, full ablation, full `client_count=1..10` sweep, 새 `50-round`
+   main rerun은 현재 보류한다. 향후 사용자가 명시적으로 결정을 바꾸면
+   `alpha=0.1` stress부터 같은 split seed 42와 같은 local budget으로 재개한다.
+5. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

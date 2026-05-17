@@ -135,8 +135,8 @@ methods/evaluation/                            # stable metric helper만
   `50 rounds`. 기존 full report는 round/split/method/delta 기준으로 검증됐지만
   runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
   재검증할 수 없다.
-- [ ] stress split: Dirichlet `alpha=0.1`, `50 rounds`. 사용자 지시로 추가
-  50-round 실행은 보류한다.
+- [ ] stress split: Dirichlet `alpha=0.1`, `50 rounds`. 현재 사용자 결정에 따라
+  새 50-round/full-budget 실행은 하지 않는다.
 - [x] accidental long run 방지: FL SSL runner는 총 예정 communication round가
   `run_safety.max_total_rounds_without_ack`를 넘으면 시작 전에 실패한다. 단일 run은
   `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로 계산한다.
@@ -150,7 +150,7 @@ methods/evaluation/                            # stable metric helper만
   5-round reduced ablation에서 runtime metadata를 확인했다. alpha=0.3 50-round
   full report와 1-round client-count sweep은 runtime metadata 도입 전 산출물이라
   round/split/method/delta 기준만 재검증한다. full stress/ablation/sweep과
-  50-round main 재실행은 사용자 지시로 보류한다.
+  새 50-round main 재실행은 현재 사용자 결정에 따라 하지 않는다.
 - [x] 새 FL simulation report protocol은 `embedding_adapter`와
   `local_trainer_runtime` metadata를 기록한다. 이후 논문용 산출물은 이 필드로
   `gpu_local + mxbai` 여부를 확인하고, `hash_debug`/CPU smoke 결과를 성능

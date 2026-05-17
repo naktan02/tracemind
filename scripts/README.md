@@ -192,6 +192,10 @@ run_safety.allow_long_run=true \
 run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN
 ```
 
+현재 FL SSL 비교에서는 새 `50-round`/full-budget 실행을 하지 않는다. 기존
+alpha=0.3 `50-round` report는 read-only artifact로 검증하고, 새 method/wiring
+확인은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
+
 기존 FL SSL 산출물 metadata 검증:
 
 ```bash

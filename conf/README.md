@@ -126,6 +126,8 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     예정 communication round를 계산한다.
   - 장시간 실행 승인 여부만 소유하며, method semantics나 budget 값 자체는
     소유하지 않는다.
+  - 현재 FL SSL 트랙의 사용자 결정은 새 `50-round`/full-budget 재실행 금지다.
+    이 guard override는 그 결정을 대체하지 않는다.
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.
