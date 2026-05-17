@@ -48,8 +48,7 @@ conf/
 │       └── pseudo_label_selection/
 └── run_controls/
     ├── central_ssl/
-    │   ├── budget/
-    │   └── runner_defaults/
+    │   └── budget/
     └── fl_ssl/
         └── budget/
 ```
@@ -96,11 +95,6 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - method semantics나 local update policy를 소유하지 않는다.
 - `run_controls/central_ssl/budget`
   - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
-- `run_controls/central_ssl/runner_defaults`
-  - 기존 중앙 SSL runner가 읽는 root field로 budget/context와 기본 optimizer/log
-    값을 연결하는 bridge다. 데이터셋이나 method 의미를 소유하지 않는다.
-  - optimizer/log 값은 독립 ablation 축이 되기 전까지 별도 group으로 만들지 않고
-    `learning_rate=...`, `log_every_steps=...` 같은 leaf override로 조절한다.
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
@@ -190,7 +184,7 @@ Hydra package shape는 기존 runner compatibility를 위해 각각 `cfg.query_s
   - 기본 `precomputed_usb_candidates_v1`는 이미 JSONL에 저장된
     `text + aug_0 + aug_1`을 읽고, 학습 중 NLLB 역번역을 다시 수행하지 않는다.
 - `query_ssl_strong_view_policy`
-  - `run_controls/central_ssl/runner_defaults`의 단순 scalar 값이다.
+  - 중앙 SSL entrypoint의 단순 scalar 값이다.
   - 저장된 후보 중 어떤 strong view를 학습 batch에 노출할지 결정한다.
   - 기본 `first_aug`는 기존 동작처럼 `aug_0`만 strong view로 사용한다.
   - 선택지가 복잡한 parameter set이 아니므로 별도 Hydra strategy group으로
