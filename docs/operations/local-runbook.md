@@ -248,6 +248,8 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
 
 manifest 구조 예시는
 `docs/operations/fl_ssl_artifact_verification_manifest.example.json`를 본다.
+현재 로컬 artifact 감사에 쓰는 실제 manifest는
+`docs/operations/fl_ssl_artifact_verification_manifest.current.json`다.
 현재 FL SSL 목표 대비 artifact 감사표는
 `docs/operations/fl_ssl_execution_audit.md`를 본다.
 

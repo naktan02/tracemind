@@ -20,7 +20,9 @@ report/summary를 검증했다.
 - `agent-local://` LoRA/head delta를 server-owned `aggregation_artifact::` ref로
   upload/materialize하는 경로와 compatibility preflight는 구현 및 테스트로 닫혔다.
 - `10 clients`, Dirichlet `alpha=0.3`, split seed `42`, `50 rounds`,
-  `FixMatch + FedAvg + LoRA-classifier` main baseline report는 verifier로 확인됐다.
+  `FixMatch + FedAvg + LoRA-classifier` main baseline report는 round/split/method/delta
+  기준 verifier로 확인됐다. 이 report는 runtime metadata 도입 전 산출물이라
+  `gpu_local + mxbai` 여부는 report 자체로는 재검증할 수 없다.
 - `alpha=0.1` stress, FlexMatch/FreeMatch/PseudoLabel ablation은 5-round reduced
   run으로 method metadata와 실제 local objective 변경을 확인했다.
 - `client_count=1..10` sweep은 1-round summary와 하위 report 10개를 확인했다.
@@ -47,7 +49,7 @@ report/summary를 검증했다.
 | agent-local artifact upload | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py`, `upload_agent_local_lora_classifier_update` | 완료 |
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_update_compatibility.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
-| alpha=0.3 main baseline | `runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json` | 완료 |
+| alpha=0.3 main baseline | `runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
 | alpha=0.1 stress | 5-round reduced report verified. full 50-round는 사용자 지시로 보류 | 부분 |
 | FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. full budget은 사용자 지시로 보류 | 부분 |
 | client_count=1..10 sweep | 1-round summary verified and indexed. full sweep은 사용자 지시로 보류 | 부분 |
@@ -58,6 +60,15 @@ report/summary를 검증했다.
 
 아래 검증 중 첫 항목은 현재 코드 기준으로 새로 실행한 1-round smoke다. 나머지는
 새 round를 실행하지 않고 기존 JSON artifact만 읽었다.
+
+전체 검증 manifest:
+
+```bash
+uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
+  --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json
+```
+
+결과: 7개 artifact entry 모두 `PASS`.
 
 - `fixmatch_lora_alpha03_10c_1round_current_20260518` current smoke:
   `PASS runs/federated_simulation_smoke/fixmatch_lora_alpha03_10c_1round_current_20260518/20260517T232304Z/reports/fl_ssl_main_comparison.report.json`
