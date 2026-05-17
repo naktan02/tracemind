@@ -164,6 +164,21 @@ def _build_filters(
             row.get("classifier_learning_rate") for row in runs
         ),
         "seeds": _unique(row.get("seed") for row in runs),
+        "client_counts": _unique(row.get("client_count") for row in runs),
+        "round_budgets": _unique(row.get("round_budget") for row in runs),
+        "shard_policies": _unique(row.get("shard_policy_name") for row in runs),
+        "shard_alphas": _unique(row.get("shard_alpha") for row in runs),
+        "adapter_families": _unique(row.get("adapter_family_name") for row in runs),
+        "aggregation_backends": _unique(
+            row.get("aggregation_backend_name") for row in runs
+        ),
+        "update_delta_formats": _unique(row.get("update_delta_format") for row in runs),
+        "embedding_backends": _unique(row.get("embedding_backend") for row in runs),
+        "embedding_model_ids": _unique(row.get("embedding_model_id") for row in runs),
+        "embedding_devices": _unique(row.get("embedding_device") for row in runs),
+        "local_trainer_devices": _unique(
+            row.get("local_trainer_device") for row in runs
+        ),
     }
 
 

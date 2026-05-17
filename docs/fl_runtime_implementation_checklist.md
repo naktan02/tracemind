@@ -40,8 +40,12 @@ source of truth로 본다.
   client count, split seed, shard policy/alpha, SSL method, adapter family,
   aggregation, delta format, round record/update count, GPU/mxbai runtime metadata를 담는지
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 재검증할 수 있다.
-- [ ] 실제 main run 산출물에서 report schema를 샘플로 고정하고 dashboard/index
-  소비 필드를 확정한다.
+- [x] 실제 FL report 산출물 shape를 result index 샘플로 고정하고 dashboard/index
+  소비 필드를 확정했다. `result_index`는 `fl_ssl_main_comparison.report.json`에서
+  track, method/algorithm, split/source, seed, client/round budget, shard alpha,
+  adapter/aggregation, delta format, final/initial validation metric을 정규화한다.
+  report에 GPU/mxbai runtime metadata가 있으면 embedding/trainer runtime 필드도
+  dashboard filter로 노출한다.
 
 주의: FL prototype score의 `loss`는 현재 raw score를 softmax 분포로 바꾼 NLL
 proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야 한다.

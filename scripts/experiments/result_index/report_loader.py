@@ -24,14 +24,17 @@ _RUN_TIMESTAMP_RE = re.compile(
 
 
 def discover_report_paths(runs_root: Path) -> list[Path]:
-    """Find canonical report.json files under a runs root."""
+    """Find canonical experiment report files under a runs root."""
 
     if runs_root.is_file():
         return [runs_root]
+    report_names = {"report.json", "fl_ssl_main_comparison.report.json"}
     return sorted(
         path
-        for path in runs_root.rglob("report.json")
-        if path.is_file() and path.parent.name == "reports"
+        for path in runs_root.rglob("*.json")
+        if path.is_file()
+        and path.parent.name == "reports"
+        and path.name in report_names
     )
 
 
@@ -41,6 +44,11 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     payload = json.loads(report_path.read_text(encoding="utf-8"))
     if not isinstance(payload, dict):
         raise ValueError(f"Report must be a JSON object: {report_path}")
+    if _is_fl_ssl_report(payload):
+        return _load_fl_ssl_result_index_records(
+            report_path=report_path,
+            payload=payload,
+        )
 
     manifest = _as_mapping(payload.get("manifest"))
     results = _as_mapping(payload.get("results"))
@@ -95,6 +103,18 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         trainable_param_ratio=_optional_float(
             runtime_metrics.get("trainable_param_ratio")
         ),
+        client_count=None,
+        round_budget=None,
+        completed_rounds=None,
+        shard_policy_name=None,
+        shard_alpha=None,
+        adapter_family_name=None,
+        aggregation_backend_name=None,
+        update_delta_format=None,
+        embedding_backend=None,
+        embedding_model_id=None,
+        embedding_device=None,
+        local_trainer_device=None,
         created_at=_infer_created_at(trainer_version),
     )
 
@@ -180,6 +200,135 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         confusion_matrix_cells=tuple(confusion_matrix_cells),
         epoch_metrics=tuple(epoch_metrics),
         epoch_per_class_metrics=tuple(epoch_per_class_metrics),
+        artifacts=tuple(artifacts),
+    )
+
+
+def _load_fl_ssl_result_index_records(
+    *,
+    report_path: Path,
+    payload: dict[str, Any],
+) -> ResultIndexRecords:
+    protocol = _as_mapping(payload.get("protocol"))
+    metrics = _as_mapping(payload.get("metrics"))
+    fl_data_source = _as_mapping(protocol.get("fl_data_source"))
+    source_selection = _as_mapping(fl_data_source.get("source_selection"))
+    round_runtime = _as_mapping(protocol.get("round_runtime"))
+    objective = _as_mapping(protocol.get("objective"))
+    shard_policy = _as_mapping(protocol.get("shard_policy"))
+    local_update_budget = _as_mapping(protocol.get("local_update_budget"))
+    embedding_adapter = _as_mapping(protocol.get("embedding_adapter"))
+    local_trainer_runtime = _as_mapping(protocol.get("local_trainer_runtime"))
+
+    run_id = _infer_fl_ssl_run_id(report_path)
+    method_name = (
+        _optional_str(objective.get("query_ssl.method_name"))
+        or _optional_str(_as_mapping(protocol.get("ssl_method")).get("name"))
+        or "unknown"
+    )
+    adapter_family = _optional_str(round_runtime.get("adapter_family_name"))
+    run = ExperimentRunRecord(
+        run_id=run_id,
+        track=_optional_str(payload.get("track")) or "fl_ssl_main_comparison",
+        method_family=adapter_family or "unknown",
+        method_name=method_name,
+        algorithm_name=_optional_str(objective.get("query_ssl.algorithm_name")),
+        selection_slug=_optional_str(fl_data_source.get("split_id")),
+        labeled_dataset_name=_optional_str(source_selection.get("labeled")),
+        unlabeled_dataset_name=_optional_str(source_selection.get("unlabeled")),
+        validation_dataset_name=_optional_str(source_selection.get("validation")),
+        test_dataset_name=_optional_str(source_selection.get("test")),
+        seed=_optional_int(protocol.get("seed")),
+        learning_rate=_optional_float(local_update_budget.get("learning_rate")),
+        classifier_learning_rate=None,
+        epochs=_optional_int(local_update_budget.get("local_epochs")),
+        max_train_steps=_optional_int(local_update_budget.get("max_steps")),
+        train_batch_size=_optional_int(local_update_budget.get("batch_size")),
+        eval_batch_size=None,
+        initial_checkpoint_name=None,
+        unlabeled_row_count=_optional_int(
+            _as_mapping(protocol.get("labeled_unlabeled_split")).get(
+                "actual_unlabeled_count"
+            )
+        ),
+        train_seconds=None,
+        training_example_count=None,
+        examples_per_second=None,
+        trainable_param_ratio=None,
+        client_count=_optional_int(protocol.get("client_count")),
+        round_budget=_optional_int(protocol.get("round_budget")),
+        completed_rounds=_optional_int(protocol.get("completed_rounds")),
+        shard_policy_name=_optional_str(shard_policy.get("name")),
+        shard_alpha=_optional_float(shard_policy.get("alpha")),
+        adapter_family_name=adapter_family,
+        aggregation_backend_name=_optional_str(
+            round_runtime.get("aggregation_backend_name")
+        ),
+        update_delta_format=_optional_str(
+            objective.get("lora_classifier.delta_format")
+        ),
+        embedding_backend=_optional_str(embedding_adapter.get("backend")),
+        embedding_model_id=_optional_str(embedding_adapter.get("model_id")),
+        embedding_device=_optional_str(embedding_adapter.get("device")),
+        local_trainer_device=_optional_str(local_trainer_runtime.get("device")),
+        created_at=_infer_created_at(run_id),
+    )
+
+    eval_metrics: list[EvalMetricRecord] = []
+    per_class_metrics: list[PerClassMetricRecord] = []
+    confusion_matrix_cells: list[ConfusionMatrixCellRecord] = []
+    for eval_set in ("initial_validation", "final_validation"):
+        report = _as_mapping(metrics.get(eval_set))
+        if not report:
+            continue
+        eval_metrics.append(
+            _build_eval_metric(run_id=run_id, eval_set=eval_set, report=report)
+        )
+        per_class_metrics.extend(
+            _build_per_class_metrics(
+                run_id=run_id,
+                eval_set=eval_set,
+                per_category=_as_mapping(report.get("per_category")),
+            )
+        )
+        confusion_matrix_cells.extend(
+            _build_confusion_matrix_cells(
+                run_id=run_id,
+                eval_set=eval_set,
+                confusion_matrix=_as_mapping(report.get("confusion_matrix")),
+            )
+        )
+
+    artifacts = [
+        ArtifactRecord(
+            run_id=run_id,
+            eval_set=None,
+            artifact_kind="fl_ssl_report",
+            artifact_ref=str(report_path),
+            reducer=None,
+            fallback_reason=None,
+        )
+    ]
+    split_manifest_path = _optional_str(fl_data_source.get("split_manifest_path"))
+    if split_manifest_path:
+        artifacts.append(
+            ArtifactRecord(
+                run_id=run_id,
+                eval_set=None,
+                artifact_kind="fl_client_split_manifest",
+                artifact_ref=split_manifest_path,
+                reducer=None,
+                fallback_reason=None,
+            )
+        )
+
+    return ResultIndexRecords(
+        run=run,
+        eval_metrics=tuple(eval_metrics),
+        per_class_metrics=tuple(per_class_metrics),
+        confusion_matrix_cells=tuple(confusion_matrix_cells),
+        epoch_metrics=(),
+        epoch_per_class_metrics=(),
         artifacts=tuple(artifacts),
     )
 
@@ -415,6 +564,21 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
     return schema_version or "unknown"
 
 
+def _is_fl_ssl_report(payload: dict[str, Any]) -> bool:
+    return (
+        str(payload.get("track") or "") == "fl_ssl_main_comparison"
+        or str(payload.get("schema_version") or "") == "federated_simulation_report.v1"
+    )
+
+
+def _infer_fl_ssl_run_id(report_path: Path) -> str:
+    run_dir = report_path.parent.parent
+    run_group = run_dir.parent.name
+    if run_group:
+        return f"{run_group}__{run_dir.name}"
+    return run_dir.name
+
+
 def _infer_method_family(payload: dict[str, Any]) -> str:
     schema_version = str(payload.get("schema_version") or "")
     if schema_version == "central_lora_classifier_eval.v1":
@@ -441,11 +605,23 @@ def _infer_method_name(
 
 def _infer_created_at(run_id: str) -> str | None:
     match = _RUN_TIMESTAMP_RE.search(run_id)
-    if match is None:
+    if match is not None:
+        hms = match.group("hms")
+        return (
+            f"{match.group('year')}-{match.group('month')}-{match.group('day')}"
+            f"T{hms[0:2]}:{hms[2:4]}:{hms[4:6]}"
+        )
+    compact_match = re.search(
+        r"(?P<year>\d{4})(?P<month>\d{2})(?P<day>\d{2})T"
+        r"(?P<hms>\d{6})Z",
+        run_id,
+    )
+    if compact_match is None:
         return None
-    hms = match.group("hms")
+    hms = compact_match.group("hms")
     return (
-        f"{match.group('year')}-{match.group('month')}-{match.group('day')}"
+        f"{compact_match.group('year')}-{compact_match.group('month')}-"
+        f"{compact_match.group('day')}"
         f"T{hms[0:2]}:{hms[2:4]}:{hms[4:6]}"
     )
 

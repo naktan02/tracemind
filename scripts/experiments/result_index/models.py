@@ -30,6 +30,18 @@ class ExperimentRunRecord:
     training_example_count: int | None
     examples_per_second: float | None
     trainable_param_ratio: float | None
+    client_count: int | None
+    round_budget: int | None
+    completed_rounds: int | None
+    shard_policy_name: str | None
+    shard_alpha: float | None
+    adapter_family_name: str | None
+    aggregation_backend_name: str | None
+    update_delta_format: str | None
+    embedding_backend: str | None
+    embedding_model_id: str | None
+    embedding_device: str | None
+    local_trainer_device: str | None
     created_at: str | None
 
 

@@ -28,6 +28,18 @@ SCHEMA_STATEMENTS = (
         training_example_count integer,
         examples_per_second real,
         trainable_param_ratio real,
+        client_count integer,
+        round_budget integer,
+        completed_rounds integer,
+        shard_policy_name text,
+        shard_alpha real,
+        adapter_family_name text,
+        aggregation_backend_name text,
+        update_delta_format text,
+        embedding_backend text,
+        embedding_model_id text,
+        embedding_device text,
+        local_trainer_device text,
         created_at text
     )
     """,
@@ -136,4 +148,19 @@ SCHEMA_STATEMENTS = (
     "create index if not exists idx_runs_split on experiment_runs(selection_slug)",
     "create index if not exists idx_per_class_category on per_class_metrics(category)",
     "create index if not exists idx_artifacts_kind on artifacts(artifact_kind)",
+)
+
+EXPERIMENT_RUN_COLUMN_MIGRATIONS = (
+    ("client_count", "integer"),
+    ("round_budget", "integer"),
+    ("completed_rounds", "integer"),
+    ("shard_policy_name", "text"),
+    ("shard_alpha", "real"),
+    ("adapter_family_name", "text"),
+    ("aggregation_backend_name", "text"),
+    ("update_delta_format", "text"),
+    ("embedding_backend", "text"),
+    ("embedding_model_id", "text"),
+    ("embedding_device", "text"),
+    ("local_trainer_device", "text"),
 )

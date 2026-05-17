@@ -9,7 +9,10 @@ from pathlib import Path
 from typing import Any
 
 from scripts.experiments.result_index.models import ResultIndexRecords
-from scripts.experiments.result_index.schema import SCHEMA_STATEMENTS
+from scripts.experiments.result_index.schema import (
+    EXPERIMENT_RUN_COLUMN_MIGRATIONS,
+    SCHEMA_STATEMENTS,
+)
 
 _CHILD_TABLES = (
     "eval_metrics",
@@ -26,6 +29,7 @@ def initialize_database(db_path: Path) -> None:
     with sqlite3.connect(db_path) as connection:
         for statement in SCHEMA_STATEMENTS:
             connection.execute(statement)
+        _ensure_experiment_run_columns(connection)
 
 
 def clear_database(db_path: Path) -> None:
@@ -84,6 +88,18 @@ def write_result_index_records(
                 connection,
                 table="artifacts",
                 rows=_as_dicts(result_records.artifacts),
+            )
+
+
+def _ensure_experiment_run_columns(connection: sqlite3.Connection) -> None:
+    existing_columns = {
+        str(row[1])
+        for row in connection.execute("pragma table_info(experiment_runs)").fetchall()
+    }
+    for column_name, column_type in EXPERIMENT_RUN_COLUMN_MIGRATIONS:
+        if column_name not in existing_columns:
+            connection.execute(
+                f"alter table experiment_runs add column {column_name} {column_type}"
             )
 
 
