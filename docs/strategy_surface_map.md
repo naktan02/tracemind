@@ -34,6 +34,7 @@ central fixed embedding + classifier seed
 | Query split artifact | `dataset_default`, `ourafla_ssl_*`, `szegeelim_general4_*` | `execution_context/query_split` | entrypoint defaults | 활성 |
 | Query data source selection | `ourafla_reddit`, `szegeelim_general4` for labeled/unlabeled/validation/test | `execution_context/query_data_source` + `query_data_selection.*` | all `ourafla_reddit` | 활성 |
 | Query text view | `szegeelim_general4_*_nllb_v1` | `execution_context/query_view` | data pipeline entrypoint defaults | 활성 |
+| FL client split manifest | `runtime_split_from_train`, `materialized_client_split` | `fl_data.source_mode`, `fl_data.split_manifest` | runtime split for debug, manifest for paper comparison | simulation |
 | Runtime env | `cpu_local`, `gpu_local`, `gpu_online`, `auto_local`, `auto_online` | `execution_context/runtime_env` | entrypoint defaults | 활성 |
 | Transformer backbone | `mxbai_encoder` | `strategy_axes/adaptation/transformer_backbone` | central SSL defaults | 중앙 control |
 | Initial checkpoint | `canonical_fixed_classifier_seed`, `none`, `required` | `strategy_axes/adaptation/initial_checkpoint` | Query SSL method comparison defaults to `none` | 중앙 control |
@@ -66,6 +67,7 @@ central fixed embedding + classifier seed
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
+| Client labeled/unlabeled split | fixed manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_data.*`, `client_pool_split.*` | manifest preserves `weak=text`, `strong=[aug_0, aug_1]` | simulation |
 | FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |

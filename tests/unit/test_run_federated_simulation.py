@@ -1428,7 +1428,7 @@ def test_build_training_examples_requires_multiview_fields() -> None:
 
     with pytest.raises(
         ValueError,
-        match="requires each row to include both weak_text and strong_text",
+        match="requires each row to include both weak_text/strong_text",
     ):
         objective_config = TrainingObjectiveConfig.from_mapping(
             {
@@ -1500,6 +1500,56 @@ def test_build_training_examples_supports_multiview_row_fields_when_present() ->
     )
 
     assert len(examples) == 1
+    assert examples[0].view_kind == "weak_strong_pair"
+    assert examples[0].weak_embedding == [1.0, 0.0]
+    assert examples[0].strong_embedding == pytest.approx(
+        [0.9701425001453318, 0.24253562503633294]
+    )
+
+
+def test_build_training_examples_supports_usb_text_and_augmentation_fields() -> None:
+    adapter = _StaticEmbeddingAdapter(
+        {
+            "panic weak": [1.0, 0.0],
+            "panic strong de": [0.8, 0.2],
+        }
+    )
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+    row = _row("q1", "panic weak", "anxiety")
+    row["aug_0"] = "panic strong de"
+    row["aug_1"] = "panic strong fr"
+
+    objective_config = TrainingObjectiveConfig.from_mapping(
+        {
+            "training_backend_name": "diagonal_scale_heuristic",
+            "example_generation_backend_name": "weak_strong_pair",
+            "evidence_backend_name": "prototype_similarity_evidence",
+            "scorer_backend_name": "prototype_similarity",
+            "score_policy_name": "max_cosine",
+            "pseudo_label_algorithm_name": "top1_margin_threshold",
+            "acceptance_policy_name": "top1_margin_threshold",
+            "privacy_guard_name": "noop",
+        }
+    )
+    examples = build_training_examples(
+        rows=[row],
+        adapter=adapter,
+        adapter_state=adapter_state,
+        prototype_pack=_pack_payload(),
+        model_id="hash_debug",
+        scoring_service=build_federated_scoring_service(
+            objective_config=objective_config,
+            similarity_name="cosine",
+        ),
+        objective_config=objective_config,
+    )
+
     assert examples[0].view_kind == "weak_strong_pair"
     assert examples[0].weak_embedding == [1.0, 0.0]
     assert examples[0].strong_embedding == pytest.approx(

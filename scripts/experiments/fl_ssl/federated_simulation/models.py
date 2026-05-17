@@ -21,6 +21,15 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
+FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN = "runtime_split_from_train"
+FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT = "materialized_client_split"
+FL_DATA_SOURCE_MODES = frozenset(
+    {
+        FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN,
+        FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
+    }
+)
+
 
 @dataclass(slots=True)
 class FederatedClientShard:
@@ -203,6 +212,34 @@ class FederatedClientPoolSplitConfig:
 
 
 @dataclass(slots=True)
+class FederatedDataSourceConfig:
+    """FL simulation이 client split을 어디서 가져왔는지 기록한다."""
+
+    source_mode: str = FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN
+    split_manifest_path: str | None = None
+    split_manifest_sha256: str | None = None
+    split_id: str | None = None
+    source_selection: dict[str, object] = field(default_factory=dict)
+    source_jsonl: dict[str, str] = field(default_factory=dict)
+    view_schema: dict[str, object] = field(default_factory=dict)
+    test_jsonl: str | None = None
+
+    def __post_init__(self) -> None:
+        if self.source_mode not in FL_DATA_SOURCE_MODES:
+            raise ValueError(
+                f"fl_data.source_mode must be one of {sorted(FL_DATA_SOURCE_MODES)}."
+            )
+        if (
+            self.source_mode == FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT
+            and not self.split_manifest_path
+        ):
+            raise ValueError(
+                "fl_data.split_manifest is required when source_mode is "
+                "materialized_client_split."
+            )
+
+
+@dataclass(slots=True)
 class FederatedSslMethodConfig:
     """FL SSL method 선택과 report metadata 설정."""
 
@@ -347,6 +384,10 @@ class SimulationRunRequest:
     diagnostics_config: FederatedDiagnosticsConfig
     ssl_method_config: FederatedSslMethodConfig
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None
+    materialized_dataset_split: FederatedDatasetSplit | None = None
+    data_source_config: FederatedDataSourceConfig = field(
+        default_factory=FederatedDataSourceConfig
+    )
     report_config: FederatedReportConfig | None = None
     local_update_profile: LocalUpdateProfile | None = None
     execution_plan: FederatedSslExecutionPlan | None = None

@@ -42,14 +42,7 @@ def bootstrap_simulation(
 ) -> BootstrappedSimulation:
     """초기 shared state, prototype, manifest를 만들고 active pair로 고정한다."""
 
-    dataset_split = split_rows_for_federation(
-        request.train_rows,
-        bootstrap_ratio=request.bootstrap_ratio,
-        client_count=request.client_count,
-        seed=request.seed,
-        shard_policy=request.shard_policy,
-        client_pool_split_config=request.client_pool_split_config,
-    )
+    dataset_split = _resolve_dataset_split(request)
     validation_client_shards = split_rows_into_client_shards(
         request.validation_rows,
         client_count=request.client_count,
@@ -141,6 +134,19 @@ def bootstrap_simulation(
         initial_prototype_version=initial_prototype_version,
         initial_validation=initial_validation,
         active=active,
+    )
+
+
+def _resolve_dataset_split(request: SimulationRunRequest) -> FederatedDatasetSplit:
+    if request.materialized_dataset_split is not None:
+        return request.materialized_dataset_split
+    return split_rows_for_federation(
+        request.train_rows,
+        bootstrap_ratio=request.bootstrap_ratio,
+        client_count=request.client_count,
+        seed=request.seed,
+        shard_policy=request.shard_policy,
+        client_pool_split_config=request.client_pool_split_config,
     )
 
 

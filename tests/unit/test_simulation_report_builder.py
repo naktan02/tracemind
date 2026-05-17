@@ -14,6 +14,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
+    FederatedDataSourceConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -270,6 +271,19 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
         ),
+        data_source_config=FederatedDataSourceConfig(
+            source_mode="materialized_client_split",
+            split_manifest_path="data/datasets/fl_client_splits/main/manifest.json",
+            split_manifest_sha256="abc123",
+            split_id="main",
+            source_selection={"labeled": "ourafla_reddit"},
+            source_jsonl={"labeled": "labeled.jsonl"},
+            view_schema={
+                "weak_text_field": "text",
+                "strong_text_fields": ["aug_0", "aug_1"],
+            },
+            test_jsonl="test.jsonl",
+        ),
     )
 
     second_round_aggregation = payload["diagnostics"]["aggregation"]["rounds"][1]
@@ -344,6 +358,13 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert split["min_client_size"] == 2
     assert split["max_client_size"] == 3
     assert split["label_skew_summary"]["dominant_label_ratio"]["max"] == 1.0
+    fl_data_source = payload["protocol"]["fl_data_source"]
+    assert fl_data_source["source_mode"] == "materialized_client_split"
+    assert fl_data_source["split_manifest_sha256"] == "abc123"
+    assert fl_data_source["view_schema"]["strong_text_fields"] == [
+        "aug_0",
+        "aug_1",
+    ]
 
 
 def test_simulation_report_builder_rejects_unknown_metric_names() -> None:

@@ -24,9 +24,17 @@ def require_rows_supported_by_example_backend(
 
 def _require_weak_strong_rows(rows: list[Mapping[str, Any]]) -> None:
     for row in rows:
-        if row.get("weak_text") and row.get("strong_text"):
+        if _has_legacy_weak_strong_fields(row) or _has_usb_view_fields(row):
             continue
         raise ValueError(
             "weak_strong_pair simulation requires each row to include both "
-            "weak_text and strong_text."
+            "weak_text/strong_text or text plus aug_0/aug_1."
         )
+
+
+def _has_legacy_weak_strong_fields(row: Mapping[str, Any]) -> bool:
+    return bool(row.get("weak_text") and row.get("strong_text"))
+
+
+def _has_usb_view_fields(row: Mapping[str, Any]) -> bool:
+    return bool(row.get("text") and (row.get("aug_0") or row.get("aug_1")))

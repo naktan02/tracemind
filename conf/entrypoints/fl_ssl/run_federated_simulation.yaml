@@ -2,6 +2,7 @@
 
 defaults:
   - /execution_context/dataset_asset: ourafla
+  - /execution_context/query_data_source: default
   - /execution_context/embedding_adapter: mxbai
   - /execution_context/runtime_env: gpu_local
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
@@ -19,6 +20,12 @@ train_jsonl: ${dataset.train_jsonl}
 validation_jsonl: ${dataset.validation_jsonl}
 published_model_id: tracemind-embed-sim
 seed: 42
+
+fl_data:
+  # 기본값은 기존 smoke/debug용 runtime split이다.
+  # 논문 비교는 materialize_fl_client_split 산출 manifest를 지정해서 고정 split을 쓴다.
+  source_mode: runtime_split_from_train
+  split_manifest: null
 
 fl_method:
   # 상위 method가 client objective/server policy를 소유한다.

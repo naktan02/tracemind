@@ -1,0 +1,39 @@
+# @package _global_
+
+defaults:
+  - /execution_context/query_data_source: default
+  - /run_controls/fl_ssl/budget: smoke
+  - /strategy_axes/fl/shard_policy: label_dominant
+  - override /hydra/job_logging: disabled
+  - override /hydra/hydra_logging: disabled
+  - _self_
+
+seed: 42
+
+client_pool_split:
+  labeled_ratio: 0.1
+  unlabeled_ratio: 0.9
+
+fl_client_split_materialization:
+  split_id: ${query_data_selection_slug}_${shard_policy.name}_clients${federated_run_budget.client_count}_seed${seed}
+  output_root: data/datasets/fl_client_splits
+  source_labeled_jsonl: ${query_source.train_jsonl}
+  source_unlabeled_jsonl: ${query_source.unlabeled_jsonl}
+  source_validation_jsonl: ${query_source.validation_jsonl}
+  source_test_jsonl: ${query_source.test_jsonl}
+  seed: ${seed}
+  client_count: ${federated_run_budget.client_count}
+  bootstrap_ratio: ${federated_run_budget.bootstrap_ratio}
+  view_schema:
+    weak_text_field: text
+    strong_text_fields:
+      - aug_0
+      - aug_1
+    require_strong_views: true
+
+hydra:
+  run:
+    dir: .
+  output_subdir: null
+  job:
+    chdir: false

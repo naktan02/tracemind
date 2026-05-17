@@ -27,6 +27,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.round_report import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
+    FederatedDataSourceConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -58,6 +59,7 @@ class SimulationReportBuilder:
         validation_config: FederatedValidationConfig,
         round_runtime_config: FederatedRoundRuntimeConfig,
         execution_plan: FederatedSslExecutionPlan | None = None,
+        data_source_config: FederatedDataSourceConfig | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
             result=result,
@@ -115,6 +117,7 @@ class SimulationReportBuilder:
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
                 execution_plan=execution_plan,
+                data_source_config=data_source_config,
             ),
             "diagnostics": {
                 "round_progression": round_progression,

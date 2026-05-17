@@ -114,6 +114,7 @@ def _assert_composed_fl_runtime_is_compatible(cfg: DictConfig) -> None:
         "entrypoints/prototype_pack/evaluate_prototype_pack",
         "entrypoints/prototype_analysis/prototype_strategy",
         "entrypoints/prototype_analysis/prototype_threshold_sweep",
+        "entrypoints/fl_ssl/materialize_fl_client_split",
         "entrypoints/fl_ssl/run_federated_simulation",
         "entrypoints/central_classifier_seed/train_softmax_classifier",
         "entrypoints/central_ssl_control/train_lora_supervised_classifier",
@@ -552,6 +553,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.local_files_only is True
+    assert cfg.fl_data.source_mode == "runtime_split_from_train"
+    assert cfg.fl_data.split_manifest is None
     assert cfg.seed_sweep.output_dir == "runs/federated_simulation_seed_sweep"
     assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
     assert cfg.client_count_sweep.output_dir == (
@@ -577,6 +580,46 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.client_pool_split.unlabeled_ratio == 0.9
     assert cfg.report.labeled_ratio == 0.1
     assert cfg.report.unlabeled_ratio == 0.9
+
+
+def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/materialize_fl_client_split",
+            overrides=[
+                "query_data_selection.labeled=szegeelim_general4",
+                "query_data_selection.unlabeled=ourafla_reddit",
+                "run_controls/fl_ssl/budget=main",
+                "federated_run_budget.client_count=8",
+                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
+            ],
+        )
+
+    assert cfg.fl_client_split_materialization.source_labeled_jsonl.endswith(
+        "data/datasets/szegeelim_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/labeled_train.with_views.jsonl"
+    )
+    assert cfg.fl_client_split_materialization.source_unlabeled_jsonl.endswith(
+        "data/datasets/ourafla_mental_health/views/"
+        "labeled1024_per_class_seed42_v1/"
+        "backtranslation_nllb_en_de_fr_usb_v1/unlabeled_pool.with_views.jsonl"
+    )
+    assert cfg.fl_client_split_materialization.source_validation_jsonl.endswith(
+        "data/datasets/ourafla_mental_health/query_ssl/"
+        "labeled1024_per_class_seed42_v1/validation.jsonl"
+    )
+    assert cfg.fl_client_split_materialization.client_count == 8
+    assert cfg.fl_client_split_materialization.bootstrap_ratio == (
+        cfg.federated_run_budget.bootstrap_ratio
+    )
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.fl_client_split_materialization.view_schema.weak_text_field == "text"
+    assert list(cfg.fl_client_split_materialization.view_schema.strong_text_fields) == [
+        "aug_0",
+        "aug_1",
+    ]
 
 
 def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:

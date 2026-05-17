@@ -108,6 +108,13 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     나눈다.
   - 현재 `fedavg_pseudo_label` baseline은 `unlabeled` partition만 pseudo-label
     training 후보로 사용한다.
+- `fl_data.source_mode`
+  - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
+    sharding한다.
+  - 논문 비교는 `materialized_client_split`과 `fl_data.split_manifest`를 써서
+    `materialize_fl_client_split` 산출물을 고정 입력으로 소비한다.
+  - 이 mode에서는 `client_pool_split`, `shard_policy`, `client_count`,
+    `bootstrap_ratio`, `query_data_selection`이 manifest metadata와 맞는지 검증한다.
 - `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
   - ratio 값은 `client_pool_split`에서 파생된 report protocol field다.
   - `seed_count`는 `seed_sweep` runner에서 실행 seed 수와 일치하는지 검증한다.

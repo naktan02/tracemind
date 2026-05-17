@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -20,9 +21,17 @@ from methods.federated_ssl.local_update_profile import (
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.artifacts.run_artifacts import build_run_dir
+from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest import (
+    LoadedFlClientSplit,
+    load_materialized_client_split,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
+    FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN,
     FederatedClientPoolSplitConfig,
+    FederatedDatasetSplit,
+    FederatedDataSourceConfig,
     FederatedDiagnosticsConfig,
     FederatedLoraClassifierRuntimeConfig,
     FederatedPrototypeRebuildConfig,
@@ -41,10 +50,19 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+
+
+@dataclass(slots=True)
+class _ResolvedFlDataSource:
+    train_rows: list[LabeledQueryRow]
+    validation_rows: list[LabeledQueryRow]
+    materialized_dataset_split: FederatedDatasetSplit | None
+    data_source_config: FederatedDataSourceConfig
 
 
 def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:
@@ -156,20 +174,32 @@ def build_simulation_request_from_config(
         ),
         lora_classifier=_build_lora_classifier_runtime_config(cfg.round_runtime),
     )
+    actual_seed = int(cfg.seed if seed is None else seed)
+    shard_policy = FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy))
+    client_pool_split_config = FederatedClientPoolSplitConfig(
+        **_to_plain_dict(cfg.client_pool_split)
+    )
+    fl_data_source = _resolve_fl_data_source(
+        cfg=cfg,
+        client_count=int(cfg.federated_run_budget.client_count),
+        bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
+        shard_policy=shard_policy,
+        client_pool_split_config=client_pool_split_config,
+    )
     return SimulationRunRequest(
-        train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
-        validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
+        train_rows=fl_data_source.train_rows,
+        validation_rows=fl_data_source.validation_rows,
         output_dir=output_dir,
         client_count=int(cfg.federated_run_budget.client_count),
         rounds=int(cfg.federated_run_budget.rounds),
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
-        seed=int(cfg.seed if seed is None else seed),
+        seed=actual_seed,
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
         training_scope=local_update_profile.training_scope,
         round_runtime_config=round_runtime_config,
         prototype_build_strategy=prototype_build_strategy,
-        shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
+        shard_policy=shard_policy,
         training_task_config=training_task_config,
         validation_config=FederatedValidationConfig(**_to_plain_dict(cfg.validation)),
         prototype_rebuild_config=FederatedPrototypeRebuildConfig(
@@ -179,13 +209,168 @@ def build_simulation_request_from_config(
             **_to_plain_dict(cfg.diagnostics)
         ),
         ssl_method_config=FederatedSslMethodConfig(**_to_plain_dict(cfg.ssl_method)),
-        client_pool_split_config=FederatedClientPoolSplitConfig(
-            **_to_plain_dict(cfg.client_pool_split)
-        ),
+        client_pool_split_config=client_pool_split_config,
+        materialized_dataset_split=fl_data_source.materialized_dataset_split,
+        data_source_config=fl_data_source.data_source_config,
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
         local_update_profile=local_update_profile,
         execution_plan=execution_plan,
     )
+
+
+def _resolve_fl_data_source(
+    *,
+    cfg: DictConfig,
+    client_count: int,
+    bootstrap_ratio: float,
+    shard_policy: FederatedShardPolicyConfig,
+    client_pool_split_config: FederatedClientPoolSplitConfig,
+) -> _ResolvedFlDataSource:
+    fl_data_cfg = cfg.get("fl_data", {})
+    source_mode = str(
+        fl_data_cfg.get("source_mode", FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN)
+    )
+    if source_mode == FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN:
+        return _ResolvedFlDataSource(
+            train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
+            validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
+            materialized_dataset_split=None,
+            data_source_config=FederatedDataSourceConfig(
+                source_mode=source_mode,
+                source_selection=_optional_plain_dict(cfg, "query_data_selection"),
+                source_jsonl={
+                    "train": str(cfg.train_jsonl),
+                    "validation": str(cfg.validation_jsonl),
+                },
+            ),
+        )
+    if source_mode != FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT:
+        return _unsupported_fl_data_source(source_mode)
+
+    raw_manifest_path = fl_data_cfg.get("split_manifest")
+    if raw_manifest_path is None:
+        raise ValueError(
+            "fl_data.split_manifest is required when fl_data.source_mode is "
+            "materialized_client_split."
+        )
+    loaded_split = load_materialized_client_split(Path(str(raw_manifest_path)))
+    _require_manifest_matches_config(
+        loaded_split=loaded_split,
+        cfg=cfg,
+        client_count=client_count,
+        bootstrap_ratio=bootstrap_ratio,
+        shard_policy=shard_policy,
+        client_pool_split_config=client_pool_split_config,
+    )
+    manifest = loaded_split.manifest
+    return _ResolvedFlDataSource(
+        train_rows=loaded_split.train_rows,
+        validation_rows=loaded_split.validation_rows,
+        materialized_dataset_split=loaded_split.dataset_split,
+        data_source_config=FederatedDataSourceConfig(
+            source_mode=source_mode,
+            split_manifest_path=str(manifest.manifest_path or raw_manifest_path),
+            split_manifest_sha256=manifest.manifest_sha256,
+            split_id=manifest.split_id,
+            source_selection=dict(manifest.source_selection),
+            source_jsonl=dict(manifest.source_jsonl),
+            view_schema=manifest.view_schema.to_payload(),
+            test_jsonl=manifest.test_jsonl,
+        ),
+    )
+
+
+def _unsupported_fl_data_source(source_mode: str) -> _ResolvedFlDataSource:
+    supported_modes = [
+        FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN,
+        FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
+    ]
+    raise ValueError(
+        "Unsupported fl_data.source_mode. "
+        f"Expected one of {supported_modes}, got {source_mode!r}."
+    )
+
+
+def _require_manifest_matches_config(
+    *,
+    loaded_split: LoadedFlClientSplit,
+    cfg: DictConfig,
+    client_count: int,
+    bootstrap_ratio: float,
+    shard_policy: FederatedShardPolicyConfig,
+    client_pool_split_config: FederatedClientPoolSplitConfig,
+) -> None:
+    manifest = loaded_split.manifest
+    if manifest.client_count != client_count:
+        raise ValueError(
+            "fl_data materialized manifest client_count must match "
+            f"federated_run_budget.client_count: {manifest.client_count} != "
+            f"{client_count}."
+        )
+    if abs(manifest.bootstrap_ratio - bootstrap_ratio) > 1e-9:
+        raise ValueError(
+            "fl_data materialized manifest bootstrap_ratio must match "
+            f"federated_run_budget.bootstrap_ratio: {manifest.bootstrap_ratio} != "
+            f"{bootstrap_ratio}."
+        )
+    _require_manifest_shard_policy_matches_config(manifest.shard_policy, shard_policy)
+    _require_manifest_client_pool_split_matches_config(
+        manifest.client_pool_split,
+        client_pool_split_config,
+    )
+    configured_source_selection = _optional_plain_dict(cfg, "query_data_selection")
+    if (
+        configured_source_selection
+        and manifest.source_selection
+        and manifest.source_selection != configured_source_selection
+    ):
+        raise ValueError(
+            "fl_data materialized manifest source_selection must match "
+            f"query_data_selection: {manifest.source_selection} != "
+            f"{configured_source_selection}."
+        )
+
+
+def _require_manifest_shard_policy_matches_config(
+    manifest_policy: dict[str, object],
+    shard_policy: FederatedShardPolicyConfig,
+) -> None:
+    expected = {
+        "name": shard_policy.name,
+        "client_id_prefix": shard_policy.client_id_prefix,
+        "dominant_ratio": shard_policy.dominant_ratio,
+        "alpha": shard_policy.alpha,
+    }
+    for key, expected_value in expected.items():
+        actual_value = manifest_policy.get(key)
+        if actual_value != expected_value:
+            raise ValueError(
+                "fl_data materialized manifest shard_policy must match config: "
+                f"{key} {actual_value!r} != {expected_value!r}."
+            )
+
+
+def _require_manifest_client_pool_split_matches_config(
+    manifest_split: dict[str, object],
+    client_pool_split_config: FederatedClientPoolSplitConfig,
+) -> None:
+    expected = {
+        "labeled_ratio": client_pool_split_config.labeled_ratio,
+        "unlabeled_ratio": client_pool_split_config.unlabeled_ratio,
+    }
+    for key, expected_value in expected.items():
+        actual_value = float(manifest_split.get(key, -1.0))
+        if abs(actual_value - expected_value) > 1e-9:
+            raise ValueError(
+                "fl_data materialized manifest client_pool_split must match "
+                f"config: {key} {actual_value!r} != {expected_value!r}."
+            )
+
+
+def _optional_plain_dict(cfg: DictConfig, section_name: str) -> dict[str, object]:
+    if section_name not in cfg:
+        return {}
+    return _to_plain_dict(cfg[section_name])
 
 
 def render_simulation_result_lines(

@@ -86,6 +86,14 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - entrypoint-local section이며 `FederatedSslExecutionPlan`으로 해석된다.
   - `composition_mode=method_owned`에서는 상위 method가 client/server 정책을 소유한다.
   - `composition_mode=manual`에서는 lower-axis 조합 baseline/ablation임을 명시한다.
+- `fl_data`
+  - 기본 `source_mode=runtime_split_from_train`은 기존 debug 경로로 train JSONL을
+    즉석 split한다.
+  - 논문 비교는 먼저 `materialize_fl_client_split.py`로 client별 labeled/unlabeled
+    JSONL과 manifest를 만든 뒤 `source_mode=materialized_client_split`으로 실행한다.
+  - manifest에는 source selection, split seed, shard policy, client count,
+    `weak=text`, `strong=[aug_0, aug_1]` view schema와 sha256 provenance가 report에
+    남는다.
 - `security_policy`
   - 현재 simulation은 `plaintext`만 지원한다.
   - secure aggregation, DP, 암호화 artifact ref는 method가 아니라 runtime capability
@@ -120,9 +128,19 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 예시:
 
 ```bash
+python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03
+```
+
+고정 split 실행:
+
+```bash
 python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  fl_data.source_mode=materialized_client_split \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label \
   strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1 \
   round_runtime.adapter_family_name=diagonal_scale \

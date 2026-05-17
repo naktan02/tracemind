@@ -12,6 +12,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.split_diagnostics import
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
+    FederatedDataSourceConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -39,7 +40,9 @@ def build_protocol_payload(
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
+    data_source_config: FederatedDataSourceConfig | None = None,
 ) -> dict[str, object]:
+    resolved_data_source_config = data_source_config or FederatedDataSourceConfig()
     payload: dict[str, object] = {
         "client_count": client_count,
         "round_budget": round_budget,
@@ -48,6 +51,7 @@ def build_protocol_payload(
         "seed_count": report_config.seed_count,
         "bootstrap_ratio": bootstrap_ratio,
         "shard_policy": _shard_policy_to_payload(shard_policy),
+        "fl_data_source": _fl_data_source_to_payload(resolved_data_source_config),
         "ssl_method": _ssl_method_to_payload(ssl_method_config),
         "labeled_unlabeled_split": build_client_pool_split_payload(
             dataset_split=dataset_split,
@@ -125,4 +129,19 @@ def _ssl_method_to_payload(
         "round_state_exchange": dict(ssl_method_config.round_state_exchange),
         "report_tags": list(ssl_method_config.report_tags),
         "notes": list(ssl_method_config.notes),
+    }
+
+
+def _fl_data_source_to_payload(
+    data_source_config: FederatedDataSourceConfig,
+) -> dict[str, object]:
+    return {
+        "source_mode": data_source_config.source_mode,
+        "split_manifest_path": data_source_config.split_manifest_path,
+        "split_manifest_sha256": data_source_config.split_manifest_sha256,
+        "split_id": data_source_config.split_id,
+        "source_selection": dict(data_source_config.source_selection),
+        "source_jsonl": dict(data_source_config.source_jsonl),
+        "view_schema": dict(data_source_config.view_schema),
+        "test_jsonl": data_source_config.test_jsonl,
     }

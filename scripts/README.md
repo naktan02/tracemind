@@ -125,11 +125,33 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
   strategy_axes/ssl/consistency_method=freematch_usb_v1
 ```
 
+FL client split manifest 생성:
+
+```bash
+uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
+  query_data_selection.labeled=ourafla_reddit \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03
+```
+
 FL SSL simulation smoke:
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   run_controls/fl_ssl/budget=smoke
+```
+
+고정 FL split으로 simulation 실행:
+
+```bash
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  fl_data.source_mode=materialized_client_split \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json
 ```
 
 FL SSL seed sweep:
