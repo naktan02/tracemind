@@ -150,10 +150,9 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - 기본 manual LoRA-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
   `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
   `unlabeled_rows`로 실제 PEFT LoRA/classifier local optimizer를 실행한다.
-  update는 서버가 바로 집계할 수 있는 `inline_delta`로 제출된다. 실제 step 수는
+  update는 server-owned uploaded artifact ref로 제출된다. 실제 step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`이며,
   `training_task.batch_size`와 `query_ssl_method.unlabeled_batch_size`가
   `full_epoch_steps`를 바꾼다.
-- legacy `lora_pseudo_label_v1` inline executor는 `query_ssl_method`가 없는
-  compatibility/debug 경로로 유지한다. agent-local artifact upload와 production
-  materialization은 아직 다음 단계다.
+- `inline_delta`는 debug/compatibility 경로로만 유지한다. production agent-local
+  artifact upload와 manifest/version compatibility는 아직 다음 단계다.

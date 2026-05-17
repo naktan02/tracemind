@@ -18,6 +18,8 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
     materialize_base_lora_classifier_state,
 )
 from methods.adaptation.lora_classifier.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.lora_classifier.delta_extraction import (
@@ -79,6 +81,16 @@ class QuerySslLoraClientTrainingResult:
     accepted_count: int
     local_step_plan: QuerySslLocalStepPlan
     client_metrics: Mapping[str, float]
+
+
+@dataclass(frozen=True, slots=True)
+class _DeltaMaterializationPlan:
+    """simulation runtime이 LoRA/head delta를 update payload에 담는 방식."""
+
+    delta_format: str
+    lora_delta_artifact_ref: str | None
+    classifier_head_delta_artifact_ref: str | None
+    include_inline_deltas: bool
 
 
 def run_query_ssl_lora_classifier_local_training(
@@ -208,6 +220,17 @@ def run_query_ssl_lora_classifier_local_training(
             labels=labels,
         )
     )
+    update_id = f"update_{training_task.round_id}_{client_id}_{uuid4().hex[:12]}"
+    delta_materialization = _prepare_delta_materialization(
+        output_dir=output_dir,
+        update_id=update_id,
+        training_task=training_task,
+        client_id=client_id,
+        delta_format=lora_config.delta_format,
+        lora_parameter_deltas=lora_deltas,
+        classifier_head_weight_deltas=head_weight_deltas,
+        classifier_head_bias_deltas=head_bias_deltas,
+    )
     update_build_result = build_query_ssl_lora_update_payload(
         training_task=training_task,
         model_manifest=model_manifest,
@@ -221,10 +244,15 @@ def run_query_ssl_lora_classifier_local_training(
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
         created_at=effective_created_at,
+        delta_format=delta_materialization.delta_format,
+        lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=(
+            delta_materialization.classifier_head_delta_artifact_ref
+        ),
+        include_inline_deltas=delta_materialization.include_inline_deltas,
     )
     update_payload = update_build_result.update_payload
     client_metrics = update_build_result.client_metrics
-    update_id = f"update_{training_task.round_id}_{client_id}_{uuid4().hex[:12]}"
     update_envelope = make_training_update_envelope(
         update_id=update_id,
         round_id=training_task.round_id,
@@ -308,6 +336,78 @@ def _load_base_parameters(
                 state_root=output_dir / "main_server" / "aggregation_artifacts"
             ),
         ),
+    )
+
+
+def _prepare_delta_materialization(
+    *,
+    output_dir: Path,
+    update_id: str,
+    training_task: TrainingTask,
+    client_id: str,
+    delta_format: str,
+    lora_parameter_deltas: Mapping[str, Sequence[float]],
+    classifier_head_weight_deltas: Mapping[str, Sequence[float]],
+    classifier_head_bias_deltas: Mapping[str, float],
+) -> _DeltaMaterializationPlan:
+    normalized_delta_format = str(delta_format).strip()
+    if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
+        return _DeltaMaterializationPlan(
+            delta_format=normalized_delta_format,
+            lora_delta_artifact_ref=None,
+            classifier_head_delta_artifact_ref=None,
+            include_inline_deltas=True,
+        )
+    if normalized_delta_format != LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED:
+        raise ValueError(
+            f"Unsupported Query SSL LoRA delta_format: {normalized_delta_format!r}."
+        )
+
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    artifact_id_prefix = (
+        f"client_updates/{training_task.round_id}/{client_id}/{update_id}"
+    )
+    lora_delta_ref = store.ref_for_artifact(f"{artifact_id_prefix}/lora_delta")
+    head_delta_ref = store.ref_for_artifact(
+        f"{artifact_id_prefix}/classifier_head_delta"
+    )
+    store.save_json_artifact_ref(
+        artifact_ref=lora_delta_ref,
+        payload={
+            "schema_version": "lora_classifier_client_delta_artifact.v1",
+            "update_id": update_id,
+            "round_id": training_task.round_id,
+            "client_id": client_id,
+            "lora_parameter_deltas": {
+                str(key): [float(value) for value in values]
+                for key, values in lora_parameter_deltas.items()
+            },
+        },
+    )
+    store.save_json_artifact_ref(
+        artifact_ref=head_delta_ref,
+        payload={
+            "schema_version": "lora_classifier_client_head_delta_artifact.v1",
+            "update_id": update_id,
+            "round_id": training_task.round_id,
+            "client_id": client_id,
+            "classifier_head_weight_deltas": {
+                str(key): [float(value) for value in values]
+                for key, values in classifier_head_weight_deltas.items()
+            },
+            "classifier_head_bias_deltas": {
+                str(key): float(value)
+                for key, value in classifier_head_bias_deltas.items()
+            },
+        },
+    )
+    return _DeltaMaterializationPlan(
+        delta_format=normalized_delta_format,
+        lora_delta_artifact_ref=lora_delta_ref,
+        classifier_head_delta_artifact_ref=head_delta_ref,
+        include_inline_deltas=False,
     )
 
 

@@ -22,6 +22,9 @@ from shared.src.contracts.training_contracts import (
 LORA_CLASSIFIER_TRAINING_BACKEND_NAME = "lora_classifier_trainer"
 LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "lora_classifier_trainer"
 LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = "lora_classifier"
+LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
+LORA_CLASSIFIER_DELTA_FORMAT_INLINE = "inline_delta"
+LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED = "server_uploaded_artifact_ref"
 
 _STRING_CONFIG_KEYS = (
     "backbone_model_id",
@@ -70,7 +73,7 @@ class LoraClassifierTrainingBackendConfig:
     bias: str = "none"
     target_modules: str = "all-linear"
     use_rslora: bool = False
-    delta_format: str = "agent_local_artifact_ref"
+    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
     artifact_ref_prefix: str = "agent-local://lora_classifier"
     text_metadata_keys: tuple[str, ...] = (
         "strong_text",

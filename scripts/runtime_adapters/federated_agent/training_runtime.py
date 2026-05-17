@@ -20,6 +20,7 @@ def build_federated_local_training_service(
         LocalTrainingService,
     )
     from methods.adaptation.lora_classifier.config import (
+        LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
         build_lora_classifier_training_backend_config,
     )
@@ -38,7 +39,7 @@ def build_federated_local_training_service(
         == LORA_CLASSIFIER_TRAINING_BACKEND_NAME
     ):
         lora_config = build_lora_classifier_training_backend_config(objective_config)
-        if lora_config.delta_format == "inline_delta":
+        if lora_config.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
             backend = LoraClassifierTrainingBackend(
                 config=lora_config,
                 train_executor=SimulationInlineLoraClassifierTrainExecutor(),

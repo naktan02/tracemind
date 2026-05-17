@@ -21,7 +21,10 @@ from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import ClientMetricKeys, TrainingTask
 from shared.src.domain.services.classification_report import safe_divide
 
-from .config import LoraClassifierTrainingBackendConfig
+from .config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    LoraClassifierTrainingBackendConfig,
+)
 from .delta_extraction import finite_float_or_none, lora_classifier_delta_l2_norm
 
 
@@ -48,9 +51,22 @@ def build_query_ssl_lora_update_payload(
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
     created_at: datetime,
+    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    lora_delta_artifact_ref: str | None = None,
+    classifier_head_delta_artifact_ref: str | None = None,
+    include_inline_deltas: bool = True,
 ) -> QuerySslLoraUpdateBuildResult:
     """학습 결과 delta와 history를 shared payload/metric으로 변환한다."""
 
+    normalized_delta_format = str(delta_format).strip()
+    if not normalized_delta_format:
+        raise ValueError("delta_format must not be empty.")
+    if not include_inline_deltas and (
+        lora_delta_artifact_ref is None or classifier_head_delta_artifact_ref is None
+    ):
+        raise ValueError(
+            "artifact-ref Query SSL LoRA update requires both lora/head delta refs."
+        )
     util_ratio = finite_float_or_none(history_record.get("train_util_ratio"))
     accepted_unlabeled_count = int(round((util_ratio or 0.0) * len(unlabeled_rows)))
     delta_l2_norm = lora_classifier_delta_l2_norm(
@@ -66,18 +82,30 @@ def build_query_ssl_lora_update_payload(
         lora_config=lora_config.to_lora_config_payload(),
         label_schema=tuple(str(label) for label in labels),
         example_count=len(labeled_rows) + len(unlabeled_rows),
-        lora_parameter_deltas={
-            str(key): [float(value) for value in values]
-            for key, values in lora_parameter_deltas.items()
-        },
-        classifier_head_weight_deltas={
-            str(key): [float(value) for value in values]
-            for key, values in classifier_head_weight_deltas.items()
-        },
+        lora_delta_artifact_ref=lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
+        lora_parameter_deltas=(
+            {
+                str(key): [float(value) for value in values]
+                for key, values in lora_parameter_deltas.items()
+            }
+            if include_inline_deltas
+            else None
+        ),
+        classifier_head_weight_deltas=(
+            {
+                str(key): [float(value) for value in values]
+                for key, values in classifier_head_weight_deltas.items()
+            }
+            if include_inline_deltas
+            else None
+        ),
         classifier_head_bias_deltas={
             str(key): float(value) for key, value in classifier_head_bias_deltas.items()
-        },
-        delta_format="inline_delta",
+        }
+        if include_inline_deltas
+        else {},
+        delta_format=normalized_delta_format,
         mean_confidence=None,
         mean_margin=None,
         label_counts=dict(

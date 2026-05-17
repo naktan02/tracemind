@@ -142,7 +142,7 @@ training_task:
     "lora_classifier.bias": ${round_runtime.lora_classifier.bias}
     "lora_classifier.target_modules": ${round_runtime.lora_classifier.target_modules}
     "lora_classifier.use_rslora": ${round_runtime.lora_classifier.use_rslora}
-    "lora_classifier.delta_format": inline_delta
+    "lora_classifier.delta_format": server_uploaded_artifact_ref
     "lora_classifier.artifact_ref_prefix": agent-local://lora_classifier
     "lora_classifier.text_metadata_keys": strong_text,training_text,raw_text,text,weak_text
     "lora_classifier.label_schema": anxiety,depression,normal,suicidal

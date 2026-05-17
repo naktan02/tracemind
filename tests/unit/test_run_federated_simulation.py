@@ -10,6 +10,8 @@ from pathlib import Path
 import pytest
 
 from methods.adaptation.lora_classifier.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
@@ -317,7 +319,10 @@ def _lora_runtime_config() -> FederatedLoraClassifierRuntimeConfig:
     )
 
 
-def _lora_objective_extras() -> dict[str, str | int | float | bool]:
+def _lora_objective_extras(
+    *,
+    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+) -> dict[str, str | int | float | bool]:
     return {
         "lora_classifier.backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
         "lora_classifier.backbone_revision": "main",
@@ -333,7 +338,7 @@ def _lora_objective_extras() -> dict[str, str | int | float | bool]:
         "lora_classifier.bias": "none",
         "lora_classifier.target_modules": "all-linear",
         "lora_classifier.use_rslora": False,
-        "lora_classifier.delta_format": "inline_delta",
+        "lora_classifier.delta_format": delta_format,
         "lora_classifier.artifact_ref_prefix": "agent-local://lora_classifier",
         "lora_classifier.text_metadata_keys": (
             "strong_text,training_text,raw_text,text,weak_text"
@@ -407,7 +412,9 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 "scorer_backend_name": "classifier_head_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
-                **_lora_objective_extras(),
+                **_lora_objective_extras(
+                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+                ),
             }
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 4}),
@@ -446,7 +453,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             "normal": [0.0, -0.1],
         },
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
-        delta_format="inline_delta",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         mean_confidence=0.5,
         delta_l2_norm=0.2,
     )
@@ -534,7 +541,9 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             gradient_clip_norm=1.0,
             training_backend_name="lora_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_lora_objective_extras(
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+            ),
         ),
         validation_config=_default_validation_config(
             confidence_threshold=0.0,
@@ -606,6 +615,9 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["training_task"] is training_task
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
     assert trainer_calls[0]["active_adapter_state"] is active_state
+    assert trainer_calls[0]["lora_config"].delta_format == (
+        LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    )
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:
@@ -1214,7 +1226,7 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
     )
     assert update_paths
     update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
-    assert update_payload["delta_format"] == "inline_delta"
+    assert update_payload["delta_format"] == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
     assert update_payload["lora_delta_artifact_ref"] is None
     assert update_payload["classifier_head_delta_artifact_ref"] is None
     assert update_payload["lora_parameter_deltas"]

@@ -6,6 +6,9 @@ from datetime import datetime, timezone
 
 import pytest
 
+from methods.adaptation.lora_classifier.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+)
 from methods.adaptation.server_update_materialization import (
     require_server_materializable_update_payload,
 )
@@ -53,6 +56,18 @@ def test_lora_materialization_allows_agent_local_refs_with_inline_delta() -> Non
             "anxiety": [0.1, 0.2],
             "normal": [-0.1, -0.2],
         },
+    )
+
+    require_server_materializable_update_payload(payload)
+
+
+def test_lora_materialization_allows_server_owned_refs_without_inline_delta() -> None:
+    payload = _build_lora_payload(
+        lora_delta_artifact_ref="aggregation_artifact::agent_001/lora_delta",
+        classifier_head_delta_artifact_ref=(
+            "aggregation_artifact::agent_001/classifier_head_delta"
+        ),
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     )
 
     require_server_materializable_update_payload(payload)

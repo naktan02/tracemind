@@ -788,7 +788,7 @@ def test_federated_simulation_supports_diagonal_scale_profiles() -> None:
     assert cfg.training_task.objective["lora_classifier.rank"] == 8
     assert cfg.training_task.objective["lora_classifier.alpha"] == 16
     assert cfg.training_task.objective["lora_classifier.delta_format"] == (
-        "inline_delta"
+        "server_uploaded_artifact_ref"
     )
     assert "adapter_family_name" not in cfg.local_update_profile
     assert "aggregation_backend_name" not in cfg.local_update_profile

@@ -9,6 +9,9 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
+from methods.adaptation.lora_classifier.config import (
+    build_lora_classifier_training_backend_config,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -261,8 +264,8 @@ def _run_query_ssl_lora_client_round(
         training_task=training_task,
         model_manifest=active.manifest,
         query_ssl_config=request.query_ssl_objective_config,
-        lora_config=(
-            request.round_runtime_config.lora_classifier.training_backend_config
+        lora_config=build_lora_classifier_training_backend_config(
+            training_task.objective_config
         ),
         trainer_runtime_config=request.local_trainer_runtime_config,
     )
