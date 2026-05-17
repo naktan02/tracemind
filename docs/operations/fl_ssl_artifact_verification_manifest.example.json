@@ -1,0 +1,62 @@
+{
+  "defaults": {
+    "expected_seed": 42,
+    "expected_shard_policy_name": "dirichlet_label_skew",
+    "expected_adapter_family": "lora_classifier",
+    "expected_aggregation": "fedavg",
+    "expected_delta_format": "server_uploaded_artifact_ref",
+    "expected_round_update_count_matches_client_count": true
+  },
+  "artifacts": [
+    {
+      "name": "fixmatch_alpha03_main",
+      "report": "runs/federated_simulation/<run_id>/reports/fl_ssl_main_comparison.report.json",
+      "expectation": {
+        "expected_completed_rounds": 50,
+        "expected_round_budget": 50,
+        "expected_client_count": 10,
+        "expected_round_record_count": 50,
+        "expected_shard_alpha": 0.3,
+        "expected_split_id_contains": "clients10_seed42",
+        "expected_ssl_algorithm": "fixmatch",
+        "expected_ssl_method": "fixmatch_usb_v1"
+      }
+    },
+    {
+      "name": "freematch_alpha03_reduced",
+      "report": "runs/federated_simulation_reduced/<run_id>/reports/fl_ssl_main_comparison.report.json",
+      "expectation": {
+        "expected_completed_rounds": 5,
+        "expected_round_budget": 5,
+        "expected_client_count": 10,
+        "expected_round_record_count": 5,
+        "expected_shard_alpha": 0.3,
+        "expected_split_id_contains": "alpha0.3_clients10_seed42",
+        "expected_ssl_algorithm": "freematch",
+        "expected_ssl_method": "freematch_usb_v1",
+        "expected_embedding_metadata_status": "recorded",
+        "expected_embedding_backend": "transformers_mxbai",
+        "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "expected_embedding_device": "cuda",
+        "expected_embedding_local_files_only": true,
+        "expected_local_trainer_metadata_status": "recorded",
+        "expected_local_trainer_device": "cuda",
+        "expected_local_trainer_local_files_only": true
+      }
+    },
+    {
+      "name": "fixmatch_client_count_sweep_1round",
+      "client_count_sweep_summary": "runs/federated_simulation_client_count_sweep_short/<run_id>/reports/fl_ssl_client_count_sweep.summary.json",
+      "expected_client_counts": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+      "expectation": {
+        "expected_completed_rounds": 1,
+        "expected_round_budget": 1,
+        "expected_round_record_count": 1,
+        "expected_shard_alpha": 0.3,
+        "expected_split_id_contains": "alpha0.3",
+        "expected_ssl_algorithm": "fixmatch",
+        "expected_ssl_method": "fixmatch_usb_v1"
+      }
+    }
+  ]
+}
