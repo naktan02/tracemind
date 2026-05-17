@@ -14,15 +14,24 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    LoraClassifierTrainingBackendConfig,
 )
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
+)
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedLocalTrainerRuntimeConfig,
+    FederatedQuerySslObjectiveConfig,
+)
+from scripts.runtime_adapters.federated_agent import (
+    query_ssl_lora_classifier_trainer as qtrainer,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
 )
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     _prepare_delta_materialization,
+    run_query_ssl_lora_classifier_local_training,
     upload_agent_local_lora_classifier_update,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (
@@ -30,6 +39,12 @@ from scripts.runtime_adapters.federated_agent.row_validator import (
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
+    make_lora_classifier_state_payload,
+)
+from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.training_contracts import (
+    TrainingObjectiveConfig,
+    TrainingSelectionPolicy,
 )
 
 
@@ -97,6 +112,145 @@ def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> No
         rows=[{"query_id": "q1", "text": "panic"}],
         backend_name="prototype_rescore",
     )
+
+
+def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+    lora_config = LoraClassifierTrainingBackendConfig(
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    )
+    active_state = make_lora_classifier_state_payload(
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        backbone=lora_config.to_backbone_payload(),
+        lora_config=lora_config.to_lora_config_payload(),
+        label_schema=("anxiety", "normal"),
+    )
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="mxbai-lora-classifier",
+        base_model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        backbone=lora_config.to_backbone_payload(),
+        lora_config=lora_config.to_lora_config_payload(),
+        label_schema=("anxiety", "normal"),
+        example_count=1,
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    )
+
+    monkeypatch.setattr(
+        qtrainer,
+        "_build_lora_classifier_model",
+        lambda **_kwargs: (object(), object()),
+    )
+    monkeypatch.setattr(qtrainer, "_load_base_parameters", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        qtrainer,
+        "load_lora_classifier_base_parameters_into_model",
+        lambda **_kwargs: None,
+    )
+    monkeypatch.setattr(qtrainer, "build_dataloader", lambda **_kwargs: [object()])
+    monkeypatch.setattr(
+        qtrainer,
+        "_build_unlabeled_loader",
+        lambda **_kwargs: [object()],
+    )
+
+    def _fake_train_query_ssl_classifier(**kwargs):
+        captured["algorithm"] = kwargs["algorithm"]
+        return kwargs["model"], [{"train_loss": 0.1}], {}
+
+    monkeypatch.setattr(
+        qtrainer,
+        "train_query_ssl_classifier",
+        _fake_train_query_ssl_classifier,
+    )
+    monkeypatch.setattr(
+        qtrainer,
+        "extract_lora_classifier_parameter_deltas",
+        lambda **_kwargs: ({}, {}, {}),
+    )
+    monkeypatch.setattr(
+        qtrainer,
+        "build_query_ssl_lora_update_payload",
+        lambda **_kwargs: SimpleNamespace(
+            update_payload=update_payload,
+            client_metrics={"query_ssl_local_steps": 1.0},
+            accepted_unlabeled_count=1,
+        ),
+    )
+
+    result = run_query_ssl_lora_classifier_local_training(
+        client_id="agent_01",
+        seed=42,
+        output_dir=tmp_path,
+        labeled_rows=[
+            {
+                "query_id": "l1",
+                "text": "panic",
+                "mapped_label_4": "anxiety",
+            }
+        ],
+        unlabeled_rows=[
+            {
+                "query_id": "u1",
+                "text": "weak text",
+                "aug_0": "strong text de",
+                "aug_1": "strong text fr",
+                "mapped_label_4": "normal",
+            }
+        ],
+        active_adapter_state=active_state,
+        training_task=SimpleNamespace(
+            round_id="round_0001",
+            task_id="task_round_0001",
+            training_scope="adapter_only",
+            local_epochs=1,
+            batch_size=2,
+            learning_rate=1e-4,
+            max_steps=3,
+            gradient_clip_norm=None,
+            objective_config=TrainingObjectiveConfig.from_mapping(
+                {"training_backend_name": "lora_classifier_trainer"}
+            ),
+            selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 1}),
+            task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
+        ),
+        model_manifest=SimpleNamespace(
+            model_id="mxbai-lora-classifier",
+            model_revision="sim_rev_0000",
+        ),
+        query_ssl_config=FederatedQuerySslObjectiveConfig(
+            method_name="flexmatch_usb_v1",
+            algorithm_name="flexmatch",
+            parameters={
+                "temperature": 0.5,
+                "p_cutoff": 0.95,
+                "hard_label": True,
+                "thresh_warmup": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+            strong_view_policy="first_aug",
+            unlabeled_batch_size=2,
+        ),
+        lora_config=lora_config,
+        trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cpu",
+            local_files_only=True,
+        ),
+    )
+
+    assert captured["algorithm"].algorithm_name == "flexmatch"
+    assert captured["algorithm"].thresh_warmup is True
+    assert result.update_payload == update_payload
 
 
 def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
