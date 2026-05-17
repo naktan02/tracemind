@@ -188,29 +188,37 @@ Runtime translation:
 
 ## Next Priorities
 
-1. 실제 PEFT executor 기준 `FedAvg + FixMatch + LoRA-classifier` 1-round smoke를
-   실행하고 report/artifact schema를 샘플로 고정한다. 코드 경로는 이미
-   `query_ssl_method.algorithm_name`으로 `methods/ssl/algorithms/*`를 resolve한다.
-2. 실제 LoRA/classifier delta artifact 저장, upload, server-owned materialization
-   경로를 닫는다. FL simulation은 `agent-local://` ref를 server-owned
-   `aggregation_artifact::` ref로 upload/materialize한 뒤 제출할 수 있고,
-   기본 실행은 server-owned uploaded artifact ref를 쓴다. `inline_delta`는
-   debug/compatibility 경로로만 남긴다.
-3. `FedAvg + FixMatch` 첫 FL SSL baseline을 main split에서 고정한다. local objective는
-   `strategy_axes/ssl/consistency_method`로 교체하고 server aggregation은 FedAvg로 잠근다.
-4. FlexMatch/FreeMatch/PseudoLabel ablation을 같은 split/seed/local budget으로 실행하고
-   method 이름 변경이 실제 local objective 변경으로 남는지 report metadata를 확인한다.
-5. `client_count=1..10` sweep을 `gpu_local + mxbai`에서 실행해 산출물 위치와
-   summary JSON을 남긴다. seed sweep은 split seed 42 고정 결과를 확인한 뒤
+현재 체크포인트:
+
+- 실제 PEFT executor 기준 `FedAvg + FixMatch + LoRA-classifier` 1-round smoke는
+  완료했다. report metadata는 `query_ssl_method.algorithm_name=fixmatch`로
+  `methods/ssl/algorithms/*`가 실제 local objective를 소유함을 남긴다.
+- LoRA/classifier delta artifact 경로는 `agent-local://` ref를 server-owned
+  `aggregation_artifact::` ref로 upload/materialize할 수 있게 닫았다.
+  server direct accept는 server-owned ref와 inline debug payload만 수락한다.
+- `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`, `50 rounds` main
+  baseline은 완료했다.
+- Dirichlet `alpha=0.1` stress, full-budget FlexMatch/FreeMatch/PseudoLabel
+  ablation, full-budget `client_count=1..10` sweep은 장시간 실행이므로 사용자 승인
+  전까지 보류한다. 현재는 같은 wiring을 1-round/1-step short verification으로만
+  확인했다.
+
+다음 우선순위:
+
+1. full 실행 재개 승인이 있으면 `alpha=0.1` stress부터 실행한다. 같은 split seed
+   42, 같은 local budget, `FixMatch + FedAvg + LoRA-classifier`를 유지한다.
+2. 이어서 FlexMatch/FreeMatch/PseudoLabel full ablation을 같은 split/seed/local
+   budget으로 실행하고, method 이름 변경이 report metadata와 실제 local objective
+   변경으로 둘 다 남는지 확인한다.
+3. `client_count=1..10` full sweep을 `gpu_local + mxbai`에서 실행해 summary JSON과
+   산출물 위치를 고정한다. seed sweep은 split seed 42 고정 결과가 안정된 뒤
    robustness 목적으로 별도 실행한다.
-6. main split `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
-   `50 rounds`와 stress split `alpha=0.1`을 실행한다.
-7. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
+4. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
    round-state exchange/server policy capability를 먼저 문서화한다.
-8. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
+5. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
    capability adapter, test 순서로 추가한다.
-9. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
-10. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+6. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
+7. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 
