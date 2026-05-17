@@ -182,6 +182,21 @@ uv run python scripts/experiments/fl_ssl/run_federated_client_count_sweep.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
+기존 FL SSL 산출물 metadata 검증:
+
+```bash
+uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
+  --client-count-sweep-summary runs/<run_id>/reports/fl_ssl_client_count_sweep.summary.json \
+  --expected-client-counts 1,2,3,4,5,6,7,8,9,10 \
+  --expected-completed-rounds 1 \
+  --expected-round-budget 1 \
+  --expected-ssl-algorithm fixmatch \
+  --expected-ssl-method fixmatch_usb_v1 \
+  --expected-adapter-family lora_classifier \
+  --expected-aggregation fedavg \
+  --expected-delta-format server_uploaded_artifact_ref
+```
+
 FL SSL 실험 기본값은 `execution_context/runtime_env=gpu_local`과
 `execution_context/embedding_adapter=mxbai`다. `gpu_online`은 cache warm-up/최초
 다운로드용이고, `cpu_local + hash_debug`는 entrypoint wiring smoke나 빠른 디버그에만 쓴다.
