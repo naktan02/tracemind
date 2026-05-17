@@ -221,6 +221,7 @@ class FederatedDataSourceConfig:
     split_id: str | None = None
     source_selection: dict[str, object] = field(default_factory=dict)
     source_jsonl: dict[str, str] = field(default_factory=dict)
+    labeled_policy: dict[str, object] = field(default_factory=dict)
     view_schema: dict[str, object] = field(default_factory=dict)
     test_jsonl: str | None = None
 

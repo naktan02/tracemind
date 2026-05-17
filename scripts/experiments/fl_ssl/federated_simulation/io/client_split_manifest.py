@@ -104,6 +104,7 @@ class FlClientSplitManifest:
     bootstrap_ratio: float
     shard_policy: dict[str, object]
     client_pool_split: dict[str, object]
+    labeled_policy: dict[str, object]
     source_selection: dict[str, object]
     source_jsonl: dict[str, str]
     view_schema: FlClientSplitViewSchema
@@ -140,6 +141,9 @@ class FlClientSplitManifest:
             bootstrap_ratio=float(payload["bootstrap_ratio"]),
             shard_policy=dict(_mapping(payload.get("shard_policy", {}))),
             client_pool_split=dict(_mapping(payload.get("client_pool_split", {}))),
+            labeled_policy=dict(
+                _mapping(payload.get("labeled_policy", {"mode": "all"}))
+            ),
             source_selection=dict(_mapping(payload.get("source_selection", {}))),
             source_jsonl=_str_dict(payload.get("source_jsonl", {})),
             view_schema=FlClientSplitViewSchema.from_mapping(
@@ -169,6 +173,7 @@ class FlClientSplitManifest:
             "bootstrap_ratio": self.bootstrap_ratio,
             "shard_policy": dict(self.shard_policy),
             "client_pool_split": dict(self.client_pool_split),
+            "labeled_policy": dict(self.labeled_policy),
             "source_selection": dict(self.source_selection),
             "source_jsonl": dict(self.source_jsonl),
             "view_schema": self.view_schema.to_payload(),

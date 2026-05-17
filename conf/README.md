@@ -108,15 +108,28 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     나눈다.
   - 현재 `fedavg_pseudo_label` baseline은 `unlabeled` partition만 pseudo-label
     training 후보로 사용한다.
+  - 이 값은 `fl_data.source_mode=runtime_split_from_train` fallback에서만 pool을
+    다시 나누는 실행값이다. `materialized_client_split`에서는 이미 분리된
+    `query_source.train_jsonl` 전체와 `query_source.unlabeled_jsonl` 전체를 각각
+    client에 분배하고, ratio는 report의 실제 count로 확인한다.
+- `fl_client_split_materialization.labeled_policy`
+  - materialized split 생성 시 선택된 labeled source 중 얼마를 FL split에 포함할지
+    결정한다.
+  - 기본 `mode=all`은 `query_data_selection.labeled`가 가리키는 labeled source
+    전체를 bootstrap/client labeled artifact에 분배한다.
+  - 일부 라벨만 쓰는 ablation은 실행 시
+    `mode=count_per_class,count_per_class=<N>` 또는 `mode=fraction,fraction=<R>`로
+    명시한다. 이 선택은 manifest와 report metadata에 남긴다.
 - `fl_data.source_mode`
   - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
     sharding한다.
   - 논문 비교는 `materialized_client_split`과 `fl_data.split_manifest`를 써서
     `materialize_fl_client_split` 산출물을 고정 입력으로 소비한다.
-  - 이 mode에서는 `client_pool_split`, `shard_policy`, `client_count`,
-    `bootstrap_ratio`, `query_data_selection`이 manifest metadata와 맞는지 검증한다.
+  - 이 mode에서는 `shard_policy`, `client_count`, `bootstrap_ratio`,
+    `query_data_selection`이 manifest metadata와 맞는지 검증한다.
 - `report.labeled_ratio`, `report.unlabeled_ratio`, `report.seed_count`
-  - ratio 값은 `client_pool_split`에서 파생된 report protocol field다.
+  - runtime split fallback의 ratio 값은 `client_pool_split`에서 파생된다.
+  - materialized split의 실제 ratio는 client별 labeled/unlabeled count 합계로 읽는다.
   - `seed_count`는 `seed_sweep` runner에서 실행 seed 수와 일치하는지 검증한다.
 - `report.primary_metrics`, `report.secondary_metrics`
   - primary는 `macro_f1`, `worst_client_macro_f1`이다.

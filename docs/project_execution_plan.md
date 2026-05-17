@@ -46,9 +46,15 @@ central fixed embedding + classifier seed
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, non-IID split, seed, metric으로 둔다. 이 중 하나를
   바꾸면 method 비교가 아니라 scaffold 비교로 기록한다.
-- FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `3 seeds`로 고정한다.
+- FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `seed=42`
+  materialized manifest로 우선 고정한다.
 - FL SSL stress split은 같은 조건에서 Dirichlet label-skew `alpha=0.1`로 둔다.
-- 각 client pool은 기본적으로 `10% labeled / 90% unlabeled`로 나눈다.
+- materialized FL split은 선택된 labeled source 전체와 unlabeled source 전체를
+  client에 분배한다. labeled source는 `ourafla_reddit` 또는 `szegeelim_general4`
+  중에서 `query_data_selection.labeled`로 고른다.
+- 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시
+  `fl_client_split_materialization.labeled_policy`로 명시하고, 기본값은
+  `mode=all`이다.
 - FL SSL main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`으로 고정한다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
@@ -104,10 +110,12 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - clients: `10`
 - main non-IID: Dirichlet label-skew `alpha=0.3`
 - stress non-IID: Dirichlet label-skew `alpha=0.1`
-- seeds: `3`
+- split seed: `42`
 - round budget: `50`
 - local update budget: `local_epochs=1`, `max_steps=50`
-- labeled/unlabeled ratio: `10% / 90%` per client
+- labeled/unlabeled source: 기본은 labeled source 전체와 unlabeled source 전체를
+  client에 분배한다. 일부 labeled source만 쓰는 경우 `labeled_policy`를 manifest에
+  기록하고, 실제 ratio는 report count로 기록한다.
 - primary metrics: `macro-F1`, `worst-client macro-F1`
 - secondary metrics: `loss`, `weighted-F1`, `balanced accuracy`,
   worst-category F1, `ECE/max-ECE`, communication cost, per-client variance
@@ -170,7 +178,7 @@ Runtime translation:
 2. Phase 1: `central fixed embedding + classifier` seed 완료.
 3. Phase 2: query buffer, threshold/policy, manual label hook 고정.
 4. Phase 3: central SSL pooled/offline control 비교.
-5. Phase 4: 고정된 `10 clients`, `alpha=0.3/0.1`, `10/90`, `3 seeds` 조건에서 FL SSL non-IID 메인 비교.
+5. Phase 4: 고정된 `10 clients`, `alpha=0.3/0.1`, `seed=42` materialized split 조건에서 FL SSL non-IID 메인 비교.
 6. Phase 5: FL SSL winner runtime translation.
 7. Phase 6: 필요 시 richer shared adapter.
 8. Phase 7: clipping, secure aggregation, DP, 필요 시 HE.
@@ -185,10 +193,11 @@ Runtime translation:
    profile로 두고 server aggregation은 FedAvg로 잠근다.
 4. 실제 PEFT executor 기준 LoRA 1-round smoke를 실행하고 report/artifact schema를
    샘플로 고정한다.
-5. `client_count=1..10` sweep과 seed sweep을 `gpu_local + mxbai`에서 실행해
-   산출물 위치와 summary JSON을 남긴다.
-6. main split `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds`와
-   stress split `alpha=0.1`을 실행한다.
+5. `client_count=1..10` sweep을 `gpu_local + mxbai`에서 실행해 산출물 위치와
+   summary JSON을 남긴다. seed sweep은 split seed 42 고정 결과를 확인한 뒤
+   robustness 목적으로 별도 실행한다.
+6. main split `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
+   `50 rounds`와 stress split `alpha=0.1`을 실행한다.
 7. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
    round-state exchange/server policy capability를 먼저 문서화한다.
 8. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
@@ -200,7 +209,8 @@ Runtime translation:
 
 - Seed: canonical seed artifact, confusion, confidence distribution이 재현 가능하다.
 - Central SSL: 같은 고정 조건에서 control table과 output metadata가 남는다.
-- FL SSL: client partition, non-IID 정도, labeled/unlabeled ratio, metric, seed, local/round budget이 고정돼 있다.
+- FL SSL: client partition, non-IID 정도, labeled/unlabeled source/policy,
+  metric, split seed, local/round budget이 고정돼 있다.
 - Runtime: update base revision, aggregation, publication, artifact rebuild가 일관된다.
 - Privacy: raw text는 서버로 올라가지 않고 privacy layer는 training logic과 분리된다.
 

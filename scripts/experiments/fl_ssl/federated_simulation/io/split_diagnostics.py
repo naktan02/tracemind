@@ -10,9 +10,11 @@ from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     safe_ratio,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
+    FederatedDataSourceConfig,
     FederatedReportConfig,
 )
 
@@ -22,6 +24,7 @@ def build_client_pool_split_payload(
     dataset_split: FederatedDatasetSplit,
     client_pool_split_config: FederatedClientPoolSplitConfig | None,
     report_config: FederatedReportConfig,
+    data_source_config: FederatedDataSourceConfig | None = None,
 ) -> dict[str, object]:
     all_client_rows = [
         row for shard in dataset_split.client_shards for row in shard.rows
@@ -47,18 +50,30 @@ def build_client_pool_split_payload(
         float(payload["label_distribution_entropy"]) for payload in client_payloads
     ]
     tiny_client_threshold = 1
+    actual_labeled_ratio = safe_ratio(labeled_count, total_rows)
+    actual_unlabeled_ratio = safe_ratio(unlabeled_count, total_rows)
+    status = _split_status(
+        client_pool_split_config=client_pool_split_config,
+        data_source_config=data_source_config,
+    )
     return {
-        "labeled_ratio": report_config.labeled_ratio,
-        "unlabeled_ratio": report_config.unlabeled_ratio,
-        "status": (
-            "enforced_by_client_pool_split"
-            if client_pool_split_config is not None
-            else "not_configured"
+        "labeled_ratio": (
+            actual_labeled_ratio
+            if status == "materialized_client_split"
+            else report_config.labeled_ratio
         ),
+        "unlabeled_ratio": (
+            actual_unlabeled_ratio
+            if status == "materialized_client_split"
+            else report_config.unlabeled_ratio
+        ),
+        "configured_labeled_ratio": report_config.labeled_ratio,
+        "configured_unlabeled_ratio": report_config.unlabeled_ratio,
+        "status": status,
         "actual_labeled_count": labeled_count,
         "actual_unlabeled_count": unlabeled_count,
-        "actual_labeled_ratio": safe_ratio(labeled_count, total_rows),
-        "actual_unlabeled_ratio": safe_ratio(unlabeled_count, total_rows),
+        "actual_labeled_ratio": actual_labeled_ratio,
+        "actual_unlabeled_ratio": actual_unlabeled_ratio,
         "label_distribution": distribution,
         "label_distribution_entropy": label_entropy(distribution),
         "min_client_size": min(client_sizes) if client_sizes else None,
@@ -73,6 +88,21 @@ def build_client_pool_split_payload(
         },
         "clients": client_payloads,
     }
+
+
+def _split_status(
+    *,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None,
+    data_source_config: FederatedDataSourceConfig | None,
+) -> str:
+    if (
+        data_source_config is not None
+        and data_source_config.source_mode == FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT
+    ):
+        return "materialized_client_split"
+    if client_pool_split_config is not None:
+        return "enforced_by_client_pool_split"
+    return "not_configured"
 
 
 def label_distribution(rows: list[object]) -> dict[str, int]:

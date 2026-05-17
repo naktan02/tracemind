@@ -92,8 +92,14 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - 논문 비교는 먼저 `materialize_fl_client_split.py`로 client별 labeled/unlabeled
     JSONL과 manifest를 만든 뒤 `source_mode=materialized_client_split`으로 실행한다.
   - manifest에는 source selection, split seed, shard policy, client count,
-    `weak=text`, `strong=[aug_0, aug_1]` view schema와 sha256 provenance가 report에
-    남는다.
+    labeled source 선택 정책, `weak=text`, `strong=[aug_0, aug_1]` view schema와
+    sha256 provenance가 report에 남는다.
+- `fl_client_split_materialization.labeled_policy`
+  - split 생성 entrypoint 전용 값이다.
+  - 기본 `mode=all`은 선택된 labeled source 전체를 bootstrap/client labeled pool로
+    분배한다.
+  - 라벨 데이터 일부만 쓰는 ablation은 `mode=count_per_class` 또는
+    `mode=fraction`으로 manifest 생성 시 명시한다.
 - `security_policy`
   - 현재 simulation은 `plaintext`만 지원한다.
   - secure aggregation, DP, 암호화 artifact ref는 method가 아니라 runtime capability
@@ -130,7 +136,8 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 ```bash
 python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
   run_controls/fl_ssl/budget=main \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  fl_client_split_materialization.labeled_policy.mode=all
 ```
 
 고정 split 실행:
@@ -199,9 +206,10 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - report는 global validation `macro_f1`, client validation shard 기준
   `worst_client_macro_f1`, ECE, client update envelope 수 기반 communication
   cost proxy, per-client macro-F1 variance를 포함한다.
-- `client_pool_split`은 각 client shard 안에서 `10% labeled / 90% unlabeled`
-  pool을 deterministic하게 나눈다. 현재 `fedavg_pseudo_label` baseline은
-  `unlabeled` partition만 pseudo-label training 후보로 사용한다.
+- `client_pool_split`은 `fl_data.source_mode=runtime_split_from_train` fallback에서만
+  train row를 `10% labeled / 90% unlabeled`로 다시 나누는 debug 값이다.
+  `materialized_client_split`에서는 manifest의 client별 `labeled.jsonl`과
+  `unlabeled.jsonl`을 그대로 사용하고 실제 비율은 report count로 확인한다.
 - `seed_sweep.seeds` 기본값은 `[42, 43, 44]`이며 `report.seed_count=3`과
   일치해야 한다. seed sweep runner는 seed별 report와
   `reports/fl_ssl_seed_sweep.summary.json`을 남긴다.

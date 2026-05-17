@@ -10,10 +10,6 @@ defaults:
 
 seed: 42
 
-client_pool_split:
-  labeled_ratio: 0.1
-  unlabeled_ratio: 0.9
-
 fl_client_split_materialization:
   split_id: ${query_data_selection_slug}_${shard_policy.name}_clients${federated_run_budget.client_count}_seed${seed}
   output_root: data/datasets/fl_client_splits
@@ -24,6 +20,10 @@ fl_client_split_materialization:
   seed: ${seed}
   client_count: ${federated_run_budget.client_count}
   bootstrap_ratio: ${federated_run_budget.bootstrap_ratio}
+  labeled_policy:
+    mode: all
+    count_per_class: null
+    fraction: null
   view_schema:
     weak_text_field: text
     strong_text_fields:

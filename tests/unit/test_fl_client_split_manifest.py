@@ -70,7 +70,12 @@ def _write_source_rows(tmp_path: Path) -> dict[str, Path]:
     return paths
 
 
-def _materialize_test_split(tmp_path: Path, *, client_count: int = 2) -> Path:
+def _materialize_test_split(
+    tmp_path: Path,
+    *,
+    client_count: int = 2,
+    labeled_policy: dict[str, object] | None = None,
+) -> Path:
     paths = _write_source_rows(tmp_path)
     artifacts = materialize_fl_client_split(
         source_labeled_jsonl=paths["labeled"],
@@ -87,7 +92,6 @@ def _materialize_test_split(tmp_path: Path, *, client_count: int = 2) -> Path:
             dominant_ratio=0.5,
             client_id_prefix="agent",
         ),
-        client_pool_split={"labeled_ratio": 0.1, "unlabeled_ratio": 0.9},
         source_selection={
             "labeled": "ourafla_reddit",
             "unlabeled": "ourafla_reddit",
@@ -100,8 +104,18 @@ def _materialize_test_split(tmp_path: Path, *, client_count: int = 2) -> Path:
             strong_text_fields=("aug_0", "aug_1"),
             require_strong_views=True,
         ),
+        labeled_policy=labeled_policy,
     )
     return artifacts.manifest_json
+
+
+def _loaded_query_ids(manifest_path: Path) -> set[str]:
+    loaded = load_materialized_client_split(manifest_path)
+    return {
+        row["query_id"]
+        for shard in loaded.dataset_split.client_shards
+        for row in shard.rows
+    } | {row["query_id"] for row in loaded.dataset_split.bootstrap_rows}
 
 
 def test_materialize_fl_client_split_writes_manifest_and_client_artifacts(
@@ -116,6 +130,8 @@ def test_materialize_fl_client_split_writes_manifest_and_client_artifacts(
     assert loaded.manifest.manifest_sha256
     assert loaded.manifest.view_schema.weak_text_field == "text"
     assert loaded.manifest.view_schema.strong_text_fields == ("aug_0", "aug_1")
+    assert loaded.manifest.client_pool_split == {}
+    assert loaded.manifest.labeled_policy["mode"] == "all"
     assert len(loaded.dataset_split.bootstrap_rows) > 0
     assert len(loaded.dataset_split.client_shards) == 2
     assert {shard.client_id for shard in loaded.dataset_split.client_shards} == {
@@ -132,6 +148,46 @@ def test_materialize_fl_client_split_writes_manifest_and_client_artifacts(
         assert all(row["aug_0"] and row["aug_1"] for row in shard.unlabeled_rows)
     assert [row["query_id"] for row in loaded.validation_rows] == ["v_a", "v_n"]
     assert [row["query_id"] for row in loaded.test_rows] == ["t_a", "t_n"]
+    assert _loaded_query_ids(manifest_path) == {
+        f"l_a_{index}" for index in range(6)
+    } | {f"l_n_{index}" for index in range(6)} | {
+        f"u_a_{index}" for index in range(8)
+    } | {f"u_n_{index}" for index in range(8)}
+
+
+def test_materialize_fl_client_split_supports_labeled_count_per_class_policy(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(
+        tmp_path,
+        labeled_policy={
+            "mode": "count_per_class",
+            "count_per_class": 2,
+            "fraction": None,
+        },
+    )
+
+    loaded = load_materialized_client_split(manifest_path)
+    train_rows = [
+        *loaded.dataset_split.bootstrap_rows,
+        *[row for shard in loaded.dataset_split.client_shards for row in shard.rows],
+    ]
+    labeled_rows = [row for row in train_rows if str(row["query_id"]).startswith("l_")]
+    unlabeled_rows = [
+        row for row in train_rows if str(row["query_id"]).startswith("u_")
+    ]
+
+    assert loaded.manifest.labeled_policy == {
+        "mode": "count_per_class",
+        "count_per_class": 2,
+        "fraction": None,
+    }
+    assert len(labeled_rows) == 4
+    assert len(unlabeled_rows) == 16
+    assert {
+        label: sum(1 for row in labeled_rows if row["mapped_label_4"] == label)
+        for label in {"anxiety", "normal"}
+    } == {"anxiety": 2, "normal": 2}
 
 
 def test_materialize_fl_client_split_requires_unlabeled_views(
@@ -159,7 +215,6 @@ def test_materialize_fl_client_split_requires_unlabeled_views(
                 dominant_ratio=0.5,
                 client_id_prefix="agent",
             ),
-            client_pool_split={"labeled_ratio": 0.1, "unlabeled_ratio": 0.9},
             source_selection={},
             source_jsonl={name: str(path) for name, path in paths.items()},
             view_schema=FlClientSplitViewSchema(
@@ -167,6 +222,7 @@ def test_materialize_fl_client_split_requires_unlabeled_views(
                 strong_text_fields=("aug_0", "aug_1"),
                 require_strong_views=True,
             ),
+            labeled_policy=None,
         )
 
 
@@ -205,6 +261,7 @@ def test_run_federated_simulation_config_loads_materialized_split(
         "strong_text_fields": ["aug_0", "aug_1"],
         "require_strong_views": True,
     }
+    assert request.data_source_config.labeled_policy["mode"] == "all"
     assert [
         shard.client_id for shard in request.materialized_dataset_split.client_shards
     ] == ["agent_01", "agent_02"]
@@ -235,3 +292,32 @@ def test_run_federated_simulation_rejects_manifest_client_count_drift(
 
     with pytest.raises(ValueError, match="client_count"):
         build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
+
+
+def test_run_federated_simulation_allows_materialized_split_ratio_metadata_drift(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(tmp_path, client_count=2)
+
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "execution_context/embedding_adapter=hash_debug",
+                "execution_context/runtime_env=cpu_local",
+                "federated_run_budget.client_count=2",
+                "federated_run_budget.bootstrap_ratio=0.25",
+                "fl_data.source_mode=materialized_client_split",
+                f"fl_data.split_manifest={manifest_path}",
+                "shard_policy.dominant_ratio=0.5",
+                "client_pool_split.labeled_ratio=0.2",
+                "client_pool_split.unlabeled_ratio=0.8",
+            ],
+        )
+
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
+
+    assert request.materialized_dataset_split is not None
+    assert _loaded_query_ids(manifest_path) == {
+        row["query_id"] for row in request.train_rows
+    }

@@ -109,9 +109,11 @@ methods/evaluation/                            # stable metric helper만
 
 ## Main Comparison Gate
 
-- [ ] main split: `10 clients`, Dirichlet `alpha=0.3`, `3 seeds`, `50 rounds`.
+- [ ] main split: `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
+  `50 rounds`.
 - [ ] stress split: Dirichlet `alpha=0.1`.
-- [x] client pool split: `10% labeled / 90% unlabeled`.
+- [x] materialized split: 선택된 labeled source 전체와 unlabeled source 전체를
+  client에 분배하고, 실제 labeled/unlabeled ratio는 report count로 기록한다.
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
 - [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다.
 - [ ] CPU/hash debug 결과를 논문 성능 근거로 쓰지 않도록 report metadata를 확인한다.

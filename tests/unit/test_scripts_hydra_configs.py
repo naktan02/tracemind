@@ -615,11 +615,28 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     )
     assert cfg.shard_policy.name == "dirichlet_label_skew"
     assert cfg.shard_policy.alpha == 0.3
+    assert cfg.fl_client_split_materialization.labeled_policy.mode == "all"
+    assert cfg.fl_client_split_materialization.labeled_policy.count_per_class is None
+    assert cfg.fl_client_split_materialization.labeled_policy.fraction is None
     assert cfg.fl_client_split_materialization.view_schema.weak_text_field == "text"
     assert list(cfg.fl_client_split_materialization.view_schema.strong_text_fields) == [
         "aug_0",
         "aug_1",
     ]
+
+
+def test_fl_client_split_materialization_supports_labeled_policy_overrides() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/materialize_fl_client_split",
+            overrides=[
+                "fl_client_split_materialization.labeled_policy.mode=count_per_class",
+                "fl_client_split_materialization.labeled_policy.count_per_class=256",
+            ],
+        )
+
+    assert cfg.fl_client_split_materialization.labeled_policy.mode == "count_per_class"
+    assert cfg.fl_client_split_materialization.labeled_policy.count_per_class == 256
 
 
 def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:

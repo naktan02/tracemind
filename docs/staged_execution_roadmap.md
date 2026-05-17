@@ -30,7 +30,8 @@
 
 - client non-IID split 위에서 `FedMatch`, `FedLGMatch`, `(FL)^2` 같은
   FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
-- main condition은 `10 clients`, Dirichlet `alpha=0.3`, `10% labeled / 90% unlabeled`, `3 seeds`다.
+- main condition은 `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
+  선택된 labeled/unlabeled source pool 전체 분배다.
 - stress condition은 같은 조건에서 Dirichlet `alpha=0.1`로 둔다.
 - main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`이다.
 - smoke budget은 실행 확인용 `3 rounds`다.

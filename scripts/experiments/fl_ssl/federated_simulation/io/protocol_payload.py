@@ -57,6 +57,7 @@ def build_protocol_payload(
             dataset_split=dataset_split,
             client_pool_split_config=client_pool_split_config,
             report_config=report_config,
+            data_source_config=resolved_data_source_config,
         ),
         "local_update_budget": {
             "local_epochs": training_task_config.local_epochs,
@@ -142,6 +143,7 @@ def _fl_data_source_to_payload(
         "split_id": data_source_config.split_id,
         "source_selection": dict(data_source_config.source_selection),
         "source_jsonl": dict(data_source_config.source_jsonl),
+        "labeled_policy": dict(data_source_config.labeled_policy),
         "view_schema": dict(data_source_config.view_schema),
         "test_jsonl": data_source_config.test_jsonl,
     }

@@ -184,7 +184,6 @@ def build_simulation_request_from_config(
         client_count=int(cfg.federated_run_budget.client_count),
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
         shard_policy=shard_policy,
-        client_pool_split_config=client_pool_split_config,
     )
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
@@ -224,7 +223,6 @@ def _resolve_fl_data_source(
     client_count: int,
     bootstrap_ratio: float,
     shard_policy: FederatedShardPolicyConfig,
-    client_pool_split_config: FederatedClientPoolSplitConfig,
 ) -> _ResolvedFlDataSource:
     fl_data_cfg = cfg.get("fl_data", {})
     source_mode = str(
@@ -260,7 +258,6 @@ def _resolve_fl_data_source(
         client_count=client_count,
         bootstrap_ratio=bootstrap_ratio,
         shard_policy=shard_policy,
-        client_pool_split_config=client_pool_split_config,
     )
     manifest = loaded_split.manifest
     return _ResolvedFlDataSource(
@@ -274,6 +271,7 @@ def _resolve_fl_data_source(
             split_id=manifest.split_id,
             source_selection=dict(manifest.source_selection),
             source_jsonl=dict(manifest.source_jsonl),
+            labeled_policy=dict(manifest.labeled_policy),
             view_schema=manifest.view_schema.to_payload(),
             test_jsonl=manifest.test_jsonl,
         ),
@@ -298,7 +296,6 @@ def _require_manifest_matches_config(
     client_count: int,
     bootstrap_ratio: float,
     shard_policy: FederatedShardPolicyConfig,
-    client_pool_split_config: FederatedClientPoolSplitConfig,
 ) -> None:
     manifest = loaded_split.manifest
     if manifest.client_count != client_count:
@@ -314,10 +311,6 @@ def _require_manifest_matches_config(
             f"{bootstrap_ratio}."
         )
     _require_manifest_shard_policy_matches_config(manifest.shard_policy, shard_policy)
-    _require_manifest_client_pool_split_matches_config(
-        manifest.client_pool_split,
-        client_pool_split_config,
-    )
     configured_source_selection = _optional_plain_dict(cfg, "query_data_selection")
     if (
         configured_source_selection
@@ -347,23 +340,6 @@ def _require_manifest_shard_policy_matches_config(
             raise ValueError(
                 "fl_data materialized manifest shard_policy must match config: "
                 f"{key} {actual_value!r} != {expected_value!r}."
-            )
-
-
-def _require_manifest_client_pool_split_matches_config(
-    manifest_split: dict[str, object],
-    client_pool_split_config: FederatedClientPoolSplitConfig,
-) -> None:
-    expected = {
-        "labeled_ratio": client_pool_split_config.labeled_ratio,
-        "unlabeled_ratio": client_pool_split_config.unlabeled_ratio,
-    }
-    for key, expected_value in expected.items():
-        actual_value = float(manifest_split.get(key, -1.0))
-        if abs(actual_value - expected_value) > 1e-9:
-            raise ValueError(
-                "fl_data materialized manifest client_pool_split must match "
-                f"config: {key} {actual_value!r} != {expected_value!r}."
             )
 
 

@@ -278,6 +278,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             split_id="main",
             source_selection={"labeled": "ourafla_reddit"},
             source_jsonl={"labeled": "labeled.jsonl"},
+            labeled_policy={"mode": "all"},
             view_schema={
                 "weak_text_field": "text",
                 "strong_text_fields": ["aug_0", "aug_1"],
@@ -355,12 +356,17 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert agent_001_summary["accepted_label_distribution"] == {"anxiety": 9}
 
     split = payload["protocol"]["labeled_unlabeled_split"]
+    assert split["status"] == "materialized_client_split"
+    assert split["labeled_ratio"] == pytest.approx(0.4)
+    assert split["unlabeled_ratio"] == pytest.approx(0.6)
+    assert split["configured_labeled_ratio"] == pytest.approx(0.1)
     assert split["min_client_size"] == 2
     assert split["max_client_size"] == 3
     assert split["label_skew_summary"]["dominant_label_ratio"]["max"] == 1.0
     fl_data_source = payload["protocol"]["fl_data_source"]
     assert fl_data_source["source_mode"] == "materialized_client_split"
     assert fl_data_source["split_manifest_sha256"] == "abc123"
+    assert fl_data_source["labeled_policy"] == {"mode": "all"}
     assert fl_data_source["view_schema"]["strong_text_fields"] == [
         "aug_0",
         "aug_1",

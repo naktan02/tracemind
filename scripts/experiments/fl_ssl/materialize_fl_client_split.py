@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import random
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -26,6 +27,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest im
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
+    group_labeled_query_rows_by_label,
     load_labeled_query_rows,
 )
 
@@ -43,6 +45,32 @@ class FlClientSplitArtifacts:
     test_jsonl: Path
 
 
+@dataclass(frozen=True, slots=True)
+class FlLabeledPoolPolicy:
+    """FL materialized split에 포함할 labeled source pool 선택 정책."""
+
+    mode: str = "all"
+    count_per_class: int | None = None
+    fraction: float | None = None
+
+    @classmethod
+    def from_mapping(cls, source: Mapping[str, object]) -> "FlLabeledPoolPolicy":
+        raw_count = source.get("count_per_class")
+        raw_fraction = source.get("fraction")
+        return cls(
+            mode=str(source.get("mode", "all")),
+            count_per_class=None if raw_count is None else int(raw_count),
+            fraction=None if raw_fraction is None else float(raw_fraction),
+        )
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "mode": self.mode,
+            "count_per_class": self.count_per_class,
+            "fraction": self.fraction,
+        }
+
+
 def materialize_fl_client_split(
     *,
     source_labeled_jsonl: Path,
@@ -55,10 +83,10 @@ def materialize_fl_client_split(
     client_count: int,
     bootstrap_ratio: float,
     shard_policy: FederatedShardPolicyConfig,
-    client_pool_split: Mapping[str, object],
     source_selection: Mapping[str, object],
     source_jsonl: Mapping[str, str],
     view_schema: FlClientSplitViewSchema,
+    labeled_policy: FlLabeledPoolPolicy | Mapping[str, object] | None = None,
 ) -> FlClientSplitArtifacts:
     """중앙 Query SSL split을 FL client별 고정 split으로 materialize한다."""
 
@@ -72,6 +100,7 @@ def materialize_fl_client_split(
     unlabeled_rows = load_labeled_query_rows(source_unlabeled_jsonl)
     validation_rows = load_labeled_query_rows(source_validation_jsonl)
     test_rows = load_labeled_query_rows(source_test_jsonl)
+    resolved_labeled_policy = _resolve_labeled_policy(labeled_policy)
     validate_rows_have_view_schema(
         unlabeled_rows,
         view_schema=view_schema,
@@ -83,9 +112,14 @@ def materialize_fl_client_split(
         left_name="source_labeled_jsonl",
         right_name="source_unlabeled_jsonl",
     )
+    selected_labeled_rows = _select_labeled_rows(
+        labeled_rows,
+        policy=resolved_labeled_policy,
+        seed=seed,
+    )
 
     labeled_split = split_rows_for_federation(
-        list(labeled_rows),
+        selected_labeled_rows,
         bootstrap_ratio=bootstrap_ratio,
         client_count=client_count,
         seed=seed,
@@ -147,7 +181,8 @@ def materialize_fl_client_split(
         client_count=client_count,
         bootstrap_ratio=bootstrap_ratio,
         shard_policy=_shard_policy_payload(shard_policy),
-        client_pool_split=dict(client_pool_split),
+        client_pool_split={},
+        labeled_policy=resolved_labeled_policy.to_payload(),
         source_selection=dict(source_selection),
         source_jsonl=dict(source_jsonl),
         view_schema=view_schema,
@@ -184,7 +219,9 @@ def run_fl_client_split_materialization_from_hydra(*, cfg: DictConfig) -> None:
         client_count=int(materialization_cfg.client_count),
         bootstrap_ratio=float(materialization_cfg.bootstrap_ratio),
         shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
-        client_pool_split=_to_plain_dict(cfg.client_pool_split),
+        labeled_policy=FlLabeledPoolPolicy.from_mapping(
+            _to_plain_dict(materialization_cfg.labeled_policy)
+        ),
         source_selection=_to_plain_dict(cfg.query_data_selection),
         source_jsonl=source_jsonl,
         view_schema=FlClientSplitViewSchema(
@@ -233,6 +270,105 @@ def _shard_policy_payload(
         "dominant_ratio": shard_policy.dominant_ratio,
         "alpha": shard_policy.alpha,
     }
+
+
+def _resolve_labeled_policy(
+    policy: FlLabeledPoolPolicy | Mapping[str, object] | None,
+) -> FlLabeledPoolPolicy:
+    if policy is None:
+        return FlLabeledPoolPolicy()
+    if isinstance(policy, FlLabeledPoolPolicy):
+        return policy
+    return FlLabeledPoolPolicy.from_mapping(policy)
+
+
+def _select_labeled_rows(
+    rows: Sequence[LabeledQueryRow],
+    *,
+    policy: FlLabeledPoolPolicy,
+    seed: int,
+) -> list[LabeledQueryRow]:
+    if policy.mode == "all":
+        if policy.count_per_class is not None or policy.fraction is not None:
+            raise ValueError(
+                "labeled_policy.count_per_class and labeled_policy.fraction must be "
+                "null when mode is all."
+            )
+        return list(rows)
+    if policy.mode == "count_per_class":
+        if policy.fraction is not None:
+            raise ValueError(
+                "labeled_policy.fraction must be null when mode is count_per_class."
+            )
+        return _select_labeled_rows_by_count_per_class(
+            rows,
+            count_per_class=policy.count_per_class,
+            seed=seed,
+        )
+    if policy.mode == "fraction":
+        if policy.count_per_class is not None:
+            raise ValueError(
+                "labeled_policy.count_per_class must be null when mode is fraction."
+            )
+        return _select_labeled_rows_by_fraction(
+            rows,
+            fraction=policy.fraction,
+            seed=seed,
+        )
+    raise ValueError(
+        "fl_client_split_materialization.labeled_policy.mode must be one of "
+        "'all', 'count_per_class', or 'fraction'."
+    )
+
+
+def _select_labeled_rows_by_count_per_class(
+    rows: Sequence[LabeledQueryRow],
+    *,
+    count_per_class: int | None,
+    seed: int,
+) -> list[LabeledQueryRow]:
+    if count_per_class is None or count_per_class <= 0:
+        raise ValueError(
+            "labeled_policy.count_per_class must be positive when mode is "
+            "count_per_class."
+        )
+    rng = random.Random(seed)
+    selected_rows: list[LabeledQueryRow] = []
+    for label, bucket in group_labeled_query_rows_by_label(rows).items():
+        if len(bucket) < count_per_class:
+            raise ValueError(
+                "labeled_policy.count_per_class exceeds source labeled rows for "
+                f"{label}: {count_per_class} > {len(bucket)}."
+            )
+        shuffled_bucket = list(bucket)
+        rng.shuffle(shuffled_bucket)
+        selected_rows.extend(shuffled_bucket[:count_per_class])
+    rng.shuffle(selected_rows)
+    return selected_rows
+
+
+def _select_labeled_rows_by_fraction(
+    rows: Sequence[LabeledQueryRow],
+    *,
+    fraction: float | None,
+    seed: int,
+) -> list[LabeledQueryRow]:
+    if fraction is None or not 0.0 < fraction <= 1.0:
+        raise ValueError(
+            "labeled_policy.fraction must be between 0 and 1 when mode is fraction."
+        )
+    rng = random.Random(seed)
+    selected_rows: list[LabeledQueryRow] = []
+    for bucket in group_labeled_query_rows_by_label(rows).values():
+        selected_count = int(round(len(bucket) * fraction))
+        if selected_count <= 0 and bucket:
+            selected_count = 1
+        selected_count = min(selected_count, len(bucket))
+        shuffled_bucket = list(bucket)
+        rng.shuffle(shuffled_bucket)
+        selected_rows.extend(shuffled_bucket[:selected_count])
+    rng.shuffle(selected_rows)
+    return selected_rows
 
 
 def _require_disjoint_query_ids(

@@ -137,6 +137,18 @@ uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
+기본값은 선택된 labeled source 전체와 unlabeled source 전체를 client에 분배한다.
+라벨 데이터를 일부만 쓰는 ablation은 split 생성 시 정책을 명시한다.
+
+```bash
+uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
+  query_data_selection.labeled=szegeelim_general4 \
+  run_controls/fl_ssl/budget=main \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  fl_client_split_materialization.labeled_policy.mode=count_per_class \
+  fl_client_split_materialization.labeled_policy.count_per_class=256
+```
+
 FL SSL simulation smoke:
 
 ```bash
