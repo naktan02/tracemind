@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import argparse
+import json
+from dataclasses import fields
 from pathlib import Path
-from typing import Sequence
+from typing import Mapping, Sequence
 
 from scripts.experiments.fl_ssl.federated_simulation.io.report_verification import (
     FederatedReportExpectation,
@@ -53,6 +55,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     )
 
     results: list[VerificationResult] = []
+    for manifest_path in args.manifest:
+        results.extend(_verify_manifest_path(Path(manifest_path)))
     for report_path in args.report:
         results.append(
             verify_federated_simulation_report_path(
@@ -75,7 +79,8 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     if not results:
         parser.error(
-            "At least one --report or --client-count-sweep-summary is required."
+            "At least one --manifest, --report, or "
+            "--client-count-sweep-summary is required."
         )
     for result in results:
         _print_result(result)
@@ -103,6 +108,15 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--expected-client-counts",
         help="Comma-separated expected client_count values for sweep summary.",
+    )
+    parser.add_argument(
+        "--manifest",
+        action="append",
+        default=[],
+        help=(
+            "JSON manifest containing artifact paths and per-artifact expectations. "
+            "Can be repeated."
+        ),
     )
     parser.add_argument("--expected-completed-rounds", type=int)
     parser.add_argument("--expected-round-budget", type=int)
@@ -148,6 +162,109 @@ def _parse_optional_bool(value: str | None) -> bool | None:
     if value is None:
         return None
     return value == "true"
+
+
+def _verify_manifest_path(manifest_path: Path) -> list[VerificationResult]:
+    manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    entries = _manifest_entries(manifest)
+    return [
+        _verify_manifest_entry(
+            manifest_path=manifest_path,
+            entry=entry,
+            index=index,
+        )
+        for index, entry in enumerate(entries, start=1)
+    ]
+
+
+def _manifest_entries(manifest: object) -> tuple[Mapping[str, object], ...]:
+    if isinstance(manifest, list):
+        raw_entries = manifest
+    elif isinstance(manifest, Mapping):
+        raw_entries = manifest.get("artifacts")
+    else:
+        raw_entries = None
+    if not isinstance(raw_entries, list):
+        raise ValueError("Verifier manifest must be a list or contain artifacts list.")
+    entries: list[Mapping[str, object]] = []
+    for raw_entry in raw_entries:
+        if not isinstance(raw_entry, Mapping):
+            raise ValueError("Verifier manifest entries must be JSON objects.")
+        entries.append(raw_entry)
+    return tuple(entries)
+
+
+def _verify_manifest_entry(
+    *,
+    manifest_path: Path,
+    entry: Mapping[str, object],
+    index: int,
+) -> VerificationResult:
+    name = str(entry.get("name") or f"artifact_{index}")
+    expectation = _expectation_from_manifest_entry(entry)
+    report_path = _optional_manifest_path(manifest_path, entry.get("report"))
+    summary_path = _optional_manifest_path(
+        manifest_path,
+        entry.get("client_count_sweep_summary"),
+    )
+    if report_path is not None and summary_path is not None:
+        raise ValueError(
+            f"Verifier manifest entry {name!r} must not define both report "
+            "and client_count_sweep_summary."
+        )
+    if report_path is not None:
+        result = verify_federated_simulation_report_path(report_path, expectation)
+        return _label_result(name=name, result=result)
+    if summary_path is not None:
+        expected_client_counts = _int_sequence(
+            entry.get("expected_client_counts"),
+            field_name="expected_client_counts",
+        )
+        result = verify_client_count_sweep_summary_path(
+            summary_path,
+            expected_client_counts=expected_client_counts,
+            report_expectation=expectation,
+        )
+        return _label_result(name=name, result=result)
+    raise ValueError(
+        f"Verifier manifest entry {name!r} requires report or "
+        "client_count_sweep_summary."
+    )
+
+
+def _expectation_from_manifest_entry(
+    entry: Mapping[str, object],
+) -> FederatedReportExpectation:
+    raw_expectation = entry.get("expectation", {})
+    if not isinstance(raw_expectation, Mapping):
+        raise ValueError("Verifier manifest expectation must be a JSON object.")
+    allowed_fields = {field.name for field in fields(FederatedReportExpectation)}
+    unknown_fields = sorted(set(raw_expectation) - allowed_fields)
+    if unknown_fields:
+        raise ValueError(f"Unknown verifier expectation fields: {unknown_fields}.")
+    return FederatedReportExpectation(**dict(raw_expectation))
+
+
+def _optional_manifest_path(manifest_path: Path, raw_path: object) -> Path | None:
+    if not isinstance(raw_path, str) or not raw_path.strip():
+        return None
+    path = Path(raw_path)
+    if path.is_absolute() or path.exists():
+        return path
+    return manifest_path.parent / path
+
+
+def _int_sequence(value: object, *, field_name: str) -> tuple[int, ...]:
+    if not isinstance(value, list) or not value:
+        raise ValueError(f"Verifier manifest {field_name} must be a non-empty list.")
+    return tuple(int(item) for item in value)
+
+
+def _label_result(*, name: str, result: VerificationResult) -> VerificationResult:
+    return VerificationResult(
+        artifact=f"{name}: {result.artifact}",
+        errors=result.errors,
+    )
 
 
 def _print_result(result: VerificationResult) -> None:

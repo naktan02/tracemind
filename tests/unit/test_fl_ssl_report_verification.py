@@ -10,6 +10,9 @@ from scripts.experiments.fl_ssl.federated_simulation.io.report_verification impo
     verify_client_count_sweep_summary_path,
     verify_federated_simulation_report_payload,
 )
+from scripts.experiments.fl_ssl.verify_federated_report_artifacts import (
+    main as verify_federated_report_artifacts_main,
+)
 
 
 def _report_payload(
@@ -345,3 +348,87 @@ def test_verify_client_count_sweep_summary_reports_nested_drift(
         "client_count=1: objective.query_ssl.algorithm_name expected 'fixmatch', "
         "got 'freematch'." in result.errors
     )
+
+
+def test_verify_artifact_manifest_checks_multiple_artifacts(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            _report_payload(
+                client_count=1,
+                completed_rounds=1,
+                round_budget=1,
+            )
+        ),
+        encoding="utf-8",
+    )
+    summary_path = tmp_path / "summary.json"
+    summary_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "fl_ssl_client_count_sweep_summary.v1",
+                "client_counts": [1],
+                "protocol": {"round_budget": 1},
+                "runs": [{"client_count": 1, "report_path": str(report_path)}],
+            }
+        ),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "name": "single_report",
+                        "report": "report.json",
+                        "expectation": {
+                            "expected_completed_rounds": 1,
+                            "expected_round_budget": 1,
+                            "expected_client_count": 1,
+                            "expected_round_record_count": 1,
+                            "expected_round_update_count_matches_client_count": True,
+                            "expected_seed": 42,
+                            "expected_shard_policy_name": "dirichlet_label_skew",
+                            "expected_shard_alpha": 0.3,
+                            "expected_split_id_contains": "alpha0.3",
+                            "expected_ssl_algorithm": "fixmatch",
+                            "expected_ssl_method": "fixmatch_usb_v1",
+                            "expected_adapter_family": "lora_classifier",
+                            "expected_aggregation": "fedavg",
+                            "expected_delta_format": "server_uploaded_artifact_ref",
+                        },
+                    },
+                    {
+                        "name": "sweep_summary",
+                        "client_count_sweep_summary": "summary.json",
+                        "expected_client_counts": [1],
+                        "expectation": {
+                            "expected_completed_rounds": 1,
+                            "expected_round_budget": 1,
+                            "expected_round_record_count": 1,
+                            "expected_round_update_count_matches_client_count": True,
+                            "expected_ssl_algorithm": "fixmatch",
+                            "expected_ssl_method": "fixmatch_usb_v1",
+                            "expected_adapter_family": "lora_classifier",
+                            "expected_aggregation": "fedavg",
+                            "expected_delta_format": "server_uploaded_artifact_ref",
+                        },
+                    },
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        ["--manifest", str(manifest_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "PASS single_report:" in output
+    assert "PASS sweep_summary:" in output

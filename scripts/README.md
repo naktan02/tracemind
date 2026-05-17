@@ -208,6 +208,14 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-local-trainer-local-files-only true
 ```
 
+여러 report와 sweep summary를 한 번에 검증해야 하면 같은 기대값을 CLI에
+반복하지 말고 JSON manifest로 묶는다.
+
+```bash
+uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
+  --manifest path/to/fl_ssl_artifact_verification_manifest.json
+```
+
 FL SSL 실험 기본값은 `execution_context/runtime_env=gpu_local`과
 `execution_context/embedding_adapter=mxbai`다. `gpu_online`은 cache warm-up/최초
 다운로드용이고, `cpu_local + hash_debug`는 entrypoint wiring smoke나 빠른 디버그에만 쓴다.
