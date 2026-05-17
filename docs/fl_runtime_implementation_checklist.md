@@ -130,7 +130,8 @@ methods/evaluation/                            # stable metric helper만
 - [x] `client_count=1..10` 1-round summary는 report artifact verifier로
   `FixMatch + FedAvg + LoRA-classifier` metadata를 재검증했다.
 - [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다. 현재는
-  smoke, alpha=0.3 main 50-round, short ablation, short sweep 산출물까지 확인했고,
+  smoke, alpha=0.3 main 50-round, alpha=0.1 5-round reduced stress,
+  5-round reduced ablation, 1-round client-count sweep 산출물까지 확인했고,
   full stress/ablation/sweep은 사용자 지시로 보류했다.
 - [x] 새 FL simulation report protocol은 `embedding_adapter`와
   `local_trainer_runtime` metadata를 기록한다. 이후 논문용 산출물은 이 필드로

@@ -200,9 +200,10 @@ Runtime translation:
   baseline은 완료했다.
 - Dirichlet `alpha=0.1` stress, full-budget FlexMatch/FreeMatch/PseudoLabel
   ablation, full-budget `client_count=1..10` sweep은 장시간 실행이므로 사용자 승인
-  전까지 보류한다. 현재는 같은 wiring을 1-round/1-step short verification으로만
-  확인했다.
-- 기존 smoke/main/reduced ablation/short sweep 산출물은
+  전까지 보류한다. 현재는 `alpha=0.1` stress와
+  FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
+  `client_count=1..10` sweep은 1-round summary로 확인했다.
+- 기존 smoke/main/reduced stress/reduced ablation/1-round sweep 산출물은
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 round budget,
   client count, SSL method, adapter family, aggregation, delta format metadata를
   재검증할 수 있다.
