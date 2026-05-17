@@ -432,3 +432,50 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
     assert exit_code == 0
     assert "PASS single_report:" in output
     assert "PASS sweep_summary:" in output
+
+
+def test_verify_artifact_manifest_returns_failure_for_drift(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            _report_payload(
+                client_count=1,
+                completed_rounds=1,
+                round_budget=1,
+                ssl_algorithm="freematch",
+            )
+        ),
+        encoding="utf-8",
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "artifacts": [
+                    {
+                        "name": "drifted_report",
+                        "report": "report.json",
+                        "expectation": {
+                            "expected_ssl_algorithm": "fixmatch",
+                        },
+                    }
+                ]
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        ["--manifest", str(manifest_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 1
+    assert "FAIL drifted_report:" in output
+    assert (
+        "objective.query_ssl.algorithm_name expected 'fixmatch', got 'freematch'."
+        in output
+    )
