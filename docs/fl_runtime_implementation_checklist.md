@@ -61,7 +61,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 methods/federated_ssl/<method>/
 conf/strategy_axes/fl/method_descriptor/<method>.yaml
 conf/strategy_axes/fl/local_update_profile/*.yaml      # 필요할 때만
-conf/strategy_axes/fl/round_runtime_profile/*.yaml     # 필요할 때만
+conf/entrypoints/fl_ssl/run_federated_simulation.yaml  # round_runtime.* leaf override
 tests/unit/test_methods_federated_ssl.py
 tests/unit/test_scripts_hydra_configs.py
 ```
@@ -93,7 +93,8 @@ methods/evaluation/                            # stable metric helper만
 - [x] `lora_classifier` family의 state/update shape와 inline/server-owned artifact-ref
   FedAvg core를 smoke로 검증했다.
 - [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
-  `fedavg_lora_classifier` round-runtime profile을 compose할 수 있다.
+  `round_runtime.adapter_family_name=lora_classifier`,
+  `round_runtime.aggregation_backend_name=fedavg` leaf 조합을 compose할 수 있다.
 - [x] LoRA-classifier FedAvg는 두 라운드에서
   `previous global snapshot + round aggregated delta = next global snapshot`
   수식을 테스트로 고정했다.

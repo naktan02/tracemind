@@ -77,14 +77,19 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `local_update_profile`
   - `strategy_axes/fl/local_update_profile`에서 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
-- `round_runtime_profile`
-  - `strategy_axes/fl/round_runtime_profile`에서 compose된다.
-  - server round runtime의 adapter family와 aggregation backend 조합을 소유한다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
   - method identity/report metadata와 `methods/federated_ssl/` method spec을
     선택한다.
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
+- `fl_method`
+  - entrypoint-local section이며 `FederatedSslExecutionPlan`으로 해석된다.
+  - `composition_mode=method_owned`에서는 상위 method가 client/server 정책을 소유한다.
+  - `composition_mode=manual`에서는 lower-axis 조합 baseline/ablation임을 명시한다.
+- `security_policy`
+  - 현재 simulation은 `plaintext`만 지원한다.
+  - secure aggregation, DP, 암호화 artifact ref는 method가 아니라 runtime capability
+    축으로 추가한다.
 - `shard_policy`
 - `federated_run_budget`
 - `seed_sweep.seeds`
@@ -119,8 +124,9 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=main \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/fl/method_descriptor=fedavg_pseudo_label \
-  strategy_axes/fl/experiment_profile=none \
   strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1 \
+  round_runtime.adapter_family_name=diagonal_scale \
+  round_runtime.aggregation_backend_name=fedavg \
   training_task.objective.privacy_guard_name=noop
 ```
 
@@ -143,16 +149,25 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 주의:
 
 - `aggregation_backend_name`과 `adapter_family_name`은 `round_runtime.*`로 노출된다.
-  기본값은 `round_runtime_profile`에서 파생된다.
-- `local_update_profile` 또는 `round_runtime_profile`을 직접 바꿀 때는
-  `strategy_axes/fl/experiment_profile=none`을 함께 지정한다. preset 이름표까지
-  함께 바꾸려면 `strategy_axes/fl/experiment_profile=<profile>`로 시작한다.
+  기본값은 entrypoint leaf의 `diagonal_scale` / `fedavg`다.
+- `local_update_profile`은 local update 조합을 고르고, server round 조합은
+  `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`을
+  직접 override한다. high-level compose preset은 중복 source-of-truth를 피하기 위해
+  두지 않는다.
 - FL SSL main split은 `run_controls/fl_ssl/budget=main`과
   `strategy_axes/fl/shard_policy=dirichlet_alpha03`를 기본 조합으로 본다.
   stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
 - `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 main budget으로
   쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
 - `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
+- 현재 기본 `fl_method.composition_mode`는 `method_owned`다. 이때는
+  `strategy_axes/fl/method_descriptor=<method>`만 고르면 된다. 하위 mechanism을 직접
+  조합하는 baseline은 `fl_method.composition_mode=manual`만 명시하고,
+  실제 lower axis는 `local_update_profile`과 `round_runtime.*` leaf로 고른다.
+  report용 lower axes는 compose된 `ssl_method`와 `round_runtime.*` leaf에서 자동
+  파생된다. 일회성 ablation은
+  `round_runtime.adapter_family_name=...`,
+  `round_runtime.aggregation_backend_name=...`로 직접 고른다.
 - method spec source of truth는 `methods/federated_ssl/`이다.
   이 package의 `adapters/method_runtime.py`는 method spec을 simulation runtime으로 연결하는
   adapter만 둔다.

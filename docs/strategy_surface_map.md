@@ -67,23 +67,33 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
+| FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
-| FL round-runtime profile | `fedavg_diagonal_scale`, `fedavg_lora_classifier` | `strategy_axes/fl/round_runtime_profile` -> `cfg.round_runtime_profile` | adapter family + aggregation runtime pairing | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
+| Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
 | Evaluation report metric | classification report payload | FL/central evaluation adapter | `methods/evaluation/*` | 활성 |
 
 주의:
 
 - `local_update_profile`은 local update 실행 조합 preset이고,
-  `round_runtime_profile`은 server round의 adapter family와 aggregation backend 실행
-  조합 preset이다. method-specific local objective와 server policy 의미는 profile이
-  아니라 `methods/`의 descriptor/policy module이 소유한다.
+  `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`은
+  server round 실행 조합을 직접 고르는 leaf다. method-specific local objective와
+  server policy 의미는 profile이 아니라 `methods/`의 descriptor/policy module이
+  소유한다.
 - method identity와 local/server policy 의미는 `methods/`가 소유한다. `agent`와
   `main_server`의 backend/adapter는 선택된 core를 runtime data, artifact, contract
   payload에 연결하는 capability다.
+- `fl_method.composition_mode=method_owned`에서는 FedMatch 같은 상위 method가
+  client objective와 server policy를 소유한다. `manual`은 논문 method가 아니라
+  `local_update_profile/round_runtime.*`를 직접 조합하는 baseline, ablation용
+  모드다. report에 남기는 `client_ssl_objective/server_aggregation/update_family`는
+  compose된 `ssl_method`와 최종 `round_runtime.*` leaf에서 파생한다.
+- `security_policy`는 method identity가 아니라 runtime capability 축이다. 현재는
+  `plaintext`만 지원하며, secure aggregation/DP/암호화 artifact ref는 이후 capability
+  adapter와 validator를 붙일 자리로 남긴다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   method-only 변형은 이 폴더에 남기고, 두 개 이상 방법론에서 공유되는 aggregation,
   adapter projection, SSL hook은 축별 methods 패키지로 승격한다.
@@ -126,11 +136,11 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   materialize한다. client는 base revision 기준 delta를 보내고, 서버는
   `base global state + aggregated delta`를 다음 LoRA/head state artifact snapshot으로
   저장한다. `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
-- FL simulation은 `experiment_profile=fedavg_pseudo_label_lora_classifier_v1`
-  preset으로 LoRA-classifier 조합을 시작하거나,
-  `experiment_profile=none` 상태에서 `local_update_profile=lora_pseudo_label_v1`와
-  `round_runtime_profile=fedavg_lora_classifier`를 직접 compose할 수 있다. 이
-  profile은 기존 `fedavg_pseudo_label` method descriptor를 유지한다.
+- FL simulation에서 LoRA-classifier 조합은
+  `local_update_profile=lora_pseudo_label_v1`,
+  `round_runtime.adapter_family_name=lora_classifier`,
+  `round_runtime.aggregation_backend_name=fedavg` leaf를 직접 override해 시작한다.
+  이 조합은 기존 `fedavg_pseudo_label` method descriptor를 유지한다.
 - `lora_pseudo_label_v1` simulation profile은 서버가 바로 집계할 수 있는
   `inline_delta` update를 만든다. 이는 FL lifecycle과 LoRA-classifier FedAvg 계약을
   검증하는 deterministic simulation path이며, 실제 PEFT optimizer가 만든 LoRA

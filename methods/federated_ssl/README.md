@@ -13,7 +13,8 @@ baseline이 아니라 이 spec을 만족하는 첫 method 구현으로 다룬다
 - 실제 runtime adapter가 읽을 canonical method 요구사항 제공
 - method-local module 옆 decorator 등록과 convention import trigger
 - method recipe metadata와 method-only aggregation/server policy 변형
-- Hydra `experiment_profile` metadata와 실제 compose 결과의 drift 검증
+- `execution_plan.py`의 method-owned/manual composition과 security policy 검증
+- local update profile support, runtime pair support, adapter family 일치 검증
 - 명시 training config가 없는 API/runtime 요청용 `runtime_fallbacks.py`
 
 ## 제외
@@ -31,6 +32,13 @@ adapter만 둔다.
 method에만 종속된 aggregation 변형은 method 폴더에 둘 수 있다. 두 개 이상 method에서
 공유되는 평균/투영/adapter payload 해석은 `methods/federated/aggregation/*` 또는
 `methods/adaptation/<family>/*`로 승격한다.
+
+`FederatedSslExecutionPlan`은 entrypoint의 `fl_method`와 `security_policy`를 해석해
+상위 method가 소유하는 실행인지, lower-axis를 직접 조합하는 manual baseline인지
+명시한다. manual mode의 lower-axis report 값은 실제 `local_update_profile`과
+최종 `round_runtime.*` leaf에서 파생하고 stale preset metadata는 compatibility
+검증에서 무시한다. 현재 security policy는 `plaintext`만 지원하고, secure
+aggregation/DP/암호화 artifact ref는 method가 아니라 runtime capability 축으로 추가한다.
 
 새 method의 descriptor는 `methods/federated_ssl/<method>/descriptor.py`가
 소유한다. Registry는 `<method>/<method>.py` module convention을 import해

@@ -1,8 +1,8 @@
 # Federated SSL New Method Guide
 
 이 문서는 `methods/federated_ssl/`에 새 FL SSL method를 추가할 때의 최소 경계를
-고정한다. Method는 알고리즘 identity이고, `fl_profile` 또는
-`experiment_profile`은 Hydra 실행 조합 preset이다.
+고정한다. Method는 알고리즘 identity이고, `method_descriptor/`는 그 identity와
+report metadata를 고르는 Hydra config group이다.
 
 ## 추가할 파일
 
@@ -45,15 +45,25 @@ adapter payload 해석/평균 규칙으로 안정화된 계산은 `methods/feder
 
 - `conf/strategy_axes/fl/method_descriptor/<method>.yaml`
 - 필요하면 `conf/strategy_axes/fl/local_update_profile/<profile>.yaml`
-- 필요하면 `conf/strategy_axes/fl/round_runtime_profile/<profile>.yaml`
-- 사용자-facing 시작점이 필요할 때만
-  `conf/strategy_axes/fl/experiment_profile/<profile>.yaml`
 
-`experiment_profile`은 compose preset이다. threshold, LoRA rank, round 수 같은
-실행값의 source of truth는 Hydra leaf config에 남긴다.
-`local_update_profile`이나 `round_runtime_profile`을 직접 조합하는 실험은
-`strategy_axes/fl/experiment_profile=none`을 함께 지정해 stale preset metadata를
-비활성화한다.
+method descriptor YAML은 implementation/recipe가 실제로 존재할 때만 추가한다.
+threshold, LoRA rank, round 수 같은 실행값의 source of truth는 Hydra leaf config에
+남긴다. Adapter family와 aggregation backend 조합은 별도 preset YAML을 만들지 않고
+`round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`을
+직접 override한다.
+
+FL simulation entrypoint의 `fl_method` section은 `FederatedSslExecutionPlan`으로
+해석된다. 새 논문 method는 기본적으로 `composition_mode=method_owned`로 실행하고,
+client objective/server policy/round state exchange 요구사항은 method descriptor와
+method-local policy module이 소유한다. `composition_mode=manual`은 논문 method가 아니라
+lower-axis mechanism 조합 baseline/ablation을 명시할 때만 쓴다. 이때 사용자는
+`local_update_profile`과 최종 `round_runtime.*` leaf를 고르고, report용 lower axes는
+실행 plan builder가 runtime config에서 파생한다.
+
+`security_policy`는 method identity가 아니라 runtime capability 축이다. 현재는
+`plaintext`만 지원한다. secure aggregation, DP, 암호화 artifact ref 같은 기능이 필요하면
+method 이름 파일을 `agent`/`main_server`에 추가하지 말고 capability adapter와
+compatibility validator를 추가한다.
 
 ## Registry
 

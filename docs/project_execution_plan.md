@@ -59,6 +59,12 @@ central fixed embedding + classifier seed
   distribution, aggregation proxy diagnostics를 함께 남긴다. `theta` 같은
   method 내부 파라미터는 기본 report에 노출하지 않는다.
 - 현재 FL SSL method 축의 활성 baseline은 `fedavg_pseudo_label`이다.
+- FL 실행은 `fl_method.composition_mode=method_owned`를 기본으로 두고, 상위
+  method가 client objective/server policy/round-state 요구사항을 소유한다.
+  `manual` mode는 논문 method가 아니라 `local_update_profile/round_runtime.*`
+  조합 baseline/ablation용이며 stale preset metadata를 검증에서 무시한다.
+- FL `security_policy`는 method identity가 아니라 runtime capability 축이며, 현재
+  simulation은 `plaintext`만 지원한다.
 - FedMatch/FedLGMatch/(FL)^2 같은 논문 method 구현은 후보 비교 후 확정된 method부터 연다.
 - FL SSL smoke/main/sweep 실행 기본 runtime은 `execution_context/runtime_env=gpu_local`,
   embedding adapter는 `mxbai`다. `gpu_online`은 cache warm-up/최초 다운로드용이고,
@@ -111,7 +117,8 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   accepted-count 기반 aggregation weight proxy
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
-- method selection: `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
+- method selection: `fl_method.composition_mode=method_owned`,
+  `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
 - runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
   성능 숫자나 논문 비교 근거로 쓰지 않는다.
 

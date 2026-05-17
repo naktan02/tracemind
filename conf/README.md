@@ -39,7 +39,6 @@ conf/
 │   ├── fl/
 │   │   ├── local_update_profile/
 │   │   ├── method_descriptor/
-│   │   ├── round_runtime_profile/
 │   │   └── shard_policy/
 │   ├── prototype/
 │   │   └── build_strategy/
@@ -82,13 +81,12 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.local_update_profile`로 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합을 소유한다.
   - adapter family나 aggregation backend를 소유하지 않는다.
-- `strategy_axes/fl/round_runtime_profile`
-  - `cfg.round_runtime_profile`로 compose된다.
-  - server round runtime의 adapter family, aggregation backend, bootstrap runtime
-    knob를 소유한다.
-  - `fedavg_lora_classifier`는 기존 `fedavg_pseudo_label` method descriptor와
-    조합 가능한 LoRA-classifier server family profile이다. backbone/LoRA 세부
-    값은 `strategy_axes/adaptation/transformer_backbone`과
+- `round_runtime.adapter_family_name`, `round_runtime.aggregation_backend_name`
+  - FL entrypoint의 직접 leaf 값이다.
+  - server round runtime의 adapter family와 aggregation backend를 고른다.
+  - high-level compose preset은 중복 source-of-truth를 피하기 위해 두지 않는다.
+  - LoRA-classifier backbone/LoRA 세부 값은
+    `strategy_axes/adaptation/transformer_backbone`과
     `strategy_axes/adaptation/peft_adapter`에서 온다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
