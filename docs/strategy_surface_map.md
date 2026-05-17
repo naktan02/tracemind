@@ -154,5 +154,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`이며,
   `training_task.batch_size`와 `query_ssl_method.unlabeled_batch_size`가
   `full_epoch_steps`를 바꾼다.
-- `inline_delta`는 debug/compatibility 경로로만 유지한다. production agent-local
-  artifact upload와 manifest/version compatibility는 아직 다음 단계다.
+- `inline_delta`는 debug/compatibility 경로로만 유지한다. FL simulation의
+  agent-local artifact upload, server-owned materialization, manifest/version
+  compatibility는 닫혔다. live `agent`/`main_server` runtime translation은 winner
+  method 확정 뒤 별도 범위로 진행한다.
