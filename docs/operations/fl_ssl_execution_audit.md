@@ -42,7 +42,7 @@ report/summary를 검증했다.
 
 | 요구사항 | 현재 증거 | 상태 |
 |---|---|---|
-| 작업별 commit/push | `696cc2a`, `e0a7b4a`, `fa13f59`, `933ee91` 등 `origin/master` push 완료 | 완료 |
+| 작업별 commit/push | `696cc2a`, `e0a7b4a`, `fa13f59`, `933ee91`, `841b4dc`, `f2fe0d9`, `5491a1e` 등 `origin/master` push 완료 | 완료 |
 | scripts는 thin wrapper, method core는 methods 소유 | `scripts/experiments/fl_ssl/*`는 config/run/report, SSL algorithm은 `methods/ssl/algorithms/*`, LoRA aggregation은 `methods/adaptation/lora_classifier/*` | 완료 |
 | 실제 PEFT 기준 FixMatch local objective 호출 | `tests/unit/test_lora_fixmatch_runner.py`, `tests/unit/test_run_federated_simulation.py`, current 1-round smoke report `objective.query_ssl.algorithm_name=fixmatch` | 완료 |
 | LoRA/classifier delta가 FedAvg까지 집계 | `methods/adaptation/lora_classifier/aggregation/fedavg.py`, `main_server/tests/unit/test_aggregation_service.py`, artifact-ref verifier | 완료 |
