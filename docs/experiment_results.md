@@ -67,15 +67,27 @@ Purpose:
 |---|---|---|
 | Prototype strategy smoke | `runs/prototype_strategy/<run_id>/summary.json` | hash_debug/real backend/refactor smoke 통과 |
 | Threshold sweep smoke | `runs/prototype_threshold_sweep/<run_id>/summary.json` | grid search와 summary/grid 산출물 형식 |
-| Federated simulation smoke | `runs/federated_simulation_smoke/20260331T155147Z/` | `train -> shard -> pseudo-label -> local update -> aggregation -> publication` 흐름 |
+| Federated simulation legacy smoke | `runs/federated_simulation_smoke/20260331T155147Z/` | `train -> shard -> pseudo-label -> local update -> aggregation -> publication` 흐름 |
+| FL SSL current PEFT smoke | `runs/federated_simulation_smoke/fixmatch_lora_alpha03_10c_1round_current_20260518/20260517T232304Z/reports/fl_ssl_main_comparison.report.json` | `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`, server-owned artifact-ref delta |
 
-FL smoke에서 확인한 대표 산출물:
+Legacy FL smoke에서 확인한 대표 산출물:
 
 - `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0000.json`
 - `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0001.json`
 - `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0000.json`
 - `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0001.json`
 - `runs/federated_simulation_smoke/20260331T155147Z/agents/agent_01/shared_adapter_updates/update_round_0001_08779ed1233e.json`
+
+FL SSL 현재 감사 기준:
+
+- 감사표: `docs/operations/fl_ssl_execution_audit.md`
+- 검증 manifest: `docs/operations/fl_ssl_artifact_verification_manifest.current.json`
+- 검증 명령:
+  `uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json`
+- 현재 manifest는 current 1-round smoke, 기존 alpha=0.3 50-round read-only report,
+  alpha=0.1 5-round reduced stress, FlexMatch/FreeMatch/PseudoLabel 5-round reduced
+  ablation, client_count 1..10 1-round summary를 검증한다.
+- 새 `50-round`/full-budget FL 실행은 현재 사용자 결정에 따라 하지 않는다.
 
 ## 현재 권장안
 
@@ -87,7 +99,8 @@ FL smoke에서 확인한 대표 산출물:
 
 ## 다음 후보
 
-- central SSL supervised/pseudo-label/prototype SSL/FixMatch/R-Drop/MixText control table.
-- FL SSL non-IID smoke 재현.
-- FedMatch/FedLGMatch/(FL)^2 후보 구현 범위 결정.
-- LoRA/classifier-head family runtime translation 설계.
+- FedMatch/FedLGMatch/(FL)^2 중 첫 구현 method 선택.
+- 선택된 method의 `methods/federated_ssl/<method>/` descriptor, local objective,
+  server policy, round policy 요구사항 확정.
+- 선택된 method를 `1-round` smoke와 필요 시 `5-round` reduced run으로 검증.
+- FL SSL winner가 나온 뒤 LoRA/classifier-head family runtime translation 설계.
