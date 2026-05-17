@@ -15,7 +15,11 @@ from scripts.experiments.fl_ssl.federated_simulation.io.report_math import mean
 from scripts.experiments.fl_ssl.federated_simulation.io.sweep_summary import (
     build_sweep_run_payload,
 )
-from scripts.experiments.fl_ssl.federated_simulation.models import SimulationResult
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
+    FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN,
+    SimulationResult,
+)
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
@@ -54,11 +58,46 @@ def resolve_client_count_sweep_values(cfg: DictConfig) -> tuple[int, ...]:
     return client_counts
 
 
+def resolve_client_count_sweep_split_manifests(
+    cfg: DictConfig,
+    *,
+    client_counts: tuple[int, ...],
+) -> dict[int, str]:
+    if _fl_data_source_mode(cfg) != FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT:
+        return {}
+
+    mapping_cfg = cfg.client_count_sweep.get("split_manifest_by_client_count")
+    if mapping_cfg is None:
+        raise ValueError(
+            "client_count_sweep.split_manifest_by_client_count is required "
+            "when fl_data.source_mode is materialized_client_split."
+        )
+
+    mapping = _normalize_client_count_split_manifest_mapping(mapping_cfg)
+    missing_counts = [
+        client_count for client_count in client_counts if client_count not in mapping
+    ]
+    if missing_counts:
+        raise ValueError(
+            "client_count_sweep.split_manifest_by_client_count must include "
+            "a split manifest for every client_count when fl_data.source_mode "
+            f"is materialized_client_split. Missing client_count keys: "
+            f"{missing_counts}."
+        )
+    return mapping
+
+
 def run_client_count_sweep_from_config(
     cfg: DictConfig,
     *,
     created_at: datetime | None = None,
 ) -> dict[str, object]:
+    client_counts = resolve_client_count_sweep_values(cfg)
+    split_manifest_by_client_count = resolve_client_count_sweep_split_manifests(
+        cfg,
+        client_counts=client_counts,
+    )
+
     effective_created_at = created_at or datetime.now(timezone.utc)
     run_id = effective_created_at.strftime("%Y%m%dT%H%M%SZ")
     output_dir = build_run_dir(
@@ -69,12 +108,13 @@ def run_client_count_sweep_from_config(
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     run_results: list[ClientCountSweepRunResult] = []
-    for client_count in resolve_client_count_sweep_values(cfg):
+    for client_count in client_counts:
         client_output_dir = output_dir / f"clients_{client_count:02d}"
         client_output_dir.mkdir(parents=True, exist_ok=True)
         run_cfg = _copy_config_with_client_count(
             cfg,
             client_count=client_count,
+            split_manifest=split_manifest_by_client_count.get(client_count),
         )
         result = run_simulation_request(
             build_simulation_request_from_config(
@@ -162,11 +202,67 @@ def _copy_config_with_client_count(
     cfg: DictConfig,
     *,
     client_count: int,
+    split_manifest: str | None = None,
 ) -> DictConfig:
     raw_cfg = OmegaConf.to_container(cfg, resolve=False)
     run_cfg = OmegaConf.create(raw_cfg)
     run_cfg.federated_run_budget.client_count = client_count
+    if _fl_data_source_mode(run_cfg) == FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT:
+        if split_manifest is None:
+            split_manifest = resolve_client_count_sweep_split_manifests(
+                run_cfg,
+                client_counts=(client_count,),
+            )[client_count]
+        run_cfg.fl_data.split_manifest = split_manifest
     return run_cfg
+
+
+def _fl_data_source_mode(cfg: DictConfig) -> str:
+    fl_data_cfg = cfg.get("fl_data", {})
+    return str(fl_data_cfg.get("source_mode", FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN))
+
+
+def _normalize_client_count_split_manifest_mapping(
+    mapping_cfg: object,
+) -> dict[int, str]:
+    raw_mapping = (
+        OmegaConf.to_container(mapping_cfg, resolve=True)
+        if isinstance(mapping_cfg, DictConfig)
+        else mapping_cfg
+    )
+    if not isinstance(raw_mapping, dict):
+        raise ValueError(
+            "client_count_sweep.split_manifest_by_client_count must be a mapping "
+            "from client_count to fl_data.split_manifest path."
+        )
+
+    mapping: dict[int, str] = {}
+    for raw_key, raw_value in raw_mapping.items():
+        try:
+            client_count = int(raw_key)
+        except (TypeError, ValueError) as error:
+            raise ValueError(
+                "client_count_sweep.split_manifest_by_client_count keys must be "
+                f"integer client_count values. Got {raw_key!r}."
+            ) from error
+        if client_count < 1:
+            raise ValueError(
+                "client_count_sweep.split_manifest_by_client_count keys must be "
+                f"positive client_count values. Got {raw_key!r}."
+            )
+        if client_count in mapping:
+            raise ValueError(
+                "client_count_sweep.split_manifest_by_client_count contains "
+                f"duplicate key for client_count={client_count}."
+            )
+        if raw_value is None or str(raw_value) == "":
+            raise ValueError(
+                "client_count_sweep.split_manifest_by_client_count values must be "
+                f"non-empty split manifest paths. Got empty value for "
+                f"client_count={client_count}."
+            )
+        mapping[client_count] = str(raw_value)
+    return mapping
 
 
 def _run_result_to_payload(

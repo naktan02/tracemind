@@ -15,12 +15,21 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.experiments.fl_ssl.run_federated_client_count_sweep import (
     ClientCountSweepRunResult,
+    _copy_config_with_client_count,
     build_client_count_sweep_summary_payload,
+    resolve_client_count_sweep_split_manifests,
     resolve_client_count_sweep_values,
+    run_client_count_sweep_from_config,
 )
 
 
-def _cfg(*, client_counts: list[int]):
+def _cfg(
+    *,
+    client_counts: list[int],
+    source_mode: str = "runtime_split_from_train",
+    split_manifest: str | None = None,
+    split_manifest_by_client_count: dict[object, str] | None = None,
+):
     return OmegaConf.create(
         {
             "seed": 42,
@@ -30,13 +39,21 @@ def _cfg(*, client_counts: list[int]):
             "federated_run_budget": {
                 "rounds": 50,
             },
+            "fl_data": {
+                "source_mode": source_mode,
+                "split_manifest": split_manifest,
+            },
             "ssl_method": {"name": "fedavg_pseudo_label"},
             "shard_policy": {"name": "dirichlet_label_skew"},
             "client_pool_split": {
                 "labeled_ratio": 0.1,
                 "unlabeled_ratio": 0.9,
             },
-            "client_count_sweep": {"client_counts": client_counts},
+            "client_count_sweep": {
+                "output_dir": "runs/test_client_count_sweep",
+                "client_counts": client_counts,
+                "split_manifest_by_client_count": split_manifest_by_client_count,
+            },
         }
     )
 
@@ -101,6 +118,82 @@ def test_resolve_client_count_sweep_values_rejects_duplicate_counts() -> None:
 def test_resolve_client_count_sweep_values_rejects_non_positive_counts() -> None:
     with pytest.raises(ValueError, match="positive"):
         resolve_client_count_sweep_values(_cfg(client_counts=[1, 0, 3]))
+
+
+def test_copy_config_with_client_count_applies_materialized_manifest_mapping() -> None:
+    cfg = _cfg(
+        client_counts=[1, 2],
+        source_mode="materialized_client_split",
+        split_manifest="data/splits/clients10/manifest.json",
+        split_manifest_by_client_count={
+            1: "data/splits/clients1/manifest.json",
+            "2": "data/splits/clients2/manifest.json",
+        },
+    )
+
+    mapping = resolve_client_count_sweep_split_manifests(
+        cfg,
+        client_counts=(1, 2),
+    )
+    run_cfg = _copy_config_with_client_count(
+        cfg,
+        client_count=2,
+        split_manifest=mapping[2],
+    )
+
+    assert mapping == {
+        1: "data/splits/clients1/manifest.json",
+        2: "data/splits/clients2/manifest.json",
+    }
+    assert run_cfg.federated_run_budget.client_count == 2
+    assert run_cfg.fl_data.source_mode == "materialized_client_split"
+    assert run_cfg.fl_data.split_manifest == "data/splits/clients2/manifest.json"
+
+
+def test_materialized_manifest_mapping_is_required_before_sweep_runs() -> None:
+    cfg = _cfg(
+        client_counts=[1, 2],
+        source_mode="materialized_client_split",
+        split_manifest="data/splits/clients10/manifest.json",
+    )
+
+    with pytest.raises(ValueError, match="split_manifest_by_client_count"):
+        run_client_count_sweep_from_config(cfg)
+
+
+def test_materialized_manifest_mapping_requires_every_client_count_key() -> None:
+    cfg = _cfg(
+        client_counts=[1, 2],
+        source_mode="materialized_client_split",
+        split_manifest_by_client_count={
+            1: "data/splits/clients1/manifest.json",
+        },
+    )
+
+    with pytest.raises(ValueError, match=r"Missing client_count keys: \[2\]"):
+        resolve_client_count_sweep_split_manifests(
+            cfg,
+            client_counts=(1, 2),
+        )
+
+
+def test_runtime_split_source_mode_preserves_existing_manifest_config() -> None:
+    cfg = _cfg(
+        client_counts=[1, 2],
+        source_mode="runtime_split_from_train",
+        split_manifest="legacy-debug-manifest-is-ignored.json",
+    )
+
+    mapping = resolve_client_count_sweep_split_manifests(
+        cfg,
+        client_counts=(1, 2),
+    )
+    run_cfg = _copy_config_with_client_count(cfg, client_count=2)
+
+    assert mapping == {}
+    assert run_cfg.federated_run_budget.client_count == 2
+    assert run_cfg.fl_data.source_mode == "runtime_split_from_train"
+    assert run_cfg.fl_data.split_manifest == "legacy-debug-manifest-is-ignored.json"
 
 
 def test_build_client_count_sweep_summary_payload_aggregates_runs(

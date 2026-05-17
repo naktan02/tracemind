@@ -59,6 +59,9 @@ client_count_sweep:
     - 8
     - 9
     - 10
+  # materialized_client_split sweep에서는 count별로 별도 manifest를 지정해야 한다.
+  # 예: 1: data/datasets/fl_client_splits/..._clients1_.../manifest.json
+  split_manifest_by_client_count: null
 
 prototype_rebuild:
   embedding_backend: simulation
