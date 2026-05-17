@@ -63,6 +63,14 @@ client_count_sweep:
   # 예: 1: data/datasets/fl_client_splits/..._clients1_.../manifest.json
   split_manifest_by_client_count: null
 
+run_safety:
+  # 총 예정 communication round가 이 값을 넘으면 명시 ack 없이는 runner가 시작되지 않는다.
+  # 단일 main 50-round와 5-round x 10 client-count sweep 같은 accidental long run을 막는다.
+  max_total_rounds_without_ack: 49
+  allow_long_run: false
+  long_run_ack: null
+  required_long_run_ack: ALLOW_FL_SSL_LONG_RUN
+
 prototype_rebuild:
   embedding_backend: simulation
   mapping_version: ourafla_to_4cat.v1

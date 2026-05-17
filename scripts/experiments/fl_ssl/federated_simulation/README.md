@@ -194,6 +194,12 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   stress split은 `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
 - `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 main budget으로
   쓰고, 기본 smoke preset은 `4 clients`, `3 rounds`를 쓴다.
+- runner는 accidental long run을 막기 위해 `run_safety.max_total_rounds_without_ack`
+  초과 총 예정 round를 시작 전에 차단한다. 총 예정 round는 단일 run이면
+  `federated_run_budget.rounds`, seed/client-count sweep이면
+  `federated_run_budget.rounds * sweep 항목 수`다. 장시간 실행이 명시 승인된 경우에만
+  `run_safety.allow_long_run=true`와
+  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다.
 - `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,

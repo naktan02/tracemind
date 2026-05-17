@@ -46,6 +46,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
+from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
 )
@@ -427,6 +428,10 @@ def render_simulation_result_lines(
     config_name="entrypoints/fl_ssl/run_federated_simulation",
 )
 def main(cfg: DictConfig) -> None:
+    require_fl_ssl_run_budget_allowed(
+        cfg,
+        run_kind="single_simulation",
+    )
     created_at = datetime.now(timezone.utc)
     run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
     output_dir = build_run_dir(

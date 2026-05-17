@@ -203,6 +203,10 @@ Runtime translation:
   전까지 보류한다. 현재는 `alpha=0.1` stress와
   FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
   `client_count=1..10` sweep은 1-round summary로 확인했다.
+- FL SSL runner는 총 예정 communication round가 49를 넘으면 기본 차단한다.
+  단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로
+  계산하며, 장시간 실행은 `run_safety.allow_long_run=true`와
+  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 명시한 경우에만 시작된다.
 - 기존 smoke/main/reduced stress/reduced ablation/1-round sweep 산출물은
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 round budget,
   client count, SSL method, adapter family, aggregation, delta format metadata를

@@ -571,6 +571,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     )
     assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
     assert cfg.client_count_sweep.split_manifest_by_client_count is None
+    assert cfg.run_safety.max_total_rounds_without_ack == 49
+    assert cfg.run_safety.allow_long_run is False
+    assert cfg.run_safety.long_run_ack is None
+    assert cfg.run_safety.required_long_run_ack == "ALLOW_FL_SSL_LONG_RUN"
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
     assert cfg.ssl_method.name == "fedavg_pseudo_label"

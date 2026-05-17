@@ -27,6 +27,7 @@ from scripts.experiments.fl_ssl.run_federated_simulation import (
     build_simulation_request_from_config,
     render_simulation_result_lines,
 )
+from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 
 SUMMARY_SCHEMA_VERSION = "fl_ssl_seed_sweep_summary.v2"
 
@@ -60,6 +61,12 @@ def run_seed_sweep_from_config(
     *,
     created_at: datetime | None = None,
 ) -> dict[str, object]:
+    seeds = resolve_seed_sweep_values(cfg)
+    require_fl_ssl_run_budget_allowed(
+        cfg,
+        run_kind="seed_sweep",
+        planned_run_count=len(seeds),
+    )
     effective_created_at = created_at or datetime.now(timezone.utc)
     run_id = effective_created_at.strftime("%Y%m%dT%H%M%SZ")
     output_dir = build_run_dir(
@@ -70,7 +77,7 @@ def run_seed_sweep_from_config(
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     run_results: list[SeedSweepRunResult] = []
-    for seed in resolve_seed_sweep_values(cfg):
+    for seed in seeds:
         seed_output_dir = output_dir / f"seed_{seed}"
         seed_output_dir.mkdir(parents=True, exist_ok=True)
         result = run_simulation_request(

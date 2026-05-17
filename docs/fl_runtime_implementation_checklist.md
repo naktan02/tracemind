@@ -128,6 +128,9 @@ methods/evaluation/                            # stable metric helper만
   `50 rounds`.
 - [ ] stress split: Dirichlet `alpha=0.1`, `50 rounds`. 사용자 지시로 추가
   50-round 실행은 보류한다.
+- [x] accidental long run 방지: FL SSL runner는 총 예정 communication round가
+  `run_safety.max_total_rounds_without_ack`를 넘으면 시작 전에 실패한다. 단일 run은
+  `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로 계산한다.
 - [x] materialized split: 선택된 labeled source 전체와 unlabeled source 전체를
   client에 분배하고, 실제 labeled/unlabeled ratio는 report count로 기록한다.
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.

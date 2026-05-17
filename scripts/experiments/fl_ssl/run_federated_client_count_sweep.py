@@ -27,6 +27,7 @@ from scripts.experiments.fl_ssl.run_federated_simulation import (
     build_simulation_request_from_config,
     render_simulation_result_lines,
 )
+from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 
 SUMMARY_SCHEMA_VERSION = "fl_ssl_client_count_sweep_summary.v1"
 
@@ -96,6 +97,11 @@ def run_client_count_sweep_from_config(
     split_manifest_by_client_count = resolve_client_count_sweep_split_manifests(
         cfg,
         client_counts=client_counts,
+    )
+    require_fl_ssl_run_budget_allowed(
+        cfg,
+        run_kind="client_count_sweep",
+        planned_run_count=len(client_counts),
     )
 
     effective_created_at = created_at or datetime.now(timezone.utc)

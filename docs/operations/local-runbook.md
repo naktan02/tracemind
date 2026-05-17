@@ -206,6 +206,12 @@ FL SSL seed sweep:
 uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py
 ```
 
+FL SSL runner는 accidental long run을 막기 위해 총 예정 communication round가
+`run_safety.max_total_rounds_without_ack`를 넘으면 시작 전에 실패한다. 단일 run은
+`rounds`, sweep은 `rounds * sweep 항목 수`로 계산한다. 장시간 실행을 별도 승인받은
+경우에만 `run_safety.allow_long_run=true`와
+`run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 같이 override한다.
+
 기존 FL SSL 산출물 metadata 검증:
 
 ```bash

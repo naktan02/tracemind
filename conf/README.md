@@ -120,6 +120,12 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     소유한다.
   - method semantics, shard policy, local update profile은 기존 FL config 축을
     그대로 쓰고 client 수만 바꾼다.
+- `run_safety`
+  - FL SSL runner가 시작 전에 확인하는 accidental long-run guard다.
+  - 단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로 총
+    예정 communication round를 계산한다.
+  - 장시간 실행 승인 여부만 소유하며, method semantics나 budget 값 자체는
+    소유하지 않는다.
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.

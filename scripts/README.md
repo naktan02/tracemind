@@ -182,6 +182,16 @@ uv run python scripts/experiments/fl_ssl/run_federated_client_count_sweep.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
+FL SSL runner는 `run_safety.max_total_rounds_without_ack`보다 큰 총 예정
+communication round를 기본 차단한다. 총 예정 round는 단일 simulation은
+`rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`다. 장시간 실행을
+명시 승인받은 경우에만 아래 override를 함께 붙인다.
+
+```bash
+run_safety.allow_long_run=true \
+run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN
+```
+
 기존 FL SSL 산출물 metadata 검증:
 
 ```bash
