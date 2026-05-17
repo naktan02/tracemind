@@ -1460,6 +1460,11 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["table_role"] == "main_comparison"
     assert report["must_not_merge_with"] == ["central_ssl_control"]
     assert report["protocol"]["round_budget"] == 1
+    assert report["protocol"]["embedding_adapter"]["backend"] == "hash_debug"
+    assert report["protocol"]["embedding_adapter"]["model_id"] == "hash_debug"
+    assert report["protocol"]["local_trainer_runtime"]["metadata_status"] == (
+        "recorded"
+    )
     assert report["protocol"]["ssl_method"]["name"] == "fedavg_pseudo_label"
     assert report["protocol"]["ssl_method"]["method_role"] == "baseline"
     assert report["protocol"]["labeled_unlabeled_split"]["status"] == (

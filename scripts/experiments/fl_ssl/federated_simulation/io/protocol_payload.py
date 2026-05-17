@@ -13,6 +13,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedLocalTrainerRuntimeConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -22,6 +23,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 def build_protocol_payload(
@@ -41,6 +43,8 @@ def build_protocol_payload(
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
     data_source_config: FederatedDataSourceConfig | None = None,
+    embedding_spec: EmbeddingAdapterSpec | None = None,
+    local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
 ) -> dict[str, object]:
     resolved_data_source_config = data_source_config or FederatedDataSourceConfig()
     payload: dict[str, object] = {
@@ -77,6 +81,10 @@ def build_protocol_payload(
                 round_runtime_config.classifier_head_bootstrap_logit_scale
             ),
         },
+        "embedding_adapter": _embedding_spec_to_payload(embedding_spec),
+        "local_trainer_runtime": _local_trainer_runtime_to_payload(
+            local_trainer_runtime_config
+        ),
         "objective": config_to_mapping(training_task_config.objective_config),
         "validation": {
             "similarity_name": validation_config.similarity_name,
@@ -90,6 +98,41 @@ def build_protocol_payload(
     if execution_plan is not None:
         payload["fl_method"] = execution_plan.to_mapping()
     return payload
+
+
+def _embedding_spec_to_payload(
+    embedding_spec: EmbeddingAdapterSpec | None,
+) -> dict[str, object]:
+    if embedding_spec is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        "backend": embedding_spec.backend,
+        "model_id": embedding_spec.model_id,
+        "revision": embedding_spec.revision,
+        "device": embedding_spec.device,
+        "batch_size": embedding_spec.batch_size,
+        "cache_dir": embedding_spec.cache_dir,
+        "task_prefix": embedding_spec.task_prefix,
+        "normalize_embeddings": embedding_spec.normalize_embeddings,
+        "hash_dim": embedding_spec.hash_dim,
+        "local_files_only": embedding_spec.local_files_only,
+    }
+
+
+def _local_trainer_runtime_to_payload(
+    runtime_config: FederatedLocalTrainerRuntimeConfig | None,
+) -> dict[str, object]:
+    if runtime_config is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        "device": runtime_config.device,
+        "local_files_only": runtime_config.local_files_only,
+        "cache_dir": runtime_config.cache_dir,
+        "trust_remote_code": runtime_config.trust_remote_code,
+        "classifier_dropout": runtime_config.classifier_dropout,
+    }
 
 
 def config_to_mapping(value: object) -> dict[str, object]:

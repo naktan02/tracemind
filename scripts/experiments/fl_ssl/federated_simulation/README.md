@@ -227,6 +227,9 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - report는 global validation `macro_f1`, client validation shard 기준
   `worst_client_macro_f1`, ECE, client update envelope 수 기반 communication
   cost proxy, per-client macro-F1 variance를 포함한다.
+- report protocol에는 `embedding_adapter`와 `local_trainer_runtime` metadata를
+  기록한다. 논문용 산출물은 `gpu_local + mxbai` 경로인지 이 필드로 확인하고,
+  `hash_debug`/CPU smoke 결과를 성능 근거로 섞지 않는다.
 - `client_pool_split`은 `fl_data.source_mode=runtime_split_from_train` fallback에서만
   train row를 `10% labeled / 90% unlabeled`로 다시 나누는 debug 값이다.
   `materialized_client_split`에서는 manifest의 client별 `labeled.jsonl`과

@@ -15,6 +15,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedLocalTrainerRuntimeConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -30,6 +31,7 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
 )
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 def _row(query_id: str, label: str) -> dict[str, str]:
@@ -271,6 +273,22 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
         ),
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="mxbai",
+            model_id="mixedbread-ai/mxbai-embed-large-v1",
+            revision="main",
+            device="cuda",
+            batch_size=16,
+            cache_dir="data/cache/hf",
+            local_files_only=True,
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cuda",
+            local_files_only=True,
+            cache_dir="data/cache/hf",
+            trust_remote_code=False,
+            classifier_dropout=0.1,
+        ),
         data_source_config=FederatedDataSourceConfig(
             source_mode="materialized_client_split",
             split_manifest_path="data/datasets/fl_client_splits/main/manifest.json",
@@ -371,6 +389,15 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "aug_0",
         "aug_1",
     ]
+    embedding_adapter = payload["protocol"]["embedding_adapter"]
+    assert embedding_adapter["metadata_status"] == "recorded"
+    assert embedding_adapter["backend"] == "mxbai"
+    assert embedding_adapter["model_id"] == "mixedbread-ai/mxbai-embed-large-v1"
+    assert embedding_adapter["device"] == "cuda"
+    local_trainer_runtime = payload["protocol"]["local_trainer_runtime"]
+    assert local_trainer_runtime["metadata_status"] == "recorded"
+    assert local_trainer_runtime["device"] == "cuda"
+    assert local_trainer_runtime["local_files_only"] is True
 
 
 def test_simulation_report_builder_rejects_unknown_metric_names() -> None:

@@ -28,6 +28,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedLocalTrainerRuntimeConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -37,6 +38,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
 
 class SimulationReportBuilder:
@@ -60,6 +62,8 @@ class SimulationReportBuilder:
         round_runtime_config: FederatedRoundRuntimeConfig,
         execution_plan: FederatedSslExecutionPlan | None = None,
         data_source_config: FederatedDataSourceConfig | None = None,
+        embedding_spec: EmbeddingAdapterSpec | None = None,
+        local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
             result=result,
@@ -118,6 +122,8 @@ class SimulationReportBuilder:
                 round_runtime_config=round_runtime_config,
                 execution_plan=execution_plan,
                 data_source_config=data_source_config,
+                embedding_spec=embedding_spec,
+                local_trainer_runtime_config=local_trainer_runtime_config,
             ),
             "diagnostics": {
                 "round_progression": round_progression,

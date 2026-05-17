@@ -126,7 +126,10 @@ methods/evaluation/                            # stable metric helper만
 - [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다. 현재는
   smoke, alpha=0.3 main 50-round, short ablation, short sweep 산출물까지 확인했고,
   full stress/ablation/sweep은 사용자 지시로 보류했다.
-- [ ] CPU/hash debug 결과를 논문 성능 근거로 쓰지 않도록 report metadata를 확인한다.
+- [x] 새 FL simulation report protocol은 `embedding_adapter`와
+  `local_trainer_runtime` metadata를 기록한다. 이후 논문용 산출물은 이 필드로
+  `gpu_local + mxbai` 여부를 확인하고, `hash_debug`/CPU smoke 결과를 성능
+  근거로 섞지 않는다.
 
 ## 완료 기준
 
