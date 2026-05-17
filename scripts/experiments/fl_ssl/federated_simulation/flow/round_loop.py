@@ -32,6 +32,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     run_query_ssl_lora_classifier_local_training,
+    upload_agent_local_lora_classifier_update,
 )
 from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
@@ -270,11 +271,15 @@ def _run_query_ssl_lora_client_round(
         trainer_runtime_config=request.local_trainer_runtime_config,
     )
     client_train_time_seconds = time.perf_counter() - training_started_at
+    server_update_payload = upload_agent_local_lora_classifier_update(
+        output_dir=request.output_dir,
+        update_payload=local_result.update_payload,
+    )
     update_submitted = _accept_client_update(
         server_runtime=bootstrapped.server_runtime,
         round_id=round_id,
         update_envelope=local_result.update_envelope,
-        update_payload=local_result.update_payload,
+        update_payload=server_update_payload,
     )
     return ClientRoundExecution(
         summary=ClientRoundSummary(
@@ -288,9 +293,7 @@ def _run_query_ssl_lora_client_round(
             ),
             client_train_time_seconds=client_train_time_seconds,
             client_payload_bytes=(
-                _payload_byte_count(local_result.update_payload)
-                if update_submitted
-                else None
+                _payload_byte_count(server_update_payload) if update_submitted else None
             ),
             pseudo_label_confidence_mean=local_result.client_metrics.get(
                 ClientMetricKeys.MEAN_CONFIDENCE

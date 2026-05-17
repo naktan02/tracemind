@@ -10,6 +10,7 @@ from pathlib import Path
 import pytest
 
 from methods.adaptation.lora_classifier.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
@@ -61,6 +62,7 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
 )
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     QuerySslLoraClientTrainingResult,
+    _prepare_delta_materialization,
 )
 from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
@@ -413,7 +415,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_lora_objective_extras(
-                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
                 ),
             }
         ),
@@ -439,6 +441,20 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         labels=["anxiety", "normal"],
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
+    delta_plan = _prepare_delta_materialization(
+        output_dir=tmp_path,
+        update_id="update_test",
+        training_task=training_task,
+        client_id="agent_01",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        artifact_ref_prefix="agent-local://lora_classifier",
+        lora_parameter_deltas={"lora.test": [0.1]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.1, 0.0],
+            "normal": [0.0, -0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+    )
     update_payload = make_lora_classifier_delta_payload(
         model_id="mxbai-lora-classifier",
         base_model_revision="sim_rev_0000",
@@ -447,13 +463,11 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         lora_config=_lora_runtime_config().lora_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"lora.test": [0.1]},
-        classifier_head_weight_deltas={
-            "anxiety": [0.1, 0.0],
-            "normal": [0.0, -0.1],
-        },
-        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        lora_delta_artifact_ref=delta_plan.lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=(
+            delta_plan.classifier_head_delta_artifact_ref
+        ),
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
         mean_confidence=0.5,
         delta_l2_norm=0.2,
     )
@@ -542,7 +556,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             training_backend_name="lora_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_lora_objective_extras(
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
             ),
         ),
         validation_config=_default_validation_config(
@@ -616,8 +630,17 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
     assert trainer_calls[0]["active_adapter_state"] is active_state
     assert trainer_calls[0]["lora_config"].delta_format == (
+        LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+    )
+    accepted_payload = server_runtime.accepted[0][2]
+    assert accepted_payload.delta_format == (
         LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
     )
+    assert accepted_payload.lora_delta_artifact_ref.startswith("aggregation_artifact::")
+    assert accepted_payload.classifier_head_delta_artifact_ref.startswith(
+        "aggregation_artifact::"
+    )
+    assert "agent-local://" not in accepted_payload.model_dump_json()
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:

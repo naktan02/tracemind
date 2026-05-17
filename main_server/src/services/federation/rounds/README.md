@@ -76,8 +76,9 @@
   - LoRA-classifier FedAvg methods strategy는 inline delta와 server-owned
     `aggregation_artifact::` JSON artifact-ref update를 집계한다. client update는
     base revision 기준 delta이고, 다음 state가 참조하는 server aggregate artifact는
-    누적된 global LoRA/head parameter snapshot이다. `agent-local://` ref는
-    upload/materialization 경로가 붙기 전까지 update accept 단계에서 거부한다
+    누적된 global LoRA/head parameter snapshot이다. `agent-local://` ref는 서버
+    direct accept 단계에서 거부한다. agent/simulation runtime이 먼저 server-owned
+    artifact ref로 upload/materialize해야 한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 

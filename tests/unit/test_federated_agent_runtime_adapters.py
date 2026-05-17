@@ -11,6 +11,7 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AggregationArtifactStore,
 )
 from methods.adaptation.lora_classifier.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
 )
@@ -22,9 +23,13 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 )
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     _prepare_delta_materialization,
+    upload_agent_local_lora_classifier_update,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (
     require_rows_supported_by_example_backend,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_lora_classifier_delta_payload,
 )
 
 
@@ -161,3 +166,110 @@ def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
     assert plan.lora_delta_artifact_ref is None
     assert plan.classifier_head_delta_artifact_ref is None
     assert not (tmp_path / "main_server" / "aggregation_artifacts").exists()
+
+
+def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
+    tmp_path,
+) -> None:
+    plan = _prepare_delta_materialization(
+        output_dir=tmp_path,
+        update_id="update_round_0001_agent_01_test",
+        training_task=SimpleNamespace(round_id="round_0001"),
+        client_id="agent_01",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        artifact_ref_prefix="agent-local://lora_classifier",
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.3, -0.1],
+            "normal": [-0.3, 0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+    )
+
+    assert plan.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+    assert plan.include_inline_deltas is False
+    assert plan.lora_delta_artifact_ref is not None
+    assert plan.classifier_head_delta_artifact_ref is not None
+    assert plan.lora_delta_artifact_ref.startswith("agent-local://")
+    assert plan.classifier_head_delta_artifact_ref.startswith("agent-local://")
+    local_artifacts = sorted(
+        (tmp_path / "agents" / "local_artifacts" / "versions").glob("**/*.json")
+    )
+    assert len(local_artifacts) == 2
+    assert not (tmp_path / "main_server" / "aggregation_artifacts").exists()
+
+
+def test_upload_agent_local_lora_update_materializes_server_owned_refs(
+    tmp_path,
+) -> None:
+    plan = _prepare_delta_materialization(
+        output_dir=tmp_path,
+        update_id="update_round_0001_agent_01_test",
+        training_task=SimpleNamespace(round_id="round_0001"),
+        client_id="agent_01",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        artifact_ref_prefix="agent-local://lora_classifier",
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.3, -0.1],
+            "normal": [-0.3, 0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+    )
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="mxbai-lora-classifier",
+        base_model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        lora_config={
+            "peft_adapter_name": "lora",
+            "rank": 8,
+            "alpha": 16,
+            "dropout": 0.1,
+            "bias": "none",
+            "target_modules": "all-linear",
+            "use_rslora": False,
+        },
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_delta_artifact_ref=plan.lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=plan.classifier_head_delta_artifact_ref,
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+    )
+
+    uploaded = upload_agent_local_lora_classifier_update(
+        output_dir=tmp_path,
+        update_payload=update_payload,
+    )
+
+    assert uploaded.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert uploaded.lora_delta_artifact_ref is not None
+    assert uploaded.classifier_head_delta_artifact_ref is not None
+    assert uploaded.lora_delta_artifact_ref.startswith(AGGREGATION_ARTIFACT_REF_PREFIX)
+    assert uploaded.classifier_head_delta_artifact_ref.startswith(
+        AGGREGATION_ARTIFACT_REF_PREFIX
+    )
+    store = AggregationArtifactStore(
+        state_root=tmp_path / "main_server" / "aggregation_artifacts"
+    )
+    lora_artifact = store.load_json_artifact(
+        artifact_ref=uploaded.lora_delta_artifact_ref
+    )
+    head_artifact = store.load_json_artifact(
+        artifact_ref=uploaded.classifier_head_delta_artifact_ref
+    )
+    assert lora_artifact["lora_parameter_deltas"] == {
+        "encoder.q_proj.lora_A": [0.1, -0.2]
+    }
+    assert head_artifact["classifier_head_bias_deltas"] == {
+        "anxiety": 0.05,
+        "normal": -0.05,
+    }

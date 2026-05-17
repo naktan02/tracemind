@@ -247,11 +247,13 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   runtime과 같은 `evidence backend -> acceptance policy` 경로로 계산한다.
 - 기본 manual `FixMatch + FedAvg + LoRA-classifier` 경로는
   `methods/ssl/algorithms/*` Query SSL algorithm과 실제 PEFT LoRA/classifier
-  trainer를 호출해 inline delta update를 만든다. simulation output에는 다음 state가
+  trainer를 호출해 artifact-ref delta update를 만든다. `agent-local://` ref는
+  simulation round loop에서 server-owned `aggregation_artifact::` ref로
+  upload/materialize한 뒤 서버에 제출한다. simulation output에는 다음 state가
   참조하는 누적 global LoRA/head parameter snapshot JSON도 저장된다.
   legacy pseudo-label selection 기반 inline executor는 `query_ssl_method`가 없는
-  compatibility/debug 경로로만 유지한다. agent-local artifact upload와 production
-  materialization은 후속 단계다.
+  compatibility/debug 경로로만 유지한다. direct production API submission은 아직
+  server-owned ref 또는 inline debug payload만 수락한다.
 
 ## newcomer 메모
 

@@ -192,8 +192,10 @@ Runtime translation:
    실행하고 report/artifact schema를 샘플로 고정한다. 코드 경로는 이미
    `query_ssl_method.algorithm_name`으로 `methods/ssl/algorithms/*`를 resolve한다.
 2. 실제 LoRA/classifier delta artifact 저장, upload, server-owned materialization
-   경로를 닫는다. FL simulation은 server-owned uploaded artifact ref를 기본으로
-   제출하고, `inline_delta`는 debug/compatibility 경로로만 남긴다.
+   경로를 닫는다. FL simulation은 `agent-local://` ref를 server-owned
+   `aggregation_artifact::` ref로 upload/materialize한 뒤 제출할 수 있고,
+   기본 실행은 server-owned uploaded artifact ref를 쓴다. `inline_delta`는
+   debug/compatibility 경로로만 남긴다.
 3. `FedAvg + FixMatch` 첫 FL SSL baseline을 main split에서 고정한다. local objective는
    `strategy_axes/ssl/consistency_method`로 교체하고 server aggregation은 FedAvg로 잠근다.
 4. FlexMatch/FreeMatch/PseudoLabel ablation을 같은 split/seed/local budget으로 실행하고
