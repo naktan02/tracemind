@@ -105,6 +105,10 @@ core로 올린다.
 - descriptor resolve가 동작한다.
 - Hydra `method_descriptor`와 필요한 profile compose가 동작한다.
 - compatibility validator가 incompatible profile을 실행 전에 실패시킨다.
+- `1-round` smoke에서 method name, descriptor, 실제 local/server policy 변경이
+  report metadata와 artifact로 함께 남는다.
+- 필요한 경우에도 새 검증 실행은 `5-round` reduced run까지로 제한한다. 현재 FL SSL
+  트랙에서는 새 `50-round`/full-budget run을 실행하지 않는다.
 - 기존 smoke/report/manifest shape가 변하지 않는다.
 - production `methods/federated_ssl/`에 dummy method를 남기지 않고
   `tests/fixtures/` 아래 test-only method fixture로 registry와 descriptor 경계를
