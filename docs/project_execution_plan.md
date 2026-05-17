@@ -197,7 +197,10 @@ Runtime translation:
   `aggregation_artifact::` ref로 upload/materialize할 수 있게 닫았다.
   server direct accept는 server-owned ref와 inline debug payload만 수락한다.
 - `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`, `50 rounds` main
-  baseline은 완료했다.
+  baseline report는 round/split/method/delta 기준으로 검증했다. 이 report는
+  runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
+  재검증할 수 없고, 현재 코드 기준 runtime metadata는 같은 split의 1-round smoke와
+  reduced runs로 확인했다.
 - Dirichlet `alpha=0.1` stress, full-budget FlexMatch/FreeMatch/PseudoLabel
   ablation, full-budget `client_count=1..10` sweep은 장시간 실행이므로 사용자 승인
   전까지 보류한다. 현재는 `alpha=0.1` stress와
@@ -210,7 +213,8 @@ Runtime translation:
 - 기존 smoke/main/reduced stress/reduced ablation/1-round sweep 산출물은
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 round budget,
   client count, SSL method, adapter family, aggregation, delta format metadata를
-  재검증할 수 있다.
+  재검증할 수 있다. 현재 감사용 manifest는
+  `docs/operations/fl_ssl_artifact_verification_manifest.current.json`다.
 
 다음 우선순위:
 

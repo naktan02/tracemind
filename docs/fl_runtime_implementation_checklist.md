@@ -38,8 +38,10 @@ source of truth로 본다.
 - [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
 - [x] 기존 FL SSL report와 client-count sweep summary가 기대한 round budget,
   client count, split seed, shard policy/alpha, SSL method, adapter family,
-  aggregation, delta format, round record/update count, GPU/mxbai runtime metadata를 담는지
+  aggregation, delta format, round record/update count를 담는지
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 재검증할 수 있다.
+  runtime metadata 도입 뒤 생성된 report는 같은 verifier로 GPU/mxbai metadata까지
+  기대값으로 고정할 수 있다.
 - [x] 실제 FL report 산출물 shape를 result index 샘플로 고정하고 dashboard/index
   소비 필드를 확정했다. `result_index`는 `fl_ssl_main_comparison.report.json`에서
   track, method/algorithm, split/source, seed, client/round budget, shard alpha,
@@ -128,7 +130,9 @@ methods/evaluation/                            # stable metric helper만
 ## Main Comparison Gate
 
 - [x] main split: `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
-  `50 rounds`.
+  `50 rounds`. 기존 full report는 round/split/method/delta 기준으로 검증됐지만
+  runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
+  재검증할 수 없다.
 - [ ] stress split: Dirichlet `alpha=0.1`, `50 rounds`. 사용자 지시로 추가
   50-round 실행은 보류한다.
 - [x] accidental long run 방지: FL SSL runner는 총 예정 communication round가
@@ -139,10 +143,12 @@ methods/evaluation/                            # stable metric helper만
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
 - [x] `client_count=1..10` 1-round summary는 report artifact verifier로
   `FixMatch + FedAvg + LoRA-classifier` metadata를 재검증했다.
-- [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다. 현재는
-  smoke, alpha=0.3 main 50-round, alpha=0.1 5-round reduced stress,
-  5-round reduced ablation, 1-round client-count sweep 산출물까지 확인했고,
-  full stress/ablation/sweep은 사용자 지시로 보류했다.
+- [ ] `gpu_local + mxbai` runtime metadata가 있는 smoke/main/sweep 산출물을 남긴다.
+  현재는 같은 split의 1-round smoke와 alpha=0.1 5-round reduced stress,
+  5-round reduced ablation에서 runtime metadata를 확인했다. alpha=0.3 50-round
+  full report와 1-round client-count sweep은 runtime metadata 도입 전 산출물이라
+  round/split/method/delta 기준만 재검증한다. full stress/ablation/sweep과
+  50-round main 재실행은 사용자 지시로 보류한다.
 - [x] 새 FL simulation report protocol은 `embedding_adapter`와
   `local_trainer_runtime` metadata를 기록한다. 이후 논문용 산출물은 이 필드로
   `gpu_local + mxbai` 여부를 확인하고, `hash_debug`/CPU smoke 결과를 성능
