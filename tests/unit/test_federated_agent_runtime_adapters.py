@@ -114,9 +114,68 @@ def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> No
     )
 
 
+@pytest.mark.parametrize(
+    ("method_name", "algorithm_name", "parameters"),
+    [
+        (
+            "fixmatch_usb_v1",
+            "fixmatch",
+            {
+                "temperature": 0.5,
+                "p_cutoff": 0.95,
+                "hard_label": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+        ),
+        (
+            "flexmatch_usb_v1",
+            "flexmatch",
+            {
+                "temperature": 0.5,
+                "p_cutoff": 0.95,
+                "hard_label": True,
+                "thresh_warmup": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+        ),
+        (
+            "freematch_usb_v1",
+            "freematch",
+            {
+                "temperature": 0.5,
+                "hard_label": True,
+                "ema_p": 0.999,
+                "ent_loss_ratio": 0.01,
+                "use_quantile": False,
+                "clip_thresh": False,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+        ),
+        (
+            "pseudolabel_usb_v1",
+            "pseudolabel",
+            {
+                "p_cutoff": 0.95,
+                "unsup_warm_up": 0.4,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+        ),
+    ],
+)
 def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     tmp_path,
     monkeypatch,
+    method_name,
+    algorithm_name,
+    parameters,
 ) -> None:
     captured: dict[str, object] = {}
     lora_config = LoraClassifierTrainingBackendConfig(
@@ -227,17 +286,9 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             model_revision="sim_rev_0000",
         ),
         query_ssl_config=FederatedQuerySslObjectiveConfig(
-            method_name="flexmatch_usb_v1",
-            algorithm_name="flexmatch",
-            parameters={
-                "temperature": 0.5,
-                "p_cutoff": 0.95,
-                "hard_label": True,
-                "thresh_warmup": True,
-                "lambda_u": 1.0,
-                "supervised_loss_weight": 1.0,
-                "unlabeled_batch_size": 2,
-            },
+            method_name=method_name,
+            algorithm_name=algorithm_name,
+            parameters=parameters,
             strong_view_policy="first_aug",
             unlabeled_batch_size=2,
         ),
@@ -248,8 +299,9 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
         ),
     )
 
-    assert captured["algorithm"].algorithm_name == "flexmatch"
-    assert captured["algorithm"].thresh_warmup is True
+    assert captured["algorithm"].algorithm_name == algorithm_name
+    if algorithm_name == "flexmatch":
+        assert captured["algorithm"].thresh_warmup is True
     assert result.update_payload == update_payload
 
 

@@ -46,7 +46,7 @@ report/summary를 검증했다.
 |---|---|---|
 | 작업별 commit/push | 작업 단위 커밋은 `origin/master`에 push했다. 최신 상태는 `git status --short --branch`와 `git log --oneline origin/master -n 12`로 확인한다 | 완료 |
 | scripts는 thin wrapper, method core는 methods 소유 | `scripts/experiments/fl_ssl/*`는 config/run/report, SSL algorithm은 `methods/ssl/algorithms/*`, LoRA aggregation은 `methods/adaptation/lora_classifier/*` | 완료 |
-| 실제 PEFT 기준 FixMatch local objective 호출 | `tests/unit/test_lora_fixmatch_runner.py`, `tests/unit/test_run_federated_simulation.py`, current 1-round smoke report `objective.query_ssl.algorithm_name=fixmatch` | 완료 |
+| 실제 PEFT 기준 Query SSL local objective 호출 | `tests/unit/test_lora_fixmatch_runner.py`, `tests/unit/test_federated_agent_runtime_adapters.py`, `tests/unit/test_run_federated_simulation.py`, current 1-round smoke report `objective.query_ssl.algorithm_name=fixmatch` | 완료 |
 | LoRA/classifier delta가 FedAvg까지 집계 | `methods/adaptation/lora_classifier/aggregation/fedavg.py`, `main_server/tests/unit/test_aggregation_service.py`, artifact-ref verifier가 server-owned update target과 aggregate snapshot 존재를 확인 | 완료 |
 | agent-local artifact upload | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py`, `upload_agent_local_lora_classifier_update` | 완료 |
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
