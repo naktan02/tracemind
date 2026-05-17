@@ -5,7 +5,11 @@
     "expected_adapter_family": "lora_classifier",
     "expected_aggregation": "fedavg",
     "expected_delta_format": "server_uploaded_artifact_ref",
-    "expected_round_update_count_matches_client_count": true
+    "expected_round_update_count_matches_client_count": true,
+    "expected_shared_update_count_matches_round_updates": true,
+    "expect_server_owned_update_artifacts": true,
+    "expect_no_agent_local_update_refs": true,
+    "expect_lora_classifier_aggregate_snapshot": true
   },
   "artifacts": [
     {

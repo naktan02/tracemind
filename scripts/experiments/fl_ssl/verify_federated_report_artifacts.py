@@ -38,6 +38,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_round_update_count_matches_client_count=(
             args.expect_round_update_count_matches_client_count
         ),
+        expected_shared_update_count=args.expected_shared_update_count,
+        expected_shared_update_count_matches_round_updates=(
+            args.expect_shared_update_count_matches_round_updates
+        ),
+        expect_server_owned_update_artifacts=(
+            args.expect_server_owned_update_artifacts
+        ),
+        expect_no_agent_local_update_refs=args.expect_no_agent_local_update_refs,
+        expect_lora_classifier_aggregate_snapshot=(
+            args.expect_lora_classifier_aggregate_snapshot
+        ),
         expected_embedding_metadata_status=args.expected_embedding_metadata_status,
         expected_embedding_backend=args.expected_embedding_backend,
         expected_embedding_model_id=args.expected_embedding_model_id,
@@ -135,6 +146,23 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-round-update-count", type=int)
     parser.add_argument(
         "--expect-round-update-count-matches-client-count",
+        action="store_true",
+    )
+    parser.add_argument("--expected-shared-update-count", type=int)
+    parser.add_argument(
+        "--expect-shared-update-count-matches-round-updates",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--expect-server-owned-update-artifacts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--expect-no-agent-local-update-refs",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--expect-lora-classifier-aggregate-snapshot",
         action="store_true",
     )
     parser.add_argument("--expected-embedding-metadata-status")

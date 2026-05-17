@@ -8,6 +8,7 @@ from pathlib import Path
 from scripts.experiments.fl_ssl.federated_simulation.io.report_verification import (
     FederatedReportExpectation,
     verify_client_count_sweep_summary_path,
+    verify_federated_simulation_report_path,
     verify_federated_simulation_report_payload,
 )
 from scripts.experiments.fl_ssl.verify_federated_report_artifacts import (
@@ -79,6 +80,7 @@ def _report_payload(
             {
                 "round_id": f"round_{round_index:04d}",
                 "round_index": round_index,
+                "model_revision": f"sim_rev_{round_index:04d}",
                 "update_count": effective_round_update_count,
             }
             for round_index in range(1, completed_rounds + 1)
@@ -126,6 +128,66 @@ def _round_record_expectation() -> FederatedReportExpectation:
         expected_round_record_count=2,
         expected_round_update_count_matches_client_count=True,
     )
+
+
+def _write_report_run_with_server_update_artifacts(
+    tmp_path: Path,
+    *,
+    payload: dict[str, object],
+) -> Path:
+    run_dir = tmp_path / "run"
+    report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
+    report_path.parent.mkdir(parents=True)
+    report_path.write_text(json.dumps(payload), encoding="utf-8")
+
+    update_dir = run_dir / "main_server" / "shared_adapter_updates" / "versions"
+    artifact_root = run_dir / "main_server" / "aggregation_artifacts" / "versions"
+    update_dir.mkdir(parents=True)
+    for round_payload in payload["rounds"]:
+        round_mapping = dict(round_payload)  # type: ignore[arg-type]
+        round_id = str(round_mapping["round_id"])
+        update_count = int(round_mapping["update_count"])
+        for client_index in range(1, update_count + 1):
+            client_id = f"agent_{client_index:02d}"
+            update_id = f"update_{round_id}_{client_id}"
+            ref_prefix = f"client_updates/{round_id}/{client_id}/{update_id}"
+            lora_ref = f"aggregation_artifact::{ref_prefix}/lora_delta"
+            head_ref = f"aggregation_artifact::{ref_prefix}/classifier_head_delta"
+            (artifact_root / ref_prefix).mkdir(parents=True)
+            (artifact_root / f"{ref_prefix}/lora_delta.json").write_text(
+                json.dumps({"lora_parameters": {"a": [1.0]}}),
+                encoding="utf-8",
+            )
+            (artifact_root / f"{ref_prefix}/classifier_head_delta.json").write_text(
+                json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
+                encoding="utf-8",
+            )
+            (update_dir / f"{update_id}.json").write_text(
+                json.dumps(
+                    {
+                        "update_id": update_id,
+                        "delta_format": "server_uploaded_artifact_ref",
+                        "lora_delta_artifact_ref": lora_ref,
+                        "classifier_head_delta_artifact_ref": head_ref,
+                    }
+                ),
+                encoding="utf-8",
+            )
+
+    final_round = dict(payload["rounds"][-1])  # type: ignore[index,arg-type]
+    snapshot_dir = (
+        artifact_root / "lora_classifier" / str(final_round["model_revision"])
+    )
+    snapshot_dir.mkdir(parents=True)
+    (snapshot_dir / "lora_adapter.json").write_text(
+        json.dumps({"lora_parameters": {"a": [1.0]}}),
+        encoding="utf-8",
+    )
+    (snapshot_dir / "classifier_head.json").write_text(
+        json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
+        encoding="utf-8",
+    )
+    return report_path
 
 
 def test_verify_federated_report_accepts_expected_runtime_metadata() -> None:
@@ -252,6 +314,69 @@ def test_verify_federated_report_flags_round_record_drift() -> None:
     assert not result.passed
     assert "rounds.length expected 2, got 1." in result.errors
     assert "rounds[round_0001].update_count expected 2, got 1." in result.errors
+
+
+def test_verify_federated_report_checks_server_owned_update_artifacts(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(client_count=2, completed_rounds=2, round_budget=2),
+    )
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_server_owned_update_artifacts=True,
+            expect_no_agent_local_update_refs=True,
+            expect_lora_classifier_aggregate_snapshot=True,
+        ),
+    )
+
+    assert result.passed
+
+
+def test_verify_federated_report_flags_agent_local_update_artifact_drift(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(client_count=1, completed_rounds=1, round_budget=1),
+    )
+    update_path = next(
+        (
+            report_path.parent.parent
+            / "main_server"
+            / "shared_adapter_updates"
+            / "versions"
+        ).glob("*.json")
+    )
+    update_payload = json.loads(update_path.read_text(encoding="utf-8"))
+    update_payload["lora_delta_artifact_ref"] = "agent-local://agent_01/lora_delta"
+    update_path.write_text(json.dumps(update_payload), encoding="utf-8")
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_server_owned_update_artifacts=True,
+            expect_no_agent_local_update_refs=True,
+            expect_lora_classifier_aggregate_snapshot=True,
+        ),
+    )
+
+    assert not result.passed
+    assert any(
+        error.endswith("must not contain agent-local artifact refs.")
+        for error in result.errors
+    )
+    assert any(
+        ".lora_delta_artifact_ref must start with 'aggregation_artifact::'" in error
+        for error in result.errors
+    )
 
 
 def test_verify_client_count_sweep_summary_checks_each_report(

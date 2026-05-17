@@ -28,6 +28,11 @@ class FederatedReportExpectation:
     expected_round_record_count: int | None = None
     expected_round_update_count: int | None = None
     expected_round_update_count_matches_client_count: bool = False
+    expected_shared_update_count: int | None = None
+    expected_shared_update_count_matches_round_updates: bool = False
+    expect_server_owned_update_artifacts: bool = False
+    expect_no_agent_local_update_refs: bool = False
+    expect_lora_classifier_aggregate_snapshot: bool = False
     expected_embedding_metadata_status: str | None = None
     expected_embedding_backend: str | None = None
     expected_embedding_model_id: str | None = None
@@ -215,6 +220,12 @@ def verify_federated_simulation_report_payload(
         protocol=protocol,
         expectation=expectation,
     )
+    _verify_shared_update_artifacts(
+        errors=errors,
+        artifact=artifact,
+        rounds=rounds,
+        expectation=expectation,
+    )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
 
 
@@ -260,6 +271,185 @@ def _verify_round_records(
             round_mapping.get("update_count"),
             expected_update_count,
         )
+
+
+def _verify_shared_update_artifacts(
+    *,
+    errors: list[str],
+    artifact: str,
+    rounds: tuple[object, ...],
+    expectation: FederatedReportExpectation,
+) -> None:
+    if not _requires_shared_update_artifact_check(expectation):
+        return
+    report_path = Path(artifact)
+    if not report_path.exists():
+        errors.append(
+            "report path must exist when shared update artifact checks are enabled: "
+            f"{artifact}."
+        )
+        return
+    run_dir = _run_dir_for_report_path(report_path)
+    update_dir = run_dir / "main_server" / "shared_adapter_updates" / "versions"
+    update_paths = sorted(update_dir.glob("*.json"))
+    expected_count = _expected_shared_update_count(rounds, expectation, errors)
+    _expect_equal(
+        errors,
+        "shared_adapter_updates.length",
+        len(update_paths),
+        expected_count,
+    )
+    if not update_paths:
+        errors.append(f"shared update artifact directory is empty: {update_dir}.")
+        return
+
+    for update_path in update_paths:
+        update_payload = _load_json_object(update_path)
+        _verify_shared_update_payload(
+            errors=errors,
+            run_dir=run_dir,
+            update_path=update_path,
+            update_payload=update_payload,
+            expectation=expectation,
+        )
+    if expectation.expect_lora_classifier_aggregate_snapshot:
+        _verify_lora_classifier_aggregate_snapshot(
+            errors=errors,
+            run_dir=run_dir,
+            rounds=rounds,
+        )
+
+
+def _requires_shared_update_artifact_check(
+    expectation: FederatedReportExpectation,
+) -> bool:
+    return any(
+        (
+            expectation.expected_shared_update_count is not None,
+            expectation.expected_shared_update_count_matches_round_updates,
+            expectation.expect_server_owned_update_artifacts,
+            expectation.expect_no_agent_local_update_refs,
+            expectation.expect_lora_classifier_aggregate_snapshot,
+        )
+    )
+
+
+def _run_dir_for_report_path(report_path: Path) -> Path:
+    if report_path.parent.name == "reports":
+        return report_path.parent.parent
+    return report_path.parent
+
+
+def _expected_shared_update_count(
+    rounds: tuple[object, ...],
+    expectation: FederatedReportExpectation,
+    errors: list[str],
+) -> int | None:
+    if expectation.expected_shared_update_count is not None:
+        return expectation.expected_shared_update_count
+    if not expectation.expected_shared_update_count_matches_round_updates:
+        return None
+    update_counts: list[int] = []
+    for index, round_payload in enumerate(rounds, start=1):
+        round_mapping = _object_mapping(round_payload)
+        update_count = _optional_int(round_mapping.get("update_count"))
+        if update_count is None:
+            errors.append(
+                "round update_count is required when shared update count must "
+                f"match round updates: round_index={index}."
+            )
+            return None
+        update_counts.append(update_count)
+    return sum(update_counts)
+
+
+def _verify_shared_update_payload(
+    *,
+    errors: list[str],
+    run_dir: Path,
+    update_path: Path,
+    update_payload: Mapping[str, object],
+    expectation: FederatedReportExpectation,
+) -> None:
+    update_label = str(update_path)
+    _expect_equal(
+        errors,
+        f"{update_label}.delta_format",
+        update_payload.get("delta_format"),
+        expectation.expected_delta_format,
+    )
+    if expectation.expect_no_agent_local_update_refs and (
+        "agent-local://" in json.dumps(update_payload, sort_keys=True)
+    ):
+        errors.append(f"{update_label} must not contain agent-local artifact refs.")
+    if not expectation.expect_server_owned_update_artifacts:
+        return
+    for field_name in (
+        "lora_delta_artifact_ref",
+        "classifier_head_delta_artifact_ref",
+    ):
+        artifact_ref = update_payload.get(field_name)
+        if not isinstance(artifact_ref, str) or not artifact_ref:
+            errors.append(f"{update_label}.{field_name} must be a non-empty string.")
+            continue
+        if not artifact_ref.startswith("aggregation_artifact::"):
+            errors.append(
+                f"{update_label}.{field_name} must start with "
+                f"'aggregation_artifact::', got {artifact_ref!r}."
+            )
+            continue
+        artifact_path = _aggregation_artifact_path(run_dir, artifact_ref)
+        if not artifact_path.exists():
+            errors.append(
+                f"{update_label}.{field_name} target does not exist: {artifact_path}."
+            )
+
+
+def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
+    relative_ref = artifact_ref.removeprefix("aggregation_artifact::")
+    artifact_path = (
+        run_dir / "main_server" / "aggregation_artifacts" / "versions" / relative_ref
+    )
+    if artifact_path.suffix:
+        return artifact_path
+    return artifact_path.with_suffix(".json")
+
+
+def _verify_lora_classifier_aggregate_snapshot(
+    *,
+    errors: list[str],
+    run_dir: Path,
+    rounds: tuple[object, ...],
+) -> None:
+    if not rounds:
+        errors.append(
+            "rounds must not be empty when lora_classifier aggregate snapshot "
+            "is expected."
+        )
+        return
+    final_round = _object_mapping(rounds[-1])
+    model_revision = final_round.get("model_revision")
+    if not isinstance(model_revision, str) or not model_revision:
+        errors.append(
+            "rounds[-1].model_revision is required when lora_classifier aggregate "
+            "snapshot is expected."
+        )
+        return
+    snapshot_dir = (
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / model_revision
+    )
+    for artifact_name in ("lora_adapter.json", "classifier_head.json"):
+        artifact_path = snapshot_dir / artifact_name
+        if not artifact_path.exists():
+            errors.append(
+                "lora_classifier aggregate snapshot artifact does not exist: "
+                f"{artifact_path}."
+            )
 
 
 def verify_client_count_sweep_summary_path(
