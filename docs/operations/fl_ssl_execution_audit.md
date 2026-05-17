@@ -38,6 +38,9 @@ report/summary를 검증했다.
 - FlexMatch/FreeMatch/PseudoLabel full-budget ablation.
 - `client_count=1..10` full sweep. `5 rounds x 10 client-counts`처럼 합계
   `50` rounds인 sweep도 long-run guard 대상이다.
+
+결정 대기 항목:
+
 - FedMatch/FedLGMatch/(FL)^2 중 첫 구현 method 선택.
 
 ## Prompt-To-Artifact Checklist
@@ -104,6 +107,9 @@ Result index read-only ingest:
 
 ## Next Gate
 
-다음 실행성 작업은 사용자의 명시 승인이 필요하다. 승인 없이 진행 가능한 다음 작업은
-FedMatch/FedLGMatch/(FL)^2 중 첫 method를 고르기 위한 capability matrix 작성과
-method-owned descriptor/server-policy/round-state 요구사항 문서화다.
+다음 실행성 작업은 현재 사용자 결정에 따라 진행하지 않는다. 구현성 작업의 다음
+게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이다.
+`docs/contracts/fl_ssl_method_capability_matrix.md`와
+`methods/federated_ssl/NEW_METHOD.md`는 이미 선택 전/선택 후 경계를 나눠 둔 상태다.
+현재 권장 첫 후보는 payload family를 바꾸지 않는 FedMatch method-owned local
+objective다.
