@@ -54,6 +54,17 @@ RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
     "mixtext",
     "rdrop",
 )
+FL_SCRIPT_RUNTIME_ROOTS = (
+    SCRIPTS_SRC / "experiments" / "fl_ssl",
+    SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server",
+)
+PAPER_METHOD_NAME_FRAGMENTS = (
+    "fedmatch",
+    "fedlgmatch",
+    "fl2",
+    "fl_2",
+)
 
 
 def _iter_python_files(root: Path) -> list[Path]:
@@ -358,6 +369,27 @@ def test_runtime_layers_do_not_define_method_specific_modules() -> None:
         "agent/main_server는 method-specific module을 소유하지 않는다. "
         "새 method 의미는 methods/에 두고 runtime 계층은 capability 이름의 "
         "port/adapter만 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> None:
+    violations: list[Path] = []
+    for root in FL_SCRIPT_RUNTIME_ROOTS:
+        for path in _iter_python_files(root):
+            relative_path = _relative_repo_path(path)
+            normalized_path = str(relative_path).lower()
+            if any(
+                method_fragment in normalized_path
+                for method_fragment in PAPER_METHOD_NAME_FRAGMENTS
+            ):
+                violations.append(relative_path)
+
+    assert not violations, (
+        "FL scripts/runtime adapters는 FedMatch/FedLGMatch/(FL)^2 같은 논문 method "
+        "구현을 파일명으로 소유하지 않는다. method identity와 policy 의미는 "
+        "methods/federated_ssl/<method>/에 두고, scripts는 entrypoint/report/runtime "
+        "bridge만 맡긴다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
