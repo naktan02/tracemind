@@ -167,11 +167,13 @@ def _parse_optional_bool(value: str | None) -> bool | None:
 def _verify_manifest_path(manifest_path: Path) -> list[VerificationResult]:
     manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
     entries = _manifest_entries(manifest)
+    default_expectation = _manifest_default_expectation(manifest)
     return [
         _verify_manifest_entry(
             manifest_path=manifest_path,
             entry=entry,
             index=index,
+            default_expectation=default_expectation,
         )
         for index, entry in enumerate(entries, start=1)
     ]
@@ -199,9 +201,13 @@ def _verify_manifest_entry(
     manifest_path: Path,
     entry: Mapping[str, object],
     index: int,
+    default_expectation: FederatedReportExpectation,
 ) -> VerificationResult:
     name = str(entry.get("name") or f"artifact_{index}")
-    expectation = _expectation_from_manifest_entry(entry)
+    expectation = _expectation_from_manifest_entry(
+        entry,
+        default_expectation=default_expectation,
+    )
     report_path = _optional_manifest_path(manifest_path, entry.get("report"))
     summary_path = _optional_manifest_path(
         manifest_path,
@@ -232,17 +238,47 @@ def _verify_manifest_entry(
     )
 
 
+def _manifest_default_expectation(manifest: object) -> FederatedReportExpectation:
+    if not isinstance(manifest, Mapping):
+        return FederatedReportExpectation()
+    raw_defaults = manifest.get("defaults", {})
+    if not isinstance(raw_defaults, Mapping):
+        raise ValueError("Verifier manifest defaults must be a JSON object.")
+    return _expectation_from_mapping(raw_defaults)
+
+
 def _expectation_from_manifest_entry(
     entry: Mapping[str, object],
+    *,
+    default_expectation: FederatedReportExpectation,
 ) -> FederatedReportExpectation:
     raw_expectation = entry.get("expectation", {})
     if not isinstance(raw_expectation, Mapping):
         raise ValueError("Verifier manifest expectation must be a JSON object.")
+    entry_expectation = _expectation_from_mapping(raw_expectation)
+    return FederatedReportExpectation(
+        **{
+            field.name: _first_non_none(
+                getattr(entry_expectation, field.name),
+                getattr(default_expectation, field.name),
+            )
+            for field in fields(FederatedReportExpectation)
+        }
+    )
+
+
+def _expectation_from_mapping(
+    raw_expectation: Mapping[str, object],
+) -> FederatedReportExpectation:
     allowed_fields = {field.name for field in fields(FederatedReportExpectation)}
     unknown_fields = sorted(set(raw_expectation) - allowed_fields)
     if unknown_fields:
         raise ValueError(f"Unknown verifier expectation fields: {unknown_fields}.")
     return FederatedReportExpectation(**dict(raw_expectation))
+
+
+def _first_non_none(value: object, fallback: object) -> object:
+    return fallback if value is None else value
 
 
 def _optional_manifest_path(manifest_path: Path, raw_path: object) -> Path | None:
