@@ -45,6 +45,9 @@ from main_server.src.services.federation.rounds.server_policy.executor import (
     DefaultServerPolicyExecutor,
     ServerPolicyExecutor,
 )
+from methods.adaptation.server_update_compatibility import (
+    require_server_compatible_update_payload,
+)
 from methods.adaptation.server_update_materialization import (
     require_server_materializable_update_payload,
 )
@@ -230,6 +233,10 @@ class RoundLifecycleService:
         )
         try:
             require_server_materializable_update_payload(submission.update_payload)
+            self._validate_update_payload_matches_active_state(
+                record=record,
+                update_payload=submission.update_payload,
+            )
         except ValueError as error:
             raise RoundValidationError(str(error)) from error
         updated_record = record
@@ -369,3 +376,21 @@ class RoundLifecycleService:
                 f"family: {update_payload.adapter_kind} != "
                 f"{adapter_family.adapter_kind}"
             )
+
+    def _validate_update_payload_matches_active_state(
+        self,
+        *,
+        record: RoundRecord,
+        update_payload: SharedAdapterUpdatePayload,
+    ) -> None:
+        artifact_repository = self.round_manager_service.artifact_repository
+        active_payload = artifact_repository.load_shared_adapter_state_from_ref(
+            record.active_manifest.artifact_ref,
+        )
+        active_state = self.round_manager_service.adapter_family.state_from_payload(
+            active_payload
+        )
+        require_server_compatible_update_payload(
+            update_payload=update_payload,
+            active_state=active_state,
+        )

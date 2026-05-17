@@ -110,7 +110,9 @@ methods/evaluation/                            # stable metric helper만
   submission은 여전히 server-owned ref만 수락한다.
 - [x] 실제 PEFT executor 기준 LoRA 1-round smoke를 실행했다.
 - [ ] winner method가 요구하는 shared family/state/update payload를 확정한다.
-- [ ] backward-compatible manifest/version 정책을 확인한다.
+- [x] server accept 단계에서 update payload의 `model_id`, `base_model_revision`,
+  `training_scope`, LoRA backbone/config/label schema가 active state와 맞는지
+  family별 compatibility preflight로 확인한다.
 
 ## Main Comparison Gate
 

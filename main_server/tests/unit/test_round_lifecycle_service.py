@@ -111,6 +111,7 @@ from shared.src.contracts.adapter_contract_families.diagonal_scale import (
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
+    make_lora_classifier_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
     register_shared_adapter_payload_family,
@@ -404,6 +405,91 @@ def _build_service(
     return service, active_manifest, round_repository
 
 
+def _build_lora_service(
+    *,
+    tmp_path: Path,
+    fixed_time: datetime,
+) -> tuple[RoundLifecycleService, ModelManifest, RoundRepository]:
+    round_repository = RoundRepository(state_root=tmp_path / "rounds")
+    state_repository = (
+        shared_adapter_state_repository_module.SharedAdapterStateRepository(
+            state_root=tmp_path / "shared_states"
+        )
+    )
+    state_repository.save_shared_adapter_state(
+        make_lora_classifier_state_payload(
+            model_id="tracemind-embed",
+            model_revision="rev_000",
+            training_scope="adapter_only",
+            backbone=_lora_backbone_payload(),
+            lora_config=_lora_config_payload(),
+            label_schema=["anxiety", "normal"],
+        )
+    )
+    active_manifest = ModelManifest(
+        schema_version="model_manifest.v1",
+        model_id="tracemind-embed",
+        model_revision="rev_000",
+        published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
+        artifact_kind="shared_adapter_state",
+        artifact_ref=state_repository.ref_for_revision("rev_000"),
+        prototype_version="proto_000",
+        training_scope="adapter_only",
+        training_enabled=True,
+        compatible_task_types=("pseudo_label_self_training",),
+    )
+    service = RoundLifecycleService(
+        round_repository=round_repository,
+        update_payload_repository=SharedAdapterUpdateRepository(
+            state_root=tmp_path / "server_updates"
+        ),
+        active_manifest_service=ActiveModelManifestService(
+            manifest_repository=ModelManifestRepository(
+                state_root=tmp_path / "model_manifests"
+            ),
+            clock=FixedClock(fixed_time),
+        ),
+        round_manager_service=RoundManagerService(
+            adapter_family=build_shared_adapter_round_family(
+                "lora_classifier",
+                aggregation_backend_name="fedavg",
+            ),
+            artifact_repository=state_repository,
+            clock=FixedClock(fixed_time),
+        ),
+        clock=FixedClock(fixed_time),
+    )
+    service.active_manifest_service.save_and_activate(
+        active_manifest,
+        activated_at=fixed_time,
+    )
+    return service, active_manifest, round_repository
+
+
+def _lora_backbone_payload() -> dict[str, object]:
+    return {
+        "backbone_model_id": "mxbai",
+        "backbone_revision": "main",
+        "tokenizer_model_id": "mxbai",
+        "tokenizer_revision": "main",
+        "pooling": "mean",
+        "max_length": 256,
+        "task_prefix": "",
+    }
+
+
+def _lora_config_payload() -> dict[str, object]:
+    return {
+        "peft_adapter_name": "lora",
+        "rank": 8,
+        "alpha": 16,
+        "dropout": 0.1,
+        "bias": "none",
+        "target_modules": "all-linear",
+        "use_rslora": False,
+    }
+
+
 def _build_update(
     *,
     tmp_path: Path,
@@ -557,6 +643,55 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     )
 
     with pytest.raises(RoundValidationError, match="agent-local artifact"):
+        service.accept_update_submission(record.round_id, update)
+    assert round_repository.load_round(record.round_id).updates == ()
+
+
+def test_round_lifecycle_rejects_lora_payload_manifest_drift_at_accept(
+    tmp_path: Path,
+) -> None:
+    fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
+    service, _active_manifest, round_repository = _build_lora_service(
+        tmp_path=tmp_path,
+        fixed_time=fixed_time,
+    )
+    record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="tracemind-embed",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone=_lora_backbone_payload(),
+        lora_config={**_lora_config_payload(), "rank": 4},
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.2],
+            "normal": [-0.2],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format="inline_delta",
+        mean_confidence=0.8,
+        mean_margin=0.2,
+    )
+    update = make_training_update_submission(
+        envelope=TrainingUpdateEnvelope(
+            schema_version="training_update_envelope.v1",
+            update_id="lora_update_001",
+            round_id=record.round_id,
+            task_id=record.training_task.task_id,
+            model_id="tracemind-embed",
+            base_model_revision="rev_000",
+            training_scope="adapter_only",
+            payload_ref="client-submission::lora_update_001",
+            payload_format="lora_classifier_update",
+            example_count=2,
+            client_metrics={"mean_loss": 0.2},
+        ),
+        update_payload=update_payload,
+    )
+
+    with pytest.raises(RoundValidationError, match="lora_config"):
         service.accept_update_submission(record.round_id, update)
     assert round_repository.load_round(record.round_id).updates == ()
 

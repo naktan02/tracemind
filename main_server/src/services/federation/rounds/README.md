@@ -79,6 +79,9 @@
     누적된 global LoRA/head parameter snapshot이다. `agent-local://` ref는 서버
     direct accept 단계에서 거부한다. agent/simulation runtime이 먼저 server-owned
     artifact ref로 upload/materialize해야 한다
+  - update accept 단계는 envelope의 active manifest revision뿐 아니라 family별
+    payload compatibility도 확인한다. LoRA-classifier는 payload의 model/base
+    revision/scope, backbone, LoRA config, label schema가 active state와 같아야 한다
 - `acceptance/`
   - 중복 제출, 신뢰 정책, 라운드 상태 검증
 
