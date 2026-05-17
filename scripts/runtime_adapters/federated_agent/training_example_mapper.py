@@ -6,6 +6,10 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import Any
 
+from methods.adaptation.query_classifier_adaptation.view_rows import (
+    resolve_query_strong_text,
+    resolve_query_weak_text,
+)
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
 )
@@ -51,8 +55,8 @@ def build_federated_training_examples(
             query_id=str(row["query_id"]),
             text=str(row["text"]),
             occurred_at=parse_created_at(str(row["created_at"])),
-            weak_text=_resolve_weak_text(row),
-            strong_text=_resolve_strong_text(row),
+            weak_text=resolve_query_weak_text(row),
+            strong_text=resolve_query_strong_text(row),
             weak_translated_text=_optional_row_value(row, "weak_translated_text"),
             strong_translated_text=_optional_row_value(row, "strong_translated_text"),
         )
@@ -73,19 +77,3 @@ def build_federated_training_examples(
 def _optional_row_value(row: Mapping[str, Any], key: str) -> str | None:
     value = row.get(key)
     return None if value is None else str(value)
-
-
-def _resolve_weak_text(row: Mapping[str, Any]) -> str | None:
-    legacy_value = _optional_row_value(row, "weak_text")
-    if legacy_value is not None:
-        return legacy_value
-    if row.get("aug_0") or row.get("aug_1"):
-        return str(row["text"])
-    return None
-
-
-def _resolve_strong_text(row: Mapping[str, Any]) -> str | None:
-    legacy_value = _optional_row_value(row, "strong_text")
-    if legacy_value is not None:
-        return legacy_value
-    return _optional_row_value(row, "aug_0") or _optional_row_value(row, "aug_1")

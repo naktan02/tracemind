@@ -1,13 +1,15 @@
-"""FL simulation용 LoRA-classifier inline delta executor."""
+"""LoRA-classifier deterministic inline delta executor for simulation smoke."""
 
 from __future__ import annotations
 
 import hashlib
-import math
-from collections.abc import Mapping, Sequence
+from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
+from methods.adaptation.lora_classifier.delta_extraction import (
+    lora_classifier_delta_l2_norm,
+)
 from methods.adaptation.lora_classifier.local_update import (
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainingRow,
@@ -19,12 +21,7 @@ from shared.src.contracts.training_contracts import TrainingTask
 
 @dataclass(frozen=True, slots=True)
 class SimulationInlineLoraClassifierTrainExecutor:
-    """simulation에서 서버 집계 가능한 deterministic inline delta를 만든다.
-
-    실제 PEFT optimizer step은 이 port 뒤에 별도 executor로 붙인다. 이 executor는
-    LoRA-classifier FedAvg 경로를 1-round 이상 검증하기 위한 server-materializable
-    payload를 만든다.
-    """
+    """서버 집계 가능한 deterministic LoRA/classifier inline delta를 만든다."""
 
     lora_delta_scale: float = 0.05
     classifier_delta_scale: float = 1.0
@@ -64,7 +61,7 @@ class SimulationInlineLoraClassifierTrainExecutor:
             lora_parameter_deltas=lora_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
-            delta_l2_norm=_l2_norm(
+            delta_l2_norm=lora_classifier_delta_l2_norm(
                 lora_parameter_deltas=lora_parameter_deltas,
                 classifier_head_weight_deltas=classifier_head_weight_deltas,
                 classifier_head_bias_deltas=classifier_head_bias_deltas,
@@ -162,22 +159,3 @@ def _build_classifier_head_bias_deltas(
 
 def _effective_step_scale(*, learning_rate: float, scale: float) -> float:
     return max(1e-4, abs(float(learning_rate))) * float(scale)
-
-
-def _l2_norm(
-    *,
-    lora_parameter_deltas: Mapping[str, Sequence[float]],
-    classifier_head_weight_deltas: Mapping[str, Sequence[float]],
-    classifier_head_bias_deltas: Mapping[str, float],
-) -> float:
-    squared_norm = 0.0
-    for mapping in (lora_parameter_deltas, classifier_head_weight_deltas):
-        squared_norm += sum(
-            float(value) * float(value)
-            for vector in mapping.values()
-            for value in vector
-        )
-    squared_norm += sum(
-        float(value) * float(value) for value in classifier_head_bias_deltas.values()
-    )
-    return math.sqrt(squared_norm)

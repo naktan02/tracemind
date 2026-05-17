@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from methods.adaptation.query_classifier_adaptation.view_rows import (
+    row_supports_weak_strong_pair,
+)
+
 
 def require_rows_supported_by_example_backend(
     *,
@@ -19,22 +23,10 @@ def require_rows_supported_by_example_backend(
 
     if backend_name != WEAK_STRONG_PAIR_BACKEND_NAME:
         return
-    _require_weak_strong_rows(rows)
-
-
-def _require_weak_strong_rows(rows: list[Mapping[str, Any]]) -> None:
     for row in rows:
-        if _has_legacy_weak_strong_fields(row) or _has_usb_view_fields(row):
+        if row_supports_weak_strong_pair(row):
             continue
         raise ValueError(
             "weak_strong_pair simulation requires each row to include both "
             "weak_text/strong_text or text plus aug_0/aug_1."
         )
-
-
-def _has_legacy_weak_strong_fields(row: Mapping[str, Any]) -> bool:
-    return bool(row.get("weak_text") and row.get("strong_text"))
-
-
-def _has_usb_view_fields(row: Mapping[str, Any]) -> bool:
-    return bool(row.get("text") and (row.get("aug_0") or row.get("aug_1")))

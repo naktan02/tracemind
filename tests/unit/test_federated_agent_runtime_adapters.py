@@ -65,6 +65,17 @@ def test_row_validator_accepts_usb_text_and_augmentation_fields() -> None:
     )
 
 
+def test_row_validator_rejects_partial_usb_augmentation_fields() -> None:
+    with pytest.raises(
+        ValueError,
+        match="requires each row to include both weak_text/strong_text",
+    ):
+        require_rows_supported_by_example_backend(
+            rows=[{"query_id": "q1", "text": "panic weak", "aug_0": "panic strong"}],
+            backend_name="weak_strong_pair",
+        )
+
+
 def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> None:
     require_rows_supported_by_example_backend(
         rows=[{"query_id": "q1", "text": "panic"}],
