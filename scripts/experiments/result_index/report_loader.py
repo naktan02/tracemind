@@ -573,6 +573,11 @@ def _is_fl_ssl_report(payload: dict[str, Any]) -> bool:
 
 def _infer_fl_ssl_run_id(report_path: Path) -> str:
     run_dir = report_path.parent.parent
+    if run_dir.name.startswith("clients_"):
+        run_timestamp_dir = run_dir.parent
+        run_group = run_timestamp_dir.parent.name
+        if run_group:
+            return f"{run_group}__{run_timestamp_dir.name}__{run_dir.name}"
     run_group = run_dir.parent.name
     if run_group:
         return f"{run_group}__{run_dir.name}"

@@ -125,6 +125,18 @@ def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     assert discover_report_paths(tmp_path / "runs") == [fl_report, central_report]
 
 
+def test_load_result_index_records_keeps_client_count_sweep_slug(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_fl_ssl_sweep_report(tmp_path, client_slug="clients_03")
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.run_id == (
+        "fixmatch_lora_alpha03_1round_20260518__20260517T193320Z__clients_03"
+    )
+
+
 def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     tmp_path: Path,
 ) -> None:
@@ -188,6 +200,25 @@ def _write_fl_ssl_report(tmp_path: Path) -> Path:
         / "federated_simulation"
         / "fixmatch_lora_alpha03_10c_50round_20260518"
         / "20260517T150549Z"
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(_sample_fl_ssl_report(), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_fl_ssl_sweep_report(tmp_path: Path, *, client_slug: str) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "federated_simulation_client_count_sweep_short"
+        / "fixmatch_lora_alpha03_1round_20260518"
+        / "20260517T193320Z"
+        / client_slug
         / "reports"
         / "fl_ssl_main_comparison.report.json"
     )
