@@ -133,17 +133,20 @@ uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
   query_data_selection.unlabeled=ourafla_reddit \
   query_data_selection.validation=ourafla_reddit \
   query_data_selection.test=ourafla_reddit \
-  run_controls/fl_ssl/budget=main \
+  run_controls/fl_ssl/budget=smoke \
+  federated_run_budget.client_count=10 \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
 기본값은 선택된 labeled source 전체와 unlabeled source 전체를 client에 분배한다.
+위 명령은 client split manifest를 만드는 단계라 round loop를 실행하지 않는다.
 라벨 데이터를 일부만 쓰는 ablation은 split 생성 시 정책을 명시한다.
 
 ```bash
 uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
   query_data_selection.labeled=szegeelim_general4 \
-  run_controls/fl_ssl/budget=main \
+  run_controls/fl_ssl/budget=smoke \
+  federated_run_budget.client_count=10 \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_client_split_materialization.labeled_policy.mode=count_per_class \
   fl_client_split_materialization.labeled_policy.count_per_class=256
@@ -160,26 +163,31 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
-  run_controls/fl_ssl/budget=main \
+  run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json
+  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  federated_run_budget.client_count=10 \
+  federated_run_budget.rounds=1
 ```
 
-FL SSL seed sweep:
+FL SSL seed sweep smoke:
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
-  run_controls/fl_ssl/budget=main \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  federated_run_budget.client_count=10 \
+  federated_run_budget.rounds=1
 ```
 
-FL SSL client-count sweep:
+FL SSL client-count sweep smoke:
 
 ```bash
 uv run python scripts/experiments/fl_ssl/run_federated_client_count_sweep.py \
-  run_controls/fl_ssl/budget=main \
-  strategy_axes/fl/shard_policy=dirichlet_alpha03
+  run_controls/fl_ssl/budget=smoke \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  federated_run_budget.rounds=1
 ```
 
 FL SSL runner는 `run_safety.max_total_rounds_without_ack`보다 큰 총 예정
@@ -194,7 +202,8 @@ run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN
 
 현재 FL SSL 비교에서는 새 `50-round`/full-budget 실행을 하지 않는다. 기존
 alpha=0.3 `50-round` report는 read-only artifact로 검증하고, 새 method/wiring
-확인은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
+확인은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다. 위 실행 예시도
+이 정책에 맞춰 short 검증용 override만 보여준다.
 
 기존 FL SSL 산출물 metadata 검증:
 

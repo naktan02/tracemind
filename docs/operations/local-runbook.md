@@ -197,13 +197,17 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 FL simulation:
 
 ```bash
-uv run python scripts/experiments/fl_ssl/run_federated_simulation.py
+uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
+  run_controls/fl_ssl/budget=smoke \
+  federated_run_budget.rounds=1
 ```
 
-FL SSL seed sweep:
+FL SSL seed sweep smoke:
 
 ```bash
-uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py
+uv run python scripts/experiments/fl_ssl/run_federated_seed_sweep.py \
+  run_controls/fl_ssl/budget=smoke \
+  federated_run_budget.rounds=1
 ```
 
 FL SSL runner는 accidental long run을 막기 위해 총 예정 communication round가
