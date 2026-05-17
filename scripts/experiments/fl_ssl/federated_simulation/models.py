@@ -362,6 +362,92 @@ class FederatedRoundRuntimeConfig:
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedQuerySslObjectiveConfig:
+    """manual FL 조합이 실제 Query SSL algorithm을 가리키는지 나타내는 설정."""
+
+    method_name: str
+    algorithm_name: str
+    parameters: Mapping[str, object] = field(default_factory=dict)
+    strong_view_policy: str = "first_aug"
+    unlabeled_batch_size: int | None = None
+
+    @classmethod
+    def from_objective_config(
+        cls,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> "FederatedQuerySslObjectiveConfig | None":
+        """Training objective extras에서 query_ssl.* 축을 읽는다."""
+
+        if objective_config is None:
+            return None
+        extras = objective_config.get_component_extras("query_ssl")
+        method_name = _optional_str(extras.get("method_name"))
+        algorithm_name = _optional_str(extras.get("algorithm_name"))
+        if method_name is None and algorithm_name is None:
+            return None
+        if method_name is None or algorithm_name is None:
+            raise ValueError(
+                "query_ssl objective extras require both method_name and "
+                "algorithm_name."
+            )
+        unlabeled_batch_size_raw = extras.get("unlabeled_batch_size")
+        unlabeled_batch_size = (
+            None if unlabeled_batch_size_raw is None else int(unlabeled_batch_size_raw)
+        )
+        if unlabeled_batch_size is not None and unlabeled_batch_size <= 0:
+            raise ValueError("query_ssl.unlabeled_batch_size must be positive.")
+        return cls(
+            method_name=method_name,
+            algorithm_name=algorithm_name,
+            parameters={},
+            strong_view_policy=(
+                _optional_str(extras.get("strong_view_policy")) or "first_aug"
+            ),
+            unlabeled_batch_size=unlabeled_batch_size,
+        )
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object],
+        *,
+        strong_view_policy: str = "first_aug",
+    ) -> "FederatedQuerySslObjectiveConfig":
+        """Hydra query_ssl_method mapping을 typed config로 해석한다."""
+
+        method_name = _optional_str(source.get("name"))
+        algorithm_name = _optional_str(source.get("algorithm_name"))
+        if method_name is None or algorithm_name is None:
+            raise ValueError("query_ssl_method requires name and algorithm_name.")
+        parameters = {
+            str(key): value
+            for key, value in source.items()
+            if str(key) not in {"name", "algorithm_name"}
+        }
+        unlabeled_batch_size = parameters.get("unlabeled_batch_size")
+        return cls(
+            method_name=method_name,
+            algorithm_name=algorithm_name,
+            parameters=parameters,
+            strong_view_policy=strong_view_policy,
+            unlabeled_batch_size=(
+                None if unlabeled_batch_size is None else int(unlabeled_batch_size)
+            ),
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedLocalTrainerRuntimeConfig:
+    """FL simulation client trainer가 transformer/PEFT stack을 여는 방식."""
+
+    device: str = "cpu"
+    local_files_only: bool = True
+    cache_dir: str = "hf_cache"
+    trust_remote_code: bool = False
+    classifier_dropout: float = 0.1
+
+
 @dataclass(slots=True)
 class SimulationRunRequest:
     """FL SSL simulation 한 번을 실행하는 typed request."""
@@ -392,3 +478,7 @@ class SimulationRunRequest:
     report_config: FederatedReportConfig | None = None
     local_update_profile: LocalUpdateProfile | None = None
     execution_plan: FederatedSslExecutionPlan | None = None
+    query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None
+    local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig = field(
+        default_factory=FederatedLocalTrainerRuntimeConfig
+    )

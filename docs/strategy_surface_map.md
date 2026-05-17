@@ -44,7 +44,7 @@ central fixed embedding + classifier seed
 | 축 | 현재 값 | 선택 위치 | core | 상태 |
 |---|---|---|---|---|
 | Pseudo-label selection | `fixed_confidence_095`, `margin_threshold_v1` | `strategy_axes/ssl/pseudo_label_selection` | `methods/ssl/hooks/*` | 활성/중앙 control |
-| Consistency method | `pseudolabel_usb_v1`, `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`, `adamatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` | 중앙 control |
+| Consistency method | `pseudolabel_usb_v1`, `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`, `adamatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` | 중앙 control / FL manual baseline |
 | SSL augmentation source | `precomputed_usb_candidates_v1` | `strategy_axes/ssl/augmentation_source` | scripts runner | 중앙 control |
 | SSL strong view policy | `first_aug`, `second_aug`, `row_parity_aug`, `query_id_hash_aug` | `query_ssl_strong_view_policy` scalar | `methods/adaptation/query_classifier_adaptation/data.py` | 중앙 control |
 | Query classifier adaptation | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/lora_classifier/*` + query data glue | 중앙 control |
@@ -73,6 +73,7 @@ central fixed embedding + classifier seed
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
+| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training.py` | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |
@@ -90,9 +91,9 @@ central fixed embedding + classifier seed
   payload에 연결하는 capability다.
 - `fl_method.composition_mode=method_owned`에서는 FedMatch 같은 상위 method가
   client objective와 server policy를 소유한다. `manual`은 논문 method가 아니라
-  `local_update_profile/round_runtime.*`를 직접 조합하는 baseline, ablation용
+  `query_ssl_method/round_runtime.*`를 직접 조합하는 baseline, ablation용
   모드다. report에 남기는 `client_ssl_objective/server_aggregation/update_family`는
-  compose된 `ssl_method`와 최종 `round_runtime.*` leaf에서 파생한다.
+  `query_ssl_method.algorithm_name`과 최종 `round_runtime.*` leaf에서 파생한다.
 - `security_policy`는 method identity가 아니라 runtime capability 축이다. 현재는
   `plaintext`만 지원하며, secure aggregation/DP/암호화 artifact ref는 이후 capability
   adapter와 validator를 붙일 자리로 남긴다.
@@ -138,12 +139,21 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   materialize한다. client는 base revision 기준 delta를 보내고, 서버는
   `base global state + aggregated delta`를 다음 LoRA/head state artifact snapshot으로
   저장한다. `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
-- FL simulation에서 LoRA-classifier 조합은
+- FL simulation 기본 조합은 `composition_mode=manual`,
+  `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `local_update_profile=lora_pseudo_label_v1`,
   `round_runtime.adapter_family_name=lora_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg` leaf를 직접 override해 시작한다.
+  `round_runtime.aggregation_backend_name=fedavg`다. `diagonal_scale` baseline은
+  `local_update_profile=prototype_pseudo_label_v1`와
+  `round_runtime.adapter_family_name=diagonal_scale`를 함께 override한다.
   이 조합은 기존 `fedavg_pseudo_label` method descriptor를 유지한다.
-- `lora_pseudo_label_v1` simulation profile은 서버가 바로 집계할 수 있는
-  `inline_delta` update를 만든다. 이는 FL lifecycle과 LoRA-classifier FedAvg 계약을
-  검증하는 deterministic simulation path이며, 실제 PEFT optimizer가 만든 LoRA
-  weight artifact upload/materialization은 아직 다음 단계다.
+- 기본 manual LoRA-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
+  `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
+  `unlabeled_rows`로 실제 PEFT LoRA/classifier local optimizer를 실행한다.
+  update는 서버가 바로 집계할 수 있는 `inline_delta`로 제출된다. 실제 step 수는
+  `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`이며,
+  `training_task.batch_size`와 `query_ssl_method.unlabeled_batch_size`가
+  `full_epoch_steps`를 바꾼다.
+- legacy `lora_pseudo_label_v1` inline executor는 `query_ssl_method`가 없는
+  compatibility/debug 경로로 유지한다. agent-local artifact upload와 production
+  materialization은 아직 다음 단계다.

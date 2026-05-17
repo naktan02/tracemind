@@ -64,11 +64,12 @@ central fixed embedding + classifier seed
 - FL SSL report는 round progression, round delta, client split label
   distribution, aggregation proxy diagnostics를 함께 남긴다. `theta` 같은
   method 내부 파라미터는 기본 report에 노출하지 않는다.
-- 현재 FL SSL method 축의 활성 baseline은 `fedavg_pseudo_label`이다.
-- FL 실행은 `fl_method.composition_mode=method_owned`를 기본으로 두고, 상위
-  method가 client objective/server policy/round-state 요구사항을 소유한다.
-  `manual` mode는 논문 method가 아니라 `local_update_profile/round_runtime.*`
-  조합 baseline/ablation용이며 stale preset metadata를 검증에서 무시한다.
+- 현재 FL SSL method 축의 활성 baseline descriptor는 `fedavg_pseudo_label`이고,
+  기본 실행 조합은 `manual + FixMatch + FedAvg + LoRA-classifier`다.
+- `manual` mode는 논문 method가 아니라
+  `query_ssl_method/round_runtime.*` 조합 baseline/ablation용이다.
+  FedMatch/FedLGMatch/(FL)^2처럼 client objective/server policy/round-state
+  요구사항을 함께 소유하는 상위 method는 `method_owned`로 선택한다.
 - FL `security_policy`는 method identity가 아니라 runtime capability 축이며, 현재
   simulation은 `plaintext`만 지원한다.
 - FedMatch/FedLGMatch/(FL)^2 같은 논문 method 구현은 후보 비교 후 확정된 method부터 연다.
@@ -125,8 +126,10 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   accepted-count 기반 aggregation weight proxy
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
-- method selection: `fl_method.composition_mode=method_owned`,
-  `strategy_axes/fl/method_descriptor=fedavg_pseudo_label` baseline만 현재 active runtime이다.
+- method selection: 기본 baseline은 `fl_method.composition_mode=manual`,
+  `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
+  `round_runtime.adapter_family_name=lora_classifier`,
+  `round_runtime.aggregation_backend_name=fedavg`다.
 - runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
   성능 숫자나 논문 비교 근거로 쓰지 않는다.
 
@@ -185,14 +188,15 @@ Runtime translation:
 
 ## Next Priorities
 
-1. 실제 PEFT 기반 `LoRA + classifier` local train executor를 구현한다. 현재
-   `inline_delta`는 FL lifecycle/FedAvg 계약 검증용 deterministic simulation path다.
+1. 실제 PEFT executor 기준 `FedAvg + FixMatch + LoRA-classifier` 1-round smoke를
+   실행하고 report/artifact schema를 샘플로 고정한다. 코드 경로는 이미
+   `query_ssl_method.algorithm_name`으로 `methods/ssl/algorithms/*`를 resolve한다.
 2. 실제 LoRA/classifier delta artifact 저장, upload, server-owned materialization
-   경로를 닫는다.
-3. `FedAvg + FixMatch` 첫 FL SSL baseline을 고정한다. local objective는 교체 가능한
-   profile로 두고 server aggregation은 FedAvg로 잠근다.
-4. 실제 PEFT executor 기준 LoRA 1-round smoke를 실행하고 report/artifact schema를
-   샘플로 고정한다.
+   경로를 닫는다. 현재 FL simulation은 server 집계를 위해 `inline_delta`를 제출한다.
+3. `FedAvg + FixMatch` 첫 FL SSL baseline을 main split에서 고정한다. local objective는
+   `strategy_axes/ssl/consistency_method`로 교체하고 server aggregation은 FedAvg로 잠근다.
+4. FlexMatch/FreeMatch/PseudoLabel ablation을 같은 split/seed/local budget으로 실행하고
+   method 이름 변경이 실제 local objective 변경으로 남는지 report metadata를 확인한다.
 5. `client_count=1..10` sweep을 `gpu_local + mxbai`에서 실행해 산출물 위치와
    summary JSON을 남긴다. seed sweep은 split seed 42 고정 결과를 확인한 뒤
    robustness 목적으로 별도 실행한다.

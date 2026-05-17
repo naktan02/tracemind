@@ -33,8 +33,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
     FederatedDiagnosticsConfig,
+    FederatedLocalTrainerRuntimeConfig,
     FederatedLoraClassifierRuntimeConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -131,7 +133,7 @@ def _with_inferred_manual_axes(
     raw_manual_axes = fl_method.get("manual_axes")
     manual_axes = raw_manual_axes if isinstance(raw_manual_axes, dict) else {}
     inferred_axes = {
-        "client_ssl_objective": str(cfg.ssl_method.client_step.task_type),
+        "client_ssl_objective": _infer_client_ssl_objective_name(cfg),
         "server_aggregation": str(cfg.round_runtime.aggregation_backend_name),
         "update_family": str(cfg.round_runtime.adapter_family_name),
     }
@@ -147,6 +149,18 @@ def _with_inferred_manual_axes(
             **explicit_axes,
         },
     }
+
+
+def _infer_client_ssl_objective_name(cfg: DictConfig) -> str:
+    """manual FL 조합에서 실제 SSL algorithm 축을 report용 이름으로 쓴다."""
+
+    query_ssl_method = cfg.get("query_ssl_method")
+    if (
+        query_ssl_method is not None
+        and query_ssl_method.get("algorithm_name") is not None
+    ):
+        return str(query_ssl_method.algorithm_name)
+    return str(cfg.ssl_method.client_step.task_type)
 
 
 def build_simulation_request_from_config(
@@ -214,6 +228,17 @@ def build_simulation_request_from_config(
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
         local_update_profile=local_update_profile,
         execution_plan=execution_plan,
+        query_ssl_objective_config=FederatedQuerySslObjectiveConfig.from_mapping(
+            _to_plain_dict(cfg.query_ssl_method),
+            strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device=str(cfg.runtime.device),
+            local_files_only=bool(cfg.runtime.local_files_only),
+            cache_dir=str(cfg.paper_backbone.cache_dir),
+            trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
+            classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
+        ),
     )
 
 

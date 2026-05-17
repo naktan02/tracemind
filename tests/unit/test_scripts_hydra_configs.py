@@ -533,19 +533,28 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
     assert cfg.federated_run_budget.name == "smoke"
-    assert cfg.local_update_profile.algorithm_profile_name == (
-        "prototype_pseudo_label_v1"
-    )
+    assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
-    assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
+    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
     assert cfg.paper_backbone.name == "mxbai_encoder"
     assert cfg.lora.name == "default"
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "prototype_pseudo_label_v1"
+        "lora_pseudo_label_v1"
     )
+    assert cfg.training_task.objective.training_backend_name == (
+        "lora_classifier_trainer"
+    )
+    assert cfg.training_task.objective.privacy_guard_name == "noop"
+    assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "fixmatch"
+    assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
+    assert cfg.query_ssl_strong_view_policy == "first_aug"
+    assert cfg.training_task.objective["query_ssl.method_name"] == "fixmatch_usb_v1"
+    assert cfg.training_task.objective["query_ssl.algorithm_name"] == "fixmatch"
+    assert cfg.training_task.objective["query_ssl.strong_view_policy"] == "first_aug"
     assert cfg.validation.confidence_threshold == 0.6
     assert cfg.validation.margin_threshold == 0.02
     assert cfg.federated_run_budget.output_dir == "runs/federated_simulation_smoke"
@@ -569,7 +578,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.ssl_method.client_step.owner == "agent"
     assert cfg.ssl_method.server_step.aggregation_backend_name == "fedavg"
     assert cfg.ssl_method.round_state_exchange.exchange_name == "none"
-    assert cfg.fl_method.composition_mode == "method_owned"
+    assert cfg.fl_method.composition_mode == "manual"
     assert "manual_axes" not in cfg.fl_method
     assert cfg.security_policy.name == "plaintext"
     assert cfg.security_policy.update_payload_visibility == "per_client_plaintext"
@@ -648,7 +657,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.ssl_method.client_step.custom_method_runtime_required is False
     assert cfg.ssl_method.server_step.custom_round_policy_required is False
     assert cfg.ssl_method.round_state_exchange.custom_exchange_required is False
-    assert cfg.fl_method.composition_mode == "method_owned"
+    assert cfg.fl_method.composition_mode == "manual"
     assert "training_algorithm_profile" not in cfg
     assert "adapter_family_name" not in cfg.local_update_profile
     assert "aggregation_backend_name" not in cfg.local_update_profile
@@ -658,7 +667,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         cfg.training_task.objective.algorithm_profile_name
         == cfg.local_update_profile.algorithm_profile_name
     )
-    assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
+    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
@@ -752,25 +761,27 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
     )
 
 
-def test_federated_simulation_supports_lora_classifier_profiles() -> None:
+def test_federated_simulation_supports_diagonal_scale_profiles() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/local_update_profile=lora_pseudo_label_v1",
-                "round_runtime.adapter_family_name=lora_classifier",
+                "strategy_axes/fl/local_update_profile=prototype_pseudo_label_v1",
+                "round_runtime.adapter_family_name=diagonal_scale",
                 "round_runtime.aggregation_backend_name=fedavg",
             ],
         )
 
     assert cfg.ssl_method.name == "fedavg_pseudo_label"
-    assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
-    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert (
+        cfg.local_update_profile.algorithm_profile_name == "prototype_pseudo_label_v1"
+    )
+    assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.training_task.objective.training_backend_name == (
-        "lora_classifier_trainer"
+        "diagonal_scale_heuristic"
     )
-    assert cfg.training_task.objective.privacy_guard_name == "noop"
+    assert cfg.training_task.objective.privacy_guard_name == "diagonal_scale_clip_only"
     assert cfg.training_task.objective["lora_classifier.backbone_model_id"] == (
         "mixedbread-ai/mxbai-embed-large-v1"
     )
@@ -831,6 +842,7 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1",
+                "round_runtime.adapter_family_name=diagonal_scale",
                 "shard_policy.dominant_ratio=0.6",
                 "training_task.objective.example_generation_backend_name=prototype_rescore",
                 "training_task.objective.evidence_backend_name=prototype_similarity_evidence",
@@ -919,9 +931,9 @@ def test_federated_simulation_supports_manual_fl_method_plan() -> None:
     )
     assert plan.method_name == "manual"
     assert plan.descriptor_name == "fedavg_pseudo_label"
-    assert plan.manual_axes.client_ssl_objective == "pseudo_label_self_training"
+    assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "diagonal_scale"
+    assert plan.manual_axes.update_family == "lora_classifier"
 
 
 def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides() -> (
@@ -953,7 +965,45 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
     assert cfg.round_runtime.adapter_family_name == "lora_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"
-    assert plan.manual_axes.client_ssl_objective == "pseudo_label_self_training"
+    assert plan.manual_axes.client_ssl_objective == "fixmatch"
+    assert plan.manual_axes.server_aggregation == "fedavg"
+    assert plan.manual_axes.update_family == "lora_classifier"
+
+
+def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name() -> (
+    None
+):
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "training_task.local_epochs=2",
+                "training_task.batch_size=8",
+                "training_task.max_steps=7",
+            ],
+        )
+
+    plan = build_federated_ssl_execution_plan(
+        fl_method=_with_inferred_manual_axes(
+            cfg=cfg,
+            fl_method=_plain_dict(cfg.fl_method),
+        ),
+        security_policy=_plain_dict(cfg.security_policy),
+        method_descriptor=resolve_federated_ssl_method_descriptor(
+            str(cfg.ssl_method.name)
+        ),
+    )
+
+    assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "flexmatch"
+    assert cfg.training_task.local_epochs == 2
+    assert cfg.training_task.batch_size == 8
+    assert cfg.training_task.max_steps == 7
+    assert cfg.query_ssl_method.unlabeled_batch_size == 8
+    assert cfg.training_task.objective["query_ssl.method_name"] == ("flexmatch_usb_v1")
+    assert cfg.training_task.objective["query_ssl.algorithm_name"] == "flexmatch"
+    assert plan.manual_axes.client_ssl_objective == "flexmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "lora_classifier"
 

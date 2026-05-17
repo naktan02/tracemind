@@ -80,6 +80,14 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.local_update_profile`로 compose된다.
   - agent local update를 만드는 training/evidence/scoring/privacy 조합을 소유한다.
   - adapter family나 aggregation backend를 소유하지 않는다.
+- `strategy_axes/ssl/consistency_method`
+  - `cfg.query_ssl_method`로 compose된다.
+  - manual FL 조합에서 client SSL objective의 source of truth다.
+  - 기본은 `fixmatch_usb_v1`이며, `flexmatch_usb_v1`,
+    `freematch_usb_v1`, `pseudolabel_usb_v1` 같은 이름 변경은
+    `methods/ssl/algorithms/*` descriptor를 resolve해야 한다.
+  - 이 축은 report label이 아니라 실제 local optimizer loop의 algorithm 선택으로
+    연결되어야 하며, 연결되지 않은 조합은 bootstrap 전에 실패해야 한다.
 - `round_runtime.adapter_family_name`, `round_runtime.aggregation_backend_name`
   - FL entrypoint의 직접 leaf 값이다.
   - server round runtime의 adapter family와 aggregation backend를 고른다.
@@ -95,6 +103,15 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - method semantics나 local update policy를 소유하지 않는다.
 - `run_controls/central_ssl/budget`
   - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
+- `training_task.local_epochs`, `training_task.batch_size`,
+  `training_task.max_steps`
+  - FL round에서 각 client가 수행하는 local optimizer 반복을 소유한다.
+  - manual `Query SSL + LoRA-classifier`에서는 실제 step 수가
+    `min(max_steps, local_epochs * full_epoch_steps)`로 계산된다.
+  - `batch_size`는 labeled loader step 수를 바꾸고, 기본 설정에서는
+    `query_ssl_method.unlabeled_batch_size=${training_task.batch_size}`라서
+    unlabeled loader step 수도 함께 바꾼다. 필요하면
+    `query_ssl_method.unlabeled_batch_size=<N>`으로 따로 override한다.
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
@@ -106,8 +123,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `client_pool_split`
   - 각 client shard 안에서 local labeled/unlabeled pool 비율을 deterministic하게
     나눈다.
-  - 현재 `fedavg_pseudo_label` baseline은 `unlabeled` partition만 pseudo-label
-    training 후보로 사용한다.
+  - manual `FedAvg + FixMatch + LoRA-classifier` 조합은 client별
+    `labeled_rows`와 `unlabeled_rows`를 함께 local SSL 학습 입력으로 사용한다.
+    legacy inline-delta fallback은 `unlabeled` partition만 pseudo-label training
+    후보로 쓴다.
   - 이 값은 `fl_data.source_mode=runtime_split_from_train` fallback에서만 pool을
     다시 나누는 실행값이다. `materialized_client_split`에서는 이미 분리된
     `query_source.train_jsonl` 전체와 `query_source.unlabeled_jsonl` 전체를 각각

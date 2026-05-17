@@ -100,8 +100,11 @@ methods/evaluation/                            # stable metric helper만
   수식을 테스트로 고정했다.
 - [x] FL simulation inline-delta 경로도 `sim_rev_0002 = sim_rev_0001 +
   round2 applied delta` 수식을 테스트로 고정했다.
-- [ ] 실제 PEFT LoRA + classifier train executor를 붙여 simulation hash delta를
-  대체한다.
+- [x] manual `Query SSL + LoRA-classifier` simulation 경로는
+  `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
+- [x] client별 local optimizer step 수는 `training_task.local_epochs`,
+  `training_task.batch_size`, `training_task.max_steps`,
+  `query_ssl_method.unlabeled_batch_size`로 동적으로 바뀐다.
 - [ ] agent-local LoRA artifact upload/materialization 경로를 닫는다.
 - [ ] 실제 PEFT executor 기준 LoRA 1-round smoke를 실행한다.
 - [ ] winner method가 요구하는 shared family/state/update payload를 확정한다.

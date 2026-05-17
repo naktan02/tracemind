@@ -10,7 +10,8 @@ defaults:
   - /run_controls/fl_ssl/budget: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
-  - /strategy_axes/fl/local_update_profile: prototype_pseudo_label_v1
+  - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
+  - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/prototype/build_strategy: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
@@ -30,7 +31,7 @@ fl_data:
 fl_method:
   # 상위 method가 client objective/server policy를 소유한다.
   # composition_mode=manual이면 lower axes는 compose된 leaf 값에서 자동 파생된다.
-  composition_mode: method_owned
+  composition_mode: manual
 
 security_policy:
   # 현재 simulation은 plaintext만 지원한다. secure aggregation/DP는 capability 축으로 추가한다.
@@ -73,10 +74,13 @@ client_pool_split:
   labeled_ratio: 0.1
   unlabeled_ratio: 0.9
 
+train_batch_size: ${training_task.batch_size}
+query_ssl_strong_view_policy: first_aug
+
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
 # server round의 adapter family와 aggregation backend는 leaf 값으로 직접 고른다.
 round_runtime:
-  adapter_family_name: diagonal_scale
+  adapter_family_name: lora_classifier
   aggregation_backend_name: fedavg
   # classifier_head family에서 prototype centroid를 head weight로 바꿀 때만 사용한다.
   classifier_head_bootstrap_logit_scale: 8.0
@@ -120,6 +124,10 @@ training_task:
     acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
     evidence_backend.temperature: ${local_update_profile.evidence_backend_temperature}
+    "query_ssl.method_name": ${query_ssl_method.name}
+    "query_ssl.algorithm_name": ${query_ssl_method.algorithm_name}
+    "query_ssl.strong_view_policy": ${query_ssl_strong_view_policy}
+    "query_ssl.unlabeled_batch_size": ${query_ssl_method.unlabeled_batch_size}
     "lora_classifier.backbone_model_id": ${round_runtime.lora_classifier.backbone_model_id}
     "lora_classifier.backbone_revision": ${round_runtime.lora_classifier.backbone_revision}
     "lora_classifier.tokenizer_model_id": ${round_runtime.lora_classifier.tokenizer_model_id}
