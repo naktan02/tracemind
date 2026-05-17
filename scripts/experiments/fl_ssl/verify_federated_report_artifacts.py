@@ -26,6 +26,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_adapter_family=args.expected_adapter_family,
         expected_aggregation=args.expected_aggregation,
         expected_delta_format=args.expected_delta_format,
+        expected_round_record_count=args.expected_round_record_count,
+        expected_round_update_count=args.expected_round_update_count,
+        expected_round_update_count_matches_client_count=(
+            args.expect_round_update_count_matches_client_count
+        ),
         expected_embedding_metadata_status=args.expected_embedding_metadata_status,
         expected_embedding_backend=args.expected_embedding_backend,
         expected_embedding_model_id=args.expected_embedding_model_id,
@@ -102,6 +107,12 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-adapter-family")
     parser.add_argument("--expected-aggregation")
     parser.add_argument("--expected-delta-format")
+    parser.add_argument("--expected-round-record-count", type=int)
+    parser.add_argument("--expected-round-update-count", type=int)
+    parser.add_argument(
+        "--expect-round-update-count-matches-client-count",
+        action="store_true",
+    )
     parser.add_argument("--expected-embedding-metadata-status")
     parser.add_argument("--expected-embedding-backend")
     parser.add_argument("--expected-embedding-model-id")

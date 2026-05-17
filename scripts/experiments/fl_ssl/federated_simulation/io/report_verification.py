@@ -20,6 +20,9 @@ class FederatedReportExpectation:
     expected_adapter_family: str | None = None
     expected_aggregation: str | None = None
     expected_delta_format: str | None = None
+    expected_round_record_count: int | None = None
+    expected_round_update_count: int | None = None
+    expected_round_update_count_matches_client_count: bool = False
     expected_embedding_metadata_status: str | None = None
     expected_embedding_backend: str | None = None
     expected_embedding_model_id: str | None = None
@@ -71,6 +74,7 @@ def verify_federated_simulation_report_payload(
     local_trainer_runtime = _object_mapping(
         protocol.get("local_trainer_runtime") or payload.get("local_trainer_runtime")
     )
+    rounds = _object_sequence(payload.get("rounds"))
 
     _expect_equal(
         errors,
@@ -168,7 +172,57 @@ def verify_federated_simulation_report_payload(
         local_trainer_runtime.get("local_files_only"),
         expectation.expected_local_trainer_local_files_only,
     )
+    _verify_round_records(
+        errors=errors,
+        rounds=rounds,
+        protocol=protocol,
+        expectation=expectation,
+    )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
+
+
+def _verify_round_records(
+    *,
+    errors: list[str],
+    rounds: tuple[object, ...],
+    protocol: Mapping[str, object],
+    expectation: FederatedReportExpectation,
+) -> None:
+    _expect_equal(
+        errors,
+        "rounds.length",
+        len(rounds),
+        expectation.expected_round_record_count,
+    )
+    if (
+        expectation.expected_round_update_count is None
+        and not expectation.expected_round_update_count_matches_client_count
+    ):
+        return
+    if not rounds:
+        errors.append("rounds must not be empty when round update counts are expected.")
+        return
+
+    expected_update_count = expectation.expected_round_update_count
+    if expectation.expected_round_update_count_matches_client_count:
+        expected_client_count = _optional_int(protocol.get("client_count"))
+        if expected_client_count is None:
+            errors.append(
+                "protocol.client_count is required when round update counts "
+                "must match client_count."
+            )
+            return
+        expected_update_count = expected_client_count
+
+    for index, round_payload in enumerate(rounds, start=1):
+        round_mapping = _object_mapping(round_payload)
+        round_label = round_mapping.get("round_id") or f"round_index={index}"
+        _expect_equal(
+            errors,
+            f"rounds[{round_label}].update_count",
+            round_mapping.get("update_count"),
+            expected_update_count,
+        )
 
 
 def verify_client_count_sweep_summary_path(

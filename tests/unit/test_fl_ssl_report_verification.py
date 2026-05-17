@@ -28,7 +28,11 @@ def _report_payload(
     embedding_local_files_only: bool = True,
     local_trainer_device: str = "cuda",
     local_trainer_local_files_only: bool = True,
+    round_update_count: int | None = None,
 ) -> dict[str, object]:
+    effective_round_update_count = (
+        client_count if round_update_count is None else round_update_count
+    )
     return {
         "schema_version": "fl_ssl_main_comparison.v1",
         "protocol": {
@@ -57,6 +61,14 @@ def _report_payload(
                 "local_files_only": local_trainer_local_files_only,
             },
         },
+        "rounds": [
+            {
+                "round_id": f"round_{round_index:04d}",
+                "round_index": round_index,
+                "update_count": effective_round_update_count,
+            }
+            for round_index in range(1, completed_rounds + 1)
+        ],
     }
 
 
@@ -88,6 +100,13 @@ def _runtime_metadata_expectation() -> FederatedReportExpectation:
         expected_local_trainer_metadata_status="recorded",
         expected_local_trainer_device="cuda",
         expected_local_trainer_local_files_only=True,
+    )
+
+
+def _round_record_expectation() -> FederatedReportExpectation:
+    return FederatedReportExpectation(
+        expected_round_record_count=2,
+        expected_round_update_count_matches_client_count=True,
     )
 
 
@@ -162,6 +181,33 @@ def test_verify_federated_report_flags_gpu_mxbai_metadata_drift() -> None:
     )
 
 
+def test_verify_federated_report_accepts_round_records_and_update_counts() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(client_count=2, completed_rounds=2, round_budget=2),
+        expectation=_round_record_expectation(),
+    )
+
+    assert result.passed
+
+
+def test_verify_federated_report_flags_round_record_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=2,
+            round_update_count=1,
+        ),
+        expectation=_round_record_expectation(),
+    )
+
+    assert not result.passed
+    assert "rounds.length expected 2, got 1." in result.errors
+    assert "rounds[round_0001].update_count expected 2, got 1." in result.errors
+
+
 def test_verify_client_count_sweep_summary_checks_each_report(
     tmp_path: Path,
 ) -> None:
@@ -200,7 +246,17 @@ def test_verify_client_count_sweep_summary_checks_each_report(
     result = verify_client_count_sweep_summary_path(
         summary_path,
         expected_client_counts=(1, 2),
-        report_expectation=_expectation(client_count=None),
+        report_expectation=FederatedReportExpectation(
+            expected_completed_rounds=1,
+            expected_round_budget=1,
+            expected_round_record_count=1,
+            expected_round_update_count_matches_client_count=True,
+            expected_ssl_algorithm="fixmatch",
+            expected_ssl_method="fixmatch_usb_v1",
+            expected_adapter_family="lora_classifier",
+            expected_aggregation="fedavg",
+            expected_delta_format="server_uploaded_artifact_ref",
+        ),
     )
 
     assert result.passed

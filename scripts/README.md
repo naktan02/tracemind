@@ -190,6 +190,8 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-client-counts 1,2,3,4,5,6,7,8,9,10 \
   --expected-completed-rounds 1 \
   --expected-round-budget 1 \
+  --expected-round-record-count 1 \
+  --expect-round-update-count-matches-client-count \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
   --expected-adapter-family lora_classifier \
