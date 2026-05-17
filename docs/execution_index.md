@@ -41,6 +41,7 @@ central fixed embedding + classifier seed
 | `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
 | `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
 | `docs/contracts/algorithm_extension_guide.md` | 새 protocol/전략 축 세부 |
+| `docs/contracts/fl_ssl_method_capability_matrix.md` | FedMatch/FedLGMatch/(FL)^2 선택 전 capability matrix |
 
 ## Fast Code Paths
 

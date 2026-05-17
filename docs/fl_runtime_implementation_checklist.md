@@ -62,6 +62,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [ ] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
 - [ ] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
   먼저 문서화한다.
+- [x] 선택 전 capability matrix는
+  `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
+  payload family를 바꾸지 않는 FedMatch method-owned local objective다.
 
 새 method 기본 변경 위치:
 

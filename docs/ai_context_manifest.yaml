@@ -43,6 +43,7 @@ active_entrypoints:
   - docs/architecture/method-owned-runtime-refactor-plan.md
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/central_lora_classifier_trainer_contract.md
+  - docs/contracts/fl_ssl_method_capability_matrix.md
   - docs/fl_runtime_implementation_checklist.md
   - docs/strategy_surface_map.md
   - docs/operations/local-runbook.md
@@ -78,6 +79,7 @@ task_routes:
       - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
+      - docs/contracts/fl_ssl_method_capability_matrix.md
       - scripts/AGENTS.md
       - relevant conf config group
       - relevant scripts/experiments entrypoint
@@ -99,6 +101,7 @@ task_routes:
       - AGENTS.md
       - docs/strategy_surface_map.md
       - docs/contracts/strategy_addition_playbook.md
+      - docs/contracts/fl_ssl_method_capability_matrix.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
       - methods/README.md
       - conf/README.md

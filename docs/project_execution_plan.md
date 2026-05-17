@@ -224,6 +224,8 @@ Runtime translation:
    robustness 목적으로 별도 실행한다.
 4. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
    round-state exchange/server policy capability를 먼저 문서화한다.
+   선택 전 capability matrix는 `docs/contracts/fl_ssl_method_capability_matrix.md`에
+   있으며, 현재 구현 순서 추천은 FedMatch -> FedLGMatch -> (FL)^2다.
 5. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
    capability adapter, test 순서로 추가한다.
 6. 고정 조건에서 확정 method들을 메인 비교로 실행한다.
