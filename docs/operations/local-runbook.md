@@ -248,6 +248,8 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
 
 manifest 구조 예시는
 `docs/operations/fl_ssl_artifact_verification_manifest.example.json`를 본다.
+현재 FL SSL 목표 대비 artifact 감사표는
+`docs/operations/fl_ssl_execution_audit.md`를 본다.
 
 FL SSL은 별도 override가 없으면 `gpu_local + mxbai` 기준으로 실행한다.
 `gpu_online`은 cache warm-up/최초 다운로드용이고, `cpu_local + hash_debug` 조합은

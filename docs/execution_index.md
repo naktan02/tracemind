@@ -36,6 +36,7 @@ central fixed embedding + classifier seed
 | `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
 | `docs/contracts/central_lora_classifier_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
+| `docs/operations/fl_ssl_execution_audit.md` | 현재 FL SSL 목표 대비 artifact 검증 감사표 |
 | `docs/staged_execution_roadmap.md` | Phase map과 current checkpoint |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
 | `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
