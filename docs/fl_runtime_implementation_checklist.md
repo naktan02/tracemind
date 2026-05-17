@@ -12,7 +12,7 @@ source of truth로 본다.
 - `agent`는 active round fetch, local training, pseudo-label selection, update
   upload scaffold를 갖고 있다.
 - `scripts/experiments/fl_ssl`는 FL SSL simulation, seed sweep, client-count
-  sweep, report dump를 갖고 있다.
+  sweep, report dump, 기존 report artifact metadata verifier를 갖고 있다.
 - 활성 FL SSL method baseline은 `fedavg_pseudo_label`이다.
 - `diagonal_scale`와 `lora_classifier` adapter family의 FedAvg core/projection은
   `methods/adaptation/<family>/`에 있다.
@@ -36,6 +36,9 @@ source of truth로 본다.
 - [x] 중앙 SSL control report와 FL SSL main comparison report를 같은 ranking으로
   합치지 않는다.
 - [x] `theta` 같은 method 내부 파라미터는 기본 report에 노출하지 않는다.
+- [x] 기존 FL SSL report와 client-count sweep summary가 기대한 round budget,
+  client count, SSL method, adapter family, aggregation, delta format을 담는지
+  `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 재검증할 수 있다.
 - [ ] 실제 main run 산출물에서 report schema를 샘플로 고정하고 dashboard/index
   소비 필드를 확정한다.
 
@@ -123,6 +126,8 @@ methods/evaluation/                            # stable metric helper만
 - [x] materialized split: 선택된 labeled source 전체와 unlabeled source 전체를
   client에 분배하고, 실제 labeled/unlabeled ratio는 report count로 기록한다.
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
+- [x] `client_count=1..10` 1-round summary는 report artifact verifier로
+  `FixMatch + FedAvg + LoRA-classifier` metadata를 재검증했다.
 - [ ] `gpu_local + mxbai` runtime에서 smoke/main/sweep 산출물을 남긴다. 현재는
   smoke, alpha=0.3 main 50-round, short ablation, short sweep 산출물까지 확인했고,
   full stress/ablation/sweep은 사용자 지시로 보류했다.
