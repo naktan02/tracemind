@@ -3,7 +3,8 @@
 작성일: 2026-05-18
 
 이 문서는 현재 FL SSL 목표를 실제 artifact와 검증 명령 기준으로 대조한 감사표다.
-새 실험을 실행하지 않고, 이미 존재하는 report/summary를 읽기 전용으로 확인했다.
+장시간/full-budget 실험은 새로 실행하지 않고, 필요한 경우 1-round smoke와 기존
+report/summary를 검증했다.
 
 ## 판정
 
@@ -13,6 +14,9 @@
 
 - `FedAvg + FixMatch + LoRA-classifier` PEFT smoke와 artifact-ref delta 경로는
   구현 및 산출물 verifier로 확인됐다.
+- `10 clients`, Dirichlet `alpha=0.3`, split seed `42`, `1 round`,
+  `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier` 현재 smoke report는
+  verifier로 확인됐다.
 - `agent-local://` LoRA/head delta를 server-owned `aggregation_artifact::` ref로
   upload/materialize하는 경로와 compatibility preflight는 구현 및 테스트로 닫혔다.
 - `10 clients`, Dirichlet `alpha=0.3`, split seed `42`, `50 rounds`,
@@ -38,7 +42,7 @@
 |---|---|---|
 | 작업별 commit/push | `696cc2a`, `e0a7b4a`, `fa13f59`, `933ee91` 등 `origin/master` push 완료 | 완료 |
 | scripts는 thin wrapper, method core는 methods 소유 | `scripts/experiments/fl_ssl/*`는 config/run/report, SSL algorithm은 `methods/ssl/algorithms/*`, LoRA aggregation은 `methods/adaptation/lora_classifier/*` | 완료 |
-| 실제 PEFT 기준 FixMatch local objective 호출 | `tests/unit/test_lora_fixmatch_runner.py`, `tests/unit/test_run_federated_simulation.py`, report `objective.query_ssl.algorithm_name=fixmatch` | 완료 |
+| 실제 PEFT 기준 FixMatch local objective 호출 | `tests/unit/test_lora_fixmatch_runner.py`, `tests/unit/test_run_federated_simulation.py`, current 1-round smoke report `objective.query_ssl.algorithm_name=fixmatch` | 완료 |
 | LoRA/classifier delta가 FedAvg까지 집계 | `methods/adaptation/lora_classifier/aggregation/fedavg.py`, `main_server/tests/unit/test_aggregation_service.py`, artifact-ref verifier | 완료 |
 | agent-local artifact upload | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py`, `upload_agent_local_lora_classifier_update` | 완료 |
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
@@ -52,8 +56,17 @@
 
 ## Read-Only Verification Evidence
 
-아래 검증은 새 round를 실행하지 않고 기존 JSON artifact만 읽었다.
+아래 검증 중 첫 항목은 현재 코드 기준으로 새로 실행한 1-round smoke다. 나머지는
+새 round를 실행하지 않고 기존 JSON artifact만 읽었다.
 
+- `fixmatch_lora_alpha03_10c_1round_current_20260518` current smoke:
+  `PASS runs/federated_simulation_smoke/fixmatch_lora_alpha03_10c_1round_current_20260518/20260517T232304Z/reports/fl_ssl_main_comparison.report.json`
+  - 조건: `10 clients`, `alpha=0.3`, split seed `42`, `1 round`,
+    `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`,
+    `server_uploaded_artifact_ref`
+  - 서버 update: `10`개, 모두 `aggregation_artifact::` ref이며
+    `main_server/aggregation_artifacts/versions/lora_classifier/sim_rev_0001/`에
+    누적 LoRA/head snapshot을 남겼다.
 - `fixmatch_lora_alpha03_10c_50round_20260518` main:
   `PASS runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`
 - `fixmatch_lora_alpha01_10c_5round_20260518` reduced stress:
