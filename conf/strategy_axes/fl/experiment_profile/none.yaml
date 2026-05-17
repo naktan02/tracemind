@@ -1,5 +1,0 @@
-# @package _global_
-
-# local_update_profile/round_runtime_profile을 직접 조합할 때 stale fl_profile
-# metadata가 bootstrap 검증을 가리지 않도록 명시적으로 끈다.
-fl_profile: null

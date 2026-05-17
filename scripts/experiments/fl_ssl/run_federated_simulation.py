@@ -10,11 +10,15 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
+from methods.federated_ssl.execution_plan import (
+    FederatedSslExecutionPlan,
+    build_federated_ssl_execution_plan,
+)
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
 )
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_rows
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -88,12 +92,43 @@ def _build_lora_classifier_runtime_config(
     )
 
 
-def _build_experiment_profile(
+def _build_execution_plan(cfg: DictConfig) -> FederatedSslExecutionPlan:
+    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+    fl_method = _to_plain_dict(cfg.fl_method)
+    return build_federated_ssl_execution_plan(
+        fl_method=_with_inferred_manual_axes(cfg=cfg, fl_method=fl_method),
+        security_policy=_to_plain_dict(cfg.security_policy),
+        method_descriptor=descriptor,
+    )
+
+
+def _with_inferred_manual_axes(
+    *,
     cfg: DictConfig,
-) -> FederatedSslExperimentProfile | None:
-    if "fl_profile" not in cfg or cfg.fl_profile is None:
-        return None
-    return FederatedSslExperimentProfile.from_mapping(_to_plain_dict(cfg.fl_profile))
+    fl_method: dict[str, object],
+) -> dict[str, object]:
+    if str(fl_method.get("composition_mode", "method_owned")) != "manual":
+        return fl_method
+
+    raw_manual_axes = fl_method.get("manual_axes")
+    manual_axes = raw_manual_axes if isinstance(raw_manual_axes, dict) else {}
+    inferred_axes = {
+        "client_ssl_objective": str(cfg.ssl_method.client_step.task_type),
+        "server_aggregation": str(cfg.round_runtime.aggregation_backend_name),
+        "update_family": str(cfg.round_runtime.adapter_family_name),
+    }
+    explicit_axes = {
+        key: value
+        for key, value in manual_axes.items()
+        if value is not None and str(value).strip()
+    }
+    return {
+        **fl_method,
+        "manual_axes": {
+            **inferred_axes,
+            **explicit_axes,
+        },
+    }
 
 
 def build_simulation_request_from_config(
@@ -112,6 +147,7 @@ def build_simulation_request_from_config(
         task_type=str(cfg.ssl_method.client_step.task_type),
         local_update_profile=local_update_profile,
     )
+    execution_plan = _build_execution_plan(cfg)
     round_runtime_config = FederatedRoundRuntimeConfig(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
@@ -119,7 +155,6 @@ def build_simulation_request_from_config(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
         lora_classifier=_build_lora_classifier_runtime_config(cfg.round_runtime),
-        profile_name=str(cfg.round_runtime_profile.name),
     )
     return SimulationRunRequest(
         train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
@@ -149,7 +184,7 @@ def build_simulation_request_from_config(
         ),
         report_config=FederatedReportConfig(**_to_plain_dict(cfg.report)),
         local_update_profile=local_update_profile,
-        experiment_profile=_build_experiment_profile(cfg),
+        execution_plan=execution_plan,
     )
 
 

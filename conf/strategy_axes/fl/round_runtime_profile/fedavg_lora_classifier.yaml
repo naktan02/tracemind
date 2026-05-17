@@ -1,8 +1,0 @@
-# @package round_runtime_profile
-
-# 서버 라운드에서 LoRA adapter + classifier head family를 FedAvg baseline으로 조합한다.
-# backbone/LoRA 세부 값은 adaptation strategy axis의 paper_backbone/lora config를 따른다.
-name: fedavg_lora_classifier
-adapter_family_name: lora_classifier
-aggregation_backend_name: fedavg
-classifier_head_bootstrap_logit_scale: 8.0

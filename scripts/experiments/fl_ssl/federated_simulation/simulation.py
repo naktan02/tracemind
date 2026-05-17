@@ -11,6 +11,11 @@ from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_profile_compatibility,
 )
+from methods.federated_ssl.execution_plan import (
+    COMPOSITION_MODE_MANUAL,
+    FederatedSslExecutionPlan,
+    build_federated_ssl_execution_plan,
+)
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
@@ -104,7 +109,19 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
     ssl_method_runtime = _build_validated_ssl_runtime(request.ssl_method_config)
-    _require_fl_profile_compatibility(request, ssl_method_runtime.descriptor)
+    execution_plan = _require_execution_plan_matches_method(
+        request=request,
+        ssl_method_descriptor=ssl_method_runtime.descriptor,
+    )
+    _require_execution_plan_matches_runtime(
+        request=request,
+        execution_plan=execution_plan,
+    )
+    _require_runtime_compatibility(
+        request,
+        ssl_method_runtime.descriptor,
+        execution_plan=execution_plan,
+    )
     bootstrapped = bootstrap_simulation(
         request,
         ssl_method_descriptor=ssl_method_runtime.descriptor,
@@ -133,9 +150,11 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     )
 
 
-def _require_fl_profile_compatibility(
+def _require_runtime_compatibility(
     request: SimulationRunRequest,
     ssl_method_descriptor: FederatedSslMethodDescriptor,
+    *,
+    execution_plan: FederatedSslExecutionPlan,
 ) -> None:
     """method/local update/round runtime 조합을 bootstrap 전에 검증한다."""
 
@@ -156,10 +175,52 @@ def _require_fl_profile_compatibility(
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name
             ),
-            experiment_profile=request.experiment_profile,
-            round_runtime_profile_name=request.round_runtime_config.profile_name,
         )
     )
+
+
+def _require_execution_plan_matches_method(
+    *,
+    request: SimulationRunRequest,
+    ssl_method_descriptor: FederatedSslMethodDescriptor,
+) -> FederatedSslExecutionPlan:
+    """method-first 실행 계획이 descriptor/security capability와 맞는지 검증한다."""
+
+    execution_plan = request.execution_plan or build_federated_ssl_execution_plan(
+        fl_method=None,
+        security_policy=None,
+        method_descriptor=ssl_method_descriptor,
+    )
+    execution_plan.require_matches_descriptor(ssl_method_descriptor)
+    return execution_plan
+
+
+def _require_execution_plan_matches_runtime(
+    *,
+    request: SimulationRunRequest,
+    execution_plan: FederatedSslExecutionPlan,
+) -> None:
+    """manual lower axes가 실제 runtime 조합과 drift되지 않았는지 검증한다."""
+
+    if execution_plan.composition_mode != COMPOSITION_MODE_MANUAL:
+        return
+    manual_axes = execution_plan.manual_axes
+    if manual_axes.server_aggregation != (
+        request.round_runtime_config.aggregation_backend_name
+    ):
+        raise ValueError(
+            "manual fl_method.server_aggregation must match "
+            "round_runtime.aggregation_backend_name: "
+            f"{manual_axes.server_aggregation!r} != "
+            f"{request.round_runtime_config.aggregation_backend_name!r}."
+        )
+    if manual_axes.update_family != request.round_runtime_config.adapter_family_name:
+        raise ValueError(
+            "manual fl_method.update_family must match "
+            "round_runtime.adapter_family_name: "
+            f"{manual_axes.update_family!r} != "
+            f"{request.round_runtime_config.adapter_family_name!r}."
+        )
 
 
 def _require_round_runtime_matches_training_objective(

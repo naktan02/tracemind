@@ -1,7 +1,7 @@
 # @package local_update_profile
 
 # 현재는 agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
-# adapter family와 aggregation backend는 round_runtime_profile이 따로 소유한다.
+# adapter family와 aggregation backend는 round_runtime.* leaf가 따로 소유한다.
 algorithm_profile_name: prototype_top1_confidence_v1
 training_scope: adapter_only
 training_backend_name: diagonal_scale_heuristic

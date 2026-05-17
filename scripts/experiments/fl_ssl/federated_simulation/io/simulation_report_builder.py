@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.aggregation_diagnostics import (
     build_aggregation_diagnostics,
 )
@@ -56,6 +57,7 @@ class SimulationReportBuilder:
         training_task_config: FederatedTrainingTaskConfig,
         validation_config: FederatedValidationConfig,
         round_runtime_config: FederatedRoundRuntimeConfig,
+        execution_plan: FederatedSslExecutionPlan | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
             result=result,
@@ -112,6 +114,7 @@ class SimulationReportBuilder:
                 training_task_config=training_task_config,
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
+                execution_plan=execution_plan,
             ),
             "diagnostics": {
                 "round_progression": round_progression,

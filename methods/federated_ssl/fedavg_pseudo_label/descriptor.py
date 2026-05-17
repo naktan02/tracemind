@@ -6,7 +6,6 @@ from methods.federated_ssl.base import (
     FederatedSslLocalStepSpec,
     FederatedSslMethodDescriptor,
     FederatedSslMethodRecipe,
-    FederatedSslProfileCombination,
     FederatedSslRequiredViews,
     FederatedSslRoundStateExchangeSpec,
     FederatedSslRuntimeCapabilities,
@@ -44,20 +43,6 @@ FEDAVG_PSEUDO_LABEL_RECIPE = FederatedSslMethodRecipe(
         FederatedSslRuntimePair(
             adapter_family_name=LORA_CLASSIFIER_ADAPTER_KIND,
             aggregation_backend_name="fedavg",
-        ),
-    ),
-    supported_profile_combinations=(
-        FederatedSslProfileCombination(
-            local_update_profile_name="prototype_pseudo_label_v1",
-            round_runtime_profile_name="fedavg_diagonal_scale",
-        ),
-        FederatedSslProfileCombination(
-            local_update_profile_name="prototype_top1_confidence_v1",
-            round_runtime_profile_name="fedavg_diagonal_scale",
-        ),
-        FederatedSslProfileCombination(
-            local_update_profile_name="lora_pseudo_label_v1",
-            round_runtime_profile_name="fedavg_lora_classifier",
         ),
     ),
 )

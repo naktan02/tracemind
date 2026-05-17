@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.split_diagnostics import (
     build_client_pool_split_payload,
 )
@@ -37,8 +38,9 @@ def build_protocol_payload(
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
+    execution_plan: FederatedSslExecutionPlan | None = None,
 ) -> dict[str, object]:
-    return {
+    payload: dict[str, object] = {
         "client_count": client_count,
         "round_budget": round_budget,
         "completed_rounds": len(result.rounds),
@@ -80,6 +82,9 @@ def build_protocol_payload(
             "margin_threshold": validation_config.margin_threshold,
         },
     }
+    if execution_plan is not None:
+        payload["fl_method"] = execution_plan.to_mapping()
+    return payload
 
 
 def config_to_mapping(value: object) -> dict[str, object]:

@@ -62,6 +62,7 @@ def build_simulation_result(
             training_task_config=request.training_task_config,
             validation_config=request.validation_config,
             round_runtime_config=request.round_runtime_config,
+            execution_plan=request.execution_plan,
         )
         result.report_path = str(
             SimulationReportWriter().write(

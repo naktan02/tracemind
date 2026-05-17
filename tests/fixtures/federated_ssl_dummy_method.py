@@ -12,7 +12,6 @@ from methods.federated_ssl.base import (
     FederatedSslLocalStepSpec,
     FederatedSslMethodDescriptor,
     FederatedSslMethodRecipe,
-    FederatedSslProfileCombination,
     FederatedSslRequiredViews,
     FederatedSslRoundStateExchangeSpec,
     FederatedSslRuntimeCapabilities,
@@ -62,12 +61,6 @@ DUMMY_FEDERATED_SSL_RECIPE = FederatedSslMethodRecipe(
         FederatedSslRuntimePair(
             adapter_family_name=DIAGONAL_SCALE_ADAPTER_KIND,
             aggregation_backend_name="fedavg",
-        ),
-    ),
-    supported_profile_combinations=(
-        FederatedSslProfileCombination(
-            local_update_profile_name="dummy_local_update_profile_v1",
-            round_runtime_profile_name="dummy_round_runtime_profile_v1",
         ),
     ),
 )

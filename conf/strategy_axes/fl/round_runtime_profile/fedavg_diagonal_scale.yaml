@@ -1,7 +1,0 @@
-# @package round_runtime_profile
-
-# 서버 라운드에서 공유 adapter family와 aggregation backend를 어떻게 조합할지 정한다.
-name: fedavg_diagonal_scale
-adapter_family_name: diagonal_scale
-aggregation_backend_name: fedavg
-classifier_head_bootstrap_logit_scale: 8.0

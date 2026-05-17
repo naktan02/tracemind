@@ -13,6 +13,7 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
@@ -619,6 +620,68 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
         run_simulation_request(request)
 
 
+def test_run_simulation_request_rejects_manual_plan_runtime_drift(
+    tmp_path,
+) -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
+    execution_plan = build_federated_ssl_execution_plan(
+        fl_method={
+            "composition_mode": "manual",
+            "manual_axes": {
+                "client_ssl_objective": "pseudo_label",
+                "server_aggregation": "fedavg",
+                "update_family": "lora_classifier",
+            },
+        },
+        security_policy=None,
+        method_descriptor=descriptor,
+    )
+    request = SimulationRunRequest(
+        train_rows=[
+            _row("a1", "panic panic", "anxiety"),
+            _row("n1", "calm calm", "normal"),
+        ],
+        validation_rows=[_row("va", "panic panic", "anxiety")],
+        output_dir=tmp_path / "manual_plan_mismatch",
+        client_count=2,
+        rounds=0,
+        bootstrap_ratio=0.5,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="tracemind-embed-sim",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="diagonal_scale",
+            aggregation_backend_name="fedavg",
+        ),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=_default_ssl_method_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
+        execution_plan=execution_plan,
+    )
+
+    with pytest.raises(ValueError, match="manual fl_method.update_family"):
+        run_simulation_request(request)
+
+
 def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
@@ -985,7 +1048,7 @@ def test_run_simulation_request_rejects_local_round_family_mismatch(
         ssl_method_config=_default_ssl_method_config(),
     )
 
-    with pytest.raises(ValueError, match="local_update_profile.*round_runtime_profile"):
+    with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         run_simulation_request(request)
 
 

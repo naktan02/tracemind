@@ -174,25 +174,12 @@ class FederatedSslRuntimePair:
 
 
 @dataclass(frozen=True, slots=True)
-class FederatedSslProfileCombination:
-    """사람이 읽는 method recipe용 Hydra profile 조합."""
-
-    local_update_profile_name: str
-    round_runtime_profile_name: str
-
-    def __post_init__(self) -> None:
-        _set_non_empty(self, "local_update_profile_name")
-        _set_non_empty(self, "round_runtime_profile_name")
-
-
-@dataclass(frozen=True, slots=True)
 class FederatedSslMethodRecipe:
     """FL SSL method가 지원하는 profile/backend/family 조합표."""
 
     method_name: str
     supported_local_update_profile_names: tuple[str, ...] = ()
     supported_runtime_pairs: tuple[FederatedSslRuntimePair, ...] = ()
-    supported_profile_combinations: tuple[FederatedSslProfileCombination, ...] = ()
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "method_name")
@@ -203,10 +190,6 @@ class FederatedSslMethodRecipe:
         )
         if len(set(self._runtime_pair_keys())) != len(self.supported_runtime_pairs):
             raise ValueError("supported_runtime_pairs must be unique.")
-        if len(set(self._profile_combination_keys())) != len(
-            self.supported_profile_combinations
-        ):
-            raise ValueError("supported_profile_combinations must be unique.")
 
     def supports_local_update_profile(self, profile_name: str) -> bool:
         """method가 local update profile을 허용하는지 확인한다."""
@@ -234,33 +217,8 @@ class FederatedSslMethodRecipe:
         )
         return normalized_key in set(self._runtime_pair_keys())
 
-    def supports_profile_combination(
-        self,
-        *,
-        local_update_profile_name: str,
-        round_runtime_profile_name: str,
-    ) -> bool:
-        """method가 명시 Hydra profile 조합을 허용하는지 확인한다."""
-
-        if not self.supported_profile_combinations:
-            return True
-        normalized_key = (
-            local_update_profile_name.strip().lower(),
-            round_runtime_profile_name.strip().lower(),
-        )
-        return normalized_key in set(self._profile_combination_keys())
-
     def _runtime_pair_keys(self) -> tuple[tuple[str, str], ...]:
         return tuple(pair.normalized_key for pair in self.supported_runtime_pairs)
-
-    def _profile_combination_keys(self) -> tuple[tuple[str, str], ...]:
-        return tuple(
-            (
-                combination.local_update_profile_name.lower(),
-                combination.round_runtime_profile_name.lower(),
-            )
-            for combination in self.supported_profile_combinations
-        )
 
 
 @dataclass(frozen=True, slots=True)

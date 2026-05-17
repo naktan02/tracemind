@@ -6,7 +6,6 @@ from dataclasses import dataclass
 
 from methods.common.config_reading import normalize_non_empty_str
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 
 
@@ -19,8 +18,6 @@ class FederatedSslProfileCompatibilityContext:
     local_update_adapter_kind: str
     round_adapter_family_name: str
     round_aggregation_backend_name: str
-    experiment_profile: FederatedSslExperimentProfile | None = None
-    round_runtime_profile_name: str | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -47,15 +44,6 @@ class FederatedSslProfileCompatibilityContext:
                 field_name="round_aggregation_backend_name",
             ),
         )
-        if self.round_runtime_profile_name is not None:
-            object.__setattr__(
-                self,
-                "round_runtime_profile_name",
-                normalize_non_empty_str(
-                    self.round_runtime_profile_name,
-                    field_name="round_runtime_profile_name",
-                ),
-            )
 
 
 def validate_federated_ssl_profile_compatibility(
@@ -65,11 +53,9 @@ def validate_federated_ssl_profile_compatibility(
 
     if not context.method_descriptor.runtime_capabilities.simulation_supported:
         raise ValueError(
-            "FL profile compatibility failed: method_descriptor="
+            "FL SSL compatibility failed: method_descriptor="
             f"{context.method_descriptor.name} does not support simulation runtime."
         )
-    if context.experiment_profile is not None:
-        _validate_experiment_profile_metadata(context)
 
     if (
         context.local_update_adapter_kind.lower()
@@ -81,8 +67,8 @@ def validate_federated_ssl_profile_compatibility(
             else context.local_update_profile.algorithm_profile_name
         )
         raise ValueError(
-            "FL profile compatibility failed: local_update_profile and "
-            "round_runtime_profile must target the same adapter family: "
+            "FL SSL compatibility failed: local_update_profile and round_runtime "
+            "must target the same adapter family: "
             f"local_update_profile={profile_name}, "
             f"local_update_adapter_kind={context.local_update_adapter_kind}, "
             f"round_adapter_family={context.round_adapter_family_name}."
@@ -96,22 +82,9 @@ def validate_federated_ssl_profile_compatibility(
         profile_name = context.local_update_profile.algorithm_profile_name
         if not recipe.supports_local_update_profile(profile_name):
             raise ValueError(
-                "FL profile compatibility failed: method recipe does not support "
+                "FL SSL compatibility failed: method recipe does not support "
                 "local_update_profile="
                 f"{profile_name} for method={context.method_descriptor.name}."
-            )
-        if context.round_runtime_profile_name is not None and (
-            not recipe.supports_profile_combination(
-                local_update_profile_name=profile_name,
-                round_runtime_profile_name=context.round_runtime_profile_name,
-            )
-        ):
-            raise ValueError(
-                "FL profile compatibility failed: method recipe does not support "
-                "profile combination: "
-                f"method={context.method_descriptor.name}, "
-                f"local_update_profile={profile_name}, "
-                f"round_runtime_profile={context.round_runtime_profile_name}."
             )
 
     if not recipe.supports_runtime_pair(
@@ -119,70 +92,9 @@ def validate_federated_ssl_profile_compatibility(
         aggregation_backend_name=context.round_aggregation_backend_name,
     ):
         raise ValueError(
-            "FL profile compatibility failed: method recipe does not support "
+            "FL SSL compatibility failed: method recipe does not support "
             "round runtime pair: "
             f"method={context.method_descriptor.name}, "
             f"adapter_family={context.round_adapter_family_name}, "
             f"aggregation_backend={context.round_aggregation_backend_name}."
         )
-
-
-def _validate_experiment_profile_metadata(
-    context: FederatedSslProfileCompatibilityContext,
-) -> None:
-    profile = context.experiment_profile
-    if profile is None:
-        return
-
-    _require_profile_value(
-        profile.method_name,
-        expected=context.method_descriptor.name,
-        field_name="method_name",
-        profile_name=profile.name,
-    )
-    if context.local_update_profile is not None:
-        _require_profile_value(
-            profile.local_update_profile_name,
-            expected=context.local_update_profile.algorithm_profile_name,
-            field_name="local_update_profile_name",
-            profile_name=profile.name,
-        )
-    if context.round_runtime_profile_name is None:
-        raise ValueError(
-            "FL profile compatibility failed: experiment_profile requires "
-            "round_runtime_profile_name to validate compose metadata."
-        )
-    _require_profile_value(
-        profile.round_runtime_profile_name,
-        expected=context.round_runtime_profile_name,
-        field_name="round_runtime_profile_name",
-        profile_name=profile.name,
-    )
-    _require_profile_value(
-        profile.adapter_family_name,
-        expected=context.round_adapter_family_name,
-        field_name="adapter_family_name",
-        profile_name=profile.name,
-    )
-    _require_profile_value(
-        profile.aggregation_backend_name,
-        expected=context.round_aggregation_backend_name,
-        field_name="aggregation_backend_name",
-        profile_name=profile.name,
-    )
-
-
-def _require_profile_value(
-    actual: str,
-    *,
-    expected: str,
-    field_name: str,
-    profile_name: str,
-) -> None:
-    if actual.lower() == expected.lower():
-        return
-    raise ValueError(
-        "FL profile compatibility failed: experiment_profile metadata drift: "
-        f"profile={profile_name}, field={field_name}, "
-        f"actual={actual}, expected={expected}."
-    )

@@ -11,7 +11,7 @@ from methods.adaptation.lora_classifier.config import (
     build_lora_classifier_training_backend_config,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
-from methods.federated_ssl.experiment_profile import FederatedSslExperimentProfile
+from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.runtime_adapters.federated_server.task_config_surface import (
@@ -322,7 +322,6 @@ class FederatedRoundRuntimeConfig:
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
-    profile_name: str | None = None
 
 
 @dataclass(slots=True)
@@ -350,4 +349,4 @@ class SimulationRunRequest:
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None
     report_config: FederatedReportConfig | None = None
     local_update_profile: LocalUpdateProfile | None = None
-    experiment_profile: FederatedSslExperimentProfile | None = None
+    execution_plan: FederatedSslExecutionPlan | None = None

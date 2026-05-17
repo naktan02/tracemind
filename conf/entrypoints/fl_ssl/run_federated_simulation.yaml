@@ -10,8 +10,6 @@ defaults:
   - /strategy_axes/fl/shard_policy: label_dominant
   - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
   - /strategy_axes/fl/local_update_profile: prototype_pseudo_label_v1
-  - /strategy_axes/fl/round_runtime_profile: fedavg_diagonal_scale
-  - /strategy_axes/fl/experiment_profile: fedavg_pseudo_label_diagonal_scale_v1
   - /strategy_axes/prototype/build_strategy: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
@@ -21,6 +19,17 @@ train_jsonl: ${dataset.train_jsonl}
 validation_jsonl: ${dataset.validation_jsonl}
 published_model_id: tracemind-embed-sim
 seed: 42
+
+fl_method:
+  # 상위 method가 client objective/server policy를 소유한다.
+  # composition_mode=manual이면 lower axes는 compose된 leaf 값에서 자동 파생된다.
+  composition_mode: method_owned
+
+security_policy:
+  # 현재 simulation은 plaintext만 지원한다. secure aggregation/DP는 capability 축으로 추가한다.
+  name: plaintext
+  update_payload_visibility: per_client_plaintext
+  client_metric_visibility: per_client_plaintext
 
 seed_sweep:
   output_dir: runs/federated_simulation_seed_sweep
@@ -58,11 +67,12 @@ client_pool_split:
   unlabeled_ratio: 0.9
 
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
-# `round_runtime_profile`은 server round에서 공유할 adapter family와 aggregation backend를 소유한다.
+# server round의 adapter family와 aggregation backend는 leaf 값으로 직접 고른다.
 round_runtime:
-  adapter_family_name: ${round_runtime_profile.adapter_family_name}
-  aggregation_backend_name: ${round_runtime_profile.aggregation_backend_name}
-  classifier_head_bootstrap_logit_scale: ${round_runtime_profile.classifier_head_bootstrap_logit_scale}
+  adapter_family_name: diagonal_scale
+  aggregation_backend_name: fedavg
+  # classifier_head family에서 prototype centroid를 head weight로 바꿀 때만 사용한다.
+  classifier_head_bootstrap_logit_scale: 8.0
   lora_classifier:
     backbone_model_id: ${paper_backbone.model_id}
     backbone_revision: ${paper_backbone.revision}
