@@ -240,7 +240,7 @@ handoff 순서를 따른다.
 aggregation method의 generic core는 `methods/federated/aggregation/`, adapter-family
 FedAvg core/materialization은 각 family-owned
 `methods/adaptation/<family>/aggregation/fedavg.py`와 필요 시
-`server_update_materialization.py`로 옮겼다.
+`server_preflight.py`로 옮겼다.
 `main_server` aggregation package에는 generic executor/registry와 server-owned artifact
 ref 생성/JSON loading capability만 남긴다. `assets/prototypes`는 catch-all assets package에서
 `federation/prototypes` server-owned artifact lifecycle package로 좁혔다.
@@ -255,7 +255,7 @@ runtime adapter는 agent-local example/evidence capability만 노출한다.
   `methods/federated/aggregation/`에서 선택된 strategy를 호출하는 executor만 둔다.
 - adapter-family FedAvg core/materialization은
   `methods/adaptation/<family>/aggregation/fedavg.py`와 필요 시
-  `server_update_materialization.py` 같은 family-owned module에 둔다.
+  `server_preflight.py` 같은 family-owned module에 둔다.
 - adapter family별 파일이나 family별 aggregation service/config class를 추가하지 않는다.
 - generic aggregation method 산술/strategy wiring은 `methods/federated/aggregation/`에
   두고, adapter family별 delta 해석과 next-state 계산은
@@ -266,7 +266,7 @@ runtime adapter는 agent-local example/evidence capability만 노출한다.
 - server-owned `aggregation_artifact::` JSON ref materialization은 main_server
   runtime capability다. LoRA/classifier delta 해석은
   `methods/adaptation/lora_classifier/aggregation/fedavg.py`와
-  `server_update_materialization.py`가 맡고, `main_server` artifact store에는 family
+  `server_preflight.py`가 맡고, `main_server` artifact store에는 family
   branch를 두지 않는다.
 - server-owned prototype artifact lifecycle은 `federation/prototypes`가 소유하고,
   `shared`는 prototype payload contract/serialization만 소유한다.

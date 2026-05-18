@@ -174,7 +174,7 @@ Raw Event / Local Signal
 | FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
-| adapter-family FedAvg core/materialization | `methods/adaptation/<family>/aggregation/fedavg.py`, 필요 시 `server_update_materialization.py` |
+| adapter-family FedAvg core/materialization | `methods/adaptation/<family>/aggregation/fedavg.py`, 필요 시 `server_preflight.py` |
 | FL SSL method descriptor/recipe metadata/policy | `methods/federated_ssl/*` |
 | method-only aggregation variant | `methods/federated_ssl/<method>/aggregation.py` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/adapters/method_runtime.py` |

@@ -32,10 +32,10 @@ module은 payload delta 해석과 next-state materialization을 맡는 method-ow
 generic FedAvg 산술과 strategy wiring은 `methods/federated/aggregation/fedavg/`에
 두고, family 상세는 `main_server`가 아니라 해당 adapter family package에 둔다.
 
-서버 update materialization preflight도 같은 기준을 따른다.
-`methods/adaptation/server_update_materialization.py`는 `adapter_kind` 기반 dispatcher만
-맡고, artifact ref 해석이나 inline delta 요구사항은
-`methods/adaptation/<family>/server_update_materialization.py`가 소유한다.
+서버 update preflight도 같은 기준을 따른다. `methods/adaptation/server_update_*`
+dispatcher는 `adapter_kind` 기반 import/lookup만 맡고, state compatibility,
+artifact ref 해석, inline delta 요구사항은
+`methods/adaptation/<family>/server_preflight.py`가 소유한다.
 
 privacy guard도 같은 기준을 따른다. `agent`는 selected guard를 실행 흐름에 연결하고,
 guard 이름, adapter-kind 지원 범위, clipping 계산은 `methods/adaptation/privacy_guards/`

@@ -66,7 +66,7 @@ def _import_compatibility_module_for_adapter_kind(
     module_name = (
         f"{_ADAPTATION_PACKAGE}."
         f"{normalized_adapter_kind.replace('-', '_')}."
-        "server_update_compatibility"
+        "server_preflight"
     )
     try:
         importlib.import_module(module_name)

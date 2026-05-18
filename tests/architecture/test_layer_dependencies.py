@@ -560,12 +560,29 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
     assert not violations, (
         "server update materialization dispatcher는 adapter family별 payload "
         "contract를 직접 알지 않는다. family-specific preflight는 "
-        "methods/adaptation/<family>/server_update_materialization.py에 둔다.\n"
+        "methods/adaptation/<family>/server_preflight.py에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
     assert "agent-local://" not in source, (
         "agent-local artifact ref 정책은 dispatcher가 아니라 해당 adapter family가 "
         "소유한다."
+    )
+
+
+def test_lora_classifier_does_not_keep_server_preflight_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
+    forbidden_paths = (
+        package_root / "server_update_compatibility.py",
+        package_root / "server_update_materialization.py",
+    )
+    violations = [
+        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+    ]
+
+    assert not violations, (
+        "LoRA-classifier server preflight는 server_preflight.py 하나가 소유한다. "
+        "dispatcher convention을 맞추기 위한 재-export shim을 다시 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
 
