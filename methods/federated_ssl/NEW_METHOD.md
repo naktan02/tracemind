@@ -12,7 +12,6 @@ report metadata를 고르는 Hydra config group이다.
 methods/federated_ssl/<method_name>/
   __init__.py
   descriptor.py
-  <method_name>.py
   local_objective.py
   server_policy.py
   round_policy.py
@@ -67,10 +66,11 @@ compatibility validator를 추가한다.
 
 ## Registry
 
-`methods/federated_ssl/registry.py`는 `<method_name>/<method_name>.py` convention을
-import해서 decorator 등록을 실행한다. 같은 convention을 따르면 새 method를 추가할 때
-registry 목록을 수정하지 않는다. 새 method metadata는 중앙 registry가 아니라
-method-local module이 소유한다.
+`methods/federated_ssl/registry.py`는 `<method_name>/descriptor.py` convention을
+import해서 module-level `descriptor` 변수를 등록한다. 같은 convention을 따르면 새
+method를 추가할 때 registry 목록을 수정하지 않는다. 새 method metadata는 중앙
+registry가 아니라 method-local descriptor module이 소유한다. 별도 pass-through
+registry wiring shim 파일은 만들지 않는다.
 
 ## 건드리지 않을 계층
 

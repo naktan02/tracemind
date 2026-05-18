@@ -5,6 +5,7 @@ from __future__ import annotations
 import importlib
 import pkgutil
 from collections.abc import Callable, Iterable
+from types import ModuleType
 
 from methods.common.registry import MethodRegistry
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
@@ -87,14 +88,26 @@ def list_federated_ssl_method_descriptors(
 def _import_federated_ssl_method_module(method_name: str) -> bool:
     normalized_name = method_name.strip().lower().replace("-", "_")
     method_package = f"{_FEDERATED_SSL_PACKAGE}.{normalized_name}"
-    module_name = f"{method_package}.{normalized_name}"
+    module_name = f"{method_package}.descriptor"
     try:
-        importlib.import_module(module_name)
+        module = importlib.import_module(module_name)
     except ModuleNotFoundError as error:
         if error.name not in {method_package, module_name}:
             raise
         return False
+    _register_descriptor_from_module(module)
     return True
+
+
+def _register_descriptor_from_module(module: ModuleType) -> None:
+    descriptor = getattr(module, "descriptor", None)
+    if descriptor is None:
+        return
+    if not isinstance(descriptor, FederatedSslMethodDescriptor):
+        raise TypeError(
+            f"{module.__name__}.descriptor must be FederatedSslMethodDescriptor."
+        )
+    _FEDERATED_SSL_METHOD_DESCRIPTORS.register(descriptor.name, item=descriptor)
 
 
 def _import_federated_ssl_method_modules() -> None:

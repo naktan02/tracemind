@@ -34,19 +34,19 @@ from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
     FEDAVG_PSEUDO_LABEL_RECIPE,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     descriptor as fedavg_pseudo_label_descriptor,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     local_objective as fedavg_pseudo_label_local_objective,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     recipe as fedavg_pseudo_label_recipe,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     round_policy as fedavg_pseudo_label_round_policy,
 )
-from methods.federated_ssl.fedavg_pseudo_label.fedavg_pseudo_label import (
+from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
     server_policy as fedavg_pseudo_label_server_policy,
 )
 from methods.federated_ssl.local_update_profile import (
@@ -268,6 +268,12 @@ def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
     assert all(
         descriptor.implementation_status != "test_only" for descriptor in descriptors
     )
+
+
+def test_federated_ssl_method_package_does_not_keep_registry_wiring_shim() -> None:
+    method_root = Path(__file__).resolve().parents[2] / "methods" / "federated_ssl"
+
+    assert not (method_root / "fedavg_pseudo_label" / "fedavg_pseudo_label.py").exists()
 
 
 def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:

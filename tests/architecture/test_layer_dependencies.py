@@ -444,7 +444,6 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
 
         required_files = (
             method_dir / "descriptor.py",
-            method_dir / f"{method_name}.py",
             method_dir / "local_objective.py",
             method_dir / "server_policy.py",
             method_dir / "round_policy.py",
@@ -455,6 +454,13 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                     f"{_relative_repo_path(config_path)}: missing "
                     f"{_relative_repo_path(required_file)}"
                 )
+        registry_wiring_shim = method_dir / f"{method_name}.py"
+        if registry_wiring_shim.exists():
+            violations.append(
+                f"{_relative_repo_path(config_path)}: remove pass-through "
+                f"registry wiring shim {_relative_repo_path(registry_wiring_shim)}; "
+                "descriptor.py의 descriptor 변수를 registry convention으로 등록한다"
+            )
 
     assert not violations, (
         "FL method descriptor config는 실제 methods/federated_ssl/<method>/ 구현이 "

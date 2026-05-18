@@ -58,7 +58,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 
 - [x] method identity와 recipe metadata는 `methods/federated_ssl/<method>/`가
   소유한다.
-- [x] registry는 `<method>/<method>.py` convention import를 사용한다. 같은
+- [x] registry는 `<method>/descriptor.py` convention import를 사용한다. 같은
   convention을 따르면 새 method 추가 시 registry 목록을 수정하지 않는다.
 - [x] Hydra 실행 조합은 `conf/strategy_axes/fl/*`가 소유한다.
 - [x] incompatible method/profile/runtime 조합은 simulation bootstrap 전에

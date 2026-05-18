@@ -98,14 +98,13 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 
 1. `methods/federated_ssl/<method>/README.md`
 2. `methods/federated_ssl/<method>/descriptor.py`
-3. `methods/federated_ssl/<method>/<method>.py`
-4. `methods/federated_ssl/<method>/local_objective.py`
-5. `methods/federated_ssl/<method>/server_policy.py`
-6. `methods/federated_ssl/<method>/round_policy.py`
-7. 필요할 때만 `recipe.py` 또는 `aggregation.py`
-8. descriptor가 실제로 resolve된 뒤에만
+3. `methods/federated_ssl/<method>/local_objective.py`
+4. `methods/federated_ssl/<method>/server_policy.py`
+5. `methods/federated_ssl/<method>/round_policy.py`
+6. 필요할 때만 `recipe.py` 또는 `aggregation.py`
+7. descriptor가 실제로 resolve된 뒤에만
    `conf/strategy_axes/fl/method_descriptor/<method>.yaml`
-9. capability가 부족하면 `agent`/`main_server`에 method 이름이 아니라 capability 이름의
+8. capability가 부족하면 `agent`/`main_server`에 method 이름이 아니라 capability 이름의
    adapter를 추가한다.
 
 ## Verification Gate
