@@ -2,16 +2,12 @@
 
 from __future__ import annotations
 
-from collections import Counter
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     QuerySslLocalStepPlan,
-)
-from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
@@ -28,6 +24,10 @@ from ..config import (
 from ..training.delta_extraction import (
     finite_float_or_none,
     lora_classifier_delta_l2_norm,
+)
+from .local_update import (
+    LoraClassifierTrainArtifacts,
+    build_lora_classifier_delta_payload_from_artifacts,
 )
 
 
@@ -77,44 +77,30 @@ def build_query_ssl_lora_update_payload(
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
     )
-    update_payload = make_lora_classifier_delta_payload(
-        model_id=model_manifest.model_id,
-        base_model_revision=model_manifest.model_revision,
-        training_scope=training_task.training_scope,
-        backbone=lora_config.to_backbone_payload(),
-        lora_config=lora_config.to_lora_config_payload(),
-        label_schema=tuple(str(label) for label in labels),
+    update_payload = build_lora_classifier_delta_payload_from_artifacts(
+        training_task=training_task,
+        model_manifest=model_manifest,
+        config=lora_config,
+        label_schema=labels,
         example_count=len(labeled_rows) + len(unlabeled_rows),
-        lora_delta_artifact_ref=lora_delta_artifact_ref,
-        classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
-        lora_parameter_deltas=(
-            {
-                str(key): [float(value) for value in values]
-                for key, values in lora_parameter_deltas.items()
-            }
-            if include_inline_deltas
-            else None
+        label_counts=_build_labeled_row_label_counts(labeled_rows),
+        artifacts=LoraClassifierTrainArtifacts(
+            lora_delta_artifact_ref=lora_delta_artifact_ref,
+            classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
+            lora_parameter_deltas=(
+                lora_parameter_deltas if include_inline_deltas else None
+            ),
+            classifier_head_weight_deltas=(
+                classifier_head_weight_deltas if include_inline_deltas else None
+            ),
+            classifier_head_bias_deltas=(
+                classifier_head_bias_deltas if include_inline_deltas else None
+            ),
+            delta_l2_norm=delta_l2_norm,
         ),
-        classifier_head_weight_deltas=(
-            {
-                str(key): [float(value) for value in values]
-                for key, values in classifier_head_weight_deltas.items()
-            }
-            if include_inline_deltas
-            else None
-        ),
-        classifier_head_bias_deltas={
-            str(key): float(value) for key, value in classifier_head_bias_deltas.items()
-        }
-        if include_inline_deltas
-        else {},
         delta_format=normalized_delta_format,
         mean_confidence=None,
         mean_margin=None,
-        label_counts=dict(
-            sorted(Counter(row["mapped_label_4"] for row in labeled_rows).items())
-        ),
-        delta_l2_norm=delta_l2_norm,
         created_at=created_at,
     )
     return QuerySslLoraUpdateBuildResult(
@@ -174,3 +160,13 @@ def build_query_ssl_lora_client_metrics(
         if str(key).startswith("train_"):
             metrics[f"query_ssl_{key}"] = numeric_value
     return metrics
+
+
+def _build_labeled_row_label_counts(
+    labeled_rows: Sequence[LabeledQueryRow],
+) -> dict[str, int]:
+    label_counts: dict[str, int] = {}
+    for row in labeled_rows:
+        label = str(row["mapped_label_4"])
+        label_counts[label] = label_counts.get(label, 0) + 1
+    return label_counts

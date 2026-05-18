@@ -128,14 +128,47 @@ def build_lora_classifier_delta_from_rows(
         raise ValueError("rows must not be empty.")
 
     label_counts = Counter(row.label for row in rows)
+    return build_lora_classifier_delta_payload_from_artifacts(
+        training_task=training_task,
+        model_manifest=model_manifest,
+        config=config,
+        label_schema=label_schema,
+        example_count=len(rows),
+        label_counts=label_counts,
+        artifacts=artifacts,
+        delta_format=config.delta_format,
+        mean_confidence=sum(row.confidence for row in rows) / len(rows),
+        mean_margin=sum(row.margin for row in rows) / len(rows),
+        created_at=created_at,
+    )
+
+
+def build_lora_classifier_delta_payload_from_artifacts(
+    *,
+    training_task: TrainingTask,
+    model_manifest: ModelManifest,
+    config: LoraClassifierUpdateConfig,
+    label_schema: Sequence[str],
+    example_count: int,
+    label_counts: Mapping[str, int],
+    artifacts: LoraClassifierTrainArtifacts,
+    delta_format: str,
+    mean_confidence: float | None,
+    mean_margin: float | None,
+    created_at: datetime,
+) -> LoraClassifierDelta:
+    """LoRA/head artifact snapshot을 shared delta payload로 정규화한다."""
+
+    if example_count <= 0:
+        raise ValueError("example_count must be positive.")
     return make_lora_classifier_delta_payload(
         model_id=model_manifest.model_id,
         base_model_revision=model_manifest.model_revision,
         training_scope=training_task.training_scope,
         backbone=dict(config.to_backbone_payload()),
         lora_config=dict(config.to_lora_config_payload()),
-        label_schema=label_schema,
-        example_count=len(rows),
+        label_schema=tuple(str(label) for label in label_schema),
+        example_count=example_count,
         lora_delta_artifact_ref=artifacts.lora_delta_artifact_ref,
         classifier_head_delta_artifact_ref=(
             artifacts.classifier_head_delta_artifact_ref
@@ -164,10 +197,12 @@ def build_lora_classifier_delta_from_rows(
                 for key, value in artifacts.classifier_head_bias_deltas.items()
             }
         ),
-        delta_format=config.delta_format,
-        mean_confidence=sum(row.confidence for row in rows) / len(rows),
-        mean_margin=sum(row.margin for row in rows) / len(rows),
-        label_counts=dict(sorted(label_counts.items())),
+        delta_format=delta_format,
+        mean_confidence=mean_confidence,
+        mean_margin=mean_margin,
+        label_counts={
+            str(label): int(count) for label, count in sorted(label_counts.items())
+        },
         delta_l2_norm=artifacts.delta_l2_norm,
         created_at=created_at,
     )
