@@ -50,7 +50,8 @@ shared adapter와 prototype scoring은 비교 실험 축으로 함께 유지한�
 9. `adapters/client_training.py`
    - client local training 실행, update 제출, selection quality summary 조립
 10. `adapters/runtime_compatibility.py`
-   - method-owned runtime/objective compatibility rule을 simulation request에 적용
+   - `methods/adaptation/runtime_objective_compatibility.py` dispatcher를 통해
+     method-owned runtime/objective compatibility rule을 simulation request에 적용
 11. `adapters/evaluation.py`
    - validation evaluator 실행 wiring, training example 재구성, runtime artifact load
 12. `adapters/sharding.py`

@@ -587,6 +587,50 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
     )
 
 
+def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> None:
+    dispatcher_path = METHODS_SRC / "adaptation" / "runtime_objective_compatibility.py"
+    imports = _collect_absolute_imports(dispatcher_path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    violations = sorted(imports & forbidden_imports)
+    source = dispatcher_path.read_text(encoding="utf-8")
+
+    assert not violations, (
+        "runtime/objective compatibility dispatcher는 adapter family별 payload "
+        "contract를 직접 알지 않는다. family-specific 검증은 "
+        "methods/adaptation/<family>/runtime_compatibility.py에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+    assert "lora_classifier" not in source, (
+        "dispatcher는 LoRA-classifier family 이름을 하드코딩하지 않는다."
+    )
+
+
+def test_fl_simulation_runtime_compatibility_adapter_is_family_agnostic() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "runtime_compatibility.py"
+    )
+    imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
+
+    assert "methods.adaptation.lora_classifier" not in imports, (
+        "FL simulation runtime compatibility adapter는 LoRA 구현을 직접 import하지 "
+        "않고 methods-owned dispatcher만 호출한다."
+    )
+    assert "lora_classifier" not in source, (
+        "FL simulation runtime compatibility adapter는 adapter family literal로 "
+        "분기하지 않는다."
+    )
+
+
 def test_lora_classifier_does_not_keep_server_preflight_shims() -> None:
     package_root = METHODS_SRC / "adaptation" / "lora_classifier"
     forbidden_paths = (

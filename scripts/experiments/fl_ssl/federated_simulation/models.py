@@ -9,9 +9,6 @@ from pathlib import Path
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.runtime_compatibility import (
-    require_lora_classifier_runtime_matches_objective,
-)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
@@ -219,17 +216,6 @@ class FederatedLoraClassifierRuntimeConfig:
 
         return self.training_backend_config.to_lora_config_payload()
 
-    def require_shared_payload_matches_objective(
-        self,
-        objective_config: TrainingObjectiveConfig | None,
-    ) -> None:
-        """bootstrap state와 local update가 같은 backbone/LoRA snapshot을 쓰게 한다."""
-
-        require_lora_classifier_runtime_matches_objective(
-            runtime_config=self,
-            objective_config=objective_config,
-        )
-
 
 _LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS = frozenset(
     {
@@ -255,6 +241,14 @@ class FederatedRoundRuntimeConfig:
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
+
+    def runtime_payload_for_adapter_family(self) -> object | None:
+        """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""
+
+        runtime_field_name = self.adapter_family_name.strip().lower().replace("-", "_")
+        if not runtime_field_name:
+            raise ValueError("round_runtime.adapter_family_name must not be empty.")
+        return getattr(self, runtime_field_name, None)
 
 
 @dataclass(frozen=True, slots=True)

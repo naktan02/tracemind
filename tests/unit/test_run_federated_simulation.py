@@ -1286,6 +1286,39 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
         run_simulation_request(request)
 
 
+def test_run_simulation_request_rejects_missing_lora_runtime_config(
+    tmp_path,
+) -> None:
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="missing_lora_runtime_config",
+        train_rows=[
+            _row("a1", "panic panic", "anxiety"),
+            _row("n1", "calm calm", "normal"),
+        ],
+        model_id="mxbai-lora-classifier",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=None,
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(),
+        ),
+    )
+
+    with pytest.raises(
+        ValueError,
+        match="lora_classifier round runtime requires lora_classifier bootstrap config",
+    ):
+        run_simulation_request(request)
+
+
 def test_run_simulation_request_bootstraps_lora_classifier_profile(
     tmp_path,
     monkeypatch,

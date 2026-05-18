@@ -210,6 +210,9 @@ handoff 순서를 따른다.
 4. 완료: compatibility validator를 최소 구현한다. method descriptor, recipe metadata, payload
    family contract, local update profile, adapter family, aggregation backend,
    runtime capability를 함께 확인한다.
+   완료: adapter-family별 round runtime/objective drift 검증은
+   `methods/adaptation/runtime_objective_compatibility.py` dispatcher와
+   family-local `runtime_compatibility.py` 등록으로 이동했다.
 5. 완료: method-only 변형은 `methods/federated_ssl/<method>/descriptor.py`의 recipe
    metadata 또는 optional `recipe.py`에서 선언하고, 재사용 backend/projection은 축별
    methods 패키지에서 참조하게 한다.
