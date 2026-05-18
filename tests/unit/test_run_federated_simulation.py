@@ -62,6 +62,7 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation,
     run_simulation_request,
 )
+from scripts.runtime_adapters.federated_agent import query_ssl_client_round
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     prepare_delta_materialization,
 )
@@ -516,7 +517,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         )
 
     monkeypatch.setattr(
-        client_training,
+        query_ssl_client_round,
         "run_query_ssl_lora_classifier_local_training",
         _fake_query_ssl_trainer,
     )

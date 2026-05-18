@@ -598,6 +598,35 @@ def test_fl_simulation_does_not_keep_task_config_facade() -> None:
     )
 
 
+def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "client_training.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "classifier_head",
+        "diagonal_scale",
+        "lora_classifier",
+        "ClassifierHead",
+        "DiagonalScale",
+        "LoraClassifier",
+        "LORA_CLASSIFIER",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "client_training.py는 client round orchestration만 맡고 adapter-family별 "
+        "raw-row training, artifact upload, payload 변환은 federated_agent runtime "
+        "adapter로 낮춘다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_fl_simulation_report_builder_does_not_write_report_json() -> None:
     builder_path = FL_SIMULATION_IO_SRC / "simulation_report_builder.py"
     writer_path = FL_SIMULATION_IO_SRC / "simulation_report_writer.py"

@@ -1,0 +1,143 @@
+"""FL simulation Query SSL client-round runtime bridge."""
+
+from __future__ import annotations
+
+import time
+from typing import Any
+
+from methods.adaptation.lora_classifier.config import (
+    build_lora_classifier_training_backend_config,
+)
+from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    client_update_submission,
+)
+from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
+    ActiveSimulationState,
+    BootstrappedSimulation,
+    ClientRoundExecution,
+)
+from scripts.experiments.fl_ssl.federated_simulation.models import (
+    ClientRoundSummary,
+    FederatedClientShard,
+    SimulationRunRequest,
+)
+from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
+    upload_agent_local_lora_classifier_update,
+)
+from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
+    run_query_ssl_lora_classifier_local_training,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
+from shared.src.contracts.training_contracts import ClientMetricKeys
+
+
+def run_query_ssl_client_round_if_supported(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    round_id: str,
+    shard: FederatedClientShard,
+    training_task: Any,
+) -> ClientRoundExecution | None:
+    """Query SSL raw-row client training이 가능한 조합이면 해당 경로로 실행한다."""
+
+    if not _supports_query_ssl_lora_client_training(request):
+        return None
+    return _run_query_ssl_lora_client_round(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        round_id=round_id,
+        shard=shard,
+        training_task=training_task,
+    )
+
+
+def _supports_query_ssl_lora_client_training(
+    request: SimulationRunRequest,
+) -> bool:
+    return (
+        request.query_ssl_objective_config is not None
+        and str(request.round_runtime_config.adapter_family_name).strip().lower()
+        == LORA_CLASSIFIER_ADAPTER_KIND
+        and request.round_runtime_config.lora_classifier is not None
+    )
+
+
+def _run_query_ssl_lora_client_round(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    active: ActiveSimulationState,
+    round_id: str,
+    shard: FederatedClientShard,
+    training_task: Any,
+) -> ClientRoundExecution:
+    if request.query_ssl_objective_config is None:
+        raise ValueError("query_ssl_objective_config is required.")
+    if request.round_runtime_config.lora_classifier is None:
+        raise ValueError("LoRA-classifier runtime config is required.")
+
+    training_started_at = time.perf_counter()
+    local_result = run_query_ssl_lora_classifier_local_training(
+        client_id=shard.client_id,
+        seed=request.seed,
+        output_dir=request.output_dir,
+        labeled_rows=shard.labeled_rows,
+        unlabeled_rows=shard.unlabeled_rows,
+        active_adapter_state=active.adapter_state,
+        training_task=training_task,
+        model_manifest=active.manifest,
+        query_ssl_config=request.query_ssl_objective_config,
+        lora_config=build_lora_classifier_training_backend_config(
+            training_task.objective_config
+        ),
+        trainer_runtime_config=request.local_trainer_runtime_config,
+    )
+    client_train_time_seconds = time.perf_counter() - training_started_at
+    server_update_payload = upload_agent_local_lora_classifier_update(
+        output_dir=request.output_dir,
+        update_payload=local_result.update_payload,
+    )
+    update_submitted = client_update_submission.accept_client_update(
+        server_runtime=bootstrapped.server_runtime,
+        round_id=round_id,
+        update_envelope=local_result.update_envelope,
+        update_payload=server_update_payload,
+    )
+    return ClientRoundExecution(
+        summary=ClientRoundSummary(
+            client_id=shard.client_id,
+            candidate_count=local_result.candidate_count,
+            accepted_count=local_result.accepted_count,
+            update_generated=update_submitted,
+            delta_l2_norm=client_update_submission.extract_delta_l2_norm(
+                local_result.update_envelope
+            ),
+            aggregation_example_count=(
+                client_update_submission.extract_aggregation_example_count(
+                    local_result.update_envelope
+                )
+            ),
+            client_train_time_seconds=client_train_time_seconds,
+            client_payload_bytes=(
+                client_update_submission.payload_byte_count(server_update_payload)
+                if update_submitted
+                else None
+            ),
+            pseudo_label_confidence_mean=local_result.client_metrics.get(
+                ClientMetricKeys.MEAN_CONFIDENCE
+            ),
+            pseudo_label_margin_mean=local_result.client_metrics.get(
+                ClientMetricKeys.MEAN_MARGIN
+            ),
+            pseudo_label_correct_count=0,
+            pseudo_label_evaluated_count=0,
+            accepted_label_distribution={},
+            rejected_label_distribution={},
+        ),
+        update_submitted=update_submitted,
+    )
