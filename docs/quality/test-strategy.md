@@ -1,13 +1,14 @@
 # TraceMind Test Strategy
 
-이 문서는 2026-05-18 기준 TraceMind 테스트 구성을 설명한다.
+이 문서는 2026-05-19 기준 TraceMind 테스트 구성을 설명한다.
 
-현재 기준 수치:
+현재 기준 수치(`uv run pytest --collect-only -q` 기준):
 
 | 항목 | 수치 |
 |---|---:|
-| Python test modules | 124 |
-| `def test_*` test cases | 709 |
+| Python test modules | 125 |
+| collected pytest items | 778 |
+| direct `def test_*` functions | 745 |
 
 정확한 수치는 계속 변할 수 있다. 전략의 핵심은 contract drift, local/server boundary drift, 실험 entrypoint/config drift를 빠르게 잡는 것이다.
 

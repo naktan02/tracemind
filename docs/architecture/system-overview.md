@@ -195,7 +195,7 @@ Raw Event / Local Signal
 | `conf/` | Hydra 실행 조합과 파라미터 | Python 구현, 복잡한 계산 로직, runtime state를 소유하지 않는다 |
 | `agent/` | local inference, local training, private/local state, server participation | method identity/local objective와 서버 round orchestration/aggregation policy를 소유하지 않는다 |
 | `main_server/` | round lifecycle, aggregation, publication | method-specific server policy, raw text, 개인 threshold, 개인 해석 상태를 소유하지 않는다 |
-| `scripts/` | Hydra 기반 실험 entrypoint, sweep, report, compatibility wrapper | 운영 후보 알고리즘 코어를 먼저 만들고 나중에 복사하지 않는다 |
+| `scripts/` | Hydra 기반 실험 entrypoint, sweep, report/artifact orchestration, runtime bridge | 운영 후보 알고리즘 코어와 method policy를 소유하지 않는다 |
 | `apps/` | UI shell, wellbeing output consumer | 계약 의미, 전략 이름, 실행 기본값을 재정의하지 않는다 |
 | `tests/` | cross-boundary integration/e2e, architecture 검증 | package 내부 단위 테스트를 불필요하게 루트로 올리지 않는다 |
 
@@ -230,7 +230,7 @@ Raw Event / Local Signal
 |---|---|
 | `docs/execution_index.md` | 짧은 진입점과 문서 지도 |
 | `docs/project_execution_plan.md` | 활성 연구/시스템 계획과 현재 Phase |
-| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 리팩터링 계획 |
+| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
 | `shared/src/contracts/README.md` | contract 파일 가까운 payload 해석 |
 | `docs/api/api-surface.md` | 현재 FastAPI endpoint 표면 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke 절차 |

@@ -18,8 +18,8 @@ central fixed embedding + classifier seed
 | `plan.md` | 연구 비전과 global/local 경계 |
 | `docs/project_execution_plan.md` | active decision, phase, next step |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
-| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 리팩터링 계획 |
-| `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 리팩터링 후보와 우선순위 |
+| `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
+| `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 guard와 남은 후보 |
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |

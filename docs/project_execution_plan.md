@@ -69,7 +69,7 @@ central fixed embedding + classifier seed
 - FL SSL smoke 산출물은 `runs/_smoke/fl_ssl` 아래에 둬서 논문/웹용
   `runs/fl_ssl` 산출물과 섞지 않는다.
 - FL SSL reduced preset은 검증 실험용 `10 clients`, `5 communication rounds`로 둔다.
-- FL SSL full-budget preset은 `50 communication rounds`, `local_epochs=1`,
+- FL SSL full-budget preset은 `30 communication rounds`, `local_epochs=1`,
   `max_steps=50`이다. 새 method/wiring은 먼저 smoke/reduced run으로 확인한 뒤
   full-budget 비교로 올린다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
