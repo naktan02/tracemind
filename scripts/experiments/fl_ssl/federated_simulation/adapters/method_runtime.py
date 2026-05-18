@@ -41,6 +41,30 @@ MANUAL_BASELINE_TRAINING_TASK_TYPE = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING
 MANUAL_BASELINE_TRAINING_ROW_SOURCE = TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedClientLocalTrainingContext:
+    """client local training 준비에 필요한 runtime 입력."""
+
+    shard: FederatedClientShard
+    adapter: EmbeddingAdapter
+    adapter_state: SharedAdapterState
+    prototype_pack: PrototypePackPayload
+    model_id: str
+    scoring_service: Any
+    objective_config: TrainingObjectiveConfig
+    client_state_root: Path
+    training_task: Any
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedClientLocalTrainingPlan:
+    """runtime이 선택한 local training 입력과 실행 adapter."""
+
+    rows: list[LabeledQueryRow]
+    examples: tuple[Any, ...]
+    service: Any
+
+
 class FederatedSslSimulationRuntime(Protocol):
     """Simulation loop가 호출하는 FL SSL 실행 조합."""
 
@@ -57,33 +81,12 @@ class FederatedSslSimulationRuntime(Protocol):
     ) -> Any:
         """method별 round task를 생성한다."""
 
-    def build_training_examples(
+    def build_local_training_plan(
         self,
         *,
-        rows: list[LabeledQueryRow],
-        adapter: EmbeddingAdapter,
-        adapter_state: SharedAdapterState,
-        prototype_pack: PrototypePackPayload,
-        model_id: str,
-        scoring_service: Any,
-        objective_config: TrainingObjectiveConfig,
-    ) -> tuple[Any, ...]:
-        """client shard row를 method별 local training 입력으로 변환한다."""
-
-    def select_training_rows(
-        self,
-        *,
-        shard: FederatedClientShard,
-    ) -> list[LabeledQueryRow]:
-        """client shard에서 이번 local step이 사용할 row를 고른다."""
-
-    def build_local_training_service(
-        self,
-        *,
-        client_state_root: Path,
-        training_task: Any | None = None,
-    ) -> Any:
-        """client local trainer를 생성한다."""
+        context: FederatedClientLocalTrainingContext,
+    ) -> FederatedClientLocalTrainingPlan:
+        """client local training 입력과 실행 adapter를 준비한다."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,57 +115,53 @@ class DefaultFederatedSslSimulationRuntime:
             training_task_config=training_task_config,
         )
 
-    def build_training_examples(
+    def build_local_training_plan(
         self,
         *,
-        rows: list[LabeledQueryRow],
-        adapter: EmbeddingAdapter,
-        adapter_state: SharedAdapterState,
-        prototype_pack: PrototypePackPayload,
-        model_id: str,
-        scoring_service: Any,
-        objective_config: TrainingObjectiveConfig,
-    ) -> tuple[Any, ...]:
-        return build_training_examples(
+        context: FederatedClientLocalTrainingContext,
+    ) -> FederatedClientLocalTrainingPlan:
+        rows = _select_training_rows(
+            row_source=self.training_row_source,
+            shard=context.shard,
+        )
+        examples = build_training_examples(
             rows=rows,
-            adapter=adapter,
-            adapter_state=adapter_state,
-            prototype_pack=prototype_pack,
-            model_id=model_id,
-            scoring_service=scoring_service,
-            objective_config=objective_config,
+            adapter=context.adapter,
+            adapter_state=context.adapter_state,
+            prototype_pack=context.prototype_pack,
+            model_id=context.model_id,
+            scoring_service=context.scoring_service,
+            objective_config=context.objective_config,
+        )
+        service = build_federated_local_training_service(
+            client_state_root=context.client_state_root,
+            training_task=context.training_task,
+        )
+        return FederatedClientLocalTrainingPlan(
+            rows=rows,
+            examples=examples,
+            service=service,
         )
 
-    def select_training_rows(
-        self,
-        *,
-        shard: FederatedClientShard,
-    ) -> list[LabeledQueryRow]:
-        row_source = self.training_row_source
-        if row_source == TRAINING_ROW_SOURCE_ALL_ROWS:
-            return list(shard.rows)
-        if (
-            row_source == TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
-            and shard.client_pool_split_enforced
-        ):
-            return list(shard.unlabeled_rows)
-        if (
-            row_source == TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE
-            and shard.client_pool_split_enforced
-        ):
-            return list(shard.labeled_rows)
+
+def _select_training_rows(
+    *,
+    row_source: str,
+    shard: FederatedClientShard,
+) -> list[LabeledQueryRow]:
+    if row_source == TRAINING_ROW_SOURCE_ALL_ROWS:
         return list(shard.rows)
-
-    def build_local_training_service(
-        self,
-        *,
-        client_state_root: Path,
-        training_task: Any | None = None,
-    ) -> Any:
-        return build_federated_local_training_service(
-            client_state_root=client_state_root,
-            training_task=training_task,
-        )
+    if (
+        row_source == TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
+        and shard.client_pool_split_enforced
+    ):
+        return list(shard.unlabeled_rows)
+    if (
+        row_source == TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE
+        and shard.client_pool_split_enforced
+    ):
+        return list(shard.labeled_rows)
+    return list(shard.rows)
 
 
 def build_federated_ssl_simulation_runtime(

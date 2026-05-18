@@ -9,6 +9,7 @@ from methods.evaluation.pseudo_label_quality import (
     build_pseudo_label_quality_summary,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
+    FederatedClientLocalTrainingContext,
     FederatedSslSimulationRuntime,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
@@ -79,24 +80,23 @@ def run_client_round(
     if query_ssl_execution is not None:
         return query_ssl_execution
 
-    training_rows = ssl_method_runtime.select_training_rows(shard=shard)
-    training_examples = ssl_method_runtime.build_training_examples(
-        rows=training_rows,
-        adapter=bootstrapped.adapter,
-        adapter_state=active.adapter_state,
-        prototype_pack=active.prototype_pack,
-        model_id=request.model_id,
-        scoring_service=training_scoring_service,
-        objective_config=training_task.objective_config,
-    )
-    local_training_service = ssl_method_runtime.build_local_training_service(
-        client_state_root=request.output_dir / "agents" / shard.client_id,
-        training_task=training_task,
+    training_plan = ssl_method_runtime.build_local_training_plan(
+        context=FederatedClientLocalTrainingContext(
+            shard=shard,
+            adapter=bootstrapped.adapter,
+            adapter_state=active.adapter_state,
+            prototype_pack=active.prototype_pack,
+            model_id=request.model_id,
+            scoring_service=training_scoring_service,
+            objective_config=training_task.objective_config,
+            client_state_root=request.output_dir / "agents" / shard.client_id,
+            training_task=training_task,
+        )
     )
     training_started_at = time.perf_counter()
     local_result = run_federated_local_training(
-        local_training_service=local_training_service,
-        training_examples=training_examples,
+        local_training_service=training_plan.service,
+        training_examples=training_plan.examples,
         training_task=training_task,
         model_manifest=active.manifest,
     )
@@ -105,8 +105,8 @@ def run_client_round(
         output_dir=request.output_dir,
         round_id=round_id,
         client_id=shard.client_id,
-        rows=training_rows,
-        training_examples=training_examples,
+        rows=training_plan.rows,
+        training_examples=training_plan.examples,
         selection_result=local_result.selection_result,
         diagnostics_config=request.diagnostics_config,
     )
@@ -118,7 +118,7 @@ def run_client_round(
     )
     selection_quality = build_pseudo_label_quality_summary(
         candidates=tuple(local_result.selection_result.candidates),
-        rows_with_simulation_labels=training_rows,
+        rows_with_simulation_labels=training_plan.rows,
     )
     return ClientRoundExecution(
         summary=ClientRoundSummary(

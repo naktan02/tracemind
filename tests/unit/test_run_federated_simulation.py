@@ -44,6 +44,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import 
     evaluate_rows,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
+    FederatedClientLocalTrainingContext,
     build_federated_ssl_simulation_runtime,
     build_manual_federated_ssl_simulation_runtime,
 )
@@ -987,18 +988,49 @@ def test_manual_federated_ssl_runtime_uses_unlabeled_training_rows() -> None:
     runtime = build_manual_federated_ssl_simulation_runtime()
     labeled_row = _row("l1", "labeled", "normal")
     unlabeled_row = _row("u1", "unlabeled", "anxiety")
-
-    selected_rows = runtime.select_training_rows(
-        shard=FederatedClientShard(
-            client_id="agent_001",
-            rows=[labeled_row, unlabeled_row],
-            labeled_rows=[labeled_row],
-            unlabeled_rows=[unlabeled_row],
-            client_pool_split_enforced=True,
-        )
+    objective_config = _default_training_task_config(
+        confidence_threshold=0.0,
+        margin_threshold=0.0,
+        max_examples=4,
+        gradient_clip_norm=1.0,
+    ).objective_config
+    adapter_state = VectorAdapterState.identity(
+        model_id="hash_debug",
+        model_revision="main",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
 
-    assert selected_rows == [unlabeled_row]
+    plan = runtime.build_local_training_plan(
+        context=FederatedClientLocalTrainingContext(
+            shard=FederatedClientShard(
+                client_id="agent_001",
+                rows=[labeled_row, unlabeled_row],
+                labeled_rows=[labeled_row],
+                unlabeled_rows=[unlabeled_row],
+                client_pool_split_enforced=True,
+            ),
+            adapter=_StaticEmbeddingAdapter({"unlabeled": [1.0, 0.0]}),
+            adapter_state=adapter_state,
+            prototype_pack=_pack_payload(),
+            model_id="hash_debug",
+            scoring_service=build_federated_scoring_service(
+                objective_config=objective_config,
+                similarity_name="cosine",
+                shared_state=adapter_state,
+            ),
+            objective_config=objective_config,
+            client_state_root=Path("/tmp/agent_001"),
+            training_task=type(
+                "TrainingTaskStub",
+                (),
+                {"objective_config": objective_config},
+            )(),
+        ),
+    )
+
+    assert plan.rows == [unlabeled_row]
 
 
 def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) -> None:

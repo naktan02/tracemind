@@ -718,6 +718,39 @@ def test_fl_simulation_public_api_uses_typed_request_only() -> None:
     )
 
 
+def test_federated_ssl_simulation_runtime_keeps_deep_local_training_seam() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "method_runtime.py"
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+    runtime_class = next(
+        (
+            node
+            for node in ast.walk(tree)
+            if isinstance(node, ast.ClassDef)
+            and node.name == "FederatedSslSimulationRuntime"
+        ),
+        None,
+    )
+    assert runtime_class is not None
+    method_names = {
+        node.name for node in runtime_class.body if isinstance(node, ast.FunctionDef)
+    }
+
+    assert method_names == {"build_round_open_request", "build_local_training_plan"}, (
+        "FederatedSslSimulationRuntime caller surface는 round open과 local training "
+        "plan seam으로 유지한다. select_training_rows/build_training_examples/"
+        "build_local_training_service를 protocol에 다시 노출하면 caller가 local "
+        "training 조립 순서를 알아야 한다.\n"
+        f"methods={sorted(method_names)}"
+    )
+
+
 def test_fl_simulation_report_builder_does_not_write_report_json() -> None:
     builder_path = FL_SIMULATION_IO_SRC / "simulation_report_builder.py"
     writer_path = FL_SIMULATION_IO_SRC / "simulation_report_writer.py"
