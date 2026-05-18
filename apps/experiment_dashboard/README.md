@@ -30,10 +30,23 @@ export는 `projection_artifacts`의 UMAP/PCA PNG를
 projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
 
 `FL SSL` track은 중앙 SSL ranking과 섞지 않는 별도 표면이다. result index export는
-`fl_ssl_runs`를 별도 view-model로 만들고, 이 패널은 run-level `macro_f1`,
-worst-client macro-F1, ECE, communication cost, per-client variance를 소비한다.
-round/client 시계열은 같은 방식으로 `fl_ssl_rounds`, `fl_ssl_client_rounds`를
-추가해서 확장한다.
+FL report를 dashboard 전용 view-model로 평탄화한다.
+
+- `fl_ssl_runs`: run-level `macro_f1`, worst-client macro-F1, ECE,
+  communication cost, per-client variance.
+- `fl_ssl_rounds`: post-aggregation global validation curve와 round runtime/cost.
+- `fl_ssl_client_rounds`: round별 client local update 통계. per-client accuracy가
+  아니라 candidate/accepted/update norm/payload/time 상태다.
+- `fl_ssl_client_validations`: final global model을 client validation split별로 평가한
+  macro-F1/loss/ECE.
+- `fl_ssl_client_splits`: client별 non-IID labeled/unlabeled label distribution.
+
+기존 LoRA-classifier FL run 중 validation scorer가 `prototype_similarity`인 결과는
+round별 global validation curve가 평평할 수 있다. 이 scorer는 shared
+LoRA/classifier state를 직접 읽지 않기 때문에, client update/aggregation artifact가
+생성돼도 `macro_f1`, `accuracy_top_1`, `loss`가 전 라운드 동일하게 기록될 수 있다.
+새 LoRA-classifier FL run은 `lora_classifier_eval` validation을 사용해야 global
+LoRA/head artifact가 실제 성능 곡선에 반영된다.
 
 ## 경계
 

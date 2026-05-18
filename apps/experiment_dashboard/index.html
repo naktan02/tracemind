@@ -308,7 +308,14 @@
             <div class="metric-cards" id="fl-metric-cards"></div>
           </section>
 
-          <section class="grid two">
+          <nav class="tab-nav" aria-label="fl ssl result views">
+            <button class="active" type="button" data-fl-tab="runs">Runs</button>
+            <button type="button" data-fl-tab="rounds">Rounds</button>
+            <button type="button" data-fl-tab="clients">Clients</button>
+            <button type="button" data-fl-tab="splits">Splits</button>
+          </nav>
+
+          <section class="tab-panel active" data-fl-panel="runs">
             <article class="card">
               <div class="card-header">
                 <div>
@@ -316,53 +323,187 @@
                   <h3>FL SSL Runs</h3>
                 </div>
               </div>
-              <div id="fl-run-summary" class="fl-run-summary"></div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>run</th>
+                      <th>method</th>
+                      <th>split</th>
+                      <th>clients</th>
+                      <th>rounds</th>
+                      <th>macro_f1</th>
+                      <th>worst client</th>
+                      <th>ece</th>
+                      <th>client std</th>
+                      <th>comm cost</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fl-run-table"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="tab-panel" data-fl-panel="rounds">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Round Curve</p>
+                  <h3>Post-Aggregation Global Validation</h3>
+                </div>
+                <div class="card-controls fl-round-controls">
+                  <label>
+                    Method
+                    <select id="fl-round-method-filter"></select>
+                  </label>
+                  <label>
+                    Run
+                    <select id="fl-round-run-filter"></select>
+                  </label>
+                  <section>
+                    <p class="control-label">Metrics</p>
+                    <div
+                      id="fl-round-metric-picker"
+                      class="metric-picker inline"
+                    ></div>
+                  </section>
+                </div>
+              </div>
+              <p class="fl-tab-note">
+                각 round aggregation 이후 global parameter를 기준으로 기록된 validation
+                curve다. 클라이언트별 local update 통계는 Clients 탭에서 본다.
+              </p>
+              <p id="fl-round-flat-note" class="notice warning" hidden></p>
+              <div id="fl-round-chart" class="line-chart"></div>
+              <div class="table-wrap compact">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>round</th>
+                      <th>macro_f1</th>
+                      <th>accuracy</th>
+                      <th>loss</th>
+                      <th>ece</th>
+                      <th>accepted</th>
+                      <th>updates</th>
+                      <th>payload</th>
+                      <th>seconds</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fl-round-table"></tbody>
+                </table>
+              </div>
+            </article>
+          </section>
+
+          <section class="tab-panel" data-fl-panel="clients">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Client Validation</p>
+                  <h3>Final Global Model by Client</h3>
+                </div>
+                <div class="card-controls single">
+                  <label>
+                    Run
+                    <select id="fl-client-validation-run-filter"></select>
+                  </label>
+                </div>
+              </div>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>client</th>
+                      <th>labeled</th>
+                      <th>unlabeled</th>
+                      <th>macro_f1</th>
+                      <th>accuracy</th>
+                      <th>loss</th>
+                      <th>ece</th>
+                      <th>accepted</th>
+                      <th>update rounds</th>
+                      <th>delta norm</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fl-client-validation-table"></tbody>
+                </table>
+              </div>
             </article>
 
             <article class="card">
               <div class="card-header">
                 <div>
-                  <p class="eyebrow">Boundary</p>
-                  <h3>이 화면에서 볼 지표</h3>
+                  <p class="eyebrow">Client Round Updates</p>
+                  <h3>Local Update Health</h3>
+                </div>
+                <div class="card-controls">
+                  <label>
+                    Run
+                    <select id="fl-client-round-run-filter"></select>
+                  </label>
+                  <label>
+                    Round
+                    <select id="fl-client-round-filter"></select>
+                  </label>
                 </div>
               </div>
-              <div class="metric-note-grid">
-                <article>
-                  <strong>Primary</strong>
-                  <span>macro_f1, worst_client_macro_f1</span>
-                </article>
-                <article>
-                  <strong>Risk</strong>
-                  <span>ECE, per-client variance</span>
-                </article>
-                <article>
-                  <strong>Cost</strong>
-                  <span>communication update count</span>
-                </article>
-                <article>
-                  <strong>Runtime</strong>
-                  <span>completed rounds, client updates</span>
-                </article>
+              <p class="fl-tab-note">
+                이 표는 round별 local update 통계다. per-client accuracy는 현재 report가
+                final client validation으로만 제공한다.
+              </p>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>client</th>
+                      <th>candidate</th>
+                      <th>accepted</th>
+                      <th>ratio</th>
+                      <th>update</th>
+                      <th>delta norm</th>
+                      <th>payload</th>
+                      <th>seconds</th>
+                      <th>pseudo acc</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fl-client-round-table"></tbody>
+                </table>
               </div>
             </article>
           </section>
 
-          <section class="card">
-            <div class="card-header">
-              <div>
-                <p class="eyebrow">Next Export Contract</p>
-                <h3>FL SSL result index 연결 상태</h3>
+          <section class="tab-panel" data-fl-panel="splits">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Client Split</p>
+                  <h3>Non-IID Label Shape</h3>
+                </div>
+                <div class="card-controls single">
+                  <label>
+                    Run
+                    <select id="fl-split-run-filter"></select>
+                  </label>
+                </div>
               </div>
-            </div>
-            <p class="empty">
-              현재 정적 bundle에 FL SSL 전용 row가 없으면 이 화면은 준비 상태만
-              보여준다. 다음 단계는 `fl_ssl_main_comparison.report.json`을 result
-              index의 별도 FL table/view-model로 export하는 것이다.
-            </p>
-            <pre class="command-block">uv run python -m scripts.experiments.result_index.ingest \
-  --runs-root runs \
-  --db data/processed/experiment_index/experiment_results.sqlite \
-  --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json</pre>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>client</th>
+                      <th>labeled</th>
+                      <th>unlabeled</th>
+                      <th>labeled dist</th>
+                      <th>unlabeled dist</th>
+                      <th>combined dist</th>
+                    </tr>
+                  </thead>
+                  <tbody id="fl-split-table"></tbody>
+                </table>
+              </div>
+            </article>
           </section>
         </section>
       </main>

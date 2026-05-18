@@ -9,6 +9,10 @@ import sqlite3
 from pathlib import Path
 from typing import Any
 
+from scripts.experiments.result_index.fl_ssl_dashboard_export import (
+    build_fl_ssl_dashboard_views,
+)
+
 DEFAULT_DB_PATH = Path("data/processed/experiment_index/experiment_results.sqlite")
 DEFAULT_OUTPUT_PATH = Path("apps/experiment_dashboard/data/experiment_dashboard.json")
 
@@ -52,7 +56,7 @@ def build_dashboard_bundle(
         artifacts=artifacts,
         artifact_output_dir=artifact_output_dir,
     )
-    fl_ssl_runs = _build_fl_ssl_runs(
+    fl_ssl_views = build_fl_ssl_dashboard_views(
         runs=runs,
         eval_metrics=eval_metrics,
         artifacts=artifacts,
@@ -72,7 +76,7 @@ def build_dashboard_bundle(
         "epoch_metrics": epoch_metrics,
         "epoch_per_class_metrics": epoch_per_class_metrics,
         "projection_images": projection_images,
-        "fl_ssl_runs": fl_ssl_runs,
+        **fl_ssl_views,
     }
 
 
@@ -141,128 +145,6 @@ def _build_projection_images(
             }
         )
     return images
-
-
-def _build_fl_ssl_runs(
-    *,
-    runs: list[dict[str, Any]],
-    eval_metrics: list[dict[str, Any]],
-    artifacts: list[dict[str, Any]],
-) -> list[dict[str, Any]]:
-    eval_by_run = _group_eval_metrics(eval_metrics)
-    report_artifacts = {
-        str(artifact["run_id"]): artifact
-        for artifact in artifacts
-        if artifact.get("artifact_kind") == "fl_ssl_report"
-    }
-    rows: list[dict[str, Any]] = []
-    for run in runs:
-        if not _is_fl_ssl_track(run.get("track")):
-            continue
-        run_id = str(run["run_id"])
-        report_artifact = report_artifacts.get(run_id)
-        report_payload = _read_json_object(
-            Path(str(report_artifact["artifact_ref"]))
-            if report_artifact is not None
-            else None
-        )
-        metrics = _as_mapping(report_payload.get("metrics"))
-        primary = _as_mapping(metrics.get("primary"))
-        secondary = _as_mapping(metrics.get("secondary"))
-        client_validation = _as_mapping(metrics.get("client_validation"))
-        diagnostics = _as_mapping(report_payload.get("diagnostics"))
-        run_eval_metrics = eval_by_run.get(run_id, {})
-        initial_validation = run_eval_metrics.get("initial_validation", {})
-        final_validation = run_eval_metrics.get("final_validation", {})
-
-        rows.append(
-            {
-                **run,
-                "report_path": (
-                    str(report_artifact["artifact_ref"])
-                    if report_artifact is not None
-                    else None
-                ),
-                "initial_macro_f1": initial_validation.get("macro_f1"),
-                "initial_loss": initial_validation.get("loss"),
-                "initial_expected_calibration_error": initial_validation.get(
-                    "expected_calibration_error"
-                ),
-                "final_macro_f1": final_validation.get("macro_f1"),
-                "final_loss": final_validation.get("loss"),
-                "final_accuracy_top_1": final_validation.get("accuracy_top_1"),
-                "final_expected_calibration_error": final_validation.get(
-                    "expected_calibration_error"
-                ),
-                "macro_f1": _first_present(
-                    primary.get("macro_f1"),
-                    final_validation.get("macro_f1"),
-                ),
-                "loss": _first_present(
-                    secondary.get("loss"),
-                    final_validation.get("loss"),
-                ),
-                "expected_calibration_error": _first_present(
-                    secondary.get("expected_calibration_error"),
-                    final_validation.get("expected_calibration_error"),
-                ),
-                "worst_client_macro_f1": _first_present(
-                    primary.get("worst_client_macro_f1"),
-                    client_validation.get("worst_client_macro_f1"),
-                ),
-                "best_client_macro_f1": client_validation.get("best_client_macro_f1"),
-                "macro_f1_std": client_validation.get("macro_f1_std"),
-                "loss_std": client_validation.get("loss_std"),
-                "fairness_gap": client_validation.get("fairness_gap"),
-                "evaluated_client_count": client_validation.get(
-                    "evaluated_client_count"
-                ),
-                "per_client_macro_f1_variance": secondary.get(
-                    "per_client_macro_f1_variance"
-                ),
-                "communication_cost": _first_present(
-                    secondary.get("communication_cost"),
-                    diagnostics.get("communication_cost"),
-                ),
-            }
-        )
-    return rows
-
-
-def _group_eval_metrics(
-    eval_metrics: list[dict[str, Any]],
-) -> dict[str, dict[str, dict[str, Any]]]:
-    grouped: dict[str, dict[str, dict[str, Any]]] = {}
-    for metric in eval_metrics:
-        run_id = str(metric.get("run_id"))
-        eval_set = str(metric.get("eval_set"))
-        grouped.setdefault(run_id, {})[eval_set] = metric
-    return grouped
-
-
-def _read_json_object(path: Path | None) -> dict[str, Any]:
-    if path is None:
-        return {}
-    try:
-        payload = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError):
-        return {}
-    return _as_mapping(payload)
-
-
-def _as_mapping(value: Any) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
-
-
-def _first_present(*values: Any) -> Any:
-    for value in values:
-        if value is not None:
-            return value
-    return None
-
-
-def _is_fl_ssl_track(track: Any) -> bool:
-    return str(track or "").startswith("fl_ssl")
 
 
 def _build_filters(

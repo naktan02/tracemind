@@ -211,6 +211,22 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["fl_ssl_runs"][0]["communication_cost"]["value"] == 500
     assert bundle["fl_ssl_runs"][0]["per_client_macro_f1_variance"] == 0.02
     assert bundle["fl_ssl_runs"][0]["macro_f1_std"] == 0.1
+    assert [row["round_index"] for row in bundle["fl_ssl_rounds"]] == [0, 1, 2]
+    assert bundle["fl_ssl_rounds"][1]["round_id"] == "round_0001"
+    assert bundle["fl_ssl_rounds"][1]["update_count"] == 10
+    assert bundle["fl_ssl_rounds"][2]["macro_f1_delta_from_initial"] == 0.08
+    assert len(bundle["fl_ssl_client_rounds"]) == 2
+    assert bundle["fl_ssl_client_rounds"][0]["client_id"] == "agent_01"
+    assert bundle["fl_ssl_client_rounds"][0]["accepted_count"] == 7
+    assert bundle["fl_ssl_client_rounds"][1]["delta_l2_norm"] == 1.25
+    assert bundle["fl_ssl_client_validations"][0]["client_id"] == "agent_01"
+    assert bundle["fl_ssl_client_validations"][0]["client_validation_macro_f1"] == 0.41
+    assert bundle["fl_ssl_client_splits"][0]["source"] == "client_validation"
+    assert bundle["fl_ssl_client_splits"][0]["labeled_count"] == 8
+    assert bundle["fl_ssl_client_splits"][0]["label_distribution"] == {
+        "anxiety": 8,
+        "normal": 12,
+    }
 
 
 def _write_report(tmp_path: Path) -> Path:
@@ -484,6 +500,26 @@ def _sample_fl_ssl_report() -> dict:
             },
         },
     }
+    initial_validation_report = {
+        **validation_report,
+        "loss": 0.6,
+        "accuracy_top_1": 0.7,
+        "macro_f1": 0.7,
+        "expected_calibration_error": 0.2,
+        "accepted_ratio": 0.4,
+    }
+    round_1_validation_report = {
+        **validation_report,
+        "loss": 0.55,
+        "accuracy_top_1": 0.72,
+        "macro_f1": 0.74,
+        "expected_calibration_error": 0.16,
+        "accepted_ratio": 0.45,
+    }
+    round_2_validation_report = {
+        **validation_report,
+        "accepted_ratio": 0.5,
+    }
     return {
         "schema_version": "federated_simulation_report.v1",
         "track": "fl_ssl_main_comparison",
@@ -556,8 +592,100 @@ def _sample_fl_ssl_report() -> dict:
                 "device": "cuda",
             },
         },
+        "rounds": [
+            {
+                "round_id": "round_0001",
+                "round_index": 1,
+                "update_count": 10,
+                "total_payload_bytes": 1000,
+                "round_time_seconds": 12.5,
+                "validation": round_1_validation_report,
+                "global_validation": round_1_validation_report,
+                "delta_from_initial": {
+                    "loss_delta": -0.05,
+                    "macro_f1_delta": 0.04,
+                    "accuracy_top_1_delta": 0.02,
+                    "expected_calibration_error_delta": -0.04,
+                    "accepted_ratio_delta": 0.05,
+                },
+                "delta_from_previous_round": {
+                    "loss_delta": -0.05,
+                    "macro_f1_delta": 0.04,
+                    "accuracy_top_1_delta": 0.02,
+                    "expected_calibration_error_delta": -0.04,
+                    "accepted_ratio_delta": 0.05,
+                },
+                "clients": [
+                    {
+                        "client_id": "agent_01",
+                        "candidate_count": 12,
+                        "accepted_count": 7,
+                        "accepted_ratio": 0.5833333333,
+                        "update_generated": True,
+                        "aggregation_example_count": 20,
+                        "delta_l2_norm": 1.1,
+                        "client_train_time_seconds": 1.5,
+                        "client_payload_bytes": 512,
+                        "candidate_confidence_mean": 0.7,
+                        "candidate_margin_mean": 0.2,
+                        "pseudo_label_confidence_mean": 0.71,
+                        "pseudo_label_margin_mean": 0.21,
+                        "pseudo_label_accuracy": None,
+                        "pseudo_label_correct_count": 0,
+                        "pseudo_label_evaluated_count": 0,
+                        "accepted_label_distribution": {"anxiety": 3, "normal": 4},
+                        "rejected_label_distribution": {"normal": 5},
+                    }
+                ],
+            },
+            {
+                "round_id": "round_0002",
+                "round_index": 2,
+                "update_count": 10,
+                "total_payload_bytes": 1100,
+                "round_time_seconds": 13.5,
+                "validation": round_2_validation_report,
+                "global_validation": round_2_validation_report,
+                "delta_from_initial": {
+                    "loss_delta": -0.1,
+                    "macro_f1_delta": 0.08,
+                    "accuracy_top_1_delta": 0.05,
+                    "expected_calibration_error_delta": -0.08,
+                    "accepted_ratio_delta": 0.1,
+                },
+                "delta_from_previous_round": {
+                    "loss_delta": -0.05,
+                    "macro_f1_delta": 0.04,
+                    "accuracy_top_1_delta": 0.03,
+                    "expected_calibration_error_delta": -0.04,
+                    "accepted_ratio_delta": 0.05,
+                },
+                "clients": [
+                    {
+                        "client_id": "agent_01",
+                        "candidate_count": 12,
+                        "accepted_count": 8,
+                        "accepted_ratio": 0.6666666667,
+                        "update_generated": True,
+                        "aggregation_example_count": 20,
+                        "delta_l2_norm": 1.25,
+                        "client_train_time_seconds": 1.6,
+                        "client_payload_bytes": 520,
+                        "candidate_confidence_mean": 0.72,
+                        "candidate_margin_mean": 0.22,
+                        "pseudo_label_confidence_mean": 0.73,
+                        "pseudo_label_margin_mean": 0.23,
+                        "pseudo_label_accuracy": None,
+                        "pseudo_label_correct_count": 0,
+                        "pseudo_label_evaluated_count": 0,
+                        "accepted_label_distribution": {"anxiety": 4, "normal": 4},
+                        "rejected_label_distribution": {"normal": 4},
+                    }
+                ],
+            },
+        ],
         "metrics": {
-            "initial_validation": validation_report,
+            "initial_validation": initial_validation_report,
             "final_validation": validation_report,
             "primary": {
                 "macro_f1": 0.78,
@@ -579,7 +707,76 @@ def _sample_fl_ssl_report() -> dict:
                 "macro_f1_std": 0.1,
                 "loss_std": 0.2,
                 "fairness_gap": 0.5,
-                "clients": [],
+                "clients": [
+                    {
+                        "client_id": "agent_01",
+                        "client_train_size": 20,
+                        "client_labeled_count": 8,
+                        "client_unlabeled_count": 12,
+                        "client_label_distribution": {
+                            "anxiety": 8,
+                            "normal": 12,
+                        },
+                        "client_candidate_count": 24,
+                        "client_accepted_count": 15,
+                        "client_accepted_ratio": 0.625,
+                        "aggregation_example_count": 40,
+                        "client_payload_bytes": 1032,
+                        "client_update_generated": True,
+                        "latest_round_id": "round_0002",
+                        "latest_update_generated": True,
+                        "update_generated_round_count": 2,
+                        "client_delta_l2_norm": 1.25,
+                        "mean_delta_l2_norm": 1.175,
+                        "max_delta_l2_norm": 1.25,
+                        "update_norm_variance": 0.005,
+                        "client_train_time_seconds": 3.1,
+                        "mean_client_train_time_seconds": 1.55,
+                        "pseudo_label_accuracy": None,
+                        "client_validation_loss": 0.9,
+                        "client_validation_macro_f1": 0.41,
+                        "client_validation_ece": 0.3,
+                        "validation": {
+                            **validation_report,
+                            "rows_total": 20,
+                            "loss": 0.9,
+                            "accuracy_top_1": 0.5,
+                            "macro_f1": 0.41,
+                            "expected_calibration_error": 0.3,
+                        },
+                    }
+                ],
+            },
+            "round_progression": {
+                "validation_curve": [
+                    {
+                        "round_id": "initial",
+                        "round_index": 0,
+                        "macro_f1": 0.7,
+                        "loss": 0.6,
+                        "expected_calibration_error": 0.2,
+                        "accepted_ratio": 0.4,
+                        "accuracy_top_1": 0.7,
+                    },
+                    {
+                        "round_id": "round_0001",
+                        "round_index": 1,
+                        "macro_f1": 0.74,
+                        "loss": 0.55,
+                        "expected_calibration_error": 0.16,
+                        "accepted_ratio": 0.45,
+                        "accuracy_top_1": 0.72,
+                    },
+                    {
+                        "round_id": "round_0002",
+                        "round_index": 2,
+                        "macro_f1": 0.78,
+                        "loss": 0.5,
+                        "expected_calibration_error": 0.12,
+                        "accepted_ratio": 0.5,
+                        "accuracy_top_1": 0.75,
+                    },
+                ],
             },
         },
     }
