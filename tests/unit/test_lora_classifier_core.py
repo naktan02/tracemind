@@ -8,18 +8,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.training import (
+from methods.adaptation.lora_classifier.training.loops import (
     evaluate_classifier,
     train_classifier,
     train_query_ssl_classifier,
 )
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
-from methods.adaptation.query_classifier_adaptation import (
-    modeling as legacy_modeling,
-)
-from methods.adaptation.query_classifier_adaptation import (
-    training as legacy_training,
-)
 
 
 class _TinyBackbone(nn.Module):
@@ -238,6 +232,10 @@ def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
     assert len(resumed_history) == 3
 
 
-def test_query_classifier_adaptation_paths_remain_compatibility_shims() -> None:
-    assert legacy_modeling.LoraTextClassifier is LoraTextClassifier
-    assert legacy_training.train_classifier is train_classifier
+def test_query_classifier_adaptation_paths_do_not_keep_compatibility_shims() -> None:
+    from pathlib import Path
+
+    package_root = Path("methods/adaptation/query_classifier_adaptation")
+
+    assert not (package_root / "modeling.py").exists()
+    assert not (package_root / "training.py").exists()

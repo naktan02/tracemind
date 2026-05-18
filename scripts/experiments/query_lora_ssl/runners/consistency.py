@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.lora_classifier.training import (
+from methods.adaptation.lora_classifier.training.loops import (
     train_query_ssl_classifier as train_query_ssl_lora_classifier,
 )
 from methods.adaptation.query_classifier_adaptation.data import (

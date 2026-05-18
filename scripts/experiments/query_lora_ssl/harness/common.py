@@ -10,10 +10,10 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.lora_classifier.training import (
+from methods.adaptation.lora_classifier.training.loops import (
     evaluate_classifier as evaluate_query_lora_classifier,
 )
-from methods.adaptation.lora_classifier.training import (
+from methods.adaptation.lora_classifier.training.loops import (
     set_seed as set_query_lora_seed,
 )
 from methods.adaptation.lora_classifier.training.modeling import (

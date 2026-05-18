@@ -1,15 +1,13 @@
 # Query Classifier Adaptation
 
-이 패키지는 query-domain classifier adaptation method scaffold의 데이터 로더와
-기존 import compatibility shim을 소유한다. frozen text backbone에 PEFT adapter와
-classifier head를 얹는 재사용 scaffold는
-`methods/adaptation/lora_classifier/`로 승격했다.
+이 패키지는 query-domain classifier adaptation method scaffold의 token-batch 입력
+glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를 얹는
+재사용 scaffold는 `methods/adaptation/lora_classifier/`가 소유한다.
 
 범위:
 
 - `data.py`: labeled row와 weak/strong row를 tokenizer batch로 바꾸는 입력 glue
-- `modeling.py`: `methods/adaptation/lora_classifier/modeling.py` compatibility shim
-- `training.py`: `methods/adaptation/lora_classifier/training.py` compatibility shim
+- `view_rows.py`: weak/original/strong view row 해석과 validation helper
 
 범위 밖:
 

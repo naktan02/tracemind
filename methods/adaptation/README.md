@@ -22,7 +22,7 @@ method-specific 파일을 만들지 않는다.
 - `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
   재사용 scaffold
 - `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의
-  token-batch 입력 glue와 기존 import compatibility shim
+  token-batch 입력 glue와 weak/strong view row 해석 helper
 
 rank, alpha, target module 같은 실행 파라미터는 code folder가 아니라 config에서
 선택한다.
