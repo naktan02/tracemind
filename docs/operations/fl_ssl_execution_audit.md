@@ -44,6 +44,7 @@ report/summary를 검증했다.
 - FedMatch/FedLGMatch/(FL)^2 중 첫 구현 method 선택.
   현재 추천 선택지는 FedMatch이며, 기본 시작점은 `lora_classifier` payload family 유지,
   custom round-state exchange 없음, FedAvg server policy 유지다.
+  2026-05-18 사용자 응답으로 첫 method 선택은 아직 확정하지 않는다.
 
 ## Prompt-To-Artifact Checklist
 
@@ -111,7 +112,8 @@ Result index read-only ingest:
 ## Next Gate
 
 다음 실행성 작업은 현재 사용자 결정에 따라 진행하지 않는다. 구현성 작업의 다음
-게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이다.
+게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이지만, 2026-05-18
+사용자 응답으로 이 선택은 아직 보류한다.
 `docs/contracts/fl_ssl_method_capability_matrix.md`와
 `methods/federated_ssl/NEW_METHOD.md`는 이미 선택 전/선택 후 경계를 나눠 둔 상태다.
 현재 권장 첫 후보는 payload family를 바꾸지 않는 FedMatch method-owned local

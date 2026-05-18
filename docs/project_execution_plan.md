@@ -226,6 +226,7 @@ Runtime translation:
    round-state exchange/server policy capability를 먼저 문서화한다.
    선택 전 capability matrix는 `docs/contracts/fl_ssl_method_capability_matrix.md`에
    있으며, 현재 구현 순서 추천은 FedMatch -> FedLGMatch -> (FL)^2다.
+   2026-05-18 사용자 응답으로 첫 method 선택은 아직 보류한다.
 2. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
    capability adapter, test 순서로 추가한다.
 3. 확정 method는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로

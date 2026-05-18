@@ -64,6 +64,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [x] incompatible method/profile/runtime 조합은 simulation bootstrap 전에
   compatibility validator에서 실패한다.
 - [ ] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
+  2026-05-18 사용자 응답으로 이 선택은 아직 보류한다.
 - [ ] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
   먼저 문서화한다.
 - [x] 선택 전 capability matrix는
