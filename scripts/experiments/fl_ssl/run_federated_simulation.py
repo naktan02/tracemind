@@ -20,7 +20,6 @@ from methods.federated_ssl.local_update_profile import (
     require_training_objective_matches_local_update_profile,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest import (
     LoadedFlClientSplit,
     load_materialized_client_split,
@@ -46,6 +45,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
+from scripts.experiments.fl_ssl.run_layout import build_fl_ssl_run_dir
 from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
@@ -434,10 +434,10 @@ def main(cfg: DictConfig) -> None:
     )
     created_at = datetime.now(timezone.utc)
     run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
-    output_dir = build_run_dir(
+    output_dir = build_fl_ssl_run_dir(
         cfg.federated_run_budget.output_dir,
+        cfg=cfg,
         run_id=run_id,
-        created_at=created_at,
     )
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
     result = run_simulation_request(

@@ -557,18 +557,16 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective["query_ssl.strong_view_policy"] == "first_aug"
     assert cfg.validation.confidence_threshold == 0.6
     assert cfg.validation.margin_threshold == 0.02
-    assert cfg.federated_run_budget.output_dir == "runs/federated_simulation_smoke"
+    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl/single/smoke"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.local_files_only is True
     assert cfg.fl_data.source_mode == "runtime_split_from_train"
     assert cfg.fl_data.split_manifest is None
-    assert cfg.seed_sweep.output_dir == "runs/federated_simulation_seed_sweep"
+    assert cfg.seed_sweep.output_dir == "runs/fl_ssl/sweeps/seed"
     assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
-    assert cfg.client_count_sweep.output_dir == (
-        "runs/federated_simulation_client_count_sweep"
-    )
+    assert cfg.client_count_sweep.output_dir == ("runs/fl_ssl/sweeps/client_count")
     assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
     assert cfg.client_count_sweep.split_manifest_by_client_count is None
     assert cfg.run_safety.max_total_rounds_without_ack == 49
@@ -826,7 +824,7 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
     assert cfg.federated_run_budget.name == "main"
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.federated_run_budget.client_count == 8
-    assert cfg.federated_run_budget.output_dir == "runs/federated_simulation"
+    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl/single/main"
     assert cfg.prototype_builder.name == "kmeans"
     assert list(cfg.prototype_builder.candidate_ks) == [2]
 

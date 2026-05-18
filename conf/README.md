@@ -101,6 +101,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `run_controls/fl_ssl/budget`
   - client 수, round budget, output dir 같은 FL SSL 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
+  - `output_dir`는 root만 지정하고, runner가
+    `<split_slug>/<method_composition_slug>/<run_id>`를 뒤에 붙인다.
+    신규 FL SSL 실행 root는 `runs/fl_ssl/...` 아래에 둔다.
 - `run_controls/central_ssl/budget`
   - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
 - `training_task.local_epochs`, `training_task.batch_size`,
@@ -115,11 +118,13 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.
+  - sweep root도 단일 실행과 같은 split/method-composition 계층을 따른다.
 - `client_count_sweep`
   - FL SSL client-count sweep runner가 순회할 client 수 목록과 sweep output root를
     소유한다.
   - method semantics, shard policy, local update profile은 기존 FL config 축을
     그대로 쓰고 client 수만 바꾼다.
+  - 각 child run은 sweep root 아래 `clients_<NN>`로 분리한다.
 - `run_safety`
   - FL SSL runner가 시작 전에 확인하는 accidental long-run guard다.
   - 단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로 총

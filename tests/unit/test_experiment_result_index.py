@@ -125,6 +125,28 @@ def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     assert discover_report_paths(tmp_path / "runs") == [fl_report, central_report]
 
 
+def test_result_index_prefers_fl_ssl_hardlink_mirror(
+    tmp_path: Path,
+) -> None:
+    legacy_report = _write_fl_ssl_report(tmp_path)
+    mirrored_report = (
+        tmp_path
+        / "runs"
+        / "fl_ssl"
+        / "legacy"
+        / "evidence"
+        / "main"
+        / "fixmatch_lora_alpha03_10c_50round_20260518"
+        / "20260517T150549Z"
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    mirrored_report.parent.mkdir(parents=True, exist_ok=True)
+    mirrored_report.hardlink_to(legacy_report)
+
+    assert discover_report_paths(tmp_path / "runs") == [mirrored_report]
+
+
 def test_load_result_index_records_keeps_client_count_sweep_slug(
     tmp_path: Path,
 ) -> None:
@@ -134,6 +156,19 @@ def test_load_result_index_records_keeps_client_count_sweep_slug(
 
     assert records.run.run_id == (
         "fixmatch_lora_alpha03_1round_20260518__20260517T193320Z__clients_03"
+    )
+
+
+def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_new_layout_fl_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.run_id == (
+        "single__main__runtime_split_seed42_clients10_dirichlet_label_skew_alpha0p3__"
+        "fixmatch_usb_v1_lora_classifier_fedavg_manual__20260518T010203Z"
     )
 
 
@@ -219,6 +254,27 @@ def _write_fl_ssl_sweep_report(tmp_path: Path, *, client_slug: str) -> Path:
         / "fixmatch_lora_alpha03_1round_20260518"
         / "20260517T193320Z"
         / client_slug
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(_sample_fl_ssl_report(), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "fl_ssl"
+        / "single"
+        / "main"
+        / "runtime_split_seed42_clients10_dirichlet_label_skew_alpha0p3"
+        / "fixmatch_usb_v1_lora_classifier_fedavg_manual"
+        / "20260518T010203Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"
     )

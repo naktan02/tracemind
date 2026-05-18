@@ -207,7 +207,7 @@ Raw Event / Local Signal
 | `data/artifacts/` | 새 model/prototype/adapter artifact | ignore |
 | `data/cache/` | 새 model/translation/query cache | ignore |
 | `data/processed/` | legacy dataset/model artifact | ignore |
-| `runs/` | 실험 1회 실행 결과와 report | ignore |
+| `runs/` | 실험 1회 실행 결과와 report. 신규 FL SSL은 `runs/fl_ssl/...` 계층을 쓴다 | ignore |
 | `agent/state/` | 로컬 agent runtime state | ignore |
 | `main_server/state/` | server runtime state와 publication artifact | ignore |
 | `hf_cache/` | legacy Hugging Face/model cache | ignore |

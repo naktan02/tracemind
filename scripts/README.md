@@ -195,6 +195,15 @@ communication round를 기본 차단한다. 총 예정 round는 단일 simulatio
 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`다. 장시간 실행을
 명시 승인받은 경우에만 아래 override를 함께 붙인다.
 
+신규 FL SSL 산출물은 root에 수평으로 쌓지 않고 아래 계층으로 저장한다. 기존
+`runs/federated_simulation*` 산출물은 read-only evidence이며,
+`runs/fl_ssl/legacy/...` hardlink mirror로도 조회할 수 있다.
+
+```text
+runs/fl_ssl/<single-or-sweeps>/<budget-or-sweep-kind>/<split_slug>/<method_composition_slug>/<run_id>/
+runs/fl_ssl/legacy/<evidence-or-sweeps-or-smoke-or-incomplete>/...
+```
+
 ```bash
 run_safety.allow_long_run=true \
 run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN
@@ -316,7 +325,8 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
 - `data/artifacts/`: 새 model/prototype/adapter artifact.
 - `data/cache/`: 새 model/translation/query cache.
 - `data/processed/`: legacy dataset/model/prototype artifact.
-- `runs/<job>/<run_id>/`: 실험 1회 실행 결과, report, dump.
+- `runs/fl_ssl/...`: 신규 FL SSL 실행 결과, report, dump.
+- `runs/<job>/<run_id>/`: 중앙 control과 legacy 실행 결과.
 - `agent/state/`: agent runtime state.
 - `main_server/state/`: server runtime state와 publication artifact.
 

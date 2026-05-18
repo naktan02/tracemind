@@ -10,7 +10,6 @@ from pathlib import Path
 import hydra
 from omegaconf import DictConfig, OmegaConf
 
-from scripts.artifacts.run_artifacts import build_run_dir
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import mean
 from scripts.experiments.fl_ssl.federated_simulation.io.sweep_summary import (
     build_sweep_run_payload,
@@ -27,6 +26,7 @@ from scripts.experiments.fl_ssl.run_federated_simulation import (
     build_simulation_request_from_config,
     render_simulation_result_lines,
 )
+from scripts.experiments.fl_ssl.run_layout import build_fl_ssl_run_dir
 from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 
 SUMMARY_SCHEMA_VERSION = "fl_ssl_client_count_sweep_summary.v1"
@@ -106,10 +106,10 @@ def run_client_count_sweep_from_config(
 
     effective_created_at = created_at or datetime.now(timezone.utc)
     run_id = effective_created_at.strftime("%Y%m%dT%H%M%SZ")
-    output_dir = build_run_dir(
+    output_dir = build_fl_ssl_run_dir(
         cfg.client_count_sweep.output_dir,
+        cfg=cfg,
         run_id=run_id,
-        created_at=effective_created_at,
     )
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 

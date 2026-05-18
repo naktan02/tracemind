@@ -1,7 +1,7 @@
 # @package federated_run_budget
 
 name: main
-output_dir: runs/federated_simulation
+output_dir: runs/fl_ssl/single/main
 client_count: 10
 rounds: 50
 bootstrap_ratio: 0.2

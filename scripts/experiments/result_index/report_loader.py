@@ -29,13 +29,40 @@ def discover_report_paths(runs_root: Path) -> list[Path]:
     if runs_root.is_file():
         return [runs_root]
     report_names = {"report.json", "fl_ssl_main_comparison.report.json"}
-    return sorted(
+    report_paths = sorted(
         path
         for path in runs_root.rglob("*.json")
         if path.is_file()
         and path.parent.name == "reports"
         and path.name in report_names
     )
+    return _deduplicate_hardlinked_report_paths(report_paths)
+
+
+def _deduplicate_hardlinked_report_paths(report_paths: list[Path]) -> list[Path]:
+    """같은 artifact가 legacy mirror에 있으면 canonical `fl_ssl` 경로를 우선한다."""
+
+    selected: dict[tuple[object, ...], Path] = {}
+    for path in report_paths:
+        identity = _report_file_identity(path)
+        previous = selected.get(identity)
+        if previous is None or _report_path_preference(path) < (
+            _report_path_preference(previous)
+        ):
+            selected[identity] = path
+    return sorted(selected.values())
+
+
+def _report_file_identity(path: Path) -> tuple[object, ...]:
+    try:
+        stat_result = path.stat()
+    except OSError:
+        return ("path", str(path))
+    return ("inode", stat_result.st_dev, stat_result.st_ino)
+
+
+def _report_path_preference(path: Path) -> int:
+    return 0 if "fl_ssl" in path.parts else 1
 
 
 def load_result_index_records(report_path: Path) -> ResultIndexRecords:
@@ -572,6 +599,10 @@ def _is_fl_ssl_report(payload: dict[str, Any]) -> bool:
 
 
 def _infer_fl_ssl_run_id(report_path: Path) -> str:
+    layout_parts = _fl_ssl_layout_parts(report_path)
+    if layout_parts:
+        return "__".join(layout_parts)
+
     run_dir = report_path.parent.parent
     if run_dir.name.startswith("clients_"):
         run_timestamp_dir = run_dir.parent
@@ -582,6 +613,17 @@ def _infer_fl_ssl_run_id(report_path: Path) -> str:
     if run_group:
         return f"{run_group}__{run_dir.name}"
     return run_dir.name
+
+
+def _fl_ssl_layout_parts(report_path: Path) -> tuple[str, ...]:
+    parts = report_path.parts
+    if "fl_ssl" not in parts:
+        return ()
+    fl_ssl_index = parts.index("fl_ssl")
+    layout_parts = parts[fl_ssl_index + 1 :]
+    if len(layout_parts) < 3 or layout_parts[-2] != "reports":
+        return ()
+    return tuple(part for part in layout_parts[:-2] if part)
 
 
 def _infer_method_family(payload: dict[str, Any]) -> str:
