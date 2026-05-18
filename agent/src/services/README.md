@@ -140,9 +140,8 @@
   - prototype score 기반 single/multiview input view 계산 core
 - `training/backends/evidence/`
   - pseudo-label evidence 정규화 backend 구현
-- `training/backends/training/`
-  - methods-owned local update backend registry compatibility facade
-  - concrete backend 파일을 두지 않는다
+- local update backend registry는 `methods/adaptation/local_update_registry.py`가 소유한다
+  - `training/backends/training/` old path는 재도입하지 않는다
   - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core

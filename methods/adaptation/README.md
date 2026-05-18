@@ -2,10 +2,10 @@
 
 `methods/adaptation/`은 학습 adapter 적용 core를 둔다.
 
-local update backend의 concrete 구현은 `methods/adaptation/<family>/training_backend.py`
-에 둔다. `agent/src/services/training/backends/training/`은 compatibility facade만
-남기며, 새 adaptation family나 backend를 추가하기 위해 agent training 폴더에
-method-specific 파일을 만들지 않는다.
+local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 소유한다.
+새 adaptation family나 backend를 추가하기 위해
+`agent/src/services/training/backends/training/` compatibility path를 다시 만들지
+않는다.
 
 ## 하위 패키지 지도
 

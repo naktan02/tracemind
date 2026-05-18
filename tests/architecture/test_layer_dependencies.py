@@ -506,22 +506,15 @@ def test_local_training_service_uses_update_executor_not_concrete_backends() -> 
     )
 
 
-def test_agent_training_backend_package_is_registry_facade_only() -> None:
+def test_agent_training_backend_old_path_is_not_reintroduced() -> None:
     package_root = AGENT_SRC / "services" / "training" / "backends" / "training"
-    allowed_files = {
-        package_root / "__init__.py",
-        package_root / "registry.py",
-    }
     violations = [
-        _relative_repo_path(path)
-        for path in _iter_python_files(package_root)
-        if path not in allowed_files
+        _relative_repo_path(path) for path in _iter_python_files(package_root)
     ]
 
     assert not violations, (
-        "agent training backend package는 methods-owned local update backend registry "
-        "facade만 둔다. concrete local update backend는 "
-        "methods/adaptation/<family>/training_backend.py에 둔다.\n"
+        "agent training backend old path는 재도입하지 않는다. concrete local update "
+        "backend와 registry는 methods/adaptation/이 소유한다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
@@ -705,6 +698,23 @@ def test_fl_single_simulation_entrypoint_stays_thin() -> None:
         "맡는다. config-to-SimulationRunRequest 해석은 "
         "federated_simulation/config_request.py에 둔다.\n"
         f"violations={violations}"
+    )
+
+
+def test_fl_simulation_public_api_uses_typed_request_only() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "simulation.py"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert "def run_simulation(" not in source, (
+        "FL simulation public API는 typed SimulationRunRequest를 받는 "
+        "run_simulation_request만 둔다. 넓은 keyword wrapper는 caller가 전체 "
+        "조립 세부사항을 반복하게 하므로 재도입하지 않는다."
     )
 
 

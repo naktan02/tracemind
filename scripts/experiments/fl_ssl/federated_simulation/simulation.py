@@ -2,10 +2,8 @@
 
 from __future__ import annotations
 
-from pathlib import Path
 from typing import Any
 
-from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
@@ -16,7 +14,6 @@ from methods.federated_ssl.execution_plan import (
     FederatedSslExecutionPlan,
     build_federated_ssl_execution_plan,
 )
-from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     runtime_compatibility,
 )
@@ -35,14 +32,8 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     run_one_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
-    FederatedClientPoolSplitConfig,
-    FederatedDiagnosticsConfig,
-    FederatedPrototypeRebuildConfig,
     FederatedQuerySslObjectiveConfig,
-    FederatedReportConfig,
-    FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
-    FederatedValidationConfig,
     SimulationResult,
     SimulationRoundSummary,
     SimulationRunRequest,
@@ -50,61 +41,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_federated_training_backend_adapter_kind,
 )
-from scripts.runtime_adapters.federated_server.task_config_surface import (
-    FederatedTrainingTaskConfig,
-)
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
-
-
-def run_simulation(
-    *,
-    train_rows: list[LabeledQueryRow],
-    validation_rows: list[LabeledQueryRow],
-    output_dir: Path,
-    client_count: int,
-    rounds: int,
-    bootstrap_ratio: float,
-    seed: int,
-    embedding_spec: EmbeddingAdapterSpec,
-    model_id: str,
-    training_scope: str,
-    round_runtime_config: FederatedRoundRuntimeConfig,
-    prototype_build_strategy: PrototypeBuildStrategy,
-    shard_policy: FederatedShardPolicyConfig,
-    training_task_config: FederatedTrainingTaskConfig,
-    validation_config: FederatedValidationConfig,
-    prototype_rebuild_config: FederatedPrototypeRebuildConfig,
-    diagnostics_config: FederatedDiagnosticsConfig,
-    ssl_method_config: FederatedSslMethodConfig | None = None,
-    client_pool_split_config: FederatedClientPoolSplitConfig | None = None,
-    report_config: FederatedReportConfig | None = None,
-) -> SimulationResult:
-    """bootstrap -> client pseudo-label -> aggregate -> republish 루프를 실행한다."""
-
-    request = SimulationRunRequest(
-        train_rows=train_rows,
-        validation_rows=validation_rows,
-        output_dir=output_dir,
-        client_count=client_count,
-        rounds=rounds,
-        bootstrap_ratio=bootstrap_ratio,
-        seed=seed,
-        embedding_spec=embedding_spec,
-        model_id=model_id,
-        training_scope=training_scope,
-        round_runtime_config=round_runtime_config,
-        prototype_build_strategy=prototype_build_strategy,
-        shard_policy=shard_policy,
-        training_task_config=training_task_config,
-        validation_config=validation_config,
-        prototype_rebuild_config=prototype_rebuild_config,
-        diagnostics_config=diagnostics_config,
-        ssl_method_config=ssl_method_config,
-        client_pool_split_config=client_pool_split_config,
-        report_config=report_config,
-    )
-    return run_simulation_request(request)
 
 
 def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:

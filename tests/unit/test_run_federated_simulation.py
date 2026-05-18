@@ -72,7 +72,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     _build_validated_ssl_runtime,
-    run_simulation,
     run_simulation_request,
 )
 from scripts.runtime_adapters.federated_agent import query_ssl_client_round
@@ -378,6 +377,95 @@ def _lora_runtime_config() -> FederatedLoraClassifierRuntimeConfig:
     )
 
 
+def _default_embedding_spec() -> EmbeddingAdapterSpec:
+    return EmbeddingAdapterSpec(
+        backend="hash_debug",
+        model_id="hash_debug",
+        revision="sim",
+        hash_dim=32,
+    )
+
+
+def _default_train_rows() -> list[dict[str, str]]:
+    return [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+    ]
+
+
+def _default_validation_rows() -> list[dict[str, str]]:
+    return [_row("va", "panic panic", "anxiety")]
+
+
+def _default_simulation_request(
+    tmp_path: Path,
+    *,
+    output_name: str = "simulation",
+    output_dir: Path | None = None,
+    train_rows: list[dict[str, str]] | None = None,
+    validation_rows: list[dict[str, str]] | None = None,
+    client_count: int = 2,
+    rounds: int = 0,
+    bootstrap_ratio: float = 0.5,
+    seed: int = 7,
+    model_id: str = "tracemind-embed-sim",
+    training_scope: str = "adapter_only",
+    round_runtime_config: FederatedRoundRuntimeConfig | None = None,
+    training_task_config: object | None = None,
+    validation_config: FederatedValidationConfig | None = None,
+    ssl_method_config: FederatedSslMethodConfig | None = None,
+    client_pool_split_config: FederatedClientPoolSplitConfig | None = None,
+    report_config: FederatedReportConfig | None = None,
+    shard_policy: FederatedShardPolicyConfig | None = None,
+    execution_plan=None,
+    query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None,
+    local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
+) -> SimulationRunRequest:
+    """테스트가 FL simulation 전체 조립 세부사항을 반복하지 않게 한다."""
+
+    return SimulationRunRequest(
+        train_rows=train_rows or _default_train_rows(),
+        validation_rows=validation_rows or _default_validation_rows(),
+        output_dir=output_dir or tmp_path / output_name,
+        client_count=client_count,
+        rounds=rounds,
+        bootstrap_ratio=bootstrap_ratio,
+        seed=seed,
+        embedding_spec=_default_embedding_spec(),
+        model_id=model_id,
+        training_scope=training_scope,
+        round_runtime_config=round_runtime_config or _default_round_runtime_config(),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=shard_policy or _default_shard_policy(),
+        training_task_config=training_task_config
+        or _default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+        ),
+        validation_config=validation_config
+        or _default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        ssl_method_config=ssl_method_config,
+        client_pool_split_config=(
+            client_pool_split_config or _default_client_pool_split_config()
+        ),
+        report_config=report_config,
+        execution_plan=execution_plan,
+        query_ssl_objective_config=query_ssl_objective_config,
+        local_trainer_runtime_config=(
+            local_trainer_runtime_config or FederatedLocalTrainerRuntimeConfig()
+        ),
+    )
+
+
 def _lora_objective_extras(
     *,
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -591,7 +679,8 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             self.accepted.append((round_id, update_envelope, update_payload))
 
     server_runtime = _ServerRuntime()
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
         train_rows=[labeled_row, unlabeled_row],
         validation_rows=[labeled_row],
         output_dir=tmp_path,
@@ -599,20 +688,11 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         rounds=1,
         bootstrap_ratio=0.0,
         seed=42,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -628,9 +708,6 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
             method_name="fixmatch_usb_v1",
             algorithm_name="fixmatch",
@@ -979,30 +1056,9 @@ def test_manual_execution_plan_rejects_round_state_metric_keys() -> None:
 def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
     tmp_path,
 ) -> None:
-    request = SimulationRunRequest(
-        train_rows=[
-            _row("a1", "panic panic", "anxiety"),
-            _row("a2", "panic panic", "anxiety"),
-            _row("n1", "calm calm", "normal"),
-            _row("n2", "calm calm", "normal"),
-        ],
-        validation_rows=[_row("va", "panic panic", "anxiety")],
-        output_dir=tmp_path / "task_type_mismatch",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="adapter_only",
-        round_runtime_config=_default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="task_type_mismatch",
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -1010,13 +1066,6 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
             gradient_clip_norm=1.0,
             task_type=TrainingTaskType.FEEDBACK_SUPERVISED,
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     with pytest.raises(ValueError, match="training_task_config.task_type"):
@@ -1038,46 +1087,19 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         security_policy=None,
         method_descriptor=None,
     )
-    request = SimulationRunRequest(
-        train_rows=[
-            _row("a1", "panic panic", "anxiety"),
-            _row("a2", "panic panic", "anxiety"),
-            _row("n1", "calm calm", "normal"),
-            _row("n2", "calm calm", "normal"),
-        ],
-        validation_rows=[_row("va", "panic panic", "anxiety")],
-        output_dir=tmp_path / "manual_plan_mismatch",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="adapter_only",
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="manual_plan_mismatch",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
         execution_plan=execution_plan,
     )
 
@@ -1207,31 +1229,18 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
             use_rslora=False,
         )
     )
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="lora_drift",
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
-        validation_rows=[_row("va", "panic panic", "anxiety")],
-        output_dir=tmp_path / "lora_drift",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=drifted_lora_runtime,
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -1241,13 +1250,6 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
             privacy_guard_name="noop",
             objective_extras=_lora_objective_extras(),
         ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     with pytest.raises(ValueError, match="LoRA-classifier.*training_task.objective"):
@@ -1269,28 +1271,16 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
         _row("va", "panic panic", "anxiety"),
         _row("vn", "calm calm", "normal"),
     ]
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="lora_simulation_request",
         train_rows=train_rows,
         validation_rows=validation_rows,
-        output_dir=tmp_path / "lora_simulation_request",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -1304,9 +1294,6 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     result = run_simulation_request(request)
@@ -1317,33 +1304,14 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
 
 
 def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
-    request = SimulationRunRequest(
-        train_rows=[
-            _row("a1", "panic panic", "anxiety"),
-            _row("a2", "panic panic", "anxiety"),
-            _row("n1", "calm calm", "normal"),
-            _row("n2", "calm calm", "normal"),
-        ],
-        validation_rows=[_row("va", "panic panic", "anxiety")],
-        output_dir=tmp_path / "lora_prototype_validation_rejected",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="lora_prototype_validation_rejected",
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -1357,9 +1325,6 @@ def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     with pytest.raises(ValueError, match="prototype/selection-only"):
@@ -1392,28 +1357,19 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         _row("vs", "die die", "suicidal"),
     ]
     output_dir = tmp_path / "lora_inline_round"
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="lora_inline_round",
         train_rows=train_rows,
         validation_rows=validation_rows,
-        output_dir=output_dir,
         client_count=4,
         rounds=2,
         bootstrap_ratio=1 / 3,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
@@ -1427,9 +1383,6 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     result = run_simulation_request(request)
@@ -1527,43 +1480,18 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
 def test_run_simulation_request_rejects_local_round_family_mismatch(
     tmp_path,
 ) -> None:
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="mismatch_simulation_request",
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
-        validation_rows=[_row("va", "panic panic", "anxiety")],
-        output_dir=tmp_path / "mismatch_simulation_request",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
         model_id="mxbai-lora-classifier",
-        training_scope="adapter_only",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
-        training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            max_examples=4,
-            gradient_clip_norm=1.0,
-        ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
     )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
@@ -1592,39 +1520,17 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         _row("vs", "die die", "suicidal"),
     ]
 
-    result = run_simulation(
-        train_rows=train_rows,
-        validation_rows=validation_rows,
-        output_dir=tmp_path / "simulation",
-        client_count=4,
-        rounds=1,
-        bootstrap_ratio=1 / 3,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="adapter_only",
-        round_runtime_config=_default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
-        training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            max_examples=4,
-            gradient_clip_norm=1.0,
-        ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
-        report_config=_default_report_config(),
+    result = run_simulation_request(
+        _default_simulation_request(
+            tmp_path,
+            train_rows=train_rows,
+            validation_rows=validation_rows,
+            output_dir=tmp_path / "simulation",
+            client_count=4,
+            rounds=1,
+            bootstrap_ratio=1 / 3,
+            report_config=_default_report_config(),
+        )
     )
 
     assert result.rounds
@@ -1774,38 +1680,11 @@ def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
         _row("vn", "calm calm", "normal"),
         _row("vs", "die die", "suicidal"),
     ]
-    request = SimulationRunRequest(
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="simulation_request",
         train_rows=train_rows,
         validation_rows=validation_rows,
-        output_dir=tmp_path / "simulation_request",
-        client_count=2,
-        rounds=0,
-        bootstrap_ratio=0.5,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="adapter_only",
-        round_runtime_config=_default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=_default_shard_policy(),
-        training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            max_examples=4,
-            gradient_clip_norm=1.0,
-        ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
     )
 
     result = run_simulation_request(request)
@@ -1839,46 +1718,35 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
         _row("vs", "die die", "suicidal"),
     ]
 
-    result = run_simulation(
-        train_rows=train_rows,
-        validation_rows=validation_rows,
-        output_dir=tmp_path / "simulation",
-        client_count=4,
-        rounds=1,
-        bootstrap_ratio=1 / 3,
-        seed=7,
-        embedding_spec=EmbeddingAdapterSpec(
-            backend="hash_debug",
-            model_id="hash_debug",
-            revision="sim",
-            hash_dim=32,
-        ),
-        model_id="tracemind-embed-sim",
-        training_scope="adapter_only",
-        round_runtime_config=_default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        shard_policy=FederatedShardPolicyConfig(
-            name="label_dominant",
-            dominant_ratio=0.5,
-            client_id_prefix="agent",
-        ),
-        training_task_config=_default_training_task_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            max_examples=4,
-            gradient_clip_norm=1.0,
-            score_policy_name="topk_mean_cosine",
-            score_top_k=1,
-        ),
-        validation_config=_default_validation_config(
-            confidence_threshold=0.0,
-            margin_threshold=0.0,
-            score_policy_name="topk_mean_cosine",
-            score_top_k=1,
-        ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
-        diagnostics_config=_default_diagnostics_config(),
-        client_pool_split_config=_default_client_pool_split_config(),
+    result = run_simulation_request(
+        _default_simulation_request(
+            tmp_path,
+            train_rows=train_rows,
+            validation_rows=validation_rows,
+            output_dir=tmp_path / "simulation",
+            client_count=4,
+            rounds=1,
+            bootstrap_ratio=1 / 3,
+            shard_policy=FederatedShardPolicyConfig(
+                name="label_dominant",
+                dominant_ratio=0.5,
+                client_id_prefix="agent",
+            ),
+            training_task_config=_default_training_task_config(
+                confidence_threshold=0.0,
+                margin_threshold=0.0,
+                max_examples=4,
+                gradient_clip_norm=1.0,
+                score_policy_name="topk_mean_cosine",
+                score_top_k=1,
+            ),
+            validation_config=_default_validation_config(
+                confidence_threshold=0.0,
+                margin_threshold=0.0,
+                score_policy_name="topk_mean_cosine",
+                score_top_k=1,
+            ),
+        )
     )
 
     assert result.rounds
