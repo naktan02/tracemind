@@ -122,6 +122,9 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     축으로 추가한다.
 - `shard_policy`
 - `federated_run_budget`
+  - `run_controls/fl_ssl/budget=smoke` 산출물은 `runs/_smoke/fl_ssl` 아래에 둔다.
+  - `run_controls/fl_ssl/budget=reduced`는 10 clients, 5 rounds 검증용 preset이다.
+  - `run_controls/fl_ssl/budget=main`은 10 clients, 50 rounds full-budget preset이다.
 - `seed_sweep.seeds`
 - `seed_sweep.output_dir`
 - `client_count_sweep.client_counts`
@@ -151,10 +154,14 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `training_task.max_steps`
 - `query_ssl_method.unlabeled_batch_size`
 
+`protocol.labeled_unlabeled_split`의 `actual_*` count/ratio는 client가 실제로 받은
+row exposure 기준이다. `shared_client_seed`처럼 같은 labeled seed가 모든 client에
+반복 노출되는 설정은 `unique_*` 필드를 함께 보고 source query 기준 규모를 해석한다.
+
 예시:
 
 ```bash
-python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
+uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   federated_run_budget.client_count=10 \
@@ -167,7 +174,7 @@ round loop를 실행하지 않는다.
 고정 split 실행:
 
 ```bash
-python -m scripts.experiments.fl_ssl.run_federated_simulation \
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
@@ -176,10 +183,15 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   federated_run_budget.rounds=1
 ```
 
+위 smoke 실행은 `runs/_smoke/fl_ssl/...` 아래에 report를 남긴다. 웹/dashboard 기본
+ingest는 `runs/_smoke/**`를 제외한다. 성능 방향 확인용 검증 실험은
+`run_controls/fl_ssl/budget=reduced`를 사용하고, full-budget 비교가 필요할 때만
+`run_controls/fl_ssl/budget=main`을 명시한다.
+
 Seed sweep:
 
 ```bash
-python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
+uv run python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   federated_run_budget.client_count=10 \
@@ -189,7 +201,7 @@ python -m scripts.experiments.fl_ssl.run_federated_seed_sweep \
 Client-count sweep:
 
 ```bash
-python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
+uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   federated_run_budget.rounds=1

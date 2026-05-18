@@ -18,7 +18,7 @@ ssl_input_mode: consistency
 pseudo_label_jsonl: null
 pseudo_label_export_root: data/artifacts/lora_pseudo_label
 include_seed_train_rows: false
-output_dir: runs/train_lora_ssl_classifier/${ssl_input_mode}/${query_data_selection_slug}
+output_dir: ${central_ssl_budget.output_root}/train_lora_ssl_classifier/${ssl_input_mode}/${query_data_selection_slug}
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}

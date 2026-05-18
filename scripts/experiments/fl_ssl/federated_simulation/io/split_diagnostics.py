@@ -29,7 +29,15 @@ def build_client_pool_split_payload(
     all_client_rows = [
         row for shard in dataset_split.client_shards for row in shard.rows
     ]
+    unique_client_rows = _unique_rows_by_query_id(all_client_rows)
+    unique_labeled_rows = _unique_rows_by_query_id(
+        [row for shard in dataset_split.client_shards for row in shard.labeled_rows]
+    )
+    unique_unlabeled_rows = _unique_rows_by_query_id(
+        [row for shard in dataset_split.client_shards for row in shard.unlabeled_rows]
+    )
     distribution = label_distribution(all_client_rows)
+    unique_distribution = label_distribution(unique_client_rows)
     total_rows = sum(len(shard.rows) for shard in dataset_split.client_shards)
     labeled_count = sum(
         len(shard.labeled_rows) for shard in dataset_split.client_shards
@@ -37,6 +45,9 @@ def build_client_pool_split_payload(
     unlabeled_count = sum(
         len(shard.unlabeled_rows) for shard in dataset_split.client_shards
     )
+    unique_total_count = len(unique_client_rows)
+    unique_labeled_count = len(unique_labeled_rows)
+    unique_unlabeled_count = len(unique_unlabeled_rows)
     client_payloads = [
         _client_shard_split_payload(shard) for shard in dataset_split.client_shards
     ]
@@ -72,9 +83,23 @@ def build_client_pool_split_payload(
         "status": status,
         "actual_labeled_count": labeled_count,
         "actual_unlabeled_count": unlabeled_count,
+        "actual_total_exposure_count": total_rows,
+        "actual_labeled_exposure_count": labeled_count,
+        "actual_unlabeled_exposure_count": unlabeled_count,
         "actual_labeled_ratio": actual_labeled_ratio,
         "actual_unlabeled_ratio": actual_unlabeled_ratio,
+        "unique_total_count": unique_total_count,
+        "unique_labeled_count": unique_labeled_count,
+        "unique_unlabeled_count": unique_unlabeled_count,
+        "unique_labeled_ratio": safe_ratio(unique_labeled_count, unique_total_count),
+        "unique_unlabeled_ratio": safe_ratio(
+            unique_unlabeled_count,
+            unique_total_count,
+        ),
+        "counting_basis": "client_exposure",
+        "unique_counting_basis": "query_id",
         "label_distribution": distribution,
+        "unique_label_distribution": unique_distribution,
         "label_distribution_entropy": label_entropy(distribution),
         "min_client_size": min(client_sizes) if client_sizes else None,
         "max_client_size": max(client_sizes) if client_sizes else None,
@@ -88,6 +113,18 @@ def build_client_pool_split_payload(
         },
         "clients": client_payloads,
     }
+
+
+def _unique_rows_by_query_id(rows: list[object]) -> list[object]:
+    seen: set[str] = set()
+    unique_rows: list[object] = []
+    for row in rows:
+        query_id = str(row["query_id"])
+        if query_id in seen:
+            continue
+        seen.add(query_id)
+        unique_rows.append(row)
+    return unique_rows
 
 
 def _split_status(

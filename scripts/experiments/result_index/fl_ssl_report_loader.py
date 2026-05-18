@@ -48,6 +48,8 @@ def load_fl_ssl_result_index_records(
     local_update_budget = as_mapping(protocol.get("local_update_budget"))
     embedding_adapter = as_mapping(protocol.get("embedding_adapter"))
     local_trainer_runtime = as_mapping(protocol.get("local_trainer_runtime"))
+    run_control = as_mapping(protocol.get("run_control"))
+    split_summary = as_mapping(protocol.get("labeled_unlabeled_split"))
 
     run_id = infer_fl_ssl_run_id(report_path)
     method_name = (
@@ -83,15 +85,31 @@ def load_fl_ssl_result_index_records(
         train_batch_size=optional_int(local_update_budget.get("batch_size")),
         eval_batch_size=None,
         initial_checkpoint_name=None,
-        unlabeled_row_count=optional_int(
-            as_mapping(protocol.get("labeled_unlabeled_split")).get(
-                "actual_unlabeled_count"
-            )
+        unlabeled_row_count=optional_int(split_summary.get("actual_unlabeled_count")),
+        total_row_exposure_count=optional_int(
+            split_summary.get("actual_total_exposure_count")
+        ),
+        labeled_row_exposure_count=optional_int(
+            split_summary.get("actual_labeled_exposure_count")
+            or split_summary.get("actual_labeled_count")
+        ),
+        unlabeled_row_exposure_count=optional_int(
+            split_summary.get("actual_unlabeled_exposure_count")
+            or split_summary.get("actual_unlabeled_count")
+        ),
+        unique_total_row_count=optional_int(split_summary.get("unique_total_count")),
+        unique_labeled_row_count=optional_int(
+            split_summary.get("unique_labeled_count")
+        ),
+        unique_unlabeled_row_count=optional_int(
+            split_summary.get("unique_unlabeled_count")
         ),
         train_seconds=None,
         training_example_count=None,
         examples_per_second=None,
         trainable_param_ratio=None,
+        run_control_budget_name=optional_str(run_control.get("budget_name")),
+        run_control_output_dir=optional_str(run_control.get("output_dir")),
         client_count=optional_int(protocol.get("client_count")),
         round_budget=optional_int(protocol.get("round_budget")),
         completed_rounds=optional_int(protocol.get("completed_rounds")),

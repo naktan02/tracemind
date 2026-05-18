@@ -36,6 +36,16 @@ def test_fl_ssl_long_run_guard_blocks_main_budget_without_ack() -> None:
         require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
 
 
+def test_fl_ssl_long_run_guard_allows_reduced_single_run_budget() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=reduced"],
+        )
+
+    require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
+
+
 def test_fl_ssl_long_run_guard_requires_exact_ack() -> None:
     cfg = _minimal_cfg(
         rounds=50,

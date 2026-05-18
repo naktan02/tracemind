@@ -7,11 +7,15 @@ import sqlite3
 from pathlib import Path
 
 from scripts.experiments.result_index.dashboard_export import write_dashboard_bundle
+from scripts.experiments.result_index.ingest import ingest_reports
 from scripts.experiments.result_index.report_loader import (
     discover_report_paths,
     load_result_index_records,
 )
-from scripts.experiments.result_index.sqlite_store import write_result_index_records
+from scripts.experiments.result_index.sqlite_store import (
+    initialize_database,
+    write_result_index_records,
+)
 
 
 def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> None:
@@ -28,6 +32,8 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.unlabeled_dataset_name == "szegeelim_general4"
     assert records.run.validation_dataset_name == "ourafla_reddit"
     assert records.run.test_dataset_name == "ourafla_reddit"
+    assert records.run.run_control_budget_name == "main"
+    assert records.run.run_control_output_dir == "runs"
     assert records.eval_metrics[0].macro_f1 == 0.78
     assert records.per_class_metrics[0].category == "anxiety"
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
@@ -54,6 +60,8 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
 
     assert dashboard_path.exists()
     assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
+    assert bundle["filters"]["run_control_budget_names"] == ["main"]
+    assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
     assert bundle["runs"][0]["selection_slug"] == (
         "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
         "validation-ourafla_reddit_test-ourafla_reddit"
@@ -76,6 +84,38 @@ def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) ->
     assert per_class_count == 2
     assert confusion_count == 4
     assert artifact_count == 3
+
+
+def test_result_index_schema_migration_adds_run_control_columns(
+    tmp_path: Path,
+) -> None:
+    db_path = tmp_path / "experiment_results.sqlite"
+    db_path.parent.mkdir(parents=True, exist_ok=True)
+    with sqlite3.connect(db_path) as connection:
+        connection.execute(
+            """
+            create table experiment_runs (
+                run_id text primary key,
+                track text not null,
+                method_family text not null,
+                method_name text not null
+            )
+            """
+        )
+
+    initialize_database(db_path)
+
+    with sqlite3.connect(db_path) as connection:
+        columns = {
+            str(row[1])
+            for row in connection.execute(
+                "pragma table_info(experiment_runs)"
+            ).fetchall()
+        }
+    assert "run_control_budget_name" in columns
+    assert "run_control_output_dir" in columns
+    assert "labeled_row_exposure_count" in columns
+    assert "unique_labeled_row_count" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -103,6 +143,14 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.client_count == 10
     assert records.run.round_budget == 50
     assert records.run.completed_rounds == 50
+    assert records.run.run_control_budget_name == "main"
+    assert records.run.run_control_output_dir == "runs/fl_ssl"
+    assert records.run.total_row_exposure_count == 40960
+    assert records.run.labeled_row_exposure_count == 405
+    assert records.run.unlabeled_row_exposure_count == 40555
+    assert records.run.unique_total_row_count == 40596
+    assert records.run.unique_labeled_row_count == 41
+    assert records.run.unique_unlabeled_row_count == 40555
     assert records.run.shard_policy_name == "dirichlet_label_skew"
     assert records.run.shard_alpha == 0.3
     assert records.run.adapter_family_name == "lora_classifier"
@@ -126,6 +174,45 @@ def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     fl_report = _write_fl_ssl_report(tmp_path)
 
     assert discover_report_paths(tmp_path / "runs") == [fl_report, central_report]
+
+
+def test_result_index_excludes_smoke_reports_from_default_runs_ingest(
+    tmp_path: Path,
+) -> None:
+    central_report = _write_report(tmp_path)
+    smoke_report = _write_smoke_report(tmp_path)
+    metadata_smoke_report = _write_metadata_smoke_report(tmp_path)
+
+    assert discover_report_paths(tmp_path / "runs") == [central_report]
+    assert discover_report_paths(tmp_path / "runs" / "_smoke") == [smoke_report]
+    assert discover_report_paths(
+        tmp_path / "runs" / "_smoke" / "train_lora_ssl_classifier"
+    ) == [smoke_report]
+    assert metadata_smoke_report not in discover_report_paths(tmp_path / "runs")
+
+
+def test_result_index_default_ingest_keeps_smoke_out_of_dashboard(
+    tmp_path: Path,
+) -> None:
+    _write_report(tmp_path)
+    _write_smoke_report(tmp_path)
+    _write_metadata_smoke_report(tmp_path)
+    db_path = tmp_path / "experiment_results.sqlite"
+    dashboard_path = tmp_path / "experiment_dashboard.json"
+
+    indexed_count = ingest_reports(
+        runs_root=tmp_path / "runs",
+        db_path=db_path,
+        reset=True,
+    )
+    bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
+
+    assert indexed_count == 1
+    assert [run["run_id"] for run in bundle["runs"]] == [
+        "lora_fixmatch_2026_05_13_143419"
+    ]
+    assert bundle["filters"]["run_control_budget_names"] == ["main"]
+    assert bundle["filters"]["run_control_output_dirs"] == ["runs"]
 
 
 def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
@@ -193,6 +280,8 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["fl_composition_modes"] == ["manual"]
     assert bundle["filters"]["fl_execution_roles"] == ["manual_baseline"]
     assert bundle["filters"]["fl_descriptors"] == []
+    assert bundle["filters"]["run_control_budget_names"] == ["main"]
+    assert bundle["filters"]["run_control_output_dirs"] == ["runs/fl_ssl"]
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
     assert bundle["filters"]["shard_alphas"] == [0.3]
@@ -208,6 +297,8 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["fl_ssl_runs"][0]["macro_f1"] == 0.78
     assert bundle["fl_ssl_runs"][0]["worst_client_macro_f1"] == 0.41
     assert bundle["fl_ssl_runs"][0]["expected_calibration_error"] == 0.12
+    assert bundle["fl_ssl_runs"][0]["labeled_row_exposure_count"] == 405
+    assert bundle["fl_ssl_runs"][0]["unique_labeled_row_count"] == 41
     assert bundle["fl_ssl_runs"][0]["communication_cost"]["value"] == 500
     assert bundle["fl_ssl_runs"][0]["per_client_macro_f1_variance"] == 0.02
     assert bundle["fl_ssl_runs"][0]["macro_f1_std"] == 0.1
@@ -275,6 +366,54 @@ def _write_fl_ssl_report(tmp_path: Path) -> Path:
     return report_path
 
 
+def _write_smoke_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "_smoke"
+        / "train_lora_ssl_classifier"
+        / "consistency"
+        / "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
+        / "fixmatch_usb_v1"
+        / "smoke_run"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text("{}\n", encoding="utf-8")
+    return report_path
+
+
+def _write_metadata_smoke_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "train_lora_ssl_classifier"
+        / "consistency"
+        / "metadata_smoke"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(
+            {
+                "schema_version": "central_lora_classifier_eval.v1",
+                "trainer_version": "metadata_smoke",
+                "manifest": {
+                    "run_control": {
+                        "budget_name": "smoke",
+                        "output_root": "runs/_smoke",
+                    }
+                },
+            }
+        )
+        + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
 def _write_fl_ssl_sweep_report(tmp_path: Path, *, client_slug: str) -> Path:
     report_path = (
         tmp_path
@@ -326,6 +465,11 @@ def _sample_report(projection_dir: Path) -> dict:
                 "validation": "data/datasets/source/validation.jsonl",
             },
             "selection_set": "validation",
+            "run_control": {
+                "track": "central_ssl",
+                "budget_name": "main",
+                "output_root": "runs",
+            },
             "seed": 42,
             "epochs": 2,
             "max_train_steps": 100,
@@ -530,6 +674,11 @@ def _sample_fl_ssl_report() -> dict:
             "round_budget": 50,
             "completed_rounds": 50,
             "seed": 42,
+            "run_control": {
+                "metadata_status": "recorded",
+                "budget_name": "main",
+                "output_dir": "runs/fl_ssl",
+            },
             "shard_policy": {
                 "name": "dirichlet_label_skew",
                 "alpha": 0.3,
@@ -552,6 +701,12 @@ def _sample_fl_ssl_report() -> dict:
             },
             "labeled_unlabeled_split": {
                 "actual_unlabeled_count": 40555,
+                "actual_total_exposure_count": 40960,
+                "actual_labeled_exposure_count": 405,
+                "actual_unlabeled_exposure_count": 40555,
+                "unique_total_count": 40596,
+                "unique_labeled_count": 41,
+                "unique_unlabeled_count": 40555,
             },
             "local_update_budget": {
                 "local_epochs": 1,

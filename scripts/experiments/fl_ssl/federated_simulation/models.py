@@ -136,6 +136,7 @@ class FederatedDataSourceConfig:
     source_selection: dict[str, object] = field(default_factory=dict)
     source_jsonl: dict[str, str] = field(default_factory=dict)
     labeled_policy: dict[str, object] = field(default_factory=dict)
+    labeled_exposure_policy: dict[str, object] = field(default_factory=dict)
     view_schema: dict[str, object] = field(default_factory=dict)
     test_jsonl: str | None = None
 
@@ -363,6 +364,8 @@ class SimulationRunRequest:
     validation_config: FederatedValidationConfig
     prototype_rebuild_config: FederatedPrototypeRebuildConfig
     diagnostics_config: FederatedDiagnosticsConfig
+    run_budget_name: str | None = None
+    run_output_dir: str | None = None
     ssl_method_config: FederatedSslMethodConfig | None = None
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None
     materialized_dataset_split: FederatedDatasetSplit | None = None

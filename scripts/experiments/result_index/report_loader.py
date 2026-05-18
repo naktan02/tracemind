@@ -42,14 +42,55 @@ def discover_report_paths(runs_root: Path) -> list[Path]:
     if runs_root.is_file():
         return [runs_root]
     report_names = {"report.json", "fl_ssl_main_comparison.report.json"}
+    exclude_smoke = runs_root.name == "runs"
     report_paths = sorted(
         path
         for path in runs_root.rglob("*.json")
         if path.is_file()
         and path.parent.name == "reports"
         and path.name in report_names
+        and not _is_default_excluded_smoke_path(
+            runs_root=runs_root,
+            path=path,
+            exclude_smoke=exclude_smoke,
+        )
     )
     return _deduplicate_hardlinked_report_paths(report_paths)
+
+
+def _is_default_excluded_smoke_path(
+    *,
+    runs_root: Path,
+    path: Path,
+    exclude_smoke: bool,
+) -> bool:
+    """기본 `runs` ingest에서는 smoke 산출물을 웹/index에서 제외한다."""
+
+    if not exclude_smoke:
+        return False
+
+    try:
+        relative_parts = path.relative_to(runs_root).parts
+    except ValueError:
+        relative_parts = path.parts
+    if "_smoke" in relative_parts:
+        return True
+    return _report_payload_budget_name(path) == "smoke"
+
+
+def _report_payload_budget_name(path: Path) -> str | None:
+    try:
+        payload = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return None
+    if not isinstance(payload, dict):
+        return None
+    protocol = as_mapping(payload.get("protocol"))
+    run_control = as_mapping(protocol.get("run_control")) or as_mapping(
+        as_mapping(payload.get("manifest")).get("run_control")
+    )
+    budget_name = optional_str(run_control.get("budget_name"))
+    return None if budget_name is None else budget_name.strip().lower()
 
 
 def _deduplicate_hardlinked_report_paths(report_paths: list[Path]) -> list[Path]:
@@ -103,6 +144,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     query_ssl_method = as_mapping(manifest.get("query_ssl_method"))
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
+    run_control = as_mapping(manifest.get("run_control"))
 
     run = ExperimentRunRecord(
         run_id=trainer_version,
@@ -133,6 +175,12 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
             or initial_checkpoint.get("mode")
         ),
         unlabeled_row_count=optional_int(manifest.get("unlabeled_row_count")),
+        total_row_exposure_count=None,
+        labeled_row_exposure_count=None,
+        unlabeled_row_exposure_count=None,
+        unique_total_row_count=None,
+        unique_labeled_row_count=None,
+        unique_unlabeled_row_count=None,
         train_seconds=optional_float(runtime_metrics.get("train_seconds")),
         training_example_count=optional_int(
             runtime_metrics.get("training_example_count")
@@ -141,6 +189,8 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         trainable_param_ratio=optional_float(
             runtime_metrics.get("trainable_param_ratio")
         ),
+        run_control_budget_name=optional_str(run_control.get("budget_name")),
+        run_control_output_dir=optional_str(run_control.get("output_root")),
         client_count=None,
         round_budget=None,
         completed_rounds=None,

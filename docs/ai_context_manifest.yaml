@@ -90,8 +90,10 @@ task_routes:
       - central SSL stays pooled/offline control unless explicitly promoted
       - FL SSL under non-IID is the main paper comparison for FL-specific methods
       - FL SSL main materialized split uses 10 clients, Dirichlet alpha=0.3, split seed=42, and selected labeled/unlabeled source pools unless a new decision changes it
+      - FL SSL labeled source selection and labeled exposure policy are separate; shared_client_seed is a split exposure policy, not a shard policy
       - FL SSL default/main split uses Dirichlet alpha=0.3; alpha=0.1 is final stress/robustness only
       - FL SSL full-budget runs use explicit budget/long-run guard selection; validate new wiring with smoke or reduced runs before full-budget comparison
+      - smoke/test artifacts stay under runs/_smoke and default dashboard ingest excludes them
       - default FL SSL manual baseline does not compose a method_descriptor; execution_role is manual_baseline and descriptor_name is null
       - do not add paper-method implementation files before the method list is explicitly selected
       - winner criteria include macro-F1 and worst-client macro-F1, with loss, weighted-F1, ECE/max-ECE, communication cost, and per-client variance as risk metrics

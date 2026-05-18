@@ -231,7 +231,7 @@ RUNTIME_FALLBACK_SECURE_AGGREGATION_MAPPING = freeze_mapping({"required": False}
 
 RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS = RuntimeTrainingTaskDefaults(
     local_epochs=1,
-    batch_size=16,
+    batch_size=12,
     learning_rate=1e-4,
     max_steps=50,
     min_required_examples=None,

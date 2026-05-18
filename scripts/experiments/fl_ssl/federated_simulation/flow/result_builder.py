@@ -54,6 +54,8 @@ def build_simulation_result(
             round_budget=request.rounds,
             bootstrap_ratio=request.bootstrap_ratio,
             seed=request.seed,
+            run_budget_name=request.run_budget_name,
+            run_output_dir=request.run_output_dir,
             shard_policy=request.shard_policy,
             dataset_split=bootstrapped.dataset_split,
             ssl_method_config=request.ssl_method_config,

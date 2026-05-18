@@ -8,6 +8,9 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
+from methods.federated.client_split import (
+    FederatedLabeledExposurePolicy,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io import (
     client_split_manifest_models as manifest_models,
 )
@@ -90,6 +93,9 @@ def load_materialized_client_split(path: str | Path) -> LoadedFlClientSplit:
     bootstrap_rows = load_labeled_query_rows(
         resolve_manifest_ref(manifest.manifest_path, manifest.bootstrap_labeled_jsonl)
     )
+    labeled_exposure_policy = FederatedLabeledExposurePolicy.from_mapping(
+        manifest.labeled_exposure_policy
+    )
     client_shards: list[FederatedClientShard] = []
     seen_client_ids: set[str] = set()
     all_train_rows = list(bootstrap_rows)
@@ -137,7 +143,13 @@ def load_materialized_client_split(path: str | Path) -> LoadedFlClientSplit:
             "manifest.client_count must match clients length: "
             f"{manifest.client_count} != {len(client_shards)}."
         )
-    _require_unique_query_ids(all_train_rows, context="manifest train split")
+    if labeled_exposure_policy.shares_same_labeled_rows_across_clients:
+        _require_shared_labeled_rows_are_consistent(
+            bootstrap_rows=bootstrap_rows,
+            client_shards=client_shards,
+        )
+    else:
+        _require_unique_query_ids(all_train_rows, context="manifest train split")
     validation_rows = load_labeled_query_rows(
         resolve_manifest_ref(manifest.manifest_path, manifest.validation_jsonl)
     )
@@ -266,6 +278,46 @@ def _require_disjoint_query_ids(
             f"{left_name} and {right_name} must be disjoint by query_id: "
             f"{sorted(overlap)[:5]}."
         )
+
+
+def _require_shared_labeled_rows_are_consistent(
+    *,
+    bootstrap_rows: Sequence[LabeledQueryRow],
+    client_shards: Sequence[FederatedClientShard],
+) -> None:
+    if not client_shards:
+        return
+    expected_labeled_ids = {
+        str(row["query_id"]) for row in client_shards[0].labeled_rows
+    }
+    if not expected_labeled_ids:
+        raise ValueError("shared_client_seed manifest must expose client labeled rows.")
+    for shard in client_shards[1:]:
+        labeled_ids = {str(row["query_id"]) for row in shard.labeled_rows}
+        if labeled_ids != expected_labeled_ids:
+            raise ValueError(
+                "shared_client_seed manifest requires identical labeled rows "
+                "for every client."
+            )
+    all_unlabeled_rows = [
+        row for shard in client_shards for row in shard.unlabeled_rows
+    ]
+    _require_unique_query_ids(
+        all_unlabeled_rows,
+        context="manifest shared_client_seed unlabeled split",
+    )
+    _require_disjoint_query_ids(
+        bootstrap_rows,
+        all_unlabeled_rows,
+        left_name="bootstrap_labeled_jsonl",
+        right_name="client unlabeled rows",
+    )
+    _require_disjoint_query_ids(
+        client_shards[0].labeled_rows,
+        all_unlabeled_rows,
+        left_name="shared client labeled rows",
+        right_name="client unlabeled rows",
+    )
 
 
 def _require_unique_query_ids(

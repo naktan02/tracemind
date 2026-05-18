@@ -26,10 +26,18 @@ class ExperimentRunRecord:
     eval_batch_size: int | None
     initial_checkpoint_name: str | None
     unlabeled_row_count: int | None
+    total_row_exposure_count: int | None
+    labeled_row_exposure_count: int | None
+    unlabeled_row_exposure_count: int | None
+    unique_total_row_count: int | None
+    unique_labeled_row_count: int | None
+    unique_unlabeled_row_count: int | None
     train_seconds: float | None
     training_example_count: int | None
     examples_per_second: float | None
     trainable_param_ratio: float | None
+    run_control_budget_name: str | None
+    run_control_output_dir: str | None
     client_count: int | None
     round_budget: int | None
     completed_rounds: int | None

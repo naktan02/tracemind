@@ -92,10 +92,12 @@ class FlClientSplitManifest:
     shard_policy: dict[str, object]
     client_pool_split: dict[str, object]
     labeled_policy: dict[str, object]
+    labeled_exposure_policy: dict[str, object]
     source_selection: dict[str, object]
     source_jsonl: dict[str, str]
     view_schema: FlClientSplitViewSchema
     bootstrap_labeled_jsonl: str
+    shared_client_labeled_jsonl: str | None
     validation_jsonl: str
     test_jsonl: str | None
     clients: tuple[FlClientSplitClientEntry, ...]
@@ -131,6 +133,14 @@ class FlClientSplitManifest:
             labeled_policy=dict(
                 _mapping(payload.get("labeled_policy", {"mode": "all"}))
             ),
+            labeled_exposure_policy=dict(
+                _mapping(
+                    payload.get(
+                        "labeled_exposure_policy",
+                        {"name": "client_local_split"},
+                    )
+                )
+            ),
             source_selection=dict(_mapping(payload.get("source_selection", {}))),
             source_jsonl=_str_dict(payload.get("source_jsonl", {})),
             view_schema=FlClientSplitViewSchema.from_mapping(
@@ -139,6 +149,9 @@ class FlClientSplitManifest:
             bootstrap_labeled_jsonl=_required_str(
                 payload,
                 "bootstrap_labeled_jsonl",
+            ),
+            shared_client_labeled_jsonl=_optional_str(
+                payload.get("shared_client_labeled_jsonl")
             ),
             validation_jsonl=_required_str(payload, "validation_jsonl"),
             test_jsonl=_optional_str(payload.get("test_jsonl")),
@@ -161,10 +174,12 @@ class FlClientSplitManifest:
             "shard_policy": dict(self.shard_policy),
             "client_pool_split": dict(self.client_pool_split),
             "labeled_policy": dict(self.labeled_policy),
+            "labeled_exposure_policy": dict(self.labeled_exposure_policy),
             "source_selection": dict(self.source_selection),
             "source_jsonl": dict(self.source_jsonl),
             "view_schema": self.view_schema.to_payload(),
             "bootstrap_labeled_jsonl": self.bootstrap_labeled_jsonl,
+            "shared_client_labeled_jsonl": self.shared_client_labeled_jsonl,
             "validation_jsonl": self.validation_jsonl,
             "test_jsonl": self.test_jsonl,
             "clients": [client.to_payload() for client in self.clients],

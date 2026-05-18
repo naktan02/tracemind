@@ -105,7 +105,7 @@ def test_runtime_fallback_secure_aggregation_builder_starts_disabled() -> None:
 
 def test_runtime_fallback_profile_exposes_round_task_runtime_defaults() -> None:
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.local_epochs == 1
-    assert RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size == 16
+    assert RUNTIME_FALLBACK_TRAINING_PROFILE.batch_size == 12
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.learning_rate == 1e-4
     assert RUNTIME_FALLBACK_TRAINING_PROFILE.max_steps == 50
     assert (

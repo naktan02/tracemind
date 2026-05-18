@@ -7,6 +7,11 @@ from pathlib import Path
 
 from omegaconf import DictConfig, OmegaConf
 
+from methods.federated.client_split import (
+    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
+    LABELED_EXPOSURE_POLICY_NAMES,
+)
+
 
 def build_fl_ssl_run_dir(
     base_dir: str | Path,
@@ -111,6 +116,9 @@ def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
         parts.append(str(shard_policy))
     else:
         parts.append("split")
+    labeled_exposure = _resolve_labeled_exposure_slug(cfg)
+    if labeled_exposure is not None:
+        parts.append(labeled_exposure)
     if seed is not None:
         parts.append(f"seed{int(seed)}")
     return "_".join(_slugify(part) for part in parts if str(part).strip())
@@ -126,6 +134,22 @@ def resolve_fl_ssl_run_condition_slug(cfg: DictConfig) -> str:
 
 def _select(cfg: DictConfig, key: str, *, default: object) -> object:
     return OmegaConf.select(cfg, key, default=default)
+
+
+def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
+    configured = _select(cfg, "labeled_exposure_policy.name", default=None)
+    if configured is not None:
+        normalized = str(configured).strip()
+        if normalized and normalized != LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
+            return normalized
+    manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+    for policy_name in sorted(LABELED_EXPOSURE_POLICY_NAMES):
+        if (
+            policy_name != LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
+            and policy_name in manifest
+        ):
+            return policy_name
+    return None
 
 
 def _alpha_slug(value: float) -> str:

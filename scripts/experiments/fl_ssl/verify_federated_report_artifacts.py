@@ -28,6 +28,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_shard_alpha=args.expected_shard_alpha,
         expected_split_id=args.expected_split_id,
         expected_split_id_contains=args.expected_split_id_contains,
+        expected_labeled_exposure_policy=args.expected_labeled_exposure_policy,
+        expected_run_control_budget_name=args.expected_run_control_budget_name,
+        expected_run_control_output_dir=args.expected_run_control_output_dir,
         expected_ssl_algorithm=args.expected_ssl_algorithm,
         expected_ssl_method=args.expected_ssl_method,
         expected_adapter_family=args.expected_adapter_family,
@@ -137,6 +140,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-shard-alpha", type=float)
     parser.add_argument("--expected-split-id")
     parser.add_argument("--expected-split-id-contains")
+    parser.add_argument("--expected-labeled-exposure-policy")
+    parser.add_argument("--expected-run-control-budget-name")
+    parser.add_argument("--expected-run-control-output-dir")
     parser.add_argument("--expected-ssl-algorithm")
     parser.add_argument("--expected-ssl-method")
     parser.add_argument("--expected-adapter-family")
@@ -315,7 +321,17 @@ def _optional_manifest_path(manifest_path: Path, raw_path: object) -> Path | Non
     path = Path(raw_path)
     if path.is_absolute() or path.exists():
         return path
+    if _looks_repo_root_relative(path):
+        return path
     return manifest_path.parent / path
+
+
+def _looks_repo_root_relative(path: Path) -> bool:
+    """manifest-local 상대경로와 repo-root artifact 경로를 구분한다."""
+
+    if not path.parts:
+        return False
+    return path.parts[0] in {"runs", "data"}
 
 
 def _int_sequence(value: object, *, field_name: str) -> tuple[int, ...]:

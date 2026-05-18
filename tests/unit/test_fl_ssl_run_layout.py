@@ -87,6 +87,45 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
     )
 
 
+def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> None:
+    cfg = OmegaConf.create(
+        {
+            "fl_data": {
+                "source_mode": "materialized_client_split",
+                "split_manifest": (
+                    "data/datasets/fl_client_splits/"
+                    "ourafla_shared_client_seed_dirichlet_alpha03_clients10/"
+                    "manifest.json"
+                ),
+            },
+            "seed": 42,
+            "federated_run_budget": {"client_count": 10, "rounds": 1},
+            "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
+            "query_ssl_method": {"name": "flexmatch_usb_v1"},
+            "round_runtime": {
+                "adapter_family_name": "lora_classifier",
+                "aggregation_backend_name": "fedavg",
+            },
+            "fl_method": {"composition_mode": "manual"},
+        }
+    )
+
+    output_dir = build_fl_ssl_run_dir(
+        "runs/fl_ssl",
+        cfg=cfg,
+        run_id="20260518T010203Z",
+    )
+
+    assert resolve_fl_ssl_split_slug(cfg) == "alpha03_shared_client_seed_seed42"
+    assert str(output_dir) == (
+        "runs/fl_ssl/manual_baselines/"
+        "flexmatch_usb_v1__lora_classifier__fedavg/"
+        "alpha03_shared_client_seed_seed42/"
+        "clients10_rounds1/"
+        "20260518T010203Z"
+    )
+
+
 def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> None:
     cfg = OmegaConf.create(
         {

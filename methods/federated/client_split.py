@@ -10,6 +10,49 @@ from typing import TypeVar
 
 ItemT = TypeVar("ItemT")
 
+LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT = "client_local_split"
+LABELED_EXPOSURE_SHARED_CLIENT_SEED = "shared_client_seed"
+LABELED_EXPOSURE_SERVER_ONLY_SEED = "server_only_seed"
+LABELED_EXPOSURE_POLICY_NAMES = frozenset(
+    {
+        LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
+        LABELED_EXPOSURE_SHARED_CLIENT_SEED,
+        LABELED_EXPOSURE_SERVER_ONLY_SEED,
+    }
+)
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedLabeledExposurePolicy:
+    """선택된 labeled rows가 server/client 어디에 보이는지 정하는 정책."""
+
+    name: str = LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object],
+    ) -> "FederatedLabeledExposurePolicy":
+        return cls(name=str(source.get("name", LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT)))
+
+    def __post_init__(self) -> None:
+        if self.name not in LABELED_EXPOSURE_POLICY_NAMES:
+            raise ValueError(
+                "labeled_exposure_policy.name must be one of "
+                f"{sorted(LABELED_EXPOSURE_POLICY_NAMES)}."
+            )
+
+    @property
+    def exposes_client_labeled_rows(self) -> bool:
+        return self.name != LABELED_EXPOSURE_SERVER_ONLY_SEED
+
+    @property
+    def shares_same_labeled_rows_across_clients(self) -> bool:
+        return self.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED
+
+    def to_payload(self) -> dict[str, object]:
+        return {"name": self.name}
+
 
 @dataclass(frozen=True, slots=True)
 class FederatedLabeledPoolPolicy:

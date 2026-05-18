@@ -17,6 +17,9 @@ class FederatedReportExpectation:
     expected_shard_alpha: float | None = None
     expected_split_id: str | None = None
     expected_split_id_contains: str | None = None
+    expected_labeled_exposure_policy: str | None = None
+    expected_run_control_budget_name: str | None = None
+    expected_run_control_output_dir: str | None = None
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None
     expected_adapter_family: str | None = None

@@ -211,6 +211,13 @@ FixMatch baseline:
 uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
 ```
 
+중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
+이 경우 산출물은 `runs/_smoke/train_lora_ssl_classifier/...` 또는
+`runs/_smoke/train_lora_supervised_classifier` 아래에 저장되어 main run과 섞이지
+않는다.
+기본 dashboard/index ingest(`--runs-root runs`)는 `runs/_smoke/**` report를
+제외한다.
+
 FL simulation:
 
 ```bash
@@ -234,7 +241,10 @@ FL SSL runner는 accidental long run을 막기 위해 총 예정 communication r
 `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 같이 override한다.
 
 새 wiring이나 method 검증은 먼저 `1-round` smoke 또는 `5-round` reduced run으로
-확인한다. full-budget 실행은 후보와 비교 조건을 명시한 뒤 `budget=main`과
+확인한다. 현재 FL SSL reduced preset은 `run_controls/fl_ssl/budget=reduced`이며
+`10 clients`, `5 rounds`, `runs/fl_ssl` root를 쓴다. smoke preset 산출물은
+`runs/_smoke/fl_ssl` 아래에 쌓아 웹/논문용 run과 섞지 않는다. full-budget 실행은
+후보와 비교 조건을 명시한 뒤 `budget=main`과
 필요한 long-run ack를 함께 지정한다.
 
 기존 FL SSL 산출물 metadata 검증:
@@ -251,6 +261,9 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-shard-policy-name dirichlet_label_skew \
   --expected-shard-alpha 0.3 \
   --expected-split-id-contains alpha0.3 \
+  --expected-labeled-exposure-policy client_local_split \
+  --expected-run-control-budget-name smoke \
+  --expected-run-control-output-dir runs/_smoke/fl_ssl \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
   --expected-adapter-family lora_classifier \

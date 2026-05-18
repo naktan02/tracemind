@@ -96,6 +96,8 @@ def build_simulation_request_from_config(
         rounds=int(cfg.federated_run_budget.rounds),
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
         seed=actual_seed,
+        run_budget_name=_optional_config_str(cfg.federated_run_budget, "name"),
+        run_output_dir=_optional_config_str(cfg.federated_run_budget, "output_dir"),
         embedding_spec=embedding_spec,
         model_id=str(cfg.published_model_id),
         training_scope=local_update_profile.training_scope,
@@ -127,6 +129,14 @@ def build_simulation_request_from_config(
             classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
         ),
     )
+
+
+def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
+    value = getattr(cfg, key, None)
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None
 
 
 def _build_training_task_config(

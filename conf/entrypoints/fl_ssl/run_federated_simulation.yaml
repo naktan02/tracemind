@@ -39,14 +39,14 @@ security_policy:
   client_metric_visibility: per_client_plaintext
 
 seed_sweep:
-  output_dir: runs/fl_ssl
+  output_dir: ${federated_run_budget.output_dir}
   seeds:
     - 42
     - 43
     - 44
 
 client_count_sweep:
-  output_dir: runs/fl_ssl
+  output_dir: ${federated_run_budget.output_dir}
   client_counts:
     - 1
     - 2
@@ -115,7 +115,7 @@ round_runtime:
 
 training_task:
   local_epochs: 1
-  batch_size: 16
+  batch_size: 12
   learning_rate: 0.0001
   max_steps: 50
   min_required_examples: ${federated_run_budget.min_required_examples}

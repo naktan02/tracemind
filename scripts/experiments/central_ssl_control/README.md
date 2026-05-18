@@ -31,6 +31,7 @@ max_train_steps=3000
 train_batch_size=12
 query_ssl_method.unlabeled_batch_size=12
 eval_batch_size=32
+output_root=runs
 train_jsonl=data/datasets/ourafla_mental_health/views/.../labeled_train.with_views.jsonl
 unlabeled_jsonl=data/datasets/ourafla_mental_health/views/.../unlabeled_pool.with_views.jsonl
 ```
@@ -92,6 +93,8 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 `runs/train_lora_ssl_classifier/consistency/labeled-..._unlabeled-..._validation-..._test-...`
 형태로 설정된다. 주소록은
 `conf/execution_context/query_data_source/default.yaml`이 소유한다.
+`run_controls/central_ssl/budget=smoke`를 선택하면 같은 하위 구조를
+`runs/_smoke/train_lora_ssl_classifier/...` 아래에 만든다.
 
 이미 생성된 pseudo-label JSONL을 재생하는 경우도 같은 entrypoint를 쓴다.
 이 경로는 새 teacher/student 구조를 뜻하지 않고, 입력 train row를 pseudo-label

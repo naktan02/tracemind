@@ -26,7 +26,18 @@ def verify_client_count_sweep_summary_path(
     expected_client_counts: tuple[int, ...],
     report_expectation: FederatedReportExpectation,
 ) -> VerificationResult:
-    summary = load_json_object(summary_path)
+    try:
+        summary = load_json_object(summary_path)
+    except OSError as error:
+        return VerificationResult(
+            artifact=str(summary_path),
+            errors=(f"sweep summary file could not be read: {error}",),
+        )
+    except ValueError as error:
+        return VerificationResult(
+            artifact=str(summary_path),
+            errors=(f"sweep summary file is not a valid JSON object: {error}",),
+        )
     errors = list(
         _verify_client_count_sweep_summary_payload(
             summary=summary,

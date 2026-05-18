@@ -104,6 +104,15 @@ uv run python scripts/experiments/central_classifier_seed/train_softmax_classifi
 uv run python scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py
 ```
 
+중앙 SSL smoke/test 산출물은 main run과 섞지 않는다.
+
+```bash
+uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+  run_controls/central_ssl/budget=smoke
+```
+
+위 명령은 `runs/_smoke/train_lora_ssl_classifier/...` 아래에 저장한다.
+
 중앙 LoRA USB PseudoLabel control:
 
 ```bash
@@ -138,7 +147,11 @@ uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
-기본값은 선택된 labeled source 전체와 unlabeled source 전체를 client에 분배한다.
+기본 `labeled_exposure_policy=client_local_split`은 선택된 labeled source를
+server/bootstrap seed와 client-local labeled pool로 나누고, unlabeled source는
+client별 non-IID shard로 둔다. 모든 client가 같은 public labeled seed를 쓰는
+검증은 `strategy_axes/fl/labeled_exposure_policy=shared_client_seed`로 별도
+manifest를 만든다.
 위 명령은 client split manifest를 만드는 단계라 round loop를 실행하지 않는다.
 라벨 데이터를 일부만 쓰는 ablation은 split 생성 시 정책을 명시한다.
 
@@ -158,6 +171,9 @@ FL SSL simulation smoke:
 uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   run_controls/fl_ssl/budget=smoke
 ```
+
+FL SSL smoke 산출물은 `runs/_smoke/fl_ssl/...` 아래에 저장된다. dashboard 기본
+ingest(`--runs-root runs`)는 `runs/_smoke/**` report를 제외한다.
 
 고정 FL split으로 simulation 실행:
 
@@ -202,6 +218,7 @@ communication round를 기본 차단한다. 총 예정 round는 단일 simulatio
 ```text
 runs/fl_ssl/<method_family>/<method_composition>/<split_slug>/<clients_rounds_slug>/<run_id>/
 runs/fl_ssl/<method_family>/<method_composition>/<split_slug>/sweeps/<sweep_kind_rounds>/<sweep_run_id>/<member_slug>/
+runs/_smoke/fl_ssl/<method_family>/<method_composition>/<split_slug>/<clients_rounds_slug>/<run_id>/
 ```
 
 ```bash
@@ -228,6 +245,9 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-shard-policy-name dirichlet_label_skew \
   --expected-shard-alpha 0.3 \
   --expected-split-id-contains alpha0.3 \
+  --expected-labeled-exposure-policy client_local_split \
+  --expected-run-control-budget-name smoke \
+  --expected-run-control-output-dir runs/_smoke/fl_ssl \
   --expected-ssl-algorithm fixmatch \
   --expected-ssl-method fixmatch_usb_v1 \
   --expected-adapter-family lora_classifier \

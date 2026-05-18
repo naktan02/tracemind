@@ -7,6 +7,7 @@ import pytest
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.io import (
     simulation_report_builder,
+    split_diagnostics,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
@@ -237,6 +238,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         round_budget=2,
         bootstrap_ratio=0.2,
         seed=7,
+        run_budget_name="reduced",
+        run_output_dir="runs/fl_ssl",
         shard_policy=FederatedShardPolicyConfig(
             name="label_dominant",
             client_id_prefix="agent",
@@ -284,6 +287,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             source_selection={"labeled": "ourafla_reddit"},
             source_jsonl={"labeled": "labeled.jsonl"},
             labeled_policy={"mode": "all"},
+            labeled_exposure_policy={"name": "client_local_split"},
             view_schema={
                 "weak_text_field": "text",
                 "strong_text_fields": ["aug_0", "aug_1"],
@@ -364,14 +368,30 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert split["status"] == "materialized_client_split"
     assert split["labeled_ratio"] == pytest.approx(0.4)
     assert split["unlabeled_ratio"] == pytest.approx(0.6)
+    assert split["counting_basis"] == "client_exposure"
+    assert split["unique_counting_basis"] == "query_id"
+    assert split["actual_total_exposure_count"] == 5
+    assert split["actual_labeled_exposure_count"] == 2
+    assert split["actual_unlabeled_exposure_count"] == 3
+    assert split["unique_total_count"] == 5
+    assert split["unique_labeled_count"] == 2
+    assert split["unique_unlabeled_count"] == 3
+    assert split["unique_labeled_ratio"] == pytest.approx(0.4)
+    assert split["unique_unlabeled_ratio"] == pytest.approx(0.6)
     assert split["configured_labeled_ratio"] == pytest.approx(0.1)
     assert split["min_client_size"] == 2
     assert split["max_client_size"] == 3
     assert split["label_skew_summary"]["dominant_label_ratio"]["max"] == 1.0
     fl_data_source = payload["protocol"]["fl_data_source"]
+    assert payload["protocol"]["run_control"] == {
+        "metadata_status": "recorded",
+        "budget_name": "reduced",
+        "output_dir": "runs/fl_ssl",
+    }
     assert fl_data_source["source_mode"] == "materialized_client_split"
     assert fl_data_source["split_manifest_sha256"] == "abc123"
     assert fl_data_source["labeled_policy"] == {"mode": "all"}
+    assert fl_data_source["labeled_exposure_policy"] == {"name": "client_local_split"}
     assert fl_data_source["view_schema"]["strong_text_fields"] == [
         "aug_0",
         "aug_1",
@@ -385,6 +405,54 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert local_trainer_runtime["metadata_status"] == "recorded"
     assert local_trainer_runtime["device"] == "cuda"
     assert local_trainer_runtime["local_files_only"] is True
+
+
+def test_split_diagnostics_separates_shared_seed_exposure_and_unique_counts() -> None:
+    shared_labeled_row = _row("shared_l1", "anxiety")
+    dataset_split = FederatedDatasetSplit(
+        bootstrap_rows=[shared_labeled_row],
+        client_shards=(
+            FederatedClientShard(
+                client_id="agent_001",
+                rows=[shared_labeled_row, _row("u1", "normal")],
+                labeled_rows=[shared_labeled_row],
+                unlabeled_rows=[_row("u1", "normal")],
+                client_pool_split_enforced=True,
+            ),
+            FederatedClientShard(
+                client_id="agent_002",
+                rows=[shared_labeled_row, _row("u2", "depression")],
+                labeled_rows=[shared_labeled_row],
+                unlabeled_rows=[_row("u2", "depression")],
+                client_pool_split_enforced=True,
+            ),
+        ),
+    )
+
+    payload = split_diagnostics.build_client_pool_split_payload(
+        dataset_split=dataset_split,
+        client_pool_split_config=None,
+        report_config=_report_config(),
+        data_source_config=FederatedDataSourceConfig(
+            source_mode="materialized_client_split",
+            split_manifest_path="manifest.json",
+            labeled_exposure_policy={"name": "shared_client_seed"},
+        ),
+    )
+
+    assert payload["actual_labeled_count"] == 2
+    assert payload["actual_labeled_exposure_count"] == 2
+    assert payload["actual_total_exposure_count"] == 4
+    assert payload["actual_labeled_ratio"] == pytest.approx(0.5)
+    assert payload["unique_labeled_count"] == 1
+    assert payload["unique_unlabeled_count"] == 2
+    assert payload["unique_total_count"] == 3
+    assert payload["unique_labeled_ratio"] == pytest.approx(1 / 3)
+    assert payload["unique_label_distribution"] == {
+        "anxiety": 1,
+        "depression": 1,
+        "normal": 1,
+    }
 
 
 def test_simulation_report_builder_rejects_unknown_metric_names() -> None:

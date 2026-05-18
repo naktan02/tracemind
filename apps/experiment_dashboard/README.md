@@ -31,6 +31,11 @@ uv run python -m scripts.experiments.result_index.ingest \
 기본 ingest는 같은 `run_id`를 upsert하고 새 run을 누적한다. 실험 runner가
 SQLite를 직접 쓰지 않기 때문에 새 실험이 끝난 뒤 ingest/export 명령을 다시
 실행해야 화면에 반영된다.
+기본 `--runs-root runs` ingest는 `runs/_smoke/**` 아래 smoke/test report를
+제외한다. smoke 결과를 따로 점검해야 할 때만 `--runs-root runs/_smoke`로
+명시해서 별도 index/cache에 적재한다.
+index는 report의 `run_control.budget_name`과 output root도 보존하므로, artifact
+경로가 바뀌어도 실행 tier를 필터에서 확인할 수 있다.
 
 export는 `projection_artifacts`의 UMAP/PCA PNG를
 `apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와
@@ -45,7 +50,7 @@ projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
 FL report를 dashboard 전용 view-model로 평탄화한다.
 
 - `fl_ssl_runs`: run-level `macro_f1`, worst-client macro-F1, ECE,
-  communication cost, per-client variance.
+  communication cost, per-client variance, labeled exposure/unique labeled counts.
 - `fl_ssl_rounds`: post-aggregation global validation curve와 round runtime/cost.
 - `fl_ssl_client_rounds`: round별 client local update 통계. per-client accuracy가
   아니라 candidate/accepted/update norm/payload/time 상태다.
@@ -64,5 +69,6 @@ LoRA/head artifact가 실제 성능 곡선에 반영된다.
 
 - 원본 source of truth는 중앙 SSL `runs/**/reports/report.json`, FL SSL
   `runs/**/reports/fl_ssl_main_comparison.report.json`, 각 run manifest다.
+  `runs/_smoke/**`는 검증용 산출물이며 기본 dashboard ingest에서는 제외된다.
 - SQLite와 `data/experiment_dashboard.json`은 재생성 가능한 비교용 cache다.
 - 이 앱은 metric 계산이나 실험 설정 기본값을 소유하지 않는다.

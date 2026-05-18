@@ -13,7 +13,7 @@ defaults:
   - _self_
 
 train_jsonl: ${query_source.train_jsonl}
-output_dir: runs/train_lora_supervised_classifier
+output_dir: ${central_ssl_budget.output_root}/train_lora_supervised_classifier
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}

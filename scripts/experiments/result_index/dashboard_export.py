@@ -173,6 +173,12 @@ def _build_filters(
         "classifier_learning_rates": _unique(
             row.get("classifier_learning_rate") for row in runs
         ),
+        "run_control_budget_names": _unique(
+            row.get("run_control_budget_name") for row in runs
+        ),
+        "run_control_output_dirs": _unique(
+            row.get("run_control_output_dir") for row in runs
+        ),
         "seeds": _unique(row.get("seed") for row in runs),
         "client_counts": _unique(row.get("client_count") for row in runs),
         "round_budgets": _unique(row.get("round_budget") for row in runs),

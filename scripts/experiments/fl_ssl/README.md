@@ -36,12 +36,14 @@ query_ssl_method=fixmatch_usb_v1
 local_update_profile=lora_pseudo_label_v1
 adapter_family=lora_classifier
 aggregation_backend=fedavg
-output_dir=runs/fl_ssl
+output_dir=runs/_smoke/fl_ssl
 ```
 
-`run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds` full-budget
-preset이다. 빠른 wiring 확인은 `budget=smoke`에서 round/client 수를 override하고,
-full-budget 실행이 필요할 때만 `budget=main`을 명시한다.
+`run_controls/fl_ssl/budget=smoke`는 wiring 검증용 산출물을
+`runs/_smoke/fl_ssl` 아래에 둔다. `budget=reduced`는 `10 clients`, `5 rounds`
+확인용 preset이고, `budget=main`은 `10 clients`, `50 rounds` full-budget
+preset이다. 성능 방향 확인은 `budget=reduced`, full-budget 실행이 필요할 때만
+`budget=main`을 명시한다.
 
 ## 데이터 선택
 
@@ -94,6 +96,25 @@ uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
 
 출력되는 `manifest_json=...` 값을 다음 실행의 `fl_data.split_manifest`로 넘긴다.
 
+모든 client가 같은 public labeled seed를 보고, unlabeled만 client별 non-IID로
+나누는 `shared_client_seed` split은 labeled exposure policy만 바꿔 별도
+manifest로 materialize한다. split id에는 `shared_client_seed_`가 들어가 기존
+`client_local_split` manifest를 덮어쓰지 않는다.
+`server_only_seed`는 runtime capability가 열리기 전까지 예약된 축이다. 현재
+materialization과 `fl_data.source_mode=materialized_client_split` 실행 request는
+`server_only_seed` manifest를 모두 실행 전에 거부한다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
+  run_controls/fl_ssl/budget=main \
+  query_data_selection.labeled=ourafla_reddit \
+  query_data_selection.unlabeled=ourafla_reddit \
+  query_data_selection.validation=ourafla_reddit \
+  query_data_selection.test=ourafla_reddit \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  strategy_axes/fl/labeled_exposure_policy=shared_client_seed
+```
+
 ## 실행 명령 구조
 
 FL SSL 실행 명령은 보통 다섯 축을 동시에 고른다.
@@ -139,12 +160,11 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
-  run_controls/fl_ssl/budget=smoke \
+  run_controls/fl_ssl/budget=reduced \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
-  federated_run_budget.client_count=10 \
-  federated_run_budget.rounds=5
+  training_task.max_steps=20
 ```
 
 산출 경로는 아래 구조로 쌓인다.
@@ -157,6 +177,8 @@ runs/fl_ssl/
         clients10_rounds1/
         clients10_rounds5/
 ```
+
+`budget=smoke` 산출물은 같은 하위 구조를 `runs/_smoke/fl_ssl/` 아래에 만든다.
 
 각 run의 canonical report는
 `reports/fl_ssl_main_comparison.report.json`이다.
@@ -245,3 +267,26 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   환경인지 확인한다. CPU/hash debug smoke 결과를 성능 비교에 섞지 않는다.
 - scripts는 Hydra entrypoint, sweep, report/index wrapper만 소유한다. 새 method
   core는 scripts에 추가하지 않는다.
+
+## 예시: FlexMatch Shared Labeled 5라운드 Reduced Run
+
+이미 materialize된 `shared_client_seed` 10-client Dirichlet alpha=0.3 split을
+고정 입력으로 사용해 `FlexMatch + LoRA-classifier + FedAvg` manual 조합을
+5라운드 실행한다. 모든 client는 같은 labeled seed를 보고, unlabeled shard만
+client별 non-IID로 나뉜다. 각 client의 round당 local optimizer step 상한은
+`training_task.max_steps=20`이고, central SSL main과 맞춰 labeled/unlabeled
+batch size는 `12`로 둔다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  run_controls/fl_ssl/budget=reduced \
+  fl_method.composition_mode=manual \
+  strategy_axes/fl/shard_policy=dirichlet_alpha03 \
+  strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
+  round_runtime.adapter_family_name=lora_classifier \
+  round_runtime.aggregation_backend_name=fedavg \
+  fl_data.source_mode=materialized_client_split \
+  fl_data.split_manifest=data/datasets/fl_client_splits/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json \
+  training_task.batch_size=12 \
+  training_task.max_steps=20
+```

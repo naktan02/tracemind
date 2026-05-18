@@ -53,6 +53,7 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         output_dir=tmp_path / "runs",
         adapter_output_dir=tmp_path / "adapters",
         classifier_output_dir=tmp_path / "classifiers",
+        central_ssl_budget=SimpleNamespace(name="smoke", output_root="runs/_smoke"),
         train_jsonl=tmp_path / "train.jsonl",
         selection_set="validation",
         seed=7,
@@ -105,6 +106,11 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
     }
     assert manifest["adapter_dir"] == str(adapter_dir)
     assert manifest["classifier_path"] == str(classifier_path)
+    assert manifest["run_control"] == {
+        "track": "central_ssl",
+        "budget_name": "smoke",
+        "output_root": "runs/_smoke",
+    }
     assert manifest["ssl_algorithm"] == "fixmatch"
     assert report["schema_version"] == "central_lora_classifier_eval.v1"
     assert report["manifest"] == manifest

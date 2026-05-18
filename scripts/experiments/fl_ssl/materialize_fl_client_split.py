@@ -11,6 +11,8 @@ import hydra
 from omegaconf import DictConfig
 
 from methods.federated.client_split import (
+    LABELED_EXPOSURE_SERVER_ONLY_SEED,
+    FederatedLabeledExposurePolicy,
     FederatedLabeledPoolPolicy,
     select_labeled_pool_items,
 )
@@ -44,6 +46,7 @@ class FlClientSplitArtifacts:
     output_dir: Path
     manifest_json: Path
     bootstrap_labeled_jsonl: Path
+    shared_client_labeled_jsonl: Path | None
     validation_jsonl: Path
     test_jsonl: Path
 
@@ -64,6 +67,9 @@ def materialize_fl_client_split(
     source_jsonl: Mapping[str, str],
     view_schema: FlClientSplitViewSchema,
     labeled_policy: FederatedLabeledPoolPolicy | Mapping[str, object] | None = None,
+    labeled_exposure_policy: (
+        FederatedLabeledExposurePolicy | Mapping[str, object] | None
+    ) = None,
 ) -> FlClientSplitArtifacts:
     """중앙 Query SSL split을 FL client별 고정 split으로 materialize한다."""
 
@@ -78,6 +84,13 @@ def materialize_fl_client_split(
     validation_rows = load_labeled_query_rows(source_validation_jsonl)
     test_rows = load_labeled_query_rows(source_test_jsonl)
     resolved_labeled_policy = _resolve_labeled_policy(labeled_policy)
+    resolved_labeled_exposure_policy = _resolve_labeled_exposure_policy(
+        labeled_exposure_policy
+    )
+    if resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        raise ValueError(
+            "server_only_seed materialization is planned but not implemented yet."
+        )
     validate_rows_have_view_schema(
         unlabeled_rows,
         view_schema=view_schema,
@@ -123,10 +136,17 @@ def materialize_fl_client_split(
         output_dir=output_dir,
         manifest_json=output_dir / "manifest.json",
         bootstrap_labeled_jsonl=output_dir / "bootstrap_labeled.jsonl",
+        shared_client_labeled_jsonl=(
+            output_dir / "shared_client_labeled.jsonl"
+            if resolved_labeled_exposure_policy.shares_same_labeled_rows_across_clients
+            else None
+        ),
         validation_jsonl=output_dir / "validation.jsonl",
         test_jsonl=output_dir / "test.jsonl",
     )
     dump_split_rows(artifacts.bootstrap_labeled_jsonl, labeled_split.bootstrap_rows)
+    if artifacts.shared_client_labeled_jsonl is not None:
+        dump_split_rows(artifacts.shared_client_labeled_jsonl, selected_labeled_rows)
     dump_split_rows(artifacts.validation_jsonl, validation_rows)
     dump_split_rows(artifacts.test_jsonl, test_rows)
 
@@ -136,15 +156,23 @@ def materialize_fl_client_split(
         client_dir = clients_dir / client_id
         labeled_path = client_dir / "labeled.jsonl"
         unlabeled_path = client_dir / "unlabeled.jsonl"
-        client_labeled_rows = list(labeled_client_shard.rows)
+        if artifacts.shared_client_labeled_jsonl is None:
+            client_labeled_rows = list(labeled_client_shard.rows)
+            client_labeled_ref = _relative_ref(output_dir, labeled_path)
+            dump_split_rows(labeled_path, client_labeled_rows)
+        else:
+            client_labeled_rows = list(selected_labeled_rows)
+            client_labeled_ref = _relative_ref(
+                output_dir,
+                artifacts.shared_client_labeled_jsonl,
+            )
         client_unlabeled_rows = unlabeled_rows_by_client[client_id]
 
-        dump_split_rows(labeled_path, client_labeled_rows)
         dump_split_rows(unlabeled_path, client_unlabeled_rows)
         client_entries.append(
             build_client_entry(
                 client_id=client_id,
-                labeled_jsonl=_relative_ref(output_dir, labeled_path),
+                labeled_jsonl=client_labeled_ref,
                 unlabeled_jsonl=_relative_ref(output_dir, unlabeled_path),
                 labeled_rows=client_labeled_rows,
                 unlabeled_rows=client_unlabeled_rows,
@@ -161,12 +189,18 @@ def materialize_fl_client_split(
         shard_policy=_shard_policy_payload(shard_policy),
         client_pool_split={},
         labeled_policy=resolved_labeled_policy.to_payload(),
+        labeled_exposure_policy=resolved_labeled_exposure_policy.to_payload(),
         source_selection=dict(source_selection),
         source_jsonl=dict(source_jsonl),
         view_schema=view_schema,
         bootstrap_labeled_jsonl=_relative_ref(
             output_dir,
             artifacts.bootstrap_labeled_jsonl,
+        ),
+        shared_client_labeled_jsonl=(
+            None
+            if artifacts.shared_client_labeled_jsonl is None
+            else _relative_ref(output_dir, artifacts.shared_client_labeled_jsonl)
         ),
         validation_jsonl=_relative_ref(output_dir, artifacts.validation_jsonl),
         test_jsonl=_relative_ref(output_dir, artifacts.test_jsonl),
@@ -199,6 +233,9 @@ def run_fl_client_split_materialization_from_hydra(*, cfg: DictConfig) -> None:
         shard_policy=FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy)),
         labeled_policy=FederatedLabeledPoolPolicy.from_mapping(
             to_plain_dict(materialization_cfg.labeled_policy)
+        ),
+        labeled_exposure_policy=FederatedLabeledExposurePolicy.from_mapping(
+            to_plain_dict(cfg.labeled_exposure_policy)
         ),
         source_selection=to_plain_dict(cfg.query_data_selection),
         source_jsonl=source_jsonl,
@@ -255,6 +292,16 @@ def _resolve_labeled_policy(
     if isinstance(policy, FederatedLabeledPoolPolicy):
         return policy
     return FederatedLabeledPoolPolicy.from_mapping(policy)
+
+
+def _resolve_labeled_exposure_policy(
+    policy: FederatedLabeledExposurePolicy | Mapping[str, object] | None,
+) -> FederatedLabeledExposurePolicy:
+    if policy is None:
+        return FederatedLabeledExposurePolicy()
+    if isinstance(policy, FederatedLabeledExposurePolicy):
+        return policy
+    return FederatedLabeledExposurePolicy.from_mapping(policy)
 
 
 def _require_disjoint_query_ids(

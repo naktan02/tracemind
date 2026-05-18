@@ -50,12 +50,25 @@ central fixed embedding + classifier seed
   materialized manifest로 우선 고정한다.
 - FL SSL 기본/main split은 `alpha=0.3`이다.
 - `alpha=0.1`은 기본 비교가 아니라 마지막 stress/robustness 확인 요소로 둔다.
-- materialized FL split은 선택된 labeled source 전체와 unlabeled source 전체를
-  client에 분배한다. labeled source는 `ourafla_reddit` 또는 `szegeelim_general4`
-  중에서 `query_data_selection.labeled`로 고른다.
+- materialized FL split은 labeled source 선택량과 labeled exposure 위치를 분리한다.
+  현재 기본값은 `client_local_split`으로, 선택된 labeled source를
+  bootstrap/server seed와 client-local labeled pool에 나눠 둔다.
+  - `shared_client_seed`: 같은 public labeled seed를 모든 client가 local SSL에 쓰고,
+    unlabeled source만 client별 non-IID split으로 둔다. materialized split
+    생성/로드 경로를 지원한다.
+  - `server_only_seed`: labeled source는 server/bootstrap boundary에만 두고,
+    client는 local unlabeled shard만 가진다. client labeled batch를 요구하는 method는
+    compatibility validator에서 실행 전에 막는다. 이 runtime은 아직 계획 단계다.
+  labeled source는 `ourafla_reddit` 또는 `szegeelim_general4` 중에서
+  `query_data_selection.labeled`로 고른다.
 - 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시
   `fl_client_split_materialization.labeled_policy`로 명시하고, 기본값은
-  `mode=all`이다.
+  `mode=all`이다. 이 값은 labeled source에서 얼마나 고를지의 문제이며,
+  고른 labeled rows를 client/server 어디에 노출할지는 별도
+  `labeled_exposure_policy` 축이 소유한다.
+- FL SSL smoke 산출물은 `runs/_smoke/fl_ssl` 아래에 둬서 논문/웹용
+  `runs/fl_ssl` 산출물과 섞지 않는다.
+- FL SSL reduced preset은 검증 실험용 `10 clients`, `5 communication rounds`로 둔다.
 - FL SSL full-budget preset은 `50 communication rounds`, `local_epochs=1`,
   `max_steps=50`이다. 새 method/wiring은 먼저 smoke/reduced run으로 확인한 뒤
   full-budget 비교로 올린다.
@@ -67,11 +80,11 @@ central fixed embedding + classifier seed
 - FL SSL report는 round progression, round delta, client split label
   distribution, aggregation proxy diagnostics를 함께 남긴다. `theta` 같은
   method 내부 파라미터는 기본 report에 노출하지 않는다.
-- 신규 FL SSL 실행 산출물은
+- 신규 FL SSL reduced/main 산출물은
   `runs/fl_ssl/<method_family>/<method_composition>/<split>/<clients_rounds>/...`
   아래에서 method composition을 먼저 고르고 split/client/round 변수를 그 아래에
-  쌓는다. 기존 `runs/federated_simulation*` 산출물도 같은 구조로
-  마이그레이션했다.
+  쌓는다. smoke 산출물은 같은 하위 구조를 `runs/_smoke/fl_ssl/...` 아래에
+  쌓는다. 기존 `runs/federated_simulation*` 산출물도 같은 구조로 마이그레이션했다.
 - 현재 FL SSL 기본 실행 조합은 descriptor 없는
   `manual + FixMatch + FedAvg + LoRA-classifier`다.
 - `manual` mode는 논문 method가 아니라

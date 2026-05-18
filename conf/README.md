@@ -104,11 +104,17 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `run_controls/fl_ssl/budget`
   - client 수, round budget, output dir 같은 FL SSL 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
-  - `output_dir`는 `runs/fl_ssl` root만 지정하고, runner가
+  - `smoke`는 wiring 검증 산출물을 `runs/_smoke/fl_ssl` 아래에 둬서
+    논문/웹용 run과 섞이지 않게 한다.
+  - `reduced`는 10 clients, 5 rounds 검증용 preset이고 `runs/fl_ssl`에 둔다.
+  - `main`은 10 clients, 50 rounds full-budget preset이고 `runs/fl_ssl`에 둔다.
+  - `output_dir`는 run root만 지정하고, runner가
     `<method_family>/<method_composition>/<split>/<clients_rounds>/<run_id>`를
     뒤에 붙인다.
 - `run_controls/central_ssl/budget`
   - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
+  - `main.output_root=runs`, `smoke.output_root=runs/_smoke`로 나눠 중앙 SSL
+    smoke/test 산출물이 논문/웹용 run과 섞이지 않게 한다.
 - `training_task.local_epochs`, `training_task.batch_size`,
   `training_task.max_steps`
   - FL round에서 각 client가 수행하는 local optimizer 반복을 소유한다.
@@ -155,6 +161,14 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - 일부 라벨만 쓰는 ablation은 실행 시
     `mode=count_per_class,count_per_class=<N>` 또는 `mode=fraction,fraction=<R>`로
     명시한다. 이 선택은 manifest와 report metadata에 남긴다.
+- `strategy_axes/fl/labeled_exposure_policy`
+  - 선택된 labeled rows를 server/client 어디에 노출할지 결정한다.
+  - `client_local_split`은 기존 기본값으로, server bootstrap subset과 client-local
+    labeled pool을 분리한다.
+  - `shared_client_seed`는 같은 selected labeled seed를 모든 client에 공유하고,
+    server bootstrap subset은 기존 `bootstrap_ratio`로 유지한다.
+  - `server_only_seed`는 FSSL method-owned runtime과 함께 열 예정이며, 현재
+    materialization에서는 명시적으로 차단한다.
 - `fl_data.source_mode`
   - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
     sharding한다.

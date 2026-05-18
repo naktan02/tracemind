@@ -478,7 +478,7 @@ function renderFlSslPanel() {
 function renderFlRunTable(rows) {
   if (rows.length === 0) {
     elements.flRunTable.innerHTML = emptyTableRow(
-      10,
+      12,
       "아직 dashboard bundle에 FL SSL run이 없습니다.",
     );
     return;
@@ -493,6 +493,8 @@ function renderFlRunTable(rows) {
           <td>${escapeHtml(shortSplit(row.selection_slug))}</td>
           <td>${formatCount(row.client_count)}</td>
           <td>${formatCount(row.completed_rounds)} / ${formatCount(row.round_budget)}</td>
+          <td>${formatCount(row.labeled_row_exposure_count)}</td>
+          <td>${formatCount(row.unique_labeled_row_count)}</td>
           <td>${formatMetric(flMetric(row, "macro_f1"))}</td>
           <td>${formatMetric(flMetric(row, "worst_client_macro_f1"))}</td>
           <td>${formatMetric(flMetric(row, "expected_calibration_error"))}</td>

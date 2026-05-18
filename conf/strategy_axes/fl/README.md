@@ -12,6 +12,13 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
+| `labeled_exposure_policy/` | `labeled_exposure_policy` | 선택된 labeled seed가 client-local split인지, 모든 client가 공유하는 public seed인지, 또는 server-only seed인지 구분 |
+
+`shard_policy`는 unlabeled/client pool의 non-IID 분배 방식을 소유하고,
+`labeled_exposure_policy`는 선택된 labeled seed가 어느 boundary에 노출되는지를
+소유한다. 즉 `shared_client_seed`는 shard policy가 아니라 exposure policy다.
+`server_only_seed`는 method/runtime이 client unlabeled-only local step을 지원할 때까지
+예약값이며, 현재 materializer와 FL run request resolver에서 실행 전에 거부한다.
 
 ## `fl_method` 실행 계획
 

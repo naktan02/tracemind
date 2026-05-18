@@ -1,0 +1,4 @@
+# @package labeled_exposure_policy
+
+name: server_only_seed
+split_id_component: server_only_seed_

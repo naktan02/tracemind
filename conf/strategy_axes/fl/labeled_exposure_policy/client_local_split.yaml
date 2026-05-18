@@ -1,0 +1,4 @@
+# @package labeled_exposure_policy
+
+name: client_local_split
+split_id_component: ""

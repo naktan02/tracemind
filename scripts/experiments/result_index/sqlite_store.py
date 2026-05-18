@@ -27,9 +27,15 @@ _CHILD_TABLES = (
 def initialize_database(db_path: Path) -> None:
     db_path.parent.mkdir(parents=True, exist_ok=True)
     with sqlite3.connect(db_path) as connection:
+        index_statements: list[str] = []
         for statement in SCHEMA_STATEMENTS:
+            if statement.strip().lower().startswith("create index"):
+                index_statements.append(statement)
+                continue
             connection.execute(statement)
         _ensure_experiment_run_columns(connection)
+        for statement in index_statements:
+            connection.execute(statement)
 
 
 def clear_database(db_path: Path) -> None:

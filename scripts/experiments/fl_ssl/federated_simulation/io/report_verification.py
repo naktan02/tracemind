@@ -40,9 +40,21 @@ def verify_federated_simulation_report_path(
     report_path: Path,
     expectation: FederatedReportExpectation,
 ) -> VerificationResult:
+    try:
+        payload = _load_json_object(report_path)
+    except OSError as error:
+        return VerificationResult(
+            artifact=str(report_path),
+            errors=(f"report file could not be read: {error}",),
+        )
+    except (json.JSONDecodeError, ValueError) as error:
+        return VerificationResult(
+            artifact=str(report_path),
+            errors=(f"report file is not a valid JSON object: {error}",),
+        )
     return verify_federated_simulation_report_payload(
         artifact=str(report_path),
-        payload=_load_json_object(report_path),
+        payload=payload,
         expectation=expectation,
     )
 
@@ -64,6 +76,7 @@ def verify_federated_simulation_report_payload(
     )
     shard_policy = _object_mapping(protocol.get("shard_policy"))
     fl_data_source = _object_mapping(protocol.get("fl_data_source"))
+    run_control = _object_mapping(protocol.get("run_control"))
     local_trainer_runtime = _object_mapping(
         protocol.get("local_trainer_runtime") or payload.get("local_trainer_runtime")
     )
@@ -116,6 +129,27 @@ def verify_federated_simulation_report_payload(
         "protocol.fl_data_source.split_id",
         fl_data_source.get("split_id"),
         expectation.expected_split_id_contains,
+    )
+    labeled_exposure_policy = _object_mapping(
+        fl_data_source.get("labeled_exposure_policy")
+    )
+    _expect_equal(
+        errors,
+        "protocol.fl_data_source.labeled_exposure_policy.name",
+        labeled_exposure_policy.get("name"),
+        expectation.expected_labeled_exposure_policy,
+    )
+    _expect_equal(
+        errors,
+        "protocol.run_control.budget_name",
+        run_control.get("budget_name"),
+        expectation.expected_run_control_budget_name,
+    )
+    _expect_equal(
+        errors,
+        "protocol.run_control.output_dir",
+        run_control.get("output_dir"),
+        expectation.expected_run_control_output_dir,
     )
     _expect_equal(
         errors,

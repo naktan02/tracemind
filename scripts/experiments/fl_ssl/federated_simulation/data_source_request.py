@@ -7,6 +7,7 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
+from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
     optional_plain_dict,
@@ -88,6 +89,7 @@ def resolve_fl_data_source(
             source_selection=dict(manifest.source_selection),
             source_jsonl=dict(manifest.source_jsonl),
             labeled_policy=dict(manifest.labeled_policy),
+            labeled_exposure_policy=dict(manifest.labeled_exposure_policy),
             view_schema=manifest.view_schema.to_payload(),
             test_jsonl=manifest.test_jsonl,
         ),
@@ -116,6 +118,7 @@ def require_manifest_matches_config(
             f"{bootstrap_ratio}."
         )
     _require_manifest_shard_policy_matches_config(manifest.shard_policy, shard_policy)
+    _require_manifest_labeled_exposure_is_supported(manifest.labeled_exposure_policy)
     configured_source_selection = optional_plain_dict(cfg, "query_data_selection")
     if (
         configured_source_selection
@@ -157,3 +160,15 @@ def _require_manifest_shard_policy_matches_config(
                 "fl_data materialized manifest shard_policy must match config: "
                 f"{key} {actual_value!r} != {expected_value!r}."
             )
+
+
+def _require_manifest_labeled_exposure_is_supported(
+    labeled_exposure_policy: dict[str, object],
+) -> None:
+    policy_name = str(labeled_exposure_policy.get("name", "")).strip()
+    if policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        raise ValueError(
+            "fl_data materialized manifest labeled_exposure_policy "
+            "server_only_seed is planned but not supported by the current "
+            "FL SSL local training runtime."
+        )

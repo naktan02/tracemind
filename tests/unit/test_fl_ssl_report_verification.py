@@ -12,6 +12,9 @@ from scripts.experiments.fl_ssl.federated_simulation.io.report_verification impo
     verify_federated_simulation_report_payload,
 )
 from scripts.experiments.fl_ssl.verify_federated_report_artifacts import (
+    _optional_manifest_path,
+)
+from scripts.experiments.fl_ssl.verify_federated_report_artifacts import (
     main as verify_federated_report_artifacts_main,
 )
 
@@ -24,6 +27,9 @@ def _report_payload(
     seed: int = 42,
     shard_alpha: float = 0.3,
     split_id: str = "example_alpha0.3_clients2_seed42",
+    labeled_exposure_policy: str = "client_local_split",
+    run_control_budget_name: str = "main",
+    run_control_output_dir: str = "runs/fl_ssl",
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
@@ -53,6 +59,12 @@ def _report_payload(
             },
             "fl_data_source": {
                 "split_id": split_id,
+                "labeled_exposure_policy": {"name": labeled_exposure_policy},
+            },
+            "run_control": {
+                "metadata_status": "recorded",
+                "budget_name": run_control_budget_name,
+                "output_dir": run_control_output_dir,
             },
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
@@ -102,6 +114,9 @@ def _expectation(
         expected_shard_policy_name="dirichlet_label_skew",
         expected_shard_alpha=0.3,
         expected_split_id_contains="alpha0.3",
+        expected_labeled_exposure_policy="client_local_split",
+        expected_run_control_budget_name="main",
+        expected_run_control_output_dir="runs/fl_ssl",
         expected_ssl_algorithm="fixmatch",
         expected_ssl_method="fixmatch_usb_v1",
         expected_adapter_family="lora_classifier",
@@ -251,6 +266,70 @@ def test_verify_federated_report_flags_split_condition_drift() -> None:
         "protocol.fl_data_source.split_id expected to contain 'alpha0.3', "
         "got 'example_alpha0.1_clients2_seed43'." in result.errors
     )
+
+
+def test_verify_federated_report_flags_labeled_exposure_policy_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            labeled_exposure_policy="client_local_split",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_labeled_exposure_policy="shared_client_seed",
+        ),
+    )
+
+    assert not result.passed
+    assert (
+        "protocol.fl_data_source.labeled_exposure_policy.name expected "
+        "'shared_client_seed', got 'client_local_split'."
+    ) in result.errors
+
+
+def test_verify_federated_report_flags_run_control_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            run_control_budget_name="smoke",
+            run_control_output_dir="runs/_smoke/fl_ssl",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_run_control_budget_name="reduced",
+            expected_run_control_output_dir="runs/fl_ssl",
+        ),
+    )
+
+    assert not result.passed
+    assert (
+        "protocol.run_control.budget_name expected 'reduced', got 'smoke'."
+        in result.errors
+    )
+    assert (
+        "protocol.run_control.output_dir expected 'runs/fl_ssl', "
+        "got 'runs/_smoke/fl_ssl'."
+    ) in result.errors
+
+
+def test_verify_federated_report_path_returns_failure_for_missing_report(
+    tmp_path: Path,
+) -> None:
+    report_path = tmp_path / "missing.report.json"
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(),
+    )
+
+    assert not result.passed
+    assert result.artifact == str(report_path)
+    assert result.errors
+    assert result.errors[0].startswith("report file could not be read:")
 
 
 def test_verify_federated_report_accepts_embedding_and_trainer_metadata() -> None:
@@ -433,6 +512,23 @@ def test_verify_client_count_sweep_summary_checks_each_report(
     assert result.passed
 
 
+def test_verify_client_count_sweep_summary_returns_failure_for_missing_summary(
+    tmp_path: Path,
+) -> None:
+    summary_path = tmp_path / "missing.summary.json"
+
+    result = verify_client_count_sweep_summary_path(
+        summary_path,
+        expected_client_counts=(1,),
+        report_expectation=FederatedReportExpectation(),
+    )
+
+    assert not result.passed
+    assert result.artifact == str(summary_path)
+    assert result.errors
+    assert result.errors[0].startswith("sweep summary file could not be read:")
+
+
 def test_verify_client_count_sweep_summary_reports_nested_drift(
     tmp_path: Path,
 ) -> None:
@@ -511,6 +607,9 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
                     "expected_round_budget": 1,
                     "expected_round_record_count": 1,
                     "expected_round_update_count_matches_client_count": True,
+                    "expected_labeled_exposure_policy": "client_local_split",
+                    "expected_run_control_budget_name": "main",
+                    "expected_run_control_output_dir": "runs/fl_ssl",
                     "expected_ssl_algorithm": "fixmatch",
                     "expected_ssl_method": "fixmatch_usb_v1",
                     "expected_adapter_family": "lora_classifier",
@@ -548,6 +647,49 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
     assert exit_code == 0
     assert "PASS single_report:" in output
     assert "PASS sweep_summary:" in output
+
+
+def test_verify_artifact_cli_accepts_labeled_exposure_and_run_control_options(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            _report_payload(
+                client_count=1,
+                completed_rounds=1,
+                round_budget=1,
+                labeled_exposure_policy="shared_client_seed",
+                run_control_budget_name="reduced",
+                run_control_output_dir="runs/fl_ssl",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        [
+            "--report",
+            str(report_path),
+            "--expected-client-count",
+            "1",
+            "--expected-completed-rounds",
+            "1",
+            "--expected-round-budget",
+            "1",
+            "--expected-labeled-exposure-policy",
+            "shared_client_seed",
+            "--expected-run-control-budget-name",
+            "reduced",
+            "--expected-run-control-output-dir",
+            "runs/fl_ssl",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert f"PASS {report_path}" in output
 
 
 def test_verify_artifact_manifest_entry_expectation_overrides_defaults(
@@ -597,6 +739,22 @@ def test_verify_artifact_manifest_entry_expectation_overrides_defaults(
 
     assert exit_code == 0
     assert "PASS flexmatch_report:" in output
+
+
+def test_verify_artifact_manifest_keeps_repo_root_relative_artifact_paths(
+    tmp_path: Path,
+) -> None:
+    manifest_path = tmp_path / "docs" / "operations" / "manifest.json"
+    manifest_path.parent.mkdir(parents=True, exist_ok=True)
+
+    resolved = _optional_manifest_path(
+        manifest_path,
+        "runs/fl_ssl/example/reports/fl_ssl_main_comparison.report.json",
+    )
+
+    assert resolved == Path(
+        "runs/fl_ssl/example/reports/fl_ssl_main_comparison.report.json"
+    )
 
 
 def test_verify_artifact_manifest_returns_failure_for_drift(

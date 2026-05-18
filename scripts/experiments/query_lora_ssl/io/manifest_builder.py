@@ -50,6 +50,9 @@ def build_query_lora_run_manifest(
         "best_selection_report": best_selection_report,
         "history": history,
     }
+    run_control = _build_run_control_manifest(cfg)
+    if run_control is not None:
+        manifest["run_control"] = run_control
     if extra_manifest:
         manifest.update(dict(extra_manifest))
     return manifest
@@ -67,3 +70,21 @@ def build_query_lora_eval_report(
         "manifest": manifest,
         "results": results,
     }
+
+
+def _build_run_control_manifest(cfg: Any) -> dict[str, object] | None:
+    budget = getattr(cfg, "central_ssl_budget", None)
+    if budget is None:
+        return None
+    return {
+        "track": "central_ssl",
+        "budget_name": _optional_str(getattr(budget, "name", None)),
+        "output_root": _optional_str(getattr(budget, "output_root", None)),
+    }
+
+
+def _optional_str(value: object) -> str | None:
+    if value is None:
+        return None
+    text = str(value).strip()
+    return text or None

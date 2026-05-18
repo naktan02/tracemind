@@ -34,6 +34,8 @@ def build_protocol_payload(
     round_budget: int,
     bootstrap_ratio: float,
     seed: int,
+    run_budget_name: str | None = None,
+    run_output_dir: str | None = None,
     shard_policy: FederatedShardPolicyConfig,
     dataset_split: FederatedDatasetSplit,
     ssl_method_config: FederatedSslMethodConfig | None,
@@ -52,6 +54,10 @@ def build_protocol_payload(
         "round_budget": round_budget,
         "completed_rounds": len(result.rounds),
         "seed": seed,
+        "run_control": _run_control_to_payload(
+            run_budget_name=run_budget_name,
+            run_output_dir=run_output_dir,
+        ),
         "seed_count": report_config.seed_count,
         "bootstrap_ratio": bootstrap_ratio,
         "shard_policy": _shard_policy_to_payload(shard_policy),
@@ -98,6 +104,20 @@ def build_protocol_payload(
     if execution_plan is not None:
         payload["fl_method"] = execution_plan.to_mapping()
     return payload
+
+
+def _run_control_to_payload(
+    *,
+    run_budget_name: str | None,
+    run_output_dir: str | None,
+) -> dict[str, object]:
+    if run_budget_name is None and run_output_dir is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        "budget_name": run_budget_name,
+        "output_dir": run_output_dir,
+    }
 
 
 def _embedding_spec_to_payload(
@@ -192,6 +212,7 @@ def _fl_data_source_to_payload(
         "source_selection": dict(data_source_config.source_selection),
         "source_jsonl": dict(data_source_config.source_jsonl),
         "labeled_policy": dict(data_source_config.labeled_policy),
+        "labeled_exposure_policy": dict(data_source_config.labeled_exposure_policy),
         "view_schema": dict(data_source_config.view_schema),
         "test_jsonl": data_source_config.test_jsonl,
     }

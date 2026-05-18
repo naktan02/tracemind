@@ -10,6 +10,7 @@ import yaml
 from shared.src.contracts.adapter_contract_families.base import AdapterKind
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+CONF_SRC = REPO_ROOT / "conf"
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
 CONF_FL_METHOD_DESCRIPTOR_SRC = (
@@ -217,6 +218,25 @@ def test_init_modules_stay_marker_only() -> None:
     assert not violations, (
         "__init__.py는 package marker/docstring만 둔다. "
         "공개 표면은 direct-file import로 드러낸다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_hydra_config_groups_are_python_package_markers() -> None:
+    config_group_dirs = sorted(
+        path.parent
+        for path in CONF_SRC.rglob("*.yaml")
+        if "__pycache__" not in path.parts
+    )
+    violations = [
+        _relative_repo_path(path)
+        for path in dict.fromkeys(config_group_dirs)
+        if not (path / "__init__.py").exists()
+    ]
+
+    assert not violations, (
+        "conf/** Hydra config group directory는 config_module='conf' import 경계를 "
+        "명확히 하기 위해 __init__.py package marker를 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

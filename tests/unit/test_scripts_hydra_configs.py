@@ -246,6 +246,8 @@ def test_train_lora_supervised_classifier_supports_source_and_budget_overrides()
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.central_ssl_budget.name == "smoke"
+    assert cfg.central_ssl_budget.output_root == "runs/_smoke"
+    assert cfg.output_dir == "runs/_smoke/train_lora_supervised_classifier"
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -299,6 +301,8 @@ def test_train_lora_ssl_classifier_supports_source_budget_and_leaf_overrides() -
     assert cfg.eval_sets.validation == cfg.query_source.validation_jsonl
     assert cfg.eval_sets.test == cfg.query_source.test_jsonl
     assert cfg.central_ssl_budget.name == "smoke"
+    assert cfg.central_ssl_budget.output_root == "runs/_smoke"
+    assert cfg.output_dir.startswith("runs/_smoke/train_lora_ssl_classifier/")
     assert cfg.train_batch_size == 8
     assert cfg.eval_batch_size == 32
     assert cfg.epochs == 1
@@ -496,6 +500,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective.privacy_guard_name == "noop"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
+    assert cfg.training_task.batch_size == 12
+    assert cfg.train_batch_size == 12
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
     assert cfg.query_ssl_strong_view_policy == "first_aug"
     assert cfg.training_task.objective["query_ssl.method_name"] == "fixmatch_usb_v1"
@@ -509,16 +515,16 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.validation.score_top_k is None
     assert cfg.validation.confidence_threshold == 0.6
     assert cfg.validation.margin_threshold == 0.02
-    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
+    assert cfg.federated_run_budget.output_dir == "runs/_smoke/fl_ssl"
     assert cfg.federated_run_budget.client_count == 4
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.runtime.name == "gpu_local"
     assert cfg.runtime.local_files_only is True
     assert cfg.fl_data.source_mode == "runtime_split_from_train"
     assert cfg.fl_data.split_manifest is None
-    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.seed_sweep.output_dir == "runs/_smoke/fl_ssl"
     assert list(cfg.seed_sweep.seeds) == [42, 43, 44]
-    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.client_count_sweep.output_dir == "runs/_smoke/fl_ssl"
     assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
     assert cfg.client_count_sweep.split_manifest_by_client_count is None
     assert cfg.run_safety.max_total_rounds_without_ack == 49
@@ -580,6 +586,8 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     assert cfg.fl_client_split_materialization.labeled_policy.mode == "all"
     assert cfg.fl_client_split_materialization.labeled_policy.count_per_class is None
     assert cfg.fl_client_split_materialization.labeled_policy.fraction is None
+    assert cfg.labeled_exposure_policy.name == "client_local_split"
+    assert cfg.labeled_exposure_policy.split_id_component == ""
     assert cfg.fl_client_split_materialization.view_schema.weak_text_field == "text"
     assert list(cfg.fl_client_split_materialization.view_schema.strong_text_fields) == [
         "aug_0",
@@ -599,6 +607,48 @@ def test_fl_client_split_materialization_supports_labeled_policy_overrides() -> 
 
     assert cfg.fl_client_split_materialization.labeled_policy.mode == "count_per_class"
     assert cfg.fl_client_split_materialization.labeled_policy.count_per_class == 256
+
+
+def test_fl_client_split_materialization_supports_labeled_exposure_policy_axis() -> (
+    None
+):
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/materialize_fl_client_split",
+            overrides=[
+                "strategy_axes/fl/labeled_exposure_policy=shared_client_seed",
+            ],
+        )
+
+    assert cfg.labeled_exposure_policy.name == "shared_client_seed"
+    assert cfg.labeled_exposure_policy.split_id_component == "shared_client_seed_"
+    assert "_shared_client_seed_" in cfg.fl_client_split_materialization.split_id
+
+
+def test_fl_client_split_materialization_shared_seed_main_split_id_matches_docs() -> (
+    None
+):
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/materialize_fl_client_split",
+            overrides=[
+                "run_controls/fl_ssl/budget=main",
+                "query_data_selection.labeled=ourafla_reddit",
+                "query_data_selection.unlabeled=ourafla_reddit",
+                "query_data_selection.validation=ourafla_reddit",
+                "query_data_selection.test=ourafla_reddit",
+                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
+                "strategy_axes/fl/labeled_exposure_policy=shared_client_seed",
+            ],
+        )
+
+    assert cfg.federated_run_budget.client_count == 10
+    assert cfg.fl_client_split_materialization.split_id == (
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
+        "clients10_seed42"
+    )
 
 
 def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
@@ -788,8 +838,74 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
 
     assert cfg.federated_run_budget.client_count == 10
     assert cfg.federated_run_budget.rounds == 50
+    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
+    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
     assert cfg.training_task.local_epochs == 1
+    assert cfg.training_task.batch_size == 12
+    assert cfg.train_batch_size == 12
     assert cfg.training_task.max_steps == 50
+
+
+def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=["run_controls/fl_ssl/budget=reduced"],
+        )
+
+    assert cfg.federated_run_budget.name == "reduced"
+    assert cfg.federated_run_budget.client_count == 10
+    assert cfg.federated_run_budget.rounds == 5
+    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
+    assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
+    assert cfg.training_task.batch_size == 12
+    assert cfg.train_batch_size == 12
+
+
+def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> None:
+    split_manifest = (
+        "data/datasets/fl_client_splits/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_"
+        "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
+        "clients10_seed42/manifest.json"
+    )
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "run_controls/fl_ssl/budget=reduced",
+                "fl_method.composition_mode=manual",
+                "strategy_axes/fl/shard_policy=dirichlet_alpha03",
+                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+                "round_runtime.adapter_family_name=lora_classifier",
+                "round_runtime.aggregation_backend_name=fedavg",
+                "fl_data.source_mode=materialized_client_split",
+                f"fl_data.split_manifest={split_manifest}",
+                "training_task.batch_size=12",
+                "training_task.max_steps=20",
+            ],
+        )
+
+    assert cfg.federated_run_budget.name == "reduced"
+    assert cfg.federated_run_budget.client_count == 10
+    assert cfg.federated_run_budget.rounds == 5
+    assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
+    assert cfg.fl_method.composition_mode == "manual"
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
+    assert cfg.query_ssl_method.algorithm_name == "flexmatch"
+    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert cfg.round_runtime.aggregation_backend_name == "fedavg"
+    assert cfg.fl_data.source_mode == "materialized_client_split"
+    assert cfg.fl_data.split_manifest == split_manifest
+    assert cfg.training_task.batch_size == 12
+    assert cfg.train_batch_size == 12
+    assert cfg.query_ssl_method.unlabeled_batch_size == 12
+    assert cfg.training_task.max_steps == 20
 
 
 def test_federated_simulation_supports_detail_strategy_overrides() -> None:
@@ -968,6 +1084,7 @@ def test_train_lora_supervised_classifier_defaults_to_gpu_online_scaffold() -> N
     assert cfg.lora.target_modules == "all-linear"
     assert cfg.selection_set == "validation"
     assert cfg.output_dir == "runs/train_lora_supervised_classifier"
+    assert cfg.central_ssl_budget.output_root == "runs"
 
 
 def test_train_lora_ssl_classifier_defaults_to_fixmatch_precomputed_views() -> None:
@@ -1015,6 +1132,7 @@ def test_train_lora_ssl_classifier_defaults_to_fixmatch_precomputed_views() -> N
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
         "validation-ourafla_reddit_test-ourafla_reddit"
     )
+    assert cfg.central_ssl_budget.output_root == "runs"
 
 
 def test_train_lora_ssl_classifier_switches_method_by_hydra_name() -> None:

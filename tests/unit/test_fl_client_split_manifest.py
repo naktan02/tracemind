@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 
 import pytest
@@ -21,6 +22,7 @@ from scripts.experiments.fl_ssl.materialize_fl_client_split import (
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     dump_labeled_query_rows,
+    load_labeled_query_rows,
 )
 
 
@@ -75,6 +77,7 @@ def _materialize_test_split(
     *,
     client_count: int = 2,
     labeled_policy: dict[str, object] | None = None,
+    labeled_exposure_policy: dict[str, object] | None = None,
 ) -> Path:
     paths = _write_source_rows(tmp_path)
     artifacts = materialize_fl_client_split(
@@ -105,6 +108,7 @@ def _materialize_test_split(
             require_strong_views=True,
         ),
         labeled_policy=labeled_policy,
+        labeled_exposure_policy=labeled_exposure_policy,
     )
     return artifacts.manifest_json
 
@@ -153,6 +157,128 @@ def test_materialize_fl_client_split_writes_manifest_and_client_artifacts(
     } | {f"l_n_{index}" for index in range(6)} | {
         f"u_a_{index}" for index in range(8)
     } | {f"u_n_{index}" for index in range(8)}
+
+
+def test_materialize_fl_client_split_default_labeled_rows_are_client_local(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(tmp_path)
+
+    loaded = load_materialized_client_split(manifest_path)
+    bootstrap_labeled_ids = {
+        row["query_id"] for row in loaded.dataset_split.bootstrap_rows
+    }
+    client_labeled_id_sets = [
+        {row["query_id"] for row in shard.labeled_rows}
+        for shard in loaded.dataset_split.client_shards
+    ]
+
+    assert bootstrap_labeled_ids
+    assert all(client_ids for client_ids in client_labeled_id_sets)
+    assert all(
+        bootstrap_labeled_ids.isdisjoint(client_ids)
+        for client_ids in client_labeled_id_sets
+    )
+    assert client_labeled_id_sets[0].isdisjoint(client_labeled_id_sets[1])
+    assert (
+        len(bootstrap_labeled_ids)
+        + sum(len(client_ids) for client_ids in client_labeled_id_sets)
+        == 12
+    )
+
+
+def test_load_materialized_client_split_defaults_legacy_labeled_exposure_policy(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(tmp_path)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload.pop("labeled_exposure_policy")
+    payload.pop("shared_client_labeled_jsonl")
+    manifest_path.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    loaded = load_materialized_client_split(manifest_path)
+
+    assert loaded.manifest.labeled_exposure_policy == {"name": "client_local_split"}
+    assert loaded.manifest.shared_client_labeled_jsonl is None
+
+
+def test_materialize_fl_client_split_supports_shared_client_labeled_seed(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(
+        tmp_path,
+        labeled_exposure_policy={"name": "shared_client_seed"},
+    )
+
+    loaded = load_materialized_client_split(manifest_path)
+    client_labeled_id_sets = [
+        {row["query_id"] for row in shard.labeled_rows}
+        for shard in loaded.dataset_split.client_shards
+    ]
+    bootstrap_labeled_ids = {
+        row["query_id"] for row in loaded.dataset_split.bootstrap_rows
+    }
+
+    assert loaded.manifest.labeled_exposure_policy == {"name": "shared_client_seed"}
+    assert loaded.manifest.shared_client_labeled_jsonl == "shared_client_labeled.jsonl"
+    assert 0 < len(bootstrap_labeled_ids) < 12
+    assert all(
+        client_ids == client_labeled_id_sets[0] for client_ids in client_labeled_id_sets
+    )
+    assert len(client_labeled_id_sets[0]) == 12
+    assert bootstrap_labeled_ids.issubset(client_labeled_id_sets[0])
+    assert {client.labeled_jsonl for client in loaded.manifest.clients} == {
+        "shared_client_labeled.jsonl"
+    }
+
+
+def test_materialize_fl_client_split_shared_seed_writes_single_labeled_artifact(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(
+        tmp_path,
+        labeled_exposure_policy={"name": "shared_client_seed"},
+    )
+
+    loaded = load_materialized_client_split(manifest_path)
+    output_dir = manifest_path.parent
+    shared_labeled_rows = load_labeled_query_rows(
+        output_dir / str(loaded.manifest.shared_client_labeled_jsonl)
+    )
+    shared_labeled_ids = {row["query_id"] for row in shared_labeled_rows}
+    client_labeled_paths = {
+        output_dir / client.labeled_jsonl for client in loaded.manifest.clients
+    }
+    client_unlabeled_id_sets = [
+        {row["query_id"] for row in shard.unlabeled_rows}
+        for shard in loaded.dataset_split.client_shards
+    ]
+
+    assert client_labeled_paths == {output_dir / "shared_client_labeled.jsonl"}
+    assert shared_labeled_ids == {f"l_a_{index}" for index in range(6)} | {
+        f"l_n_{index}" for index in range(6)
+    }
+    assert all(
+        shared_labeled_ids == {row["query_id"] for row in shard.labeled_rows}
+        for shard in loaded.dataset_split.client_shards
+    )
+    assert client_unlabeled_id_sets[0].isdisjoint(client_unlabeled_id_sets[1])
+    assert shared_labeled_ids.isdisjoint(
+        set().union(*client_unlabeled_id_sets),
+    )
+
+
+def test_materialize_fl_client_split_rejects_server_only_seed_until_runtime_exists(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(ValueError, match="server_only_seed"):
+        _materialize_test_split(
+            tmp_path,
+            labeled_exposure_policy={"name": "server_only_seed"},
+        )
 
 
 def test_materialize_fl_client_split_supports_labeled_count_per_class_policy(
@@ -252,6 +378,8 @@ def test_run_federated_simulation_config_loads_materialized_split(
     )
 
     assert request.seed == 999
+    assert request.run_budget_name == "smoke"
+    assert request.run_output_dir == "runs/_smoke/fl_ssl"
     assert request.materialized_dataset_split is not None
     assert request.data_source_config.source_mode == "materialized_client_split"
     assert request.data_source_config.split_id == "test_split"
@@ -262,6 +390,9 @@ def test_run_federated_simulation_config_loads_materialized_split(
         "require_strong_views": True,
     }
     assert request.data_source_config.labeled_policy["mode"] == "all"
+    assert request.data_source_config.labeled_exposure_policy == {
+        "name": "client_local_split"
+    }
     assert [
         shard.client_id for shard in request.materialized_dataset_split.client_shards
     ] == ["agent_01", "agent_02"]
@@ -291,6 +422,35 @@ def test_run_federated_simulation_rejects_manifest_client_count_drift(
         )
 
     with pytest.raises(ValueError, match="client_count"):
+        build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
+
+
+def test_run_federated_simulation_rejects_server_only_seed_manifest(
+    tmp_path: Path,
+) -> None:
+    manifest_path = _materialize_test_split(tmp_path, client_count=2)
+    payload = json.loads(manifest_path.read_text(encoding="utf-8"))
+    payload["labeled_exposure_policy"] = {"name": "server_only_seed"}
+    manifest_path.write_text(
+        json.dumps(payload, ensure_ascii=True, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
+
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "execution_context/embedding_adapter=hash_debug",
+                "execution_context/runtime_env=cpu_local",
+                "federated_run_budget.client_count=2",
+                "federated_run_budget.bootstrap_ratio=0.25",
+                "fl_data.source_mode=materialized_client_split",
+                f"fl_data.split_manifest={manifest_path}",
+                "shard_policy.dominant_ratio=0.5",
+            ],
+        )
+
+    with pytest.raises(ValueError, match="server_only_seed"):
         build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
 
 
