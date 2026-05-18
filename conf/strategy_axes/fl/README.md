@@ -53,10 +53,16 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 표현한다. 실제 local update 계산 조합은 `local_update_profile`, server round runtime
 조합은 `round_runtime.*` leaf에서 온다.
 
-따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다. 먼저
-`methods/federated_ssl/<method>/` descriptor/recipe metadata와 필요한 methods core를 구현한
-뒤 이 config group을 연다. method-only local/server/aggregation 변형은 method 폴더에
-둘 수 있고, `agent`/`main_server`에는 capability adapter만 둔다.
+따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다.
+`docs/contracts/fl_ssl_method_capability_matrix.md`의 `first_fed_ssl_method` 선택이
+먼저 있어야 하며, 선택 전에는 `methods/federated_ssl/<method>/` 구현 폴더나
+`method_descriptor/<method>.yaml` placeholder를 만들지 않는다. 선택된 method의
+descriptor/recipe metadata와 필요한 methods core를 구현한 뒤 이 config group을 연다.
+method-only local/server/aggregation 변형은 method 폴더에 둘 수 있고,
+`agent`/`main_server`에는 capability adapter만 둔다.
+
+`tests/architecture/test_layer_dependencies.py`는 `method_descriptor/*.yaml`과 실제
+`methods/federated_ssl/<method>/` 필수 파일이 일치하는지 검증한다.
 
 사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/descriptor.py`의 recipe
 metadata가 소유하고, 커질 때만 optional `recipe.py`로 분리한다. Hydra YAML은 실행

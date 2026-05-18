@@ -16,6 +16,8 @@
   이 폴더는 descriptor, optional recipe, local objective, server/round policy, method-only
   aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 계산은 축별 methods
   패키지로 승격한다.
+- FL SSL 논문 method는 `first_fed_ssl_method` 선택 전에는 구현 폴더나
+  `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
@@ -37,15 +39,17 @@
 ## 추가 순서
 
 1. 논문/방법 이름, 고정 변수, 변경 변수, dataset split, seed, metric, output metadata를 먼저 적는다.
-2. 논문 방법론이면 `methods/federated_ssl/<method>/descriptor.py`에 recipe metadata로
+2. FL SSL 논문 방법론이면 `docs/contracts/fl_ssl_method_capability_matrix.md`에서
+   `first_fed_ssl_method`를 먼저 확정한다.
+3. 논문 방법론이면 `methods/federated_ssl/<method>/descriptor.py`에 recipe metadata로
    조합을 먼저 드러내고, 조합표가 커질 때만 `recipe.py`로 분리한다.
-3. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.
-4. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
-5. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server/` adapter를 추가한다.
-6. 실험 실행은 `scripts/experiments/` entrypoint나 기존 runner에 얇게 연결한다.
-7. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, 실행 조건 묶음은 `conf/run_controls/`에 둔다.
-8. core unit test와 경계 integration test를 추가한다.
-9. architecture guard가 금지 import를 잡는지 확인한다.
+4. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.
+5. cross-boundary payload가 필요하면 `shared/src/contracts/`와 contract README를 먼저 갱신한다.
+6. production/runtime 연결이 필요할 때만 `agent/` 또는 `main_server` adapter를 추가한다.
+7. 실험 실행은 `scripts/experiments/` entrypoint나 기존 runner에 얇게 연결한다.
+8. Hydra 조합은 `conf/entrypoints/`, 파라미터 축은 `conf/strategy_axes/`, 실행 조건 묶음은 `conf/run_controls/`에 둔다.
+9. core unit test와 경계 integration test를 추가한다.
+10. architecture guard가 금지 import와 FL method descriptor placeholder를 잡는지 확인한다.
 
 ## 위치 판단
 
@@ -59,7 +63,9 @@
 
 ## Config 판단
 
-- `threshold=0.95`, `rank=8`, `alpha=0.3`, `rounds=50` 같은 값은 YAML 값이다.
+- `threshold=0.95`, `rank=8`, `alpha=0.3`, `rounds=1/5` 같은 값은 YAML 값이다.
+- archived `50-round` full-budget 값도 YAML에 남아 있지만, 현재 FL SSL 트랙에서는
+  새 `50-round`/full-budget 실행을 하지 않는다.
 - 논문/방법 단위로 독립 테스트와 README가 필요하면 폴더로 둔다.
 - 사람이 직접 실행하는 조합은 `conf/entrypoints/`.
 - 비교 track의 반복 실행 조건은 `conf/run_controls/`.
