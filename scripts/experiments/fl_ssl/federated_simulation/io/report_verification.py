@@ -3,56 +3,37 @@
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Mapping
 
-
-@dataclass(frozen=True, slots=True)
-class FederatedReportExpectation:
-    """이미 생성된 FL SSL report가 맞춰야 하는 실행 metadata 기대값."""
-
-    expected_completed_rounds: int | None = None
-    expected_round_budget: int | None = None
-    expected_client_count: int | None = None
-    expected_seed: int | None = None
-    expected_shard_policy_name: str | None = None
-    expected_shard_alpha: float | None = None
-    expected_split_id: str | None = None
-    expected_split_id_contains: str | None = None
-    expected_ssl_algorithm: str | None = None
-    expected_ssl_method: str | None = None
-    expected_adapter_family: str | None = None
-    expected_aggregation: str | None = None
-    expected_delta_format: str | None = None
-    expected_round_record_count: int | None = None
-    expected_round_update_count: int | None = None
-    expected_round_update_count_matches_client_count: bool = False
-    expected_shared_update_count: int | None = None
-    expected_shared_update_count_matches_round_updates: bool = False
-    expect_server_owned_update_artifacts: bool = False
-    expect_no_agent_local_update_refs: bool = False
-    expect_lora_classifier_aggregate_snapshot: bool = False
-    expected_embedding_metadata_status: str | None = None
-    expected_embedding_backend: str | None = None
-    expected_embedding_model_id: str | None = None
-    expected_embedding_device: str | None = None
-    expected_embedding_local_files_only: bool | None = None
-    expected_local_trainer_metadata_status: str | None = None
-    expected_local_trainer_device: str | None = None
-    expected_local_trainer_local_files_only: bool | None = None
-
-
-@dataclass(frozen=True, slots=True)
-class VerificationResult:
-    """검증 대상 artifact와 발견된 오류 목록."""
-
-    artifact: str
-    errors: tuple[str, ...]
-
-    @property
-    def passed(self) -> bool:
-        return not self.errors
+from .report_verification_helpers import (
+    expect_contains as _expect_contains,
+)
+from .report_verification_helpers import (
+    expect_equal as _expect_equal,
+)
+from .report_verification_helpers import (
+    expect_float_equal as _expect_float_equal,
+)
+from .report_verification_helpers import (
+    load_json_object as _load_json_object,
+)
+from .report_verification_helpers import (
+    nested_or_flat_value as _nested_or_flat_value,
+)
+from .report_verification_helpers import (
+    object_mapping as _object_mapping,
+)
+from .report_verification_helpers import (
+    object_sequence as _object_sequence,
+)
+from .report_verification_helpers import (
+    optional_int as _optional_int,
+)
+from .report_verification_models import (
+    FederatedReportExpectation,
+    VerificationResult,
+)
 
 
 def verify_federated_simulation_report_path(
@@ -227,6 +208,23 @@ def verify_federated_simulation_report_payload(
         expectation=expectation,
     )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
+
+
+def verify_client_count_sweep_summary_path(
+    summary_path: Path,
+    *,
+    expected_client_counts: tuple[int, ...],
+    report_expectation: FederatedReportExpectation,
+) -> VerificationResult:
+    from .client_count_sweep_verification import (
+        verify_client_count_sweep_summary_path as verify_summary_path,
+    )
+
+    return verify_summary_path(
+        summary_path,
+        expected_client_counts=expected_client_counts,
+        report_expectation=report_expectation,
+    )
 
 
 def _verify_round_records(
@@ -450,169 +448,3 @@ def _verify_lora_classifier_aggregate_snapshot(
                 "lora_classifier aggregate snapshot artifact does not exist: "
                 f"{artifact_path}."
             )
-
-
-def verify_client_count_sweep_summary_path(
-    summary_path: Path,
-    *,
-    expected_client_counts: tuple[int, ...],
-    report_expectation: FederatedReportExpectation,
-) -> VerificationResult:
-    summary = _load_json_object(summary_path)
-    errors = list(
-        _verify_client_count_sweep_summary_payload(
-            summary=summary,
-            expected_client_counts=expected_client_counts,
-            report_expectation=report_expectation,
-        )
-    )
-    errors.extend(
-        _verify_client_count_sweep_run_reports(
-            summary=summary,
-            summary_path=summary_path,
-            report_expectation=report_expectation,
-        )
-    )
-    return VerificationResult(artifact=str(summary_path), errors=tuple(errors))
-
-
-def _verify_client_count_sweep_summary_payload(
-    *,
-    summary: Mapping[str, object],
-    expected_client_counts: tuple[int, ...],
-    report_expectation: FederatedReportExpectation,
-) -> tuple[str, ...]:
-    errors: list[str] = []
-    _expect_equal(
-        errors,
-        "schema_version",
-        summary.get("schema_version"),
-        "fl_ssl_client_count_sweep_summary.v1",
-    )
-    observed_counts = tuple(
-        int(value) for value in _object_sequence(summary.get("client_counts"))
-    )
-    if observed_counts != expected_client_counts:
-        errors.append(
-            "client_counts expected "
-            f"{list(expected_client_counts)!r}, got {list(observed_counts)!r}."
-        )
-    _expect_equal(
-        errors,
-        "protocol.round_budget",
-        _object_mapping(summary.get("protocol")).get("round_budget"),
-        report_expectation.expected_round_budget,
-    )
-    runs = _object_sequence(summary.get("runs"))
-    if len(runs) != len(expected_client_counts):
-        errors.append(
-            f"runs length expected {len(expected_client_counts)}, got {len(runs)}."
-        )
-    return tuple(errors)
-
-
-def _verify_client_count_sweep_run_reports(
-    *,
-    summary: Mapping[str, object],
-    summary_path: Path,
-    report_expectation: FederatedReportExpectation,
-) -> tuple[str, ...]:
-    errors: list[str] = []
-    for run in _object_sequence(summary.get("runs")):
-        run_payload = _object_mapping(run)
-        client_count = _optional_int(run_payload.get("client_count"))
-        report_path = _resolve_report_path(summary_path, run_payload.get("report_path"))
-        if report_path is None:
-            errors.append(f"client_count={client_count}: report_path is missing.")
-            continue
-        if not report_path.exists():
-            errors.append(
-                f"client_count={client_count}: report does not exist: {report_path}."
-            )
-            continue
-        result = verify_federated_simulation_report_path(
-            report_path,
-            replace(report_expectation, expected_client_count=client_count),
-        )
-        errors.extend(
-            f"client_count={client_count}: {error}" for error in result.errors
-        )
-    return tuple(errors)
-
-
-def _load_json_object(path: Path) -> Mapping[str, object]:
-    payload = json.loads(path.read_text(encoding="utf-8"))
-    if not isinstance(payload, dict):
-        raise ValueError(f"Expected JSON object: {path}")
-    return payload
-
-
-def _object_mapping(value: object) -> Mapping[str, object]:
-    return value if isinstance(value, Mapping) else {}
-
-
-def _object_sequence(value: object) -> tuple[object, ...]:
-    return tuple(value) if isinstance(value, list | tuple) else ()
-
-
-def _nested_or_flat_value(
-    payload: Mapping[str, object],
-    namespace: str,
-    key: str,
-) -> object:
-    flat_value = payload.get(f"{namespace}.{key}")
-    if flat_value is not None:
-        return flat_value
-    return _object_mapping(payload.get(namespace)).get(key)
-
-
-def _resolve_report_path(summary_path: Path, raw_path: object) -> Path | None:
-    if not isinstance(raw_path, str) or not raw_path:
-        return None
-    path = Path(raw_path)
-    if path.is_absolute() or path.exists():
-        return path
-    return summary_path.parent / path
-
-
-def _optional_int(value: object) -> int | None:
-    return int(value) if value is not None else None
-
-
-def _expect_equal(
-    errors: list[str],
-    field: str,
-    observed: object,
-    expected: object,
-) -> None:
-    if expected is not None and observed != expected:
-        errors.append(f"{field} expected {expected!r}, got {observed!r}.")
-
-
-def _expect_float_equal(
-    errors: list[str],
-    field: str,
-    observed: object,
-    expected: float | None,
-) -> None:
-    if expected is None:
-        return
-    if observed is None:
-        errors.append(f"{field} expected {expected!r}, got None.")
-        return
-    if float(observed) != expected:
-        errors.append(f"{field} expected {expected!r}, got {observed!r}.")
-
-
-def _expect_contains(
-    errors: list[str],
-    field: str,
-    observed: object,
-    expected_substring: str | None,
-) -> None:
-    if expected_substring is None:
-        return
-    if not isinstance(observed, str) or expected_substring not in observed:
-        errors.append(
-            f"{field} expected to contain {expected_substring!r}, got {observed!r}."
-        )
