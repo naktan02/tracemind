@@ -9,7 +9,7 @@ from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
-from methods.adaptation.lora_classifier.local_update import (
+from methods.adaptation.lora_classifier.update.local_update import (
     LoraClassifierTrainExecutor,
 )
 from shared.src.contracts.adapter_contract_families.base import (
@@ -37,8 +37,8 @@ from .config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
-from .metrics import build_lora_classifier_client_metrics
-from .payload_builder import build_lora_classifier_delta_update
+from .update.metrics import build_lora_classifier_client_metrics
+from .update.payload_builder import build_lora_classifier_delta_update
 
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,

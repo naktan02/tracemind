@@ -16,6 +16,9 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.training import (
+    query_ssl_local_training as qcore,
+)
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
@@ -204,19 +207,19 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
 
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "_build_lora_classifier_model",
         lambda **_kwargs: (object(), object()),
     )
     monkeypatch.setattr(qtrainer, "_load_base_parameters", lambda **_kwargs: object())
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "load_lora_classifier_base_parameters_into_model",
         lambda **_kwargs: None,
     )
-    monkeypatch.setattr(qtrainer, "build_dataloader", lambda **_kwargs: [object()])
+    monkeypatch.setattr(qcore, "build_dataloader", lambda **_kwargs: [object()])
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "_build_unlabeled_loader",
         lambda **_kwargs: [object()],
     )
@@ -226,17 +229,17 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
         return kwargs["model"], [{"train_loss": 0.1}], {}
 
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "train_query_ssl_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "extract_lora_classifier_parameter_deltas",
         lambda **_kwargs: ({}, {}, {}),
     )
     monkeypatch.setattr(
-        qtrainer,
+        qcore,
         "build_query_ssl_lora_update_payload",
         lambda **_kwargs: SimpleNamespace(
             update_payload=update_payload,
