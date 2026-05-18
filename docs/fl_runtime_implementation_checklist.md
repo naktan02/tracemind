@@ -71,6 +71,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   payload family를 바꾸지 않는 FedMatch method-owned local objective다.
   구현을 열려면 `first_fed_ssl_method` 선택이 필요하며, 선택 전에는 method
   placeholder config나 production method 폴더를 만들지 않는다.
+- [x] `tests/architecture/test_layer_dependencies.py`가 method descriptor YAML과
+  실제 `methods/federated_ssl/<method>/` 구현 파일 일치를 검증해 선택 전
+  placeholder config를 막는다.
 
 새 method 기본 변경 위치:
 

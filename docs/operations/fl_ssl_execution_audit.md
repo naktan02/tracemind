@@ -62,6 +62,7 @@ report/summary를 검증했다.
 | client_count=1..10 sweep | 1-round summary verified and indexed. 새 full sweep은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | seed sweep은 robustness로 분리 | `seed_sweep` runner/summary는 존재. split seed 42 안정화 뒤 별도 실행 | 대기 |
 | 50-round 재실행 방지 | `scripts/experiments/fl_ssl/run_safety.py`와 `tests/unit/test_fl_ssl_run_safety.py` | 완료 |
+| 선택 전 method placeholder 방지 | `tests/architecture/test_layer_dependencies.py`가 `conf/strategy_axes/fl/method_descriptor/*.yaml`과 실제 `methods/federated_ssl/<method>/` 필수 파일 일치를 검증 | 완료 |
 
 ## Read-Only Verification Evidence
 
