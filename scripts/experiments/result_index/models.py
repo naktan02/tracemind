@@ -37,6 +37,9 @@ class ExperimentRunRecord:
     shard_alpha: float | None
     adapter_family_name: str | None
     aggregation_backend_name: str | None
+    fl_composition_mode: str | None
+    fl_execution_role: str | None
+    fl_descriptor_name: str | None
     update_delta_format: str | None
     embedding_backend: str | None
     embedding_model_id: str | None

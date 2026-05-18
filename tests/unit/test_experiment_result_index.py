@@ -89,7 +89,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
         "fixmatch_lora_alpha03_10c_50round_20260518__20260517T150549Z"
     )
     assert records.run.track == "fl_ssl_main_comparison"
-    assert records.run.method_family == "lora_classifier"
+    assert records.run.method_family == "manual_baselines"
     assert records.run.method_name == "fixmatch_usb_v1"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.selection_slug == (
@@ -107,6 +107,9 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.shard_alpha == 0.3
     assert records.run.adapter_family_name == "lora_classifier"
     assert records.run.aggregation_backend_name == "fedavg"
+    assert records.run.fl_composition_mode == "manual"
+    assert records.run.fl_execution_role == "manual_baseline"
+    assert records.run.fl_descriptor_name is None
     assert records.run.update_delta_format == "server_uploaded_artifact_ref"
     assert records.run.embedding_backend == "transformers_mxbai"
     assert records.run.embedding_device == "cuda"
@@ -186,6 +189,10 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["tracks"] == ["fl_ssl_main_comparison"]
     assert bundle["filters"]["methods"] == ["fixmatch_usb_v1"]
     assert bundle["filters"]["algorithms"] == ["fixmatch"]
+    assert bundle["filters"]["method_families"] == ["manual_baselines"]
+    assert bundle["filters"]["fl_composition_modes"] == ["manual"]
+    assert bundle["filters"]["fl_execution_roles"] == ["manual_baseline"]
+    assert bundle["filters"]["fl_descriptors"] == []
     assert bundle["filters"]["client_counts"] == [10]
     assert bundle["filters"]["round_budgets"] == [50]
     assert bundle["filters"]["shard_alphas"] == [0.3]
@@ -521,7 +528,19 @@ def _sample_fl_ssl_report() -> dict:
                 "aggregation_backend_name": "fedavg",
             },
             "ssl_method": {
-                "name": "fedavg_pseudo_label",
+                "metadata_status": "not_applicable",
+                "reason": "manual_composition",
+            },
+            "fl_method": {
+                "name": "manual",
+                "descriptor_name": None,
+                "composition_mode": "manual",
+                "execution_role": "manual_baseline",
+                "manual_axes": {
+                    "client_ssl_objective": "fixmatch",
+                    "server_aggregation": "fedavg",
+                    "update_family": "lora_classifier",
+                },
             },
             "objective": {
                 "query_ssl.method_name": "fixmatch_usb_v1",

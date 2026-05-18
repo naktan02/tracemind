@@ -55,7 +55,7 @@ class SimulationReportBuilder:
         seed: int,
         shard_policy: FederatedShardPolicyConfig,
         dataset_split: FederatedDatasetSplit,
-        ssl_method_config: FederatedSslMethodConfig,
+        ssl_method_config: FederatedSslMethodConfig | None,
         client_pool_split_config: FederatedClientPoolSplitConfig | None,
         training_task_config: FederatedTrainingTaskConfig,
         validation_config: FederatedValidationConfig,

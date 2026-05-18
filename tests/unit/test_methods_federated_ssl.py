@@ -30,25 +30,6 @@ from methods.federated_ssl.execution_plan import (
     SECURITY_POLICY_PLAINTEXT,
     build_federated_ssl_execution_plan,
 )
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
-    FEDAVG_PSEUDO_LABEL_RECIPE,
-)
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    descriptor as fedavg_pseudo_label_descriptor,
-)
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    local_objective as fedavg_pseudo_label_local_objective,
-)
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    recipe as fedavg_pseudo_label_recipe,
-)
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    round_policy as fedavg_pseudo_label_round_policy,
-)
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    server_policy as fedavg_pseudo_label_server_policy,
-)
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
@@ -60,6 +41,42 @@ from methods.federated_ssl.registry import (
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 TEST_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
+METHOD_OWNED_RECIPE = FederatedSslMethodRecipe(
+    method_name="method_owned_ssl",
+    supported_local_update_profile_names=("prototype_pseudo_label_v1",),
+    supported_runtime_pairs=(
+        FederatedSslRuntimePair(
+            adapter_family_name="diagonal_scale",
+            aggregation_backend_name="fedavg",
+        ),
+    ),
+)
+METHOD_OWNED_DESCRIPTOR = FederatedSslMethodDescriptor(
+    name="method_owned_ssl",
+    implementation_status="test_only",
+    required_views=FederatedSslRequiredViews(
+        view_names=("single_view",),
+        view_generator_name="training_example_backend",
+    ),
+    local_step=FederatedSslLocalStepSpec(
+        step_name="pseudo_label_self_training",
+        client_trainer_name="local_training_service",
+        pseudo_labeler_name="ssl_pseudo_label_selection_hook",
+        training_row_source="unlabeled_pool_when_available",
+    ),
+    server_step=FederatedSslServerStepSpec(
+        server_aggregator_name="round_runtime_aggregation_backend",
+        round_policy_name="round_active_pair_only",
+        server_aggregate_hint="use_round_runtime_aggregation_backend",
+    ),
+    round_state_exchange=FederatedSslRoundStateExchangeSpec(exchange_name="none"),
+    runtime_capabilities=FederatedSslRuntimeCapabilities(
+        simulation_supported=True,
+        live_agent_supported=False,
+        live_server_supported=False,
+    ),
+    recipe=METHOD_OWNED_RECIPE,
+)
 
 
 def _load_test_only_federated_ssl_method_fixture() -> object:
@@ -75,62 +92,24 @@ def _load_test_only_federated_ssl_method_fixture() -> object:
     return module
 
 
-def test_federated_ssl_descriptor_registry_resolves_active_baseline() -> None:
-    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
+def test_federated_ssl_descriptor_registry_has_no_manual_baseline_builtin() -> None:
+    with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
+        resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
 
-    assert descriptor is FEDAVG_PSEUDO_LABEL_DESCRIPTOR
-    assert descriptor.implementation_status == "active_runtime"
-    assert descriptor.required_views.view_names == ("single_view",)
-    assert descriptor.client_trainer_name == "local_training_service"
-    assert descriptor.pseudo_labeler_name == "ssl_pseudo_label_selection_hook"
-    assert descriptor.view_generator_name == "training_example_backend"
-    assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
-    assert descriptor.server_step.server_aggregate_hint == (
-        "use_round_runtime_aggregation_backend"
-    )
-    assert descriptor.round_state_exchange is not None
-    assert descriptor.round_state_exchange.exchange_name == "none"
-    assert descriptor.round_state_exchange.required_client_metric_keys == ()
-    assert descriptor.recipe is FEDAVG_PSEUDO_LABEL_RECIPE
-    assert descriptor.requires_custom_client_runtime is False
-    assert descriptor.requires_custom_server_runtime is False
-    assert descriptor.runtime_capabilities.simulation_supported is True
-    assert descriptor.runtime_capabilities.live_agent_supported is True
-    assert descriptor.runtime_capabilities.live_server_supported is True
-
-
-def test_fedavg_pseudo_label_exposes_method_local_policy_seams() -> None:
-    assert fedavg_pseudo_label_descriptor is FEDAVG_PSEUDO_LABEL_DESCRIPTOR
-    assert fedavg_pseudo_label_local_objective.objective_name == (
-        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.local_step.step_name
-    )
-    assert fedavg_pseudo_label_server_policy.policy_name == (
-        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.server_step.server_aggregator_name
-    )
-    assert fedavg_pseudo_label_round_policy.policy_name == (
-        FEDAVG_PSEUDO_LABEL_DESCRIPTOR.server_step.round_policy_name
-    )
-    assert fedavg_pseudo_label_round_policy.custom_round_policy_required is False
-    assert fedavg_pseudo_label_recipe is FEDAVG_PSEUDO_LABEL_RECIPE
-    assert FEDAVG_PSEUDO_LABEL_RECIPE.supports_local_update_profile(
-        "prototype_pseudo_label_v1"
-    )
-    assert FEDAVG_PSEUDO_LABEL_RECIPE.supports_runtime_pair(
-        adapter_family_name="lora_classifier",
-        aggregation_backend_name="fedavg",
-    )
+    assert list_federated_ssl_method_descriptors() == ()
 
 
 def test_federated_ssl_execution_plan_defaults_to_method_owned_plaintext() -> None:
     plan = build_federated_ssl_execution_plan(
         fl_method=None,
         security_policy=None,
-        method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+        method_descriptor=METHOD_OWNED_DESCRIPTOR,
     )
 
-    assert plan.method_name == "fedavg_pseudo_label"
-    assert plan.descriptor_name == "fedavg_pseudo_label"
+    assert plan.method_name == "method_owned_ssl"
+    assert plan.descriptor_name == "method_owned_ssl"
     assert plan.composition_mode == COMPOSITION_MODE_METHOD_OWNED
+    assert plan.execution_role == "method_owned"
     assert plan.manual_axes.is_configured is False
     assert plan.round_state_exchange_name == "none"
     assert plan.required_client_metric_keys == ()
@@ -148,12 +127,13 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
             },
         },
         security_policy={"name": "plaintext"},
-        method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+        method_descriptor=None,
     )
 
     assert plan.method_name == "manual"
-    assert plan.descriptor_name == "fedavg_pseudo_label"
+    assert plan.descriptor_name is None
     assert plan.composition_mode == COMPOSITION_MODE_MANUAL
+    assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "pseudo_label"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "diagonal_scale"
@@ -163,14 +143,14 @@ def test_federated_ssl_execution_plan_rejects_method_owned_manual_axes() -> None
     with pytest.raises(ValueError, match="manual_axes"):
         build_federated_ssl_execution_plan(
             fl_method={
-                "name": "fedavg_pseudo_label",
+                "name": "method_owned_ssl",
                 "composition_mode": COMPOSITION_MODE_METHOD_OWNED,
                 "manual_axes": {
                     "client_ssl_objective": "fixmatch",
                 },
             },
             security_policy=None,
-            method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+            method_descriptor=METHOD_OWNED_DESCRIPTOR,
         )
 
 
@@ -179,21 +159,13 @@ def test_federated_ssl_execution_plan_rejects_unsupported_security_policy() -> N
         build_federated_ssl_execution_plan(
             fl_method=None,
             security_policy={"name": "secure_aggregation_v1"},
-            method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+            method_descriptor=METHOD_OWNED_DESCRIPTOR,
         )
 
 
 def test_federated_ssl_descriptor_registry_rejects_unwired_method() -> None:
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         resolve_federated_ssl_method_descriptor("paper_method_candidate")
-
-
-def test_federated_ssl_descriptor_registry_lists_unique_descriptors() -> None:
-    descriptors = list_federated_ssl_method_descriptors(
-        method_names=("fedavg_pseudo_label", "fedavg_pseudo_label")
-    )
-
-    assert descriptors == (FEDAVG_PSEUDO_LABEL_DESCRIPTOR,)
 
 
 def test_federated_ssl_registry_supports_test_only_method_extension(
@@ -264,16 +236,15 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
 def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
     descriptors = list_federated_ssl_method_descriptors()
 
-    assert descriptors == (FEDAVG_PSEUDO_LABEL_DESCRIPTOR,)
-    assert all(
-        descriptor.implementation_status != "test_only" for descriptor in descriptors
-    )
+    assert descriptors == ()
 
 
-def test_federated_ssl_method_package_does_not_keep_registry_wiring_shim() -> None:
+def test_federated_ssl_method_package_does_not_keep_manual_baseline_descriptor() -> (
+    None
+):
     method_root = Path(__file__).resolve().parents[2] / "methods" / "federated_ssl"
 
-    assert not (method_root / "fedavg_pseudo_label" / "fedavg_pseudo_label.py").exists()
+    assert not (method_root / "fedavg_pseudo_label" / "descriptor.py").exists()
 
 
 def test_federated_ssl_required_views_must_be_non_empty_and_unique() -> None:
@@ -303,7 +274,7 @@ def test_federated_ssl_local_step_rejects_unknown_training_row_source() -> None:
 def test_federated_ssl_method_descriptor_rejects_recipe_name_drift() -> None:
     with pytest.raises(ValueError, match="same method name"):
         FederatedSslMethodDescriptor(
-            name="fedavg_pseudo_label",
+            name="method_owned_ssl",
             implementation_status="test_only",
             required_views=FederatedSslRequiredViews(
                 view_names=("single_view",),
@@ -413,7 +384,7 @@ def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
-                method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+                method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
                 local_update_adapter_kind="diagonal_scale",
                 round_adapter_family_name="lora_classifier",
@@ -445,7 +416,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
     with pytest.raises(ValueError, match="method recipe.*local_update_profile"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
-                method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+                method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
                 local_update_adapter_kind="diagonal_scale",
                 round_adapter_family_name="diagonal_scale",
@@ -456,7 +427,7 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
     with pytest.raises(ValueError, match="method recipe.*round runtime pair"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
-                method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+                method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=None,
                 local_update_adapter_kind="diagonal_scale",
                 round_adapter_family_name="diagonal_scale",

@@ -72,8 +72,11 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 
 - `strategy_axes/fl/method_descriptor`
   - `cfg.ssl_method`로 compose된다.
-  - 논문 method identity, report role, custom runtime 필요 여부를 설명한다.
+  - FedMatch/FedLGMatch/(FL)^2 같은 method-owned 논문 method identity, report
+    role, custom runtime 필요 여부를 설명한다.
   - 실제 local update 계산 조합을 단독으로 소유하지 않는다.
+  - 기본 manual baseline은 이 그룹을 compose하지 않고,
+    `query_ssl_method/local_update_profile/round_runtime.*` 조합으로 실행한다.
   - 사람이 읽는 method recipe metadata와 method-only 변형은
     `methods/federated_ssl/<method>/`가 소유한다.
 - `strategy_axes/fl/local_update_profile`

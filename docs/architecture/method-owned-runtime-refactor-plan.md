@@ -166,10 +166,9 @@ handoff 순서를 따른다.
 - 닫힘: `shared/src/contracts/training_contracts.py`에서 method-specific
   `diagonal_scale_heuristic` backend default를 제거했다. `training_backend_name`은
   contract 필수 값이고, 실험 기본값은 Hydra local update profile이 소유한다.
-- 닫힘: `methods/federated_ssl/<method>/descriptor.py`의 recipe metadata 경계를 열고
-  `fedavg_pseudo_label`이 지원 local update profile, adapter family, aggregation
-  backend 조합을 소유하게 했다. 조합표가 커지는 method만 optional `recipe.py`로
-  분리한다.
+- 최신화: `methods/federated_ssl/<method>/descriptor.py`의 recipe metadata 경계는
+  method-owned 논문 method 전용이다. 기본 manual baseline은 descriptor를 두지 않고
+  `query_ssl_method/local_update_profile/round_runtime.*` lower-axis 조합으로 실행한다.
 - 닫힘: compatibility validator가 method descriptor뿐 아니라 recipe metadata,
   local update profile, adapter family, aggregation backend를 bootstrap 전에 함께
   검증한다.

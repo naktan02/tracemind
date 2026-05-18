@@ -68,7 +68,7 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
-| FL SSL method spec | `fedavg_pseudo_label` | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | simulation baseline |
+| FL SSL method descriptor | future FedMatch/FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
@@ -94,6 +94,8 @@ central fixed embedding + classifier seed
   `query_ssl_method/round_runtime.*`를 직접 조합하는 baseline, ablation용
   모드다. report에 남기는 `client_ssl_objective/server_aggregation/update_family`는
   `query_ssl_method.algorithm_name`과 최종 `round_runtime.*` leaf에서 파생한다.
+  manual baseline은 method descriptor를 참조하지 않으며, report/index에는
+  `execution_role=manual_baseline`과 `descriptor_name=null`로 남긴다.
 - `security_policy`는 method identity가 아니라 runtime capability 축이다. 현재는
   `plaintext`만 지원하며, secure aggregation/DP/암호화 artifact ref는 이후 capability
   adapter와 validator를 붙일 자리로 남긴다.
@@ -146,7 +148,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   `round_runtime.aggregation_backend_name=fedavg`다. `diagonal_scale` baseline은
   `local_update_profile=prototype_pseudo_label_v1`와
   `round_runtime.adapter_family_name=diagonal_scale`를 함께 override한다.
-  이 조합은 기존 `fedavg_pseudo_label` method descriptor를 유지한다.
+  이 조합은 `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
 - 기본 manual LoRA-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
   `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
   `unlabeled_rows`로 실제 PEFT LoRA/classifier local optimizer를 실행한다.

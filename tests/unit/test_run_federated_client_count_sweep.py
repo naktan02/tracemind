@@ -43,7 +43,8 @@ def _cfg(
                 "source_mode": source_mode,
                 "split_manifest": split_manifest,
             },
-            "ssl_method": {"name": "fedavg_pseudo_label"},
+            "query_ssl_method": {"name": "fixmatch_usb_v1"},
+            "fl_method": {"composition_mode": "manual"},
             "shard_policy": {"name": "dirichlet_label_skew"},
             "client_pool_split": {
                 "labeled_ratio": 0.1,

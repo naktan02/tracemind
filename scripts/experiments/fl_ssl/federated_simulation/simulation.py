@@ -23,6 +23,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters import (
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
     build_federated_ssl_simulation_runtime,
+    build_manual_federated_ssl_simulation_runtime,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.bootstrap import (
     bootstrap_simulation,
@@ -37,6 +38,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
     FederatedPrototypeRebuildConfig,
+    FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -74,7 +76,7 @@ def run_simulation(
     validation_config: FederatedValidationConfig,
     prototype_rebuild_config: FederatedPrototypeRebuildConfig,
     diagnostics_config: FederatedDiagnosticsConfig,
-    ssl_method_config: FederatedSslMethodConfig,
+    ssl_method_config: FederatedSslMethodConfig | None = None,
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None,
     report_config: FederatedReportConfig | None = None,
 ) -> SimulationResult:
@@ -108,18 +110,19 @@ def run_simulation(
 def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
-    ssl_method_runtime = _build_validated_ssl_runtime(request.ssl_method_config)
-    execution_plan = _require_execution_plan_matches_method(
-        request=request,
-        ssl_method_descriptor=ssl_method_runtime.descriptor,
+    execution_plan = _resolve_execution_plan(request)
+    ssl_method_runtime = _build_validated_ssl_runtime(
+        request.ssl_method_config,
+        execution_plan=execution_plan,
     )
+    request.execution_plan = execution_plan
     _require_execution_plan_matches_runtime(
         request=request,
         execution_plan=execution_plan,
     )
     _require_runtime_compatibility(
         request,
-        ssl_method_runtime.descriptor,
+        ssl_method_runtime=ssl_method_runtime,
         execution_plan=execution_plan,
     )
     bootstrapped = bootstrap_simulation(
@@ -152,20 +155,27 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
 
 def _require_runtime_compatibility(
     request: SimulationRunRequest,
-    ssl_method_descriptor: FederatedSslMethodDescriptor,
     *,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
     execution_plan: FederatedSslExecutionPlan,
 ) -> None:
     """method/local update/round runtime 조합을 bootstrap 전에 검증한다."""
 
-    _require_training_task_type_matches_method(
+    _require_training_task_type_matches_runtime(
         request=request,
-        ssl_method_descriptor=ssl_method_descriptor,
+        ssl_method_runtime=ssl_method_runtime,
     )
     runtime_compatibility.require_round_runtime_matches_training_objective(request)
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
+    _require_local_adapter_matches_round_runtime(
+        request=request,
+        local_adapter_kind=local_adapter_kind,
+    )
+    ssl_method_descriptor = ssl_method_runtime.descriptor
+    if ssl_method_descriptor is None:
+        return
     validate_federated_ssl_profile_compatibility(
         FederatedSslProfileCompatibilityContext(
             method_descriptor=ssl_method_descriptor,
@@ -179,20 +189,49 @@ def _require_runtime_compatibility(
     )
 
 
-def _require_execution_plan_matches_method(
-    *,
-    request: SimulationRunRequest,
-    ssl_method_descriptor: FederatedSslMethodDescriptor,
-) -> FederatedSslExecutionPlan:
-    """method-first 실행 계획이 descriptor/security capability와 맞는지 검증한다."""
+def _resolve_execution_plan(request: SimulationRunRequest) -> FederatedSslExecutionPlan:
+    """request에서 실행 계획을 확정하고 필요한 descriptor 검증을 수행한다."""
 
-    execution_plan = request.execution_plan or build_federated_ssl_execution_plan(
+    if request.execution_plan is not None:
+        return request.execution_plan
+
+    if request.ssl_method_config is None:
+        return _build_default_manual_execution_plan(request)
+
+    ssl_method_descriptor = build_federated_ssl_simulation_runtime(
+        request.ssl_method_config.name
+    ).descriptor
+    if ssl_method_descriptor is None:
+        raise ValueError("method-owned FL SSL runtime requires a method descriptor.")
+    return build_federated_ssl_execution_plan(
         fl_method=None,
         security_policy=None,
         method_descriptor=ssl_method_descriptor,
     )
-    execution_plan.require_matches_descriptor(ssl_method_descriptor)
-    return execution_plan
+
+
+def _build_default_manual_execution_plan(
+    request: SimulationRunRequest,
+) -> FederatedSslExecutionPlan:
+    query_ssl_objective = _resolve_query_ssl_objective_config(request)
+    return build_federated_ssl_execution_plan(
+        fl_method={
+            "composition_mode": COMPOSITION_MODE_MANUAL,
+            "manual_axes": {
+                "client_ssl_objective": (
+                    "pseudo_label"
+                    if query_ssl_objective is None
+                    else query_ssl_objective.algorithm_name
+                ),
+                "server_aggregation": (
+                    request.round_runtime_config.aggregation_backend_name
+                ),
+                "update_family": request.round_runtime_config.adapter_family_name,
+            },
+        },
+        security_policy=None,
+        method_descriptor=None,
+    )
 
 
 def _require_execution_plan_matches_runtime(
@@ -205,6 +244,19 @@ def _require_execution_plan_matches_runtime(
     if execution_plan.composition_mode != COMPOSITION_MODE_MANUAL:
         return
     manual_axes = execution_plan.manual_axes
+    query_ssl_objective = _resolve_query_ssl_objective_config(request)
+    expected_client_ssl_objective = (
+        None if query_ssl_objective is None else query_ssl_objective.algorithm_name
+    )
+    if (
+        expected_client_ssl_objective is not None
+        and manual_axes.client_ssl_objective != expected_client_ssl_objective
+    ):
+        raise ValueError(
+            "manual fl_method.client_ssl_objective must match query_ssl objective: "
+            f"{manual_axes.client_ssl_objective!r} != "
+            f"{expected_client_ssl_objective!r}."
+        )
     if manual_axes.server_aggregation != (
         request.round_runtime_config.aggregation_backend_name
     ):
@@ -223,25 +275,43 @@ def _require_execution_plan_matches_runtime(
         )
 
 
-def _require_training_task_type_matches_method(
+def _require_training_task_type_matches_runtime(
     *,
     request: SimulationRunRequest,
-    ssl_method_descriptor: FederatedSslMethodDescriptor,
+    ssl_method_runtime: FederatedSslSimulationRuntime,
 ) -> None:
     actual = request.training_task_config.task_type
-    expected = ssl_method_descriptor.local_step.step_name
+    expected = ssl_method_runtime.training_task_type
     if str(actual) != expected:
         raise ValueError(
-            "training_task_config.task_type must match the registered method "
-            f"descriptor local step: {actual!r} != {expected!r}."
+            "training_task_config.task_type must match the selected FL SSL runtime: "
+            f"{actual!r} != {expected!r}."
         )
 
 
 def _build_validated_ssl_runtime(
-    ssl_method_config: FederatedSslMethodConfig,
+    ssl_method_config: FederatedSslMethodConfig | None,
+    *,
+    execution_plan: FederatedSslExecutionPlan,
 ) -> FederatedSslSimulationRuntime:
+    if ssl_method_config is None:
+        if execution_plan.composition_mode != COMPOSITION_MODE_MANUAL:
+            raise ValueError(
+                "method-owned FL SSL execution requires ssl_method_config."
+            )
+        execution_plan.require_manual_plan_without_descriptor()
+        return build_manual_federated_ssl_simulation_runtime()
+
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        raise ValueError(
+            "manual FL SSL execution must not provide ssl_method_config; "
+            "manual_baseline is an execution role, not a descriptor."
+        )
     ssl_method_runtime = build_federated_ssl_simulation_runtime(ssl_method_config.name)
     ssl_method_descriptor = ssl_method_runtime.descriptor
+    if ssl_method_descriptor is None:
+        raise ValueError("method-owned FL SSL runtime requires a method descriptor.")
+    execution_plan.require_matches_descriptor(ssl_method_descriptor)
     _require_ssl_method_config_matches_descriptor(
         ssl_method_config,
         ssl_method_descriptor,
@@ -261,6 +331,11 @@ def _require_ssl_method_config_matches_descriptor(
         raise ValueError(
             "ssl_method implementation_status must match the registered "
             f"descriptor for {ssl_method_config.name}."
+        )
+    if ssl_method_config.method_role != ssl_method_descriptor.method_role:
+        raise ValueError(
+            "ssl_method method_role must match the registered descriptor for "
+            f"{ssl_method_config.name}."
         )
     _require_mapping_value(
         ssl_method_config.client_step,
@@ -334,3 +409,37 @@ def _require_mapping_value(
             f"{context}.{key} must match the registered method descriptor: "
             f"{actual!r} != {expected!r}."
         )
+
+
+def _require_local_adapter_matches_round_runtime(
+    *,
+    request: SimulationRunRequest,
+    local_adapter_kind: str,
+) -> None:
+    if (
+        local_adapter_kind.lower()
+        == request.round_runtime_config.adapter_family_name.lower()
+    ):
+        return
+    profile_name = (
+        None
+        if request.local_update_profile is None
+        else request.local_update_profile.algorithm_profile_name
+    )
+    raise ValueError(
+        "FL SSL compatibility failed: local_update_profile and round_runtime "
+        "must target the same adapter family: "
+        f"local_update_profile={profile_name}, "
+        f"local_update_adapter_kind={local_adapter_kind}, "
+        f"round_adapter_family={request.round_runtime_config.adapter_family_name}."
+    )
+
+
+def _resolve_query_ssl_objective_config(
+    request: SimulationRunRequest,
+) -> FederatedQuerySslObjectiveConfig | None:
+    if request.query_ssl_objective_config is not None:
+        return request.query_ssl_objective_config
+    return FederatedQuerySslObjectiveConfig.from_objective_config(
+        request.training_task_config.objective_config
+    )

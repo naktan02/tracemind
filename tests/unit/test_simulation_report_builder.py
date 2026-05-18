@@ -18,7 +18,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
-    FederatedSslMethodConfig,
     FederatedValidationConfig,
     SimulationEvaluation,
     SimulationResult,
@@ -78,18 +77,6 @@ def _report_config() -> FederatedReportConfig:
         seed_count=3,
         primary_metrics=["macro_f1", "worst_client_macro_f1"],
         secondary_metrics=["loss", "communication_cost"],
-    )
-
-
-def _ssl_method_config() -> FederatedSslMethodConfig:
-    return FederatedSslMethodConfig(
-        schema_version="federated_ssl_method.v1",
-        name="fedavg_pseudo_label",
-        display_name="FedAvg pseudo-label baseline",
-        method_role="baseline",
-        implementation_status="active_runtime",
-        client_step={"task_type": "pseudo_label_self_training"},
-        server_step={"aggregation_backend_name": "fedavg"},
     )
 
 
@@ -256,7 +243,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             dominant_ratio=0.75,
         ),
         dataset_split=_dataset_split(),
-        ssl_method_config=_ssl_method_config(),
+        ssl_method_config=None,
         client_pool_split_config=FederatedClientPoolSplitConfig(
             labeled_ratio=0.1,
             unlabeled_ratio=0.9,
@@ -426,7 +413,7 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
                 dominant_ratio=0.75,
             ),
             dataset_split=_dataset_split(),
-            ssl_method_config=_ssl_method_config(),
+            ssl_method_config=None,
             client_pool_split_config=FederatedClientPoolSplitConfig(
                 labeled_ratio=0.1,
                 unlabeled_ratio=0.9,

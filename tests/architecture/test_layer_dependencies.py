@@ -48,7 +48,6 @@ LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
 RUNTIME_LAYER_METHOD_NAME_FRAGMENTS = (
-    "fedavg_pseudo_label",
     "fedmatch",
     "fedlgmatch",
     "fl2",

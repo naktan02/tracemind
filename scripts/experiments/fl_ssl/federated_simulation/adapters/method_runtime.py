@@ -10,6 +10,7 @@ from methods.federated_ssl.base import (
     TRAINING_ROW_SOURCE_ALL_ROWS,
     TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE,
     TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
+    TRAINING_ROW_SOURCES,
     FederatedSslMethodDescriptor,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
@@ -28,17 +29,25 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
+MANUAL_BASELINE_RUNTIME_NAME = "manual_baseline"
+MANUAL_BASELINE_TRAINING_TASK_TYPE = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING.value
+MANUAL_BASELINE_TRAINING_ROW_SOURCE = TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
+
 
 class FederatedSslSimulationRuntime(Protocol):
     """Simulation loop가 호출하는 FL SSL 실행 조합."""
 
-    descriptor: FederatedSslMethodDescriptor
+    descriptor: FederatedSslMethodDescriptor | None
+    runtime_name: str
+    training_task_type: str
+    training_row_source: str
 
     def build_round_open_request(
         self,
@@ -81,7 +90,16 @@ class FederatedSslSimulationRuntime(Protocol):
 class DefaultFederatedSslSimulationRuntime:
     """기본 FL SSL simulation runtime 조합."""
 
-    descriptor: FederatedSslMethodDescriptor
+    runtime_name: str
+    training_task_type: str
+    training_row_source: str
+    descriptor: FederatedSslMethodDescriptor | None = None
+
+    def __post_init__(self) -> None:
+        if self.training_row_source not in TRAINING_ROW_SOURCES:
+            raise ValueError(
+                f"training_row_source must be one of {sorted(TRAINING_ROW_SOURCES)}."
+            )
 
     def build_round_open_request(
         self,
@@ -120,7 +138,7 @@ class DefaultFederatedSslSimulationRuntime:
         *,
         shard: FederatedClientShard,
     ) -> list[LabeledQueryRow]:
-        row_source = self.descriptor.local_step.training_row_source
+        row_source = self.training_row_source
         if row_source == TRAINING_ROW_SOURCE_ALL_ROWS:
             return list(shard.rows)
         if (
@@ -165,4 +183,19 @@ def build_federated_ssl_simulation_runtime(
             "Federated SSL method requires a custom simulation runtime: "
             f"{descriptor.name}"
         )
-    return DefaultFederatedSslSimulationRuntime(descriptor=descriptor)
+    return DefaultFederatedSslSimulationRuntime(
+        runtime_name=descriptor.name,
+        training_task_type=descriptor.local_step.step_name,
+        training_row_source=descriptor.local_step.training_row_source,
+        descriptor=descriptor,
+    )
+
+
+def build_manual_federated_ssl_simulation_runtime() -> FederatedSslSimulationRuntime:
+    """manual baseline 조합용 기본 simulation runtime을 만든다."""
+
+    return DefaultFederatedSslSimulationRuntime(
+        runtime_name=MANUAL_BASELINE_RUNTIME_NAME,
+        training_task_type=MANUAL_BASELINE_TRAINING_TASK_TYPE,
+        training_row_source=MANUAL_BASELINE_TRAINING_ROW_SOURCE,
+    )

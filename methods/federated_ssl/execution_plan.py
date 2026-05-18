@@ -14,6 +14,8 @@ from methods.federated_ssl.base import FederatedSslMethodDescriptor
 
 COMPOSITION_MODE_METHOD_OWNED = "method_owned"
 COMPOSITION_MODE_MANUAL = "manual"
+EXECUTION_ROLE_METHOD_OWNED = "method_owned"
+EXECUTION_ROLE_MANUAL_BASELINE = "manual_baseline"
 SUPPORTED_COMPOSITION_MODES = frozenset(
     {
         COMPOSITION_MODE_METHOD_OWNED,
@@ -153,7 +155,7 @@ class FederatedSslExecutionPlan:
     """method-first FL SSL 실행 계획의 canonical 해석 결과."""
 
     method_name: str
-    descriptor_name: str
+    descriptor_name: str | None
     composition_mode: str
     manual_axes: FederatedSslManualAxes
     round_state_exchange_name: str | None
@@ -166,7 +168,7 @@ class FederatedSslExecutionPlan:
         *,
         fl_method: Mapping[str, object] | None,
         security_policy: Mapping[str, object] | None,
-        method_descriptor: FederatedSslMethodDescriptor,
+        method_descriptor: FederatedSslMethodDescriptor | None,
     ) -> "FederatedSslExecutionPlan":
         """Hydra FL method/security config와 descriptor를 실행 계획으로 해석한다."""
 
@@ -176,20 +178,30 @@ class FederatedSslExecutionPlan:
             allowed_keys=_FL_METHOD_KEYS,
             config_name="fl_method",
         )
-        round_state_exchange = method_descriptor.round_state_exchange
-        default_exchange_name = (
-            None if round_state_exchange is None else round_state_exchange.exchange_name
-        )
-        default_metric_keys = (
-            ()
-            if round_state_exchange is None
-            else round_state_exchange.required_client_metric_keys
-        )
         composition_mode = read_str(
             source,
             "composition_mode",
             COMPOSITION_MODE_METHOD_OWNED,
             field_prefix="fl_method",
+        )
+        round_state_exchange = (
+            None
+            if method_descriptor is None
+            else method_descriptor.round_state_exchange
+        )
+        default_exchange_name = (
+            "none"
+            if method_descriptor is None
+            else (
+                None
+                if round_state_exchange is None
+                else round_state_exchange.exchange_name
+            )
+        )
+        default_metric_keys = (
+            ()
+            if round_state_exchange is None
+            else round_state_exchange.required_client_metric_keys
         )
         plan = cls(
             method_name=_read_method_name(
@@ -197,11 +209,9 @@ class FederatedSslExecutionPlan:
                 composition_mode=composition_mode,
                 method_descriptor=method_descriptor,
             ),
-            descriptor_name=read_str(
+            descriptor_name=_read_descriptor_name(
                 source,
-                "descriptor_name",
-                method_descriptor.name,
-                field_prefix="fl_method",
+                method_descriptor=method_descriptor,
             ),
             composition_mode=composition_mode,
             manual_axes=FederatedSslManualAxes.from_mapping(
@@ -215,8 +225,41 @@ class FederatedSslExecutionPlan:
             ),
             security_policy=FederatedSslSecurityPolicy.from_mapping(security_policy),
         )
-        plan.require_matches_descriptor(method_descriptor)
+        if method_descriptor is None:
+            plan.require_manual_plan_without_descriptor()
+        else:
+            plan.require_matches_descriptor(method_descriptor)
         return plan
+
+    def require_manual_plan_without_descriptor(self) -> None:
+        """manual baseline 실행 계획이 method descriptor를 참조하지 않는지 검증한다."""
+
+        if self.composition_mode not in SUPPORTED_COMPOSITION_MODES:
+            raise ValueError(
+                "fl_method.composition_mode must be one of "
+                f"{sorted(SUPPORTED_COMPOSITION_MODES)}: {self.composition_mode!r}."
+            )
+        if self.composition_mode != COMPOSITION_MODE_MANUAL:
+            raise ValueError(
+                "method-owned fl_method requires a selected method descriptor."
+            )
+        if self.descriptor_name is not None:
+            raise ValueError(
+                "manual fl_method.descriptor_name must be omitted; manual_baseline "
+                "is an execution role, not a method descriptor."
+            )
+        if self.round_state_exchange_name != "none":
+            raise ValueError(
+                "manual fl_method round_state_exchange must be 'none' unless a "
+                "method-owned descriptor defines a custom exchange."
+            )
+        if self.required_client_metric_keys:
+            raise ValueError(
+                "manual fl_method.required_client_metric_keys must be empty unless "
+                "a method-owned descriptor defines them."
+            )
+        self._require_manual_axes_are_explicit()
+        self.security_policy.require_supported()
 
     def require_matches_descriptor(
         self,
@@ -224,6 +267,11 @@ class FederatedSslExecutionPlan:
     ) -> None:
         """계획이 descriptor와 지원 capability에서 drift되지 않았는지 검증한다."""
 
+        if self.composition_mode == COMPOSITION_MODE_MANUAL:
+            raise ValueError(
+                "manual fl_method must not be validated with a method descriptor; "
+                "use descriptor=None so report metadata does not look method-owned."
+            )
         if self.descriptor_name != method_descriptor.name:
             raise ValueError(
                 "fl_method.descriptor_name must match the selected method descriptor: "
@@ -236,8 +284,6 @@ class FederatedSslExecutionPlan:
             )
         if self.composition_mode == COMPOSITION_MODE_METHOD_OWNED:
             self._require_method_owned_plan_matches_descriptor(method_descriptor)
-        if self.composition_mode == COMPOSITION_MODE_MANUAL:
-            self._require_manual_axes_are_explicit()
 
         descriptor_exchange = method_descriptor.round_state_exchange
         expected_exchange_name = (
@@ -270,6 +316,7 @@ class FederatedSslExecutionPlan:
             "name": self.method_name,
             "descriptor_name": self.descriptor_name,
             "composition_mode": self.composition_mode,
+            "execution_role": self.execution_role,
             "manual_axes": self.manual_axes.to_mapping(),
             "round_state_exchange": {
                 "exchange_name": self.round_state_exchange_name,
@@ -277,6 +324,14 @@ class FederatedSslExecutionPlan:
             },
             "security_policy": self.security_policy.to_mapping(),
         }
+
+    @property
+    def execution_role(self) -> str:
+        """report에서 manual baseline과 method-owned 실행을 분리하는 역할값."""
+
+        if self.composition_mode == COMPOSITION_MODE_MANUAL:
+            return EXECUTION_ROLE_MANUAL_BASELINE
+        return EXECUTION_ROLE_METHOD_OWNED
 
     def _require_method_owned_plan_matches_descriptor(
         self,
@@ -314,7 +369,7 @@ def build_federated_ssl_execution_plan(
     *,
     fl_method: Mapping[str, object] | None,
     security_policy: Mapping[str, object] | None,
-    method_descriptor: FederatedSslMethodDescriptor,
+    method_descriptor: FederatedSslMethodDescriptor | None,
 ) -> FederatedSslExecutionPlan:
     """FL SSL 실행 계획을 만들고 bootstrap 전 검증을 수행한다."""
 
@@ -354,13 +409,31 @@ def _read_method_name(
     source: Mapping[str, object],
     *,
     composition_mode: str,
-    method_descriptor: FederatedSslMethodDescriptor,
+    method_descriptor: FederatedSslMethodDescriptor | None,
 ) -> str:
     if composition_mode == COMPOSITION_MODE_MANUAL and source.get("name") is None:
         return COMPOSITION_MODE_MANUAL
+    default_name = None if method_descriptor is None else method_descriptor.name
+    if default_name is None and source.get("name") is None:
+        raise ValueError("method-owned fl_method requires name or method_descriptor.")
     return read_str(
         source,
         "name",
+        default_name,
+        field_prefix="fl_method",
+    )
+
+
+def _read_descriptor_name(
+    source: Mapping[str, object],
+    *,
+    method_descriptor: FederatedSslMethodDescriptor | None,
+) -> str | None:
+    if method_descriptor is None:
+        return _read_optional_str(source, "descriptor_name")
+    return read_str(
+        source,
+        "descriptor_name",
         method_descriptor.name,
         field_prefix="fl_method",
     )

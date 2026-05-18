@@ -10,6 +10,7 @@ from omegaconf import DictConfig, OmegaConf
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import (
+    COMPOSITION_MODE_MANUAL,
     FederatedSslExecutionPlan,
     build_federated_ssl_execution_plan,
 )
@@ -46,6 +47,7 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
@@ -74,12 +76,12 @@ def build_simulation_request_from_config(
     local_update_profile = LocalUpdateProfile.from_mapping(
         _to_plain_dict(cfg.local_update_profile)
     )
+    execution_plan = _build_execution_plan(cfg)
     training_task_config = _build_training_task_config(
         cfg.training_task,
-        task_type=str(cfg.ssl_method.client_step.task_type),
+        task_type=_resolve_training_task_type(cfg=cfg, execution_plan=execution_plan),
         local_update_profile=local_update_profile,
     )
-    execution_plan = _build_execution_plan(cfg)
     round_runtime_config = FederatedRoundRuntimeConfig(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
@@ -121,7 +123,7 @@ def build_simulation_request_from_config(
         diagnostics_config=FederatedDiagnosticsConfig(
             **_to_plain_dict(cfg.diagnostics)
         ),
-        ssl_method_config=FederatedSslMethodConfig(**_to_plain_dict(cfg.ssl_method)),
+        ssl_method_config=_build_ssl_method_config(cfg, execution_plan=execution_plan),
         client_pool_split_config=client_pool_split_config,
         materialized_dataset_split=fl_data_source.materialized_dataset_split,
         data_source_config=fl_data_source.data_source_config,
@@ -188,12 +190,54 @@ def _build_lora_classifier_runtime_config(
 
 
 def _build_execution_plan(cfg: DictConfig) -> FederatedSslExecutionPlan:
-    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
     fl_method = _to_plain_dict(cfg.fl_method)
+    if _is_manual_composition(fl_method):
+        descriptor = None
+    else:
+        ssl_method = cfg.get("ssl_method")
+        if ssl_method is None:
+            raise ValueError(
+                "method-owned FL SSL execution requires strategy_axes/fl/"
+                "method_descriptor config."
+            )
+        descriptor = resolve_federated_ssl_method_descriptor(str(ssl_method.name))
     return build_federated_ssl_execution_plan(
         fl_method=_with_inferred_manual_axes(cfg=cfg, fl_method=fl_method),
         security_policy=_to_plain_dict(cfg.security_policy),
         method_descriptor=descriptor,
+    )
+
+
+def _build_ssl_method_config(
+    cfg: DictConfig,
+    *,
+    execution_plan: FederatedSslExecutionPlan,
+) -> FederatedSslMethodConfig | None:
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return None
+    ssl_method = cfg.get("ssl_method")
+    if ssl_method is None:
+        raise ValueError("method-owned FL SSL execution requires ssl_method config.")
+    return FederatedSslMethodConfig(**_to_plain_dict(ssl_method))
+
+
+def _resolve_training_task_type(
+    *,
+    cfg: DictConfig,
+    execution_plan: FederatedSslExecutionPlan,
+) -> str:
+    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
+        return TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING.value
+    ssl_method = cfg.get("ssl_method")
+    if ssl_method is None:
+        raise ValueError("method-owned FL SSL execution requires ssl_method config.")
+    return str(ssl_method.client_step.task_type)
+
+
+def _is_manual_composition(fl_method: dict[str, object]) -> bool:
+    return (
+        str(fl_method.get("composition_mode", "method_owned")).strip().lower()
+        == COMPOSITION_MODE_MANUAL
     )
 
 
@@ -204,7 +248,7 @@ def _with_inferred_manual_axes(
 ) -> dict[str, object]:
     """manual FL 조합에서 실제 lower-axis 값을 report metadata로 채운다."""
 
-    if str(fl_method.get("composition_mode", "method_owned")) != "manual":
+    if not _is_manual_composition(fl_method):
         return fl_method
 
     raw_manual_axes = fl_method.get("manual_axes")
@@ -237,7 +281,7 @@ def _infer_client_ssl_objective_name(cfg: DictConfig) -> str:
         and query_ssl_method.get("algorithm_name") is not None
     ):
         return str(query_ssl_method.algorithm_name)
-    return str(cfg.ssl_method.client_step.task_type)
+    return TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING.value
 
 
 def _resolve_fl_data_source(

@@ -36,7 +36,7 @@ def build_protocol_payload(
     seed: int,
     shard_policy: FederatedShardPolicyConfig,
     dataset_split: FederatedDatasetSplit,
-    ssl_method_config: FederatedSslMethodConfig,
+    ssl_method_config: FederatedSslMethodConfig | None,
     client_pool_split_config: FederatedClientPoolSplitConfig | None,
     training_task_config: FederatedTrainingTaskConfig,
     validation_config: FederatedValidationConfig,
@@ -160,8 +160,13 @@ def _shard_policy_to_payload(
 
 
 def _ssl_method_to_payload(
-    ssl_method_config: FederatedSslMethodConfig,
+    ssl_method_config: FederatedSslMethodConfig | None,
 ) -> dict[str, object]:
+    if ssl_method_config is None:
+        return {
+            "metadata_status": "not_applicable",
+            "reason": "manual_composition",
+        }
     return {
         "schema_version": ssl_method_config.schema_version,
         "name": ssl_method_config.name,

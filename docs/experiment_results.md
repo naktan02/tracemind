@@ -8,7 +8,7 @@ truth가 아니며, query-domain central LoRA/SSL 결과는 별도 run report가
 
 - 현재 숫자는 대부분 fixed embedding 또는 시스템 트랙 기준이다.
 - 중앙 SSL control과 FL SSL main comparison은 같은 ranking으로 합치지 않는다.
-- 세부 report는 각 `runs/<job>/<run_id>/` 아래 JSON을 source of truth로 본다.
+- 세부 report는 각 `runs/<track>/.../<run_id>/` 아래 JSON을 source of truth로 본다.
 
 ## Canonical Baselines
 
@@ -67,16 +67,12 @@ Purpose:
 |---|---|---|
 | Prototype strategy smoke | `runs/prototype_strategy/<run_id>/summary.json` | hash_debug/real backend/refactor smoke 통과 |
 | Threshold sweep smoke | `runs/prototype_threshold_sweep/<run_id>/summary.json` | grid search와 summary/grid 산출물 형식 |
-| Federated simulation legacy smoke | `runs/federated_simulation_smoke/20260331T155147Z/` | `train -> shard -> pseudo-label -> local update -> aggregation -> publication` 흐름 |
-| FL SSL current PEFT smoke | `runs/federated_simulation_smoke/fixmatch_lora_alpha03_10c_1round_current_20260518/20260517T232304Z/reports/fl_ssl_main_comparison.report.json` | `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`, server-owned artifact-ref delta |
+| FL SSL current PEFT smoke | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds1/20260517T232304Z/reports/fl_ssl_main_comparison.report.json` | `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`, server-owned artifact-ref delta |
 
-Legacy FL smoke에서 확인한 대표 산출물:
-
-- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0000.json`
-- `runs/federated_simulation_smoke/20260331T155147Z/main_server/model_manifests/sim_rev_0001.json`
-- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0000.json`
-- `runs/federated_simulation_smoke/20260331T155147Z/main_server/prototype_packs/proto_sim_0001.json`
-- `runs/federated_simulation_smoke/20260331T155147Z/agents/agent_01/shared_adapter_updates/update_round_0001_08779ed1233e.json`
+이전 `runs/federated_simulation*` 수평 산출물은 `runs/fl_ssl` method-first layout으로
+마이그레이션했고 원본 root 폴더는 제거했다. 현재 FL SSL 결과는
+`manual_baselines/<ssl>__<adapter_family>__<aggregation>/<split>/<clients_rounds>/`
+계층을 기준으로 찾는다.
 
 FL SSL 현재 감사 기준:
 
@@ -85,8 +81,10 @@ FL SSL 현재 감사 기준:
 - 검증 명령:
   `uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json`
 - 현재 manifest는 current 1-round smoke, 기존 alpha=0.3 50-round read-only report,
-  alpha=0.1 5-round reduced stress, FlexMatch/FreeMatch/PseudoLabel 5-round reduced
-  ablation, client_count 1..10 1-round summary를 검증한다.
+  FlexMatch/FreeMatch/PseudoLabel 5-round reduced ablation, client_count 1..10
+  1-round summary를 검증한다.
+- Dirichlet `alpha=0.1` stress는 현재 `runs/fl_ssl` 아래 검증 가능한 report가
+  없으므로 새 실행 전까지 current result 표에 포함하지 않는다.
 - 새 `50-round`/full-budget FL 실행은 현재 사용자 결정에 따라 하지 않는다.
 
 ## 현재 권장안

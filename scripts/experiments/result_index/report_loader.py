@@ -137,6 +137,9 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         shard_alpha=None,
         adapter_family_name=None,
         aggregation_backend_name=None,
+        fl_composition_mode=None,
+        fl_execution_role=None,
+        fl_descriptor_name=None,
         update_delta_format=None,
         embedding_backend=None,
         embedding_model_id=None,
@@ -242,6 +245,8 @@ def _load_fl_ssl_result_index_records(
     source_selection = _as_mapping(fl_data_source.get("source_selection"))
     round_runtime = _as_mapping(protocol.get("round_runtime"))
     objective = _as_mapping(protocol.get("objective"))
+    fl_method = _as_mapping(protocol.get("fl_method"))
+    ssl_method = _as_mapping(protocol.get("ssl_method"))
     shard_policy = _as_mapping(protocol.get("shard_policy"))
     local_update_budget = _as_mapping(protocol.get("local_update_budget"))
     embedding_adapter = _as_mapping(protocol.get("embedding_adapter"))
@@ -250,14 +255,22 @@ def _load_fl_ssl_result_index_records(
     run_id = _infer_fl_ssl_run_id(report_path)
     method_name = (
         _optional_str(objective.get("query_ssl.method_name"))
-        or _optional_str(_as_mapping(protocol.get("ssl_method")).get("name"))
+        or _optional_str(ssl_method.get("name"))
         or "unknown"
     )
     adapter_family = _optional_str(round_runtime.get("adapter_family_name"))
+    composition_mode = _optional_str(fl_method.get("composition_mode"))
+    descriptor_name = _optional_str(fl_method.get("descriptor_name")) or _optional_str(
+        ssl_method.get("name")
+    )
     run = ExperimentRunRecord(
         run_id=run_id,
         track=_optional_str(payload.get("track")) or "fl_ssl_main_comparison",
-        method_family=adapter_family or "unknown",
+        method_family=_infer_fl_method_family(
+            composition_mode=composition_mode,
+            descriptor_name=descriptor_name,
+            adapter_family=adapter_family,
+        ),
         method_name=method_name,
         algorithm_name=_optional_str(objective.get("query_ssl.algorithm_name")),
         selection_slug=_optional_str(fl_data_source.get("split_id")),
@@ -291,6 +304,9 @@ def _load_fl_ssl_result_index_records(
         aggregation_backend_name=_optional_str(
             round_runtime.get("aggregation_backend_name")
         ),
+        fl_composition_mode=composition_mode,
+        fl_execution_role=_optional_str(fl_method.get("execution_role")),
+        fl_descriptor_name=descriptor_name,
         update_delta_format=_optional_str(
             objective.get("lora_classifier.delta_format")
         ),
@@ -358,6 +374,17 @@ def _load_fl_ssl_result_index_records(
         epoch_per_class_metrics=(),
         artifacts=tuple(artifacts),
     )
+
+
+def _infer_fl_method_family(
+    *,
+    composition_mode: str | None,
+    descriptor_name: str | None,
+    adapter_family: str | None,
+) -> str:
+    if str(composition_mode or "").strip().lower() == "manual":
+        return "manual_baselines"
+    return descriptor_name or adapter_family or "unknown"
 
 
 def _build_eval_metric(

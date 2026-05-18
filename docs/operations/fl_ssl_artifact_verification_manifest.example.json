@@ -14,7 +14,7 @@
   "artifacts": [
     {
       "name": "fixmatch_alpha03_main",
-      "report": "runs/federated_simulation/<run_id>/reports/fl_ssl_main_comparison.report.json",
+      "report": "runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/<run_id>/reports/fl_ssl_main_comparison.report.json",
       "expectation": {
         "expected_completed_rounds": 50,
         "expected_round_budget": 50,
@@ -28,7 +28,7 @@
     },
     {
       "name": "freematch_alpha03_reduced",
-      "report": "runs/federated_simulation_reduced/<run_id>/reports/fl_ssl_main_comparison.report.json",
+      "report": "runs/fl_ssl/manual_baselines/freematch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/<run_id>/reports/fl_ssl_main_comparison.report.json",
       "expectation": {
         "expected_completed_rounds": 5,
         "expected_round_budget": 5,
@@ -50,7 +50,7 @@
     },
     {
       "name": "fixmatch_client_count_sweep_1round",
-      "client_count_sweep_summary": "runs/federated_simulation_client_count_sweep_short/<run_id>/reports/fl_ssl_client_count_sweep.summary.json",
+      "client_count_sweep_summary": "runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/sweeps/client_count_rounds1/<run_id>/reports/fl_ssl_client_count_sweep.summary.json",
       "expected_client_counts": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
       "expectation": {
         "expected_completed_rounds": 1,

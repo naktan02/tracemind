@@ -20,7 +20,6 @@ from methods.adaptation.query_classifier_adaptation.local_training_budget import
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
-from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
@@ -33,6 +32,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import 
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     build_federated_ssl_simulation_runtime,
+    build_manual_federated_ssl_simulation_runtime,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
@@ -268,29 +268,16 @@ def _default_client_pool_split_config() -> FederatedClientPoolSplitConfig:
     return FederatedClientPoolSplitConfig(labeled_ratio=0.1, unlabeled_ratio=0.9)
 
 
-def _default_ssl_method_config() -> FederatedSslMethodConfig:
+def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
     return FederatedSslMethodConfig(
         schema_version="federated_ssl_method.v1",
-        name="fedavg_pseudo_label",
-        display_name="FedAvg pseudo-label baseline",
-        method_role="baseline",
-        implementation_status="active_runtime",
-        client_step={
-            "owner": "agent",
-            "task_type": "pseudo_label_self_training",
-            "custom_method_runtime_required": False,
-        },
-        server_step={
-            "owner": "main_server",
-            "aggregation_backend_name": "fedavg",
-            "custom_round_policy_required": False,
-        },
-        round_state_exchange={
-            "exchange_name": "none",
-            "required_client_metric_keys": [],
-            "custom_exchange_required": False,
-        },
-        report_tags=["baseline", "fedavg", "pseudo_label"],
+        name="legacy_manual_descriptor",
+        display_name="Legacy manual descriptor",
+        method_role="legacy_descriptor",
+        implementation_status="removed",
+        client_step={"task_type": "pseudo_label_self_training"},
+        server_step={},
+        round_state_exchange={"exchange_name": "none"},
     )
 
 
@@ -574,7 +561,6 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
             method_name="fixmatch_usb_v1",
@@ -837,24 +823,19 @@ def test_federated_training_task_config_accepts_method_task_type() -> None:
     assert training_task_config.task_type == TrainingTaskType.FEEDBACK_SUPERVISED
 
 
-def test_federated_ssl_simulation_runtime_uses_methods_descriptor() -> None:
-    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
+def test_manual_federated_ssl_simulation_runtime_has_no_method_descriptor() -> None:
+    runtime = build_manual_federated_ssl_simulation_runtime()
 
-    assert descriptor.implementation_status == "active_runtime"
-    assert descriptor.client_trainer_name == "local_training_service"
-    assert descriptor.pseudo_labeler_name == "ssl_pseudo_label_selection_hook"
-    assert descriptor.server_aggregator_name == "round_runtime_aggregation_backend"
-    assert descriptor.requires_custom_client_runtime is False
-    assert descriptor.requires_custom_server_runtime is False
-    runtime = build_federated_ssl_simulation_runtime("fedavg_pseudo_label")
-    assert runtime.descriptor is descriptor
+    assert runtime.runtime_name == "manual_baseline"
+    assert runtime.descriptor is None
+    assert runtime.training_task_type == "pseudo_label_self_training"
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")
 
 
-def test_federated_ssl_runtime_uses_method_training_row_source() -> None:
-    runtime = build_federated_ssl_simulation_runtime("fedavg_pseudo_label")
+def test_manual_federated_ssl_runtime_uses_unlabeled_training_rows() -> None:
+    runtime = build_manual_federated_ssl_simulation_runtime()
     labeled_row = _row("l1", "labeled", "normal")
     unlabeled_row = _row("u1", "unlabeled", "anxiety")
 
@@ -871,38 +852,56 @@ def test_federated_ssl_runtime_uses_method_training_row_source() -> None:
     assert selected_rows == [unlabeled_row]
 
 
-def test_simulation_server_runtime_wires_method_descriptor(tmp_path: Path) -> None:
-    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
-
+def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) -> None:
     runtime = SimulationServerRuntime.build(
         output_dir=tmp_path,
         round_runtime_config=_default_round_runtime_config(),
         prototype_build_strategy=SinglePrototypeBuildStrategy(),
-        method_descriptor=descriptor,
+        method_descriptor=None,
     )
 
-    assert runtime.lifecycle_service.method_descriptor is descriptor
+    assert runtime.lifecycle_service.method_descriptor is None
 
 
-def test_federated_ssl_runtime_rejects_method_config_descriptor_drift() -> None:
-    ssl_method_config = _default_ssl_method_config()
-    ssl_method_config.client_step["task_type"] = "supervised_mix_local_training"
+def test_federated_ssl_runtime_rejects_manual_ssl_method_config() -> None:
+    execution_plan = build_federated_ssl_execution_plan(
+        fl_method={
+            "composition_mode": "manual",
+            "manual_axes": {
+                "client_ssl_objective": "pseudo_label",
+                "server_aggregation": "fedavg",
+                "update_family": "diagonal_scale",
+            },
+        },
+        security_policy=None,
+        method_descriptor=None,
+    )
 
-    with pytest.raises(ValueError, match="ssl_method.client_step.*task_type"):
-        _build_validated_ssl_runtime(ssl_method_config)
+    with pytest.raises(ValueError, match="manual.*ssl_method_config"):
+        _build_validated_ssl_runtime(
+            _legacy_manual_ssl_method_config(),
+            execution_plan=execution_plan,
+        )
 
 
-def test_federated_ssl_runtime_rejects_round_state_metric_key_drift() -> None:
-    ssl_method_config = _default_ssl_method_config()
-    ssl_method_config.round_state_exchange["required_client_metric_keys"] = [
-        "client_entropy"
-    ]
-
+def test_manual_execution_plan_rejects_round_state_metric_keys() -> None:
     with pytest.raises(
         ValueError,
-        match="ssl_method.round_state_exchange.*required_client_metric_keys",
+        match="required_client_metric_keys",
     ):
-        _build_validated_ssl_runtime(ssl_method_config)
+        build_federated_ssl_execution_plan(
+            fl_method={
+                "composition_mode": "manual",
+                "manual_axes": {
+                    "client_ssl_objective": "pseudo_label",
+                    "server_aggregation": "fedavg",
+                    "update_family": "diagonal_scale",
+                },
+                "required_client_metric_keys": ["client_entropy"],
+            },
+            security_policy=None,
+            method_descriptor=None,
+        )
 
 
 def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
@@ -943,7 +942,6 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 
@@ -954,7 +952,6 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
 def test_run_simulation_request_rejects_manual_plan_runtime_drift(
     tmp_path,
 ) -> None:
-    descriptor = resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
     execution_plan = build_federated_ssl_execution_plan(
         fl_method={
             "composition_mode": "manual",
@@ -965,7 +962,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
             },
         },
         security_policy=None,
-        method_descriptor=descriptor,
+        method_descriptor=None,
     )
     request = SimulationRunRequest(
         train_rows=[
@@ -1004,7 +1001,6 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
         execution_plan=execution_plan,
     )
@@ -1175,7 +1171,6 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 
@@ -1233,7 +1228,6 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 
@@ -1305,7 +1299,6 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 
@@ -1441,7 +1434,6 @@ def test_run_simulation_request_rejects_local_round_family_mismatch(
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
     )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
@@ -1501,7 +1493,6 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
         report_config=_default_report_config(),
     )
@@ -1539,8 +1530,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert report["protocol"]["local_trainer_runtime"]["metadata_status"] == (
         "recorded"
     )
-    assert report["protocol"]["ssl_method"]["name"] == "fedavg_pseudo_label"
-    assert report["protocol"]["ssl_method"]["method_role"] == "baseline"
+    assert report["protocol"]["ssl_method"]["metadata_status"] == "not_applicable"
+    assert report["protocol"]["ssl_method"]["reason"] == "manual_composition"
+    assert report["protocol"]["fl_method"]["descriptor_name"] is None
+    assert report["protocol"]["fl_method"]["execution_role"] == "manual_baseline"
     assert report["protocol"]["labeled_unlabeled_split"]["status"] == (
         "enforced_by_client_pool_split"
     )
@@ -1682,7 +1675,6 @@ def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 
@@ -1756,7 +1748,6 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
         ),
         prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
-        ssl_method_config=_default_ssl_method_config(),
         client_pool_split_config=_default_client_pool_split_config(),
     )
 

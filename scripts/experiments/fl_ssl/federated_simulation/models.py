@@ -244,7 +244,7 @@ class FederatedDataSourceConfig:
 
 @dataclass(slots=True)
 class FederatedSslMethodConfig:
-    """FL SSL method 선택과 report metadata 설정."""
+    """FL SSL descriptor 선택과 report metadata 설정."""
 
     schema_version: str
     name: str
@@ -451,7 +451,7 @@ class SimulationRunRequest:
     validation_config: FederatedValidationConfig
     prototype_rebuild_config: FederatedPrototypeRebuildConfig
     diagnostics_config: FederatedDiagnosticsConfig
-    ssl_method_config: FederatedSslMethodConfig
+    ssl_method_config: FederatedSslMethodConfig | None = None
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None
     materialized_dataset_split: FederatedDatasetSplit | None = None
     data_source_config: FederatedDataSourceConfig = field(

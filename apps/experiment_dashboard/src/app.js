@@ -449,9 +449,16 @@ function flMetric(row, metric) {
 
 function flRunDescriptor(row) {
   const protocol = row.protocol ?? {};
+  const flMethod = protocol.fl_method ?? {};
+  const sslMethod = protocol.ssl_method ?? {};
+  const roundRuntime = protocol.round_runtime ?? {};
   const cost = flMetric(row, "communication_cost");
   const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
   return [
+    `mode=${row.fl_composition_mode ?? flMethod.composition_mode ?? "-"}`,
+    `descriptor=${row.fl_descriptor_name ?? flMethod.descriptor_name ?? sslMethod.name ?? "-"}`,
+    `adapter=${row.adapter_family_name ?? roundRuntime.adapter_family_name ?? "-"}`,
+    `agg=${row.aggregation_backend_name ?? roundRuntime.aggregation_backend_name ?? "-"}`,
     `clients=${row.client_count ?? protocol.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? protocol.completed_rounds ?? "-"}/${row.round_budget ?? protocol.round_budget ?? "-"}`,
     `updates=${costValue ?? "-"}`,

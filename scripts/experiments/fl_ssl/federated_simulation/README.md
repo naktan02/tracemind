@@ -87,8 +87,9 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - agent local update를 만드는 training/evidence/scoring/privacy 조합 profile이다.
 - `ssl_method`
   - `strategy_axes/fl/method_descriptor`에서 compose된다.
-  - method identity/report metadata와 `methods/federated_ssl/` method spec을
-    선택한다.
+  - method-owned 논문 method identity/report metadata와
+    `methods/federated_ssl/` method spec을 선택한다.
+  - 기본 manual baseline은 이 group을 compose하지 않는다.
   - descriptor config만 추가해도 새 논문 method runtime이 생기는 것은 아니다.
 - `fl_method`
   - entrypoint-local section이며 `FederatedSslExecutionPlan`으로 해석된다.
@@ -170,8 +171,7 @@ python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_data.source_mode=materialized_client_split \
   fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
   federated_run_budget.client_count=10 \
-  federated_run_budget.rounds=1 \
-  strategy_axes/fl/method_descriptor=fedavg_pseudo_label
+  federated_run_budget.rounds=1
 ```
 
 Seed sweep:
@@ -219,11 +219,11 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다. 단, 현재
   FL SSL 트랙의 사용자 결정은 새 `50-round`/full-budget 실행 금지이며, 이 guard
   override가 그 결정을 대체하지 않는다.
-- `strategy_axes/fl/method_descriptor=fedavg_pseudo_label`는 현재 구현된 baseline method다.
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
   `round_runtime.adapter_family_name`에서 자동 파생된다. 기본 조합은
-  `FixMatch + FedAvg + LoRA-classifier`다. 일회성 ablation은
+  `FixMatch + FedAvg + LoRA-classifier`이고 method descriptor를 참조하지 않는다.
+  일회성 ablation은
   `strategy_axes/ssl/consistency_method=...`,
   `round_runtime.adapter_family_name=...`,
   `round_runtime.aggregation_backend_name=...`로 직접 고른다.

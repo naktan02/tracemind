@@ -231,12 +231,14 @@ class FederatedSslMethodDescriptor:
     local_step: FederatedSslLocalStepSpec
     server_step: FederatedSslServerStepSpec
     runtime_capabilities: FederatedSslRuntimeCapabilities
+    method_role: str = "method"
     round_state_exchange: FederatedSslRoundStateExchangeSpec | None = None
     recipe: FederatedSslMethodRecipe | None = None
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "name")
         _set_non_empty(self, "implementation_status")
+        _set_non_empty(self, "method_role")
         if self.recipe is not None and self.recipe.method_name != self.name:
             raise ValueError(
                 "method descriptor recipe must use the same method name: "

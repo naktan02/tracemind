@@ -8,7 +8,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 
 | 그룹 | compose field | 의미 |
 |---|---|---|
-| `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 FL SSL method identity와 report metadata. `fedavg_pseudo_label`은 현재 baseline identity다. |
+| `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 method-owned FL SSL method identity와 report metadata. 기본 manual baseline은 이 그룹을 compose하지 않는다. |
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
@@ -24,9 +24,11 @@ report protocol에 남긴다.
   lower axes를 따로 쓰지 않는다.
 - `composition_mode=manual`: 논문 method가 아니라 `client_ssl_objective`,
   `server_aggregation`, `update_family`를 직접 조합하는 baseline/ablation 모드다.
-  사용자는 `local_update_profile`과 `round_runtime.adapter_family_name` /
-  `round_runtime.aggregation_backend_name`을 직접 고른다. lower axes는 compose된
-  `ssl_method`와 `round_runtime.*` leaf에서 실행 계획 builder가 자동 파생한다.
+  사용자는 `query_ssl_method`, `local_update_profile`,
+  `round_runtime.adapter_family_name`, `round_runtime.aggregation_backend_name`을
+  직접 고른다. lower axes는 compose된 leaf에서 실행 계획 builder가 자동
+  파생한다. report/index에는 `execution_role=manual_baseline`으로 남고
+  `descriptor_name`은 비워 둔다.
 
 `security_policy`는 method가 아니라 runtime capability 축이다. 현재 simulation은
 `plaintext`만 지원하고, secure aggregation/DP/암호화 artifact ref는 이후 capability
@@ -49,9 +51,9 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 
 ## `method_descriptor`와의 차이
 
-`method_descriptor`는 논문 method의 identity, report role, custom runtime 필요 여부를
-표현한다. 실제 local update 계산 조합은 `local_update_profile`, server round runtime
-조합은 `round_runtime.*` leaf에서 온다.
+`method_descriptor`는 논문 method의 identity, report role, custom runtime 필요
+여부를 표현한다. 실제 local update 계산 조합은
+`local_update_profile`, server round runtime 조합은 `round_runtime.*` leaf에서 온다.
 
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다.
 `docs/contracts/fl_ssl_method_capability_matrix.md`의 `first_fed_ssl_method` 선택이

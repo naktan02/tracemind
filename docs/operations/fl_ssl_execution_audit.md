@@ -25,8 +25,11 @@ report/summary를 검증했다.
   `FixMatch + FedAvg + LoRA-classifier` main baseline report는 round/split/method/delta
   기준 verifier로 확인됐다. 이 report는 runtime metadata 도입 전 산출물이라
   `gpu_local + mxbai` 여부는 report 자체로는 재검증할 수 없다.
-- `alpha=0.1` stress, FlexMatch/FreeMatch/PseudoLabel ablation은 5-round reduced
-  run으로 method metadata와 실제 local objective 변경을 확인했다.
+- FlexMatch/FreeMatch/PseudoLabel ablation은 5-round reduced run으로 method
+  metadata와 실제 local objective 변경을 확인했다.
+- Dirichlet `alpha=0.1` stress는 현재 `runs/fl_ssl` method-first layout 아래
+  검증 가능한 report가 없으므로, 새 실행 전까지 current manifest 검증 대상에서
+  제외한다.
 - `client_count=1..10` sweep은 1-round summary와 하위 report 10개를 확인했다.
 - result index는 FL `fl_ssl_main_comparison.report.json`와 client-count sweep 하위
   report를 dashboard/index record로 정규화한다.
@@ -57,8 +60,8 @@ report/summary를 검증했다.
 | agent-local artifact upload | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py`, `upload_agent_local_lora_classifier_update` | 완료 |
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_preflight.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
-| alpha=0.3 main baseline | `runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
-| alpha=0.1 stress | 5-round reduced report verified. 새 full 50-round 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
+| alpha=0.3 main baseline | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
+| alpha=0.1 stress | 현재 `runs/fl_ssl` 아래 검증 가능한 report가 없음. 새 reduced/full 실행은 현재 사용자 결정에 따라 하지 않음 | 대기 |
 | FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. 새 full budget 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | client_count=1..10 sweep | 1-round summary verified and indexed. 새 full sweep은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | seed sweep은 robustness로 분리 | `seed_sweep` runner/summary는 존재. split seed 42 안정화 뒤 별도 실행 | 대기 |
@@ -77,10 +80,10 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json
 ```
 
-결과: 7개 artifact entry 모두 `PASS`.
+결과: 6개 artifact entry 모두 `PASS`.
 
 - `fixmatch_lora_alpha03_10c_1round_current_20260518` current smoke:
-  `PASS runs/federated_simulation_smoke/fixmatch_lora_alpha03_10c_1round_current_20260518/20260517T232304Z/reports/fl_ssl_main_comparison.report.json`
+  `PASS runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds1/20260517T232304Z/reports/fl_ssl_main_comparison.report.json`
   - 조건: `10 clients`, `alpha=0.3`, split seed `42`, `1 round`,
     `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`,
     `server_uploaded_artifact_ref`
@@ -88,26 +91,26 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
     `main_server/aggregation_artifacts/versions/lora_classifier/sim_rev_0001/`에
     누적 LoRA/head snapshot을 남겼다.
 - `fixmatch_lora_alpha03_10c_50round_20260518` main:
-  `PASS runs/federated_simulation/fixmatch_lora_alpha03_10c_50round_20260518/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`
-- `fixmatch_lora_alpha01_10c_5round_20260518` reduced stress:
-  `PASS runs/federated_simulation_reduced/fixmatch_lora_alpha01_10c_5round_20260518/20260517T203139Z/reports/fl_ssl_main_comparison.report.json`
+  `PASS runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`
 - `flexmatch_lora_alpha03_10c_5round_20260518` reduced ablation:
-  `PASS runs/federated_simulation_reduced/flexmatch_lora_alpha03_10c_5round_20260518/20260517T205436Z/reports/fl_ssl_main_comparison.report.json`
+  `PASS runs/fl_ssl/manual_baselines/flexmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T205436Z/reports/fl_ssl_main_comparison.report.json`
 - `freematch_lora_alpha03_10c_5round_20260518` reduced ablation:
-  `PASS runs/federated_simulation_reduced/freematch_lora_alpha03_10c_5round_20260518/20260517T212002Z/reports/fl_ssl_main_comparison.report.json`
+  `PASS runs/fl_ssl/manual_baselines/freematch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T212002Z/reports/fl_ssl_main_comparison.report.json`
 - `pseudolabel_lora_alpha03_10c_5round_20260518` reduced ablation:
-  `PASS runs/federated_simulation_reduced/pseudolabel_lora_alpha03_10c_5round_20260518/20260517T214526Z/reports/fl_ssl_main_comparison.report.json`
+  `PASS runs/fl_ssl/manual_baselines/pseudolabel_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T214526Z/reports/fl_ssl_main_comparison.report.json`
 - `fixmatch_lora_alpha03_1round_20260518` client-count sweep:
-  `PASS runs/federated_simulation_client_count_sweep_short/fixmatch_lora_alpha03_1round_20260518/20260517T193320Z/reports/fl_ssl_client_count_sweep.summary.json`
+  `PASS runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/sweeps/client_count_rounds1/20260517T193320Z/reports/fl_ssl_client_count_sweep.summary.json`
 
 Result index read-only ingest:
 
-- `runs/federated_simulation_reduced` -> `indexed_runs=4`
+- current manifest 기준 FL SSL report 5개와 client-count sweep summary 1개를 검증했다.
+- `runs/fl_ssl` method-first layout의 dashboard/index 정규화는 result-index unit
+  tests와 dashboard export path로 검증한다.
 - methods: `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`,
   `pseudolabel_usb_v1`
 - algorithms: `fixmatch`, `flexmatch`, `freematch`, `pseudolabel`
-- round budgets: `[5]`
-- shard alphas: `[0.1, 0.3]`
+- round budgets: `[1, 5, 50]`
+- shard alphas: `[0.3]`
 
 ## Next Gate
 

@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import hydra
-from omegaconf import DictConfig
+from omegaconf import DictConfig, OmegaConf
 
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     build_simulation_request_from_config,
@@ -162,7 +162,16 @@ def build_seed_sweep_summary_payload(
         "protocol": {
             "client_count": int(cfg.federated_run_budget.client_count),
             "round_budget": int(cfg.federated_run_budget.rounds),
-            "ssl_method": str(cfg.ssl_method.name),
+            "ssl_method": _select_config_value(
+                cfg,
+                "query_ssl_method.name",
+                default="manual",
+            ),
+            "fl_composition_mode": _select_config_value(
+                cfg,
+                "fl_method.composition_mode",
+                default="manual",
+            ),
             "shard_policy": str(cfg.shard_policy.name),
             "labeled_ratio": float(cfg.client_pool_split.labeled_ratio),
             "unlabeled_ratio": float(cfg.client_pool_split.unlabeled_ratio),
@@ -200,6 +209,15 @@ def build_seed_sweep_summary_payload(
         },
         "runs": list(run_payloads),
     }
+
+
+def _select_config_value(
+    cfg: DictConfig,
+    key: str,
+    *,
+    default: object,
+) -> str:
+    return str(OmegaConf.select(cfg, key, default=default))
 
 
 def _run_result_to_payload(run_result: SeedSweepRunResult) -> dict[str, object]:

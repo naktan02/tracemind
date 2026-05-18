@@ -193,7 +193,16 @@ def build_client_count_sweep_summary_payload(
         "client_counts": [run_result.client_count for run_result in run_results],
         "protocol": {
             "round_budget": int(cfg.federated_run_budget.rounds),
-            "ssl_method": str(cfg.ssl_method.name),
+            "ssl_method": _select_config_value(
+                cfg,
+                "query_ssl_method.name",
+                default="manual",
+            ),
+            "fl_composition_mode": _select_config_value(
+                cfg,
+                "fl_method.composition_mode",
+                default="manual",
+            ),
             "shard_policy": str(cfg.shard_policy.name),
             "labeled_ratio": float(cfg.client_pool_split.labeled_ratio),
             "unlabeled_ratio": float(cfg.client_pool_split.unlabeled_ratio),
@@ -235,6 +244,15 @@ def _copy_config_with_client_count(
 def _fl_data_source_mode(cfg: DictConfig) -> str:
     fl_data_cfg = cfg.get("fl_data", {})
     return str(fl_data_cfg.get("source_mode", FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN))
+
+
+def _select_config_value(
+    cfg: DictConfig,
+    key: str,
+    *,
+    default: object,
+) -> str:
+    return str(OmegaConf.select(cfg, key, default=default))
 
 
 def _normalize_client_count_split_manifest_mapping(

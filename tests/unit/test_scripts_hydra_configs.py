@@ -8,10 +8,6 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig, OmegaConf
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.compatibility import (
-    FederatedSslProfileCompatibilityContext,
-    validate_federated_ssl_profile_compatibility,
-)
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
@@ -19,7 +15,6 @@ from methods.federated_ssl.local_update_profile import (
 )
 from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
-    resolve_federated_ssl_method_descriptor,
 )
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _with_inferred_manual_axes,
@@ -38,38 +33,7 @@ def _plain_dict(source: DictConfig) -> dict[str, object]:
     return raw
 
 
-def _assert_fl_ssl_method_config_matches_descriptor(cfg: DictConfig) -> None:
-    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
-
-    assert cfg.ssl_method.implementation_status == descriptor.implementation_status
-    assert cfg.ssl_method.client_step.task_type == descriptor.local_step.step_name
-    assert (
-        cfg.ssl_method.client_step.custom_method_runtime_required
-        is descriptor.runtime_capabilities.requires_custom_client_runtime
-    )
-    assert (
-        cfg.ssl_method.server_step.custom_round_policy_required
-        is descriptor.runtime_capabilities.requires_custom_server_runtime
-    )
-    expected_exchange_name = (
-        None
-        if descriptor.round_state_exchange is None
-        else descriptor.round_state_exchange.exchange_name
-    )
-    expected_metric_keys = (
-        []
-        if descriptor.round_state_exchange is None
-        else list(descriptor.round_state_exchange.required_client_metric_keys)
-    )
-    assert cfg.ssl_method.round_state_exchange.exchange_name == (expected_exchange_name)
-    assert (
-        list(cfg.ssl_method.round_state_exchange.required_client_metric_keys)
-        == expected_metric_keys
-    )
-
-
-def _assert_composed_fl_runtime_is_compatible(cfg: DictConfig) -> None:
-    descriptor = resolve_federated_ssl_method_descriptor(str(cfg.ssl_method.name))
+def _assert_manual_fl_runtime_is_compatible(cfg: DictConfig) -> None:
     local_update_profile = LocalUpdateProfile.from_mapping(
         _plain_dict(cfg.local_update_profile)
     )
@@ -81,27 +45,9 @@ def _assert_composed_fl_runtime_is_compatible(cfg: DictConfig) -> None:
         objective_config=objective_config,
         local_update_profile=local_update_profile,
     )
-    assert descriptor.recipe is not None
-    assert descriptor.recipe.supports_local_update_profile(
-        local_update_profile.algorithm_profile_name
-    )
-    assert descriptor.recipe.supports_runtime_pair(
-        adapter_family_name=str(cfg.round_runtime.adapter_family_name),
-        aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
-    )
-    validate_federated_ssl_profile_compatibility(
-        FederatedSslProfileCompatibilityContext(
-            method_descriptor=descriptor,
-            local_update_profile=local_update_profile,
-            local_update_adapter_kind=resolve_federated_training_backend_adapter_kind(
-                objective_config=objective_config
-            ),
-            round_adapter_family_name=str(cfg.round_runtime.adapter_family_name),
-            round_aggregation_backend_name=str(
-                cfg.round_runtime.aggregation_backend_name
-            ),
-        )
-    )
+    assert resolve_federated_training_backend_adapter_kind(
+        objective_config=objective_config
+    ) == str(cfg.round_runtime.adapter_family_name)
 
 
 @pytest.mark.parametrize(
@@ -575,12 +521,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.run_safety.required_long_run_ack == "ALLOW_FL_SSL_LONG_RUN"
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.75
-    assert cfg.ssl_method.name == "fedavg_pseudo_label"
-    assert cfg.ssl_method.method_role == "baseline"
-    assert cfg.ssl_method.implementation_status == "active_runtime"
-    assert cfg.ssl_method.client_step.owner == "agent"
-    assert cfg.ssl_method.server_step.aggregation_backend_name == "fedavg"
-    assert cfg.ssl_method.round_state_exchange.exchange_name == "none"
+    assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "manual_axes" not in cfg.fl_method
     assert cfg.security_policy.name == "plaintext"
@@ -658,11 +599,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
-    assert cfg.ssl_method.name == "fedavg_pseudo_label"
-    assert cfg.ssl_method.client_step.uses_local_update_profile is True
-    assert cfg.ssl_method.client_step.custom_method_runtime_required is False
-    assert cfg.ssl_method.server_step.custom_round_policy_required is False
-    assert cfg.ssl_method.round_state_exchange.custom_exchange_required is False
+    assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "training_algorithm_profile" not in cfg
     assert "adapter_family_name" not in cfg.local_update_profile
@@ -730,8 +667,7 @@ def test_federated_simulation_method_recipe_axes_are_composable(
                 ],
             )
 
-        _assert_fl_ssl_method_config_matches_descriptor(cfg)
-        _assert_composed_fl_runtime_is_compatible(cfg)
+        _assert_manual_fl_runtime_is_compatible(cfg)
 
 
 @pytest.mark.parametrize(
@@ -778,7 +714,7 @@ def test_federated_simulation_supports_diagonal_scale_profiles() -> None:
             ],
         )
 
-    assert cfg.ssl_method.name == "fedavg_pseudo_label"
+    assert "ssl_method" not in cfg
     assert (
         cfg.local_update_profile.algorithm_profile_name == "prototype_pseudo_label_v1"
     )
@@ -800,12 +736,11 @@ def test_federated_simulation_supports_diagonal_scale_profiles() -> None:
     assert "aggregation_backend_name" not in cfg.local_update_profile
 
 
-def test_federated_simulation_ssl_method_config_matches_methods_spec() -> None:
+def test_federated_simulation_manual_runtime_axes_are_compatible() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
-    _assert_fl_ssl_method_config_matches_descriptor(cfg)
-    _assert_composed_fl_runtime_is_compatible(cfg)
+    _assert_manual_fl_runtime_is_compatible(cfg)
 
 
 def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None:
@@ -898,21 +833,15 @@ def test_federated_simulation_supports_dirichlet_shard_policy_override() -> None
     assert cfg.shard_policy.dominant_ratio is None
 
 
-def test_federated_simulation_supports_ssl_method_override() -> None:
+def test_federated_simulation_rejects_removed_manual_baseline_descriptor_override() -> (
+    None
+):
     with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=["strategy_axes/fl/method_descriptor=fedavg_pseudo_label"],
-        )
-
-    assert cfg.ssl_method.schema_version == "federated_ssl_method.v1"
-    assert cfg.ssl_method.name == "fedavg_pseudo_label"
-    assert cfg.ssl_method.round_state_exchange.exchange_name == "none"
-    assert list(cfg.ssl_method.report_tags) == [
-        "baseline",
-        "fedavg",
-        "pseudo_label",
-    ]
+        with pytest.raises(Exception, match="method_descriptor"):
+            compose(
+                config_name="entrypoints/fl_ssl/run_federated_simulation",
+                overrides=["strategy_axes/fl/method_descriptor=fedavg_pseudo_label"],
+            )
 
 
 def test_federated_simulation_supports_manual_fl_method_plan() -> None:
@@ -931,12 +860,11 @@ def test_federated_simulation_supports_manual_fl_method_plan() -> None:
             fl_method=_plain_dict(cfg.fl_method),
         ),
         security_policy=_plain_dict(cfg.security_policy),
-        method_descriptor=resolve_federated_ssl_method_descriptor(
-            str(cfg.ssl_method.name)
-        ),
+        method_descriptor=None,
     )
     assert plan.method_name == "manual"
-    assert plan.descriptor_name == "fedavg_pseudo_label"
+    assert plan.descriptor_name is None
+    assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "lora_classifier"
@@ -962,15 +890,14 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
             fl_method=_plain_dict(cfg.fl_method),
         ),
         security_policy=_plain_dict(cfg.security_policy),
-        method_descriptor=resolve_federated_ssl_method_descriptor(
-            str(cfg.ssl_method.name)
-        ),
+        method_descriptor=None,
     )
 
     assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
     assert cfg.round_runtime.adapter_family_name == "lora_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"
+    assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "lora_classifier"
@@ -996,9 +923,7 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
             fl_method=_plain_dict(cfg.fl_method),
         ),
         security_policy=_plain_dict(cfg.security_policy),
-        method_descriptor=resolve_federated_ssl_method_descriptor(
-            str(cfg.ssl_method.name)
-        ),
+        method_descriptor=None,
     )
 
     assert cfg.query_ssl_method.name == "flexmatch_usb_v1"

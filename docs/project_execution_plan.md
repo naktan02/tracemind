@@ -71,10 +71,12 @@ central fixed embedding + classifier seed
   아래에서 method composition을 먼저 고르고 split/client/round 변수를 그 아래에
   쌓는다. 기존 `runs/federated_simulation*` 산출물도 같은 구조로
   마이그레이션했다.
-- 현재 FL SSL method 축의 활성 baseline descriptor는 `fedavg_pseudo_label`이고,
-  기본 실행 조합은 `manual + FixMatch + FedAvg + LoRA-classifier`다.
+- 현재 FL SSL 기본 실행 조합은 descriptor 없는
+  `manual + FixMatch + FedAvg + LoRA-classifier`다.
 - `manual` mode는 논문 method가 아니라
   `query_ssl_method/round_runtime.*` 조합 baseline/ablation용이다.
+  report/index에는 `execution_role=manual_baseline`으로 기록하고
+  `descriptor_name`은 비워 둔다.
   FedMatch/FedLGMatch/(FL)^2처럼 client objective/server policy/round-state
   요구사항을 함께 소유하는 상위 method는 `method_owned`로 선택한다.
 - FL `security_policy`는 method identity가 아니라 runtime capability 축이며, 현재

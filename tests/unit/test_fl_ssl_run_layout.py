@@ -64,7 +64,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
             "seed": 42,
             "federated_run_budget": {"client_count": 10, "rounds": 1},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
-            "ssl_method": {"name": "fedavg_pseudo_label"},
+            "ssl_method": {"name": "fedmatch"},
             "round_runtime": {
                 "adapter_family_name": "lora_classifier",
                 "aggregation_backend_name": "fedavg",
@@ -79,8 +79,8 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
     )
 
     assert str(output_dir) == (
-        "runs/fl_ssl/fedavg_pseudo_label/"
-        "fedavg_pseudo_label__lora_classifier__fedavg/"
+        "runs/fl_ssl/fedmatch/"
+        "fedmatch__lora_classifier__fedavg/"
         "alpha03_seed42/"
         "clients10_rounds1/"
         "20260518T010203Z"

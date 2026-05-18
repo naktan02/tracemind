@@ -97,7 +97,8 @@ def _minimal_cfg(
                 "source_mode": "runtime_split_from_train",
                 "split_manifest": None,
             },
-            "ssl_method": {"name": "fedavg_pseudo_label"},
+            "query_ssl_method": {"name": "fixmatch_usb_v1"},
+            "fl_method": {"composition_mode": "manual"},
             "shard_policy": {"name": "dirichlet_label_skew"},
             "client_pool_split": {
                 "labeled_ratio": 0.1,

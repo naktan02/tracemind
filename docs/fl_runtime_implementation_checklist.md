@@ -13,7 +13,8 @@ source of truth로 본다.
   upload scaffold를 갖고 있다.
 - `scripts/experiments/fl_ssl`는 FL SSL simulation, seed sweep, client-count
   sweep, report dump, 기존 report artifact metadata verifier를 갖고 있다.
-- 활성 FL SSL method baseline은 `fedavg_pseudo_label`이다.
+- 기본 FL SSL baseline은 descriptor 없는 `manual` mode다. report/index에는
+  `execution_role=manual_baseline`으로 남기고 `descriptor_name`은 비워 둔다.
 - `diagonal_scale`와 `lora_classifier` adapter family의 FedAvg core/projection은
   `methods/adaptation/<family>/`에 있다.
 - 공통 분류 metric 계산은 `methods/evaluation`이 소유하고, FL report는 중앙 SSL과

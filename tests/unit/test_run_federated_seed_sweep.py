@@ -31,7 +31,8 @@ def _cfg(*, seeds: list[int], seed_count: int = 3):
                 "client_count": 10,
                 "rounds": 50,
             },
-            "ssl_method": {"name": "fedavg_pseudo_label"},
+            "query_ssl_method": {"name": "fixmatch_usb_v1"},
+            "fl_method": {"composition_mode": "manual"},
             "shard_policy": {"name": "dirichlet_label_skew"},
             "client_pool_split": {
                 "labeled_ratio": 0.1,

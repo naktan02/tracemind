@@ -36,7 +36,7 @@ from ..io.run_artifact_writer import RunArtifactWriter
 def bootstrap_simulation(
     request: SimulationRunRequest,
     *,
-    ssl_method_descriptor: FederatedSslMethodDescriptor,
+    ssl_method_descriptor: FederatedSslMethodDescriptor | None,
 ) -> BootstrappedSimulation:
     """초기 shared state, prototype, manifest를 만들고 active pair로 고정한다."""
 

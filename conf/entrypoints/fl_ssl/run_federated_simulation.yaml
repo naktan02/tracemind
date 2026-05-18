@@ -9,7 +9,6 @@ defaults:
   - /strategy_axes/adaptation/peft_adapter: default
   - /run_controls/fl_ssl/budget: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
-  - /strategy_axes/fl/method_descriptor: fedavg_pseudo_label
   - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/prototype/build_strategy: single
