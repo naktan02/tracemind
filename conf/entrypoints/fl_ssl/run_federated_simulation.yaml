@@ -40,14 +40,14 @@ security_policy:
   client_metric_visibility: per_client_plaintext
 
 seed_sweep:
-  output_dir: runs/fl_ssl/sweeps/seed
+  output_dir: runs/fl_ssl
   seeds:
     - 42
     - 43
     - 44
 
 client_count_sweep:
-  output_dir: runs/fl_ssl/sweeps/client_count
+  output_dir: runs/fl_ssl
   client_counts:
     - 1
     - 2

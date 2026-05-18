@@ -66,9 +66,11 @@ central fixed embedding + classifier seed
 - FL SSL report는 round progression, round delta, client split label
   distribution, aggregation proxy diagnostics를 함께 남긴다. `theta` 같은
   method 내부 파라미터는 기본 report에 노출하지 않는다.
-- 신규 FL SSL 실행 산출물은 `runs/fl_ssl/<single-or-sweeps>/...` 아래에서
-  split과 method composition을 분리해 저장한다. 기존 `runs/federated_simulation*`
-  산출물은 `runs/fl_ssl/legacy/...` 아래 read-only archive로 마이그레이션했다.
+- 신규 FL SSL 실행 산출물은
+  `runs/fl_ssl/<method_family>/<method_composition>/<split>/<clients_rounds>/...`
+  아래에서 method composition을 먼저 고르고 split/client/round 변수를 그 아래에
+  쌓는다. 기존 `runs/federated_simulation*` 산출물도 같은 구조로
+  마이그레이션했다.
 - 현재 FL SSL method 축의 활성 baseline descriptor는 `fedavg_pseudo_label`이고,
   기본 실행 조합은 `manual + FixMatch + FedAvg + LoRA-classifier`다.
 - `manual` mode는 논문 method가 아니라

@@ -26,7 +26,10 @@ from scripts.experiments.fl_ssl.run_federated_simulation import (
     build_simulation_request_from_config,
     render_simulation_result_lines,
 )
-from scripts.experiments.fl_ssl.run_layout import build_fl_ssl_run_dir
+from scripts.experiments.fl_ssl.run_layout import (
+    build_fl_ssl_client_count_sweep_member_dir,
+    build_fl_ssl_run_dir,
+)
 from scripts.experiments.fl_ssl.run_safety import require_fl_ssl_run_budget_allowed
 
 SUMMARY_SCHEMA_VERSION = "fl_ssl_client_count_sweep_summary.v1"
@@ -110,12 +113,16 @@ def run_client_count_sweep_from_config(
         cfg.client_count_sweep.output_dir,
         cfg=cfg,
         run_id=run_id,
+        run_kind="client_count_sweep",
     )
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
 
     run_results: list[ClientCountSweepRunResult] = []
     for client_count in client_counts:
-        client_output_dir = output_dir / f"clients_{client_count:02d}"
+        client_output_dir = build_fl_ssl_client_count_sweep_member_dir(
+            output_dir,
+            client_count=client_count,
+        )
         client_output_dir.mkdir(parents=True, exist_ok=True)
         run_cfg = _copy_config_with_client_count(
             cfg,

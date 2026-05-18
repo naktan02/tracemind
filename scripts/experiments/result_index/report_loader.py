@@ -40,7 +40,7 @@ def discover_report_paths(runs_root: Path) -> list[Path]:
 
 
 def _deduplicate_hardlinked_report_paths(report_paths: list[Path]) -> list[Path]:
-    """같은 artifact가 legacy mirror에 있으면 canonical `fl_ssl` 경로를 우선한다."""
+    """같은 artifact가 여러 경로에 있으면 canonical `fl_ssl` 경로를 우선한다."""
 
     selected: dict[tuple[object, ...], Path] = {}
     for path in report_paths:

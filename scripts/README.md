@@ -195,13 +195,13 @@ communication round를 기본 차단한다. 총 예정 round는 단일 simulatio
 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`다. 장시간 실행을
 명시 승인받은 경우에만 아래 override를 함께 붙인다.
 
-신규 FL SSL 산출물은 root에 수평으로 쌓지 않고 아래 계층으로 저장한다. 기존
-`runs/federated_simulation*` 산출물은 `runs/fl_ssl/legacy/...` 아래 read-only
-archive로 마이그레이션했다.
+신규 FL SSL 산출물은 root에 수평으로 쌓지 않고 method-first 계층으로 저장한다.
+기존 `runs/federated_simulation*` 산출물도 같은 구조로 마이그레이션했고 원본
+수평 root는 제거했다.
 
 ```text
-runs/fl_ssl/<single-or-sweeps>/<budget-or-sweep-kind>/<split_slug>/<method_composition_slug>/<run_id>/
-runs/fl_ssl/legacy/<evidence-or-sweeps-or-smoke-or-incomplete>/...
+runs/fl_ssl/<method_family>/<method_composition>/<split_slug>/<clients_rounds_slug>/<run_id>/
+runs/fl_ssl/<method_family>/<method_composition>/<split_slug>/sweeps/<sweep_kind_rounds>/<sweep_run_id>/<member_slug>/
 ```
 
 ```bash

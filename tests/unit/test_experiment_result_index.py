@@ -125,26 +125,26 @@ def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     assert discover_report_paths(tmp_path / "runs") == [fl_report, central_report]
 
 
-def test_result_index_prefers_fl_ssl_hardlink_mirror(
+def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
     tmp_path: Path,
 ) -> None:
-    legacy_report = _write_fl_ssl_report(tmp_path)
-    mirrored_report = (
+    old_report = _write_fl_ssl_report(tmp_path)
+    canonical_report = (
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "legacy"
-        / "evidence"
-        / "main"
-        / "fixmatch_lora_alpha03_10c_50round_20260518"
+        / "manual_baselines"
+        / "fixmatch_usb_v1__lora_classifier__fedavg"
+        / "alpha03_seed42"
+        / "clients10_rounds50"
         / "20260517T150549Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"
     )
-    mirrored_report.parent.mkdir(parents=True, exist_ok=True)
-    mirrored_report.hardlink_to(legacy_report)
+    canonical_report.parent.mkdir(parents=True, exist_ok=True)
+    canonical_report.hardlink_to(old_report)
 
-    assert discover_report_paths(tmp_path / "runs") == [mirrored_report]
+    assert discover_report_paths(tmp_path / "runs") == [canonical_report]
 
 
 def test_load_result_index_records_keeps_client_count_sweep_slug(
@@ -167,8 +167,8 @@ def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == (
-        "single__main__runtime_split_seed42_clients10_dirichlet_label_skew_alpha0p3__"
-        "fixmatch_usb_v1_lora_classifier_fedavg_manual__20260518T010203Z"
+        "manual_baselines__fixmatch_usb_v1__lora_classifier__fedavg__"
+        "alpha03_seed42__clients10_rounds50__20260518T010203Z"
     )
 
 
@@ -270,10 +270,10 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
         tmp_path
         / "runs"
         / "fl_ssl"
-        / "single"
-        / "main"
-        / "runtime_split_seed42_clients10_dirichlet_label_skew_alpha0p3"
-        / "fixmatch_usb_v1_lora_classifier_fedavg_manual"
+        / "manual_baselines"
+        / "fixmatch_usb_v1__lora_classifier__fedavg"
+        / "alpha03_seed42"
+        / "clients10_rounds50"
         / "20260518T010203Z"
         / "reports"
         / "fl_ssl_main_comparison.report.json"

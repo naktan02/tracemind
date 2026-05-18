@@ -1,7 +1,7 @@
 # @package federated_run_budget
 
 name: smoke
-output_dir: runs/fl_ssl/single/smoke
+output_dir: runs/fl_ssl
 client_count: 4
 rounds: 3
 bootstrap_ratio: 0.2

@@ -101,9 +101,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `run_controls/fl_ssl/budget`
   - client 수, round budget, output dir 같은 FL SSL 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.
-  - `output_dir`는 root만 지정하고, runner가
-    `<split_slug>/<method_composition_slug>/<run_id>`를 뒤에 붙인다.
-    신규 FL SSL 실행 root는 `runs/fl_ssl/...` 아래에 둔다.
+  - `output_dir`는 `runs/fl_ssl` root만 지정하고, runner가
+    `<method_family>/<method_composition>/<split>/<clients_rounds>/<run_id>`를
+    뒤에 붙인다.
 - `run_controls/central_ssl/budget`
   - 중앙 SSL의 epoch/step/batch 크기 같은 반복 실행 budget을 소유한다.
 - `training_task.local_epochs`, `training_task.batch_size`,
