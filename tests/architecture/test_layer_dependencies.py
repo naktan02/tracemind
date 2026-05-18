@@ -5,11 +5,16 @@ from __future__ import annotations
 import ast
 from pathlib import Path
 
+import yaml
+
 from shared.src.contracts.adapter_contract_families.base import AdapterKind
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 SHARED_SRC = REPO_ROOT / "shared" / "src"
 METHODS_SRC = REPO_ROOT / "methods"
+CONF_FL_METHOD_DESCRIPTOR_SRC = (
+    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "method_descriptor"
+)
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
@@ -411,6 +416,50 @@ def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None
         "production methods/federated_ssl에는 dummy/test-only method 파일을 남기지 "
         "않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
+    """method descriptor YAML만 먼저 생기는 placeholder config를 막는다."""
+
+    violations: list[str] = []
+    method_package_root = METHODS_SRC / "federated_ssl"
+    for config_path in sorted(CONF_FL_METHOD_DESCRIPTOR_SRC.glob("*.yaml")):
+        method_name = config_path.stem
+        payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        declared_name = payload.get("name")
+        method_dir = method_package_root / method_name
+
+        if declared_name != method_name:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: name={declared_name!r} "
+                f"must match filename stem {method_name!r}"
+            )
+        if not method_dir.is_dir():
+            violations.append(
+                f"{_relative_repo_path(config_path)}: missing "
+                f"{_relative_repo_path(method_dir)}"
+            )
+            continue
+
+        required_files = (
+            method_dir / "descriptor.py",
+            method_dir / f"{method_name}.py",
+            method_dir / "local_objective.py",
+            method_dir / "server_policy.py",
+            method_dir / "round_policy.py",
+        )
+        for required_file in required_files:
+            if not required_file.is_file():
+                violations.append(
+                    f"{_relative_repo_path(config_path)}: missing "
+                    f"{_relative_repo_path(required_file)}"
+                )
+
+    assert not violations, (
+        "FL method descriptor config는 실제 methods/federated_ssl/<method>/ 구현이 "
+        "존재한 뒤에만 추가한다. 선택 전 placeholder YAML은 두지 않는다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
 
