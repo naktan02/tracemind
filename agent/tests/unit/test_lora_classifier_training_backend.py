@@ -34,9 +34,9 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from methods.adaptation.lora_classifier.update import row_extractor
 from methods.adaptation.lora_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
+    LoraClassifierTrainingRow,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
@@ -70,7 +70,7 @@ class _RecordingLoraTrainExecutor:
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        rows: Sequence[row_extractor.LoraClassifierTrainingRow],
+        rows: Sequence[LoraClassifierTrainingRow],
         label_schema: tuple[str, ...],
         config: lora_config.LoraClassifierTrainingBackendConfig,
         created_at: datetime,

@@ -37,6 +37,7 @@ from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
 )
 from shared.src.contracts.training_contracts import (
+    ClientMetricKeys,
     TrainingObjectiveConfig,
     TrainingTask,
 )
@@ -49,7 +50,6 @@ from .config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
-from .update.metrics import build_lora_classifier_client_metrics
 from .update.payload_builder import build_lora_classifier_delta_update
 
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
@@ -165,6 +165,23 @@ class LoraClassifierTrainingBackend:
         return self.config == build_lora_classifier_training_backend_config(
             objective_config
         )
+
+
+def build_lora_classifier_client_metrics(
+    update: SharedAdapterUpdate,
+) -> dict[str, float]:
+    if not isinstance(update, LoraClassifierDelta):
+        raise TypeError(
+            "LoraClassifierTrainingBackend expects LoraClassifierDelta "
+            f"for metric extraction, got {type(update)!r}."
+        )
+    return {
+        ClientMetricKeys.MEAN_CONFIDENCE: update.mean_confidence or 0.0,
+        ClientMetricKeys.MEAN_MARGIN: update.mean_margin or 0.0,
+        ClientMetricKeys.DELTA_L2_NORM: update.l2_norm(),
+        "lora_training_rows": float(update.example_count),
+        "lora_label_schema_size": float(len(update.label_schema)),
+    }
 
 
 @register_shared_adapter_training_backend(

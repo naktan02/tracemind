@@ -586,6 +586,25 @@ def test_lora_classifier_does_not_keep_server_preflight_shims() -> None:
     )
 
 
+def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "update"
+    forbidden_paths = (
+        package_root / "artifact_refs.py",
+        package_root / "metrics.py",
+        package_root / "row_extractor.py",
+    )
+    violations = [
+        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+    ]
+
+    assert not violations, (
+        "LoRA-classifier update package는 단일 사용처 helper 파일을 수평으로 "
+        "늘리지 않는다. accepted-example row 추출과 artifact ref 조립은 "
+        "payload_builder.py에, backend metric 추출은 training_backend.py에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_simulation_io_does_not_keep_artifact_facade() -> None:
     facade_path = FL_SIMULATION_IO_SRC / "artifacts.py"
 
