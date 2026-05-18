@@ -22,6 +22,7 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
+    build_lora_classifier_training_backend_config,
 )
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
@@ -56,8 +57,8 @@ def run_query_ssl_lora_classifier_local_training(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     query_ssl_config: FederatedQuerySslObjectiveConfig,
-    lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
+    lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
@@ -76,7 +77,12 @@ def run_query_ssl_lora_classifier_local_training(
         repository=TrainingArtifactRepository(
             state_root=output_dir / "agents" / client_id
         ),
-        backend=LoraClassifierTrainingBackend(config=lora_config),
+        backend=LoraClassifierTrainingBackend(
+            config=lora_config
+            or build_lora_classifier_training_backend_config(
+                training_task.objective_config
+            )
+        ),
     )
     return service.run_lora(
         QuerySslLoraLocalTrainingRequest(

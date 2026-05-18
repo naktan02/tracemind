@@ -5,9 +5,6 @@ from __future__ import annotations
 import time
 from typing import Any
 
-from methods.adaptation.lora_classifier.config import (
-    build_lora_classifier_training_backend_config,
-)
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
@@ -92,9 +89,6 @@ def _run_query_ssl_lora_client_round(
         training_task=training_task,
         model_manifest=active.manifest,
         query_ssl_config=request.query_ssl_objective_config,
-        lora_config=build_lora_classifier_training_backend_config(
-            training_task.objective_config
-        ),
         trainer_runtime_config=request.local_trainer_runtime_config,
     )
     client_train_time_seconds = time.perf_counter() - training_started_at

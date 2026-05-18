@@ -774,9 +774,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["training_task"] is training_task
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
     assert trainer_calls[0]["active_adapter_state"] is active_state
-    assert trainer_calls[0]["lora_config"].delta_format == (
-        LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
-    )
+    assert "lora_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
     assert accepted_payload.delta_format == (
         LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
