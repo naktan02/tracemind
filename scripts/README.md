@@ -196,8 +196,8 @@ communication round를 기본 차단한다. 총 예정 round는 단일 simulatio
 명시 승인받은 경우에만 아래 override를 함께 붙인다.
 
 신규 FL SSL 산출물은 root에 수평으로 쌓지 않고 아래 계층으로 저장한다. 기존
-`runs/federated_simulation*` 산출물은 read-only evidence이며,
-`runs/fl_ssl/legacy/...` hardlink mirror로도 조회할 수 있다.
+`runs/federated_simulation*` 산출물은 `runs/fl_ssl/legacy/...` 아래 read-only
+archive로 마이그레이션했다.
 
 ```text
 runs/fl_ssl/<single-or-sweeps>/<budget-or-sweep-kind>/<split_slug>/<method_composition_slug>/<run_id>/

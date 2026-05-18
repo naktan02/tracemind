@@ -24,14 +24,12 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.lora_classifier import (
     config as lora_config,
 )
-from methods.adaptation.lora_classifier import (
-    row_extractor,
-)
-from methods.adaptation.lora_classifier.local_update import (
-    LoraClassifierTrainArtifacts,
-)
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
+)
+from methods.adaptation.lora_classifier.update import row_extractor
+from methods.adaptation.lora_classifier.update.local_update import (
+    LoraClassifierTrainArtifacts,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,

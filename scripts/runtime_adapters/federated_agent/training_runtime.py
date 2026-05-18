@@ -24,11 +24,11 @@ def build_federated_local_training_service(
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
         build_lora_classifier_training_backend_config,
     )
-    from methods.adaptation.lora_classifier.simulation_inline_delta import (
-        SimulationInlineLoraClassifierTrainExecutor,
-    )
     from methods.adaptation.lora_classifier.training_backend import (
         LoraClassifierTrainingBackend,
+    )
+    from methods.adaptation.lora_classifier.update.simulation_inline_delta import (
+        SimulationInlineLoraClassifierTrainExecutor,
     )
 
     backend = None

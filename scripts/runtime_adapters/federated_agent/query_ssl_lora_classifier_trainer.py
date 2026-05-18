@@ -21,7 +21,7 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.query_ssl_local_training import (
+from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterialization,
     run_query_ssl_lora_classifier_training_core,

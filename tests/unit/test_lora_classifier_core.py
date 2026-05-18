@@ -8,12 +8,12 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.modeling import LoraTextClassifier
 from methods.adaptation.lora_classifier.training import (
     evaluate_classifier,
     train_classifier,
     train_query_ssl_classifier,
 )
+from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
 from methods.adaptation.query_classifier_adaptation import (
     modeling as legacy_modeling,
 )

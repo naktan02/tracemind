@@ -10,14 +10,14 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.lora_classifier.modeling import (
-    build_model as build_query_lora_model,
-)
 from methods.adaptation.lora_classifier.training import (
     evaluate_classifier as evaluate_query_lora_classifier,
 )
 from methods.adaptation.lora_classifier.training import (
     set_seed as set_query_lora_seed,
+)
+from methods.adaptation.lora_classifier.training.modeling import (
+    build_model as build_query_lora_model,
 )
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader as build_query_lora_dataloader,

@@ -10,7 +10,7 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.query_ssl_update import (
+from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (

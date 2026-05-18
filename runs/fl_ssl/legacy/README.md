@@ -1,13 +1,12 @@
 # FL SSL Legacy Runs
 
-이 디렉터리는 기존 `runs/federated_simulation*` 산출물을 신규 FL SSL 계층 아래에서
-조회하기 위한 read-only hardlink mirror다.
+이 디렉터리는 기존 `runs/federated_simulation*` 산출물을 신규 FL SSL 계층 아래로
+마이그레이션한 read-only legacy archive다.
 
 - 생성일: 2026-05-18
-- 방식: `cp -al` hardlink mirror
-- 원본 삭제: 하지 않음
-- 주의: hardlink mirror이므로 legacy artifact는 수정하지 않는다. 정리 삭제는 별도
-  승인 후 원본 또는 mirror 중 하나만 대상으로 한다.
+- 방식: `cp -al`로 새 계층을 만든 뒤 기존 수평 FL root 제거
+- 원본 삭제: 완료
+- 주의: legacy evidence이므로 artifact 내용은 수정하지 않는다.
 
 ## 분류
 
