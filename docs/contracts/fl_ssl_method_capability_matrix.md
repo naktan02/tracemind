@@ -34,7 +34,7 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
   파일.
 - method descriptor YAML만 먼저 추가하는 placeholder config.
 - 검증 없이 바로 full-budget 실행으로 들어가는 것. 총 예정 communication round가
-  49를 넘으면 runner guard가 막으므로, 필요한 경우 long-run ack를 명시한다.
+  30을 넘으면 runner guard가 막으므로, 필요한 경우 long-run ack를 명시한다.
 
 ## Candidate Matrix
 

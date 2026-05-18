@@ -5,7 +5,7 @@ from __future__ import annotations
 from omegaconf import DictConfig
 
 DEFAULT_LONG_RUN_ACK = "ALLOW_FL_SSL_LONG_RUN"
-DEFAULT_MAX_TOTAL_ROUNDS_WITHOUT_ACK = 49
+DEFAULT_MAX_TOTAL_ROUNDS_WITHOUT_ACK = 30
 
 
 def require_fl_ssl_run_budget_allowed(

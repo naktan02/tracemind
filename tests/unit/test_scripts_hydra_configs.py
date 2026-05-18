@@ -527,7 +527,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.client_count_sweep.output_dir == "runs/_smoke/fl_ssl"
     assert list(cfg.client_count_sweep.client_counts) == list(range(1, 11))
     assert cfg.client_count_sweep.split_manifest_by_client_count is None
-    assert cfg.run_safety.max_total_rounds_without_ack == 49
+    assert cfg.run_safety.max_total_rounds_without_ack == 30
     assert cfg.run_safety.allow_long_run is False
     assert cfg.run_safety.long_run_ack is None
     assert cfg.run_safety.required_long_run_ack == "ALLOW_FL_SSL_LONG_RUN"
@@ -837,7 +837,7 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
         )
 
     assert cfg.federated_run_budget.client_count == 10
-    assert cfg.federated_run_budget.rounds == 50
+    assert cfg.federated_run_budget.rounds == 30
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
     assert cfg.seed_sweep.output_dir == "runs/fl_ssl"
     assert cfg.client_count_sweep.output_dir == "runs/fl_ssl"
@@ -867,6 +867,7 @@ def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:
 def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> None:
     split_manifest = (
         "data/datasets/fl_client_splits/"
+        "shared_client_labeled/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
         "validation-ourafla_reddit_test-ourafla_reddit_"
         "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"

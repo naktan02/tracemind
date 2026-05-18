@@ -107,7 +107,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `smoke`는 wiring 검증 산출물을 `runs/_smoke/fl_ssl` 아래에 둬서
     논문/웹용 run과 섞이지 않게 한다.
   - `reduced`는 10 clients, 5 rounds 검증용 preset이고 `runs/fl_ssl`에 둔다.
-  - `main`은 10 clients, 50 rounds full-budget preset이고 `runs/fl_ssl`에 둔다.
+  - `main`은 10 clients, 30 rounds full-budget preset이고 `runs/fl_ssl`에 둔다.
   - `output_dir`는 run root만 지정하고, runner가
     `<method_family>/<method_composition>/<split>/<clients_rounds>/<run_id>`를
     뒤에 붙인다.
@@ -169,6 +169,12 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     server bootstrap subset은 기존 `bootstrap_ratio`로 유지한다.
   - `server_only_seed`는 FSSL method-owned runtime과 함께 열 예정이며, 현재
     materialization에서는 명시적으로 차단한다.
+  - materialized split artifact는 실행자 표면을 단순하게 유지하기 위해
+    `data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json`
+    아래에 둔다. manifest 내부 policy name은 canonical 값
+    `client_local_split`, `shared_client_seed`, `server_only_seed`를 유지한다.
+    `<exposure_group>`은 `client_local_labeled`, `shared_client_labeled`,
+    `server_only_labeled` 중 하나다.
 - `fl_data.source_mode`
   - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
     sharding한다.

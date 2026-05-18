@@ -182,7 +182,7 @@ uv run python scripts/experiments/fl_ssl/run_federated_simulation.py \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1
 ```
@@ -226,10 +226,10 @@ run_safety.allow_long_run=true \
 run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN
 ```
 
-현재 FL SSL 비교에서는 새 `50-round`/full-budget 실행을 하지 않는다. 기존
-alpha=0.3 `50-round` report는 read-only artifact로 검증하고, 새 method/wiring
-확인은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다. 위 실행 예시도
-이 정책에 맞춰 short 검증용 override만 보여준다.
+현재 FL SSL main preset은 `30-round` 단일 실행을 기본 full-budget으로 둔다. 기존
+alpha=0.3 `50-round` report는 read-only artifact로만 보존하며, 새 method/wiring
+확인은 먼저 `1-round` smoke 또는 `5-round` reduced run으로 제한한다. 30 rounds를
+넘는 실행이나 sweep은 long-run ack를 명시한 경우에만 시작한다.
 
 기존 FL SSL 산출물 metadata 검증:
 

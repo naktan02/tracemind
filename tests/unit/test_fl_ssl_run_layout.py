@@ -58,6 +58,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
                 "source_mode": "materialized_client_split",
                 "split_manifest": (
                     "data/datasets/fl_client_splits/"
+                    "client_local_labeled/"
                     "ourafla_dirichlet_alpha03_seed42_clients10/manifest.json"
                 ),
             },
@@ -94,6 +95,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
                 "source_mode": "materialized_client_split",
                 "split_manifest": (
                     "data/datasets/fl_client_splits/"
+                    "shared_client_labeled/"
                     "ourafla_shared_client_seed_dirichlet_alpha03_clients10/"
                     "manifest.json"
                 ),

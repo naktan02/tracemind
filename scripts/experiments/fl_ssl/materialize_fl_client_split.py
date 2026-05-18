@@ -130,7 +130,11 @@ def materialize_fl_client_split(
         list(unlabeled_rows_by_client),
     )
 
-    output_dir = output_root / normalized_split_id
+    output_dir = (
+        output_root
+        / resolved_labeled_exposure_policy.storage_group_name
+        / normalized_split_id
+    )
     clients_dir = output_dir / "clients"
     artifacts = FlClientSplitArtifacts(
         output_dir=output_dir,

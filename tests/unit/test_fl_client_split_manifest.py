@@ -129,6 +129,9 @@ def test_materialize_fl_client_split_writes_manifest_and_client_artifacts(
 
     loaded = load_materialized_client_split(manifest_path)
 
+    assert manifest_path == (
+        tmp_path / "splits" / "client_local_labeled" / "test_split" / "manifest.json"
+    )
     assert loaded.manifest.schema_version == FL_CLIENT_SPLIT_MANIFEST_SCHEMA_VERSION
     assert loaded.manifest.split_id == "test_split"
     assert loaded.manifest.manifest_sha256
@@ -245,6 +248,9 @@ def test_materialize_fl_client_split_shared_seed_writes_single_labeled_artifact(
 
     loaded = load_materialized_client_split(manifest_path)
     output_dir = manifest_path.parent
+    assert manifest_path == (
+        tmp_path / "splits" / "shared_client_labeled" / "test_split" / "manifest.json"
+    )
     shared_labeled_rows = load_labeled_query_rows(
         output_dir / str(loaded.manifest.shared_client_labeled_jsonl)
     )

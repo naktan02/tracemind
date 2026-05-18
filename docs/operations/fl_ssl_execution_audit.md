@@ -33,7 +33,7 @@ report/summary를 검증했다.
 - `client_count=1..10` sweep은 1-round summary와 하위 report 10개를 확인했다.
 - result index는 FL `fl_ssl_main_comparison.report.json`와 client-count sweep 하위
   report를 dashboard/index record로 정규화한다.
-- FL SSL runner는 총 예정 communication round가 `49`를 넘으면 기본 차단한다.
+- FL SSL runner는 총 예정 communication round가 `30`을 넘으면 기본 차단한다.
 
 후보와 비교 조건 확정 뒤 별도 실행할 항목:
 

@@ -77,7 +77,7 @@ central fixed embedding + classifier seed
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training/` | simulation |
-| FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 50 rounds | simulation |
+| FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |

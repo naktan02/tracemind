@@ -221,7 +221,7 @@ Runtime translation:
 - LoRA/classifier delta artifact 경로는 `agent-local://` ref를 server-owned
   `aggregation_artifact::` ref로 upload/materialize할 수 있게 닫았다.
   server direct accept는 server-owned ref와 inline debug payload만 수락한다.
-- `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`, `50 rounds` main
+- `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`, `30 rounds` main
   baseline report는 round/split/method/delta 기준으로 검증했다. 이 report는
   runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
   재검증할 수 없고, 현재 코드 기준 runtime metadata는 같은 split의 1-round smoke와
@@ -232,7 +232,7 @@ Runtime translation:
   FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
   `client_count=1..10` sweep은 1-round summary로 확인했다. `alpha=0.1`은 마지막
   stress 확인으로 남겨 두며 current manifest 검증 대상이 아니다.
-- FL SSL runner는 총 예정 communication round가 49를 넘으면 기본 차단한다.
+- FL SSL runner는 총 예정 communication round가 30을 넘으면 기본 차단한다.
   단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로
   계산하며, 장시간 실행은 `run_safety.allow_long_run=true`와
   `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 명시한 경우에만 시작된다.

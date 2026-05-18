@@ -124,7 +124,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `federated_run_budget`
   - `run_controls/fl_ssl/budget=smoke` 산출물은 `runs/_smoke/fl_ssl` 아래에 둔다.
   - `run_controls/fl_ssl/budget=reduced`는 10 clients, 5 rounds 검증용 preset이다.
-  - `run_controls/fl_ssl/budget=main`은 10 clients, 50 rounds full-budget preset이다.
+  - `run_controls/fl_ssl/budget=main`은 10 clients, 30 rounds full-budget preset이다.
 - `seed_sweep.seeds`
 - `seed_sweep.output_dir`
 - `client_count_sweep.client_counts`
@@ -178,7 +178,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1
 ```
@@ -222,18 +222,17 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   `strategy_axes/fl/shard_policy=dirichlet_alpha03` 조합이었다. `alpha=0.1`은
   기본값이 아니라 마지막 stress/robustness 확인이 필요할 때만
   `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
-- `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 담는
-  full-budget preset이다. 현재 사용자 결정에 따라 새 `50-round`/full-budget
-  실행은 하지 않으며, 새 wiring/method 검증은 `1-round` smoke 또는 필요 시
+- `run_controls/fl_ssl/budget=main`은 `10 clients`, `30 rounds`를 담는
+  full-budget preset이다. 새 wiring/method 검증은 먼저 `1-round` smoke 또는 필요 시
   `5-round` reduced run으로 제한한다. 기본 smoke preset은 `4 clients`, `3 rounds`다.
 - runner는 accidental long run을 막기 위해 `run_safety.max_total_rounds_without_ack`
   초과 총 예정 round를 시작 전에 차단한다. 총 예정 round는 단일 run이면
   `federated_run_budget.rounds`, seed/client-count sweep이면
   `federated_run_budget.rounds * sweep 항목 수`다. 장시간 실행이 명시 승인된 경우에만
   `run_safety.allow_long_run=true`와
-  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다. 단, 현재
-  FL SSL 트랙의 사용자 결정은 새 `50-round`/full-budget 실행 금지이며, 이 guard
-  override가 그 결정을 대체하지 않는다.
+  `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 함께 override한다. 단일 main
+  `30-round` 실행은 기본 guard 안에 들어오며, 그보다 큰 실행이나 sweep은 명시
+  승인 대상이다.
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
   `round_runtime.adapter_family_name`에서 자동 파생된다. 기본 조합은

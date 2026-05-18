@@ -41,7 +41,7 @@ output_dir=runs/_smoke/fl_ssl
 
 `run_controls/fl_ssl/budget=smoke`는 wiring 검증용 산출물을
 `runs/_smoke/fl_ssl` 아래에 둔다. `budget=reduced`는 `10 clients`, `5 rounds`
-확인용 preset이고, `budget=main`은 `10 clients`, `50 rounds` full-budget
+확인용 preset이고, `budget=main`은 `10 clients`, `30 rounds` full-budget
 preset이다. 성능 방향 확인은 `budget=reduced`, full-budget 실행이 필요할 때만
 `budget=main`을 명시한다.
 
@@ -68,9 +68,16 @@ client split manifest로 materialize한다.
 query_data_selection
 -> query_source.train_jsonl / unlabeled_jsonl / validation_jsonl / test_jsonl
 -> materialize_fl_client_split
--> data/datasets/fl_client_splits/<split_id>/manifest.json
+-> data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json
 -> run_federated_simulation fl_data.source_mode=materialized_client_split
 ```
+
+`<exposure_group>`은 실행자가 고르는 labeled exposure 표면이다.
+`client_local_labeled`는 client-local labeled split,
+`shared_client_labeled`는 모든 client가 같은 public labeled seed를 보는 split,
+`server_only_labeled`는 아직 runtime 미지원이라 reserved 상태다. manifest 내부에는
+canonical policy name(`client_local_split`, `shared_client_seed`, `server_only_seed`)이
+남는다.
 
 `query_data_selection.labeled`는 client labeled pool과 bootstrap labeled pool의
 원본이다. `query_data_selection.unlabeled`는 client unlabeled pool의 원본이다.
@@ -145,7 +152,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=smoke \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1
 ```
@@ -163,7 +170,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   run_controls/fl_ssl/budget=reduced \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
   training_task.max_steps=20
 ```
 
@@ -220,7 +227,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   round_runtime.adapter_family_name=lora_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/<split_id>/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1 \
   training_task.max_steps=50
@@ -286,7 +293,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   round_runtime.adapter_family_name=lora_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
-  fl_data.split_manifest=data/datasets/fl_client_splits/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json \
+  fl_data.split_manifest=data/datasets/fl_client_splits/shared_client_labeled/labeled-ourafla_reddit_unlabeled-ourafla_reddit_validation-ourafla_reddit_test-ourafla_reddit_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json \
   training_task.batch_size=12 \
   training_task.max_steps=20
 ```

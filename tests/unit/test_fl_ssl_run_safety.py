@@ -25,14 +25,27 @@ def test_fl_ssl_long_run_guard_allows_default_smoke_budget() -> None:
     require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
 
 
-def test_fl_ssl_long_run_guard_blocks_main_budget_without_ack() -> None:
+def test_fl_ssl_long_run_guard_allows_main_budget_without_ack() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=["run_controls/fl_ssl/budget=main"],
         )
 
-    with pytest.raises(ValueError, match="total_planned_rounds=50"):
+    require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
+
+
+def test_fl_ssl_long_run_guard_blocks_rounds_above_main_budget_without_ack() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "run_controls/fl_ssl/budget=main",
+                "federated_run_budget.rounds=31",
+            ],
+        )
+
+    with pytest.raises(ValueError, match="total_planned_rounds=31"):
         require_fl_ssl_run_budget_allowed(cfg, run_kind="single_simulation")
 
 

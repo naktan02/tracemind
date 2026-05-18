@@ -13,6 +13,9 @@ ItemT = TypeVar("ItemT")
 LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT = "client_local_split"
 LABELED_EXPOSURE_SHARED_CLIENT_SEED = "shared_client_seed"
 LABELED_EXPOSURE_SERVER_ONLY_SEED = "server_only_seed"
+LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP = "client_local_labeled"
+LABELED_EXPOSURE_SHARED_CLIENT_STORAGE_GROUP = "shared_client_labeled"
+LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP = "server_only_labeled"
 LABELED_EXPOSURE_POLICY_NAMES = frozenset(
     {
         LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
@@ -49,6 +52,14 @@ class FederatedLabeledExposurePolicy:
     @property
     def shares_same_labeled_rows_across_clients(self) -> bool:
         return self.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED
+
+    @property
+    def storage_group_name(self) -> str:
+        if self.name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
+            return LABELED_EXPOSURE_SHARED_CLIENT_STORAGE_GROUP
+        if self.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+            return LABELED_EXPOSURE_SERVER_ONLY_STORAGE_GROUP
+        return LABELED_EXPOSURE_CLIENT_LOCAL_STORAGE_GROUP
 
     def to_payload(self) -> dict[str, object]:
         return {"name": self.name}
