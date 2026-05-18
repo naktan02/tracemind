@@ -37,7 +37,7 @@ def build_initial_shared_state(
     updated_at: datetime,
 ) -> SharedAdapterState:
     """simulation bootstrap용 초기 shared state를 family별로 만든다."""
-    adapter_family_name = str(round_runtime_config.adapter_family_name).strip().lower()
+    adapter_family_name = _adapter_family_name(round_runtime_config)
     if adapter_family_name == CLASSIFIER_HEAD_ADAPTER_KIND:
         return ClassifierHeadState.zero_initialized(
             model_id=model_id,
@@ -73,6 +73,39 @@ def build_initial_shared_state(
     raise ValueError(f"Unsupported simulation adapter family: {adapter_family_name}")
 
 
+def finalize_bootstrap_shared_state(
+    *,
+    round_runtime_config: Any,
+    initial_state: SharedAdapterState,
+    active_prototype: PrototypePackPayload,
+    prototype_build_strategy_name: str,
+    model_id: str,
+    model_revision: str,
+    training_scope: str,
+    updated_at: datetime,
+) -> SharedAdapterState:
+    """prototype 생성 뒤 family별 bootstrap state 보정이 필요하면 적용한다."""
+
+    adapter_family_name = _adapter_family_name(round_runtime_config)
+    if adapter_family_name != CLASSIFIER_HEAD_ADAPTER_KIND:
+        return initial_state
+    if prototype_build_strategy_name != "single":
+        raise ValueError(
+            "classifier_head bootstrap currently requires "
+            "strategy_axes/prototype/build_strategy=single. "
+            "The current bootstrap path converts one centroid per category into "
+            "classifier weights and does not support multi-prototype packs yet."
+        )
+    return build_classifier_head_state_from_prototype_pack(
+        prototype_pack=active_prototype,
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        updated_at=updated_at,
+        logit_scale=round_runtime_config.classifier_head_bootstrap_logit_scale,
+    )
+
+
 def build_classifier_head_state_from_prototype_pack(
     *,
     prototype_pack: PrototypePackPayload,
@@ -101,3 +134,7 @@ def build_classifier_head_state_from_prototype_pack(
         },
         label_biases={label: 0.0 for label in centroids},
     )
+
+
+def _adapter_family_name(round_runtime_config: Any) -> str:
+    return str(round_runtime_config.adapter_family_name).strip().lower()

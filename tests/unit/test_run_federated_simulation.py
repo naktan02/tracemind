@@ -73,12 +73,16 @@ from scripts.runtime_adapters.federated_agent.scoring_runtime import (
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
+    finalize_bootstrap_shared_state,
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
     build_round_open_request,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadState,
+)
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     VectorAdapterState,
 )
@@ -1027,6 +1031,71 @@ def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     assert state.label_schema == ["anxiety", "normal"]
     assert state.lora_config.rank == 8
     assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
+
+
+def test_finalize_bootstrap_shared_state_builds_classifier_head_from_prototype() -> (
+    None
+):
+    initial_state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="classifier_head",
+            classifier_head_bootstrap_logit_scale=2.0,
+        ),
+        model_id="mxbai-classifier-head",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    finalized_state = finalize_bootstrap_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="classifier_head",
+            classifier_head_bootstrap_logit_scale=2.0,
+        ),
+        initial_state=initial_state,
+        active_prototype=_pack_payload(),
+        prototype_build_strategy_name="single",
+        model_id="mxbai-classifier-head",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(finalized_state, ClassifierHeadState)
+    assert finalized_state.label_weights["anxiety"] == pytest.approx([2.0, 0.0])
+    assert finalized_state.label_weights["normal"] == pytest.approx([0.0, 2.0])
+
+
+def test_finalize_bootstrap_shared_state_rejects_classifier_head_multi_prototype() -> (
+    None
+):
+    initial_state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="classifier_head"
+        ),
+        model_id="mxbai-classifier-head",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    with pytest.raises(ValueError, match="classifier_head bootstrap"):
+        finalize_bootstrap_shared_state(
+            round_runtime_config=_default_round_runtime_config(
+                adapter_family_name="classifier_head"
+            ),
+            initial_state=initial_state,
+            active_prototype=_pack_payload(),
+            prototype_build_strategy_name="dbscan",
+            model_id="mxbai-classifier-head",
+            model_revision="sim_rev_0000",
+            training_scope="adapter_only",
+            updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        )
 
 
 def test_build_initial_shared_state_rejects_unknown_family() -> None:

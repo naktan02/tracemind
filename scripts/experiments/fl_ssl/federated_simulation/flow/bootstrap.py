@@ -22,14 +22,12 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
-    build_classifier_head_state_from_prototype_pack,
     build_initial_shared_state,
+    finalize_bootstrap_shared_state,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from ..io.run_artifact_writer import RunArtifactWriter
@@ -86,12 +84,19 @@ def bootstrap_simulation(
         embedding_model_revision=initial_model_revision,
         built_at=now,
     )
-    initial_state = _finalize_bootstrap_shared_state(
-        request=request,
+    initial_state = finalize_bootstrap_shared_state(
+        round_runtime_config=request.round_runtime_config,
         initial_state=initial_state,
         active_prototype=active_prototype,
-        initial_model_revision=initial_model_revision,
-        built_at=now,
+        prototype_build_strategy_name=getattr(
+            request.prototype_build_strategy,
+            "name",
+            "",
+        ),
+        model_id=request.model_id,
+        model_revision=initial_model_revision,
+        training_scope=request.training_scope,
+        updated_at=now,
     )
     run_artifact_writer = RunArtifactWriter()
     initial_state_ref = server_runtime.save_shared_adapter_state(initial_state)
@@ -169,38 +174,6 @@ def _resolve_bootstrap_embedding_dim(
     if not dataset_split.bootstrap_rows:
         raise ValueError("Bootstrap split must contain at least one row.")
     return len(adapter.embed_texts([str(dataset_split.bootstrap_rows[0]["text"])])[0])
-
-
-def _finalize_bootstrap_shared_state(
-    *,
-    request: SimulationRunRequest,
-    initial_state: SharedAdapterState,
-    active_prototype: PrototypePackPayload,
-    initial_model_revision: str,
-    built_at: datetime,
-) -> SharedAdapterState:
-    if (
-        request.round_runtime_config.adapter_family_name == "classifier_head"
-        and getattr(request.prototype_build_strategy, "name", "") != "single"
-    ):
-        raise ValueError(
-            "classifier_head bootstrap currently requires "
-            "strategy_axes/prototype/build_strategy=single. "
-            "The current bootstrap path converts one centroid per category into "
-            "classifier weights and does not support multi-prototype packs yet."
-        )
-    if request.round_runtime_config.adapter_family_name != "classifier_head":
-        return initial_state
-    return build_classifier_head_state_from_prototype_pack(
-        prototype_pack=active_prototype,
-        model_id=request.model_id,
-        model_revision=initial_model_revision,
-        training_scope=request.training_scope,
-        updated_at=built_at,
-        logit_scale=(
-            request.round_runtime_config.classifier_head_bootstrap_logit_scale
-        ),
-    )
 
 
 def _build_bootstrap_manifest(
