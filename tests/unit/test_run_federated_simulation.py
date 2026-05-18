@@ -24,6 +24,9 @@ from methods.federated_ssl.registry import resolve_federated_ssl_method_descript
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
+from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    client_training,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_training_examples,
     evaluate_rows,
@@ -35,7 +38,6 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
-from scripts.experiments.fl_ssl.federated_simulation.flow import round_loop
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -508,7 +510,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         )
 
     monkeypatch.setattr(
-        round_loop,
+        client_training,
         "run_query_ssl_lora_classifier_local_training",
         _fake_query_ssl_trainer,
     )
@@ -588,7 +590,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             classifier_dropout=0.1,
         ),
     )
-    execution = round_loop._run_client_round(
+    execution = client_training.run_client_round(
         request=request,
         bootstrapped=BootstrappedSimulation(
             dataset_split=FederatedDatasetSplit(

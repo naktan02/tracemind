@@ -17,6 +17,9 @@ from methods.federated_ssl.execution_plan import (
     build_federated_ssl_execution_plan,
 )
 from methods.prototype.building.base import PrototypeBuildStrategy
+from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    runtime_compatibility,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
     build_federated_ssl_simulation_runtime,
@@ -47,9 +50,6 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 )
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
@@ -162,7 +162,7 @@ def _require_runtime_compatibility(
         request=request,
         ssl_method_descriptor=ssl_method_descriptor,
     )
-    _require_round_runtime_matches_training_objective(request)
+    runtime_compatibility.require_round_runtime_matches_training_objective(request)
     local_adapter_kind = resolve_federated_training_backend_adapter_kind(
         objective_config=request.training_task_config.objective_config,
     )
@@ -221,24 +221,6 @@ def _require_execution_plan_matches_runtime(
             f"{manual_axes.update_family!r} != "
             f"{request.round_runtime_config.adapter_family_name!r}."
         )
-
-
-def _require_round_runtime_matches_training_objective(
-    request: SimulationRunRequest,
-) -> None:
-    adapter_family_name = (
-        request.round_runtime_config.adapter_family_name.strip().lower()
-    )
-    if adapter_family_name != LORA_CLASSIFIER_ADAPTER_KIND:
-        return
-    lora_runtime_config = request.round_runtime_config.lora_classifier
-    if lora_runtime_config is None:
-        raise ValueError(
-            "lora_classifier round runtime requires lora_classifier bootstrap config."
-        )
-    lora_runtime_config.require_shared_payload_matches_objective(
-        request.training_task_config.objective_config
-    )
 
 
 def _require_training_task_type_matches_method(

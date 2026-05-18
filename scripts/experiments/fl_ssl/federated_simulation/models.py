@@ -8,7 +8,9 @@ from pathlib import Path
 
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
-    build_lora_classifier_training_backend_config,
+)
+from methods.adaptation.lora_classifier.runtime_compatibility import (
+    require_lora_classifier_runtime_matches_objective,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
@@ -310,30 +312,10 @@ class FederatedLoraClassifierRuntimeConfig:
     ) -> None:
         """bootstrap state와 local update가 같은 backbone/LoRA snapshot을 쓰게 한다."""
 
-        objective_backend_config = build_lora_classifier_training_backend_config(
-            objective_config
+        require_lora_classifier_runtime_matches_objective(
+            runtime_config=self,
+            objective_config=objective_config,
         )
-        mismatches: dict[str, object] = {}
-        if self.backbone_payload() != objective_backend_config.to_backbone_payload():
-            mismatches["backbone"] = {
-                "round_runtime": self.backbone_payload(),
-                "training_objective": (objective_backend_config.to_backbone_payload()),
-            }
-        if (
-            self.lora_config_payload()
-            != objective_backend_config.to_lora_config_payload()
-        ):
-            mismatches["lora_config"] = {
-                "round_runtime": self.lora_config_payload(),
-                "training_objective": (
-                    objective_backend_config.to_lora_config_payload()
-                ),
-            }
-        if mismatches:
-            raise ValueError(
-                "LoRA-classifier round_runtime.lora_classifier must match "
-                f"training_task.objective shared payload config: {mismatches}."
-            )
 
 
 _LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS = frozenset(

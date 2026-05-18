@@ -5,6 +5,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
+from methods.adaptation.lora_classifier.initial_state import (
+    build_initial_lora_classifier_state,
+)
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
     ClassifierHeadState,
@@ -15,7 +18,6 @@ from shared.src.contracts.adapter_contract_families.diagonal_scale import (
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
-    LoraClassifierState,
 )
 from shared.src.contracts.prototype_contracts import (
     PrototypePackPayload,
@@ -52,17 +54,13 @@ def build_initial_shared_state(
                 "lora_classifier round runtime requires lora_classifier "
                 "bootstrap config."
             )
-        return LoraClassifierState(
+        return build_initial_lora_classifier_state(
+            config=lora_config,
             model_id=model_id,
             model_revision=model_revision,
             training_scope=training_scope,
+            labels=labels,
             updated_at=updated_at,
-            backbone=lora_config.backbone_payload(),
-            lora_config=lora_config.lora_config_payload(),
-            label_schema=list(labels),
-            lora_adapter_artifact_ref=lora_config.lora_adapter_artifact_ref,
-            classifier_head_artifact_ref=lora_config.classifier_head_artifact_ref,
-            artifact_format=lora_config.artifact_format,
         )
     if adapter_family_name == DIAGONAL_SCALE_ADAPTER_KIND:
         return VectorAdapterState.identity(
