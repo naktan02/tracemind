@@ -2,10 +2,14 @@
 
 from __future__ import annotations
 
-from typing import Any
+from typing import Any, Protocol
 
 from torch import nn
 
+from methods.adaptation.lora.lora_adapter import resolve_target_modules
+from methods.adaptation.lora_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
 from methods.adaptation.peft.base import PeftAdapterBuildContext
 from methods.adaptation.peft.registry import (
     build_peft_adapter_builder,
@@ -25,6 +29,16 @@ def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
             "transformers and peft installed. Example: uv sync --extra experiments"
         ) from exc
     return AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel
+
+
+class LoraClassifierModelRuntimeConfig(Protocol):
+    """LoRA-classifier 모델 생성에 필요한 runtime surface."""
+
+    device: str
+    classifier_dropout: float
+    cache_dir: str | None
+    local_files_only: bool
+    trust_remote_code: bool
 
 
 class LoraTextClassifier(nn.Module):
@@ -82,6 +96,53 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
         if parameter.requires_grad:
             trainable += size
     return {"total": total, "trainable": trainable}
+
+
+def build_lora_text_classifier_from_config(
+    *,
+    labels: list[str],
+    lora_config: LoraClassifierTrainingBackendConfig,
+    runtime_config: LoraClassifierModelRuntimeConfig,
+) -> tuple[LoraTextClassifier, Any]:
+    """LoRA-classifier config snapshot에서 평가/학습용 모델을 조립한다."""
+
+    AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, _PeftModel = (
+        require_transformer_stack()
+    )
+    tokenizer = AutoTokenizer.from_pretrained(
+        lora_config.tokenizer_model_id,
+        revision=lora_config.tokenizer_revision,
+        cache_dir=runtime_config.cache_dir,
+        local_files_only=runtime_config.local_files_only,
+        trust_remote_code=runtime_config.trust_remote_code,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
+
+    backbone_base = AutoModel.from_pretrained(
+        lora_config.backbone_model_id,
+        revision=lora_config.backbone_revision,
+        cache_dir=runtime_config.cache_dir,
+        local_files_only=runtime_config.local_files_only,
+        trust_remote_code=runtime_config.trust_remote_code,
+    )
+    peft_config = LoraConfig(
+        r=int(lora_config.rank),
+        lora_alpha=int(lora_config.alpha),
+        lora_dropout=float(lora_config.dropout),
+        target_modules=resolve_target_modules(lora_config.target_modules),
+        bias=lora_config.bias,
+        use_rslora=bool(lora_config.use_rslora),
+        task_type=TaskType.FEATURE_EXTRACTION,
+    )
+    backbone = get_peft_model(backbone_base, peft_config)
+    model = LoraTextClassifier(
+        backbone=backbone,
+        hidden_size=int(backbone.config.hidden_size),
+        num_labels=len(labels),
+        classifier_dropout=float(runtime_config.classifier_dropout),
+    ).to(runtime_config.device)
+    return model, tokenizer
 
 
 def build_model(

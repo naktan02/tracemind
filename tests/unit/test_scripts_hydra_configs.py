@@ -501,6 +501,12 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective["query_ssl.method_name"] == "fixmatch_usb_v1"
     assert cfg.training_task.objective["query_ssl.algorithm_name"] == "fixmatch"
     assert cfg.training_task.objective["query_ssl.strong_view_policy"] == "first_aug"
+    assert cfg.local_update_profile.validation_scorer_backend_name == (
+        "lora_classifier_eval"
+    )
+    assert cfg.validation.scorer_backend_name == "lora_classifier_eval"
+    assert cfg.validation.score_policy_name is None
+    assert cfg.validation.score_top_k is None
     assert cfg.validation.confidence_threshold == 0.6
     assert cfg.validation.margin_threshold == 0.02
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
@@ -697,6 +703,15 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
     )
 
     assert local_update_profile.algorithm_profile_name == profile_name
+    assert (
+        cfg.validation.scorer_backend_name
+        == local_update_profile.validation_scorer_backend_name
+    )
+    assert (
+        cfg.validation.score_policy_name
+        == local_update_profile.validation_score_policy_name
+    )
+    assert cfg.validation.score_top_k == local_update_profile.validation_score_top_k
     require_training_objective_matches_local_update_profile(
         objective_config=objective_config,
         local_update_profile=local_update_profile,

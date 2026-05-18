@@ -15,4 +15,6 @@ Prototype 분석 실험 runner나 sweep은 `scripts/` 또는 `research/analysis/
   build strategy
 - `scoring/`: embedding-prototype similarity와 category score 집계 policy
 - `evidence/`: prototype score나 score snapshot을 `PseudoLabelEvidence`로 정규화
+- `evaluation.py`: prototype candidate/evidence를 classification evaluation payload로
+  해석하는 평가 core
 - `training_inputs/`: prototype score 기반 single/multiview 학습 입력 view 계산

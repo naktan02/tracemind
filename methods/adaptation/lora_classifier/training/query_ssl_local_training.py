@@ -8,7 +8,6 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-from methods.adaptation.lora.lora_adapter import resolve_target_modules
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
 )
@@ -50,7 +49,7 @@ from .delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
 from .loops import set_seed, train_query_ssl_classifier
-from .modeling import LoraTextClassifier, require_transformer_stack
+from .modeling import LoraTextClassifier, build_lora_text_classifier_from_config
 
 
 class QuerySslLoraObjectiveRuntimeConfig(Protocol):
@@ -292,43 +291,11 @@ def _build_lora_classifier_model(
     lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
 ) -> tuple[LoraTextClassifier, Any]:
-    AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, _PeftModel = (
-        require_transformer_stack()
+    return build_lora_text_classifier_from_config(
+        labels=[str(label) for label in labels],
+        lora_config=lora_config,
+        runtime_config=trainer_runtime_config,
     )
-    tokenizer = AutoTokenizer.from_pretrained(
-        lora_config.tokenizer_model_id,
-        revision=lora_config.tokenizer_revision,
-        cache_dir=trainer_runtime_config.cache_dir,
-        local_files_only=trainer_runtime_config.local_files_only,
-        trust_remote_code=trainer_runtime_config.trust_remote_code,
-    )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
-
-    backbone_base = AutoModel.from_pretrained(
-        lora_config.backbone_model_id,
-        revision=lora_config.backbone_revision,
-        cache_dir=trainer_runtime_config.cache_dir,
-        local_files_only=trainer_runtime_config.local_files_only,
-        trust_remote_code=trainer_runtime_config.trust_remote_code,
-    )
-    peft_config = LoraConfig(
-        r=int(lora_config.rank),
-        lora_alpha=int(lora_config.alpha),
-        lora_dropout=float(lora_config.dropout),
-        target_modules=resolve_target_modules(lora_config.target_modules),
-        bias=lora_config.bias,
-        use_rslora=bool(lora_config.use_rslora),
-        task_type=TaskType.FEATURE_EXTRACTION,
-    )
-    backbone = get_peft_model(backbone_base, peft_config)
-    model = LoraTextClassifier(
-        backbone=backbone,
-        hidden_size=int(backbone.config.hidden_size),
-        num_labels=len(labels),
-        classifier_dropout=float(trainer_runtime_config.classifier_dropout),
-    ).to(trainer_runtime_config.device)
-    return model, tokenizer
 
 
 def _build_unlabeled_loader(

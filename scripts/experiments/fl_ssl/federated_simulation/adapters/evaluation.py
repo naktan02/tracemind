@@ -1,17 +1,29 @@
-"""Federated simulation용 example build와 validation 계산."""
+"""Federated simulation용 validation 실행 adapter."""
 
 from __future__ import annotations
 
-import math
 from typing import Any
 
-from methods.evaluation.classification_report import (
-    build_classification_evaluation_report,
+from agent.src.services.inference.scoring_backends.base import (
+    PROTOTYPE_SIMILARITY_BACKEND_NAME,
 )
+from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
+    AggregationArtifactStore,
+)
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    materialize_base_lora_classifier_state,
+)
+from methods.adaptation.lora_classifier.evaluation import (
+    LORA_CLASSIFIER_EVALUATOR_NAME,
+    evaluate_lora_classifier_validation_payload,
+    require_lora_classifier_state,
+    require_lora_classifier_validation_backend,
+)
+from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_training_objective_config,
 )
-from methods.prototype.evidence.helpers import softmax_distribution
+from methods.prototype.evaluation import build_prototype_candidate_evaluation_payload
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
@@ -108,13 +120,15 @@ def evaluate_rows(
     )
     true_labels = [str(row["mapped_label_4"]) for row in rows]
     predicted_labels = [candidate.label for candidate in selection_result.candidates]
-    return _build_simulation_evaluation(
-        row_count=len(rows),
-        true_labels=true_labels,
-        predicted_labels=predicted_labels,
-        candidates=list(selection_result.candidates),
-        evidences=list(selection_result.evidences),
-        accepted_ratio=selection_result.accepted_ratio,
+    return SimulationEvaluation(
+        **build_prototype_candidate_evaluation_payload(
+            row_count=len(rows),
+            true_labels=true_labels,
+            predicted_labels=predicted_labels,
+            candidates=list(selection_result.candidates),
+            evidences=list(selection_result.evidences),
+            accepted_ratio=selection_result.accepted_ratio,
+        )
     )
 
 
@@ -150,6 +164,19 @@ def evaluate_simulation_validation(
 ) -> SimulationEvaluation:
     """FL simulation request 기준 validation row를 평가한다."""
 
+    if request.validation_config.scorer_backend_name == LORA_CLASSIFIER_EVALUATOR_NAME:
+        return _evaluate_lora_classifier_validation(
+            request=request,
+            active=active,
+            rows=rows,
+            objective_config=objective_config,
+        )
+    require_lora_classifier_validation_backend(
+        adapter_state=active.adapter_state,
+        scorer_backend_name=request.validation_config.scorer_backend_name,
+        prototype_scorer_backend_name=PROTOTYPE_SIMILARITY_BACKEND_NAME,
+    )
+
     return evaluate_rows(
         rows=rows,
         adapter=adapter,
@@ -165,6 +192,40 @@ def evaluate_simulation_validation(
         task_type=request.training_task_config.task_type,
         objective_config=objective_config,
     )
+
+
+def _evaluate_lora_classifier_validation(
+    *,
+    request: SimulationRunRequest,
+    active: ActiveSimulationState,
+    rows: list[LabeledQueryRow],
+    objective_config: TrainingObjectiveConfig | None,
+) -> SimulationEvaluation:
+    if not rows:
+        return SimulationEvaluation(row_count=0, top1_accuracy=0.0, accepted_ratio=0.0)
+    adapter_state = require_lora_classifier_state(active.adapter_state)
+
+    payload = evaluate_lora_classifier_validation_payload(
+        rows=rows,
+        adapter_state=adapter_state,
+        base_parameters=materialize_base_lora_classifier_state(
+            base_state=adapter_state,
+            context=FederatedAggregationContext(
+                next_model_revision=adapter_state.model_revision,
+                aggregated_at=adapter_state.updated_at,
+                artifact_loader=AggregationArtifactStore(
+                    state_root=(
+                        request.output_dir / "main_server" / "aggregation_artifacts"
+                    ),
+                ),
+            ),
+        ),
+        objective_config=objective_config,
+        runtime_config=request.local_trainer_runtime_config,
+        batch_size=request.training_task_config.batch_size,
+        seed=request.seed,
+    )
+    return SimulationEvaluation(**payload)
 
 
 def _build_validation_objective_config(
@@ -204,227 +265,3 @@ def _build_validation_task(
         objective_config=objective_config,
         selection_policy=TrainingSelectionPolicy(),
     )
-
-
-def _build_simulation_evaluation(
-    *,
-    row_count: int,
-    true_labels: list[str],
-    predicted_labels: list[str],
-    candidates: list[Any],
-    evidences: list[Any],
-    accepted_ratio: float,
-) -> SimulationEvaluation:
-    categories = sorted(set(true_labels) | set(predicted_labels))
-    distributions: list[dict[str, float]] = []
-    distribution_kinds: list[str] = []
-    for candidate, evidence in zip(candidates, evidences, strict=True):
-        distribution, distribution_kind = _label_probability_distribution(
-            candidate=candidate,
-            evidence=evidence,
-        )
-        distributions.append(distribution)
-        distribution_kinds.append(distribution_kind)
-
-    true_probs = [
-        distribution.get(true_label, 0.0)
-        for true_label, distribution in zip(true_labels, distributions, strict=True)
-    ]
-    top_1_values = [
-        distribution.get(predicted_label, 0.0)
-        for predicted_label, distribution in zip(
-            predicted_labels,
-            distributions,
-            strict=True,
-        )
-    ]
-    margins = [
-        _probability_margin(distribution=distribution, predicted_label=predicted_label)
-        for predicted_label, distribution in zip(
-            predicted_labels,
-            distributions,
-            strict=True,
-        )
-    ]
-    total_loss = sum(-math.log(max(probability, 1e-12)) for probability in true_probs)
-    report = build_classification_evaluation_report(
-        categories=categories,
-        actual_labels=true_labels,
-        predicted_labels=predicted_labels,
-        true_probs=true_probs,
-        top_1_values=top_1_values,
-        margins=margins,
-        total_loss=total_loss,
-        total_rows=row_count,
-    )
-    return _evaluation_from_report(
-        report=report,
-        row_count=row_count,
-        accepted_ratio=accepted_ratio,
-        candidates=candidates,
-        distribution_kind=_summarize_distribution_kind(distribution_kinds),
-    )
-
-
-def _label_probability_distribution(
-    *,
-    candidate: Any,
-    evidence: Any,
-) -> tuple[dict[str, float], str]:
-    label_distribution = getattr(evidence, "label_distribution", None)
-    if label_distribution:
-        return (
-            _float_distribution(label_distribution),
-            "evidence_label_distribution",
-        )
-
-    raw_scores = getattr(evidence, "raw_scores", None)
-    if raw_scores:
-        return (
-            softmax_distribution(raw_scores, temperature=1.0),
-            "softmax_raw_scores_temperature_1.0",
-        )
-
-    sparse_scores = {str(candidate.label): float(candidate.confidence)}
-    if candidate.runner_up_label is not None:
-        sparse_scores[str(candidate.runner_up_label)] = float(
-            candidate.runner_up_score or 0.0
-        )
-    if len(sparse_scores) > 1:
-        distribution = softmax_distribution(sparse_scores, temperature=1.0)
-    else:
-        distribution = {str(candidate.label): 1.0}
-    return (
-        distribution,
-        "softmax_candidate_top2_sparse_fallback",
-    )
-
-
-def _float_distribution(
-    distribution: dict[str, float],
-) -> dict[str, float]:
-    return {
-        str(label): float(probability) for label, probability in distribution.items()
-    }
-
-
-def _probability_margin(
-    *,
-    distribution: dict[str, float],
-    predicted_label: str,
-) -> float:
-    top_value = float(distribution.get(predicted_label, 0.0))
-    runner_up = max(
-        (
-            float(value)
-            for label, value in distribution.items()
-            if label != predicted_label
-        ),
-        default=0.0,
-    )
-    return top_value - runner_up
-
-
-def _evaluation_from_report(
-    *,
-    report: dict[str, object],
-    row_count: int,
-    accepted_ratio: float,
-    candidates: list[Any],
-    distribution_kind: str,
-) -> SimulationEvaluation:
-    return SimulationEvaluation(
-        row_count=row_count,
-        top1_accuracy=float(report["accuracy_top_1"]),
-        accepted_ratio=accepted_ratio,
-        loss=float(report["loss"]),
-        loss_kind="negative_log_likelihood_from_score_distribution",
-        accuracy_top_1=float(report["accuracy_top_1"]),
-        correct_top_1=int(report["correct_top_1"]),
-        macro_f1=float(report["macro_f1"]),
-        macro_precision=float(report["macro_precision"]),
-        macro_recall=float(report["macro_recall"]),
-        weighted_f1=float(report["weighted_f1"]),
-        balanced_accuracy=float(report["balanced_accuracy"]),
-        worst_category_f1=_optional_str(report["worst_category_f1"]),
-        worst_category_f1_value=_optional_float(report["worst_category_f1_value"]),
-        worst_category_recall=_optional_float(report["worst_category_recall"]),
-        worst_category_precision=_optional_float(report["worst_category_precision"]),
-        expected_calibration_error=float(report["expected_calibration_error"]),
-        max_calibration_error=float(report["max_calibration_error"]),
-        overconfidence_gap=float(report["overconfidence_gap"]),
-        mean_true_label_probability=float(report["mean_true_label_probability"]),
-        mean_top_1_probability=float(report["mean_top_1_probability"]),
-        mean_margin_top1_top2=float(report["mean_margin_top1_top2"]),
-        mean_correct_top_1_probability=float(report["mean_correct_top_1_probability"]),
-        mean_incorrect_top_1_probability=float(
-            report["mean_incorrect_top_1_probability"]
-        ),
-        score_distribution_kind=distribution_kind,
-        selection_confidence_kind=_summarize_selection_confidence_kind(candidates),
-        mean_selection_confidence=_mean(
-            [float(candidate.confidence) for candidate in candidates]
-        ),
-        mean_selection_margin=_mean(
-            [float(candidate.margin) for candidate in candidates]
-        ),
-        per_label=_typed_per_label(report["per_category"]),
-        confusion_matrix=_typed_confusion_matrix(report["confusion_matrix"]),
-        classification_report=dict(report),
-    )
-
-
-def _summarize_distribution_kind(distribution_kinds: list[str]) -> str:
-    unique_kinds = sorted(set(distribution_kinds))
-    if not unique_kinds:
-        return "not_computed"
-    if len(unique_kinds) == 1:
-        return unique_kinds[0]
-    return "mixed:" + ",".join(unique_kinds)
-
-
-def _summarize_selection_confidence_kind(candidates: list[Any]) -> str | None:
-    unique_kinds = sorted(
-        {
-            str(candidate.confidence_kind)
-            for candidate in candidates
-            if candidate.confidence_kind is not None
-        }
-    )
-    if not unique_kinds:
-        return None
-    if len(unique_kinds) == 1:
-        return unique_kinds[0]
-    return "mixed:" + ",".join(unique_kinds)
-
-
-def _mean(values: list[float]) -> float:
-    return sum(values) / len(values) if values else 0.0
-
-
-def _optional_float(value: object) -> float | None:
-    return None if value is None else float(value)
-
-
-def _optional_str(value: object) -> str | None:
-    return None if value is None else str(value)
-
-
-def _typed_per_label(value: object) -> dict[str, dict[str, int | float]]:
-    if not isinstance(value, dict):
-        raise TypeError("per_category must be a dict.")
-    return {
-        str(label): dict(metrics)
-        for label, metrics in value.items()
-        if isinstance(metrics, dict)
-    }
-
-
-def _typed_confusion_matrix(value: object) -> dict[str, dict[str, int]]:
-    if not isinstance(value, dict):
-        raise TypeError("confusion_matrix must be a dict.")
-    return {
-        str(actual): {str(predicted): int(count) for predicted, count in row.items()}
-        for actual, row in value.items()
-        if isinstance(row, dict)
-    }

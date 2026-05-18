@@ -68,6 +68,7 @@ central fixed embedding + classifier seed
 |---|---|---|---|---|
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
+| Validation evaluator | `prototype_similarity`, `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | prototype scorer path or `methods/adaptation/lora_classifier/evaluation.py` | simulation |
 | FL SSL method descriptor | future FedMatch/FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |

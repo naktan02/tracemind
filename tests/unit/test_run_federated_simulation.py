@@ -15,8 +15,17 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.evaluation import (
+    LORA_CLASSIFIER_EVALUATOR_NAME,
+)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.evaluation.classification_payload import (
+    build_classification_evaluation_payload,
+)
+from methods.evaluation.classification_report import (
+    build_classification_evaluation_report,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
@@ -25,6 +34,9 @@ from methods.prototype.building.single import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_training,
+)
+from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    evaluation as evaluation_adapter,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     build_training_examples,
@@ -225,6 +237,54 @@ def _default_validation_config(
         score_top_k=score_top_k,
         confidence_threshold=confidence_threshold,
         margin_threshold=margin_threshold,
+    )
+
+
+def _default_lora_validation_config(
+    *,
+    confidence_threshold: float,
+    margin_threshold: float,
+) -> FederatedValidationConfig:
+    return _default_validation_config(
+        confidence_threshold=confidence_threshold,
+        margin_threshold=margin_threshold,
+        scorer_backend_name=LORA_CLASSIFIER_EVALUATOR_NAME,
+        score_policy_name=None,
+    )
+
+
+def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fake_evaluator(**kwargs):
+        rows = list(kwargs["rows"])
+        labels = [str(label) for label in kwargs["adapter_state"].label_schema]
+        actual_labels = [str(row["mapped_label_4"]) for row in rows]
+        predicted_labels = list(actual_labels)
+        probability = 0.9
+        report = build_classification_evaluation_report(
+            categories=labels,
+            actual_labels=actual_labels,
+            predicted_labels=predicted_labels,
+            true_probs=[probability for _row in rows],
+            top_1_values=[probability for _row in rows],
+            margins=[0.8 for _row in rows],
+            total_loss=0.1 * len(rows),
+            total_rows=len(rows),
+        )
+        return build_classification_evaluation_payload(
+            report=report,
+            row_count=len(rows),
+            accepted_ratio=1.0,
+            loss_kind="cross_entropy_from_lora_classifier_logits",
+            score_distribution_kind="lora_classifier_logits_softmax",
+            selection_confidence_kind="lora_classifier_top1_probability",
+            mean_selection_confidence=float(report["mean_top_1_probability"]),
+            mean_selection_margin=float(report["mean_margin_top1_top2"]),
+        )
+
+    monkeypatch.setattr(
+        evaluation_adapter,
+        "evaluate_lora_classifier_validation_payload",
+        _fake_evaluator,
     )
 
 
@@ -910,7 +970,9 @@ def test_run_simulation_request_rejects_training_task_type_descriptor_drift(
     request = SimulationRunRequest(
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
+            _row("a2", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
+            _row("n2", "calm calm", "normal"),
         ],
         validation_rows=[_row("va", "panic panic", "anxiety")],
         output_dir=tmp_path / "task_type_mismatch",
@@ -967,7 +1029,9 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
     request = SimulationRunRequest(
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
+            _row("a2", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
+            _row("n2", "calm calm", "normal"),
         ],
         validation_rows=[_row("va", "panic panic", "anxiety")],
         output_dir=tmp_path / "manual_plan_mismatch",
@@ -1180,7 +1244,9 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
 
 def test_run_simulation_request_bootstraps_lora_classifier_profile(
     tmp_path,
+    monkeypatch,
 ) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -1222,7 +1288,7 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
             privacy_guard_name="noop",
             objective_extras=_lora_objective_extras(),
         ),
-        validation_config=_default_validation_config(
+        validation_config=_default_lora_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
@@ -1238,9 +1304,61 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
     assert result.final_validation == result.initial_validation
 
 
+def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
+    request = SimulationRunRequest(
+        train_rows=[
+            _row("a1", "panic panic", "anxiety"),
+            _row("a2", "panic panic", "anxiety"),
+            _row("n1", "calm calm", "normal"),
+            _row("n2", "calm calm", "normal"),
+        ],
+        validation_rows=[_row("va", "panic panic", "anxiety")],
+        output_dir=tmp_path / "lora_prototype_validation_rejected",
+        client_count=2,
+        rounds=0,
+        bootstrap_ratio=0.5,
+        seed=7,
+        embedding_spec=EmbeddingAdapterSpec(
+            backend="hash_debug",
+            model_id="hash_debug",
+            revision="sim",
+            hash_dim=32,
+        ),
+        model_id="mxbai-lora-classifier",
+        training_scope="adapter_only",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        prototype_build_strategy=SinglePrototypeBuildStrategy(),
+        shard_policy=_default_shard_policy(),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(),
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        prototype_rebuild_config=_default_prototype_rebuild_config(),
+        diagnostics_config=_default_diagnostics_config(),
+        client_pool_split_config=_default_client_pool_split_config(),
+    )
+
+    with pytest.raises(ValueError, match="prototype/selection-only"):
+        run_simulation_request(request)
+
+
 def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
     tmp_path,
+    monkeypatch,
 ) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -1293,7 +1411,7 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
             privacy_guard_name="noop",
             objective_extras=_lora_objective_extras(),
         ),
-        validation_config=_default_validation_config(
+        validation_config=_default_lora_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),

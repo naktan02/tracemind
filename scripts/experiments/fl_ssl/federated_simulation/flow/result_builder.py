@@ -3,8 +3,7 @@
 from __future__ import annotations
 
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
-    build_validation_scoring_service,
-    evaluate_rows,
+    evaluate_simulation_validation,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -83,22 +82,14 @@ def _build_client_evaluations(
     bootstrapped: BootstrappedSimulation,
     active: ActiveSimulationState,
 ) -> tuple[ClientEvaluationSummary, ...]:
-    final_validation_scoring_service = build_validation_scoring_service(
-        request.validation_config,
-        shared_state=active.adapter_state,
-    )
     return tuple(
         ClientEvaluationSummary(
             client_id=shard.client_id,
-            validation=evaluate_rows(
+            validation=evaluate_simulation_validation(
+                request=request,
+                active=active,
                 rows=shard.rows,
                 adapter=bootstrapped.adapter,
-                adapter_state=active.adapter_state,
-                prototype_pack=active.prototype_pack,
-                model_id=request.model_id,
-                scoring_service=final_validation_scoring_service,
-                confidence_threshold=request.validation_config.confidence_threshold,
-                margin_threshold=request.validation_config.margin_threshold,
                 objective_config=request.training_task_config.objective_config,
             ),
         )
