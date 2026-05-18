@@ -34,6 +34,13 @@
 4. 논문 단위로 local objective, server/round policy, method-only aggregation 변형이
    묶이면 `methods/federated_ssl/<method>/`를 먼저 만든다.
 
+새 FL SSL 논문 method는 `docs/contracts/fl_ssl_method_capability_matrix.md`의
+`first_fed_ssl_method` 선택이 먼저 있어야 한다. 선택 전에는
+`methods/federated_ssl/<method>/` 구현 폴더나
+`conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+`tests/architecture/test_layer_dependencies.py`가 descriptor YAML과 실제 method 구현
+파일 일치를 검증한다.
+
 ## 2. 공통 작업 순서
 
 거의 모든 전략 추가는 아래 순서를 따른다.
@@ -284,6 +291,19 @@
 - [main_server/tests/unit/test_round_runtime_factory.py](../../main_server/tests/unit/test_round_runtime_factory.py)
 - [tests/unit/test_run_federated_simulation.py](../../tests/unit/test_run_federated_simulation.py)
 - [tests/unit/test_prototype_strategy_experiment.py](../../tests/unit/test_prototype_strategy_experiment.py)
+- [tests/architecture/test_layer_dependencies.py](../../tests/architecture/test_layer_dependencies.py)
+
+FL SSL 논문 method를 추가하는 경우에는 다음도 확인한다.
+
+1. `methods/federated_ssl/NEW_METHOD.md`의 추가 순서를 따른다.
+2. `conf/strategy_axes/fl/method_descriptor/<method>.yaml`은
+   `methods/federated_ssl/<method>/descriptor.py`,
+   `<method>.py`, `local_objective.py`, `server_policy.py`, `round_policy.py`가
+   생긴 뒤에만 추가한다.
+3. `agent`, `main_server`, `scripts/runtime_adapters`에는 FedMatch/FedLGMatch 같은
+   method 이름 파일을 추가하지 않는다.
+4. 새 검증 실행은 현재 정책에 따라 `1-round` smoke 또는 필요 시 `5-round`
+   reduced run까지만 수행한다. 새 `50-round`/full-budget run은 실행하지 않는다.
 
 ## 7. 빠른 판단 규칙
 
