@@ -6,6 +6,13 @@ from collections.abc import Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
+from agent.src.infrastructure.repositories.training_artifact_repository import (
+    TrainingArtifactRepository,
+)
+from agent.src.services.training.execution.query_ssl_local_training_service import (
+    QuerySslLocalTrainingService,
+    QuerySslLoraLocalTrainingRequest,
+)
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
 )
@@ -18,7 +25,9 @@ from methods.adaptation.lora_classifier.config import (
 )
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
-    run_query_ssl_lora_classifier_training_core,
+)
+from methods.adaptation.lora_classifier.training_backend import (
+    LoraClassifierTrainingBackend,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -63,22 +72,29 @@ def run_query_ssl_lora_classifier_local_training(
         output_dir=output_dir,
         aggregated_at=effective_created_at,
     )
-    return run_query_ssl_lora_classifier_training_core(
-        client_id=client_id,
-        seed=seed,
-        labeled_rows=labeled_rows,
-        unlabeled_rows=unlabeled_rows,
-        labels=tuple(str(label) for label in active_adapter_state.label_schema),
-        base_parameters=base_parameters,
-        training_task=training_task,
-        model_manifest=model_manifest,
-        query_ssl_config=query_ssl_config,
-        lora_config=lora_config,
-        trainer_runtime_config=trainer_runtime_config,
-        created_at=effective_created_at,
-        delta_materializer=SimulationQuerySslLoraDeltaMaterializer(
-            output_dir=output_dir
+    service = QuerySslLocalTrainingService(
+        repository=TrainingArtifactRepository(
+            state_root=output_dir / "agents" / client_id
         ),
+        backend=LoraClassifierTrainingBackend(config=lora_config),
+    )
+    return service.run_lora(
+        QuerySslLoraLocalTrainingRequest(
+            client_id=client_id,
+            seed=seed,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            labels=tuple(str(label) for label in active_adapter_state.label_schema),
+            base_parameters=base_parameters,
+            training_task=training_task,
+            model_manifest=model_manifest,
+            query_ssl_config=query_ssl_config,
+            trainer_runtime_config=trainer_runtime_config,
+            created_at=effective_created_at,
+            delta_materializer=SimulationQuerySslLoraDeltaMaterializer(
+                output_dir=output_dir
+            ),
+        )
     )
 
 

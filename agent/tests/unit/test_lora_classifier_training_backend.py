@@ -16,6 +16,10 @@ from agent.src.services.training.execution.local_training_service import (
     LocalTrainingRequest,
     LocalTrainingService,
 )
+from agent.src.services.training.execution.query_ssl_local_training_service import (
+    QuerySslLocalTrainingService,
+    QuerySslLoraLocalTrainingRequest,
+)
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
     list_registered_shared_adapter_training_backend_names,
@@ -24,6 +28,9 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.lora_classifier import (
     config as lora_config,
 )
+from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
+    QuerySslLoraClientTrainingResult,
+)
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
@@ -31,7 +38,14 @@ from methods.adaptation.lora_classifier.update import row_extractor
 from methods.adaptation.lora_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
 )
+from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+    build_query_ssl_local_step_plan,
+)
+from shared.src.contracts.adapter_contract_families.factories import (
+    make_lora_classifier_delta_payload,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
@@ -39,6 +53,7 @@ from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
     TrainingTask,
+    make_training_update_envelope,
 )
 from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
@@ -68,6 +83,57 @@ class _RecordingLoraTrainExecutor:
                 "agent-local://custom/classifier_head_delta"
             ),
             delta_l2_norm=2.5,
+        )
+
+
+class _QuerySslLoraBackend:
+    backend_name = "lora_classifier_trainer"
+
+    def __init__(self, update_payload: LoraClassifierDelta) -> None:
+        self.update_payload = update_payload
+        self.called = False
+
+    def matches_objective_config(
+        self,
+        objective_config: TrainingObjectiveConfig | None,
+    ) -> bool:
+        del objective_config
+        return True
+
+    def build_query_ssl_update(
+        self,
+        **kwargs: object,
+    ) -> QuerySslLoraClientTrainingResult:
+        self.called = True
+        training_task = kwargs["training_task"]
+        model_manifest = kwargs["model_manifest"]
+        assert isinstance(training_task, TrainingTask)
+        assert isinstance(model_manifest, ModelManifest)
+        update_envelope = make_training_update_envelope(
+            update_id="update_query_ssl_test",
+            round_id=training_task.round_id,
+            task_id=training_task.task_id,
+            model_id=model_manifest.model_id,
+            base_model_revision=model_manifest.model_revision,
+            training_scope=training_task.training_scope,
+            payload_ref="client-submission::update_query_ssl_test",
+            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            example_count=self.update_payload.example_count,
+            client_metrics={"query_ssl_local_steps": 1.0},
+        )
+        return QuerySslLoraClientTrainingResult(
+            update_envelope=update_envelope,
+            update_payload=self.update_payload,
+            candidate_count=1,
+            accepted_count=1,
+            local_step_plan=build_query_ssl_local_step_plan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                uses_labeled_batches=True,
+                local_epochs=1,
+                max_steps=1,
+            ),
+            client_metrics=update_envelope.client_metrics,
         )
 
 
@@ -292,3 +358,57 @@ def test_local_training_service_uses_lora_classifier_backend(
         result.update_envelope.update_id
     )
     assert isinstance(loaded_payload, LoraClassifierDelta)
+
+
+def test_query_ssl_local_training_service_runs_lora_backend(
+    tmp_path: Path,
+) -> None:
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="tracemind-lora",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone=lora_config.LoraClassifierTrainingBackendConfig().to_backbone_payload(),
+        lora_config=(
+            lora_config.LoraClassifierTrainingBackendConfig().to_lora_config_payload()
+        ),
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_parameter_deltas={"lora.test": [0.1]},
+        classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format="inline_delta",
+    )
+    backend = _QuerySslLoraBackend(update_payload)
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = QuerySslLocalTrainingService(
+        repository=repository,
+        backend=backend,
+    )
+
+    result = service.run_lora(
+        QuerySslLoraLocalTrainingRequest(
+            client_id="agent_01",
+            seed=42,
+            labeled_rows=[
+                {"query_id": "l1", "text": "panic", "mapped_label_4": "anxiety"}
+            ],
+            unlabeled_rows=[
+                {"query_id": "u1", "text": "weak", "mapped_label_4": "normal"}
+            ],
+            labels=("anxiety", "normal"),
+            base_parameters=object(),
+            training_task=_build_task(),
+            model_manifest=_build_manifest(),
+            query_ssl_config=object(),
+            trainer_runtime_config=object(),
+            delta_materializer=object(),
+            agent_id="agent_01",
+        )
+    )
+
+    assert backend.called is True
+    assert result.update_envelope.agent_id == "agent_01"
+    loaded_payload = repository.load_shared_adapter_update(
+        result.update_envelope.update_id
+    )
+    assert loaded_payload == update_payload

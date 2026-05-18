@@ -55,8 +55,9 @@
 2. `training/selection/pseudo_label_service.py`
 3. `training/execution/runtime_compatibility.py`
 4. `training/execution/local_training_service.py`
-5. `training/execution/local_update_executor.py`
-6. `training/backends/`
+5. `training/execution/query_ssl_local_training_service.py`
+6. `training/execution/local_update_executor.py`
+7. `training/backends/`
 
 ### 3. agent가 서버 round에 참여하는 흐름을 보고 싶을 때
 
@@ -123,6 +124,8 @@
   - training/example/scorer/privacy 조합 검증
 - `training/execution/local_training_service.py`
   - pseudo-label selection과 accepted example 조립 orchestration
+- `training/execution/query_ssl_local_training_service.py`
+  - Query SSL raw-row local training을 agent-local artifact 저장과 submission envelope에 연결
 - `training/execution/local_update_executor.py`
   - accepted example을 selected local update backend, privacy guard, payload 저장,
     submission envelope로 연결하는 agent runtime port

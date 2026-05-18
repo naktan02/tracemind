@@ -48,6 +48,7 @@ from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
+    TrainingTask,
 )
 
 
@@ -269,9 +270,12 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             }
         ],
         active_adapter_state=active_state,
-        training_task=SimpleNamespace(
+        training_task=TrainingTask(
+            schema_version="training_task.v1",
             round_id="round_0001",
             task_id="task_round_0001",
+            model_id="mxbai-lora-classifier",
+            model_revision="sim_rev_0000",
             training_scope="adapter_only",
             local_epochs=1,
             batch_size=2,

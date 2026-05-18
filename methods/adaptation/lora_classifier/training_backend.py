@@ -2,12 +2,23 @@
 
 from __future__ import annotations
 
+from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
+)
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
+from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
+    LoraClassifierTrainerRuntimeConfig,
+    QuerySslLoraClientTrainingResult,
+    QuerySslLoraDeltaMaterializer,
+    QuerySslLoraObjectiveRuntimeConfig,
+    run_query_ssl_lora_classifier_training_core,
 )
 from methods.adaptation.lora_classifier.update.local_update import (
     LoraClassifierTrainExecutor,
@@ -20,6 +31,7 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (
     RegistryCatalogEntry,
@@ -99,6 +111,40 @@ class LoraClassifierTrainingBackend:
             config=self.config,
             created_at=created_at,
             train_executor=self.train_executor,
+        )
+
+    def build_query_ssl_update(
+        self,
+        *,
+        client_id: str,
+        seed: int,
+        labeled_rows: Sequence[LabeledQueryRow],
+        unlabeled_rows: Sequence[LabeledQueryRow],
+        labels: Sequence[str],
+        base_parameters: LoraClassifierMaterializedState,
+        training_task: TrainingTask,
+        model_manifest: ModelManifest,
+        query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
+        trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+        created_at: datetime,
+        delta_materializer: QuerySslLoraDeltaMaterializer,
+    ) -> QuerySslLoraClientTrainingResult:
+        """Query SSL raw rows를 methods-owned LoRA local core로 학습한다."""
+
+        return run_query_ssl_lora_classifier_training_core(
+            client_id=client_id,
+            seed=seed,
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            labels=labels,
+            base_parameters=base_parameters,
+            training_task=training_task,
+            model_manifest=model_manifest,
+            query_ssl_config=query_ssl_config,
+            lora_config=self.config,
+            trainer_runtime_config=trainer_runtime_config,
+            created_at=created_at,
+            delta_materializer=delta_materializer,
         )
 
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
