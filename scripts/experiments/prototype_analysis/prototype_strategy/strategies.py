@@ -242,8 +242,3 @@ def build_requested_strategies(
             dbscan_min_cluster_coverage=dbscan_min_cluster_coverage,
         ),
     )
-
-
-# 이전 실험 스크립트/노트북 호환용 alias
-build_strategy = build_requested_strategy
-build_strategies = build_requested_strategies

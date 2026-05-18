@@ -24,9 +24,11 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
+from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
+    upload_agent_local_lora_classifier_update,
+)
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     run_query_ssl_lora_classifier_local_training,
-    upload_agent_local_lora_classifier_update,
 )
 from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,

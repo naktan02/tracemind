@@ -302,6 +302,8 @@ runtime payload를 읽어야 할 때 이 폴더를 통해서만 연결한다.
   - `training_example_mapper.py`: simulation row -> agent training example request 변환.
   - `row_validator.py`: selected example backend가 요구하는 row shape 검증.
   - `backend_resolver.py`: objective config -> runtime backend 이름/adapter kind resolve.
+  - `lora_classifier_artifacts.py`: simulation LoRA-classifier client delta artifact
+    저장과 agent-local ref -> server-owned ref materialization bridge.
   - `training_runtime.py`: local training service/request bridge.
   - `selection_runtime.py`: pseudo-label selection service bridge.
 - `federated_server/`: FL simulation에서 main_server round/aggregation 호출을 책임별로

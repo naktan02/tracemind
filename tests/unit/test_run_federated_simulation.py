@@ -62,9 +62,11 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation,
     run_simulation_request,
 )
+from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
+    prepare_delta_materialization,
+)
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     QuerySslLoraClientTrainingResult,
-    _prepare_delta_materialization,
 )
 from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
@@ -443,7 +445,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         labels=["anxiety", "normal"],
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
-    delta_plan = _prepare_delta_materialization(
+    delta_plan = prepare_delta_materialization(
         output_dir=tmp_path,
         update_id="update_test",
         training_task=training_task,

@@ -6,6 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
+import methods.adaptation.lora_classifier.training.query_ssl_local_training as qcore
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
@@ -15,9 +16,6 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.lora_classifier.training import (
-    query_ssl_local_training as qcore,
 )
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
@@ -32,10 +30,12 @@ from scripts.runtime_adapters.federated_agent import (
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
-    _prepare_delta_materialization,
-    run_query_ssl_lora_classifier_local_training,
+from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
+    prepare_delta_materialization,
     upload_agent_local_lora_classifier_update,
+)
+from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
+    run_query_ssl_lora_classifier_local_training,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (
     require_rows_supported_by_example_backend,
@@ -311,7 +311,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
 def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
     tmp_path,
 ) -> None:
-    plan = _prepare_delta_materialization(
+    plan = prepare_delta_materialization(
         output_dir=tmp_path,
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
@@ -359,7 +359,7 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
 def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
     tmp_path,
 ) -> None:
-    plan = _prepare_delta_materialization(
+    plan = prepare_delta_materialization(
         output_dir=tmp_path,
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
@@ -380,7 +380,7 @@ def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
 def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
     tmp_path,
 ) -> None:
-    plan = _prepare_delta_materialization(
+    plan = prepare_delta_materialization(
         output_dir=tmp_path,
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
@@ -411,7 +411,7 @@ def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
 def test_upload_agent_local_lora_update_materializes_server_owned_refs(
     tmp_path,
 ) -> None:
-    plan = _prepare_delta_materialization(
+    plan = prepare_delta_materialization(
         output_dir=tmp_path,
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),

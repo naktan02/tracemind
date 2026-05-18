@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-from datetime import datetime
 from pathlib import Path
 
 
@@ -10,18 +9,6 @@ def build_run_dir(
     base_dir: str | Path,
     *,
     run_id: str,
-    created_at: datetime | None = None,
 ) -> Path:
     """`runs/<job>/<run_id>` 형태의 실행 경로를 만든다."""
-    del created_at
     return Path(str(base_dir)) / run_id
-
-
-def build_dated_run_dir(
-    base_dir: str | Path,
-    *,
-    run_id: str,
-    created_at: datetime | None = None,
-) -> Path:
-    """이전 이름을 유지하는 호환 래퍼다."""
-    return build_run_dir(base_dir, run_id=run_id, created_at=created_at)
