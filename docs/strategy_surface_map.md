@@ -60,7 +60,7 @@ central fixed embedding + classifier seed
 | Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*` core + agent runtime adapter | 활성 runtime |
 | Score policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` | `methods/prototype/scoring/policy_registry.py` + `score_policies/*` | 활성 runtime |
 | Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `methods/ssl/hooks/selection.py` + agent compatibility metadata | 활성 runtime |
-| Privacy guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | agent privacy service | 활성 runtime |
+| Privacy guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `methods/adaptation/privacy_guards/*` core + agent executor | 활성 runtime |
 
 ## FL/서버 축
 
@@ -73,7 +73,7 @@ central fixed embedding + classifier seed
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
-| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training.py` | simulation |
+| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training/` | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |
 | Secure update codec | `noop` | shared service/runtime wiring | `shared/src/services/secure_update_codec.py` | 활성 placeholder |

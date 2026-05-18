@@ -1,6 +1,6 @@
 # TraceMind API Surface
 
-이 문서는 2026-04-25 기준 FastAPI route 표면을 빠르게 찾기 위한 문서다.
+이 문서는 현재 FastAPI route 표면을 빠르게 찾기 위한 문서다.
 
 요청/응답 payload 필드의 최종 source of truth는 각 route의 Pydantic 모델과 `shared/src/contracts/*.py`다. 이 문서는 endpoint 위치와 책임 경계만 요약한다.
 

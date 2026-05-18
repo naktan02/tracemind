@@ -32,7 +32,8 @@
   FL-specific SSL 방법론을 메인 논문 비교선으로 닫는다.
 - main condition은 `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
   선택된 labeled/unlabeled source pool 전체 분배다.
-- stress condition은 같은 조건에서 Dirichlet `alpha=0.1`로 둔다.
+- `alpha=0.3`을 기본/main condition으로 둔다.
+- Dirichlet `alpha=0.1`은 마지막 stress/robustness 확인으로만 연다.
 - archived full budget은 `50 communication rounds`, `local_epochs=1`,
   `max_steps=50`이었다. 현재는 새 `50-round`/full-budget 실행을 하지 않고,
   기존 alpha=0.3 full report를 read-only evidence로만 검증한다.
@@ -73,4 +74,6 @@
 - `QueryBuffer` 단계에서는 저장만 하고 실제 학습은 하지 않는다.
 - raw query text는 로컬에만 남기고 서버로 보내지 않는다.
 - `ScoredEventRepository`와 `QueryBuffer` 역할을 섞지 않는다.
-- `shared` contract에 아직 `lora family` payload를 추가하지 않는다.
+- `lora_classifier` shared payload는 FL simulation/runtime translation 후보로 이미
+  열려 있다. `projection_head`, full encoder, 추가 PEFT family payload는 실제
+  필요성이 확인되기 전까지 열지 않는다.

@@ -117,7 +117,7 @@ uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.
 
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
-  strategy_axes/ssl/consistency_method=adamatch_usb_v1 \
+  strategy_axes/ssl/consistency_method=fixmatch_usb_v1 \
   query_data_selection.labeled=szegeelim_general4 \
   query_data_selection.unlabeled=szegeelim_general4 \
   query_data_selection.validation=ourafla_reddit \

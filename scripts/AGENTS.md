@@ -21,7 +21,9 @@ sweep, visualization, exploratory-only logic만 둔다.
 - `execution_context/dataset_asset`, `execution_context/embedding_adapter`,
   `execution_context/runtime_env` selector를 기본 실행 축으로 본다.
 - 스크립트용 preset을 Python helper 파일에 다시 복제하지 않는다.
-- 기본 runtime은 `gpu_online`으로 간주한다.
+- 일반 dataset/prototype/cache warm-up 스크립트의 기본 runtime은 `gpu_online`으로
+  간주한다. FL SSL smoke/main/sweep은 `gpu_local + mxbai`를 기본 논문용 실행
+  기준으로 본다.
 
 ## 테스트 규칙
 

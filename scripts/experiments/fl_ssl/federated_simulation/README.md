@@ -205,7 +205,8 @@ python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   `strategy_axes/fl/local_update_profile=prototype_pseudo_label_v1`와
   `round_runtime.adapter_family_name=diagonal_scale`를 함께 override한다.
 - FL SSL archived main split은 `run_controls/fl_ssl/budget=main`과
-  `strategy_axes/fl/shard_policy=dirichlet_alpha03` 조합이었다. stress split은
+  `strategy_axes/fl/shard_policy=dirichlet_alpha03` 조합이었다. `alpha=0.1`은
+  기본값이 아니라 마지막 stress/robustness 확인이 필요할 때만
   `strategy_axes/fl/shard_policy=dirichlet_alpha01`로 바꾼다.
 - `run_controls/fl_ssl/budget=main`은 `10 clients`, `50 rounds`를 담는
   full-budget preset이다. 현재 사용자 결정에 따라 새 `50-round`/full-budget

@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-`TrainingUpdateEnvelope`는 로컬 `agent`가 중앙 `main-server`로 보내는 학습 업데이트 단위다.
+`TrainingUpdateEnvelope`는 로컬 `agent`가 중앙 `main_server`로 보내는 학습 업데이트 단위다.
 
 이 객체는 payload 그 자체보다,
 payload를 안전하게 집계하고 추적하기 위한 메타데이터를 정의한다.

@@ -20,7 +20,7 @@
 
 v1 원칙:
 
-1. 중앙 `main-server`가 발행한다.
+1. 중앙 `main_server`가 발행한다.
 2. 로컬 `agent`는 이를 pull해서 현재 활성 모델 구성을 동기화한다.
 3. artifact 자체와 manifest를 분리한다.
 4. 추론 호환성과 학습 가능 범위를 함께 명시한다.

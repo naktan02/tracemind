@@ -7,7 +7,7 @@
 
 ```bash
 uv run python -m scripts.experiments.result_index.ingest \
-  --runs-root runs/train_lora_ssl_classifier \
+  --runs-root runs \
   --db data/processed/experiment_index/experiment_results.sqlite \
   --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
 
@@ -37,6 +37,7 @@ round/client 시계열은 같은 방식으로 `fl_ssl_rounds`, `fl_ssl_client_ro
 
 ## 경계
 
-- 원본 source of truth는 `runs/**/reports/report.json`과 각 run manifest다.
+- 원본 source of truth는 중앙 SSL `runs/**/reports/report.json`, FL SSL
+  `runs/**/reports/fl_ssl_main_comparison.report.json`, 각 run manifest다.
 - SQLite와 `data/experiment_dashboard.json`은 재생성 가능한 비교용 cache다.
 - 이 앱은 metric 계산이나 실험 설정 기본값을 소유하지 않는다.

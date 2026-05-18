@@ -1,6 +1,6 @@
 # Shared Contracts
 
-이 디렉터리는 agent, main-server, script가 공통으로 읽는 payload 계약의 source of truth다.
+이 디렉터리는 agent, main_server, script가 공통으로 읽는 payload 계약의 source of truth다.
 
 문서 우선순위는 이렇게 본다.
 

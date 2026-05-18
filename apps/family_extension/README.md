@@ -27,7 +27,7 @@
 1. 장기 기록용 별도 부모 웹 대시보드
 2. 원격 agent 선택 UI
 3. 다중 자녀 프로필
-4. LLM 대화
+4. cloud LLM provider opt-in 대화
 5. persisted personalization state와의 정밀 연결
 
 ## 개발 실행

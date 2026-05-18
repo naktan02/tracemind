@@ -4,7 +4,7 @@
 
 이 문서는 TraceMind의 전역 shared state/update payload 계약을 설명한다.
 이름은 historical하게 `shared adapter`를 유지하지만, 현재 concrete family에는
-`diagonal_scale`뿐 아니라 `classifier_head`도 포함된다.
+`diagonal_scale`, `classifier_head`, `lora_classifier`가 포함된다.
 
 이 문서가 다루는 범위는 두 가지다.
 
@@ -48,8 +48,8 @@ shared adapter 계약은 두 레이어로 나뉜다.
    - 로컬 agent가 생성한 update
    - 서버가 round 단위로 집계
 
-현재 concrete family는 `adapter_kind = diagonal_scale`, `classifier_head`
-두 개다.
+현재 concrete family는 `adapter_kind = diagonal_scale`, `classifier_head`,
+`lora_classifier` 세 개다.
 
 ---
 
@@ -65,7 +65,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
 
 2. `adapter_kind`
    - 어떤 family인지 나타낸다.
-   - 현재 값 예: `diagonal_scale`, `classifier_head`
+   - 현재 값 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
 
 3. `model_id`
    - 이 adapter 상태가 속한 전역 모델 식별자
@@ -90,7 +90,7 @@ shared adapter 계약은 두 레이어로 나뉜다.
 
 2. `adapter_kind`
    - 어떤 family용 update인지
-   - 현재 값 예: `diagonal_scale`, `classifier_head`
+   - 현재 값 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
 
 3. `model_id`
    - 어떤 전역 모델에 대한 update인지
@@ -109,6 +109,8 @@ shared adapter 계약은 두 레이어로 나뉜다.
 
 현재 시스템/FL v1 권장 baseline은 `classifier_head + head_only`이고,
 `diagonal_scale`은 비교/확장용 shared adapter family로 유지한다.
+`lora_classifier`는 FL simulation research path와 이후 runtime translation 후보를
+위해 열린 family다.
 
 ---
 
@@ -239,7 +241,45 @@ update payload:
 
 ---
 
-## 7. 현재 concrete update: `DiagonalScaleAdapterUpdatePayload`
+## 7. 현재 concrete 구현 3: `lora_classifier`
+
+`lora_classifier`는 frozen backbone 위의 LoRA adapter state와 classifier head
+state를 함께 배포/집계하는 family다. 기존 `classifier_head`에 LoRA 옵션을 붙인
+것이 아니라, LoRA adapter artifact와 classifier head artifact를 함께 가진 별도
+payload family로 본다.
+
+state payload의 핵심 의미:
+
+1. backbone/tokenizer reference
+   - 어떤 frozen encoder와 tokenizer 위에서 학습된 state인지 나타낸다.
+2. LoRA config
+   - rank, alpha, dropout, target module 같은 scaffold 고정값을 담는다.
+3. label schema
+   - classifier head weight/bias의 label order와 의미를 고정한다.
+4. LoRA/classifier artifact ref
+   - 다음 global state가 참조하는 server-owned 누적 snapshot이다.
+   - client update delta artifact와 같은 의미가 아니다.
+
+update payload의 핵심 의미:
+
+1. `base_model_revision`
+   - client가 local update를 계산한 기준 global revision이다.
+2. LoRA/classifier delta artifact ref
+   - 큰 weight delta는 `lora_delta_artifact_ref`,
+     `classifier_head_delta_artifact_ref` 같은 artifact-ref 경로를 기본으로 한다.
+3. optional inline delta
+   - 작은 smoke나 deterministic 단위 검증에서만 쓴다.
+   - runtime은 artifact-ref와 inline delta를 명시적으로 구분해야 한다.
+4. raw text exclusion
+   - shared update payload에는 raw text나 agent-local query state를 넣지 않는다.
+
+LoRA-classifier payload shape의 최종 source of truth는
+`shared/src/contracts/adapter_contract_families/lora_classifier.py`와
+`shared/src/contracts/README.md`다.
+
+---
+
+## 8. 현재 concrete update: `DiagonalScaleAdapterUpdatePayload`
 
 update payload:
 
@@ -279,7 +319,7 @@ update payload:
 
 ---
 
-## 8. 현재 diagonal_scale heuristic 기준 update 생성 방식
+## 9. 현재 diagonal_scale heuristic 기준 update 생성 방식
 
 현재 `diagonal_scale` 구현은 gradient 학습이 아니라 heuristic 방식이다.
 
@@ -304,7 +344,7 @@ update payload:
 
 ---
 
-## 9. 서버 집계 방식
+## 10. 서버 집계 방식
 
 현재 서버는 같은 `adapter_kind`끼리만 집계한다.
 
@@ -331,7 +371,7 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
 
 ---
 
-## 10. 현재 코드에서의 결합 방식
+## 11. 현재 코드에서의 결합 방식
 
 현재 코드는 아래 세 축을 분리하려는 방향으로 정리돼 있다.
 
@@ -346,7 +386,7 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
 
 즉 같은 `diagonal_scale` family 안에서는
 `heuristic -> gradient` 교체가 비교적 쉽고,
-나중에는 `lora`, `projection_head` 같은 다른 family도 추가할 수 있다.
+나중에는 `projection_head`, `full_encoder` 같은 다른 family도 추가할 수 있다.
 
 adapter family별 payload 해석과 projection은 `methods/adaptation/<family>/`가
 소유하고, 재사용 aggregation backend는 `methods/federated/aggregation/`가 소유한다.
@@ -355,14 +395,16 @@ adapter family별 payload 해석과 projection은 `methods/adaptation/<family>/`
 
 ---
 
-## 11. v1 한계
+## 12. v1 한계
 
 현재 v1 한계는 분명하다.
 
-1. richer family는 아직 `diagonal_scale`, `classifier_head`를 넘어서지 않는다.
+1. `lora_classifier`는 열렸지만 full encoder, projection head, 추가 PEFT family는
+   아직 열지 않았다.
 2. `diagonal_scale` local update는 아직 gradient가 아니라 heuristic이다.
 3. live agent stored-event 경로는 classifier multiview/runtime 조합이 아직 약하다.
-4. `LoRA`, projection head, full encoder FL을 열려면 payload 타입과 backend 구현을 더 추가해야 한다.
+4. projection head, full encoder FL, 다른 PEFT family를 열려면 payload 타입과
+   backend 구현을 더 추가해야 한다.
 
 즉 이 문서는 "최종형 계약"보다는
 "shared adapter를 family 단위로 확장하기 위한 첫 계약"으로 읽는 것이 맞다.

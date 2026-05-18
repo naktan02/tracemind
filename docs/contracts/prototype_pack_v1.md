@@ -26,7 +26,7 @@
 
 v1 원칙:
 
-1. `main-server` 또는 별도 빌드 경로가 생성하고 배포한다.
+1. `main_server` 또는 별도 빌드 경로가 생성하고 배포한다.
 2. 로컬 `agent`는 이를 내려받아 bootstrap/comparison artifact로 사용한다.
 3. `LabeledQuerySet` 원문이나 예시 query는 포함하지 않는다.
 4. 어떤 임베딩 공간에서 생성됐는지 추적 가능한 메타데이터를 반드시 가진다.
@@ -81,7 +81,7 @@ v1 원칙:
 4. main path에서는 global classifier로 category evidence 계산
 5. comparison/ablation 또는 bootstrap 검증에서는 `PrototypePack` 기준 점수 계산
 
-### 중앙 `main-server`가 하는 일
+### 중앙 `main_server`가 하는 일
 
 1. 현재 활성 `PrototypePack` 버전 관리
 2. agent에 배포

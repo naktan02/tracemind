@@ -2,7 +2,7 @@
 
 ## 1. 목적
 
-`TrainingTask`는 중앙 `main-server`가 로컬 `agent`에 내려주는 학습 작업 정의다.
+`TrainingTask`는 중앙 `main_server`가 로컬 `agent`에 내려주는 학습 작업 정의다.
 
 이 객체는 아래를 고정한다.
 

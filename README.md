@@ -24,7 +24,7 @@ agent 로컬 runtime, server orchestration, 실험층을 역할별로 분리해 
 | `agent/` | 로컬 추론, query buffer, local training, wellbeing/family output |
 | `main_server/` | FL round lifecycle, aggregation, artifact publication |
 | `scripts/` | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper |
-| `apps/` | family extension UI shell과 future 제품 UI shell |
+| `apps/` | family extension UI, experiment dashboard, future 제품 UI shell |
 | `tests/` | package unit, cross-boundary integration/e2e, architecture guard |
 
 현재 의존성 source of truth는 `pyproject.toml`과 `uv.lock`이다.

@@ -1,6 +1,6 @@
 # TraceMind Local Runbook
 
-이 문서는 2026-04-25 기준 로컬 개발, smoke, GPU preflight, stale process 확인 절차를 정리한다.
+이 문서는 현재 로컬 개발, smoke, GPU preflight, stale process 확인 절차를 정리한다.
 
 현재 저장소에는 Docker Compose 또는 `infra/` manifest가 없다. 로컬 실행 기준은 Python `uv`, FastAPI/Uvicorn, Vite app이다.
 
@@ -148,6 +148,23 @@ App build:
 
 ```bash
 cd apps/family_extension && npm run build
+```
+
+Experiment dashboard:
+
+```bash
+uv run python -m scripts.experiments.result_index.ingest \
+  --runs-root runs \
+  --db data/processed/experiment_index/experiment_results.sqlite \
+  --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
+
+python -m http.server 5175 -d apps/experiment_dashboard
+```
+
+정적 dashboard JS만 바꾼 경우 빠른 문법 검증은 아래로 닫는다.
+
+```bash
+node --check apps/experiment_dashboard/src/app.js
 ```
 
 ## 6. 자주 쓰는 실험 실행
@@ -341,5 +358,6 @@ ps aux | rg "pytest|uv run python|uvicorn|train_lora|run_federated"
 2. `uv run pytest shared/tests agent/tests main_server/tests`가 통과한다.
 3. main server `/health`가 응답한다.
 4. agent `/health`와 `/api/v1/system/health`가 응답한다.
-5. family extension 또는 experiment web을 다루는 변경이면 해당 app `npm run build`가 통과한다.
+5. family extension 변경이면 해당 app `npm run build`, experiment dashboard 변경이면
+   `node --check apps/experiment_dashboard/src/app.js`가 통과한다.
 6. script/config 변경이면 관련 entrypoint import 또는 Hydra config test를 함께 실행한다.

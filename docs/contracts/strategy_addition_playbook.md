@@ -23,7 +23,7 @@
 |---|---|---|
 | 같은 계약 안의 새 구현체 추가 | 새 training backend, 새 scoring policy, 새 aggregation backend | `methods` core + capability runtime adapter |
 | 기본 선택값만 변경 | 기본 scorer 변경, 기본 aggregation backend 변경 | 실험 기본값은 `conf/`, runtime 누락값 fallback은 `methods/federated_ssl/runtime_fallbacks.py`, server runtime knob는 `main_server/src/services/federation/rounds/runtime/config.py` |
-| 새 adapter family 추가 | `diagonal_scale` 외 LoRA family 추가 | `shared` + `methods/adaptation` + capability runtime adapter |
+| 새 adapter family 추가 | `lora_classifier` 이후 projection head, full encoder, 다른 PEFT family 추가 | `shared` + `methods/adaptation` + capability runtime adapter |
 | 새 논문 method 추가 | FedMatch, FedLGMatch, (FL)^2 | `methods/federated_ssl/<method>/` + `conf` |
 
 판별 기준은 단순하다.
@@ -227,7 +227,7 @@
 
 - [shared/src/contracts/adapter_contract_families/](../../shared/src/contracts/adapter_contract_families/)
 - [methods/adaptation/<family>/training_backend.py](../../methods/adaptation/)
-- [agent/src/services/training/execution/privacy_guards/](../../agent/src/services/training/execution/privacy_guards/)
+- [methods/adaptation/privacy_guards/](../../methods/adaptation/privacy_guards/)
 - [agent/src/services/training/execution/runtime_compatibility.py](../../agent/src/services/training/execution/runtime_compatibility.py)
 - [main_server/src/services/federation/rounds/aggregation/registry.py](../../main_server/src/services/federation/rounds/aggregation/registry.py)
 - [main_server/src/services/federation/rounds/boundary/mappers.py](../../main_server/src/services/federation/rounds/boundary/mappers.py)

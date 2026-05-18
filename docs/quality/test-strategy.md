@@ -6,8 +6,8 @@
 
 | 항목 | 수치 |
 |---|---:|
-| Python test modules | 123 |
-| `def test_*` test cases | 698 |
+| Python test modules | 124 |
+| `def test_*` test cases | 709 |
 
 정확한 수치는 계속 변할 수 있다. 전략의 핵심은 contract drift, local/server boundary drift, 실험 entrypoint/config drift를 빠르게 잡는 것이다.
 

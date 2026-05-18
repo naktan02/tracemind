@@ -1,6 +1,6 @@
 # TraceMind System Overview
 
-이 문서는 2026-04-25 기준 TraceMind의 현재 런타임, 코드 경계, 활성 연구/시스템 레일을 설명하는 canonical 개요다.
+이 문서는 TraceMind의 현재 런타임, 코드 경계, 활성 연구/시스템 레일을 설명하는 canonical 개요다.
 
 세부 payload 필드의 source of truth는 문서가 아니라 `shared/src/contracts/*.py`와 `shared/src/domain/entities/*`다.
 
@@ -41,7 +41,7 @@ central fixed embedding + classifier seed
 | Agent API/runtime | 로컬 inference, query buffer, local training, wellbeing/family extension output | `agent/src/api/*`, `agent/src/services/*` |
 | Main server API/runtime | FL round, aggregation, prototype publication | `main_server/src/api/*`, `main_server/src/services/*` |
 | Scripts | dataset/prototype/classifier/LoRA/FL simulation entrypoint와 thin wrapper | `scripts/experiments/*`, `scripts/prototypes/*` |
-| Apps | family extension UI shell과 future 제품 UI shell | `apps/family_extension/*` |
+| Apps | family extension UI, experiment dashboard, future 제품 UI shell | `apps/family_extension/*`, `apps/experiment_dashboard/*` |
 | Tests | package unit, cross-boundary integration, architecture guard | `shared/tests`, `agent/tests`, `main_server/tests`, `tests/*` |
 
 ## 3. 활성 레일
@@ -215,11 +215,11 @@ Raw Event / Local Signal
 
 ## 6. 현재 운영 상태
 
-현재 저장소는 Python package와 family extension Vite app 중심으로 구성되어 있다.
+현재 저장소는 Python package, family extension Vite app, 정적 experiment dashboard로 구성되어 있다.
 
 - Python dependency source of truth: `pyproject.toml`, `uv.lock`
 - Python API app: `agent.src.api.main:app`, `main_server.src.api.main:app`
-- Frontend apps: `apps/family_extension`
+- Frontend apps: `apps/family_extension`, `apps/experiment_dashboard`
 - 현재 repo에는 Docker Compose나 `infra/` manifest가 없다.
 
 로컬 실행 절차는 `docs/operations/local-runbook.md`를 기준으로 본다.

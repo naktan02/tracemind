@@ -83,8 +83,9 @@ FL SSL 현재 감사 기준:
 - 현재 manifest는 current 1-round smoke, 기존 alpha=0.3 50-round read-only report,
   FlexMatch/FreeMatch/PseudoLabel 5-round reduced ablation, client_count 1..10
   1-round summary를 검증한다.
-- Dirichlet `alpha=0.1` stress는 현재 `runs/fl_ssl` 아래 검증 가능한 report가
-  없으므로 새 실행 전까지 current result 표에 포함하지 않는다.
+- Dirichlet `alpha=0.1` final stress는 현재 `runs/fl_ssl` 아래 검증 가능한
+  report가 없고 기본 비교가 아니므로, 마지막 stress 실행 전까지 current result 표에
+  포함하지 않는다.
 - 새 `50-round`/full-budget FL 실행은 현재 사용자 결정에 따라 하지 않는다.
 
 ## 현재 권장안

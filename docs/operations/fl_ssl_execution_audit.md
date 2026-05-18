@@ -27,9 +27,9 @@ report/summary를 검증했다.
   `gpu_local + mxbai` 여부는 report 자체로는 재검증할 수 없다.
 - FlexMatch/FreeMatch/PseudoLabel ablation은 5-round reduced run으로 method
   metadata와 실제 local objective 변경을 확인했다.
-- Dirichlet `alpha=0.1` stress는 현재 `runs/fl_ssl` method-first layout 아래
-  검증 가능한 report가 없으므로, 새 실행 전까지 current manifest 검증 대상에서
-  제외한다.
+- Dirichlet `alpha=0.1` final stress는 현재 `runs/fl_ssl` method-first layout 아래
+  검증 가능한 report가 없으므로, 마지막 stress 실행 전까지 current manifest 검증
+  대상에서 제외한다. 기본/main 비교는 `alpha=0.3`이다.
 - `client_count=1..10` sweep은 1-round summary와 하위 report 10개를 확인했다.
 - result index는 FL `fl_ssl_main_comparison.report.json`와 client-count sweep 하위
   report를 dashboard/index record로 정규화한다.
@@ -37,7 +37,7 @@ report/summary를 검증했다.
 
 현재 사용자 결정에 따라 새로 실행하지 않는 항목:
 
-- Dirichlet `alpha=0.1` stress의 full `50 rounds` 실행.
+- Dirichlet `alpha=0.1` final stress의 full `50 rounds` 실행.
 - FlexMatch/FreeMatch/PseudoLabel full-budget ablation.
 - `client_count=1..10` full sweep. `5 rounds x 10 client-counts`처럼 합계
   `50` rounds인 sweep도 long-run guard 대상이다.
@@ -61,7 +61,7 @@ report/summary를 검증했다.
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_preflight.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
 | alpha=0.3 main baseline | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
-| alpha=0.1 stress | 현재 `runs/fl_ssl` 아래 검증 가능한 report가 없음. 새 reduced/full 실행은 현재 사용자 결정에 따라 하지 않음 | 대기 |
+| alpha=0.1 final stress | 현재 `runs/fl_ssl` 아래 검증 가능한 report가 없음. 기본 비교가 아니라 마지막 stress 확인으로 남김 | 대기 |
 | FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. 새 full budget 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | client_count=1..10 sweep | 1-round summary verified and indexed. 새 full sweep은 현재 사용자 결정에 따라 하지 않음 | 부분 |
 | seed sweep은 robustness로 분리 | `seed_sweep` runner/summary는 존재. split seed 42 안정화 뒤 별도 실행 | 대기 |

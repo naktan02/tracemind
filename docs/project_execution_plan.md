@@ -48,7 +48,8 @@ central fixed embedding + classifier seed
   바꾸면 method 비교가 아니라 scaffold 비교로 기록한다.
 - FL SSL main split은 `10 clients`, Dirichlet label-skew `alpha=0.3`, `seed=42`
   materialized manifest로 우선 고정한다.
-- FL SSL stress split은 같은 조건에서 Dirichlet label-skew `alpha=0.1`로 둔다.
+- FL SSL 기본/main split은 `alpha=0.3`이다.
+- `alpha=0.1`은 기본 비교가 아니라 마지막 stress/robustness 확인 요소로 둔다.
 - materialized FL split은 선택된 labeled source 전체와 unlabeled source 전체를
   client에 분배한다. labeled source는 `ourafla_reddit` 또는 `szegeelim_general4`
   중에서 `query_data_selection.labeled`로 고른다.
@@ -119,7 +120,7 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 
 - clients: `10`
 - main non-IID: Dirichlet label-skew `alpha=0.3`
-- stress non-IID: Dirichlet label-skew `alpha=0.1`
+- final stress non-IID: Dirichlet label-skew `alpha=0.1`
 - split seed: `42`
 - archived full round budget: `50`
 - current execution policy: 새 `50-round`/full-budget run은 실행하지 않고,
@@ -212,16 +213,17 @@ Runtime translation:
   runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
   재검증할 수 없고, 현재 코드 기준 runtime metadata는 같은 split의 1-round smoke와
   reduced runs로 확인했다.
-- Dirichlet `alpha=0.1` stress, full-budget FlexMatch/FreeMatch/PseudoLabel
-  ablation, full-budget `client_count=1..10` sweep은 현재 사용자 결정에 따라
-  새로 실행하지 않는다. 현재는 `alpha=0.1` stress와
+- Dirichlet `alpha=0.1` final stress, full-budget
+  FlexMatch/FreeMatch/PseudoLabel ablation, full-budget `client_count=1..10` sweep은
+  현재 사용자 결정에 따라 새로 실행하지 않는다. 현재는 `alpha=0.3` 기준
   FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
-  `client_count=1..10` sweep은 1-round summary로 확인했다.
+  `client_count=1..10` sweep은 1-round summary로 확인했다. `alpha=0.1`은 마지막
+  stress 확인으로 남겨 두며 current manifest 검증 대상이 아니다.
 - FL SSL runner는 총 예정 communication round가 49를 넘으면 기본 차단한다.
   단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로
   계산하며, 장시간 실행은 `run_safety.allow_long_run=true`와
   `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 명시한 경우에만 시작된다.
-- 기존 smoke/main/reduced stress/reduced ablation/1-round sweep 산출물은
+- 기존 smoke/main/reduced ablation/1-round sweep 산출물은
   `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 round budget,
   client count, SSL method, adapter family, aggregation, delta format metadata를
   재검증할 수 있다. 현재 감사용 manifest는
@@ -238,9 +240,10 @@ Runtime translation:
    capability adapter, test 순서로 추가한다.
 3. 확정 method는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
-4. full stress, full ablation, full `client_count=1..10` sweep, 새 `50-round`
-   main rerun은 현재 보류한다. 향후 사용자가 명시적으로 결정을 바꾸면
-   `alpha=0.1` stress부터 같은 split seed 42와 같은 local budget으로 재개한다.
+4. full ablation, full `client_count=1..10` sweep, 새 `50-round` main rerun은
+   현재 보류한다. `alpha=0.1`은 기본 비교가 아니라 최후 stress 확인으로 남기고,
+   `alpha=0.3` 기준 후보 비교가 정리된 뒤에만 같은 split seed 42와 같은 local
+   budget으로 연다.
 5. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria

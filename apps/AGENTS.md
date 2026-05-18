@@ -2,7 +2,7 @@
 
 ## 역할
 
-`apps/`는 family extension과 future 제품 UI shell을 두는 계층이다.
+`apps/`는 family extension, experiment dashboard, future 제품 UI shell을 두는 계층이다.
 
 중요:
 
@@ -16,6 +16,7 @@
 - backend payload shape를 프런트 전용 임의 포맷으로 조용히 바꾸지 않는다.
 - lane 분리는 화면에서도 유지한다.
   - `family_extension`
+  - `experiment_dashboard`
   - future `youth_*`
   - future `guardian_*`
 - developer tool과 product UI의 문구/권한/정보 노출을 섞지 않는다.
