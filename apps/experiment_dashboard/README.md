@@ -29,9 +29,11 @@ export는 `projection_artifacts`의 UMAP/PCA PNG를
 동시에 선택해 bar/line chart로 비교할 수 있다. per-class metric과 confusion matrix,
 projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
 
-`FL SSL` track은 중앙 SSL ranking과 섞지 않는 별도 표면이다. FL SSL 전용 result
-index export가 들어오면 worst-client macro-F1, communication cost, per-client
-variance, round/client metric을 이 패널에서 소비한다.
+`FL SSL` track은 중앙 SSL ranking과 섞지 않는 별도 표면이다. result index export는
+`fl_ssl_runs`를 별도 view-model로 만들고, 이 패널은 run-level `macro_f1`,
+worst-client macro-F1, ECE, communication cost, per-client variance를 소비한다.
+round/client 시계열은 같은 방식으로 `fl_ssl_rounds`, `fl_ssl_client_rounds`를
+추가해서 확장한다.
 
 ## 경계
 

@@ -377,8 +377,8 @@ function renderFlSslPanel() {
   if (rows.length === 0) {
     elements.flRunSummary.innerHTML = `
       <p class="empty">
-        아직 dashboard bundle에 FL SSL run이 없습니다. 현재 화면은 Central SSL과
-        FL SSL을 섞지 않기 위한 track 경계만 먼저 열어 둔 상태입니다.
+        아직 dashboard bundle에 FL SSL run이 없습니다. result index export가
+        fl_ssl_runs 섹션을 만들면 이 패널에서 중앙 SSL과 분리해 소비합니다.
       </p>
     `;
     return;
@@ -394,7 +394,8 @@ function renderFlSslPanel() {
           <span>
             macro_f1=${formatMetric(flMetric(row, "macro_f1"))} ·
             worst_client=${formatMetric(flMetric(row, "worst_client_macro_f1"))} ·
-            ece=${formatMetric(flMetric(row, "expected_calibration_error"))}
+            ece=${formatMetric(flMetric(row, "expected_calibration_error"))} ·
+            client_var=${formatMetric(flMetric(row, "per_client_macro_f1_variance"))}
           </span>
         </article>
       `,

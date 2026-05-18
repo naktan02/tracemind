@@ -198,6 +198,12 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     ]
     assert bundle["filters"]["embedding_devices"] == ["cuda"]
     assert bundle["filters"]["local_trainer_devices"] == ["cuda"]
+    assert bundle["fl_ssl_runs"][0]["macro_f1"] == 0.78
+    assert bundle["fl_ssl_runs"][0]["worst_client_macro_f1"] == 0.41
+    assert bundle["fl_ssl_runs"][0]["expected_calibration_error"] == 0.12
+    assert bundle["fl_ssl_runs"][0]["communication_cost"]["value"] == 500
+    assert bundle["fl_ssl_runs"][0]["per_client_macro_f1_variance"] == 0.02
+    assert bundle["fl_ssl_runs"][0]["macro_f1_std"] == 0.1
 
 
 def _write_report(tmp_path: Path) -> Path:
@@ -534,5 +540,27 @@ def _sample_fl_ssl_report() -> dict:
         "metrics": {
             "initial_validation": validation_report,
             "final_validation": validation_report,
+            "primary": {
+                "macro_f1": 0.78,
+                "worst_client_macro_f1": 0.41,
+            },
+            "secondary": {
+                "loss": 0.5,
+                "expected_calibration_error": 0.12,
+                "communication_cost": {
+                    "unit": "client_update_envelopes",
+                    "value": 500,
+                },
+                "per_client_macro_f1_variance": 0.02,
+            },
+            "client_validation": {
+                "evaluated_client_count": 10,
+                "worst_client_macro_f1": 0.41,
+                "best_client_macro_f1": 0.91,
+                "macro_f1_std": 0.1,
+                "loss_std": 0.2,
+                "fairness_gap": 0.5,
+                "clients": [],
+            },
         },
     }
