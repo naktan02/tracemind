@@ -988,6 +988,23 @@ def test_scripts_runtime_adapters_do_not_keep_federated_agent_monolith() -> None
     )
 
 
+def test_prototype_strategy_scoring_does_not_use_runtime_fallback_profile() -> None:
+    path = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "prototype_analysis"
+        / "prototype_strategy"
+        / "scoring.py"
+    )
+    imports = _collect_absolute_imports(path)
+
+    assert "methods.federated_ssl.runtime_fallbacks" not in imports, (
+        "prototype strategy scorer 기본값은 prototype 실험 축의 로컬 상수가 "
+        "소유한다. FL SSL API/runtime fallback profile을 실험 기본값 "
+        "source-of-truth처럼 import하지 않는다."
+    )
+
+
 def test_scripts_reporting_does_not_wrap_shared_classification_report() -> None:
     facade_path = SCRIPTS_SRC / "reporting" / "classification_report.py"
 

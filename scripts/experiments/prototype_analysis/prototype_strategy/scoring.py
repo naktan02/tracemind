@@ -6,7 +6,6 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from typing import Protocol
 
-from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.scoring.base import PrototypeScorePolicy
 from methods.prototype.scoring.policy_registry import build_prototype_score_policy
 from methods.prototype.scoring.similarity import score_prototype_categories
@@ -16,6 +15,7 @@ from scripts.experiments.prototype_analysis.prototype_strategy.models import (
 
 DEFAULT_PROTOTYPE_SIMILARITY_NAME = "cosine"
 PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME = "prototype_similarity"
+DEFAULT_PROTOTYPE_SCORE_POLICY_NAME = "max_cosine"
 
 
 class PrototypeIndexScorer(Protocol):
@@ -34,10 +34,8 @@ class PrototypeScoringConfig:
     """Prototype strategy 실험용 scorer runtime 설정."""
 
     similarity_name: str = DEFAULT_PROTOTYPE_SIMILARITY_NAME
-    scorer_backend_name: str | None = (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    score_policy_name: str | None = RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
+    scorer_backend_name: str | None = PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME
+    score_policy_name: str | None = DEFAULT_PROTOTYPE_SCORE_POLICY_NAME
     score_top_k: int | None = None
 
     def build_scorer(self) -> "ConfiguredPrototypeIndexScorer":
@@ -54,10 +52,8 @@ class PrototypeScoringConfigMixin:
     """Prototype strategy scorer 설정 축을 공유하는 mixin."""
 
     similarity_name: str = DEFAULT_PROTOTYPE_SIMILARITY_NAME
-    scorer_backend_name: str | None = (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    score_policy_name: str | None = RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
+    scorer_backend_name: str | None = PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME
+    score_policy_name: str | None = DEFAULT_PROTOTYPE_SCORE_POLICY_NAME
     score_top_k: int | None = None
 
     def build_scoring_config(self) -> PrototypeScoringConfig:
@@ -76,10 +72,8 @@ class PrototypeScoringConfigMixin:
 class ConfiguredPrototypeIndexScorer:
     """methods prototype scoring core를 재사용하는 prototype index scorer."""
 
-    scorer_backend_name: str | None = (
-        RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
-    score_policy_name: str | None = RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name
+    scorer_backend_name: str | None = PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME
+    score_policy_name: str | None = DEFAULT_PROTOTYPE_SCORE_POLICY_NAME
     score_top_k: int | None = None
     similarity_name: str = "cosine"
     score_policy: PrototypeScorePolicy = field(init=False, repr=False)
@@ -87,8 +81,7 @@ class ConfiguredPrototypeIndexScorer:
     def __post_init__(self) -> None:
         _validate_prototype_similarity_backend(self.scorer_backend_name)
         self.score_policy = build_prototype_score_policy(
-            self.score_policy_name
-            or RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name,
+            self.score_policy_name or DEFAULT_PROTOTYPE_SCORE_POLICY_NAME,
             top_k=self.score_top_k,
         )
 
@@ -128,9 +121,8 @@ class MaxCosinePrototypeIndexScorer:
 def build_prototype_index_scorer(
     *,
     config: PrototypeScoringConfig | None = None,
-    scorer_backend_name: str
-    | None = RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name,
-    score_policy_name: str | None = RUNTIME_FALLBACK_TRAINING_PROFILE.score_policy_name,
+    scorer_backend_name: str | None = PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME,
+    score_policy_name: str | None = DEFAULT_PROTOTYPE_SCORE_POLICY_NAME,
     score_top_k: int | None = None,
     similarity_name: str = DEFAULT_PROTOTYPE_SIMILARITY_NAME,
 ) -> PrototypeIndexScorer:
@@ -159,9 +151,7 @@ def _prototype_mapping(
 
 
 def _validate_prototype_similarity_backend(scorer_backend_name: str | None) -> None:
-    resolved_name = (
-        scorer_backend_name or RUNTIME_FALLBACK_TRAINING_PROFILE.scorer_backend_name
-    )
+    resolved_name = scorer_backend_name or PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME
     normalized_name = resolved_name.strip().lower()
     if normalized_name != PROTOTYPE_SIMILARITY_SCORER_BACKEND_NAME:
         raise ValueError(
