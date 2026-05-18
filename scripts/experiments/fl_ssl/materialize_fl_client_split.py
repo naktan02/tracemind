@@ -8,7 +8,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import hydra
-from omegaconf import DictConfig, OmegaConf
+from omegaconf import DictConfig
 
 from methods.federated.client_split import (
     FederatedLabeledPoolPolicy,
@@ -19,6 +19,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
+from scripts.experiments.fl_ssl.federated_simulation.config_utils import to_plain_dict
 from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest import (
     FL_CLIENT_SPLIT_MANIFEST_SCHEMA_VERSION,
     FlClientSplitManifest,
@@ -195,11 +196,11 @@ def run_fl_client_split_materialization_from_hydra(*, cfg: DictConfig) -> None:
         seed=int(materialization_cfg.seed),
         client_count=int(materialization_cfg.client_count),
         bootstrap_ratio=float(materialization_cfg.bootstrap_ratio),
-        shard_policy=FederatedShardPolicyConfig(**_to_plain_dict(cfg.shard_policy)),
+        shard_policy=FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy)),
         labeled_policy=FederatedLabeledPoolPolicy.from_mapping(
-            _to_plain_dict(materialization_cfg.labeled_policy)
+            to_plain_dict(materialization_cfg.labeled_policy)
         ),
-        source_selection=_to_plain_dict(cfg.query_data_selection),
+        source_selection=to_plain_dict(cfg.query_data_selection),
         source_jsonl=source_jsonl,
         view_schema=FlClientSplitViewSchema(
             weak_text_field=str(materialization_cfg.view_schema.weak_text_field),
@@ -218,13 +219,6 @@ def run_fl_client_split_materialization_from_hydra(*, cfg: DictConfig) -> None:
     print(f"bootstrap_labeled_jsonl={artifacts.bootstrap_labeled_jsonl}")
     print(f"validation_jsonl={artifacts.validation_jsonl}")
     print(f"test_jsonl={artifacts.test_jsonl}")
-
-
-def _to_plain_dict(cfg: DictConfig) -> dict[str, object]:
-    raw = OmegaConf.to_container(cfg, resolve=True)
-    if not isinstance(raw, dict):
-        raise ValueError("Expected DictConfig section to resolve to a dict.")
-    return raw
 
 
 def _resolve_project_path(raw_path: str) -> Path:

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
@@ -71,26 +71,6 @@ def build_query_ssl_method_manifest(cfg) -> dict[str, object]:
     # 기존 report consumer를 깨지 않도록 parameter를 top-level에도 남긴다.
     manifest.update(parameters)
     return manifest
-
-
-def validate_multiview_rows(
-    rows: Sequence[LabeledQueryRow],
-    *,
-    algorithm_name: str,
-) -> None:
-    """weak/strong pair가 필요한 consistency SSL 입력을 검증한다."""
-
-    missing_query_ids = [
-        str(row["query_id"])
-        for row in rows
-        if row.get("weak_text") is None or row.get("strong_text") is None
-    ]
-    if missing_query_ids:
-        raise ValueError(
-            f"{algorithm_name} requires each unlabeled row to include both "
-            "weak_text and strong_text. Missing examples: "
-            f"{missing_query_ids[:5]}."
-        )
 
 
 def prepare_query_ssl_run_context(
