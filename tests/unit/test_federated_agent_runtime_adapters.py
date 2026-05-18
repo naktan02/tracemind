@@ -17,6 +17,7 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
@@ -248,6 +249,18 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             accepted_unlabeled_count=1,
         ),
     )
+    monkeypatch.setattr(
+        qcore,
+        "_build_final_snapshot_pseudo_label_quality",
+        lambda **_kwargs: PseudoLabelQualitySummary(
+            pseudo_label_confidence_mean=0.97,
+            pseudo_label_margin_mean=0.5,
+            pseudo_label_correct_count=1,
+            pseudo_label_evaluated_count=1,
+            accepted_label_distribution={"normal": 1},
+            rejected_label_distribution={},
+        ),
+    )
 
     result = run_query_ssl_lora_classifier_local_training(
         client_id="agent_01",
@@ -310,6 +323,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     if algorithm_name == "flexmatch":
         assert captured["algorithm"].thresh_warmup is True
     assert result.update_payload == update_payload
+    assert result.pseudo_label_quality.pseudo_label_correct_count == 1
 
 
 def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(

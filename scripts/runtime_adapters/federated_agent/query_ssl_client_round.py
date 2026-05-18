@@ -108,6 +108,7 @@ def _run_query_ssl_lora_client_round(
         update_envelope=local_result.update_envelope,
         update_payload=server_update_payload,
     )
+    pseudo_label_quality = local_result.pseudo_label_quality
     return ClientRoundExecution(
         summary=ClientRoundSummary(
             client_id=shard.client_id,
@@ -128,16 +129,28 @@ def _run_query_ssl_lora_client_round(
                 if update_submitted
                 else None
             ),
-            pseudo_label_confidence_mean=local_result.client_metrics.get(
-                ClientMetricKeys.MEAN_CONFIDENCE
+            pseudo_label_confidence_mean=(
+                pseudo_label_quality.pseudo_label_confidence_mean
+                if pseudo_label_quality.pseudo_label_confidence_mean is not None
+                else local_result.client_metrics.get(ClientMetricKeys.MEAN_CONFIDENCE)
             ),
-            pseudo_label_margin_mean=local_result.client_metrics.get(
-                ClientMetricKeys.MEAN_MARGIN
+            pseudo_label_margin_mean=(
+                pseudo_label_quality.pseudo_label_margin_mean
+                if pseudo_label_quality.pseudo_label_margin_mean is not None
+                else local_result.client_metrics.get(ClientMetricKeys.MEAN_MARGIN)
             ),
-            pseudo_label_correct_count=0,
-            pseudo_label_evaluated_count=0,
-            accepted_label_distribution={},
-            rejected_label_distribution={},
+            pseudo_label_correct_count=(
+                pseudo_label_quality.pseudo_label_correct_count
+            ),
+            pseudo_label_evaluated_count=(
+                pseudo_label_quality.pseudo_label_evaluated_count
+            ),
+            accepted_label_distribution=(
+                pseudo_label_quality.accepted_label_distribution
+            ),
+            rejected_label_distribution=(
+                pseudo_label_quality.rejected_label_distribution
+            ),
         ),
         update_submitted=update_submitted,
     )

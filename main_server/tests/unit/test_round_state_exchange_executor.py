@@ -24,9 +24,6 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimeCapabilities,
     FederatedSslServerStepSpec,
 )
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
-)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
@@ -137,7 +134,9 @@ def _build_update(
 
 def test_default_round_state_exchange_accepts_noop_method() -> None:
     result = DefaultRoundStateExchangeExecutor().summarize(
-        method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+        method_descriptor=_build_descriptor(
+            FederatedSslRoundStateExchangeSpec(exchange_name="none")
+        ),
         record=_build_record(),
     )
 

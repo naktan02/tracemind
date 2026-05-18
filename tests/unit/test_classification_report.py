@@ -7,6 +7,10 @@ import pytest
 from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
+from methods.evaluation.pseudo_label_quality import (
+    PseudoLabelCandidateRecord,
+    build_pseudo_label_quality_summary,
+)
 from shared.src.domain.services.classification_report import (
     build_confusion_matrix,
     render_confusion_table,
@@ -113,3 +117,42 @@ def test_build_classification_evaluation_report_exposes_paper_metrics() -> None:
     assert report["weighted_f1"] == pytest.approx(0.666667)
     assert report["worst_category_f1"] == "a"
     assert "max_calibration_error" in report
+
+
+def test_build_pseudo_label_quality_summary_uses_accepted_candidates() -> None:
+    summary = build_pseudo_label_quality_summary(
+        candidates=[
+            PseudoLabelCandidateRecord(
+                source_event_ref="q1",
+                label="a",
+                confidence=0.9,
+                margin=0.4,
+                accepted=True,
+            ),
+            PseudoLabelCandidateRecord(
+                source_event_ref="q2",
+                label="b",
+                confidence=0.7,
+                margin=0.2,
+                accepted=True,
+            ),
+            PseudoLabelCandidateRecord(
+                source_event_ref="q3",
+                label="a",
+                confidence=0.5,
+                margin=0.1,
+                accepted=False,
+            ),
+        ],
+        rows_with_simulation_labels=[
+            {"query_id": "q1", "mapped_label_4": "a"},
+            {"query_id": "q2", "mapped_label_4": "a"},
+            {"query_id": "q3", "mapped_label_4": "a"},
+        ],
+    )
+
+    assert summary.pseudo_label_correct_count == 1
+    assert summary.pseudo_label_evaluated_count == 2
+    assert summary.pseudo_label_confidence_mean == pytest.approx(0.7)
+    assert summary.accepted_label_distribution == {"a": 1, "b": 1}
+    assert summary.rejected_label_distribution == {"a": 1}

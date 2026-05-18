@@ -3,10 +3,12 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
+
+import torch
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
@@ -30,6 +32,11 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     USB_WEAK_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
+)
+from methods.evaluation.pseudo_label_quality import (
+    PseudoLabelCandidateRecord,
+    PseudoLabelQualitySummary,
+    build_pseudo_label_quality_summary,
 )
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
@@ -109,6 +116,9 @@ class QuerySslLoraClientTrainingResult:
     accepted_count: int
     local_step_plan: QuerySslLocalStepPlan
     client_metrics: Mapping[str, float]
+    pseudo_label_quality: PseudoLabelQualitySummary = field(
+        default_factory=PseudoLabelQualitySummary.empty
+    )
 
 
 def run_query_ssl_lora_classifier_training_core(
@@ -221,6 +231,15 @@ def run_query_ssl_lora_classifier_training_core(
         log_every_steps=0,
         algorithm=algorithm,
     )
+    pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
+        model=model,
+        tokenizer=tokenizer,
+        rows=effective_unlabeled_rows,
+        labels=effective_labels,
+        lora_config=lora_config,
+        query_ssl_config=query_ssl_config,
+        trainer_runtime_config=trainer_runtime_config,
+    )
 
     lora_deltas, head_weight_deltas, head_bias_deltas = (
         extract_lora_classifier_parameter_deltas(
@@ -279,9 +298,10 @@ def run_query_ssl_lora_classifier_training_core(
         update_envelope=update_envelope,
         update_payload=update_payload,
         candidate_count=len(effective_unlabeled_rows),
-        accepted_count=update_build_result.accepted_unlabeled_count,
+        accepted_count=sum(pseudo_label_quality.accepted_label_distribution.values()),
         local_step_plan=step_plan,
         client_metrics=client_metrics,
+        pseudo_label_quality=pseudo_label_quality,
     )
 
 
@@ -328,6 +348,82 @@ def _build_unlabeled_loader(
             shuffle=True,
         )
     raise ValueError(f"Unsupported Query SSL view builder: {view_builder_name}.")
+
+
+def _build_final_snapshot_pseudo_label_quality(
+    *,
+    model: LoraTextClassifier,
+    tokenizer: Any,
+    rows: Sequence[LabeledQueryRow],
+    labels: Sequence[str],
+    lora_config: LoraClassifierTrainingBackendConfig,
+    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
+    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+) -> PseudoLabelQualitySummary:
+    """round 종료 시점 local classifier snapshot의 pseudo-label 품질을 계산한다."""
+
+    effective_rows = list(rows)
+    if not effective_rows:
+        return PseudoLabelQualitySummary.empty()
+
+    confidence_threshold = _resolve_fixed_threshold(query_ssl_config.parameters)
+    loader = build_weak_dataloader(
+        rows=effective_rows,
+        tokenizer=tokenizer,
+        batch_size=query_ssl_config.unlabeled_batch_size or 1,
+        max_length=lora_config.max_length,
+        task_prefix=lora_config.task_prefix,
+        shuffle=False,
+    )
+    candidates: list[PseudoLabelCandidateRecord] = []
+    model.eval()
+    with torch.no_grad():
+        for batch in loader:
+            input_ids = batch["weak_input_ids"].to(trainer_runtime_config.device)
+            attention_mask = batch["weak_attention_mask"].to(
+                trainer_runtime_config.device
+            )
+            probabilities = torch.softmax(
+                model(input_ids=input_ids, attention_mask=attention_mask),
+                dim=-1,
+            )
+            top_k = min(2, probabilities.shape[-1])
+            top_values, top_indices = torch.topk(probabilities, k=top_k, dim=-1)
+            query_ids = [str(query_id) for query_id in batch["query_ids"]]
+            for row_index, query_id in enumerate(query_ids):
+                top1_index = int(top_indices[row_index, 0].detach().cpu().item())
+                top1_score = float(top_values[row_index, 0].detach().cpu().item())
+                top2_score = (
+                    float(top_values[row_index, 1].detach().cpu().item())
+                    if top_k > 1
+                    else 0.0
+                )
+                candidates.append(
+                    PseudoLabelCandidateRecord(
+                        source_event_ref=query_id,
+                        label=str(labels[top1_index]),
+                        confidence=top1_score,
+                        margin=top1_score - top2_score,
+                        accepted=(
+                            confidence_threshold is not None
+                            and top1_score >= confidence_threshold
+                        ),
+                    )
+                )
+
+    return build_pseudo_label_quality_summary(
+        candidates=tuple(candidates),
+        rows_with_simulation_labels=effective_rows,
+    )
+
+
+def _resolve_fixed_threshold(parameters: Mapping[str, object]) -> float | None:
+    """고정 confidence threshold가 있는 Query SSL method만 acceptance를 계산한다."""
+
+    raw_value = parameters.get("p_cutoff")
+    if raw_value is None:
+        return None
+    return float(raw_value)
 
 
 def _validate_labeled_rows_have_known_labels(

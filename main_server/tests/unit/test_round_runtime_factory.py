@@ -22,6 +22,12 @@ from main_server.src.services.federation.rounds.families.models import (
 from main_server.src.services.federation.rounds.families.registry import (
     register_shared_adapter_round_family,
 )
+from main_server.src.services.federation.rounds.runtime import (
+    compatibility as runtime_compatibility_module,
+)
+from main_server.src.services.federation.rounds.runtime import (
+    factory as runtime_factory_module,
+)
 from main_server.src.services.federation.rounds.runtime.config import (
     ROUND_ADAPTER_FAMILY_ENV,
     ROUND_AGGREGATION_BACKEND_CONFIG_ENV,
@@ -33,6 +39,15 @@ from main_server.src.services.federation.rounds.runtime.config import (
 from main_server.src.services.federation.rounds.runtime.factory import (
     build_round_lifecycle_service_from_config,
     build_round_manager_service_from_config,
+)
+from methods.federated_ssl.base import (
+    FederatedSslLocalStepSpec,
+    FederatedSslMethodDescriptor,
+    FederatedSslMethodRecipe,
+    FederatedSslRequiredViews,
+    FederatedSslRuntimeCapabilities,
+    FederatedSslRuntimePair,
+    FederatedSslServerStepSpec,
 )
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
@@ -48,6 +63,39 @@ TEST_ADAPTER_KIND = "test_adapter_runtime_factory"
 TEST_FAMILY_NAME = "test_family_runtime_factory"
 TEST_BACKEND_NAME = "test_avg_runtime_factory"
 TEST_MISMATCH_BACKEND_NAME = "test_mismatch_avg_runtime_factory"
+TEST_METHOD_NAME = "test_round_runtime_descriptor"
+TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
+    name=TEST_METHOD_NAME,
+    implementation_status="test_only",
+    required_views=FederatedSslRequiredViews(
+        view_names=("single_view",),
+        view_generator_name="training_example_backend",
+    ),
+    local_step=FederatedSslLocalStepSpec(
+        step_name="pseudo_label_self_training",
+        client_trainer_name="local_training_service",
+        pseudo_labeler_name="ssl_pseudo_label_selection_hook",
+    ),
+    server_step=FederatedSslServerStepSpec(
+        server_aggregator_name="round_runtime_aggregation_backend",
+        round_policy_name="round_active_pair_only",
+        server_aggregate_hint="use_round_runtime_aggregation_backend",
+    ),
+    runtime_capabilities=FederatedSslRuntimeCapabilities(
+        simulation_supported=True,
+        live_agent_supported=True,
+        live_server_supported=True,
+    ),
+    recipe=FederatedSslMethodRecipe(
+        method_name=TEST_METHOD_NAME,
+        supported_runtime_pairs=(
+            FederatedSslRuntimePair(
+                adapter_family_name="diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
+        ),
+    ),
+)
 
 
 @dataclass(slots=True)
@@ -198,28 +246,47 @@ def test_round_runtime_config_rejects_mismatched_backend_adapter_kind() -> None:
         )
 
 
-def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift() -> None:
+def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_compatibility_module,
+        "resolve_federated_ssl_method_descriptor",
+        lambda _name: TEST_METHOD_DESCRIPTOR,
+    )
     with pytest.raises(ValueError, match="method recipe does not support"):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
                 adapter_family_name=TEST_FAMILY_NAME,
                 aggregation_backend_name=TEST_BACKEND_NAME,
-                method_descriptor_name="fedavg_pseudo_label",
+                method_descriptor_name=TEST_METHOD_NAME,
             )
         )
 
 
-def test_round_lifecycle_config_wires_method_descriptor() -> None:
+def test_round_lifecycle_config_wires_method_descriptor(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        runtime_compatibility_module,
+        "resolve_federated_ssl_method_descriptor",
+        lambda _name: TEST_METHOD_DESCRIPTOR,
+    )
+    monkeypatch.setattr(
+        runtime_factory_module,
+        "resolve_federated_ssl_method_descriptor",
+        lambda _name: TEST_METHOD_DESCRIPTOR,
+    )
     service = build_round_lifecycle_service_from_config(
         ServerRoundRuntimeConfig(
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
-            method_descriptor_name="fedavg_pseudo_label",
+            method_descriptor_name=TEST_METHOD_NAME,
         )
     )
 
     assert service.method_descriptor is not None
-    assert service.method_descriptor.name == "fedavg_pseudo_label"
+    assert service.method_descriptor.name == TEST_METHOD_NAME
 
 
 def test_main_server_app_uses_runtime_config_to_build_round_service() -> None:
@@ -243,14 +310,14 @@ def test_runtime_config_loader_reads_environment_mapping() -> None:
         environ={
             ROUND_ADAPTER_FAMILY_ENV: TEST_FAMILY_NAME,
             ROUND_AGGREGATION_BACKEND_ENV: TEST_BACKEND_NAME,
-            ROUND_METHOD_DESCRIPTOR_ENV: " fedavg_pseudo_label ",
+            ROUND_METHOD_DESCRIPTOR_ENV: f" {TEST_METHOD_NAME} ",
             ROUND_AGGREGATION_BACKEND_CONFIG_ENV: '{"min_scale": 0.8}',
         }
     )
 
     assert config.adapter_family_name == TEST_FAMILY_NAME
     assert config.aggregation_backend_name == TEST_BACKEND_NAME
-    assert config.method_descriptor_name == "fedavg_pseudo_label"
+    assert config.method_descriptor_name == TEST_METHOD_NAME
     assert config.aggregation_backend_overrides == {"min_scale": 0.8}
 
 

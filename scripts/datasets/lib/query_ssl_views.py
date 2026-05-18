@@ -8,8 +8,12 @@ from collections.abc import Callable, Sequence
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Protocol
 
+from methods.adaptation.query_classifier_adaptation.view_rows import (
+    QuerySslBacktranslationPair,
+    attach_usb_multiview_candidate_pair,
+    validate_usb_multiview_candidate_rows,
+)
 from scripts.runtime_adapters.backtranslation_runtime import (
     build_nllb_backtranslation_candidate_pairs_from_params,
 )
@@ -21,15 +25,6 @@ from shared.src.contracts.labeled_query_row_contracts import (
 
 QUERY_SSL_VIEWS_SCHEMA_VERSION = "query_ssl_views.v1"
 QUERY_SSL_VIEWS_PROGRESS_SCHEMA_VERSION = "query_ssl_views_progress.v1"
-
-
-class QuerySslBacktranslationPair(Protocol):
-    """원문 하나에서 생성한 두 개의 strong view."""
-
-    aug_0: str
-    aug_1: str
-    aug_0_pivot_lang: str
-    aug_1_pivot_lang: str
 
 
 QuerySslCandidatePairBuilder = Callable[
@@ -362,31 +357,13 @@ def _attach_backtranslation_views(
 
     rows_with_views: list[LabeledQueryRow] = []
     for row, candidate_pair in zip(rows, candidate_pairs):
-        row_with_views: LabeledQueryRow = dict(row)  # type: ignore[assignment]
-        row_with_views["aug_0"] = candidate_pair.aug_0
-        row_with_views["aug_1"] = candidate_pair.aug_1
-        row_with_views["aug_0_pivot_lang"] = candidate_pair.aug_0_pivot_lang
-        row_with_views["aug_1_pivot_lang"] = candidate_pair.aug_1_pivot_lang
-        rows_with_views.append(row_with_views)
+        rows_with_views.append(attach_usb_multiview_candidate_pair(row, candidate_pair))
 
-    _validate_view_rows(rows_with_views)
+    validate_usb_multiview_candidate_rows(
+        rows_with_views,
+        context="Query SSL view materialization",
+    )
     return rows_with_views
-
-
-def _validate_view_rows(rows: Sequence[LabeledQueryRow]) -> None:
-    missing_query_ids = [
-        str(row["query_id"])
-        for row in rows
-        if (
-            not str(row.get("aug_0", "")).strip()
-            or not str(row.get("aug_1", "")).strip()
-        )
-    ]
-    if missing_query_ids:
-        raise ValueError(
-            "Query SSL view materialization requires non-empty aug_0 and aug_1. "
-            f"Missing examples: {missing_query_ids[:5]}."
-        )
 
 
 def _build_query_ssl_views_manifest(
@@ -570,7 +547,10 @@ def _load_existing_tmp_query_ids(path: Path) -> set[str]:
         return set()
     query_ids: set[str] = set()
     for row in load_labeled_query_rows(path):
-        _validate_view_rows([row])
+        validate_usb_multiview_candidate_rows(
+            [row],
+            context="Query SSL view materialization",
+        )
         query_id = str(row["query_id"])
         if query_id in query_ids:
             raise ValueError(f"{path} contains duplicate query_id={query_id!r}.")

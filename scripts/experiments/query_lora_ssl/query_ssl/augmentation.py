@@ -10,6 +10,12 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from methods.adaptation.query_classifier_adaptation.view_rows import (
+    attach_usb_multiview_candidate_pair,
+    rows_have_usb_multiview_candidates,
+    validate_usb_multiview_candidate_rows,
+    validate_usb_weak_rows,
+)
 from scripts.runtime_adapters.backtranslation_runtime import (
     build_nllb_backtranslation_candidate_pairs,
 )
@@ -109,7 +115,7 @@ def prepare_usb_multiview_unlabeled_rows(
     effective_rows = list(rows)
     if not effective_rows:
         raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
-    if _rows_have_usb_candidates(effective_rows):
+    if rows_have_usb_multiview_candidates(effective_rows):
         return PreparedQuerySslUnlabeledRows(
             rows=effective_rows,
             mode="precomputed_usb_candidates",
@@ -139,7 +145,10 @@ def prepare_usb_multiview_unlabeled_rows(
         and cache_artifacts.summary_path.exists()
     ):
         cached_rows = load_labeled_query_rows(cache_artifacts.jsonl_path)
-        _validate_usb_candidate_rows(cached_rows, algorithm_name=algorithm_name)
+        validate_usb_multiview_candidate_rows(
+            cached_rows,
+            context=algorithm_name,
+        )
         print(
             "query_ssl_augmenter=cache_hit "
             f"rows={len(cached_rows)} "
@@ -175,14 +184,12 @@ def prepare_usb_multiview_unlabeled_rows(
 
     prepared_rows: list[LabeledQueryRow] = []
     for row, candidate_pair in zip(effective_rows, candidate_pairs):
-        prepared_row: LabeledQueryRow = dict(row)  # type: ignore[assignment]
-        prepared_row["aug_0"] = candidate_pair.aug_0
-        prepared_row["aug_1"] = candidate_pair.aug_1
-        prepared_row["aug_0_pivot_lang"] = candidate_pair.aug_0_pivot_lang
-        prepared_row["aug_1_pivot_lang"] = candidate_pair.aug_1_pivot_lang
-        prepared_rows.append(prepared_row)
+        prepared_rows.append(attach_usb_multiview_candidate_pair(row, candidate_pair))
 
-    _validate_usb_candidate_rows(prepared_rows, algorithm_name=algorithm_name)
+    validate_usb_multiview_candidate_rows(
+        prepared_rows,
+        context=algorithm_name,
+    )
 
     if cache_artifacts is None:
         print(
@@ -227,64 +234,12 @@ def prepare_usb_weak_unlabeled_rows(
     effective_rows = list(rows)
     if not effective_rows:
         raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
-    missing_query_ids = [
-        str(row["query_id"])
-        for row in effective_rows
-        if not str(row.get("weak_text") or row.get("text", "")).strip()
-    ]
-    if missing_query_ids:
-        raise ValueError(
-            f"{algorithm_name} requires each unlabeled row to include text or "
-            f"weak_text. Missing examples: {missing_query_ids[:5]}."
-        )
+    validate_usb_weak_rows(effective_rows, context=algorithm_name)
     return PreparedQuerySslUnlabeledRows(
         rows=effective_rows,
         mode="raw_weak_text",
         cache_hit=False,
     )
-
-
-def prepare_fixmatch_unlabeled_rows(
-    cfg,
-    *,
-    rows: Sequence[LabeledQueryRow],
-    source_jsonl: str | Path | None,
-) -> PreparedQuerySslUnlabeledRows:
-    """기존 FixMatch 호출자를 위한 strict USB multiview wrapper."""
-
-    return prepare_usb_multiview_unlabeled_rows(
-        cfg,
-        rows=rows,
-        source_jsonl=source_jsonl,
-        algorithm_name="FixMatch",
-    )
-
-
-def _rows_have_usb_candidates(rows: Sequence[LabeledQueryRow]) -> bool:
-    return all(
-        str(row.get("aug_0", "")).strip() and str(row.get("aug_1", "")).strip()
-        for row in rows
-    )
-
-
-def _validate_usb_candidate_rows(
-    rows: Sequence[LabeledQueryRow],
-    *,
-    algorithm_name: str,
-) -> None:
-    missing_query_ids = [
-        str(row["query_id"])
-        for row in rows
-        if (
-            not str(row.get("aug_0", "")).strip()
-            or not str(row.get("aug_1", "")).strip()
-        )
-    ]
-    if missing_query_ids:
-        raise ValueError(
-            f"{algorithm_name} requires each unlabeled row to include both aug_0 "
-            f"and aug_1. Missing examples: {missing_query_ids[:5]}."
-        )
 
 
 def _resolve_cache_artifacts(

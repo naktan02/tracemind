@@ -2,9 +2,7 @@
 
 from __future__ import annotations
 
-import random
-from collections import defaultdict
-
+from methods.federated.client_split import split_client_pool_items
 from methods.federated.shard_policy.base import (
     FederatedClientShardAssignment,
     FederatedShardPolicyConfig,
@@ -80,11 +78,15 @@ def _to_client_shards(
     shards: list[FederatedClientShard] = []
     for index, assignment in enumerate(assignments):
         rows = list(assignment.items)
-        labeled_rows, unlabeled_rows = _split_client_pool_rows(
-            rows,
-            client_pool_split_config=client_pool_split_config,
-            seed=seed + index,
-        )
+        if client_pool_split_config is None:
+            labeled_rows, unlabeled_rows = [], list(rows)
+        else:
+            labeled_rows, unlabeled_rows = split_client_pool_items(
+                rows,
+                labeled_ratio=client_pool_split_config.labeled_ratio,
+                seed=seed + index,
+                label_getter=_row_label,
+            )
         shards.append(
             FederatedClientShard(
                 client_id=assignment.client_id,
@@ -95,45 +97,3 @@ def _to_client_shards(
             )
         )
     return tuple(shards)
-
-
-def _split_client_pool_rows(
-    rows: list[LabeledQueryRow],
-    *,
-    client_pool_split_config: FederatedClientPoolSplitConfig | None,
-    seed: int,
-) -> tuple[list[LabeledQueryRow], list[LabeledQueryRow]]:
-    if client_pool_split_config is None:
-        return [], list(rows)
-
-    rng = random.Random(seed)
-    labeled_rows: list[LabeledQueryRow] = []
-    unlabeled_rows: list[LabeledQueryRow] = []
-    rows_by_label: dict[str, list[LabeledQueryRow]] = defaultdict(list)
-    for row in rows:
-        rows_by_label[_row_label(row)].append(row)
-
-    for label in sorted(rows_by_label):
-        bucket = list(rows_by_label[label])
-        rng.shuffle(bucket)
-        labeled_count = _resolve_labeled_count(
-            bucket_size=len(bucket),
-            labeled_ratio=client_pool_split_config.labeled_ratio,
-        )
-        labeled_rows.extend(bucket[:labeled_count])
-        unlabeled_rows.extend(bucket[labeled_count:])
-    return labeled_rows, unlabeled_rows
-
-
-def _resolve_labeled_count(*, bucket_size: int, labeled_ratio: float) -> int:
-    if bucket_size <= 0 or labeled_ratio <= 0.0:
-        return 0
-    if labeled_ratio >= 1.0:
-        return bucket_size
-
-    labeled_count = int(round(bucket_size * labeled_ratio))
-    if labeled_count <= 0 and bucket_size > 1:
-        labeled_count = 1
-    if labeled_count >= bucket_size:
-        labeled_count = bucket_size - 1
-    return labeled_count

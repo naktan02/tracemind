@@ -4,22 +4,12 @@ from __future__ import annotations
 
 from typing import Any
 
-from agent.src.services.inference.scoring_backends.base import (
-    PROTOTYPE_SIMILARITY_BACKEND_NAME,
-)
-from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
-    AggregationArtifactStore,
-)
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    materialize_base_lora_classifier_state,
-)
 from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
     evaluate_lora_classifier_validation_payload,
     require_lora_classifier_state,
     require_lora_classifier_validation_backend,
 )
-from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_training_objective_config,
 )
@@ -42,6 +32,9 @@ from scripts.runtime_adapters.federated_agent.selection_runtime import (
 from scripts.runtime_adapters.federated_agent.training_example_mapper import (
     build_federated_training_examples,
 )
+from scripts.runtime_adapters.federated_server.lora_classifier_state import (
+    materialize_simulation_lora_classifier_base_state,
+)
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.prototype_contracts import PrototypePackPayload
@@ -52,6 +45,8 @@ from shared.src.contracts.training_contracts import (
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
+
+PROTOTYPE_SIMILARITY_BACKEND_NAME = "prototype_similarity"
 
 
 def build_training_examples(
@@ -208,17 +203,9 @@ def _evaluate_lora_classifier_validation(
     payload = evaluate_lora_classifier_validation_payload(
         rows=rows,
         adapter_state=adapter_state,
-        base_parameters=materialize_base_lora_classifier_state(
-            base_state=adapter_state,
-            context=FederatedAggregationContext(
-                next_model_revision=adapter_state.model_revision,
-                aggregated_at=adapter_state.updated_at,
-                artifact_loader=AggregationArtifactStore(
-                    state_root=(
-                        request.output_dir / "main_server" / "aggregation_artifacts"
-                    ),
-                ),
-            ),
+        base_parameters=materialize_simulation_lora_classifier_base_state(
+            output_dir=request.output_dir,
+            adapter_state=adapter_state,
         ),
         objective_config=objective_config,
         runtime_config=request.local_trainer_runtime_config,

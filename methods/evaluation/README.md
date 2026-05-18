@@ -10,3 +10,5 @@
 - `classification_report.py`: 분류 평가 report의 canonical metric shape
 - `classification_payload.py`: classification report를 track별 evaluation payload로
   옮길 때 쓰는 typed per-label/confusion-matrix 정규화
+- `pseudo_label_quality.py`: selection result 또는 final pseudo-label snapshot을
+  client/round report가 소비하는 accepted/correct/distribution diagnostic으로 요약

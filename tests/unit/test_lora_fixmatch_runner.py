@@ -4,8 +4,6 @@ import torch
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_lora_ssl.runners.consistency import (
-    run_fixmatch_lora_baseline,
-    run_pseudolabel_lora_baseline,
     run_query_ssl_lora_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -114,7 +112,7 @@ def _usb_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
+def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -188,7 +186,7 @@ def test_run_fixmatch_lora_baseline_wires_usb_method_manifest(
         _fake_write_run_artifacts,
     )
 
-    outputs = run_fixmatch_lora_baseline(
+    outputs = run_query_ssl_lora_baseline(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
@@ -420,7 +418,7 @@ def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
     assert unlabeled_batch["row_indices"].tolist() == [0, 1]
 
 
-def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
+def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmentation(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -505,7 +503,7 @@ def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
         _fake_write_run_artifacts,
     )
 
-    outputs = run_pseudolabel_lora_baseline(
+    outputs = run_query_ssl_lora_baseline(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_labeled_row("u1", "depression", "우울해요")],
@@ -531,7 +529,7 @@ def test_run_pseudolabel_lora_baseline_uses_weak_text_without_augmentation(
     assert "query_ssl_augmenter" not in captured["extra_manifest"]
 
 
-def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
+def test_run_query_ssl_lora_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
     None
 ):
     cfg = _build_cfg()
@@ -546,7 +544,7 @@ def test_run_fixmatch_lora_baseline_rejects_unlabeled_rows_without_usb_candidate
     unlabeled_rows = [_labeled_row("u1", "depression", "우울해요")]
 
     try:
-        run_fixmatch_lora_baseline(
+        run_query_ssl_lora_baseline(
             cfg=cfg,
             train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
             unlabeled_rows=unlabeled_rows,

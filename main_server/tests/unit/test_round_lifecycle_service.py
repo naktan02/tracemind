@@ -95,9 +95,12 @@ from main_server.src.services.federation.rounds.runtime.factory import (
 from main_server.src.services.federation.rounds.server_policy.executor import (
     ServerPolicyExecutionSummary,
 )
-from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+from methods.federated_ssl.base import (
+    FederatedSslLocalStepSpec,
+    FederatedSslMethodDescriptor,
+    FederatedSslRequiredViews,
+    FederatedSslRuntimeCapabilities,
+    FederatedSslServerStepSpec,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from methods.prototype.building.single import SinglePrototypeBuildStrategy
@@ -144,6 +147,29 @@ StoredReferencePrototypeRebuildService = (
 ModelManifestRepository = model_manifest_repository_module.ModelManifestRepository
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
+)
+TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
+    name="test_round_runtime_method",
+    implementation_status="test_only",
+    required_views=FederatedSslRequiredViews(
+        view_names=("single_view",),
+        view_generator_name="training_example_backend",
+    ),
+    local_step=FederatedSslLocalStepSpec(
+        step_name="pseudo_label_self_training",
+        client_trainer_name="local_training_service",
+        pseudo_labeler_name="ssl_pseudo_label_selection_hook",
+    ),
+    server_step=FederatedSslServerStepSpec(
+        server_aggregator_name="round_runtime_aggregation_backend",
+        round_policy_name="round_active_pair_only",
+        server_aggregate_hint="use_round_runtime_aggregation_backend",
+    ),
+    runtime_capabilities=FederatedSslRuntimeCapabilities(
+        simulation_supported=True,
+        live_agent_supported=True,
+        live_server_supported=True,
+    ),
 )
 
 
@@ -892,7 +918,7 @@ def test_round_lifecycle_runs_method_server_policy_before_finalize(
         fixed_time=fixed_time,
     )
     policy_executor = _RecordingServerPolicyExecutor()
-    service.method_descriptor = FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    service.method_descriptor = TEST_METHOD_DESCRIPTOR
     service.server_policy_executor = policy_executor
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update = _build_update(
@@ -910,7 +936,7 @@ def test_round_lifecycle_runs_method_server_policy_before_finalize(
         ),
     )
 
-    assert policy_executor.calls == [("fedavg_pseudo_label", record.round_id, 1)]
+    assert policy_executor.calls == [("test_round_runtime_method", record.round_id, 1)]
 
 
 def test_round_lifecycle_stores_round_state_exchange_summary(
@@ -921,7 +947,7 @@ def test_round_lifecycle_stores_round_state_exchange_summary(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
     )
-    service.method_descriptor = FEDAVG_PSEUDO_LABEL_DESCRIPTOR
+    service.method_descriptor = TEST_METHOD_DESCRIPTOR
     service.round_state_exchange_executor = _StaticRoundStateExchangeExecutor(
         summary_metrics={"round_state.mean_confidence.mean": 0.8}
     )

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 from collections.abc import Sequence
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -41,6 +42,7 @@ def dump_jsonl(path: str | Path, rows: Sequence[dict[str, Any]]) -> None:
 def resolve_output_dir(
     base_dir: str | Path,
     run_id: str,
+    created_at: datetime | None = None,
 ) -> Path:
     """Hydra config의 base_dir를 run_id 실행 경로로 정규화한다."""
-    return build_run_dir(base_dir, run_id=run_id)
+    return build_run_dir(base_dir, run_id=run_id, created_at=created_at)

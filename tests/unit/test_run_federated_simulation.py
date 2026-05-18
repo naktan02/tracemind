@@ -27,6 +27,7 @@ from methods.evaluation.classification_payload import (
 from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
+from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.prototype.building.single import (
@@ -561,6 +562,14 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 max_steps=9,
             ),
             client_metrics=update_envelope.client_metrics,
+            pseudo_label_quality=PseudoLabelQualitySummary(
+                pseudo_label_confidence_mean=0.96,
+                pseudo_label_margin_mean=0.41,
+                pseudo_label_correct_count=1,
+                pseudo_label_evaluated_count=1,
+                accepted_label_distribution={"normal": 1},
+                rejected_label_distribution={},
+            ),
         )
 
     monkeypatch.setattr(
@@ -677,6 +686,9 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert execution.update_submitted is True
     assert execution.summary.candidate_count == 1
     assert execution.summary.accepted_count == 1
+    assert execution.summary.pseudo_label_correct_count == 1
+    assert execution.summary.pseudo_label_evaluated_count == 1
+    assert execution.summary.accepted_label_distribution == {"normal": 1}
     assert server_runtime.accepted
     assert trainer_calls
     assert trainer_calls[0]["labeled_rows"] == [labeled_row]

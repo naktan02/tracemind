@@ -3,7 +3,7 @@ from __future__ import annotations
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
-    prepare_fixmatch_unlabeled_rows,
+    prepare_usb_multiview_unlabeled_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -63,7 +63,7 @@ class _FakeBacktranslationAugmenter:
         ]
 
 
-def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
+def test_prepare_usb_multiview_unlabeled_rows_generates_and_caches(
     monkeypatch,
     tmp_path,
 ) -> None:
@@ -78,10 +78,11 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
         ),
     )
 
-    prepared = prepare_fixmatch_unlabeled_rows(
+    prepared = prepare_usb_multiview_unlabeled_rows(
         cfg,
         rows=rows,
         source_jsonl=None,
+        algorithm_name="fixmatch",
     )
 
     assert prepared.mode == "generated_and_cached"
@@ -103,10 +104,11 @@ def test_prepare_fixmatch_unlabeled_rows_generates_and_caches(
         ),
     )
 
-    cached = prepare_fixmatch_unlabeled_rows(
+    cached = prepare_usb_multiview_unlabeled_rows(
         cfg,
         rows=rows,
         source_jsonl=None,
+        algorithm_name="fixmatch",
     )
 
     assert cached.mode == "cache_hit"

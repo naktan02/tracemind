@@ -17,9 +17,6 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimeCapabilities,
     FederatedSslServerStepSpec,
 )
-from methods.federated_ssl.fedavg_pseudo_label.descriptor import (
-    FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
-)
 
 
 def _build_test_descriptor(
@@ -58,12 +55,12 @@ def _build_test_descriptor(
 
 def test_default_server_policy_executor_accepts_round_runtime_policy() -> None:
     summary = DefaultServerPolicyExecutor().prepare_finalize(
-        method_descriptor=FEDAVG_PSEUDO_LABEL_DESCRIPTOR,
+        method_descriptor=_build_test_descriptor(),
         round_id="round_001",
         update_count=2,
     )
 
-    assert summary.method_name == "fedavg_pseudo_label"
+    assert summary.method_name == "test_server_policy_method"
     assert summary.round_id == "round_001"
     assert summary.server_aggregator_name == "round_runtime_aggregation_backend"
     assert summary.round_policy_name == "round_active_pair_only"
