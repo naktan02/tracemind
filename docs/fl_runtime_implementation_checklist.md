@@ -69,6 +69,8 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
   payload family를 바꾸지 않는 FedMatch method-owned local objective다.
+  구현을 열려면 `first_fed_ssl_method` 선택이 필요하며, 선택 전에는 method
+  placeholder config나 production method 폴더를 만들지 않는다.
 
 새 method 기본 변경 위치:
 

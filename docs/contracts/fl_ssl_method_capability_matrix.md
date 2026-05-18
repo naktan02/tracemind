@@ -75,6 +75,23 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 `methods/federated_ssl/fedmatch/` method-owned local objective를 먼저 구현해,
 실제 objective 변경과 report metadata 변경이 동시에 남는지 확인한다.
 
+## Open Selection Gate
+
+구현을 시작하려면 아래 결정을 먼저 확정한다.
+
+- `first_fed_ssl_method`: `fedmatch`, `fedlgmatch`, `(fl)^2` 중 하나.
+- FedMatch를 선택하면 기본 시작점은 `lora_classifier` payload family 유지,
+  custom round-state exchange 없음, FedAvg server policy 유지다.
+- FedLGMatch를 선택하면 global/local pseudo-label state를 어떤 artifact나
+  `round_state_exchange`로 주고받을지 먼저 정한다.
+- `(FL)^2`를 선택하면 labels-at-server regime을 맞추기 위해 split/source policy부터
+  새로 정한다.
+- 어떤 method를 선택해도 새 검증은 `1-round` smoke와 필요 시 `5-round` reduced
+  run까지만 수행한다. 새 `50-round`/full-budget run은 현재 실행 대상이 아니다.
+
+선택 전에는 `methods/federated_ssl/<method>/` 구현 파일과
+`conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+
 ## Implementation Gate
 
 선택된 method는 아래 순서로만 추가한다.

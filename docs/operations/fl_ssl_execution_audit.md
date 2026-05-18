@@ -42,6 +42,8 @@ report/summary를 검증했다.
 결정 대기 항목:
 
 - FedMatch/FedLGMatch/(FL)^2 중 첫 구현 method 선택.
+  현재 추천 선택지는 FedMatch이며, 기본 시작점은 `lora_classifier` payload family 유지,
+  custom round-state exchange 없음, FedAvg server policy 유지다.
 
 ## Prompt-To-Artifact Checklist
 
