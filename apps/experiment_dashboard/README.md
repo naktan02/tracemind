@@ -16,9 +16,21 @@ python -m http.server 5175 -d apps/experiment_dashboard
 
 브라우저에서 `http://127.0.0.1:5175`를 연다.
 
-`--reset`은 전체 cache를 다시 만들 때만 붙인다. 기본 ingest는 같은 `run_id`를
-upsert하고 새 run을 누적한다. 실험 runner가 SQLite를 직접 쓰지 않기 때문에 새
-실험이 끝난 뒤 위 ingest/export 명령을 다시 실행해야 화면에 반영된다.
+전체 index를 버리고 `runs/` 아래 중앙 SSL/FL SSL report를 다시 훑어 만들 때는
+`--reset`을 붙인다.
+
+```bash
+uv run python -m scripts.experiments.result_index.ingest \
+  --runs-root runs \
+  --reset \
+  --db data/processed/experiment_index/experiment_results.sqlite \
+  --dashboard-json apps/experiment_dashboard/data/experiment_dashboard.json
+```
+
+`--reset`은 SQLite index row만 비우고 `runs/` 원본 artifact는 삭제하지 않는다.
+기본 ingest는 같은 `run_id`를 upsert하고 새 run을 누적한다. 실험 runner가
+SQLite를 직접 쓰지 않기 때문에 새 실험이 끝난 뒤 ingest/export 명령을 다시
+실행해야 화면에 반영된다.
 
 export는 `projection_artifacts`의 UMAP/PCA PNG를
 `apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와

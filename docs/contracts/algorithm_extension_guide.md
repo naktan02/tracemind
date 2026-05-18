@@ -64,8 +64,8 @@
 ## Config 판단
 
 - `threshold=0.95`, `rank=8`, `alpha=0.3`, `rounds=1/5` 같은 값은 YAML 값이다.
-- archived `50-round` full-budget 값도 YAML에 남아 있지만, 현재 FL SSL 트랙에서는
-  새 `50-round`/full-budget 실행을 하지 않는다.
+- `run_controls/fl_ssl/budget=main` 같은 full-budget 값도 YAML 값이다. 긴 실행은
+  smoke/reduced 검증 뒤 명시적으로 선택한다.
 - 논문/방법 단위로 독립 테스트와 README가 필요하면 폴더로 둔다.
 - 사람이 직접 실행하는 조합은 `conf/entrypoints/`.
 - 비교 track의 반복 실행 조건은 `conf/run_controls/`.

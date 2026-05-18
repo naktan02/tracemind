@@ -302,8 +302,9 @@ FL SSL 논문 method를 추가하는 경우에는 다음도 확인한다.
    생긴 뒤에만 추가한다.
 3. `agent`, `main_server`, `scripts/runtime_adapters`에는 FedMatch/FedLGMatch 같은
    method 이름 파일을 추가하지 않는다.
-4. 새 검증 실행은 현재 정책에 따라 `1-round` smoke 또는 필요 시 `5-round`
-   reduced run까지만 수행한다. 새 `50-round`/full-budget run은 실행하지 않는다.
+4. 새 검증 실행은 먼저 `1-round` smoke 또는 필요 시 `5-round` reduced run으로
+   wiring과 metadata를 확인한다. full-budget 실행은 후보와 비교 조건을 명시한 뒤
+   별도 실행한다.
 
 ## 7. 빠른 판단 규칙
 

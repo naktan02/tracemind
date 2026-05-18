@@ -33,8 +33,8 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 - `agent/src/**/fedmatch*.py`, `main_server/src/**/fedmatch*.py` 같은 method-name runtime
   파일.
 - method descriptor YAML만 먼저 추가하는 placeholder config.
-- 새 full-budget 실행. 총 예정 communication round가 49를 넘으면 runner guard가
-  막으며, 현재 FL SSL 트랙에서는 새 `50-round`/full-budget 실행을 하지 않는다.
+- 검증 없이 바로 full-budget 실행으로 들어가는 것. 총 예정 communication round가
+  49를 넘으면 runner guard가 막으므로, 필요한 경우 long-run ack를 명시한다.
 
 ## Candidate Matrix
 
@@ -86,8 +86,8 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
   `round_state_exchange`로 주고받을지 먼저 정한다.
 - `(FL)^2`를 선택하면 labels-at-server regime을 맞추기 위해 split/source policy부터
   새로 정한다.
-- 어떤 method를 선택해도 새 검증은 `1-round` smoke와 필요 시 `5-round` reduced
-  run까지만 수행한다. 새 `50-round`/full-budget run은 현재 실행 대상이 아니다.
+- 어떤 method를 선택해도 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+  wiring과 metadata를 확인한 뒤 full-budget 비교로 올린다.
 
 선택 전에는 `methods/federated_ssl/<method>/` 구현 파일과
 `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
@@ -119,8 +119,8 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 - artifact-ref delta path 유지.
 - long-run guard 유지.
 
-full-budget comparison은 현재 실행 대상이 아니다. 향후 사용자가 새 결정을 내리기
-전까지 새 method 검증은 `1-round` smoke와 필요 시 `5-round` reduced run으로 제한한다.
+새 method 검증은 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로 닫고,
+full-budget comparison은 후보와 비교 조건을 확정한 뒤 별도 실행한다.
 
 ## Paper Anchors
 

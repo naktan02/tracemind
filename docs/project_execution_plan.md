@@ -56,9 +56,9 @@ central fixed embedding + classifier seed
 - 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시
   `fl_client_split_materialization.labeled_policy`로 명시하고, 기본값은
   `mode=all`이다.
-- FL SSL archived main budget은 `50 communication rounds`, `local_epochs=1`,
-  `max_steps=50`이었다. 현재 실행 정책은 새 `50-round`/full-budget 재실행 금지이며,
-  기존 alpha=0.3 full report는 read-only evidence로만 사용한다.
+- FL SSL full-budget preset은 `50 communication rounds`, `local_epochs=1`,
+  `max_steps=50`이다. 새 method/wiring은 먼저 smoke/reduced run으로 확인한 뒤
+  full-budget 비교로 올린다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
 - tie-breaker/risk 지표는 `loss`, `weighted-F1`, `balanced accuracy`,
@@ -122,9 +122,9 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - main non-IID: Dirichlet label-skew `alpha=0.3`
 - final stress non-IID: Dirichlet label-skew `alpha=0.1`
 - split seed: `42`
-- archived full round budget: `50`
-- current execution policy: 새 `50-round`/full-budget run은 실행하지 않고,
-  wiring/method 검증은 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
+- full round budget preset: `50`
+- execution policy: 새 wiring/method 검증은 먼저 `1-round` smoke 또는 `5-round`
+  reduced run으로 확인하고, full-budget 비교는 후보와 조건이 확정된 뒤 실행한다.
 - local update budget: `local_epochs=1`, `max_steps=50`
 - labeled/unlabeled source: 기본은 labeled source 전체와 unlabeled source 전체를
   client에 분배한다. 일부 labeled source만 쓰는 경우 `labeled_policy`를 manifest에
@@ -215,7 +215,7 @@ Runtime translation:
   reduced runs로 확인했다.
 - Dirichlet `alpha=0.1` final stress, full-budget
   FlexMatch/FreeMatch/PseudoLabel ablation, full-budget `client_count=1..10` sweep은
-  현재 사용자 결정에 따라 새로 실행하지 않는다. 현재는 `alpha=0.3` 기준
+  후보와 비교 조건을 확정한 뒤 별도 실행한다. 현재는 `alpha=0.3` 기준
   FlexMatch/FreeMatch/PseudoLabel ablation을 5-round reduced run으로 확인했고,
   `client_count=1..10` sweep은 1-round summary로 확인했다. `alpha=0.1`은 마지막
   stress 확인으로 남겨 두며 current manifest 검증 대상이 아니다.
@@ -240,10 +240,10 @@ Runtime translation:
    capability adapter, test 순서로 추가한다.
 3. 확정 method는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
-4. full ablation, full `client_count=1..10` sweep, 새 `50-round` main rerun은
-   현재 보류한다. `alpha=0.1`은 기본 비교가 아니라 최후 stress 확인으로 남기고,
-   `alpha=0.3` 기준 후보 비교가 정리된 뒤에만 같은 split seed 42와 같은 local
-   budget으로 연다.
+4. full ablation, full `client_count=1..10` sweep, full-budget main run은
+   후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
+   아니라 최후 stress 확인으로 남기고, `alpha=0.3` 기준 후보 비교가 정리된 뒤
+   같은 split seed 42와 같은 local budget으로 연다.
 5. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria

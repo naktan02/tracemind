@@ -35,7 +35,7 @@ report/summary를 검증했다.
   report를 dashboard/index record로 정규화한다.
 - FL SSL runner는 총 예정 communication round가 `49`를 넘으면 기본 차단한다.
 
-현재 사용자 결정에 따라 새로 실행하지 않는 항목:
+후보와 비교 조건 확정 뒤 별도 실행할 항목:
 
 - Dirichlet `alpha=0.1` final stress의 full `50 rounds` 실행.
 - FlexMatch/FreeMatch/PseudoLabel full-budget ablation.
@@ -62,10 +62,10 @@ report/summary를 검증했다.
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_preflight.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
 | alpha=0.3 main baseline | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
 | alpha=0.1 final stress | 현재 `runs/fl_ssl` 아래 검증 가능한 report가 없음. 기본 비교가 아니라 마지막 stress 확인으로 남김 | 대기 |
-| FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. 새 full budget 실행은 현재 사용자 결정에 따라 하지 않음 | 부분 |
-| client_count=1..10 sweep | 1-round summary verified and indexed. 새 full sweep은 현재 사용자 결정에 따라 하지 않음 | 부분 |
+| FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. full budget 비교는 후보와 조건 확정 뒤 별도 실행 | 부분 |
+| client_count=1..10 sweep | 1-round summary verified and indexed. full sweep은 후보와 조건 확정 뒤 별도 실행 | 부분 |
 | seed sweep은 robustness로 분리 | `seed_sweep` runner/summary는 존재. split seed 42 안정화 뒤 별도 실행 | 대기 |
-| 50-round 재실행 방지 | `scripts/experiments/fl_ssl/run_safety.py`와 `tests/unit/test_fl_ssl_run_safety.py` | 완료 |
+| accidental long-run guard | `scripts/experiments/fl_ssl/run_safety.py`와 `tests/unit/test_fl_ssl_run_safety.py` | 완료 |
 | 선택 전 method placeholder 방지 | `tests/architecture/test_layer_dependencies.py`가 `conf/strategy_axes/fl/method_descriptor/*.yaml`과 실제 `methods/federated_ssl/<method>/` 필수 파일 일치를 검증 | 완료 |
 
 ## Read-Only Verification Evidence
@@ -114,9 +114,8 @@ Result index read-only ingest:
 
 ## Next Gate
 
-다음 실행성 작업은 현재 사용자 결정에 따라 진행하지 않는다. 구현성 작업의 다음
-게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이지만, 2026-05-18
-사용자 응답으로 이 선택은 아직 보류한다.
+다음 실행성 작업은 후보와 비교 조건을 먼저 확정한 뒤 진행한다. 구현성 작업의 다음
+게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이다.
 `docs/contracts/fl_ssl_method_capability_matrix.md`와
 `methods/federated_ssl/NEW_METHOD.md`는 이미 선택 전/선택 후 경계를 나눠 둔 상태다.
 현재 권장 첫 후보는 payload family를 바꾸지 않는 FedMatch method-owned local
