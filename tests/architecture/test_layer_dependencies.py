@@ -627,6 +627,26 @@ def test_fl_simulation_client_training_has_no_adapter_family_literals() -> None:
     )
 
 
+def test_fl_single_simulation_entrypoint_stays_thin() -> None:
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_federated_simulation.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "def _build_training_task_config",
+        "def _resolve_fl_data_source",
+        "load_materialized_client_split",
+        "LocalUpdateProfile",
+        "TrainingObjectiveConfig",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "run_federated_simulation.py는 Hydra entrypoint, run dir, result line 출력만 "
+        "맡는다. config-to-SimulationRunRequest 해석은 "
+        "federated_simulation/config_request.py에 둔다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_fl_simulation_report_builder_does_not_write_report_json() -> None:
     builder_path = FL_SIMULATION_IO_SRC / "simulation_report_builder.py"
     writer_path = FL_SIMULATION_IO_SRC / "simulation_report_writer.py"

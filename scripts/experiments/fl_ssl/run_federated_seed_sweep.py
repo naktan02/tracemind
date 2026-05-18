@@ -10,6 +10,9 @@ from pathlib import Path
 import hydra
 from omegaconf import DictConfig
 
+from scripts.experiments.fl_ssl.federated_simulation.config_request import (
+    build_simulation_request_from_config,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     mean,
 )
@@ -23,7 +26,6 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
 from scripts.experiments.fl_ssl.run_federated_simulation import (
-    build_simulation_request_from_config,
     render_simulation_result_lines,
 )
 from scripts.experiments.fl_ssl.run_layout import (

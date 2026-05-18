@@ -8,6 +8,9 @@ import pytest
 from hydra import compose, initialize_config_module
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from scripts.experiments.fl_ssl.federated_simulation.config_request import (
+    build_simulation_request_from_config,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest import (
     FL_CLIENT_SPLIT_MANIFEST_SCHEMA_VERSION,
     FlClientSplitViewSchema,
@@ -15,9 +18,6 @@ from scripts.experiments.fl_ssl.federated_simulation.io.client_split_manifest im
 )
 from scripts.experiments.fl_ssl.materialize_fl_client_split import (
     materialize_fl_client_split,
-)
-from scripts.experiments.fl_ssl.run_federated_simulation import (
-    build_simulation_request_from_config,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     dump_labeled_query_rows,

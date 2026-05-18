@@ -21,7 +21,7 @@ from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
     resolve_federated_ssl_method_descriptor,
 )
-from scripts.experiments.fl_ssl.run_federated_simulation import (
+from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     _with_inferred_manual_axes,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
