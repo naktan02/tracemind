@@ -3,10 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections import Counter
 from collections.abc import Callable, Sequence
-from dataclasses import dataclass
-from datetime import datetime, timezone
 from pathlib import Path
 
 from methods.adaptation.query_classifier_adaptation.view_rows import (
@@ -14,80 +11,38 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
     attach_usb_multiview_candidate_pair,
     validate_usb_multiview_candidate_rows,
 )
+from scripts.datasets.lib.query_ssl_view_manifest import (
+    build_query_ssl_views_manifest,
+    build_query_ssl_views_summary,
+)
+from scripts.datasets.lib.query_ssl_view_models import (
+    QUERY_SSL_VIEWS_SCHEMA_VERSION as _QUERY_SSL_VIEWS_SCHEMA_VERSION,
+)
+from scripts.datasets.lib.query_ssl_view_models import (
+    NllbBacktranslationRuntimeConfig,
+    QuerySslViewArtifacts,
+    ViewPartitionArtifacts,
+    ViewPartitionResult,
+)
+from scripts.datasets.lib.query_ssl_view_progress import (
+    build_initial_progress,
+    update_partition_progress,
+    utc_now,
+    write_progress,
+)
 from scripts.runtime_adapters.backtranslation_runtime import (
     build_nllb_backtranslation_candidate_pairs_from_params,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
-    count_labeled_query_rows_by_label,
     load_labeled_query_rows,
 )
-
-QUERY_SSL_VIEWS_SCHEMA_VERSION = "query_ssl_views.v1"
-QUERY_SSL_VIEWS_PROGRESS_SCHEMA_VERSION = "query_ssl_views_progress.v1"
-
 
 QuerySslCandidatePairBuilder = Callable[
     [Sequence[str]],
     Sequence[QuerySslBacktranslationPair],
 ]
-
-
-@dataclass(frozen=True, slots=True)
-class QuerySslViewArtifacts:
-    """Query SSL view materializer가 쓰는 산출물 경로."""
-
-    labeled_train_with_views_jsonl: Path
-    unlabeled_pool_with_views_jsonl: Path
-    manifest_json: Path
-    summary_json: Path
-    progress_json: Path
-
-
-@dataclass(frozen=True, slots=True)
-class _ViewPartitionArtifacts:
-    partition_name: str
-    source_jsonl: Path
-    final_jsonl: Path
-    tmp_jsonl: Path
-
-
-@dataclass(frozen=True, slots=True)
-class _ViewPartitionResult:
-    partition_name: str
-    rows: list[LabeledQueryRow]
-    resumed_from_count: int
-
-
-@dataclass(frozen=True, slots=True)
-class NllbBacktranslationRuntimeConfig:
-    """NLLB backtranslation runtime 설정."""
-
-    source_lang: str
-    pivot_languages: tuple[str, str]
-    model_id: str
-    revision: str
-    device: str
-    batch_size: int
-    max_new_tokens: int
-    torch_dtype: str
-    cache_dir: str | None
-    local_files_only: bool
-
-    def to_manifest(self) -> dict[str, object]:
-        return {
-            "augmenter_type": "nllb_backtranslation",
-            "source_lang": self.source_lang,
-            "pivot_languages": list(self.pivot_languages),
-            "model_id": self.model_id,
-            "revision": self.revision,
-            "device": self.device,
-            "batch_size": self.batch_size,
-            "max_new_tokens": self.max_new_tokens,
-            "torch_dtype": self.torch_dtype,
-            "cache_dir": self.cache_dir,
-            "local_files_only": self.local_files_only,
-        }
+QUERY_SSL_VIEWS_SCHEMA_VERSION = _QUERY_SSL_VIEWS_SCHEMA_VERSION
 
 
 def materialize_query_ssl_backtranslation_views(
@@ -127,7 +82,7 @@ def materialize_query_ssl_backtranslation_views(
         progress_json=output_dir / "progress.json",
     )
     partitions = (
-        _ViewPartitionArtifacts(
+        ViewPartitionArtifacts(
             partition_name="labeled_train",
             source_jsonl=split_dir / "labeled_train.jsonl",
             final_jsonl=artifacts.labeled_train_with_views_jsonl,
@@ -135,7 +90,7 @@ def materialize_query_ssl_backtranslation_views(
                 ".jsonl.tmp"
             ),
         ),
-        _ViewPartitionArtifacts(
+        ViewPartitionArtifacts(
             partition_name="unlabeled_pool",
             source_jsonl=split_dir / "unlabeled_pool.jsonl",
             final_jsonl=artifacts.unlabeled_pool_with_views_jsonl,
@@ -150,7 +105,7 @@ def materialize_query_ssl_backtranslation_views(
     elif _final_artifacts_exist(artifacts):
         return artifacts
 
-    progress = _build_initial_progress(
+    progress = build_initial_progress(
         split_dir=split_dir,
         split_name=normalized_split_name,
         augmenter_name=normalized_augmenter_name,
@@ -159,9 +114,9 @@ def materialize_query_ssl_backtranslation_views(
         artifacts=artifacts,
         partitions=partitions,
     )
-    _write_progress(artifacts.progress_json, progress)
+    write_progress(artifacts.progress_json, progress)
 
-    partition_results: list[_ViewPartitionResult] = []
+    partition_results: list[ViewPartitionResult] = []
     for partition in partitions:
         partition_results.append(
             _materialize_view_partition(
@@ -176,7 +131,7 @@ def materialize_query_ssl_backtranslation_views(
 
     labeled_rows = partition_results[0].rows
     unlabeled_rows = partition_results[1].rows
-    manifest = _build_query_ssl_views_manifest(
+    manifest = build_query_ssl_views_manifest(
         split_dir=split_dir,
         split_name=normalized_split_name,
         augmenter_name=normalized_augmenter_name,
@@ -192,17 +147,15 @@ def materialize_query_ssl_backtranslation_views(
         encoding="utf-8",
     )
     artifacts.summary_json.write_text(
-        json.dumps(
-            _build_query_ssl_views_summary(manifest), indent=2, ensure_ascii=True
-        )
+        json.dumps(build_query_ssl_views_summary(manifest), indent=2, ensure_ascii=True)
         + "\n",
         encoding="utf-8",
     )
     progress["status"] = "completed"
-    progress["completed_at"] = _utc_now()
+    progress["completed_at"] = utc_now()
     progress["manifest_json"] = str(artifacts.manifest_json)
     progress["summary_json"] = str(artifacts.summary_json)
-    _write_progress(artifacts.progress_json, progress)
+    write_progress(artifacts.progress_json, progress)
     return artifacts
 
 
@@ -231,13 +184,13 @@ def build_nllb_backtranslation_candidate_pair_builder(
 
 def _materialize_view_partition(
     *,
-    partition: _ViewPartitionArtifacts,
+    partition: ViewPartitionArtifacts,
     progress_path: Path,
     progress: dict[str, object],
     candidate_pair_builder: QuerySslCandidatePairBuilder,
     chunk_size: int,
     resume: bool,
-) -> _ViewPartitionResult:
+) -> ViewPartitionResult:
     source_rows = load_labeled_query_rows(partition.source_jsonl)
     if partition.final_jsonl.exists():
         final_rows = load_labeled_query_rows(partition.final_jsonl)
@@ -246,15 +199,15 @@ def _materialize_view_partition(
                 f"{partition.final_jsonl} exists but has {len(final_rows)} rows; "
                 f"expected {len(source_rows)}. Use --overwrite to regenerate."
             )
-        _update_partition_progress(
+        update_partition_progress(
             progress=progress,
             partition=partition,
             total_count=len(source_rows),
             processed_count=len(final_rows),
             status="completed",
         )
-        _write_progress(progress_path, progress)
-        return _ViewPartitionResult(
+        write_progress(progress_path, progress)
+        return ViewPartitionResult(
             partition_name=partition.partition_name,
             rows=final_rows,
             resumed_from_count=len(final_rows),
@@ -276,14 +229,14 @@ def _materialize_view_partition(
         processed_ids = set()
 
     resumed_from_count = len(processed_ids)
-    _update_partition_progress(
+    update_partition_progress(
         progress=progress,
         partition=partition,
         total_count=len(source_rows),
         processed_count=resumed_from_count,
         status="running",
     )
-    _write_progress(progress_path, progress)
+    write_progress(progress_path, progress)
 
     if not source_rows:
         partition.tmp_jsonl.parent.mkdir(parents=True, exist_ok=True)
@@ -299,14 +252,14 @@ def _materialize_view_partition(
         )
         _append_labeled_query_rows(partition.tmp_jsonl, rows_with_views)
         processed_ids.update(str(row["query_id"]) for row in rows_with_views)
-        _update_partition_progress(
+        update_partition_progress(
             progress=progress,
             partition=partition,
             total_count=len(source_rows),
             processed_count=len(processed_ids),
             status="running",
         )
-        _write_progress(progress_path, progress)
+        write_progress(progress_path, progress)
         print(
             "query_ssl_views=chunk_complete "
             f"partition={partition.partition_name} "
@@ -322,14 +275,14 @@ def _materialize_view_partition(
             f"expected {len(source_rows)}."
         )
     partition.tmp_jsonl.replace(partition.final_jsonl)
-    _update_partition_progress(
+    update_partition_progress(
         progress=progress,
         partition=partition,
         total_count=len(source_rows),
         processed_count=len(source_rows),
         status="completed",
     )
-    _write_progress(progress_path, progress)
+    write_progress(progress_path, progress)
     print(
         "query_ssl_views=partition_complete "
         f"partition={partition.partition_name} "
@@ -337,7 +290,7 @@ def _materialize_view_partition(
         f"final_jsonl={partition.final_jsonl}",
         flush=True,
     )
-    return _ViewPartitionResult(
+    return ViewPartitionResult(
         partition_name=partition.partition_name,
         rows=tmp_rows,
         resumed_from_count=resumed_from_count,
@@ -364,172 +317,6 @@ def _attach_backtranslation_views(
         context="Query SSL view materialization",
     )
     return rows_with_views
-
-
-def _build_query_ssl_views_manifest(
-    *,
-    split_dir: Path,
-    split_name: str,
-    augmenter_name: str,
-    augmenter_manifest: dict[str, object],
-    chunk_size: int,
-    labeled_rows: Sequence[LabeledQueryRow],
-    unlabeled_rows: Sequence[LabeledQueryRow],
-    partition_results: Sequence[_ViewPartitionResult],
-    artifacts: QuerySslViewArtifacts,
-) -> dict[str, object]:
-    return {
-        "schema_version": QUERY_SSL_VIEWS_SCHEMA_VERSION,
-        "split_name": split_name,
-        "source_split_dir": str(split_dir),
-        "source_split_manifest_json": str(split_dir / "manifest.json"),
-        "augmenter_name": augmenter_name,
-        "augmenter": augmenter_manifest,
-        "chunk_size": chunk_size,
-        "weak_view_policy": {
-            "labeled": "text",
-            "unlabeled": "text",
-        },
-        "strong_view_policy": {
-            "labeled": ["aug_0", "aug_1"],
-            "unlabeled": ["aug_0", "aug_1"],
-        },
-        "row_counts": {
-            "labeled_train": len(labeled_rows),
-            "unlabeled_pool": len(unlabeled_rows),
-        },
-        "label_counts": {
-            "labeled_train": count_labeled_query_rows_by_label(labeled_rows),
-            "unlabeled_pool": count_labeled_query_rows_by_label(unlabeled_rows),
-        },
-        "view_counts": {
-            "labeled_train": _count_view_metadata(labeled_rows),
-            "unlabeled_pool": _count_view_metadata(unlabeled_rows),
-        },
-        "resume": {
-            result.partition_name: {
-                "resumed_from_count": result.resumed_from_count,
-            }
-            for result in partition_results
-        },
-        "artifacts": {
-            "labeled_train_with_views_jsonl": str(
-                artifacts.labeled_train_with_views_jsonl
-            ),
-            "unlabeled_pool_with_views_jsonl": str(
-                artifacts.unlabeled_pool_with_views_jsonl
-            ),
-            "manifest_json": str(artifacts.manifest_json),
-            "summary_json": str(artifacts.summary_json),
-            "progress_json": str(artifacts.progress_json),
-        },
-    }
-
-
-def _build_query_ssl_views_summary(
-    manifest: dict[str, object],
-) -> dict[str, object]:
-    return {
-        "schema_version": manifest["schema_version"],
-        "split_name": manifest["split_name"],
-        "augmenter_name": manifest["augmenter_name"],
-        "chunk_size": manifest["chunk_size"],
-        "row_counts": manifest["row_counts"],
-        "label_counts": manifest["label_counts"],
-        "view_counts": manifest["view_counts"],
-        "resume": manifest["resume"],
-    }
-
-
-def _count_view_metadata(rows: Sequence[LabeledQueryRow]) -> dict[str, object]:
-    aug_0_pivot_counts: Counter[str] = Counter()
-    aug_1_pivot_counts: Counter[str] = Counter()
-    empty_aug_0_count = 0
-    empty_aug_1_count = 0
-    for row in rows:
-        aug_0_pivot_counts[str(row.get("aug_0_pivot_lang", ""))] += 1
-        aug_1_pivot_counts[str(row.get("aug_1_pivot_lang", ""))] += 1
-        if not str(row.get("aug_0", "")).strip():
-            empty_aug_0_count += 1
-        if not str(row.get("aug_1", "")).strip():
-            empty_aug_1_count += 1
-
-    return {
-        "aug_0_pivot_lang_counts": dict(sorted(aug_0_pivot_counts.items())),
-        "aug_1_pivot_lang_counts": dict(sorted(aug_1_pivot_counts.items())),
-        "empty_aug_0_count": empty_aug_0_count,
-        "empty_aug_1_count": empty_aug_1_count,
-    }
-
-
-def _build_initial_progress(
-    *,
-    split_dir: Path,
-    split_name: str,
-    augmenter_name: str,
-    augmenter_manifest: dict[str, object],
-    chunk_size: int,
-    artifacts: QuerySslViewArtifacts,
-    partitions: Sequence[_ViewPartitionArtifacts],
-) -> dict[str, object]:
-    return {
-        "schema_version": QUERY_SSL_VIEWS_PROGRESS_SCHEMA_VERSION,
-        "status": "running",
-        "created_at": _utc_now(),
-        "updated_at": _utc_now(),
-        "split_name": split_name,
-        "source_split_dir": str(split_dir),
-        "augmenter_name": augmenter_name,
-        "augmenter": augmenter_manifest,
-        "chunk_size": chunk_size,
-        "partitions": {
-            partition.partition_name: {
-                "status": "pending",
-                "source_jsonl": str(partition.source_jsonl),
-                "tmp_jsonl": str(partition.tmp_jsonl),
-                "final_jsonl": str(partition.final_jsonl),
-                "total_count": None,
-                "processed_count": 0,
-                "progress_ratio": 0.0,
-            }
-            for partition in partitions
-        },
-        "manifest_json": str(artifacts.manifest_json),
-        "summary_json": str(artifacts.summary_json),
-    }
-
-
-def _update_partition_progress(
-    *,
-    progress: dict[str, object],
-    partition: _ViewPartitionArtifacts,
-    total_count: int,
-    processed_count: int,
-    status: str,
-) -> None:
-    partitions = progress["partitions"]
-    if not isinstance(partitions, dict):
-        raise TypeError("progress['partitions'] must be a mapping.")
-    partition_progress = partitions[partition.partition_name]
-    if not isinstance(partition_progress, dict):
-        raise TypeError("partition progress must be a mapping.")
-    partition_progress["status"] = status
-    partition_progress["total_count"] = total_count
-    partition_progress["processed_count"] = processed_count
-    partition_progress["progress_ratio"] = (
-        0.0 if total_count == 0 else (processed_count / total_count)
-    )
-    progress["updated_at"] = _utc_now()
-
-
-def _write_progress(path: Path, progress: dict[str, object]) -> None:
-    path.parent.mkdir(parents=True, exist_ok=True)
-    tmp_path = path.with_suffix(".json.tmp")
-    tmp_path.write_text(
-        json.dumps(progress, indent=2, ensure_ascii=True) + "\n",
-        encoding="utf-8",
-    )
-    tmp_path.replace(path)
 
 
 def _append_labeled_query_rows(
@@ -582,7 +369,7 @@ def _iter_chunks(
 def _remove_existing_view_artifacts(
     *,
     artifacts: QuerySslViewArtifacts,
-    partitions: Sequence[_ViewPartitionArtifacts],
+    partitions: Sequence[ViewPartitionArtifacts],
 ) -> None:
     for path in (
         artifacts.manifest_json,
@@ -604,7 +391,3 @@ def _final_artifacts_exist(artifacts: QuerySslViewArtifacts) -> bool:
         and artifacts.manifest_json.exists()
         and artifacts.summary_json.exists()
     )
-
-
-def _utc_now() -> str:
-    return datetime.now(timezone.utc).isoformat()
