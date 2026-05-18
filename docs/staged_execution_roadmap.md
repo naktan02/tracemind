@@ -33,8 +33,11 @@
 - main condition은 `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
   선택된 labeled/unlabeled source pool 전체 분배다.
 - stress condition은 같은 조건에서 Dirichlet `alpha=0.1`로 둔다.
-- main budget은 `50 communication rounds`, `local_epochs=1`, `max_steps=50`이다.
-- smoke budget은 실행 확인용 `3 rounds`다.
+- archived full budget은 `50 communication rounds`, `local_epochs=1`,
+  `max_steps=50`이었다. 현재는 새 `50-round`/full-budget 실행을 하지 않고,
+  기존 alpha=0.3 full report를 read-only evidence로만 검증한다.
+- smoke preset은 실행 확인용 `3 rounds`지만, 현재 method/wiring 검증은 필요에
+  따라 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
 - primary metric은 `macro-F1 + worst-client macro-F1`이고,
   `ECE`, communication cost, per-client variance는 tie-breaker/risk 지표다.
 - method baseline과 추가 후보 구현 기준은 `docs/project_execution_plan.md`의
