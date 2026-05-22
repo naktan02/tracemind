@@ -1,0 +1,5 @@
+# @package server_update_policy
+
+name: fedmatch_partitioned
+delta_format: partitioned_update
+partition_scheme_source: method_descriptor

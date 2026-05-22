@@ -9,6 +9,9 @@ from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.compatibility import (
+    validate_federated_ssl_local_ssl_policy_alignment,
+)
 from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     FederatedSslExecutionPlan,
@@ -98,6 +101,14 @@ def build_simulation_request_from_config(
         cfg=cfg,
         labeled_exposure_policy=fl_data_source.data_source_config.labeled_exposure_policy,
     )
+    query_ssl_objective_config = FederatedQuerySslObjectiveConfig.from_mapping(
+        to_plain_dict(cfg.query_ssl_method),
+        strong_view_policy=str(cfg.query_ssl_strong_view_policy),
+    )
+    validate_federated_ssl_local_ssl_policy_alignment(
+        capability_plan=capability_plan,
+        query_ssl_algorithm_name=query_ssl_objective_config.algorithm_name,
+    )
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
         validation_rows=fl_data_source.validation_rows,
@@ -128,10 +139,7 @@ def build_simulation_request_from_config(
         local_update_profile=local_update_profile,
         execution_plan=execution_plan,
         capability_plan=capability_plan,
-        query_ssl_objective_config=FederatedQuerySslObjectiveConfig.from_mapping(
-            to_plain_dict(cfg.query_ssl_method),
-            strong_view_policy=str(cfg.query_ssl_strong_view_policy),
-        ),
+        query_ssl_objective_config=query_ssl_objective_config,
         local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
             device=str(cfg.runtime.device),
             local_files_only=bool(cfg.runtime.local_files_only),
@@ -162,6 +170,8 @@ def _build_capability_plan(
         server_step_policy=optional_plain_dict(cfg, "server_step_policy"),
         peer_context_policy=optional_plain_dict(cfg, "peer_context_policy"),
         update_partition_policy=optional_plain_dict(cfg, "update_partition_policy"),
+        local_ssl_policy=optional_plain_dict(cfg, "local_ssl_policy"),
+        server_update_policy=optional_plain_dict(cfg, "server_update_policy"),
         query_multiview_source=optional_plain_dict(cfg, "query_multiview_source"),
     )
 

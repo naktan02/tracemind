@@ -22,6 +22,9 @@ trace_mapping:
   supervised_partition: sigma
   unsupervised_partition: psi
   published_state: sigma_plus_psi
+  local_ssl_policy: fedmatch_agreement
+  current_server_update_policy: fedavg_merged_delta
+  target_server_update_policy: fedmatch_partitioned
   aggregation_weight_policy: uniform
 client_step:
   task_type: fedmatch_local_step

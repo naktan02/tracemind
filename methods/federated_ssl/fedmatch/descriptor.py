@@ -23,6 +23,12 @@ from methods.federated_ssl.base import (
     FederatedSslRuntimePair,
     FederatedSslServerStepSpec,
 )
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    LOCAL_SSL_POLICY_FIXMATCH,
+    SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+    SERVER_UPDATE_FEDMATCH_PARTITIONED,
+)
 from methods.federated_ssl.capability_plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
@@ -92,11 +98,19 @@ descriptor = FederatedSslMethodDescriptor(
             LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
         ),
         server_step_policy_names=(SERVER_STEP_NONE, SERVER_STEP_SUPERVISED_SEED),
+        server_update_policy_names=(
+            SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+            SERVER_UPDATE_FEDMATCH_PARTITIONED,
+        ),
         peer_context_policy_names=(
             PEER_CONTEXT_NONE,
             PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
         ),
         update_partition_policy_names=(UPDATE_PARTITION_PARTITIONED,),
+        local_ssl_policy_names=(
+            LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+            LOCAL_SSL_POLICY_FIXMATCH,
+        ),
         aggregation_weight_policy_names=(AGGREGATION_WEIGHT_UNIFORM,),
         query_multiview_source_names=(QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,),
         client_participation_policy_names=(

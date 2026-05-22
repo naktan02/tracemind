@@ -7,11 +7,18 @@ from dataclasses import dataclass
 from methods.common.config_reading import normalize_non_empty_str
 from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
+    LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE,
+    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    SERVER_UPDATE_FEDMATCH_PARTITIONED,
+)
 from methods.federated_ssl.capability_plan import (
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
+    UPDATE_PARTITION_PARTITIONED,
     FederatedSslCapabilityPlan,
 )
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
@@ -126,6 +133,11 @@ def validate_federated_ssl_capability_compatibility(
         method_descriptor=method_descriptor,
         capability_plan=capability_plan,
     )
+    _validate_local_ssl_semantics(
+        method_descriptor=method_descriptor,
+        capability_plan=capability_plan,
+    )
+    _validate_server_update_semantics(capability_plan)
     if method_descriptor is None:
         _validate_manual_capability_plan(capability_plan)
         return
@@ -149,6 +161,12 @@ def validate_federated_ssl_capability_compatibility(
         method_name=method_descriptor.name,
     )
     _require_supported_capability(
+        actual=capability_plan.server_update_policy_name,
+        supported=required.server_update_policy_names,
+        field_name="server_update_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
         actual=capability_plan.peer_context_policy_name,
         supported=required.peer_context_policy_names,
         field_name="peer_context_policy",
@@ -158,6 +176,12 @@ def validate_federated_ssl_capability_compatibility(
         actual=capability_plan.update_partition_policy_name,
         supported=required.update_partition_policy_names,
         field_name="update_partition_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.local_ssl_policy_name,
+        supported=required.local_ssl_policy_names,
+        field_name="local_ssl_policy",
         method_name=method_descriptor.name,
     )
     _require_supported_capability(
@@ -187,6 +211,34 @@ def _validate_manual_capability_plan(
         raise ValueError(
             "manual FL SSL baseline only supports server_step_policy=none."
         )
+    if capability_plan.local_ssl_policy_name == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+        raise ValueError(
+            "manual FL SSL baseline cannot use local_ssl_policy=fedmatch_agreement; "
+            "select a method-owned FedMatch descriptor."
+        )
+
+
+def validate_federated_ssl_local_ssl_policy_alignment(
+    *,
+    capability_plan: FederatedSslCapabilityPlan,
+    query_ssl_algorithm_name: str | None,
+) -> None:
+    """local_ssl_policy가 query_ssl_method와 같은 algorithm을 가리키는지 검증한다."""
+
+    local_ssl_policy_name = capability_plan.local_ssl_policy_name
+    if local_ssl_policy_name not in LOCAL_SSL_POLICIES_FROM_QUERY_SSL:
+        return
+    actual = None if query_ssl_algorithm_name is None else query_ssl_algorithm_name
+    if actual is None:
+        raise ValueError(
+            "local_ssl_policy requires query_ssl_method.algorithm_name when the "
+            f"policy uses Query SSL parameters: {local_ssl_policy_name!r}."
+        )
+    if actual.strip().lower().replace("-", "_") != local_ssl_policy_name:
+        raise ValueError(
+            "local_ssl_policy must match query_ssl_method.algorithm_name: "
+            f"{local_ssl_policy_name!r} != {actual!r}."
+        )
 
 
 def _validate_server_only_semantics(
@@ -213,6 +265,41 @@ def _validate_server_only_semantics(
         )
     if method_descriptor is None:
         raise ValueError("server_only_seed requires a method-owned FL SSL descriptor.")
+
+
+def _validate_local_ssl_semantics(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor | None,
+    capability_plan: FederatedSslCapabilityPlan,
+) -> None:
+    if capability_plan.local_ssl_policy_name != LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+        return
+    if method_descriptor is None or method_descriptor.name != "fedmatch":
+        raise ValueError(
+            "local_ssl_policy=fedmatch_agreement requires the FedMatch "
+            "method-owned descriptor."
+        )
+
+
+def _validate_server_update_semantics(
+    capability_plan: FederatedSslCapabilityPlan,
+) -> None:
+    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
+        return
+    if capability_plan.update_partition_policy_name != UPDATE_PARTITION_PARTITIONED:
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned requires "
+            "update_partition_policy=partitioned."
+        )
+    if (
+        capability_plan.local_ssl_policy_name
+        in LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE
+    ):
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned with "
+            f"local_ssl_policy={capability_plan.local_ssl_policy_name} requires a "
+            "local SSL state surface before execution."
+        )
 
 
 def _require_supported_capability(

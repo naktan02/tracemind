@@ -1,0 +1,4 @@
+# @package local_ssl_policy
+
+name: fedmatch_agreement
+parameter_source: method_descriptor

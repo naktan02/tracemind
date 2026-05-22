@@ -259,13 +259,19 @@ Runtime translation:
    client context 주입 seam은 열었다. 다음 구현은 이전 round client model/probe
    snapshot 기반 helper prediction tensor 생성, sparse S2C/C2S sync, 필요한 runtime
    capability adapter 순서로 진행한다.
-5. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+5. FedMatch-style server update와 local SSL policy는 별도 capability 축으로 분리했다.
+   현재 `fedavg_merged_delta`는 실행 중인 merged delta/FedAvg path이고,
+   `fedmatch_partitioned`는 partitioned delta server 해석을 여는 다음 runtime adapter
+   대상이다. `local_ssl_policy=query_ssl_method`는 FixMatch류 파라미터를 기존
+   `query_ssl_method`에서 읽고, `fedmatch_agreement`는 FedMatch method package가
+   소유한다.
+6. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
-6. full ablation, full `client_count=1..10` sweep, full-budget main run은
+7. full ablation, full `client_count=1..10` sweep, full-budget main run은
    후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
    아니라 최후 stress 확인으로 남기고, `alpha=0.3` 기준 후보 비교가 정리된 뒤
    같은 split seed 42와 같은 local budget으로 연다.
-5. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+8. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

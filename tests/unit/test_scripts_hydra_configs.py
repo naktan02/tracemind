@@ -22,6 +22,7 @@ from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
 )
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
+    _build_capability_plan,
     _build_execution_plan,
     _build_ssl_method_config,
     _with_inferred_manual_axes,
@@ -776,6 +777,54 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     assert cfg.ssl_method.trace_mapping.aggregation_weight_policy == "uniform"
     assert cfg.ssl_method.trace_mapping.update_partition_policy == "partitioned"
     assert cfg.ssl_method.trace_mapping.partition_scheme == "sigma_psi"
+
+
+def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm() -> (
+    None
+):
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+    )
+
+    assert cfg.local_ssl_policy.name == cfg.query_ssl_method.algorithm_name
+    assert capability_plan.local_ssl_policy_name == "flexmatch"
+    assert capability_plan.server_update_policy_name == "fedavg_merged_delta"
+
+
+def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/method_descriptor=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/fl/server_update_policy=fedmatch_partitioned",
+                "strategy_axes/fl/update_partition_policy=partitioned",
+                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
+                "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+    )
+
+    assert cfg.local_ssl_policy.name == "fixmatch"
+    assert cfg.server_update_policy.name == "fedmatch_partitioned"
+    assert capability_plan.local_ssl_policy_name == "fixmatch"
+    assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
+    assert capability_plan.update_partition_policy_name == "partitioned"
 
 
 def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> None:

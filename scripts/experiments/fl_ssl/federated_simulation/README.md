@@ -100,7 +100,8 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - `composition_mode=manual`에서는 lower-axis 조합 baseline/ablation임을 명시한다.
 - `query_ssl_method`
   - `strategy_axes/ssl/consistency_method`에서 compose된다.
-  - manual baseline의 client SSL objective source of truth다.
+  - manual baseline과 `local_ssl_policy=query_ssl_method` 조합의 client SSL objective
+    parameter source of truth다.
   - 기본은 `fixmatch_usb_v1`이며, FlexMatch/FreeMatch/PseudoLabel 비교는 이
     Hydra group 이름만 바꿔야 한다.
 - `fl_data`
@@ -123,11 +124,18 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `aggregation_weight_policy`
   - 기본은 기존 FedAvg와 같은 `example_count`다.
   - method가 요구하면 `uniform`이나 `accepted_count`를 capability plan으로 고른다.
-- `server_step_policy`, `peer_context_policy`, `update_partition_policy`,
-  `query_multiview_source`
+- `server_step_policy`, `server_update_policy`, `peer_context_policy`,
+  `update_partition_policy`, `local_ssl_policy`, `query_multiview_source`
   - method 전용 파일명이 아니라 공통 capability axis다.
   - 현재 실행 가능 기본은 `server_step=none`, `peer_context=none`,
-    `update_partition=unified`, `query_multiview_source=materialized_rows`다.
+    `server_update=fedavg_merged_delta`, `update_partition=unified`,
+    `local_ssl_policy=query_ssl_method`, `query_multiview_source=materialized_rows`다.
+  - `server_update_policy`는 server가 merged/partitioned update payload를 어떤
+    의미로 해석할지 나타내며, server-side supervised seed step 여부인
+    `server_step_policy`와 분리한다.
+  - `local_ssl_policy=query_ssl_method`는 `query_ssl_method.algorithm_name`을
+    canonical local SSL policy 이름으로 쓴다. FixMatch류 파라미터를 FL capability
+    config에 복제하지 않는다.
   - `peer_context=prediction_similarity_topk`는 method descriptor의 helper 개수와
     refresh interval을 읽어 client별 helper context를 만든다. 현재 slice는 helper
     client id 선택과 trainer 주입 seam까지이며, helper model prediction tensor

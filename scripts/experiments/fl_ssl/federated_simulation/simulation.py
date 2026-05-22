@@ -9,6 +9,7 @@ from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_capability_compatibility,
+    validate_federated_ssl_local_ssl_policy_alignment,
     validate_federated_ssl_profile_compatibility,
 )
 from methods.federated_ssl.execution_plan import (
@@ -119,6 +120,13 @@ def _require_runtime_compatibility(
         method_descriptor=ssl_method_descriptor,
         capability_plan=_resolve_capability_plan(request),
     )
+    query_ssl_objective = _resolve_query_ssl_objective_config(request)
+    validate_federated_ssl_local_ssl_policy_alignment(
+        capability_plan=_resolve_capability_plan(request),
+        query_ssl_algorithm_name=(
+            None if query_ssl_objective is None else query_ssl_objective.algorithm_name
+        ),
+    )
     server_step_execution.require_supported_server_step(
         _resolve_capability_plan(request)
     )
@@ -154,6 +162,8 @@ def _resolve_capability_plan(
         server_step_policy=None,
         peer_context_policy=None,
         update_partition_policy=None,
+        local_ssl_policy=None,
+        server_update_policy=None,
         query_multiview_source=None,
     )
 

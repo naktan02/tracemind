@@ -36,9 +36,12 @@
   method-owned LoRA trainer까지 전달하는 seam
 - full ResNet9 sigma/psi decomposition을 LoRA adapter + classifier head의
   logical sigma/psi partition으로 매핑
+- `server_update_policy`와 `local_ssl_policy` 축에서 FedMatch-style partitioned
+  server update와 FixMatch local SSL policy 조합을 표현/검증하는 capability surface
 
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper client id
 선택 seam은 열렸지만 helper model prediction tensor 생성, sparse S2C/C2S delta
-sync, labels-at-server supervised server step은 다음 단계 capability로 남긴다.
-현재 server path는 `server_step_policy=none`에서 기존 LoRA-classifier FedAvg가
-merged delta를 aggregation한다.
+sync, `fedmatch_partitioned` server update adapter, labels-at-server supervised server
+step은 다음 단계 capability로 남긴다. 현재 실행 server path는
+`server_step_policy=none`, `server_update_policy=fedavg_merged_delta`에서 기존
+LoRA-classifier FedAvg가 merged delta를 aggregation한다.

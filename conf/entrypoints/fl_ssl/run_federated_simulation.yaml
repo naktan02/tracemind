@@ -13,6 +13,7 @@ defaults:
   - /strategy_axes/fl/client_participation_policy: all_clients
   - /strategy_axes/fl/local_supervision_regime: client_labeled_and_unlabeled
   - /strategy_axes/fl/server_step_policy: none
+  - /strategy_axes/fl/server_update_policy: fedavg_merged_delta
   - /strategy_axes/fl/peer_context_policy: none
   - /strategy_axes/fl/update_partition_policy: unified
   - /strategy_axes/fl/aggregation_weight_policy: example_count
@@ -20,6 +21,7 @@ defaults:
   - /strategy_axes/fl/method_descriptor: null
   - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
+  - /strategy_axes/fl/local_ssl_policy: query_ssl_method
   - /strategy_axes/prototype/build_strategy: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled

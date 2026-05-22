@@ -32,10 +32,12 @@ policy가 된다.
     소유하는 논문 method용이다.
 - `FederatedSslCapabilityPlan`
   - labeled exposure, local supervision regime, server step, peer context,
-    update partition, aggregation weight, query multiview source,
+    server update, update partition, local SSL policy, aggregation weight,
+    query multiview source,
     client participation을 공통 capability 축으로 기록한다.
   - 기본값은 `shared_client_seed`, `all_clients`, `client_labeled_and_unlabeled`,
-    `server_step=none`, `peer_context=none`, `update_partition=unified`,
+    `server_step=none`, `server_update=fedavg_merged_delta`, `peer_context=none`,
+    `update_partition=unified`, `local_ssl_policy=profile_pseudo_label`,
     `aggregation_weight=example_count`, `query_multiview_source=materialized_rows`다.
 - `methods/federated_ssl/fedmatch/`
   - FedMatch descriptor, 원본 설정 snapshot, local objective/server/round policy,
@@ -93,6 +95,15 @@ FedMatch 다음 구현 결정:
   generic `partitioned` update capability로 표현한다. `sigma/psi` partition scheme은
   FedMatch-local metadata로 두고, shared contract를 바꾸는 payload split은 실제 필요가
   확인될 때만 연다.
+- server update/delta 해석은 `server_update_policy`로 분리했다. 현재 실행되는 FedMatch
+  slice는 `fedavg_merged_delta`로 merged LoRA-classifier delta를 기존 FedAvg path에
+  제출한다. `fedmatch_partitioned`는 `update_partition_policy=partitioned`와 함께
+  FixMatch 같은 stateless local SSL policy를 조합할 수 있게 capability/validator
+  surface를 열었고, 실제 partitioned server aggregation adapter는 다음 구현 단계다.
+- local pseudo-label/consistency objective는 `local_ssl_policy`로 분리했다.
+  FixMatch/FlexMatch/FreeMatch 파라미터는 기존 `query_ssl_method`가 계속 소유하고,
+  `fedmatch_agreement`는 FedMatch method package가 소유한다. FlexMatch/FreeMatch처럼
+  algorithm state 저장 surface가 필요한 조합은 실행 전에 validator가 막는다.
 - inter-client consistency는 `peer_context=none` baseline을 유지하면서,
   `peer_context_policy=prediction_similarity_topk` runtime adapter로 helper client
   선택과 method-owned trainer 주입 seam을 열었다. 실제 helper model prediction

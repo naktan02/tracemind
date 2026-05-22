@@ -74,8 +74,10 @@ central fixed embedding + classifier seed
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
+| Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator | merged FedAvg active, partitioned server update planned |
 | Peer context policy | `none`, `prediction_similarity_topk` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter | `none` active, top-k helper context selection active, helper prediction tensor planned |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
+| Local SSL policy | `profile_pseudo_label`, `fixmatch`, `flexmatch`, `freematch`, `adamatch`, `pseudolabel`, `fedmatch_agreement` | `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method` | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement active in method-owned slice |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
 | Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
@@ -111,9 +113,16 @@ central fixed embedding + classifier seed
   `plaintext`만 지원하며, secure aggregation/DP/암호화 artifact ref는 이후 capability
   adapter와 validator를 붙일 자리로 남긴다.
 - FL SSL capability plan은 method 전용 코드가 아니다. client participation,
-  labeled exposure, server step, peer context, update partition, aggregation weight,
-  query multiview source를 공통 축으로 고정하고, FedMatch 같은 method descriptor가
+  labeled exposure, server step, server update, peer context, update partition,
+  local SSL policy, aggregation weight, query multiview source를 공통 축으로 고정하고,
+  FedMatch 같은 method descriptor가
   필요한 값을 요구한다.
+- `server_step_policy`는 server-side supervised seed step 여부이고,
+  `server_update_policy`는 merged delta/FedMatch-style partitioned delta 같은 update
+  해석 방식이다. 같은 이름 공간에 섞지 않는다.
+- `local_ssl_policy=query_ssl_method`는 기존 `query_ssl_method.algorithm_name`을
+  canonical 이름으로 가져온다. FixMatch/FlexMatch/FreeMatch 파라미터를 FL config에
+  복제하지 않는다.
 - 공통 update partition 축은 `partitioned`까지만 표현한다. FedMatch의
   `sigma/psi`처럼 partition 이름과 loss routing 의미는 method package가 소유하고,
   두 개 이상 method에서 같은 scheme이 반복될 때만 공통 scheme으로 승격한다.

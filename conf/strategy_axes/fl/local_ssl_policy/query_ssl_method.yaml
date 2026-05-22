@@ -1,0 +1,4 @@
+# @package local_ssl_policy
+
+name: ${query_ssl_method.algorithm_name}
+parameter_source: query_ssl_method

@@ -11,6 +11,14 @@ from methods.federated.client_split import (
     LABELED_EXPOSURE_SHARED_CLIENT_SEED,
 )
 from methods.federated.participation import ClientParticipationPolicy
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICY_NAMES,
+    LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL,
+    SERVER_UPDATE_FEDAVG_MERGED_DELTA,
+    SERVER_UPDATE_POLICY_NAMES,
+    LocalSslPolicy,
+    ServerUpdatePolicy,
+)
 
 LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED = "client_labeled_and_unlabeled"
 LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY = "client_unlabeled_only"
@@ -64,8 +72,10 @@ class FederatedSslCapabilityPlan:
     labeled_exposure_policy_name: str = LABELED_EXPOSURE_SHARED_CLIENT_SEED
     local_supervision_regime_name: str = LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED
     server_step_policy_name: str = SERVER_STEP_NONE
+    server_update_policy_name: str = SERVER_UPDATE_FEDAVG_MERGED_DELTA
     peer_context_policy_name: str = PEER_CONTEXT_NONE
     update_partition_policy_name: str = UPDATE_PARTITION_UNIFIED
+    local_ssl_policy_name: str = LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL
     query_multiview_source_name: str = QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS
 
     @classmethod
@@ -80,6 +90,8 @@ class FederatedSslCapabilityPlan:
         peer_context_policy: Mapping[str, object] | None,
         update_partition_policy: Mapping[str, object] | None,
         query_multiview_source: Mapping[str, object] | None,
+        local_ssl_policy: Mapping[str, object] | None = None,
+        server_update_policy: Mapping[str, object] | None = None,
     ) -> "FederatedSslCapabilityPlan":
         return cls(
             client_participation_policy=ClientParticipationPolicy.from_mapping(
@@ -100,6 +112,9 @@ class FederatedSslCapabilityPlan:
                 server_step_policy,
                 default=SERVER_STEP_NONE,
             ),
+            server_update_policy_name=ServerUpdatePolicy.from_mapping(
+                server_update_policy
+            ).name,
             peer_context_policy_name=_policy_name(
                 peer_context_policy,
                 default=PEER_CONTEXT_NONE,
@@ -108,6 +123,7 @@ class FederatedSslCapabilityPlan:
                 update_partition_policy,
                 default=UPDATE_PARTITION_UNIFIED,
             ),
+            local_ssl_policy_name=LocalSslPolicy.from_mapping(local_ssl_policy).name,
             query_multiview_source_name=_policy_name(
                 query_multiview_source,
                 default=QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,
@@ -131,6 +147,11 @@ class FederatedSslCapabilityPlan:
             field_name="server_step_policy.name",
         )
         _validate_name(
+            self.server_update_policy_name,
+            allowed=SERVER_UPDATE_POLICY_NAMES,
+            field_name="server_update_policy.name",
+        )
+        _validate_name(
             self.peer_context_policy_name,
             allowed=PEER_CONTEXT_POLICIES,
             field_name="peer_context_policy.name",
@@ -139,6 +160,11 @@ class FederatedSslCapabilityPlan:
             self.update_partition_policy_name,
             allowed=UPDATE_PARTITION_POLICIES,
             field_name="update_partition_policy.name",
+        )
+        _validate_name(
+            self.local_ssl_policy_name,
+            allowed=LOCAL_SSL_POLICY_NAMES,
+            field_name="local_ssl_policy.name",
         )
         _validate_name(
             self.query_multiview_source_name,
@@ -160,11 +186,17 @@ class FederatedSslCapabilityPlan:
             "server_step_policy": {
                 "name": self.server_step_policy_name,
             },
+            "server_update_policy": {
+                "name": self.server_update_policy_name,
+            },
             "peer_context_policy": {
                 "name": self.peer_context_policy_name,
             },
             "update_partition_policy": {
                 "name": self.update_partition_policy_name,
+            },
+            "local_ssl_policy": {
+                "name": self.local_ssl_policy_name,
             },
             "aggregation_weight_policy": self.aggregation_weight_policy.to_payload(),
             "query_multiview_source": {
