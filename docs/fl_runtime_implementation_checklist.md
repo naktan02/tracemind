@@ -80,6 +80,17 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   helper index, 이전 round client-local LoRA snapshot 기반 helper weak-probability
   provider는 열렸고,
   sparse S2C/C2S, labels-at-server server runtime은 후속 구현이다.
+- [x] FedMatch method-owned smoke로 helper injection과 partitioned delta path를
+  확인했다. 1-round smoke는 previous client snapshot이 없어 helper count 0이 정상이고,
+  2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
+  report verification CLI도 PASS했다.
+- [ ] FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
+  현재 병목은 client/round마다 frozen transformer backbone/tokenizer를 재로딩하는 것,
+  helper snapshot마다 helper model을 materialize하는 것, 전체 validation rows를
+  fixed probe처럼 사용하는 것이다. 다음 구현은 method-specific runtime 파일을 추가하지
+  말고 `lora_classifier` adapter-family simulation runtime에 backbone/tokenizer cache를
+  두며, `fixed_probe_output_knn` probe를 작은 deterministic subset + manifest/hash로
+  계약화한다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
   `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로

@@ -122,6 +122,22 @@ Result index read-only ingest:
 
 ## Next Gate
 
-다음 실행성 작업은 FedMatch method-owned reduced run을 current runtime metadata와
-함께 닫는 것이다. manual FixMatch baseline과 같은 split/seed/local budget으로 맞춘 뒤
-full-budget 비교 후보로 올린다.
+FedMatch method-owned smoke는 2026-05-22에 current runtime metadata로 확인했다.
+
+- 1-round smoke:
+  `method_owned + fedmatch_agreement + fixed_probe_output_knn + fedmatch_partitioned`
+  report 생성과 `partitioned_deltas` 제출을 확인했다. round 1은 previous client
+  snapshot이 없어 helper count가 0인 것이 정상이다.
+- 2-client 2-round smoke:
+  round 2에서 `fedmatch_peer_context_helper_count=1.0`,
+  `fedmatch_peer_context_refreshed=1.0`, `fedmatch_partitioned_delta_count=2.0`을
+  확인했고 report verification CLI가 PASS했다.
+
+다음 실행성 작업은 바로 10-client 5-round reduced를 돌리는 것이 아니라,
+LoRA-classifier simulation 병목을 먼저 줄이는 것이다. 확인된 병목은 client/round마다
+frozen transformer backbone/tokenizer를 다시 로드하는 것, helper snapshot마다 helper
+model을 다시 materialize하는 것, 전체 validation rows를 fixed probe처럼 쓰는 것이다.
+다음 구현 게이트는 `lora_classifier` adapter-family simulation runtime에
+backbone/tokenizer cache를 추가하고, `fixed_probe_output_knn` probe를 작은 deterministic
+probe subset과 manifest/hash로 계약화하는 것이다. 이후 manual FixMatch baseline과 같은
+split/seed/local budget으로 FedMatch reduced report를 맞춘다.

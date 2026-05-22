@@ -289,6 +289,15 @@ nearest-neighbor index로 helper를 고른다. 따라서 smoke처럼 짧은 roun
 injection을 검증할 때는 `helper_refresh_interval=1`만 override하고, 논문 기본
 실행에서는 원본 `h_interval=10`을 유지한다.
 
+주의: helper injection은 previous round client snapshot이 있어야 보인다. 1-round
+smoke에서는 helper count가 0인 것이 정상이고, 최소 2 rounds가 필요하다. 2026-05-22
+기준 `2 clients x 2 rounds x max_steps=1` smoke에서 round 2 helper injection은
+확인했지만 약 10분이 걸렸다. 10-client 5-round reduced로 올리기 전에는
+LoRA-classifier simulation의 frozen backbone/tokenizer 재로딩과 helper model
+materialization 병목을 먼저 줄인다. 비교용 reduced는 우선 `10 clients`, `5 rounds`,
+`training_task.batch_size=12`, `training_task.max_steps=20`으로 맞춘다. config 기본값은
+`max_steps=50`이므로 비교 실행에서는 override를 명시한다.
+
 ## Report Index 갱신
 
 실험 웹/대시보드용 index는 중앙 SSL과 FL SSL report를 같은 ingest로 읽는다.

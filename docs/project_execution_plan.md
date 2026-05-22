@@ -243,25 +243,47 @@ Runtime translation:
   client count, SSL method, adapter family, aggregation, delta format metadata를
   재검증할 수 있다. 현재 감사용 manifest는
   `docs/operations/fl_ssl_artifact_verification_manifest.current.json`다.
+- FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
+  `server_update_policy=fedmatch_partitioned`,
+  `local_ssl_policy=fedmatch_agreement` 조합으로 2026-05-22에 확인했다.
+  1-round smoke는 previous client snapshot이 없어 helper count가 0인 것이 정상이고,
+  2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
+  report 검증 CLI도 PASS했다. 다만 `2 clients x 2 rounds x max_steps=1`도 약 10분
+  걸려 reduced run 전 runtime 병목 개선이 필요하다.
 
 다음 우선순위:
 
-1. FedMatch의 현재 method-owned simulation slice를 기준으로 reduced run을 다시
-   닫는다. 확인 대상은 `method_owned`, `local_ssl_policy=fedmatch_agreement`,
+1. FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
+   확인된 병목은 client/round마다 `AutoModel.from_pretrained()`로 frozen backbone을
+   재로딩하는 것, helper snapshot마다 helper model을 다시 materialize하는 것,
+   매 round 전체 validation/probe를 반복 평가하는 것이다.
+2. `fixed_probe_output_knn`의 fixed probe surface를 전체 validation rows가 아니라
+   작은 deterministic probe subset으로 계약화한다. 예: label-balanced 64 또는 128 rows,
+   probe manifest/hash, probe row count metadata. 원본 FedMatch의 fixed Gaussian probe에
+   대응하는 TraceMind fixed text probe로 문서화한다.
+3. `lora_classifier` adapter-family simulation runtime에 backbone/tokenizer cache를
+   추가한다. method-specific 파일을 늘리지 않고, shared frozen backbone/tokenizer를
+   재사용하고 client별 LoRA/head state만 로드하도록 한다. helper provider도 같은 cache를
+   사용해 helper model materialization 비용을 줄인다.
+4. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
+   `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas` 소비, final report metadata다.
-2. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
+   비교용 reduced 조건은 우선 `10 clients`, `5 rounds`, `batch_size=12`,
+   `training_task.max_steps=20`으로 둔다. config 기본값은 `max_steps=50`이므로
+   비교 실행에서는 명시 override한다.
+5. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
    FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
-3. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
+6. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
    막는다.
-4. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
+7. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
    parity 후보로 남기되, 현재 다음 실행 게이트는 아니다.
-5. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
+8. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
    비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
    stress 확인으로 남긴다.
-6. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+9. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 
