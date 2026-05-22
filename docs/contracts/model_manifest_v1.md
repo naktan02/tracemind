@@ -68,11 +68,9 @@ v1 원칙:
 
 1. `base_model_id`
 2. `base_model_revision`
-3. `translation_model_id`
-4. `translation_model_revision`
-5. `auxiliary_artifact_versions`
+3. `auxiliary_artifact_versions`
    - 예: `{ "prototype_pack": "proto_2026_03_28_163056" }`
-6. `notes`
+4. `notes`
 
 ---
 
@@ -85,10 +83,12 @@ v1에서는 아래를 포함하지 않는다.
 3. 개별 학습 샘플
 4. raw gradient나 update payload
 5. top-level `prototype_version`
+6. top-level `translation_model_id` / `translation_model_revision`
 
 구형 manifest JSON에 `prototype_version`이 있으면 runtime parser가
 `auxiliary_artifact_versions["prototype_pack"]`로 승격한다. 새 manifest는 이 필드를
-출력하지 않는다.
+출력하지 않는다. 구형 manifest JSON의 translation model 필드는 artifact-specific
+metadata로 보고 canonical manifest에서는 버린다.
 
 ---
 

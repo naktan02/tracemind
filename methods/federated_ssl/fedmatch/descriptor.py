@@ -43,6 +43,7 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_ORIGINAL_COMMIT,
     FEDMATCH_ORIGINAL_REPOSITORY,
 )
+from shared.src.contracts.common_types import TrainingTaskType
 
 FEDMATCH_METHOD_NAME = "fedmatch"
 
@@ -55,7 +56,7 @@ descriptor = FederatedSslMethodDescriptor(
         view_generator_name="usb_multiview",
     ),
     local_step=FederatedSslLocalStepSpec(
-        step_name="fedmatch_local_step",
+        step_name=TrainingTaskType.FEDERATED_SSL_METHOD_LOCAL_STEP.value,
         client_trainer_name="method_owned_local_objective",
         pseudo_labeler_name="fedmatch_agreement_pseudo_labeler",
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,

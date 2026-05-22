@@ -48,7 +48,7 @@ from shared.src.contracts.training_objective_contracts import (
     TrainingSelectionPolicyPayload,
 )
 
-from .common_types import TrainingScope, TrainingTaskType
+from .common_types import TrainingScope, TrainingTaskType, normalize_training_task_type
 
 TRAINING_TASK_V1 = "training_task.v1"
 TRAINING_UPDATE_ENVELOPE_V1 = "training_update_envelope.v1"
@@ -165,6 +165,8 @@ class TrainingTaskPayload(BaseModel):
         if not isinstance(source, Mapping):
             return source
         data = dict(source)
+        if "task_type" in data:
+            data["task_type"] = normalize_training_task_type(data["task_type"])
         legacy_required = data.pop("secure_aggregation_required", None)
         secure_aggregation = data.get("secure_aggregation")
         if secure_aggregation is None:

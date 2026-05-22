@@ -156,8 +156,6 @@ class RoundManagerService:
             compatible_task_types=request.base_manifest.compatible_task_types,
             base_model_id=request.base_manifest.base_model_id,
             base_model_revision=request.base_manifest.base_model_revision,
-            translation_model_id=request.base_manifest.translation_model_id,
-            translation_model_revision=request.base_manifest.translation_model_revision,
             notes=(
                 f"round_active_pair_only published from {request.updates[0].round_id}"
             ),

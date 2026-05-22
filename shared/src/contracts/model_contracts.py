@@ -44,18 +44,20 @@ class ModelManifest(BaseModel):
     compatible_task_types: tuple[TrainingTaskType, ...] = ()
     base_model_id: str | None = None
     base_model_revision: str | None = None
-    translation_model_id: str | None = None
-    translation_model_revision: str | None = None
     notes: str | None = None
 
     @model_validator(mode="before")
     @classmethod
-    def _migrate_legacy_prototype_version(cls, data: object) -> object:
-        """구형 manifest의 top-level prototype_version을 auxiliary map으로 승격한다."""
+    def _migrate_legacy_artifact_specific_fields(cls, data: object) -> object:
+        """구형 manifest의 artifact-specific top-level 필드를 정규화한다."""
 
-        if not isinstance(data, dict) or "prototype_version" not in data:
+        if not isinstance(data, dict):
             return data
         migrated = dict(data)
+        migrated.pop("translation_model_id", None)
+        migrated.pop("translation_model_revision", None)
+        if "prototype_version" not in migrated:
+            return migrated
         prototype_version = migrated.pop("prototype_version")
         if prototype_version is None:
             return migrated

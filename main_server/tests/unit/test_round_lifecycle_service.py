@@ -1135,11 +1135,20 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     )
 
     assert finalized.publication is not None
-    assert finalized.publication.prototype_rebuild_input_id == "bootstrap_v1"
-    assert finalized.publication.prototype_pack_ref is not None
-    assert Path(finalized.publication.prototype_pack_ref).exists()
-    assert finalized.publication.prototype_build_state_ref is not None
-    assert Path(finalized.publication.prototype_build_state_ref).exists()
+    assert (
+        finalized.publication.auxiliary_artifact_metadata["prototype_rebuild_input_id"]
+        == "bootstrap_v1"
+    )
+    prototype_pack_ref = finalized.publication.auxiliary_artifact_refs.get(
+        "prototype_pack"
+    )
+    assert prototype_pack_ref is not None
+    assert Path(prototype_pack_ref).exists()
+    prototype_build_state_ref = finalized.publication.auxiliary_artifact_refs.get(
+        "prototype_build_state"
+    )
+    assert prototype_build_state_ref is not None
+    assert Path(prototype_build_state_ref).exists()
 
 
 def test_round_lifecycle_finalizes_registered_custom_family(

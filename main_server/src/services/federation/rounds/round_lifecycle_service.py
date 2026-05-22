@@ -284,6 +284,8 @@ class RoundLifecycleService:
         )
         finalized_at = publication.next_manifest.published_at
         rebuild_result = None
+        auxiliary_artifact_refs: dict[str, str] = {}
+        auxiliary_artifact_metadata: dict[str, str] = {}
         if self.prototype_rebuild_runtime_service is not None:
             prototype_version = (
                 publication.next_manifest.auxiliary_artifact_versions.get(
@@ -304,6 +306,18 @@ class RoundLifecycleService:
                     built_at=publication.next_manifest.published_at,
                 )
             )
+            if rebuild_result.published_pack_path is not None:
+                auxiliary_artifact_refs["prototype_pack"] = str(
+                    rebuild_result.published_pack_path
+                )
+            if rebuild_result.published_build_state_path is not None:
+                auxiliary_artifact_refs["prototype_build_state"] = str(
+                    rebuild_result.published_build_state_path
+                )
+            if rebuild_result.source_input_id:
+                auxiliary_artifact_metadata["prototype_rebuild_input_id"] = (
+                    rebuild_result.source_input_id
+                )
         finalized_record = replace(
             record,
             status=RoundStatus.FINALIZED,
@@ -315,21 +329,8 @@ class RoundLifecycleService:
                 update_count=publication.update_count,
                 finalized_at=finalized_at,
                 round_state_summary_metrics=dict(round_state_exchange.summary_metrics),
-                prototype_pack_ref=(
-                    None
-                    if rebuild_result is None
-                    or rebuild_result.published_pack_path is None
-                    else str(rebuild_result.published_pack_path)
-                ),
-                prototype_build_state_ref=(
-                    None
-                    if rebuild_result is None
-                    or rebuild_result.published_build_state_path is None
-                    else str(rebuild_result.published_build_state_path)
-                ),
-                prototype_rebuild_input_id=(
-                    None if rebuild_result is None else rebuild_result.source_input_id
-                ),
+                auxiliary_artifact_refs=auxiliary_artifact_refs,
+                auxiliary_artifact_metadata=auxiliary_artifact_metadata,
             ),
         )
         self.round_repository.save_round(finalized_record)

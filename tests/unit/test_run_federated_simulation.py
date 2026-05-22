@@ -131,7 +131,25 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
     }
 
 
-def test_round_task_mapper_accepts_fedmatch_local_step_task_type() -> None:
+def test_round_task_mapper_accepts_federated_ssl_method_step_task_type() -> None:
+    config = build_federated_training_task_config(
+        task_type="federated_ssl_method_local_step",
+        local_epochs=1,
+        batch_size=4,
+        learning_rate=1e-4,
+        max_steps=1,
+        min_required_examples=1,
+        gradient_clip_norm=0.5,
+        objective_config={
+            "training_backend_name": "lora_classifier_trainer",
+        },
+        selection_policy={"max_examples": 8},
+    )
+
+    assert config.task_type == TrainingTaskType.FEDERATED_SSL_METHOD_LOCAL_STEP
+
+
+def test_round_task_mapper_migrates_legacy_fedmatch_task_type() -> None:
     config = build_federated_training_task_config(
         task_type="fedmatch_local_step",
         local_epochs=1,
@@ -146,7 +164,7 @@ def test_round_task_mapper_accepts_fedmatch_local_step_task_type() -> None:
         selection_policy={"max_examples": 8},
     )
 
-    assert config.task_type == TrainingTaskType.FEDMATCH_LOCAL_STEP
+    assert config.task_type == TrainingTaskType.FEDERATED_SSL_METHOD_LOCAL_STEP
 
 
 def _default_shard_policy() -> FederatedShardPolicyConfig:

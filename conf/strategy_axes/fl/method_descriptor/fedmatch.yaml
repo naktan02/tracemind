@@ -27,7 +27,7 @@ trace_mapping:
   target_server_update_policy: fedmatch_partitioned
   aggregation_weight_policy: uniform
 client_step:
-  task_type: fedmatch_local_step
+  task_type: federated_ssl_method_local_step
   custom_method_runtime_required: true
   confidence_filter: confidence_threshold
   pseudo_labeler_name: agreement_based_argmax_vote

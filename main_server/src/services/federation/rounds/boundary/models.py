@@ -36,9 +36,8 @@ class RoundPublicationSummary:
     update_count: int
     finalized_at: datetime
     round_state_summary_metrics: dict[str, float] = field(default_factory=dict)
-    prototype_pack_ref: str | None = None
-    prototype_build_state_ref: str | None = None
-    prototype_rebuild_input_id: str | None = None
+    auxiliary_artifact_refs: dict[str, str] = field(default_factory=dict)
+    auxiliary_artifact_metadata: dict[str, str] = field(default_factory=dict)
 
 
 @dataclass(slots=True)

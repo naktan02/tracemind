@@ -70,9 +70,8 @@ def round_publication_to_payload(
         update_count=publication.update_count,
         finalized_at=publication.finalized_at,
         round_state_summary_metrics=dict(publication.round_state_summary_metrics),
-        prototype_pack_ref=publication.prototype_pack_ref,
-        prototype_build_state_ref=publication.prototype_build_state_ref,
-        prototype_rebuild_input_id=publication.prototype_rebuild_input_id,
+        auxiliary_artifact_refs=dict(publication.auxiliary_artifact_refs),
+        auxiliary_artifact_metadata=dict(publication.auxiliary_artifact_metadata),
     )
 
 
@@ -86,9 +85,8 @@ def round_publication_from_payload(
         update_count=payload.update_count,
         finalized_at=payload.finalized_at,
         round_state_summary_metrics=dict(payload.round_state_summary_metrics),
-        prototype_pack_ref=payload.prototype_pack_ref,
-        prototype_build_state_ref=payload.prototype_build_state_ref,
-        prototype_rebuild_input_id=payload.prototype_rebuild_input_id,
+        auxiliary_artifact_refs=dict(payload.auxiliary_artifact_refs),
+        auxiliary_artifact_metadata=dict(payload.auxiliary_artifact_metadata),
     )
 
 
