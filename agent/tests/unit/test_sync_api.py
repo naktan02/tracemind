@@ -70,7 +70,7 @@ def test_sync_api_reads_current_local_shared_adapter_state(tmp_path: Path) -> No
         manifest=make_embedding_manifest(
             model_id="model",
             model_revision="rev_001",
-            prototype_version="proto_001",
+            auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             artifact_ref="/server/state/rev_001.json",
         ),
         state=make_identity_state_payload(

@@ -402,7 +402,7 @@ def _build_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -459,7 +459,7 @@ def _build_lora_service(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -886,7 +886,7 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -899,7 +899,9 @@ def test_round_lifecycle_finalizes_round_and_activates_next_manifest(
         finalized.publication.next_manifest.artifact_ref
         == service.round_manager_service.artifact_repository.ref_for_revision("rev_001")
     )
-    assert finalized.publication.next_manifest.prototype_version == "proto_001"
+    assert finalized.publication.next_manifest.auxiliary_artifact_versions == {
+        "prototype_pack": "proto_001"
+    }
     assert round_repository.load_active_pointer() is None
     assert (
         service.active_manifest_service.get_active_manifest().model_revision
@@ -931,7 +933,7 @@ def test_round_lifecycle_runs_method_server_policy_before_finalize(
     service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -962,7 +964,7 @@ def test_round_lifecycle_stores_round_state_exchange_summary(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -989,7 +991,7 @@ def test_round_lifecycle_rejects_update_after_finalize(tmp_path: Path) -> None:
     service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -1089,7 +1091,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -1127,7 +1129,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )
@@ -1167,7 +1169,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -1230,7 +1232,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     finalized = service.finalize_round(
         record.round_id,
         RoundFinalizeRequest(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
     )

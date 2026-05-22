@@ -117,9 +117,6 @@ class RoundFinalizeRequestPayload(BaseModel):
 
     next_model_revision: str | None = None
     next_auxiliary_artifact_versions: dict[str, str] = Field(default_factory=dict)
-    # legacy prototype-pack API 호환 필드다.
-    # 새 경로는 next_auxiliary_artifact_versions를 쓴다.
-    next_prototype_version: str | None = None
     published_at: datetime | None = None
 
 

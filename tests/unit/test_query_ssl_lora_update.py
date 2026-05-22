@@ -71,7 +71,7 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
         model_manifest=make_embedding_manifest(
             model_id="mxbai-lora-classifier",
             model_revision="sim_rev_0000",
-            prototype_version="proto_v0",
+            auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
         lora_config=LoraClassifierTrainingBackendConfig(
@@ -130,7 +130,7 @@ def test_query_ssl_lora_update_payload_requires_refs_for_artifact_mode() -> None
             model_manifest=make_embedding_manifest(
                 model_id="mxbai-lora-classifier",
                 model_revision="sim_rev_0000",
-                prototype_version="proto_v0",
+                auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
                 artifact_ref="shared_adapter_state::sim_rev_0000",
             ),
             lora_config=LoraClassifierTrainingBackendConfig(),

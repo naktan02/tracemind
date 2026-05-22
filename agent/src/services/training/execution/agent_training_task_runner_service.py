@@ -32,6 +32,7 @@ from agent.src.services.training.examples.service import TrainingExampleService
 from agent.src.services.training.execution.runtime_compatibility import (
     validate_live_agent_stored_event_runtime,
 )
+from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
 
 RoundClientFactory = Callable[[str], RoundClient]
 FederationRuntimeServiceFactory = Callable[[str], FederationRuntimeService]
@@ -130,13 +131,16 @@ class AgentTrainingTaskRunnerService:
         stored_events = self.scored_event_repository.get_recent_stored(
             days=request.scored_event_days
         )
-        if active_manifest.prototype_version is None:
+        prototype_version = active_manifest.auxiliary_artifact_versions.get(
+            PROTOTYPE_PACK_AUXILIARY_KEY
+        )
+        if prototype_version is None:
             training_examples = ()
         else:
             try:
                 self.prototype_sync_service.pull_version(
                     server_base_url=request.server_base_url,
-                    prototype_version=active_manifest.prototype_version,
+                    prototype_version=prototype_version,
                 )
                 active_pack = self.prototype_runtime_service.get_active_pack()
             except FileNotFoundError:

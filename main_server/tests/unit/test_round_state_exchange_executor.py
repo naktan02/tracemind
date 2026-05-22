@@ -70,7 +70,7 @@ def _build_record() -> RoundRecord:
         published_at=fixed_time,
         artifact_kind="shared_adapter_state",
         artifact_ref="shared_adapter_state::rev_000",
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
     )

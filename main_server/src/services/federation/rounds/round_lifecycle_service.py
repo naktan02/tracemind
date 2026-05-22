@@ -58,6 +58,7 @@ from shared.src.contracts.adapter_contract_families.base import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_current_shared_adapter_state_payload,
 )
+from shared.src.contracts.model_contracts import PROTOTYPE_PACK_AUXILIARY_KEY
 from shared.src.contracts.training_contracts import (
     TrainingUpdateEnvelope,
     TrainingUpdateSubmission,
@@ -278,14 +279,18 @@ class RoundLifecycleService:
                 next_auxiliary_artifact_versions=(
                     request.next_auxiliary_artifact_versions
                 ),
-                next_prototype_version=request.next_prototype_version,
                 published_at=request.published_at,
             )
         )
         finalized_at = publication.next_manifest.published_at
         rebuild_result = None
         if self.prototype_rebuild_runtime_service is not None:
-            if publication.next_manifest.prototype_version is None:
+            prototype_version = (
+                publication.next_manifest.auxiliary_artifact_versions.get(
+                    PROTOTYPE_PACK_AUXILIARY_KEY
+                )
+            )
+            if prototype_version is None:
                 raise RoundValidationError(
                     "Prototype rebuild runtime requires prototype_pack auxiliary "
                     "artifact version."
@@ -293,7 +298,7 @@ class RoundLifecycleService:
             rebuild_result = self.prototype_rebuild_runtime_service.rebuild(
                 StoredReferencePrototypeRebuildRequest(
                     adapter_state=publication.next_state,
-                    prototype_version=publication.next_manifest.prototype_version,
+                    prototype_version=prototype_version,
                     embedding_model_id=publication.next_manifest.model_id,
                     embedding_model_revision=publication.next_manifest.model_revision,
                     built_at=publication.next_manifest.published_at,

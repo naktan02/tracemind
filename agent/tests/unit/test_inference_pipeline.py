@@ -256,7 +256,7 @@ def test_pipeline_uses_active_shared_adapter_state_for_scoring(
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
         model_id="test-embed",
         model_revision="global_rev_001",
-        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="shared_adapter_state::global_rev_001",
     )
     pipeline = _make_pipeline(
@@ -292,7 +292,7 @@ def test_pipeline_can_apply_future_local_adapter_after_shared_state(
     shared_adapter_provider.get_active_manifest.return_value = make_embedding_manifest(
         model_id="test-embed",
         model_revision="global_rev_001",
-        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="shared_adapter_state::global_rev_001",
     )
     local_state = MagicMock()

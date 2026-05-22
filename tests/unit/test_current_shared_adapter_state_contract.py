@@ -21,7 +21,7 @@ def test_current_shared_adapter_state_parses_registered_state_payload() -> None:
     manifest = make_embedding_manifest(
         model_id="model",
         model_revision="rev_001",
-        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="shared_adapter_state::rev_001",
     )
     payload = make_current_shared_adapter_state_payload(
@@ -47,7 +47,7 @@ def test_current_shared_adapter_state_rejects_revision_mismatch() -> None:
     manifest = make_embedding_manifest(
         model_id="model",
         model_revision="rev_manifest",
-        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="shared_adapter_state::rev_manifest",
     )
 

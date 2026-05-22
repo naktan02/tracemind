@@ -170,7 +170,6 @@ def round_finalize_request_from_payload(
     return RoundFinalizeRequest(
         next_model_revision=payload.next_model_revision,
         next_auxiliary_artifact_versions=dict(payload.next_auxiliary_artifact_versions),
-        next_prototype_version=payload.next_prototype_version,
         published_at=payload.published_at,
     )
 

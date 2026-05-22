@@ -168,7 +168,7 @@ def test_runner_syncs_shared_state_and_uses_matching_manifest() -> None:
     active_manifest = make_embedding_manifest(
         model_id="tracemind-embed",
         model_revision="rev_001",
-        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
         artifact_ref="/server/state/rev_001.json",
     )
     active_state = make_identity_state_payload(

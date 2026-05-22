@@ -65,7 +65,6 @@ class RoundPublicationRequest:
     updates: tuple[TrainingUpdateEnvelope, ...] | list[TrainingUpdateEnvelope]
     next_model_revision: str | None = None
     next_auxiliary_artifact_versions: Mapping[str, str] = field(default_factory=dict)
-    next_prototype_version: str | None = None
     published_at: datetime | None = None
 
 
@@ -141,7 +140,6 @@ class RoundManagerService:
         next_auxiliary_versions = _build_next_auxiliary_artifact_versions(
             base_manifest=request.base_manifest,
             next_auxiliary_artifact_versions=(request.next_auxiliary_artifact_versions),
-            next_prototype_version=request.next_prototype_version,
         )
         next_manifest = ModelManifest(
             schema_version=request.base_manifest.schema_version,
@@ -152,7 +150,6 @@ class RoundManagerService:
             artifact_ref=self.artifact_repository.ref_for_revision(
                 aggregation.next_state.model_revision
             ),
-            prototype_version=next_auxiliary_versions.get("prototype_pack"),
             auxiliary_artifact_versions=next_auxiliary_versions,
             training_scope=request.base_manifest.training_scope,
             training_enabled=request.base_manifest.training_enabled,
@@ -236,13 +233,10 @@ def _build_next_auxiliary_artifact_versions(
     *,
     base_manifest: ModelManifest,
     next_auxiliary_artifact_versions: Mapping[str, str],
-    next_prototype_version: str | None,
 ) -> dict[str, str]:
     """prototype 같은 부속 artifact version을 중립 map으로 누적한다."""
 
     result = dict(base_manifest.auxiliary_artifact_versions)
-    if base_manifest.prototype_version is not None:
-        result.setdefault("prototype_pack", base_manifest.prototype_version)
     result.update(
         {
             str(key): str(value)
@@ -250,6 +244,4 @@ def _build_next_auxiliary_artifact_versions(
             if str(key).strip() and str(value).strip()
         }
     )
-    if next_prototype_version is not None:
-        result["prototype_pack"] = next_prototype_version
     return result

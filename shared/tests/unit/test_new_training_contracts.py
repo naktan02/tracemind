@@ -35,19 +35,29 @@ def test_model_manifest_payload_accepts_active_fields(
 
     assert payload.training_enabled is True
     assert payload.training_scope == TrainingScope.ADAPTER_ONLY
-    assert payload.prototype_version is None
+    assert "prototype_version" not in payload.model_dump(mode="json")
 
 
-def test_model_manifest_payload_keeps_prototype_as_optional_auxiliary(
+def test_model_manifest_payload_keeps_prototype_only_as_auxiliary(
+    make_model_manifest_payload,
+) -> None:
+    payload = make_model_manifest_payload(
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+    )
+
+    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
+    assert "prototype_version" not in payload.model_dump(mode="json")
+
+
+def test_model_manifest_payload_migrates_legacy_prototype_version(
     make_model_manifest_payload,
 ) -> None:
     payload = make_model_manifest_payload(
         prototype_version="proto_001",
-        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
     )
 
-    assert payload.prototype_version == "proto_001"
     assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
+    assert "prototype_version" not in payload.model_dump(mode="json")
 
 
 def test_training_payloads_capture_round_and_revision(

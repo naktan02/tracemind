@@ -43,7 +43,7 @@ def _build_manifest(revision: str = "rev_000") -> ModelManifest:
         published_at=datetime(2026, 3, 29, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
         artifact_ref="/tmp/rev_000.json",
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         training_scope="adapter_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
@@ -157,7 +157,7 @@ def test_round_client_fetches_current_shared_adapter_state() -> None:
     manifest = make_embedding_manifest(
         model_id="tracemind-embed",
         model_revision="rev_000",
-        prototype_version="proto_000",
+        auxiliary_artifact_versions={"prototype_pack": "proto_000"},
         artifact_ref="/server/state/rev_000.json",
     )
     payload = make_current_shared_adapter_state_payload(
