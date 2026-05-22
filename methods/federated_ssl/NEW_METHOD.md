@@ -29,6 +29,12 @@ round policy 조합으로 구성되는지"를 보는 조립표다. 작은 method
 `descriptor.py`에 recipe metadata를 함께 둘 수 있고, 조합표가 커지거나 별도
 테스트/문서화가 필요할 때만 `recipe.py`로 분리한다.
 
+custom client runtime core가 필요한 method는 `descriptor.py`의
+`FederatedSslLocalStepSpec.runtime_entrypoint`에 `module:function`을 명시한다.
+generic runtime resolver가 `<method>/lora_classifier_training.py` 같은 파일명을
+추측하게 두지 않는다. method 폴더를 읽는 사람이 descriptor에서 호출 위치를 바로
+확인할 수 있어야 한다.
+
 round별 pseudo-label statistics, client metric summary, calibration state가 필요하면
 `FederatedSslRoundStateExchangeSpec`에 `exchange_name`과
 `required_client_metric_keys`를 먼저 선언한다. main_server에는 method 이름이 아니라

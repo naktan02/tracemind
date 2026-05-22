@@ -102,12 +102,29 @@ class FederatedSslLocalStepSpec:
     client_trainer_name: str
     pseudo_labeler_name: str
     training_row_source: str = TRAINING_ROW_SOURCE_ALL_ROWS
+    runtime_entrypoint: str | None = None
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "step_name")
         _set_non_empty(self, "client_trainer_name")
         _set_non_empty(self, "pseudo_labeler_name")
         _set_non_empty(self, "training_row_source")
+        if self.runtime_entrypoint is not None:
+            module_name, separator, function_name = self.runtime_entrypoint.partition(
+                ":"
+            )
+            if not separator or not module_name.strip() or not function_name.strip():
+                raise ValueError(
+                    "runtime_entrypoint must use 'module:function' format."
+                )
+            object.__setattr__(
+                self,
+                "runtime_entrypoint",
+                _require_non_empty(
+                    self.runtime_entrypoint,
+                    field_name="runtime_entrypoint",
+                ),
+            )
         if self.training_row_source not in TRAINING_ROW_SOURCES:
             raise ValueError(
                 f"training_row_source must be one of {sorted(TRAINING_ROW_SOURCES)}."

@@ -66,7 +66,7 @@ class TinyLoraClassifier(nn.Module):
         return self.classifier(self.encoder_lora(input_ids.float()))
 
 
-def test_method_owned_lora_classifier_core_resolves_fedmatch_by_convention() -> None:
+def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> None:
     core = resolve_method_owned_lora_classifier_training_core("fedmatch")
 
     assert core is run_method_owned_lora_classifier_training_core

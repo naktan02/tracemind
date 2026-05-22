@@ -70,4 +70,10 @@ FixMatch/FlexMatch/FreeMatch의 threshold와 state parameter는 기존
 `descriptor` 변수를 등록하므로, 같은 convention을 따르면 registry 목록을 수정하지
 않는다. 별도 registry wiring shim 파일은 두지 않는다.
 
+method-owned client runtime core는 descriptor의
+`local_step.runtime_entrypoint`에 `module:function` 형식으로 명시한다. 새 method가
+LoRA-classifier custom local loop를 요구하면 사람이 `<method>/descriptor.py`에서
+호출 위치를 확인할 수 있어야 하며, generic runtime이 `<method>/lora_classifier_training.py`
+같은 파일명을 추측하게 만들지 않는다.
+
 새 method 추가 절차는 `NEW_METHOD.md`를 먼저 따른다.

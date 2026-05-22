@@ -59,6 +59,10 @@ descriptor = FederatedSslMethodDescriptor(
         client_trainer_name="method_owned_local_objective",
         pseudo_labeler_name="fedmatch_agreement_pseudo_labeler",
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
+        runtime_entrypoint=(
+            "methods.federated_ssl.fedmatch.lora_classifier_training:"
+            "run_method_owned_lora_classifier_training_core"
+        ),
     ),
     server_step=FederatedSslServerStepSpec(
         server_aggregator_name="round_runtime_aggregation_backend",

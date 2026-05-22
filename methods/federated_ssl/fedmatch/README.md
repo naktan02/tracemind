@@ -3,7 +3,8 @@
 `fedmatch/`는 FedMatch 논문 method 의미를 소유한다.
 
 - `original_spec.py`: 원본 repository/commit과 config.py 기반 hyperparameter snapshot
-- `descriptor.py`: method identity, required views, runtime capability surface
+- `descriptor.py`: method identity, required views, runtime capability surface,
+  method-owned local runtime entrypoint
 - `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
   agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
 - `lora_classifier_training.py`: LoRA-classifier simulation bridge. model/loaders,

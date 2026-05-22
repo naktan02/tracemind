@@ -19,6 +19,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraDeltaMaterializer,
 )
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -41,27 +42,45 @@ MethodOwnedLoraClassifierTrainingCore = Callable[
 def resolve_method_owned_lora_classifier_training_core(
     method_name: str,
 ) -> MethodOwnedLoraClassifierTrainingCore:
-    """method 이름으로 LoRA-classifier local training core를 convention resolve한다."""
+    """method descriptor의 명시 entrypoint로 LoRA local training core를 resolve한다."""
 
     normalized_name = method_name.strip().lower().replace("-", "_")
     if not normalized_name:
         raise ValueError("method_name must not be empty.")
-    module_name = f"methods.federated_ssl.{normalized_name}.lora_classifier_training"
+    descriptor = resolve_federated_ssl_method_descriptor(normalized_name)
+    entrypoint = descriptor.local_step.runtime_entrypoint
+    if entrypoint is None:
+        raise NotImplementedError(
+            "Method-owned LoRA-classifier local training core is not declared: "
+            f"{method_name}"
+        )
+    return _load_method_owned_lora_classifier_training_core(entrypoint)
+
+
+def _load_method_owned_lora_classifier_training_core(
+    entrypoint: str,
+) -> MethodOwnedLoraClassifierTrainingCore:
+    module_name, separator, function_name = entrypoint.partition(":")
+    if not separator or not module_name.strip() or not function_name.strip():
+        raise ValueError(
+            "method-owned LoRA-classifier runtime_entrypoint must use "
+            "'module:function' format."
+        )
     try:
-        module = importlib.import_module(module_name)
+        module = importlib.import_module(module_name.strip())
     except ModuleNotFoundError as error:
-        if error.name == module_name:
+        if error.name == module_name.strip():
             raise NotImplementedError(
-                "Method-owned LoRA-classifier local training core is not wired: "
-                f"{method_name}"
+                "Method-owned LoRA-classifier local training core module is not wired: "
+                f"{module_name}"
             ) from error
         raise
 
-    core = getattr(module, "run_method_owned_lora_classifier_training_core", None)
+    core = getattr(module, function_name.strip(), None)
     if core is None:
         raise NotImplementedError(
-            "Method-owned LoRA-classifier local training core is missing standard "
-            f"entrypoint in {module_name}."
+            "Method-owned LoRA-classifier local training core function is missing: "
+            f"{entrypoint}"
         )
     return core
 
