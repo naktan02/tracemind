@@ -5,6 +5,7 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
@@ -94,6 +95,12 @@ def _run_method_owned_lora_client_round(
         training_task=training_task,
         model_manifest=active.manifest,
         ssl_method_config=request.ssl_method_config,
+        local_ssl_policy_name=(
+            LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+            if request.capability_plan is None
+            else request.capability_plan.local_ssl_policy_name
+        ),
+        query_ssl_config=request.query_ssl_objective_config,
         peer_context=peer_context,
         strong_view_policy=(
             "first_aug"

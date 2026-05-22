@@ -32,6 +32,7 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
 from methods.federated_ssl.lora_classifier_training import (
     resolve_method_owned_lora_classifier_training_core,
 )
+from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 
 
 class TinyLoraClassifier(nn.Module):
@@ -165,6 +166,56 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
         result.metrics["psi_confident_count"],
         torch.tensor(2.0),
     )
+
+
+def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
+    model = TinyLoraClassifier()
+    labels = ("anxiety", "normal")
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    labeled_batch = {
+        "input_ids": torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
+        "attention_mask": torch.ones(2, 3),
+        "labels": torch.tensor([0, 1], dtype=torch.long),
+    }
+    unlabeled_batch = {
+        "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+        "weak_attention_mask": torch.ones(2, 3),
+        "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1], [0.1, 0.4, 1.0]]),
+        "strong_attention_mask": torch.ones(2, 3),
+    }
+
+    result = run_fedmatch_lora_classifier_partitioned_step(
+        model=model,
+        labels=labels,
+        labeled_batch=labeled_batch,
+        unlabeled_batch=unlabeled_batch,
+        parameters=parameters,
+        sigma_optimizer=sigma_optimizer,
+        psi_optimizer=psi_optimizer,
+        psi_query_ssl_algorithm=FixMatchAlgorithm(
+            temperature=0.5,
+            p_cutoff=0.0,
+            hard_label=True,
+            lambda_u=1.0,
+            supervised_loss_weight=1.0,
+        ),
+    )
+
+    assert set(result.partition_deltas) == {
+        FEDMATCH_SIGMA_PARTITION,
+        FEDMATCH_PSI_PARTITION,
+    }
+    assert "unsup_loss" in result.unsupervised.loss_components
+    assert "util_ratio" in result.unsupervised.metrics
 
 
 def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:

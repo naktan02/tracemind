@@ -17,6 +17,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     LoraClassifierTrainerRuntimeConfig,
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
+    QuerySslLoraObjectiveRuntimeConfig,
 )
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
@@ -96,6 +97,8 @@ def run_method_owned_lora_classifier_training_core(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: FederatedSslMethodLocalTrainingConfig,
+    local_ssl_policy_name: str,
+    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     lora_config: LoraClassifierTrainingBackendConfig,
@@ -117,6 +120,8 @@ def run_method_owned_lora_classifier_training_core(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
+        local_ssl_policy_name=local_ssl_policy_name,
+        query_ssl_config=query_ssl_config,
         peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,

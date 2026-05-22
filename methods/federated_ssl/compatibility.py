@@ -11,6 +11,7 @@ from methods.federated_ssl.capability_axes import (
     LOCAL_SSL_POLICIES_FROM_QUERY_SSL,
     LOCAL_SSL_POLICIES_REQUIRING_STATE_SURFACE,
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    LOCAL_SSL_POLICY_FIXMATCH,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
 from methods.federated_ssl.capability_plan import (
@@ -257,11 +258,15 @@ def validate_federated_ssl_simulation_runtime_support(
             "emits partitioned_deltas. Manual Query SSL hybrid partition producer is "
             "not implemented yet."
         )
-    if capability_plan.local_ssl_policy_name != LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+    if capability_plan.local_ssl_policy_name not in {
+        LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+        LOCAL_SSL_POLICY_FIXMATCH,
+    }:
         raise ValueError(
             "server_update_policy=fedmatch_partitioned currently requires "
-            "local_ssl_policy=fedmatch_agreement in simulation. Query SSL local "
-            "objectives with partitioned sigma/psi loops are the next hybrid step."
+            "local_ssl_policy=fedmatch_agreement or fixmatch in simulation. "
+            "Stateful Query SSL local objectives with partitioned sigma/psi loops "
+            "need a state surface first."
         )
 
 

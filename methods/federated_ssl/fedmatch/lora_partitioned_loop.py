@@ -36,7 +36,7 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
 )
-from methods.ssl.base import TextBatchClassifier
+from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchClassifier
 from shared.src.domain.services.classification_report import safe_divide
 
 
@@ -87,6 +87,7 @@ def train_fedmatch_lora_classifier(
     helper_weak_probability_provider: (
         FedMatchHelperWeakProbabilityProvider | None
     ) = None,
+    psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
 ) -> FedMatchLoraTrainingResult:
     """FedMatch supervised/unsupervised 분리 step을 budget만큼 실행한다."""
@@ -152,9 +153,11 @@ def train_fedmatch_lora_classifier(
                 sigma_optimizer=sigma_optimizer,
                 psi_optimizer=psi_optimizer,
                 helper_weak_probabilities=helper_weak_probabilities,
+                psi_query_ssl_algorithm=psi_query_ssl_algorithm,
                 enable_inter_client_consistency=(
                     enable_inter_client_consistency
                     and helper_weak_probabilities is not None
+                    and psi_query_ssl_algorithm is None
                 ),
                 max_grad_norm=max_grad_norm,
             )
@@ -244,6 +247,7 @@ def run_fedmatch_lora_classifier_partitioned_step(
     sigma_optimizer: torch.optim.Optimizer,
     psi_optimizer: torch.optim.Optimizer,
     helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
+    psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     max_grad_norm: float = 0.0,
 ) -> FedMatchLoraPartitionedStepResult:
@@ -272,15 +276,25 @@ def run_fedmatch_lora_classifier_partitioned_step(
         before=before_supervised,
     )
 
-    unsupervised = _apply_fedmatch_unsupervised_step(
-        model=model,
-        sigma_snapshot=after_supervised,
-        unlabeled_batch=unlabeled_batch,
-        parameters=parameters,
-        optimizer=psi_optimizer,
-        helper_weak_probabilities=helper_weak_probabilities,
-        enable_inter_client_consistency=enable_inter_client_consistency,
-        max_grad_norm=max_grad_norm,
+    unsupervised = (
+        _apply_query_ssl_psi_step(
+            model=model,
+            unlabeled_batch=unlabeled_batch,
+            optimizer=psi_optimizer,
+            algorithm=psi_query_ssl_algorithm,
+            max_grad_norm=max_grad_norm,
+        )
+        if psi_query_ssl_algorithm is not None
+        else _apply_fedmatch_unsupervised_step(
+            model=model,
+            sigma_snapshot=after_supervised,
+            unlabeled_batch=unlabeled_batch,
+            parameters=parameters,
+            optimizer=psi_optimizer,
+            helper_weak_probabilities=helper_weak_probabilities,
+            enable_inter_client_consistency=enable_inter_client_consistency,
+            max_grad_norm=max_grad_norm,
+        )
     )
     after_unsupervised = snapshot_trainable_parameter_tensors(model)
     psi_parameter_deltas = diff_parameter_snapshots(
@@ -382,6 +396,41 @@ def _apply_fedmatch_unsupervised_step(
     )
     optimizer.step()
     return result
+
+
+def _apply_query_ssl_psi_step(
+    *,
+    model: TextBatchClassifier,
+    unlabeled_batch: Mapping[str, Tensor],
+    optimizer: torch.optim.Optimizer,
+    algorithm: QuerySslAlgorithm,
+    max_grad_norm: float,
+) -> FedMatchTensorLocalObjectiveResult:
+    optimizer.zero_grad(set_to_none=True)
+    step_result = algorithm.compute_step(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch=dict(unlabeled_batch),
+    )
+    step_result.total_loss.backward()
+    _clip_gradients_if_needed(
+        model=model,
+        max_grad_norm=max_grad_norm,
+    )
+    optimizer.step()
+    return _query_ssl_step_result_as_partition_result(step_result)
+
+
+def _query_ssl_step_result_as_partition_result(
+    step_result: QuerySslStepResult,
+) -> FedMatchTensorLocalObjectiveResult:
+    return FedMatchTensorLocalObjectiveResult(
+        total_loss=step_result.total_loss,
+        partition_losses={FEDMATCH_PSI_PARTITION: step_result.total_loss},
+        loss_components=step_result.loss_components,
+        metrics=step_result.metrics,
+        debug_tensors=step_result.debug_tensors,
+    )
 
 
 def _clip_gradients_if_needed(

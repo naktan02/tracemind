@@ -28,6 +28,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     LoraClassifierTrainerRuntimeConfig,
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
+    QuerySslLoraObjectiveRuntimeConfig,
 )
 from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
@@ -49,6 +50,10 @@ from methods.evaluation.pseudo_label_quality import (
     PseudoLabelQualitySummary,
     build_pseudo_label_quality_summary,
 )
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    LOCAL_SSL_POLICY_FIXMATCH,
+)
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
 )
@@ -59,6 +64,12 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
 )
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.ssl.base import (
+    QuerySslAlgorithm,
+    configure_query_ssl_algorithm_dataset,
+    configure_query_ssl_algorithm_training,
+)
+from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
@@ -89,6 +100,8 @@ def run_method_owned_lora_classifier_training_core(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: FedMatchMethodLocalTrainingConfig,
+    local_ssl_policy_name: str,
+    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     lora_config: LoraClassifierTrainingBackendConfig,
@@ -170,6 +183,15 @@ def run_method_owned_lora_classifier_training_core(
         local_epochs=int(training_task.local_epochs),
         max_steps=int(training_task.max_steps),
     )
+    psi_query_ssl_algorithm = _build_psi_query_ssl_algorithm(
+        local_ssl_policy_name=local_ssl_policy_name,
+        query_ssl_config=query_ssl_config,
+        train_loader_steps=len(train_loader),
+        unlabeled_loader_steps=len(unlabeled_loader),
+        total_steps=step_plan.total_steps,
+        num_classes=len(effective_labels),
+        unlabeled_row_count=len(effective_unlabeled_rows),
+    )
 
     training_result = train_fedmatch_lora_classifier(
         model=model,
@@ -188,6 +210,7 @@ def run_method_owned_lora_classifier_training_core(
             else float(training_task.gradient_clip_norm)
         ),
         helper_weak_probability_provider=None,
+        psi_query_ssl_algorithm=psi_query_ssl_algorithm,
         enable_inter_client_consistency=(
             peer_context is not None and peer_context.helper_count > 0
         ),
@@ -199,7 +222,11 @@ def run_method_owned_lora_classifier_training_core(
         rows=effective_unlabeled_rows,
         labels=effective_labels,
         lora_config=lora_config,
-        parameters=parameters,
+        acceptance_threshold=_resolve_snapshot_acceptance_threshold(
+            local_ssl_policy_name=local_ssl_policy_name,
+            fedmatch_parameters=parameters,
+            query_ssl_config=query_ssl_config,
+        ),
         trainer_runtime_config=trainer_runtime_config,
         unlabeled_batch_size=unlabeled_batch_size or int(training_task.batch_size),
     )
@@ -249,6 +276,9 @@ def run_method_owned_lora_classifier_training_core(
     client_metrics = {
         **dict(update_build_result.client_metrics),
         "fedmatch_local_runtime": 1.0,
+        "fedmatch_local_ssl_policy_is_fixmatch": float(
+            local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
+        ),
         "fedmatch_helper_count": _history_float(
             history_record,
             "train_fedmatch_psi_helper_count",
@@ -285,6 +315,65 @@ def run_method_owned_lora_classifier_training_core(
     )
 
 
+def _build_psi_query_ssl_algorithm(
+    *,
+    local_ssl_policy_name: str,
+    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+    train_loader_steps: int,
+    unlabeled_loader_steps: int,
+    total_steps: int,
+    num_classes: int,
+    unlabeled_row_count: int,
+) -> QuerySslAlgorithm | None:
+    normalized_policy = local_ssl_policy_name.strip().lower().replace("-", "_")
+    if normalized_policy == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+        return None
+    if normalized_policy != LOCAL_SSL_POLICY_FIXMATCH:
+        raise NotImplementedError(
+            "FedMatch partitioned LoRA runtime currently supports "
+            "local_ssl_policy=fedmatch_agreement or fixmatch."
+        )
+    if query_ssl_config is None:
+        raise ValueError("local_ssl_policy=fixmatch requires query_ssl_config.")
+    descriptor = resolve_query_ssl_algorithm_descriptor(query_ssl_config.algorithm_name)
+    if descriptor.algorithm_name != LOCAL_SSL_POLICY_FIXMATCH:
+        raise ValueError(
+            "local_ssl_policy=fixmatch requires "
+            "query_ssl_method.algorithm_name=fixmatch."
+        )
+    algorithm = descriptor.build_algorithm(query_ssl_config.parameters)
+    algorithm.validate_loaders(
+        train_loader_length=train_loader_steps,
+        unlabeled_loader_length=unlabeled_loader_steps,
+    )
+    configure_query_ssl_algorithm_training(
+        algorithm,
+        num_train_iter=total_steps,
+    )
+    configure_query_ssl_algorithm_dataset(
+        algorithm,
+        num_classes=num_classes,
+        unlabeled_row_count=unlabeled_row_count,
+    )
+    return algorithm
+
+
+def _resolve_snapshot_acceptance_threshold(
+    *,
+    local_ssl_policy_name: str,
+    fedmatch_parameters: FedMatchLocalObjectiveParameters,
+    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+) -> float:
+    if (
+        local_ssl_policy_name.strip().lower().replace("-", "_")
+        == LOCAL_SSL_POLICY_FIXMATCH
+    ):
+        if query_ssl_config is None:
+            raise ValueError("local_ssl_policy=fixmatch requires query_ssl_config.")
+        return float(query_ssl_config.parameters["p_cutoff"])
+    return fedmatch_parameters.confidence_threshold
+
+
 def _history_float(
     history_record: Mapping[str, object],
     key: str,
@@ -302,7 +391,7 @@ def _build_fedmatch_final_snapshot_pseudo_label_quality(
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
     lora_config: LoraClassifierTrainingBackendConfig,
-    parameters: FedMatchLocalObjectiveParameters,
+    acceptance_threshold: float,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     unlabeled_batch_size: int,
 ) -> PseudoLabelQualitySummary:
@@ -347,7 +436,7 @@ def _build_fedmatch_final_snapshot_pseudo_label_quality(
                         label=str(labels[top1_index]),
                         confidence=top1_score,
                         margin=top1_score - top2_score,
-                        accepted=top1_score >= parameters.confidence_threshold,
+                        accepted=top1_score >= acceptance_threshold,
                     )
                 )
 

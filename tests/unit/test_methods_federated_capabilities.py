@@ -224,7 +224,7 @@ def test_fedmatch_partitioned_server_update_can_express_fixmatch_policy() -> Non
     )
 
 
-def test_fedmatch_partitioned_fixmatch_is_not_simulation_supported_yet() -> None:
+def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
     plan = FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy={"name": "all_clients"},
         aggregation_weight_policy={"name": "uniform"},
@@ -238,11 +238,10 @@ def test_fedmatch_partitioned_fixmatch_is_not_simulation_supported_yet() -> None
         query_multiview_source={"name": "materialized_rows"},
     )
 
-    with pytest.raises(ValueError, match="fedmatch_agreement"):
-        validate_federated_ssl_simulation_runtime_support(
-            capability_plan=plan,
-            composition_mode=COMPOSITION_MODE_METHOD_OWNED,
-        )
+    validate_federated_ssl_simulation_runtime_support(
+        capability_plan=plan,
+        composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+    )
 
 
 def test_manual_partitioned_server_update_waits_for_partition_producer() -> None:

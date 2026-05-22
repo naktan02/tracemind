@@ -30,6 +30,7 @@ from methods.federated_ssl.lora_classifier_training import (
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
+    FederatedQuerySslObjectiveConfig,
     FederatedSslMethodConfig,
 )
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
@@ -54,6 +55,8 @@ def run_method_owned_lora_classifier_local_training(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: FederatedSslMethodConfig,
+    local_ssl_policy_name: str,
+    query_ssl_config: FederatedQuerySslObjectiveConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
@@ -83,6 +86,8 @@ def run_method_owned_lora_classifier_local_training(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
+        local_ssl_policy_name=local_ssl_policy_name,
+        query_ssl_config=query_ssl_config,
         peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,
