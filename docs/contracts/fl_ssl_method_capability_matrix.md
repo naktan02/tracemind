@@ -4,7 +4,8 @@
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
 method-owned tensor local objective core를 추가했다. LoRA-classifier logical partition
 step과 method-owned local simulation bridge는
-`methods/adaptation/lora_classifier/federated_ssl/`가 소유한다. full 원본 parity에
+`methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
+소유한다. full 원본 parity에
 필요한 peer context/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
@@ -46,9 +47,10 @@ policy가 된다.
   - 현재 status는 `lora_local_runtime_slice_v1`이다. 원본 설정값, confidence
     filter, agreement pseudo-label vote, helper top-k selection, supervised/unsupervised
     FedMatch tensor loss는 method package에 고정했다.
-  - `methods/adaptation/lora_classifier/federated_ssl/`는 FedMatch method 의미를
-    LoRA-classifier model/loaders, sigma/psi logical partition delta, shared update
-    payload로 실행하는 adapter-family slice다.
+  - `methods/adaptation/lora_classifier/federated_ssl/`는 method-owned objective를
+    LoRA-classifier model/loaders, logical partition delta, shared update payload로
+    실행하는 adapter-family slice다. FedMatch method 의미는
+    `methods/federated_ssl/fedmatch/`에서 읽는다.
   - helper prediction exchange, sparse S2C/C2S sync, labels-at-server server step
     runtime은 아직 실행되지 않는다. 현재 labels-at-client slice는 기존
     LoRA-classifier FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는

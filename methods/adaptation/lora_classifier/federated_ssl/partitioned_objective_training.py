@@ -1,4 +1,4 @@
-"""LoRA-classifier family에서 FedMatch local objective를 실행하는 bridge."""
+"""LoRA-classifier family의 method-owned partitioned objective training bridge."""
 
 from __future__ import annotations
 
@@ -15,8 +15,8 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.federated_ssl.fedmatch_partitioned_loop import (
-    train_fedmatch_lora_classifier,
+from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
+    train_partitioned_lora_classifier,
 )
 from methods.adaptation.lora_classifier.training.delta_extraction import (
     extract_lora_classifier_parameter_deltas,
@@ -81,8 +81,8 @@ from shared.src.contracts.training_contracts import (
 )
 
 
-class FedMatchMethodLocalTrainingConfig(Protocol):
-    """FedMatch local trainer가 읽는 method config surface."""
+class PartitionedMethodLocalTrainingConfig(Protocol):
+    """partitioned local trainer가 읽는 method config surface."""
 
     name: str
     scenario: str | None
@@ -99,7 +99,7 @@ def run_method_owned_lora_classifier_training_core(
     base_parameters: LoraClassifierMaterializedState,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    ssl_method_config: FedMatchMethodLocalTrainingConfig,
+    ssl_method_config: PartitionedMethodLocalTrainingConfig,
     local_ssl_policy_name: str,
     query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
     strong_view_policy: str,
@@ -110,7 +110,7 @@ def run_method_owned_lora_classifier_training_core(
     delta_materializer: QuerySslLoraDeltaMaterializer,
     peer_context: FederatedSslPeerContext | None = None,
 ) -> QuerySslLoraClientTrainingResult:
-    """FedMatch 원본 local objective를 LoRA-classifier simulation update로 실행한다."""
+    """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
     scenario_name = ssl_method_config.scenario or FEDMATCH_SCENARIO_LABELS_AT_CLIENT
     if scenario_name != FEDMATCH_SCENARIO_LABELS_AT_CLIENT:
@@ -193,7 +193,7 @@ def run_method_owned_lora_classifier_training_core(
         unlabeled_row_count=len(effective_unlabeled_rows),
     )
 
-    training_result = train_fedmatch_lora_classifier(
+    training_result = train_partitioned_lora_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -216,7 +216,7 @@ def run_method_owned_lora_classifier_training_core(
         ),
     )
     history_record = training_result.metrics
-    pseudo_label_quality = _build_fedmatch_final_snapshot_pseudo_label_quality(
+    pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
         model=model,
         tokenizer=tokenizer,
         rows=effective_unlabeled_rows,
@@ -384,7 +384,7 @@ def _history_float(
     return float(value)
 
 
-def _build_fedmatch_final_snapshot_pseudo_label_quality(
+def _build_final_snapshot_pseudo_label_quality(
     *,
     model: LoraTextClassifier,
     tokenizer: Any,

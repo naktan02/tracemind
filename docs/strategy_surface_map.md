@@ -133,9 +133,10 @@ central fixed embedding + classifier seed
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
   supervised/unsupervised tensor local objective를 method package에 고정했다.
-  LoRA-classifier sigma/psi 실행 loop와 method-owned local simulation bridge는
-  `methods/adaptation/lora_classifier/federated_ssl/`의 adapter-family slice가
-  소유한다.
+  LoRA-classifier logical partition 실행 loop와 method-owned local simulation bridge는
+  `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral
+  adapter-family slice가 소유한다. FedMatch의 `sigma/psi` 의미는
+  `methods/federated_ssl/fedmatch/`에서 읽는다.
   현재 server path는 원본 sparse sigma/psi sync가 아니라 LoRA-classifier merged
   delta/FedAvg 또는 `server_update_policy=fedmatch_partitioned`에서
   LoRA-classifier `partitioned_delta_average` simulation backend다. 이 backend는

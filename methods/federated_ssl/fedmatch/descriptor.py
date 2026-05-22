@@ -60,7 +60,8 @@ descriptor = FederatedSslMethodDescriptor(
         pseudo_labeler_name="fedmatch_agreement_pseudo_labeler",
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
         runtime_entrypoint=(
-            "methods.adaptation.lora_classifier.federated_ssl.fedmatch_training:"
+            "methods.adaptation.lora_classifier.federated_ssl."
+            "partitioned_objective_training:"
             "run_method_owned_lora_classifier_training_core"
         ),
     ),

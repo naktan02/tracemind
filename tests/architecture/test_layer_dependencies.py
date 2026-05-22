@@ -618,6 +618,32 @@ def test_federated_ssl_method_packages_do_not_own_adapter_family_runtime_files()
     )
 
 
+def test_adapter_family_federated_ssl_files_do_not_multiply_by_method_name() -> None:
+    method_fragments = (
+        "fedmatch",
+        "fedlgmatch",
+        "fl2",
+        "fixmatch",
+        "flexmatch",
+        "freematch",
+    )
+    violations: list[Path] = []
+    for family_dir in sorted((METHODS_SRC / "adaptation").iterdir()):
+        package_root = family_dir / "federated_ssl"
+        if not package_root.is_dir():
+            continue
+        for path in _iter_python_files(package_root):
+            if any(fragment in path.stem.lower() for fragment in method_fragments):
+                violations.append(_relative_repo_path(path))
+
+    assert not violations, (
+        "methods/adaptation/<family>/federated_ssl/는 adapter-family 실행 primitive를 "
+        "소유한다. 새 FL SSL method마다 <method>_*.py 파일을 늘리지 말고 "
+        "method 의미는 methods/federated_ssl/<method>/에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_peer_context_policy_configs_stay_mechanism_only() -> None:
     """공통 peer context capability에 FedMatch helper 기본값을 올리지 않는다."""
 

@@ -7,15 +7,15 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.federated_ssl.fedmatch_partitioned_loop import (
-    run_fedmatch_lora_classifier_partitioned_step,
-    train_fedmatch_lora_classifier,
-)
-from methods.adaptation.lora_classifier.federated_ssl.fedmatch_training import (
-    run_method_owned_lora_classifier_training_core,
+from methods.adaptation.lora_classifier.federated_ssl import (
+    partitioned_objective_training,
 )
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     resolve_method_owned_lora_classifier_training_core,
+)
+from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
+    run_partitioned_lora_classifier_step,
+    train_partitioned_lora_classifier,
 )
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
@@ -70,7 +70,10 @@ class TinyLoraClassifier(nn.Module):
 def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> None:
     core = resolve_method_owned_lora_classifier_training_core("fedmatch")
 
-    assert core is run_method_owned_lora_classifier_training_core
+    assert (
+        core
+        is partitioned_objective_training.run_method_owned_lora_classifier_training_core
+    )
 
 
 def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
@@ -122,7 +125,7 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = run_fedmatch_lora_classifier_partitioned_step(
+    result = run_partitioned_lora_classifier_step(
         model=model,
         labels=labels,
         labeled_batch=labeled_batch,
@@ -193,7 +196,7 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         "strong_attention_mask": torch.ones(2, 3),
     }
 
-    result = run_fedmatch_lora_classifier_partitioned_step(
+    result = run_partitioned_lora_classifier_step(
         model=model,
         labels=labels,
         labeled_batch=labeled_batch,
@@ -270,7 +273,7 @@ def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     )
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = train_fedmatch_lora_classifier(
+    result = train_partitioned_lora_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,

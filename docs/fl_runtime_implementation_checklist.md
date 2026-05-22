@@ -71,10 +71,10 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   먼저 문서화한다. FedMatch v1은 공통 `partitioned` update capability와 `uniform`
   aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
   pseudo-label/helper top-k selection, supervised/unsupervised tensor loss는
-  FedMatch method core에 고정했다. LoRA trainer 한 step의 logical sigma/psi delta
+  FedMatch method core에 고정했다. LoRA trainer 한 step의 logical partition delta
   split과 method-owned local simulation wiring은
-  `methods/adaptation/lora_classifier/federated_ssl/` adapter-family slice에
-  추가했다.
+  `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral
+  adapter-family slice에 추가했다.
   `prediction_similarity_topk` helper client context 주입 seam은 열렸고, helper
   model prediction tensor 생성, sparse S2C/C2S, labels-at-server server runtime은
   후속 구현이다.

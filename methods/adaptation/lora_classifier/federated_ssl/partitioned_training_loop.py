@@ -1,4 +1,4 @@
-"""LoRA-classifier family에서 FedMatch sigma/psi partitioned loop를 실행한다."""
+"""LoRA-classifier family의 partitioned local training loop."""
 
 from __future__ import annotations
 
@@ -41,8 +41,8 @@ from shared.src.domain.services.classification_report import safe_divide
 
 
 @dataclass(frozen=True, slots=True)
-class FedMatchLoraPartitionedStepResult:
-    """FedMatch 한 step에서 분리 적용한 sigma/psi delta와 loss 진단."""
+class PartitionedLoraStepResult:
+    """한 step에서 분리 적용한 partition delta와 loss 진단."""
 
     supervised: FedMatchTensorLocalObjectiveResult
     unsupervised: FedMatchTensorLocalObjectiveResult
@@ -53,14 +53,14 @@ class FedMatchLoraPartitionedStepResult:
 
 
 @dataclass(frozen=True, slots=True)
-class FedMatchLoraTrainingResult:
-    """FedMatch local loop 결과와 누적 partition delta."""
+class PartitionedLoraTrainingResult:
+    """partitioned local loop 결과와 누적 partition delta."""
 
     metrics: Mapping[str, float]
     partition_deltas: Mapping[str, LoraClassifierPartitionDelta]
 
 
-class FedMatchHelperWeakProbabilityProvider(Protocol):
+class HelperWeakProbabilityProvider(Protocol):
     """batch별 helper weak-view probability를 공급하는 runtime seam."""
 
     def __call__(
@@ -71,7 +71,7 @@ class FedMatchHelperWeakProbabilityProvider(Protocol):
         """helper model들이 현재 client batch에 낸 weak-view 확률을 반환한다."""
 
 
-def train_fedmatch_lora_classifier(
+def train_partitioned_lora_classifier(
     *,
     model: LoraTextClassifier,
     train_loader: DataLoader[dict[str, Any]],
@@ -84,13 +84,11 @@ def train_fedmatch_lora_classifier(
     classifier_learning_rate: float,
     weight_decay: float,
     max_grad_norm: float,
-    helper_weak_probability_provider: (
-        FedMatchHelperWeakProbabilityProvider | None
-    ) = None,
+    helper_weak_probability_provider: (HelperWeakProbabilityProvider | None) = None,
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
-) -> FedMatchLoraTrainingResult:
-    """FedMatch supervised/unsupervised 분리 step을 budget만큼 실행한다."""
+) -> PartitionedLoraTrainingResult:
+    """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
     sigma_optimizer = build_optimizer(
         model=model,
@@ -141,7 +139,7 @@ def train_fedmatch_lora_classifier(
                     unlabeled_batch=device_unlabeled_batch,
                 )
             )
-            step_result = run_fedmatch_lora_classifier_partitioned_step(
+            step_result = run_partitioned_lora_classifier_step(
                 model=model,
                 labels=labels,
                 labeled_batch=_move_tensor_batch_to_device(
@@ -213,7 +211,7 @@ def train_fedmatch_lora_classifier(
         if completed_steps >= total_steps:
             break
 
-    return FedMatchLoraTrainingResult(
+    return PartitionedLoraTrainingResult(
         metrics={
             f"train_{name}": round(safe_divide(value, completed_steps), 6)
             for name, value in scalar_sums.items()
@@ -237,7 +235,7 @@ def train_fedmatch_lora_classifier(
     )
 
 
-def run_fedmatch_lora_classifier_partitioned_step(
+def run_partitioned_lora_classifier_step(
     *,
     model: TextBatchClassifier,
     labels: Sequence[str],
@@ -250,7 +248,7 @@ def run_fedmatch_lora_classifier_partitioned_step(
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     max_grad_norm: float = 0.0,
-) -> FedMatchLoraPartitionedStepResult:
+) -> PartitionedLoraStepResult:
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
 
     TraceMind의 LoRA-classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
@@ -312,7 +310,7 @@ def run_fedmatch_lora_classifier_partitioned_step(
         parameter_deltas=psi_parameter_deltas,
         labels=labels,
     )
-    return FedMatchLoraPartitionedStepResult(
+    return PartitionedLoraStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,
