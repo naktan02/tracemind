@@ -21,7 +21,13 @@ class TrainingScope(StrEnum):
 
 
 class TrainingTaskType(StrEnum):
-    """학습 task 유형 식별자."""
+    """학습 task 유형 식별자.
+
+    이 값은 서버 round task와 agent/simulation local trainer 사이를 지나는
+    canonical discriminator다. method 구현은 `methods/`가 소유하지만, round
+    경계를 통과하는 task kind는 여기서 닫힌 값으로 관리한다.
+    """
 
     PSEUDO_LABEL_SELF_TRAINING = "pseudo_label_self_training"
+    FEDMATCH_LOCAL_STEP = "fedmatch_local_step"
     FEEDBACK_SUPERVISED = "feedback_supervised"

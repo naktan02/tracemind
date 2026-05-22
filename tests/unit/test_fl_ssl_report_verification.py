@@ -30,6 +30,7 @@ def _report_payload(
     labeled_exposure_policy: str = "client_local_split",
     run_control_budget_name: str = "main",
     run_control_output_dir: str = "runs/fl_ssl",
+    federated_ssl_method: str | None = None,
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
@@ -66,6 +67,9 @@ def _report_payload(
                 "budget_name": run_control_budget_name,
                 "output_dir": run_control_output_dir,
             },
+            "ssl_method": (
+                None if federated_ssl_method is None else {"name": federated_ssl_method}
+            ),
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
                 "query_ssl.method_name": ssl_method,
@@ -684,6 +688,37 @@ def test_verify_artifact_cli_accepts_labeled_exposure_and_run_control_options(
             "reduced",
             "--expected-run-control-output-dir",
             "runs/fl_ssl",
+        ]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert f"PASS {report_path}" in output
+
+
+def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = tmp_path / "report.json"
+    report_path.write_text(
+        json.dumps(
+            _report_payload(
+                client_count=1,
+                completed_rounds=1,
+                round_budget=1,
+                federated_ssl_method="fedmatch",
+            )
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        [
+            "--report",
+            str(report_path),
+            "--expected-federated-ssl-method",
+            "fedmatch",
         ]
     )
     output = capsys.readouterr().out

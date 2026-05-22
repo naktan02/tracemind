@@ -190,6 +190,24 @@ def _pack_payload() -> PrototypePackPayload:
     )
 
 
+def test_round_task_mapper_accepts_fedmatch_local_step_task_type() -> None:
+    config = build_federated_training_task_config(
+        task_type="fedmatch_local_step",
+        local_epochs=1,
+        batch_size=4,
+        learning_rate=1e-4,
+        max_steps=1,
+        min_required_examples=1,
+        gradient_clip_norm=0.5,
+        objective_config={
+            "training_backend_name": "lora_classifier_trainer",
+        },
+        selection_policy={"max_examples": 8},
+    )
+
+    assert config.task_type == TrainingTaskType.FEDMATCH_LOCAL_STEP
+
+
 def _default_shard_policy() -> FederatedShardPolicyConfig:
     return FederatedShardPolicyConfig(
         name="label_dominant",

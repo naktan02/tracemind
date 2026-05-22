@@ -77,6 +77,7 @@ def verify_federated_simulation_report_payload(
     shard_policy = _object_mapping(protocol.get("shard_policy"))
     fl_data_source = _object_mapping(protocol.get("fl_data_source"))
     run_control = _object_mapping(protocol.get("run_control"))
+    ssl_method = _object_mapping(protocol.get("ssl_method"))
     local_trainer_runtime = _object_mapping(
         protocol.get("local_trainer_runtime") or payload.get("local_trainer_runtime")
     )
@@ -150,6 +151,12 @@ def verify_federated_simulation_report_payload(
         "protocol.run_control.output_dir",
         run_control.get("output_dir"),
         expectation.expected_run_control_output_dir,
+    )
+    _expect_equal(
+        errors,
+        "protocol.ssl_method.name",
+        ssl_method.get("name"),
+        expectation.expected_federated_ssl_method,
     )
     _expect_equal(
         errors,

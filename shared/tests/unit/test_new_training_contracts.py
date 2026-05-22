@@ -82,6 +82,17 @@ def test_training_payloads_capture_round_and_revision(
     assert update.secure_aggregation.aggregation_backend_name == "he_ckks"
 
 
+def test_fedmatch_local_step_is_canonical_training_task_type(
+    make_training_task_payload,
+) -> None:
+    payload = make_training_task_payload(
+        task_type=TrainingTaskType.FEDMATCH_LOCAL_STEP,
+    )
+
+    assert payload.task_type == TrainingTaskType.FEDMATCH_LOCAL_STEP
+    assert payload.model_dump(mode="json")["task_type"] == "fedmatch_local_step"
+
+
 def test_training_update_envelope_accepts_custom_payload_format(
     make_training_update_envelope_payload,
 ) -> None:

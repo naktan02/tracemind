@@ -33,6 +33,14 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from main_server.src.services.federation.rounds.round_state_exchange.executor import (
+    RoundStateExchangeResult,
+)
+from main_server.src.services.federation.rounds.server_policy.executor import (
+    ROUND_ACTIVE_PAIR_ONLY_POLICY_NAME,
+    ROUND_RUNTIME_AGGREGATION_BACKEND_POLICY_NAME,
+    ServerPolicyExecutionSummary,
+)
 from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
 )
@@ -66,6 +74,95 @@ from .repositories import (
     build_shared_adapter_state_repository,
     build_shared_adapter_update_repository,
 )
+
+
+class SimulationServerPolicyExecutor:
+    """simulation round lifecycle에서 method server policy guard를 적용한다."""
+
+    def prepare_finalize(
+        self,
+        *,
+        method_descriptor: FederatedSslMethodDescriptor,
+        round_id: str,
+        update_count: int,
+    ) -> ServerPolicyExecutionSummary:
+        """live 지원 여부가 아니라 simulation 지원 여부로 server policy를 검증한다."""
+
+        if not method_descriptor.runtime_capabilities.simulation_supported:
+            raise ValueError(
+                "Configured FL SSL method does not support simulation runtime: "
+                f"{method_descriptor.name}."
+            )
+        if method_descriptor.requires_custom_server_runtime:
+            raise ValueError(
+                "Configured FL SSL method requires a custom server runtime "
+                "capability that is not wired in simulation: "
+                f"{method_descriptor.name}."
+            )
+        server_step = method_descriptor.server_step
+        if (
+            server_step.server_aggregator_name
+            != ROUND_RUNTIME_AGGREGATION_BACKEND_POLICY_NAME
+        ):
+            raise ValueError(
+                "Unsupported server aggregation policy for simulation runtime: "
+                f"{server_step.server_aggregator_name}."
+            )
+        if server_step.round_policy_name != ROUND_ACTIVE_PAIR_ONLY_POLICY_NAME:
+            raise ValueError(
+                "Unsupported round policy for simulation runtime: "
+                f"{server_step.round_policy_name}."
+            )
+        return ServerPolicyExecutionSummary(
+            method_name=method_descriptor.name,
+            round_id=round_id,
+            server_aggregator_name=server_step.server_aggregator_name,
+            round_policy_name=server_step.round_policy_name,
+            server_aggregate_hint=server_step.server_aggregate_hint,
+            update_count=update_count,
+        )
+
+
+class SimulationRoundStateExchangeExecutor:
+    """simulation이 별도로 수행한 round state exchange를 finalize에서 요약한다."""
+
+    def summarize(
+        self,
+        *,
+        method_descriptor: FederatedSslMethodDescriptor,
+        record: RoundRecord,
+    ) -> RoundStateExchangeResult:
+        spec = method_descriptor.round_state_exchange
+        if spec is None:
+            return RoundStateExchangeResult(exchange_name="none")
+        summary_metrics = {
+            f"{spec.summary_metric_prefix}.update_count": float(len(record.updates)),
+            f"{spec.summary_metric_prefix}.example_count": float(
+                sum(update.example_count for update in record.updates)
+            ),
+        }
+        for metric_key in spec.required_client_metric_keys:
+            present_updates = [
+                update
+                for update in record.updates
+                if metric_key in update.client_metrics
+            ]
+            if not present_updates:
+                continue
+            total_examples = sum(update.example_count for update in present_updates)
+            if total_examples <= 0:
+                continue
+            summary_metrics[f"{spec.summary_metric_prefix}.{metric_key}.mean"] = (
+                sum(
+                    update.client_metrics[metric_key] * update.example_count
+                    for update in present_updates
+                )
+                / total_examples
+            )
+        return RoundStateExchangeResult(
+            exchange_name=spec.exchange_name,
+            summary_metrics=summary_metrics,
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -129,6 +226,8 @@ class SimulationServerRuntime:
             ),
             round_manager_service=round_manager,
             prototype_rebuild_runtime_service=stored_rebuild_service,
+            server_policy_executor=SimulationServerPolicyExecutor(),
+            round_state_exchange_executor=SimulationRoundStateExchangeExecutor(),
             method_descriptor=method_descriptor,
         )
         return cls(
