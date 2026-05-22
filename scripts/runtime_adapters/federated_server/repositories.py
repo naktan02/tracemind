@@ -8,15 +8,6 @@ from main_server.src.infrastructure.repositories import (
     model_manifest_repository as model_manifest_repo,
 )
 from main_server.src.infrastructure.repositories import (
-    prototype_build_state_repository as build_state_repo,
-)
-from main_server.src.infrastructure.repositories import (
-    prototype_pack_repository as pack_repo,
-)
-from main_server.src.infrastructure.repositories import (
-    prototype_rebuild_input_repository as rebuild_input_repo,
-)
-from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as adapter_state_repo,
 )
 from main_server.src.infrastructure.repositories import (
@@ -30,14 +21,6 @@ def build_shared_adapter_state_repository(
 ) -> adapter_state_repo.SharedAdapterStateRepository:
     return adapter_state_repo.SharedAdapterStateRepository(
         state_root=output_dir / "main_server" / "shared_adapter_states"
-    )
-
-
-def build_prototype_rebuild_input_repository(
-    output_dir: Path,
-) -> rebuild_input_repo.PrototypeRebuildInputRepository:
-    return rebuild_input_repo.PrototypeRebuildInputRepository(
-        state_root=output_dir / "main_server" / "prototype_rebuild_inputs"
     )
 
 
@@ -58,20 +41,4 @@ def build_model_manifest_repository(
 ) -> model_manifest_repo.ModelManifestRepository:
     return model_manifest_repo.ModelManifestRepository(
         state_root=output_dir / "main_server" / "model_manifests"
-    )
-
-
-def build_runtime_prototype_pack_repository(
-    output_dir: Path,
-) -> pack_repo.PrototypePackRepository:
-    return pack_repo.PrototypePackRepository(
-        state_root=output_dir / "main_server" / "runtime_prototype_packs"
-    )
-
-
-def build_runtime_prototype_build_state_repository(
-    output_dir: Path,
-) -> build_state_repo.PrototypeBuildStateRepository:
-    return build_state_repo.PrototypeBuildStateRepository(
-        state_root=output_dir / "main_server" / "runtime_prototype_build_states"
     )

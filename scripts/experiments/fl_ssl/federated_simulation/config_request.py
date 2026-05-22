@@ -37,7 +37,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedLoraClassifierRuntimeConfig,
-    FederatedPrototypeRebuildConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
@@ -67,7 +66,6 @@ def build_simulation_request_from_config(
     """Hydra 실행 config를 typed simulation request로 해석한다."""
 
     embedding_spec = instantiate(cfg.embedding.spec)
-    prototype_build_strategy = instantiate(cfg.prototype_builder)
     local_update_profile = LocalUpdateProfile.from_mapping(
         to_plain_dict(cfg.local_update_profile)
     )
@@ -123,13 +121,9 @@ def build_simulation_request_from_config(
         model_id=str(cfg.published_model_id),
         training_scope=local_update_profile.training_scope,
         round_runtime_config=round_runtime_config,
-        prototype_build_strategy=prototype_build_strategy,
         shard_policy=shard_policy,
         training_task_config=training_task_config,
         validation_config=FederatedValidationConfig(**to_plain_dict(cfg.validation)),
-        prototype_rebuild_config=FederatedPrototypeRebuildConfig(
-            **to_plain_dict(cfg.prototype_rebuild)
-        ),
         diagnostics_config=FederatedDiagnosticsConfig(**to_plain_dict(cfg.diagnostics)),
         ssl_method_config=_build_ssl_method_config(cfg, execution_plan=execution_plan),
         client_pool_split_config=client_pool_split_config,

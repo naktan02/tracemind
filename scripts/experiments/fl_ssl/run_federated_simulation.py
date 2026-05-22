@@ -26,7 +26,6 @@ def render_simulation_result_lines(
     lines = [
         f"output_dir={output_dir}",
         f"initial_model_revision={result.initial_model_revision}",
-        f"initial_prototype_version={result.initial_prototype_version}",
         (
             "initial_validation="
             f"accuracy:{result.initial_validation.top1_accuracy:.4f},"
@@ -41,7 +40,6 @@ def render_simulation_result_lines(
         lines.extend(
             [
                 f"final_model_revision={last_round.model_revision}",
-                f"final_prototype_version={last_round.prototype_version}",
                 (
                     "final_validation="
                     f"accuracy:{result.final_validation.top1_accuracy:.4f},"

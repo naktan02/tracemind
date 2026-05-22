@@ -22,7 +22,6 @@ defaults:
   - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/fl/local_ssl_policy: query_ssl_method
-  - /strategy_axes/prototype/build_strategy: single
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
@@ -81,13 +80,6 @@ run_safety:
   long_run_ack: null
   required_long_run_ack: ALLOW_FL_SSL_LONG_RUN
 
-prototype_rebuild:
-  embedding_backend: simulation
-  mapping_version: ourafla_to_4cat.v1
-  translation_model_id: null
-  translation_model_revision: null
-  translation_direction: null
-
 diagnostics:
   dump_dir_name: selection_dumps
 
@@ -103,7 +95,7 @@ query_ssl_strong_view_policy: first_aug
 round_runtime:
   adapter_family_name: lora_classifier
   aggregation_backend_name: fedavg
-  # classifier_head family에서 prototype centroid를 head weight로 바꿀 때만 사용한다.
+  # legacy classifier_head family bootstrap leaf다. 현재 FL SSL simulation은 lora_classifier만 지원한다.
   classifier_head_bootstrap_logit_scale: 8.0
   lora_classifier:
     backbone_model_id: ${paper_backbone.model_id}

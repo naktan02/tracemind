@@ -73,14 +73,12 @@ def _result(*, macro_f1: float, client_macro_f1: float) -> SimulationResult:
     evaluation = _evaluation(macro_f1=macro_f1)
     return SimulationResult(
         initial_model_revision="sim_rev_0000",
-        initial_prototype_version="proto_sim_0000",
         initial_validation=_evaluation(macro_f1=0.1),
         final_validation=evaluation,
         rounds=(
             SimulationRoundSummary(
                 round_id="round_0001",
                 model_revision="sim_rev_0001",
-                prototype_version="proto_sim_0001",
                 update_count=2,
                 validation=evaluation,
                 clients=(),

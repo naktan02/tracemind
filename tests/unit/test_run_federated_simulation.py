@@ -42,21 +42,13 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
-from methods.prototype.building.single import (
-    SinglePrototypeBuildStrategy,
-)
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_training,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     evaluation as evaluation_adapter,
 )
-from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
-    build_training_examples,
-    evaluate_rows,
-)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
-    FederatedClientLocalTrainingContext,
     build_federated_ssl_simulation_runtime,
     build_manual_federated_ssl_simulation_runtime,
 )
@@ -75,7 +67,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedLoraClassifierRuntimeConfig,
-    FederatedPrototypeRebuildConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
@@ -97,12 +88,8 @@ from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     QuerySslLoraClientTrainingResult,
 )
-from scripts.runtime_adapters.federated_agent.scoring_runtime import (
-    build_federated_scoring_service,
-)
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
-    finalize_bootstrap_shared_state,
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
@@ -111,12 +98,6 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
 from scripts.runtime_adapters.federated_server.runtime import (
     SimulationServerRuntime,
     resolve_simulation_aggregation_backend_name,
-)
-from shared.src.contracts.adapter_contract_families.classifier_head import (
-    ClassifierHeadState,
-)
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterState,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
@@ -127,7 +108,6 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import make_embedding_manifest
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
     TrainingSelectionPolicy,
@@ -135,14 +115,6 @@ from shared.src.contracts.training_contracts import (
     make_training_update_envelope,
 )
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
-
-
-class _StaticEmbeddingAdapter:
-    def __init__(self, vectors: dict[str, list[float]]) -> None:
-        self._vectors = vectors
-
-    def embed_texts(self, texts: list[str]) -> list[list[float]]:
-        return [list(self._vectors[text]) for text in texts]
 
 
 def _row(query_id: str, text: str, label: str) -> dict[str, str]:
@@ -157,37 +129,6 @@ def _row(query_id: str, text: str, label: str) -> dict[str, str]:
         "approved_by": "test",
         "created_at": "2026-03-29T00:00:00+00:00",
     }
-
-
-def _pack_payload() -> PrototypePackPayload:
-    return PrototypePackPayload.model_validate(
-        {
-            "schema_version": "prototype_pack.v1",
-            "prototype_version": "proto_test_v1",
-            "embedding_model_id": "hash_debug",
-            "embedding_model_revision": "main",
-            "mapping_version": "ourafla_to_4cat.v1",
-            "build_method": "mean_centroid_l2_normalized",
-            "distance_metric": "cosine",
-            "built_at": "2026-04-02T00:00:00+00:00",
-            "categories": {
-                "anxiety": [
-                    {
-                        "prototype_id": "anxiety:single",
-                        "centroid": [1.0, 0.0],
-                        "sample_count": 2,
-                    }
-                ],
-                "normal": [
-                    {
-                        "prototype_id": "normal:single",
-                        "centroid": [0.0, 1.0],
-                        "sample_count": 2,
-                    }
-                ],
-            },
-        }
-    )
 
 
 def test_round_task_mapper_accepts_fedmatch_local_step_task_type() -> None:
@@ -222,10 +163,10 @@ def _default_training_task_config(
     margin_threshold: float,
     max_examples: int,
     gradient_clip_norm: float | None,
-    training_backend_name: str = "diagonal_scale_heuristic",
-    privacy_guard_name: str = "diagonal_scale_clip_only",
-    scorer_backend_name: str = "prototype_similarity",
-    score_policy_name: str = "max_cosine",
+    training_backend_name: str = "lora_classifier_trainer",
+    privacy_guard_name: str = "noop",
+    scorer_backend_name: str = "lora_classifier_logits",
+    score_policy_name: str = "top1_probability",
     score_top_k: int | None = None,
     task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
     objective_extras: dict[str, str | int | float | bool] | None = None,
@@ -243,7 +184,8 @@ def _default_training_task_config(
                 "training_backend_name": training_backend_name,
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
-                "example_generation_backend_name": "prototype_rescore",
+                "example_generation_backend_name": "lora_classifier_raw_rows",
+                "evidence_backend_name": "lora_classifier_logits",
                 "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
                 **({} if score_top_k is None else {"score_top_k": score_top_k}),
@@ -263,8 +205,8 @@ def _default_validation_config(
     *,
     confidence_threshold: float,
     margin_threshold: float,
-    scorer_backend_name: str = "prototype_similarity",
-    score_policy_name: str | None = "max_cosine",
+    scorer_backend_name: str = LORA_CLASSIFIER_EVALUATOR_NAME,
+    score_policy_name: str | None = None,
     score_top_k: int | None = None,
 ) -> FederatedValidationConfig:
     return FederatedValidationConfig(
@@ -325,13 +267,74 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _default_prototype_rebuild_config() -> FederatedPrototypeRebuildConfig:
-    return FederatedPrototypeRebuildConfig(
-        embedding_backend="simulation",
-        mapping_version="ourafla_to_4cat.v1",
-        translation_model_id=None,
-        translation_model_revision=None,
-        translation_direction=None,
+def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
+    def _fake_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
+        training_task = kwargs["training_task"]
+        active_state = kwargs["active_adapter_state"]
+        client_id = str(kwargs["client_id"])
+        scale = 1.0 + (sum(ord(char) for char in client_id) % 7) / 10.0
+        labels = list(active_state.label_schema)
+        update_payload = make_lora_classifier_delta_payload(
+            model_id=training_task.model_id,
+            base_model_revision=training_task.model_revision,
+            training_scope=training_task.training_scope,
+            backbone=_lora_runtime_config().backbone_payload(),
+            lora_config=_lora_runtime_config().lora_config_payload(),
+            label_schema=labels,
+            example_count=2,
+            lora_parameter_deltas={"lora.test": [0.01 * scale]},
+            classifier_head_weight_deltas={
+                label: [0.01 * scale, 0.0] for label in labels
+            },
+            classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
+            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+            mean_confidence=0.8,
+            delta_l2_norm=0.1 * scale,
+        )
+        update_envelope = make_training_update_envelope(
+            update_id=f"update_{client_id}_{training_task.round_id}",
+            round_id=training_task.round_id,
+            task_id=training_task.task_id,
+            model_id=training_task.model_id,
+            base_model_revision=training_task.model_revision,
+            training_scope=training_task.training_scope,
+            payload_ref=f"client-submission::{client_id}",
+            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            example_count=2,
+            client_metrics={
+                "delta_l2_norm": 0.1 * scale,
+                "mean_confidence": 0.8,
+                "mean_margin": 0.2,
+                "query_ssl_local_steps": 1.0,
+            },
+        )
+        return QuerySslLoraClientTrainingResult(
+            update_envelope=update_envelope,
+            update_payload=update_payload,
+            candidate_count=2,
+            accepted_count=2,
+            local_step_plan=build_query_ssl_local_step_plan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                uses_labeled_batches=True,
+                local_epochs=1,
+                max_steps=1,
+            ),
+            client_metrics=update_envelope.client_metrics,
+            pseudo_label_quality=PseudoLabelQualitySummary(
+                pseudo_label_confidence_mean=0.8,
+                pseudo_label_margin_mean=0.2,
+                pseudo_label_correct_count=1,
+                pseudo_label_evaluated_count=2,
+                accepted_label_distribution={labels[0]: 2} if labels else {},
+                rejected_label_distribution={},
+            ),
+        )
+
+    monkeypatch.setattr(
+        query_ssl_client_round,
+        "run_query_ssl_lora_classifier_local_training",
+        _fake_trainer,
     )
 
 
@@ -380,7 +383,7 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
 
 def _default_round_runtime_config(
     *,
-    adapter_family_name: str = "diagonal_scale",
+    adapter_family_name: str = "lora_classifier",
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None,
@@ -389,7 +392,15 @@ def _default_round_runtime_config(
         adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
-        lora_classifier=lora_classifier,
+        lora_classifier=(
+            lora_classifier
+            if lora_classifier is not None
+            else (
+                _lora_runtime_config()
+                if adapter_family_name == "lora_classifier"
+                else None
+            )
+        ),
     )
 
 
@@ -489,7 +500,6 @@ def _default_simulation_request(
         model_id=model_id,
         training_scope=training_scope,
         round_runtime_config=round_runtime_config or _default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
         shard_policy=shard_policy or _default_shard_policy(),
         training_task_config=training_task_config
         or _default_training_task_config(
@@ -497,13 +507,13 @@ def _default_simulation_request(
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
+            objective_extras=_lora_objective_extras(),
         ),
         validation_config=validation_config
         or _default_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
-        prototype_rebuild_config=_default_prototype_rebuild_config(),
         diagnostics_config=_default_diagnostics_config(),
         ssl_method_config=ssl_method_config,
         client_pool_split_config=(
@@ -511,7 +521,21 @@ def _default_simulation_request(
         ),
         report_config=report_config,
         execution_plan=execution_plan,
-        query_ssl_objective_config=query_ssl_objective_config,
+        query_ssl_objective_config=query_ssl_objective_config
+        or FederatedQuerySslObjectiveConfig(
+            method_name="fixmatch_usb_v1",
+            algorithm_name="fixmatch",
+            parameters={
+                "temperature": 0.5,
+                "p_cutoff": 0.95,
+                "hard_label": True,
+                "lambda_u": 1.0,
+                "supervised_loss_weight": 1.0,
+                "unlabeled_batch_size": 2,
+            },
+            strong_view_policy="first_aug",
+            unlabeled_batch_size=2,
+        ),
         local_trainer_runtime_config=(
             local_trainer_runtime_config or FederatedLocalTrainerRuntimeConfig()
         ),
@@ -607,8 +631,9 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 "training_backend_name": "lora_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
-                "example_generation_backend_name": "prototype_rescore",
-                "scorer_backend_name": "classifier_head_logits",
+                "example_generation_backend_name": "lora_classifier_raw_rows",
+                "evidence_backend_name": "lora_classifier_logits",
+                "scorer_backend_name": "lora_classifier_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_lora_objective_extras(
@@ -623,7 +648,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     manifest = make_embedding_manifest(
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
-        prototype_version="proto_v0",
+        prototype_version="classifier_only",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
     active_state = build_initial_shared_state(
@@ -789,21 +814,17 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 client_shards=(shard,),
             ),
             validation_client_shards=(),
-            adapter=object(),
             server_runtime=server_runtime,  # type: ignore[arg-type]
             initial_model_revision="sim_rev_0000",
-            initial_prototype_version="proto_v0",
             initial_validation=object(),  # type: ignore[arg-type]
             active=ActiveSimulationState(
                 manifest=manifest,
                 adapter_state=active_state,
-                prototype_pack=_pack_payload(),
             ),
         ),
         active=ActiveSimulationState(
             manifest=manifest,
             adapter_state=active_state,
-            prototype_pack=_pack_payload(),
         ),
         ssl_method_runtime=object(),
         round_id="round_0001",
@@ -868,8 +889,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 "training_backend_name": "lora_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
-                "example_generation_backend_name": "prototype_rescore",
-                "scorer_backend_name": "classifier_head_logits",
+                "example_generation_backend_name": "lora_classifier_raw_rows",
+                "evidence_backend_name": "lora_classifier_logits",
+                "scorer_backend_name": "lora_classifier_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_lora_objective_extras(
@@ -884,7 +906,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     manifest = make_embedding_manifest(
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
-        prototype_version="proto_v0",
+        prototype_version="classifier_only",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
     active_state = build_initial_shared_state(
@@ -1083,21 +1105,17 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 client_shards=(shard,),
             ),
             validation_client_shards=(),
-            adapter=object(),
             server_runtime=server_runtime,  # type: ignore[arg-type]
             initial_model_revision="sim_rev_0000",
-            initial_prototype_version="proto_v0",
             initial_validation=object(),  # type: ignore[arg-type]
             active=ActiveSimulationState(
                 manifest=manifest,
                 adapter_state=active_state,
-                prototype_pack=_pack_payload(),
             ),
         ),
         active=ActiveSimulationState(
             manifest=manifest,
             adapter_state=active_state,
-            prototype_pack=_pack_payload(),
         ),
         ssl_method_runtime=object(),
         round_id="round_0001",
@@ -1325,60 +1343,16 @@ def test_manual_federated_ssl_simulation_runtime_has_no_method_descriptor() -> N
         build_federated_ssl_simulation_runtime("paper_method_candidate")
 
 
-def test_manual_federated_ssl_runtime_uses_unlabeled_training_rows() -> None:
+def test_manual_federated_ssl_runtime_rejects_generic_training_plan() -> None:
     runtime = build_manual_federated_ssl_simulation_runtime()
-    labeled_row = _row("l1", "labeled", "normal")
-    unlabeled_row = _row("u1", "unlabeled", "anxiety")
-    objective_config = _default_training_task_config(
-        confidence_threshold=0.0,
-        margin_threshold=0.0,
-        max_examples=4,
-        gradient_clip_norm=1.0,
-    ).objective_config
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    plan = runtime.build_local_training_plan(
-        context=FederatedClientLocalTrainingContext(
-            shard=FederatedClientShard(
-                client_id="agent_001",
-                rows=[labeled_row, unlabeled_row],
-                labeled_rows=[labeled_row],
-                unlabeled_rows=[unlabeled_row],
-                client_pool_split_enforced=True,
-            ),
-            adapter=_StaticEmbeddingAdapter({"unlabeled": [1.0, 0.0]}),
-            adapter_state=adapter_state,
-            prototype_pack=_pack_payload(),
-            model_id="hash_debug",
-            scoring_service=build_federated_scoring_service(
-                objective_config=objective_config,
-                similarity_name="cosine",
-                shared_state=adapter_state,
-            ),
-            objective_config=objective_config,
-            client_state_root=Path("/tmp/agent_001"),
-            training_task=type(
-                "TrainingTaskStub",
-                (),
-                {"objective_config": objective_config},
-            )(),
-        ),
-    )
-
-    assert plan.rows == [unlabeled_row]
+    with pytest.raises(NotImplementedError, match="prototype-scored generic"):
+        runtime.build_local_training_plan(context=object())  # type: ignore[arg-type]
 
 
 def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) -> None:
     runtime = SimulationServerRuntime.build(
         output_dir=tmp_path,
         round_runtime_config=_default_round_runtime_config(),
-        prototype_build_strategy=SinglePrototypeBuildStrategy(),
         method_descriptor=None,
     )
 
@@ -1510,7 +1484,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         fl_method={
             "composition_mode": "manual",
             "manual_axes": {
-                "client_ssl_objective": "pseudo_label",
+                "client_ssl_objective": "fixmatch",
                 "server_aggregation": "fedavg",
                 "update_family": "lora_classifier",
             },
@@ -1557,71 +1531,6 @@ def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     assert state.label_schema == ["anxiety", "normal"]
     assert state.lora_config.rank == 8
     assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
-
-
-def test_finalize_bootstrap_shared_state_builds_classifier_head_from_prototype() -> (
-    None
-):
-    initial_state = build_initial_shared_state(
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head",
-            classifier_head_bootstrap_logit_scale=2.0,
-        ),
-        model_id="mxbai-classifier-head",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        labels=["anxiety", "normal"],
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    finalized_state = finalize_bootstrap_shared_state(
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head",
-            classifier_head_bootstrap_logit_scale=2.0,
-        ),
-        initial_state=initial_state,
-        active_prototype=_pack_payload(),
-        prototype_build_strategy_name="single",
-        model_id="mxbai-classifier-head",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    assert isinstance(finalized_state, ClassifierHeadState)
-    assert finalized_state.label_weights["anxiety"] == pytest.approx([2.0, 0.0])
-    assert finalized_state.label_weights["normal"] == pytest.approx([0.0, 2.0])
-
-
-def test_finalize_bootstrap_shared_state_rejects_classifier_head_multi_prototype() -> (
-    None
-):
-    initial_state = build_initial_shared_state(
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="classifier_head"
-        ),
-        model_id="mxbai-classifier-head",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        labels=["anxiety", "normal"],
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    with pytest.raises(ValueError, match="classifier_head bootstrap"):
-        finalize_bootstrap_shared_state(
-            round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="classifier_head"
-            ),
-            initial_state=initial_state,
-            active_prototype=_pack_payload(),
-            prototype_build_strategy_name="dbscan",
-            model_id="mxbai-classifier-head",
-            model_revision="sim_rev_0000",
-            training_scope="adapter_only",
-            updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-        )
 
 
 def test_build_initial_shared_state_rejects_unknown_family() -> None:
@@ -1698,8 +1607,10 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
             _row("n1", "calm calm", "normal"),
         ],
         model_id="mxbai-lora-classifier",
-        round_runtime_config=_default_round_runtime_config(
+        round_runtime_config=FederatedRoundRuntimeConfig(
             adapter_family_name="lora_classifier",
+            aggregation_backend_name="fedavg",
+            classifier_head_bootstrap_logit_scale=8.0,
             lora_classifier=None,
         ),
         training_task_config=_default_training_task_config(
@@ -1788,10 +1699,12 @@ def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
         validation_config=_default_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
+            scorer_backend_name="prototype_similarity",
+            score_policy_name="max_cosine",
         ),
     )
 
-    with pytest.raises(ValueError, match="prototype/selection-only"):
+    with pytest.raises(ValueError, match="lora_classifier_eval"):
         run_simulation_request(request)
 
 
@@ -1800,6 +1713,7 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
     monkeypatch,
 ) -> None:
     _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_lora_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -1956,13 +1870,28 @@ def test_run_simulation_request_rejects_local_round_family_mismatch(
             adapter_family_name="lora_classifier",
             lora_classifier=_lora_runtime_config(),
         ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="diagonal_scale_heuristic",
+            privacy_guard_name="diagonal_scale_clip_only",
+            scorer_backend_name="diagonal_scale_logits",
+            objective_extras={},
+        ),
     )
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         run_simulation_request(request)
 
 
-def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None:
+def test_run_simulation_completes_one_round_with_small_fixture(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_lora_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2000,25 +1929,6 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert result.rounds
     assert result.rounds[0].update_count > 0
     assert result.rounds[0].model_revision == "sim_rev_0001"
-    assert result.rounds[0].prototype_version == "proto_sim_0001"
-    dump_paths = sorted(
-        (tmp_path / "simulation" / "agents").glob(
-            "*/selection_dumps/round_0001.summary.json"
-        )
-    )
-    assert dump_paths
-    summary = json.loads(dump_paths[0].read_text(encoding="utf-8"))
-    assert "stage_counts" in summary
-    candidate_paths = sorted(
-        (tmp_path / "simulation" / "agents").glob(
-            "*/selection_dumps/round_0001.candidates.jsonl"
-        )
-    )
-    assert candidate_paths
-    first_line = candidate_paths[0].read_text(encoding="utf-8").splitlines()[0]
-    first_candidate = json.loads(first_line)
-    assert "selection_stage" in first_candidate
-    assert "threshold_accepted" in first_candidate
     assert result.report_path is not None
     report = json.loads(Path(result.report_path).read_text(encoding="utf-8"))
     assert report["track"] == "fl_ssl_main_comparison"
@@ -2060,10 +1970,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert "weighted_f1" in report["metrics"]["secondary"]
     assert "max_calibration_error" in report["metrics"]["secondary"]
     assert report["metrics"]["final_validation"]["loss_kind"] == (
-        "negative_log_likelihood_from_score_distribution"
+        "cross_entropy_from_lora_classifier_logits"
     )
     assert report["metrics"]["final_validation"]["score_distribution_kind"] == (
-        "softmax_raw_scores_temperature_1.0"
+        "lora_classifier_logits_softmax"
     )
     assert report["metrics"]["round_progression"]["round_count"] == 1
     assert (
@@ -2127,7 +2037,8 @@ def test_run_simulation_completes_one_round_with_small_fixture(tmp_path) -> None
     assert "accepted_label_distribution" in client_validation["clients"][0]
 
 
-def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
+def test_run_simulation_request_preserves_typed_boundary(tmp_path, monkeypatch) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2154,13 +2065,17 @@ def test_run_simulation_request_preserves_typed_boundary(tmp_path) -> None:
     result = run_simulation_request(request)
 
     assert result.initial_model_revision == "sim_rev_0000"
-    assert result.initial_prototype_version == "proto_sim_0000"
     assert result.rounds == ()
     assert result.final_validation == result.initial_validation
     assert len(result.client_evaluations) == 2
 
 
-def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
+def test_run_simulation_accepts_hydra_style_detail_configs(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_lora_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2215,200 +2130,6 @@ def test_run_simulation_accepts_hydra_style_detail_configs(tmp_path) -> None:
 
     assert result.rounds
     assert result.rounds[0].update_count > 0
-
-
-def test_evaluate_rows_respects_acceptance_policy_for_acceptance_ratio() -> None:
-    rows = [_row("q1", "panic panic", "anxiety")]
-    adapter = _StaticEmbeddingAdapter({"panic panic": [0.6, 0.4]})
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    objective_config = TrainingObjectiveConfig.from_mapping(
-        {
-            "training_backend_name": "diagonal_scale_heuristic",
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "pseudo_label_algorithm_name": "top1_confidence_only",
-            "acceptance_policy_name": "top1_confidence_only",
-            "privacy_guard_name": "noop",
-        }
-    )
-    result = evaluate_rows(
-        rows=rows,
-        adapter=adapter,
-        adapter_state=adapter_state,
-        prototype_pack=_pack_payload(),
-        model_id="hash_debug",
-        scoring_service=build_federated_scoring_service(
-            objective_config=objective_config,
-            similarity_name="cosine",
-        ),
-        confidence_threshold=0.9,
-        margin_threshold=0.0,
-        objective_config=objective_config,
-    )
-
-    assert result.top1_accuracy == 1.0
-    assert result.accepted_ratio == 0.0
-    assert result.loss >= 0.0
-    assert result.loss_kind == "negative_log_likelihood_from_score_distribution"
-    assert result.accuracy_top_1 == 1.0
-    assert result.correct_top_1 == 1
-    assert result.macro_f1 == 1.0
-    assert result.weighted_f1 == 1.0
-    assert result.expected_calibration_error >= 0.0
-    assert result.score_distribution_kind == "softmax_raw_scores_temperature_1.0"
-    assert result.classification_report["loss"] == result.loss
-    assert result.confusion_matrix == {"anxiety": {"anxiety": 1}}
-    assert result.per_label["anxiety"]["f1"] == 1.0
-
-
-def test_build_training_examples_requires_multiview_fields() -> None:
-    adapter = _StaticEmbeddingAdapter({"panic panic": [1.0, 0.0]})
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    with pytest.raises(
-        ValueError,
-        match="requires each row to include both weak_text/strong_text",
-    ):
-        objective_config = TrainingObjectiveConfig.from_mapping(
-            {
-                "training_backend_name": "diagonal_scale_heuristic",
-                "example_generation_backend_name": "weak_strong_pair",
-                "evidence_backend_name": "prototype_similarity_evidence",
-                "scorer_backend_name": "prototype_similarity",
-                "score_policy_name": "max_cosine",
-                "pseudo_label_algorithm_name": "top1_margin_threshold",
-                "acceptance_policy_name": "top1_margin_threshold",
-                "privacy_guard_name": "noop",
-            }
-        )
-        build_training_examples(
-            rows=[_row("q1", "panic panic", "anxiety")],
-            adapter=adapter,
-            adapter_state=adapter_state,
-            prototype_pack=_pack_payload(),
-            model_id="hash_debug",
-            scoring_service=build_federated_scoring_service(
-                objective_config=objective_config,
-                similarity_name="cosine",
-            ),
-            objective_config=objective_config,
-        )
-
-
-def test_build_training_examples_supports_multiview_row_fields_when_present() -> None:
-    adapter = _StaticEmbeddingAdapter(
-        {
-            "panic weak": [1.0, 0.0],
-            "panic strong": [0.8, 0.2],
-        }
-    )
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-    row = _row("q1", "panic panic", "anxiety")
-    row["weak_text"] = "panic weak"
-    row["strong_text"] = "panic strong"
-
-    objective_config = TrainingObjectiveConfig.from_mapping(
-        {
-            "training_backend_name": "diagonal_scale_heuristic",
-            "example_generation_backend_name": "weak_strong_pair",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "noop",
-        }
-    )
-    examples = build_training_examples(
-        rows=[row],
-        adapter=adapter,
-        adapter_state=adapter_state,
-        prototype_pack=_pack_payload(),
-        model_id="hash_debug",
-        scoring_service=build_federated_scoring_service(
-            objective_config=objective_config,
-            similarity_name="cosine",
-        ),
-        objective_config=objective_config,
-    )
-
-    assert len(examples) == 1
-    assert examples[0].view_kind == "weak_strong_pair"
-    assert examples[0].weak_embedding == [1.0, 0.0]
-    assert examples[0].strong_embedding == pytest.approx(
-        [0.9701425001453318, 0.24253562503633294]
-    )
-
-
-def test_build_training_examples_supports_usb_text_and_augmentation_fields() -> None:
-    adapter = _StaticEmbeddingAdapter(
-        {
-            "panic weak": [1.0, 0.0],
-            "panic strong de": [0.8, 0.2],
-        }
-    )
-    adapter_state = VectorAdapterState.identity(
-        model_id="hash_debug",
-        model_revision="main",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-    row = _row("q1", "panic weak", "anxiety")
-    row["aug_0"] = "panic strong de"
-    row["aug_1"] = "panic strong fr"
-
-    objective_config = TrainingObjectiveConfig.from_mapping(
-        {
-            "training_backend_name": "diagonal_scale_heuristic",
-            "example_generation_backend_name": "weak_strong_pair",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "noop",
-        }
-    )
-    examples = build_training_examples(
-        rows=[row],
-        adapter=adapter,
-        adapter_state=adapter_state,
-        prototype_pack=_pack_payload(),
-        model_id="hash_debug",
-        scoring_service=build_federated_scoring_service(
-            objective_config=objective_config,
-            similarity_name="cosine",
-        ),
-        objective_config=objective_config,
-    )
-
-    assert examples[0].view_kind == "weak_strong_pair"
-    assert examples[0].weak_embedding == [1.0, 0.0]
-    assert examples[0].strong_embedding == pytest.approx(
-        [0.9701425001453318, 0.24253562503633294]
-    )
 
 
 def _assert_vector_mapping_accumulates(

@@ -15,9 +15,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 
 @dataclass(frozen=True, slots=True)
@@ -26,7 +24,6 @@ class ActiveSimulationState:
 
     manifest: ModelManifest
     adapter_state: SharedAdapterState
-    prototype_pack: PrototypePackPayload
 
 
 @dataclass(frozen=True, slots=True)
@@ -50,10 +47,8 @@ class BootstrappedSimulation:
 
     dataset_split: FederatedDatasetSplit
     validation_client_shards: tuple[FederatedClientShard, ...]
-    adapter: EmbeddingAdapter
     server_runtime: SimulationServerRuntime
     initial_model_revision: str
-    initial_prototype_version: str
     initial_validation: SimulationEvaluation
     active: ActiveSimulationState
 

@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import time
-from pathlib import Path
 
 from methods.federated.participation import select_participating_clients
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
@@ -31,9 +30,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRoundSummary,
     SimulationRunRequest,
 )
-from shared.src.contracts.prototype_contracts import load_prototype_pack_payload
 
 from ..io.run_artifact_writer import RunArtifactWriter
+from .bootstrap import CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN
 
 
 def run_one_round(
@@ -123,17 +122,14 @@ def run_one_round(
     )
 
     next_model_revision = f"sim_rev_{round_index:04d}"
-    next_prototype_version = f"proto_sim_{round_index:04d}"
     next_active = _finalize_round_publication(
         request=request,
         bootstrapped=bootstrapped,
         round_id=round_id,
         next_model_revision=next_model_revision,
-        next_prototype_version=next_prototype_version,
     )
     validation = evaluate_simulation_validation(
         request=request,
-        adapter=bootstrapped.adapter,
         active=next_active,
         rows=request.validation_rows,
         objective_config=training_task.objective_config,
@@ -144,7 +140,6 @@ def run_one_round(
         summary=SimulationRoundSummary(
             round_id=round_id,
             model_revision=next_model_revision,
-            prototype_version=next_prototype_version,
             update_count=update_count,
             validation=validation,
             clients=tuple(execution.summary for execution in client_executions),
@@ -182,12 +177,11 @@ def _finalize_round_publication(
     bootstrapped: BootstrappedSimulation,
     round_id: str,
     next_model_revision: str,
-    next_prototype_version: str,
 ) -> ActiveSimulationState:
     finalized_round = bootstrapped.server_runtime.finalize_round(
         round_id=round_id,
         next_model_revision=next_model_revision,
-        next_prototype_version=next_prototype_version,
+        next_manifest_state_token=CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN,
     )
     if finalized_round.publication is None:
         raise ValueError("Finalized simulation round must contain publication.")
@@ -198,17 +192,7 @@ def _finalize_round_publication(
         output_dir=request.output_dir,
         manifest=active_manifest,
     )
-    if finalized_round.publication.prototype_pack_ref is None:
-        raise ValueError("Simulation finalize must publish a prototype pack reference.")
-    active_prototype = load_prototype_pack_payload(
-        Path(finalized_round.publication.prototype_pack_ref)
-    )
-    run_artifact_writer.save_prototype_pack(
-        output_dir=request.output_dir,
-        payload=active_prototype,
-    )
     return ActiveSimulationState(
         manifest=active_manifest,
         adapter_state=active_state,
-        prototype_pack=active_prototype,
     )

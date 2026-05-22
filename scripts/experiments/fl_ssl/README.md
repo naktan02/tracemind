@@ -292,8 +292,8 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 
 ## 주의
 
-- 현재 기존 FL runs 중 prototype scorer로 LoRA-classifier validation을 평가한
-  결과는 성능 근거로 쓰지 않는다. scorer 수정 이후 run을 재실행해야 한다.
+- 현재 FL SSL simulation은 classifier 기반 경로만 지원한다. prototype scorer/rebuild
+  scaffold는 제거했으며, prototype 기반 방법론은 실제 method로 확정될 때 다시 붙인다.
 - `report.protocol.embedding_adapter`, `local_trainer_runtime`이 논문용 실행
   환경인지 확인한다. CPU/hash debug smoke 결과를 성능 비교에 섞지 않는다.
 - scripts는 Hydra entrypoint, sweep, report/index wrapper만 소유한다. 새 method

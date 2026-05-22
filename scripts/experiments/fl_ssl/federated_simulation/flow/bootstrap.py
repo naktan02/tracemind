@@ -20,17 +20,19 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.embedding_runtime import create_embedding_adapter
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
-    finalize_bootstrap_shared_state,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 from ..io.run_artifact_writer import RunArtifactWriter
+
+CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN = "classifier_only"
 
 
 def bootstrap_simulation(
@@ -38,7 +40,7 @@ def bootstrap_simulation(
     *,
     ssl_method_descriptor: FederatedSslMethodDescriptor | None,
 ) -> BootstrappedSimulation:
-    """초기 shared state, prototype, manifest를 만들고 active pair로 고정한다."""
+    """초기 LoRA-classifier shared state와 manifest를 만들고 active state로 고정한다."""
 
     dataset_split = _resolve_dataset_split(request)
     validation_client_shards = split_rows_into_client_shards(
@@ -47,68 +49,30 @@ def bootstrap_simulation(
         seed=request.seed + 1,
         shard_policy=request.shard_policy,
     )
-    adapter = create_embedding_adapter(request.embedding_spec)
-    embedding_dim = _resolve_bootstrap_embedding_dim(
-        adapter=adapter,
-        dataset_split=dataset_split,
-    )
+    _require_classifier_simulation_runtime(request)
     server_runtime = SimulationServerRuntime.build(
         output_dir=request.output_dir,
         round_runtime_config=request.round_runtime_config,
-        prototype_build_strategy=request.prototype_build_strategy,
         method_descriptor=ssl_method_descriptor,
         capability_plan=request.capability_plan,
     )
 
     initial_model_revision = "sim_rev_0000"
-    initial_prototype_version = "proto_sim_0000"
     now = datetime.now(timezone.utc)
     initial_state = build_initial_shared_state(
         round_runtime_config=request.round_runtime_config,
         model_id=request.model_id,
         model_revision=initial_model_revision,
         training_scope=request.training_scope,
-        embedding_dim=embedding_dim,
+        embedding_dim=0,
         labels=_category_labels(request),
-        updated_at=now,
-    )
-    server_runtime.set_embedding_adapter(adapter)
-    server_runtime.store_prototype_rebuild_input(
-        rows=dataset_split.bootstrap_rows,
-        embedding_spec=request.embedding_spec,
-        rebuild_config=request.prototype_rebuild_config,
-    )
-    active_prototype = server_runtime.rebuild_reference_prototype_pack(
-        adapter_state=initial_state,
-        prototype_version=initial_prototype_version,
-        embedding_model_id=request.model_id,
-        embedding_model_revision=initial_model_revision,
-        built_at=now,
-    )
-    initial_state = finalize_bootstrap_shared_state(
-        round_runtime_config=request.round_runtime_config,
-        initial_state=initial_state,
-        active_prototype=active_prototype,
-        prototype_build_strategy_name=getattr(
-            request.prototype_build_strategy,
-            "name",
-            "",
-        ),
-        model_id=request.model_id,
-        model_revision=initial_model_revision,
-        training_scope=request.training_scope,
         updated_at=now,
     )
     run_artifact_writer = RunArtifactWriter()
     initial_state_ref = server_runtime.save_shared_adapter_state(initial_state)
-    run_artifact_writer.save_prototype_pack(
-        output_dir=request.output_dir,
-        payload=active_prototype,
-    )
     active_manifest = _build_bootstrap_manifest(
         request=request,
         initial_model_revision=initial_model_revision,
-        initial_prototype_version=initial_prototype_version,
         initial_state_ref=initial_state_ref,
         compatible_task_type=request.training_task_config.task_type,
         published_at=now,
@@ -122,11 +86,9 @@ def bootstrap_simulation(
     active = ActiveSimulationState(
         manifest=active_manifest,
         adapter_state=initial_state,
-        prototype_pack=active_prototype,
     )
     initial_validation = evaluate_simulation_validation(
         request=request,
-        adapter=adapter,
         active=active,
         rows=request.validation_rows,
         objective_config=request.training_task_config.objective_config,
@@ -134,10 +96,8 @@ def bootstrap_simulation(
     return BootstrappedSimulation(
         dataset_split=dataset_split,
         validation_client_shards=validation_client_shards,
-        adapter=adapter,
         server_runtime=server_runtime,
         initial_model_revision=initial_model_revision,
-        initial_prototype_version=initial_prototype_version,
         initial_validation=initial_validation,
         active=active,
     )
@@ -167,21 +127,26 @@ def _category_labels(request: SimulationRunRequest) -> tuple[str, ...]:
     )
 
 
-def _resolve_bootstrap_embedding_dim(
-    *,
-    adapter: EmbeddingAdapter,
-    dataset_split: FederatedDatasetSplit,
-) -> int:
-    if not dataset_split.bootstrap_rows:
-        raise ValueError("Bootstrap split must contain at least one row.")
-    return len(adapter.embed_texts([str(dataset_split.bootstrap_rows[0]["text"])])[0])
+def _require_classifier_simulation_runtime(request: SimulationRunRequest) -> None:
+    """현재 FL SSL simulation은 LoRA-classifier 경로만 지원한다."""
+
+    adapter_family_name = request.round_runtime_config.adapter_family_name
+    if adapter_family_name.strip().lower() != LORA_CLASSIFIER_ADAPTER_KIND:
+        raise ValueError(
+            "FL SSL simulation no longer wires embedding/prototype scoring. "
+            "Use round_runtime.adapter_family_name=lora_classifier."
+        )
+    if request.validation_config.scorer_backend_name != "lora_classifier_eval":
+        raise ValueError(
+            "FL SSL simulation validation must use lora_classifier_eval after "
+            "embedding/prototype scorer removal."
+        )
 
 
 def _build_bootstrap_manifest(
     *,
     request: SimulationRunRequest,
     initial_model_revision: str,
-    initial_prototype_version: str,
     initial_state_ref: str,
     compatible_task_type: TrainingTaskType,
     published_at: datetime,
@@ -193,7 +158,7 @@ def _build_bootstrap_manifest(
         published_at=published_at,
         artifact_kind="shared_adapter_state",
         artifact_ref=initial_state_ref,
-        prototype_version=initial_prototype_version,
+        prototype_version=CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN,
         training_scope=request.training_scope,
         training_enabled=True,
         compatible_task_types=(compatible_task_type,),

@@ -865,8 +865,6 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
 @pytest.mark.parametrize(
     "profile_name",
     [
-        "prototype_pseudo_label_v1",
-        "prototype_top1_confidence_v1",
         "lora_pseudo_label_v1",
     ],
 )
@@ -904,39 +902,6 @@ def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
     )
 
 
-def test_federated_simulation_supports_diagonal_scale_profiles() -> None:
-    with initialize_config_module(version_base=None, config_module="conf"):
-        cfg = compose(
-            config_name="entrypoints/fl_ssl/run_federated_simulation",
-            overrides=[
-                "strategy_axes/fl/local_update_profile=prototype_pseudo_label_v1",
-                "round_runtime.adapter_family_name=diagonal_scale",
-                "round_runtime.aggregation_backend_name=fedavg",
-            ],
-        )
-
-    assert "ssl_method" not in cfg
-    assert (
-        cfg.local_update_profile.algorithm_profile_name == "prototype_pseudo_label_v1"
-    )
-    assert cfg.round_runtime.adapter_family_name == "diagonal_scale"
-    assert cfg.round_runtime.aggregation_backend_name == "fedavg"
-    assert cfg.training_task.objective.training_backend_name == (
-        "diagonal_scale_heuristic"
-    )
-    assert cfg.training_task.objective.privacy_guard_name == "diagonal_scale_clip_only"
-    assert cfg.training_task.objective["lora_classifier.backbone_model_id"] == (
-        "mixedbread-ai/mxbai-embed-large-v1"
-    )
-    assert cfg.training_task.objective["lora_classifier.rank"] == 8
-    assert cfg.training_task.objective["lora_classifier.alpha"] == 16
-    assert cfg.training_task.objective["lora_classifier.delta_format"] == (
-        "server_uploaded_artifact_ref"
-    )
-    assert "adapter_family_name" not in cfg.local_update_profile
-    assert "aggregation_backend_name" not in cfg.local_update_profile
-
-
 def test_federated_simulation_manual_runtime_axes_are_compatible() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
@@ -952,8 +917,6 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
                 "run_controls/fl_ssl/budget=main",
                 "federated_run_budget.rounds=3",
                 "federated_run_budget.client_count=8",
-                "strategy_axes/prototype/build_strategy=kmeans",
-                "prototype_builder.candidate_ks=[2]",
             ],
         )
 
@@ -961,8 +924,6 @@ def test_federated_simulation_supports_short_preset_and_leaf_overrides() -> None
     assert cfg.federated_run_budget.rounds == 3
     assert cfg.federated_run_budget.client_count == 8
     assert cfg.federated_run_budget.output_dir == "runs/fl_ssl"
-    assert cfg.prototype_builder.name == "kmeans"
-    assert list(cfg.prototype_builder.candidate_ks) == [2]
 
 
 def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None:
@@ -1050,18 +1011,9 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
         cfg = compose(
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
-                "strategy_axes/fl/local_update_profile=prototype_top1_confidence_v1",
-                "round_runtime.adapter_family_name=diagonal_scale",
                 "shard_policy.dominant_ratio=0.6",
-                "training_task.objective.example_generation_backend_name=prototype_rescore",
-                "training_task.objective.evidence_backend_name=prototype_similarity_evidence",
-                "training_task.objective.scorer_backend_name=prototype_similarity",
-                "training_task.objective.score_policy_name=topk_mean_cosine",
-                "training_task.objective.score_top_k=2",
-                "validation.scorer_backend_name=prototype_similarity",
-                "validation.score_policy_name=topk_mean_cosine",
-                "validation.score_top_k=2",
-                "prototype_rebuild.mapping_version=custom_mapping.v1",
+                "training_task.objective.confidence_threshold=0.7",
+                "training_task.objective.margin_threshold=0.1",
                 "diagnostics.dump_dir_name=custom_dumps",
             ],
         )
@@ -1069,23 +1021,11 @@ def test_federated_simulation_supports_detail_strategy_overrides() -> None:
     assert cfg.shard_policy.name == "label_dominant"
     assert cfg.shard_policy.dominant_ratio == 0.6
     assert cfg.training_task.objective.algorithm_profile_name == (
-        "prototype_top1_confidence_v1"
+        "lora_pseudo_label_v1"
     )
-    assert (
-        cfg.training_task.objective.example_generation_backend_name
-        == "prototype_rescore"
-    )
-    assert (
-        cfg.training_task.objective.evidence_backend_name
-        == "prototype_similarity_evidence"
-    )
-    assert cfg.training_task.objective.scorer_backend_name == "prototype_similarity"
-    assert cfg.training_task.objective.score_policy_name == "topk_mean_cosine"
-    assert cfg.training_task.objective.score_top_k == 2
-    assert cfg.validation.scorer_backend_name == "prototype_similarity"
-    assert cfg.validation.score_policy_name == "topk_mean_cosine"
-    assert cfg.validation.score_top_k == 2
-    assert cfg.prototype_rebuild.mapping_version == "custom_mapping.v1"
+    assert cfg.training_task.objective.confidence_threshold == 0.7
+    assert cfg.training_task.objective.margin_threshold == 0.1
+    assert cfg.validation.scorer_backend_name == "lora_classifier_eval"
     assert cfg.diagnostics.dump_dir_name == "custom_dumps"
 
 

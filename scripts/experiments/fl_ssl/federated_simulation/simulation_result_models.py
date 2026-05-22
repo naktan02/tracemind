@@ -80,7 +80,6 @@ class SimulationRoundSummary:
 
     round_id: str
     model_revision: str
-    prototype_version: str
     update_count: int
     validation: SimulationEvaluation
     clients: tuple[ClientRoundSummary, ...]
@@ -98,7 +97,6 @@ class SimulationResult:
     """전체 simulation 요약."""
 
     initial_model_revision: str
-    initial_prototype_version: str
     initial_validation: SimulationEvaluation
     final_validation: SimulationEvaluation
     rounds: tuple[SimulationRoundSummary, ...]

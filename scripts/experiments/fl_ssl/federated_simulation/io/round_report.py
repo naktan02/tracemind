@@ -22,7 +22,6 @@ def build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                 "round_id": round_summary.round_id,
                 "round_index": round_index,
                 "model_revision": round_summary.model_revision,
-                "prototype_version": round_summary.prototype_version,
                 "update_count": round_summary.update_count,
                 "total_client_count": round_summary.total_client_count,
                 "selected_client_count": round_summary.selected_client_count,

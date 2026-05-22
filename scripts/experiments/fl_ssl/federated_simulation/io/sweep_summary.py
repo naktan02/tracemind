@@ -31,7 +31,6 @@ def build_sweep_run_payload(
         "protocol": {
             "completed_rounds": len(result.rounds),
             "initial_model_revision": result.initial_model_revision,
-            "initial_prototype_version": result.initial_prototype_version,
             **(protocol or {}),
         },
         "metrics": {

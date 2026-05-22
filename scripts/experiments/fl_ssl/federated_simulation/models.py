@@ -13,7 +13,6 @@ from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
-from methods.prototype.building.base import PrototypeBuildStrategy
 from scripts.experiments.fl_ssl.federated_simulation import (
     simulation_result_models,
 )
@@ -69,17 +68,6 @@ class FederatedValidationConfig:
     confidence_threshold: float
     margin_threshold: float
     score_top_k: int | None = None
-
-
-@dataclass(slots=True)
-class FederatedPrototypeRebuildConfig:
-    """라운드별 prototype 재생성 메타데이터 설정."""
-
-    embedding_backend: str
-    mapping_version: str
-    translation_model_id: str | None = None
-    translation_model_revision: str | None = None
-    translation_direction: str | None = None
 
 
 @dataclass(slots=True)
@@ -361,11 +349,9 @@ class SimulationRunRequest:
     model_id: str
     training_scope: str
     round_runtime_config: FederatedRoundRuntimeConfig
-    prototype_build_strategy: PrototypeBuildStrategy
     shard_policy: FederatedShardPolicyConfig
     training_task_config: FederatedTrainingTaskConfig
     validation_config: FederatedValidationConfig
-    prototype_rebuild_config: FederatedPrototypeRebuildConfig
     diagnostics_config: FederatedDiagnosticsConfig
     run_budget_name: str | None = None
     run_output_dir: str | None = None

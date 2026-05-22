@@ -3,13 +3,9 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from main_server.src.infrastructure.repositories import (
-    prototype_rebuild_input_repository as rebuild_input_repo,
-)
 from main_server.src.infrastructure.repositories import (
     shared_adapter_state_repository as adapter_state_repo,
 )
@@ -46,30 +42,18 @@ from methods.adaptation.federated_ssl_server_update import (
 )
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
-from methods.prototype.building.base import PrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
 from shared.src.contracts.training_contracts import (
     TrainingUpdateEnvelope,
     make_training_update_submission,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
-from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
 
-from .prototype_rebuild_bridge import (
-    SimulationEmbeddingAdapterFactory,
-    build_prototype_rebuild_runtime_service,
-    rebuild_reference_prototype_pack,
-    store_prototype_rebuild_input,
-)
 from .repositories import (
     build_model_manifest_repository,
-    build_prototype_rebuild_input_repository,
     build_round_repository,
     build_shared_adapter_state_repository,
     build_shared_adapter_update_repository,
@@ -171,10 +155,8 @@ class SimulationServerRuntime:
 
     output_dir: Path
     state_repository: adapter_state_repo.SharedAdapterStateRepository
-    input_repository: rebuild_input_repo.PrototypeRebuildInputRepository
     round_manager: RoundManagerService
     lifecycle_service: RoundLifecycleService
-    stored_rebuild_service: Any
 
     @classmethod
     def build(
@@ -182,11 +164,10 @@ class SimulationServerRuntime:
         *,
         output_dir: Path,
         round_runtime_config: Any,
-        prototype_build_strategy: PrototypeBuildStrategy,
         method_descriptor: FederatedSslMethodDescriptor | None = None,
         capability_plan: FederatedSslCapabilityPlan | None = None,
     ) -> "SimulationServerRuntime":
-        """simulation output root 기준 main_server runtime adapter를 만든다."""
+        """simulation output root 기준 shared-adapter runtime adapter를 만든다."""
 
         state_repository = build_shared_adapter_state_repository(output_dir)
         round_manager = RoundManagerService(
@@ -210,12 +191,6 @@ class SimulationServerRuntime:
             ),
             artifact_repository=state_repository,
         )
-        input_repository = build_prototype_rebuild_input_repository(output_dir)
-        stored_rebuild_service = build_prototype_rebuild_runtime_service(
-            output_dir=output_dir,
-            build_strategy=prototype_build_strategy,
-            input_repository=input_repository,
-        )
         lifecycle_service = RoundLifecycleService(
             round_repository=build_round_repository(output_dir),
             update_payload_repository=build_shared_adapter_update_repository(
@@ -225,7 +200,6 @@ class SimulationServerRuntime:
                 manifest_repository=build_model_manifest_repository(output_dir)
             ),
             round_manager_service=round_manager,
-            prototype_rebuild_runtime_service=stored_rebuild_service,
             server_policy_executor=SimulationServerPolicyExecutor(),
             round_state_exchange_executor=SimulationRoundStateExchangeExecutor(),
             method_descriptor=method_descriptor,
@@ -233,51 +207,8 @@ class SimulationServerRuntime:
         return cls(
             output_dir=output_dir,
             state_repository=state_repository,
-            input_repository=input_repository,
             round_manager=round_manager,
             lifecycle_service=lifecycle_service,
-            stored_rebuild_service=stored_rebuild_service,
-        )
-
-    def set_embedding_adapter(self, adapter: EmbeddingAdapter) -> None:
-        """prototype rebuild runtime이 simulation adapter instance를 재사용하게 한다."""
-
-        SimulationEmbeddingAdapterFactory.adapter = adapter
-
-    def store_prototype_rebuild_input(
-        self,
-        *,
-        rows: list[LabeledQueryRow],
-        embedding_spec: EmbeddingAdapterSpec,
-        rebuild_config: Any,
-    ) -> str:
-        """bootstrap row를 main_server prototype rebuild input으로 저장한다."""
-
-        return store_prototype_rebuild_input(
-            rows=rows,
-            embedding_spec=embedding_spec,
-            repository=self.input_repository,
-            rebuild_config=rebuild_config,
-        )
-
-    def rebuild_reference_prototype_pack(
-        self,
-        *,
-        adapter_state: SharedAdapterState,
-        prototype_version: str,
-        embedding_model_id: str,
-        embedding_model_revision: str,
-        built_at: datetime,
-    ) -> PrototypePackPayload:
-        """현재 저장된 reference input으로 prototype pack을 rebuild한다."""
-
-        return rebuild_reference_prototype_pack(
-            stored_rebuild_service=self.stored_rebuild_service,
-            adapter_state=adapter_state,
-            prototype_version=prototype_version,
-            embedding_model_id=embedding_model_id,
-            embedding_model_revision=embedding_model_revision,
-            built_at=built_at,
         )
 
     def save_shared_adapter_state(self, state: SharedAdapterState) -> str:
@@ -320,7 +251,7 @@ class SimulationServerRuntime:
         *,
         round_id: str,
         next_model_revision: str,
-        next_prototype_version: str,
+        next_manifest_state_token: str,
     ) -> RoundRecord:
         """main_server round lifecycle을 통해 aggregate/finalize를 실행한다."""
 
@@ -328,7 +259,7 @@ class SimulationServerRuntime:
             round_id,
             RoundFinalizeRequest(
                 next_model_revision=next_model_revision,
-                next_prototype_version=next_prototype_version,
+                next_prototype_version=next_manifest_state_token,
             ),
         )
 

@@ -134,14 +134,12 @@ def _dataset_split() -> FederatedDatasetSplit:
 def test_simulation_report_builder_computes_round_client_and_split_metrics() -> None:
     result = SimulationResult(
         initial_model_revision="sim_rev_0000",
-        initial_prototype_version="proto_sim_0000",
         initial_validation=_evaluation(macro_f1=0.2, loss=0.9),
         final_validation=_evaluation(macro_f1=0.6, loss=0.5),
         rounds=(
             SimulationRoundSummary(
                 round_id="round_0001",
                 model_revision="sim_rev_0001",
-                prototype_version="proto_sim_0001",
                 update_count=1,
                 validation=_evaluation(macro_f1=0.4, loss=0.8),
                 round_time_seconds=1.5,
@@ -178,7 +176,6 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             SimulationRoundSummary(
                 round_id="round_0002",
                 model_revision="sim_rev_0002",
-                prototype_version="proto_sim_0002",
                 update_count=2,
                 validation=_evaluation(macro_f1=0.6, loss=0.5),
                 round_time_seconds=2.5,
@@ -460,7 +457,6 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
     report_config.primary_metrics.append("missing_metric")
     result = SimulationResult(
         initial_model_revision="sim_rev_0000",
-        initial_prototype_version="proto_sim_0000",
         initial_validation=_evaluation(macro_f1=0.2, loss=0.9),
         final_validation=_evaluation(macro_f1=0.6, loss=0.5),
         rounds=(),

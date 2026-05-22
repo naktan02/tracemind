@@ -3,25 +3,16 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any, Protocol
 
 from methods.federated_ssl.base import (
-    TRAINING_ROW_SOURCE_ALL_ROWS,
-    TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE,
     TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
     TRAINING_ROW_SOURCES,
     FederatedSslMethodDescriptor,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
-    build_training_examples,
-)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
-)
-from scripts.runtime_adapters.federated_agent.training_runtime import (
-    build_federated_local_training_service,
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_round_open_request,
@@ -31,10 +22,6 @@ from scripts.runtime_adapters.federated_server.task_config_surface import (
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-from shared.src.contracts.prototype_contracts import PrototypePackPayload
-from shared.src.contracts.training_contracts import TrainingObjectiveConfig
-from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
-from shared.src.domain.services.embedding_adapter import EmbeddingAdapter
 
 MANUAL_BASELINE_RUNTIME_NAME = "manual_baseline"
 MANUAL_BASELINE_TRAINING_TASK_TYPE = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING.value
@@ -46,13 +33,6 @@ class FederatedClientLocalTrainingContext:
     """client local training 준비에 필요한 runtime 입력."""
 
     shard: FederatedClientShard
-    adapter: EmbeddingAdapter
-    adapter_state: SharedAdapterState
-    prototype_pack: PrototypePackPayload
-    model_id: str
-    scoring_service: Any
-    objective_config: TrainingObjectiveConfig
-    client_state_root: Path
     training_task: Any
 
 
@@ -120,48 +100,11 @@ class DefaultFederatedSslSimulationRuntime:
         *,
         context: FederatedClientLocalTrainingContext,
     ) -> FederatedClientLocalTrainingPlan:
-        rows = _select_training_rows(
-            row_source=self.training_row_source,
-            shard=context.shard,
+        del context
+        raise NotImplementedError(
+            "FL SSL simulation no longer supports prototype-scored generic local "
+            "training. Use the LoRA-classifier method/manual local objective path."
         )
-        examples = build_training_examples(
-            rows=rows,
-            adapter=context.adapter,
-            adapter_state=context.adapter_state,
-            prototype_pack=context.prototype_pack,
-            model_id=context.model_id,
-            scoring_service=context.scoring_service,
-            objective_config=context.objective_config,
-        )
-        service = build_federated_local_training_service(
-            client_state_root=context.client_state_root,
-            training_task=context.training_task,
-        )
-        return FederatedClientLocalTrainingPlan(
-            rows=rows,
-            examples=examples,
-            service=service,
-        )
-
-
-def _select_training_rows(
-    *,
-    row_source: str,
-    shard: FederatedClientShard,
-) -> list[LabeledQueryRow]:
-    if row_source == TRAINING_ROW_SOURCE_ALL_ROWS:
-        return list(shard.rows)
-    if (
-        row_source == TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
-        and shard.client_pool_split_enforced
-    ):
-        return list(shard.unlabeled_rows)
-    if (
-        row_source == TRAINING_ROW_SOURCE_LABELED_POOL_WHEN_AVAILABLE
-        and shard.client_pool_split_enforced
-    ):
-        return list(shard.labeled_rows)
-    return list(shard.rows)
 
 
 def build_federated_ssl_simulation_runtime(

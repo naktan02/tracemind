@@ -36,7 +36,6 @@ def build_simulation_result(
     )
     result = SimulationResult(
         initial_model_revision=bootstrapped.initial_model_revision,
-        initial_prototype_version=bootstrapped.initial_prototype_version,
         initial_validation=bootstrapped.initial_validation,
         final_validation=final_validation,
         rounds=tuple(round_summaries),
@@ -92,7 +91,6 @@ def _build_client_evaluations(
                 request=request,
                 active=active,
                 rows=shard.rows,
-                adapter=bootstrapped.adapter,
                 objective_config=request.training_task_config.objective_config,
             ),
         )

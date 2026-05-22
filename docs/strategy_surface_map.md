@@ -70,7 +70,7 @@ central fixed embedding + classifier seed
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled pool selection policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
 | Labeled exposure policy | `shared_client_seed` 기본, `client_local_split` legacy/ablation, `server_only_seed` artifact/request metadata | `strategy_axes/fl/labeled_exposure_policy` + materialized manifest metadata | separates how many labeled rows are selected from where selected labeled rows are visible | simulation capability |
-| Validation evaluator | `prototype_similarity`, `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | prototype scorer path or `methods/adaptation/lora_classifier/evaluation.py` | simulation |
+| Validation evaluator | `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/lora_classifier/evaluation.py` | FL SSL simulation |
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
@@ -82,7 +82,7 @@ central fixed embedding + classifier seed
 | Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
-| FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
+| FL local-update profile | `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | LoRA-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training/` | simulation |
@@ -193,10 +193,10 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `local_update_profile=lora_pseudo_label_v1`,
   `round_runtime.adapter_family_name=lora_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg`다. `diagonal_scale` baseline은
-  `local_update_profile=prototype_pseudo_label_v1`와
-  `round_runtime.adapter_family_name=diagonal_scale`를 함께 override한다.
-  이 조합은 `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
+  `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` /
+  prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
+  다시 필요해질 때 method-owned capability로 추가한다. 이 조합은
+  `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
 - 기본 manual LoRA-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
   `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
   `unlabeled_rows`로 실제 PEFT LoRA/classifier local optimizer를 실행한다.

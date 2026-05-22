@@ -28,7 +28,7 @@ def split_rows_for_federation(
     shard_policy: FederatedShardPolicyConfig,
     client_pool_split_config: FederatedClientPoolSplitConfig | None = None,
 ) -> FederatedDatasetSplit:
-    """train row를 prototype bootstrap과 non-IID client shard로 나눈다."""
+    """train row를 bootstrap holdout과 non-IID client shard로 나눈다."""
     split = split_items_for_federation(
         rows,
         label_getter=_row_label,
