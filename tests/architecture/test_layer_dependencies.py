@@ -16,6 +16,12 @@ METHODS_SRC = REPO_ROOT / "methods"
 CONF_FL_METHOD_DESCRIPTOR_SRC = (
     REPO_ROOT / "conf" / "strategy_axes" / "fl" / "method_descriptor"
 )
+CONF_FL_UPDATE_PARTITION_POLICY_SRC = (
+    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "update_partition_policy"
+)
+CONF_FL_PEER_CONTEXT_POLICY_SRC = (
+    REPO_ROOT / "conf" / "strategy_axes" / "fl" / "peer_context_policy"
+)
 AGENT_SRC = REPO_ROOT / "agent" / "src"
 AGENT_CONF = REPO_ROOT / "agent" / "conf"
 MAIN_SERVER_SRC = REPO_ROOT / "main_server" / "src"
@@ -454,6 +460,18 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                 f"{_relative_repo_path(config_path)}: name={declared_name!r} "
                 f"must match filename stem {method_name!r}"
             )
+        if payload.get("use_original_parameters") is True:
+            duplicated_keys = sorted(
+                key
+                for key in ("original_parameters", "effective_parameters")
+                if key in payload
+            )
+            if duplicated_keys:
+                violations.append(
+                    f"{_relative_repo_path(config_path)}: original method parameter "
+                    "values must stay in methods/federated_ssl/<method>/"
+                    f"original_spec.py, not YAML: {duplicated_keys}"
+                )
         if not method_dir.is_dir():
             violations.append(
                 f"{_relative_repo_path(config_path)}: missing "
@@ -484,6 +502,74 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
     assert not violations, (
         "FL method descriptor config는 실제 methods/federated_ssl/<method>/ 구현이 "
         "존재한 뒤에만 추가한다. 선택 전 placeholder YAML은 두지 않는다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_fl_update_partition_policy_configs_stay_mechanism_only() -> None:
+    """공통 partition capability에 method-local scheme 이름을 올리지 않는다."""
+
+    violations: list[str] = []
+    method_local_fragments = ("sigma", "psi")
+    for config_path in sorted(CONF_FL_UPDATE_PARTITION_POLICY_SRC.glob("*.yaml")):
+        payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        policy_name = str(payload.get("name", "")).strip()
+        checked_values = (config_path.stem, policy_name)
+        if any(
+            fragment in value.lower()
+            for value in checked_values
+            for fragment in method_local_fragments
+        ):
+            violations.append(
+                f"{_relative_repo_path(config_path)}: method-local partition scheme "
+                "names such as sigma/psi must stay in methods/federated_ssl/<method>/"
+            )
+        if policy_name == "partitioned":
+            if "partitions" in payload:
+                violations.append(
+                    f"{_relative_repo_path(config_path)}: generic partitioned "
+                    "capability must not declare method-local partition names"
+                )
+            if payload.get("partition_scheme_source") != "method_descriptor":
+                violations.append(
+                    f"{_relative_repo_path(config_path)}: partitioned capability "
+                    "must point partition_scheme_source to method_descriptor"
+                )
+
+    assert not violations, (
+        "FL update_partition_policy config는 unified/partitioned 같은 mechanism만 "
+        "표현한다. sigma/psi 같은 scheme 이름과 routing 의미는 method package가 "
+        "소유한다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_fl_peer_context_policy_configs_stay_mechanism_only() -> None:
+    """공통 peer context capability에 FedMatch helper 기본값을 올리지 않는다."""
+
+    violations: list[str] = []
+    method_parameter_keys = {"num_helpers", "refresh_interval", "h_interval"}
+    for config_path in sorted(CONF_FL_PEER_CONTEXT_POLICY_SRC.glob("*.yaml")):
+        payload = yaml.safe_load(config_path.read_text(encoding="utf-8")) or {}
+        policy_name = str(payload.get("name", "")).strip()
+        leaked_keys = sorted(method_parameter_keys.intersection(payload))
+        if leaked_keys:
+            violations.append(
+                f"{_relative_repo_path(config_path)}: method-local peer context "
+                f"parameters must stay in method descriptors: {leaked_keys}"
+            )
+        if policy_name != "none" and payload.get("parameter_source") != (
+            "method_descriptor"
+        ):
+            violations.append(
+                f"{_relative_repo_path(config_path)}: non-empty peer context "
+                "capability must declare parameter_source=method_descriptor"
+            )
+
+    assert not violations, (
+        "FL peer_context_policy config는 exchange mechanism만 표현한다. FedMatch의 "
+        "num_helpers/h_interval 같은 원본 기본값은 method package와 descriptor가 "
+        "소유한다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 

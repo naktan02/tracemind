@@ -257,15 +257,30 @@ client/server 정책을 함께 소유할 때 사용한다. 이 경우
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=method_owned \
   strategy_axes/fl/method_descriptor=fedmatch \
-  strategy_axes/fl/update_partition_policy=sigma_psi \
+  strategy_axes/fl/update_partition_policy=partitioned \
   strategy_axes/fl/aggregation_weight_policy=uniform \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1
 ```
 
-현재 FedMatch는 descriptor와 capability surface가 열려 있지만, method-owned local
-objective와 custom server/peer runtime은 아직 후속 구현 단계다. 따라서 위 명령은
-config/compatibility 형태를 보여주며, 실제 실행은 runtime wiring이 추가된 뒤 가능하다.
+현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot이 열려
+있지만, method-owned tensor local objective와 custom server/peer runtime은 아직 후속
+구현 단계다. 따라서 위 명령은 config/compatibility 형태를 보여주며, 실제 실행은
+runtime wiring이 추가된 뒤 가능하다.
+
+원본 기본값은 YAML에 복제하지 않고
+`methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.
+ablation은 필요한 값만 override한다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  fl_method.composition_mode=method_owned \
+  strategy_axes/fl/method_descriptor=fedmatch \
+  strategy_axes/fl/update_partition_policy=partitioned \
+  strategy_axes/fl/aggregation_weight_policy=uniform \
+  +ssl_method.parameter_overrides.confidence_threshold=0.85 \
+  +ssl_method.parameter_overrides.num_helpers=4
+```
 
 ## Report Index 갱신
 

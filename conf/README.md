@@ -74,6 +74,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - `cfg.ssl_method`로 compose된다.
   - FedMatch/FedLGMatch/(FL)^2 같은 method-owned 논문 method identity, report
     role, custom runtime 필요 여부를 설명한다.
+  - 논문 원본 기본값은 YAML에 복제하지 않고
+    `methods/federated_ssl/<method>/original_spec.py`가 소유한다. YAML은
+    `scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면만
+    둔다.
   - 실제 local update 계산 조합을 단독으로 소유하지 않는다.
   - 기본 manual baseline은 이 그룹을 compose하지 않고,
     `query_ssl_method/local_update_profile/round_runtime.*` 조합으로 실행한다.

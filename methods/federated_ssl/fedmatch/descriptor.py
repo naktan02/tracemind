@@ -31,14 +31,18 @@ from methods.federated_ssl.capability_plan import (
     QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
-    UPDATE_PARTITION_SIGMA_PSI,
+    UPDATE_PARTITION_PARTITIONED,
+)
+from methods.federated_ssl.fedmatch.original_spec import (
+    FEDMATCH_ORIGINAL_COMMIT,
+    FEDMATCH_ORIGINAL_REPOSITORY,
 )
 
 FEDMATCH_METHOD_NAME = "fedmatch"
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
-    implementation_status="capability_surface_v1",
+    implementation_status="original_core_spec_v1",
     method_role="method_owned",
     required_views=FederatedSslRequiredViews(
         view_names=("text", "aug_0", "aug_1"),
@@ -92,7 +96,7 @@ descriptor = FederatedSslMethodDescriptor(
             PEER_CONTEXT_NONE,
             PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
         ),
-        update_partition_policy_names=(UPDATE_PARTITION_SIGMA_PSI,),
+        update_partition_policy_names=(UPDATE_PARTITION_PARTITIONED,),
         aggregation_weight_policy_names=(AGGREGATION_WEIGHT_UNIFORM,),
         query_multiview_source_names=(QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,),
         client_participation_policy_names=(
@@ -101,3 +105,8 @@ descriptor = FederatedSslMethodDescriptor(
         ),
     ),
 )
+
+ORIGINAL_SOURCE_METADATA = {
+    "repository": FEDMATCH_ORIGINAL_REPOSITORY,
+    "commit": FEDMATCH_ORIGINAL_COMMIT,
+}

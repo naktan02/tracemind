@@ -18,6 +18,9 @@ from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
 )
+from methods.federated_ssl.method_parameters import (
+    build_federated_ssl_method_parameter_snapshot,
+)
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
     optional_plain_dict,
@@ -238,7 +241,13 @@ def _build_ssl_method_config(
     ssl_method = cfg.get("ssl_method")
     if ssl_method is None:
         raise ValueError("method-owned FL SSL execution requires ssl_method config.")
-    return FederatedSslMethodConfig(**to_plain_dict(ssl_method))
+    ssl_method_mapping = to_plain_dict(ssl_method)
+    parameter_snapshot = build_federated_ssl_method_parameter_snapshot(
+        method_name=str(ssl_method_mapping["name"]),
+        method_config=ssl_method_mapping,
+    )
+    ssl_method_mapping.update(parameter_snapshot.to_mapping())
+    return FederatedSslMethodConfig(**ssl_method_mapping)
 
 
 def _resolve_training_task_type(

@@ -162,6 +162,14 @@ class FederatedSslMethodConfig:
     display_name: str
     method_role: str
     implementation_status: str
+    original_source: dict[str, object] = field(default_factory=dict)
+    scenario: str | None = None
+    use_original_parameters: bool = True
+    original_parameters: dict[str, object] = field(default_factory=dict)
+    parameter_overrides: dict[str, object] = field(default_factory=dict)
+    effective_parameters: dict[str, object] = field(default_factory=dict)
+    parameter_override_status: str = "original"
+    trace_mapping: dict[str, object] = field(default_factory=dict)
     client_step: dict[str, object] = field(default_factory=dict)
     server_step: dict[str, object] = field(default_factory=dict)
     round_state_exchange: dict[str, object] = field(default_factory=dict)

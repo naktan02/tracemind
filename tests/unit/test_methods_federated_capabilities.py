@@ -132,7 +132,7 @@ def test_fedmatch_descriptor_requires_partition_and_weight_capabilities() -> Non
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
         peer_context_policy={"name": "none"},
-        update_partition_policy={"name": "sigma_psi"},
+        update_partition_policy={"name": "partitioned"},
         query_multiview_source={"name": "materialized_rows"},
     )
     incompatible_plan = FederatedSslCapabilityPlan.from_mappings(

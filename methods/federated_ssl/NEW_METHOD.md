@@ -46,10 +46,12 @@ adapter payload 해석/평균 규칙으로 안정화된 계산은 `methods/feder
 - 필요하면 `conf/strategy_axes/fl/local_update_profile/<profile>.yaml`
 
 method descriptor YAML은 implementation/recipe가 실제로 존재할 때만 추가한다.
-threshold, LoRA rank, round 수 같은 실행값의 source of truth는 Hydra leaf config에
-남긴다. Adapter family와 aggregation backend 조합은 별도 preset YAML을 만들지 않고
-`round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`을
-직접 override한다.
+threshold, LoRA rank, round 수 같은 일반 실행값의 source of truth는 Hydra leaf config에
+남긴다. 단, 논문 method 원본 기본값은 `methods/federated_ssl/<method>/original_spec.py`에
+두고, method descriptor YAML은 `scenario`, `use_original_parameters`,
+`parameter_overrides` 같은 실행 표면만 둔다. Adapter family와 aggregation backend 조합은
+별도 preset YAML을 만들지 않고 `round_runtime.adapter_family_name`과
+`round_runtime.aggregation_backend_name`을 직접 override한다.
 
 FL simulation entrypoint의 `fl_method` section은 `FederatedSslExecutionPlan`으로
 해석된다. 새 논문 method는 기본적으로 `composition_mode=method_owned`로 실행하고,
@@ -65,10 +67,14 @@ method 이름 파일을 `agent`/`main_server`에 추가하지 말고 capability 
 compatibility validator를 추가한다.
 
 `required_capabilities`에는 method가 요구하는 공통 FL SSL capability를 적는다.
-예를 들어 FedMatch는 `update_partition_policy=sigma_psi`와
-`aggregation_weight_policy=uniform`을 요구한다. client participation, labeled exposure,
-server step, peer context, query multiview source도 method 전용 분기가 아니라
-`FederatedSslCapabilityPlan`의 공통 축으로 검증한다.
+예를 들어 FedMatch는 `update_partition_policy=partitioned`와
+`aggregation_weight_policy=uniform`을 요구한다. `sigma/psi` 같은 partition scheme
+이름과 loss routing 의미는 FedMatch method package에 둔다. client participation,
+labeled exposure, server step, peer context, query multiview source도 method 전용
+분기가 아니라 `FederatedSslCapabilityPlan`의 공통 축으로 검증한다.
+단, `peer_context_policy=prediction_similarity_topk` 같은 공통 capability는 mechanism만
+표현한다. `num_helpers`, refresh interval처럼 논문 원본에서 온 값은 method descriptor와
+method-local policy module에 둔다.
 
 ## Registry
 

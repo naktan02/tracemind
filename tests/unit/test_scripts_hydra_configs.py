@@ -9,6 +9,11 @@ from omegaconf import DictConfig, OmegaConf
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
+from methods.federated_ssl.fedmatch.original_spec import (
+    FEDMATCH_ORIGINAL_COMMIT,
+    FEDMATCH_ORIGINAL_REPOSITORY,
+    fedmatch_original_parameter_mapping,
+)
 from methods.federated_ssl.local_update_profile import (
     LocalUpdateProfile,
     require_training_objective_matches_local_update_profile,
@@ -17,6 +22,8 @@ from methods.federated_ssl.registry import (
     list_federated_ssl_method_descriptors,
 )
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
+    _build_execution_plan,
+    _build_ssl_method_config,
     _with_inferred_manual_axes,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
@@ -732,6 +739,78 @@ def test_federated_simulation_method_recipe_axes_are_composable(
             )
 
         _assert_manual_fl_runtime_is_compatible(cfg)
+
+
+def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/method_descriptor=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/fl/update_partition_policy=partitioned",
+                "strategy_axes/fl/aggregation_weight_policy=uniform",
+            ],
+        )
+
+    expected = fedmatch_original_parameter_mapping()
+    ssl_method_config = _build_ssl_method_config(
+        cfg,
+        execution_plan=_build_execution_plan(cfg),
+    )
+    assert ssl_method_config is not None
+
+    assert cfg.ssl_method.implementation_status == "original_core_spec_v1"
+    assert cfg.ssl_method.original_source.repository == FEDMATCH_ORIGINAL_REPOSITORY
+    assert cfg.ssl_method.original_source.commit == FEDMATCH_ORIGINAL_COMMIT
+    assert "original_parameters" not in cfg.ssl_method
+    assert cfg.ssl_method.scenario == "labels-at-client"
+    assert cfg.ssl_method.use_original_parameters is True
+    assert dict(cfg.ssl_method.parameter_overrides) == {}
+    assert ssl_method_config.original_parameters == expected
+    assert ssl_method_config.effective_parameters == expected
+    assert ssl_method_config.parameter_overrides == {}
+    assert ssl_method_config.parameter_override_status == "original"
+    assert cfg.ssl_method.trace_mapping.supervised_partition == "sigma"
+    assert cfg.ssl_method.trace_mapping.unsupervised_partition == "psi"
+    assert cfg.ssl_method.trace_mapping.aggregation_weight_policy == "uniform"
+    assert cfg.ssl_method.trace_mapping.update_partition_policy == "partitioned"
+    assert cfg.ssl_method.trace_mapping.partition_scheme == "sigma_psi"
+
+
+def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/method_descriptor=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/fl/update_partition_policy=partitioned",
+                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "+ssl_method.parameter_overrides.confidence_threshold=0.85",
+                "+ssl_method.parameter_overrides.num_helpers=4",
+            ],
+        )
+
+    ssl_method_config = _build_ssl_method_config(
+        cfg,
+        execution_plan=_build_execution_plan(cfg),
+    )
+    assert ssl_method_config is not None
+
+    assert ssl_method_config.original_parameters["confidence_threshold"] == (
+        pytest.approx(0.75)
+    )
+    assert ssl_method_config.original_parameters["num_helpers"] == 2
+    assert ssl_method_config.parameter_overrides == {
+        "confidence_threshold": 0.85,
+        "num_helpers": 4,
+    }
+    assert ssl_method_config.effective_parameters["confidence_threshold"] == (
+        pytest.approx(0.85)
+    )
+    assert ssl_method_config.effective_parameters["num_helpers"] == 4
+    assert ssl_method_config.parameter_override_status == "ablation"
 
 
 @pytest.mark.parametrize(

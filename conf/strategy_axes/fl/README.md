@@ -8,7 +8,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 
 | 그룹 | compose field | 의미 |
 |---|---|---|
-| `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 method-owned FL SSL method identity와 report metadata. 기본 manual baseline은 이 그룹을 compose하지 않는다. |
+| `method_descriptor/` | `ssl_method` | FedMatch, FedLGMatch 같은 method-owned FL SSL method identity, 원본 parameter snapshot, report metadata. 기본 manual baseline은 이 그룹을 compose하지 않는다. |
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
@@ -16,8 +16,8 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 | `client_participation_policy/` | `client_participation_policy` | round별 학습 참여 client subset 선택 방식 |
 | `local_supervision_regime/` | `local_supervision_regime` | client local step이 labeled/unlabeled/server-labeled regime 중 무엇을 쓰는지 |
 | `server_step_policy/` | `server_step_policy` | server-side supervised seed step 같은 추가 server step 여부 |
-| `peer_context_policy/` | `peer_context_policy` | client 간/round 간 helper context 교환 방식 |
-| `update_partition_policy/` | `update_partition_policy` | unified update인지 FedMatch류 sigma/psi partition update인지 |
+| `peer_context_policy/` | `peer_context_policy` | client 간/round 간 helper context 교환 mechanism |
+| `update_partition_policy/` | `update_partition_policy` | unified update인지 method-owned partitioned update인지 |
 | `aggregation_weight_policy/` | `aggregation_weight_policy` | FedAvg류 aggregation weight 기준 |
 | `query_multiview_source/` | `query_multiview_source` | weak/strong view가 materialized row에서 오는지, live agent가 만들지 |
 
@@ -33,8 +33,12 @@ metadata까지는 열려 있지만, 실제 simulation 실행은 method-owned des
 나머지 capability 축은 FedMatch 전용이 아니라 FL SSL 공통 조합 표면이다. 예를 들어
 client participation은 `all_clients`, `fraction_random`, `fixed_count_random` 중에서
 고르고, aggregation weight는 `example_count`, `uniform`, `accepted_count` 중에서 고른다.
-FedMatch는 이 공통 축 중 `sigma_psi` partition과 `uniform` aggregation weight를 요구하는
-method descriptor로 표현된다.
+FedMatch는 이 공통 축 중 `partitioned` update capability와 `uniform` aggregation
+weight를 요구하는 method descriptor로 표현된다. `sigma/psi` partition 이름과 loss
+routing 의미는 FedMatch method package가 소유한다.
+마찬가지로 `prediction_similarity_topk`는 공통 peer-context mechanism만 표현하고,
+FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은 FedMatch descriptor와
+method package가 소유한다.
 
 ## `fl_method` 실행 계획
 
@@ -75,15 +79,18 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 ## `method_descriptor`와의 차이
 
 `method_descriptor`는 논문 method의 identity, report role, custom runtime 필요
-여부를 표현한다. 실제 local update 계산 조합은
-`local_update_profile`, server round runtime 조합은 `round_runtime.*` leaf에서 온다.
+여부와 원본 parameter snapshot 사용 여부를 표현한다. 원본 상세값 자체는
+`methods/federated_ssl/<method>/original_spec.py`가 소유하고, YAML은
+`scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면만 둔다.
+실제 local update 계산 조합은 `local_update_profile`, server round runtime 조합은
+`round_runtime.*` leaf에서 온다.
 
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다.
 `docs/contracts/fl_ssl_method_capability_matrix.md`에서 capability 요구사항을 먼저
 정리하고, 선택 전에는 `methods/federated_ssl/<method>/` 구현 폴더나
 `method_descriptor/<method>.yaml` placeholder를 만들지 않는다. FedMatch는 첫 method로
-선택되어 capability surface가 열린 예외다. 선택된 method의 descriptor/recipe metadata와
-필요한 methods core를 구현한 뒤 이 config group을 연다.
+선택되어 capability surface와 원본 core/config snapshot이 열린 예외다.
+선택된 method의 descriptor/recipe metadata와 필요한 methods core를 구현한 뒤 이 config group을 연다.
 method-only local/server/aggregation 변형은 method 폴더에 둘 수 있고,
 `agent`/`main_server`에는 capability adapter만 둔다.
 
@@ -92,7 +99,7 @@ method-only local/server/aggregation 변형은 method 폴더에 둘 수 있고,
 
 사람이 읽는 method 조립표는 `methods/federated_ssl/<method>/descriptor.py`의 recipe
 metadata가 소유하고, 커질 때만 optional `recipe.py`로 분리한다. Hydra YAML은 실행
-조합과 파라미터 값만 소유한다.
+조합과 override hook만 소유하며, 논문 원본 기본값을 복제하지 않는다.
 
 ## Compose Preset 제거 기준
 

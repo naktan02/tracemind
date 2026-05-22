@@ -65,10 +65,13 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [x] incompatible method/profile/runtime 조합은 simulation bootstrap 전에
   compatibility validator에서 실패한다.
 - [x] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
-  첫 method는 FedMatch이며, 현재 descriptor와 capability surface를 열었다.
+  첫 method는 FedMatch이며, 현재 descriptor, capability surface, 원본 core/config
+  snapshot을 열었다.
 - [x] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
-  먼저 문서화한다. FedMatch v1은 `sigma_psi` partition과 `uniform` aggregation
-  weight를 요구하고, custom local objective/server runtime은 후속 구현이다.
+  먼저 문서화한다. FedMatch v1은 공통 `partitioned` update capability와 `uniform`
+  aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
+  pseudo-label/helper top-k selection은 methods core에 고정했다. custom tensor local
+  objective/server runtime은 후속 구현이다.
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
   payload family를 바꾸지 않는 FedMatch method-owned local objective다.

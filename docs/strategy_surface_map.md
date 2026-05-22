@@ -75,10 +75,10 @@ central fixed embedding + classifier seed
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
 | Peer context policy | `none`, `prediction_similarity_topk` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter | `none` active, top-k planned |
-| Update partition policy | `unified`, `sigma_psi` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `sigma_psi` method-gated |
+| Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
 | Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
-| FL SSL method descriptor | `fedmatch` capability surface, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
+| FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `prototype_pseudo_label_v1`, `prototype_top1_confidence_v1`, `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | agent training/evidence/scoring/privacy runtime | simulation/runtime profile |
 | Aggregation backend | `fedavg` | `round_runtime.aggregation_backend_name` | reusable backend는 `methods/federated/aggregation/fedavg/*` + `methods/adaptation/<family>/aggregation/fedavg.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
@@ -114,9 +114,21 @@ central fixed embedding + classifier seed
   labeled exposure, server step, peer context, update partition, aggregation weight,
   query multiview source를 공통 축으로 고정하고, FedMatch 같은 method descriptor가
   필요한 값을 요구한다.
+- 공통 update partition 축은 `partitioned`까지만 표현한다. FedMatch의
+  `sigma/psi`처럼 partition 이름과 loss routing 의미는 method package가 소유하고,
+  두 개 이상 method에서 같은 scheme이 반복될 때만 공통 scheme으로 승격한다.
+- 공통 peer context 축은 `prediction_similarity_topk` 같은 exchange mechanism까지만
+  표현한다. FedMatch의 `num_helpers`, `h_interval` 같은 원본 helper 기본값은
+  method descriptor와 method package가 소유한다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
-  method-only 변형은 이 폴더에 남기고, 두 개 이상 방법론에서 공유되는 aggregation,
-  adapter projection, SSL hook은 축별 methods 패키지로 승격한다.
+  FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
+  agreement pseudo-label vote, helper selection, LoRA-classifier sigma/psi 매핑까지
+  이 package에 고정했다. method-only 변형은 이 폴더에 남기고, 두 개 이상
+  방법론에서 공유되는 aggregation, adapter projection, SSL hook은 축별 methods
+  패키지로 승격한다.
+- method descriptor YAML은 원본 상세값을 복제하지 않는다. `scenario`와
+  `parameter_overrides`만 실행 표면으로 열고, `original_parameters`와
+  `effective_parameters`는 method-local `original_spec.py`에서 runner/report로 주입한다.
 
 ## Prototype 축
 

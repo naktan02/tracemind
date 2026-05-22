@@ -4,20 +4,53 @@ schema_version: federated_ssl_method.v1
 name: fedmatch
 display_name: FedMatch
 method_role: method_owned
-implementation_status: capability_surface_v1
+implementation_status: original_core_spec_v1
+original_source:
+  repository: https://github.com/wyjeong/FedMatch.git
+  commit: 4947aa255d59bd37915e25a719763aaaf5d7e067
+  paper: arXiv:2006.12097
+scenario: labels-at-client
+use_original_parameters: true
+parameter_overrides: {}
+trace_mapping:
+  parameter_decomposition: lora_classifier_sigma_psi
+  update_partition_policy: partitioned
+  partition_scheme: sigma_psi
+  original_trainable_scope: ResNet9 Conv/Dense full weights
+  trace_trainable_scope: LoRA adapter tensors plus classifier head tensors
+  frozen_scope: Transformer backbone base weights
+  supervised_partition: sigma
+  unsupervised_partition: psi
+  published_state: sigma_plus_psi
+  aggregation_weight_policy: uniform
 client_step:
   task_type: fedmatch_local_step
   custom_method_runtime_required: true
+  confidence_filter: confidence_threshold
+  pseudo_labeler_name: agreement_based_argmax_vote
 server_step:
   custom_round_policy_required: true
+  labels_at_client:
+    server_step_policy: none
+    aggregated_partitions:
+      - sigma
+      - psi
+  labels_at_server:
+    server_step_policy: supervised_seed_step
+    server_trainable_partition: sigma
+    client_aggregated_partitions:
+      - psi
 round_state_exchange:
   exchange_name: peer_context
   custom_exchange_required: true
+  helper_selection_name: prediction_similarity_topk
+  num_helpers: 2
+  refresh_interval: 10
   required_client_metric_keys:
     - mean_confidence
 report_tags:
   - fl_ssl_main_comparison
   - fedmatch
 notes:
-  - FedMatch v1 exposes the method-owned capability surface first.
-  - Runtime execution requires sigma_psi update partition and method-owned local objective wiring.
+  - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
+  - Runtime execution still requires partitioned update capability and method-owned local objective wiring.

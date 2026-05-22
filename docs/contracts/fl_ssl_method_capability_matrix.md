@@ -1,8 +1,8 @@
 # FL SSL Method Capability Matrix
 
 이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
-FedMatch는 첫 method로 선택되어 capability surface와 descriptor skeleton이 열렸다.
-실제 loss/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
+FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot이
+열렸다. 실제 tensor loss/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy,
 round policy가 된다.
 
@@ -36,10 +36,13 @@ round policy가 된다.
     `server_step=none`, `peer_context=none`, `update_partition=unified`,
     `aggregation_weight=example_count`, `query_multiview_source=materialized_rows`다.
 - `methods/federated_ssl/fedmatch/`
-  - FedMatch descriptor, local objective/server/round policy skeleton, recipe,
-    sigma/psi partition metadata를 소유한다.
-  - 현재 status는 `capability_surface_v1`이다. custom local objective와 server step
-    runtime은 아직 실행되지 않는다.
+  - FedMatch descriptor, 원본 설정 snapshot, local objective/server/round policy,
+    recipe, sigma/psi partition metadata를 소유한다.
+  - 현재 status는 `original_core_spec_v1`이다. 원본 설정값, confidence filter,
+    agreement pseudo-label vote, helper top-k selection, LoRA-classifier sigma/psi
+    매핑은 methods core에 고정했다.
+  - custom tensor local objective, helper prediction exchange, sparse S2C/C2S sync,
+    server step runtime은 아직 실행되지 않는다.
 
 현재 구현하지 않을 것:
 
@@ -53,13 +56,14 @@ round policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor는 열림. 실행에는 method-owned local objective, sigma/psi partition 적용, optional peer context/server step runtime 필요. | 중간 | 1순위, surface opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor와 원본 core/config snapshot은 열림. 실행에는 method-owned tensor local objective, sigma/psi partition 적용, optional peer context/server step runtime 필요. | 중간 | 1순위, original spec opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
 ## First Method Recommendation
 
-첫 구현 후보는 FedMatch로 확정했다. 현재 완료된 범위는 capability surface다.
+첫 구현 후보는 FedMatch로 확정했다. 현재 완료된 범위는 capability surface와
+원본 core/config snapshot이다.
 
 이유:
 
@@ -67,21 +71,42 @@ round policy가 된다.
   기본으로 두고, `client_local_split`도 legacy/ablation으로 유지한다.
 - 현재 기본 조합인 `FixMatch + FedAvg + LoRA-classifier`에서 local objective만 더
   깊게 method-owned로 바꾸는 경로가 가장 짧다.
-- FedMatch descriptor는 `sigma_psi` update partition과 `uniform` aggregation weight를
-  요구하도록 capability validator에 고정했다.
+- FedMatch descriptor는 공통 `partitioned` update capability와 `uniform`
+  aggregation weight를 요구하도록 capability validator에 고정했다. `sigma/psi`
+  scheme 이름과 loss routing 의미는 FedMatch method package가 소유한다.
+- FedMatch 원본 snapshot은 `wyjeong/FedMatch`
+  `4947aa255d59bd37915e25a719763aaaf5d7e067`로 고정했다.
+- 원본 full ResNet9 parameter decomposition은 TraceMind에서 frozen backbone을 제외한
+  LoRA adapter + classifier head trainable tensor의 logical `sigma/psi` partition으로
+  매핑한다.
 - FedLGMatch와 (FL)^2는 global pseudo-label cache 또는 labels-at-server regime 때문에
   dataset/split/report 의미까지 같이 바뀔 가능성이 크다.
 
 FedMatch 다음 구현 결정:
 
 - parameter decomposition은 우선 기존 `lora_classifier` family 위에서
-  `sigma/psi` partition helper로 표현한다. shared contract를 바꾸는 payload split은
-  실제 필요가 확인될 때만 연다.
+  generic `partitioned` update capability로 표현한다. `sigma/psi` partition scheme은
+  FedMatch-local metadata로 두고, shared contract를 바꾸는 payload split은 실제 필요가
+  확인될 때만 연다.
 - inter-client consistency는 처음에는 `peer_context=none`으로 시작하고, client 간
   prediction similarity가 필요해지는 시점에 `peer_context_policy=prediction_similarity_topk`
   runtime adapter를 추가한다.
 - labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
   열 수 있지만, v1 FedMatch 실행 범위에는 넣지 않는다.
+
+FedMatch 원본에서 보존한 기본값:
+
+- `num_clients=100`, `num_rounds=200`, script client fraction `0.05`
+- `num_helpers=2`, `confidence=0.75`, `psi_factor=0.2`, `h_interval=10`
+- labels-at-client: `lambda_s=10`, `lambda_i=1e-2`, `lambda_a=1e-2`,
+  `lambda_l2=10`, `lambda_l1=1e-4`, `l1_thres=5e-6`, `delta_thres=5e-5`
+- labels-at-server: 같은 `lambda_s/i/a/l2`, `lambda_l1=1e-5`,
+  `l1_thres=1e-5`, `delta_thres=1e-5`
+
+위 값의 source of truth는 `methods/federated_ssl/fedmatch/original_spec.py`다.
+`conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`은 `scenario`,
+`use_original_parameters`, `parameter_overrides`만 노출하고, runner가 report protocol에
+`original_parameters`, `effective_parameters`, `parameter_override_status`를 주입한다.
 
 ## Open Selection Gate
 

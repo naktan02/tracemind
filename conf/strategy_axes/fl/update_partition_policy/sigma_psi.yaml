@@ -1,6 +1,0 @@
-# @package update_partition_policy
-
-name: sigma_psi
-partitions:
-  - sigma
-  - psi

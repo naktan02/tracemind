@@ -246,14 +246,13 @@ Runtime translation:
 
 다음 우선순위:
 
-1. FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정하고, 필요한
-   round-state exchange/server policy capability를 먼저 문서화한다.
-   선택 전 capability matrix는 `docs/contracts/fl_ssl_method_capability_matrix.md`에
-   있으며, 현재 구현 순서 추천은 FedMatch -> FedLGMatch -> (FL)^2다.
-   2026-05-18 사용자 응답으로 첫 method 선택은 아직 보류한다.
-2. 확정 method부터 `methods/federated_ssl/<method>/`, `conf`, 필요한 runtime
-   capability adapter, test 순서로 추가한다.
-3. 확정 method는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+1. FedMatch를 첫 method로 확정했고, `methods/federated_ssl/fedmatch/`와
+   `conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`에 capability surface와
+   원본 core/config snapshot을 열었다. 원본 snapshot은
+   `wyjeong/FedMatch` commit `4947aa255d59bd37915e25a719763aaaf5d7e067`이다.
+2. 다음 구현은 FedMatch method-owned tensor local objective, helper prediction
+   exchange, sparse S2C/C2S sync, 필요한 runtime capability adapter 순서로 진행한다.
+3. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
 4. full ablation, full `client_count=1..10` sweep, full-budget main run은
    후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
