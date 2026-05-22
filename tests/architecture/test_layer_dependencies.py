@@ -562,6 +562,26 @@ def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
     )
 
 
+def test_federated_ssl_capability_axes_stays_adapter_family_agnostic() -> None:
+    path = METHODS_FEDERATED_SSL_SRC / "capability_axes.py"
+    imports = _collect_absolute_imports(path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    source = path.read_text(encoding="utf-8")
+
+    assert not sorted(imports & forbidden_imports), (
+        "FL SSL capability axis는 local/server policy 이름만 소유한다. "
+        "adapter-family payload contract나 runtime backend 해석은 "
+        "methods/adaptation/<family>/federated_ssl/가 소유한다."
+    )
+    assert "lora_classifier" not in source, (
+        "capability_axes.py는 LoRA-classifier family literal을 하드코딩하지 않는다."
+    )
+
+
 def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
     recipe_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "recipe.py"
 
@@ -768,6 +788,28 @@ def test_fl_simulation_runtime_compatibility_adapter_is_family_agnostic() -> Non
     assert "lora_classifier" not in source, (
         "FL simulation runtime compatibility adapter는 adapter family literal로 "
         "분기하지 않는다."
+    )
+
+
+def test_federated_ssl_server_update_dispatcher_stays_family_agnostic() -> None:
+    dispatcher_path = METHODS_SRC / "adaptation" / "federated_ssl_server_update.py"
+    imports = _collect_absolute_imports(dispatcher_path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    source = dispatcher_path.read_text(encoding="utf-8")
+
+    assert not sorted(imports & forbidden_imports), (
+        "FL SSL server update dispatcher는 adapter family별 payload contract를 "
+        "직접 알지 않는다. family-specific backend 해석은 "
+        "methods/adaptation/<family>/federated_ssl/server_update_policy.py가 "
+        "소유한다."
+    )
+    assert "lora_classifier" not in source, (
+        "FL SSL server update dispatcher는 LoRA-classifier family 이름을 "
+        "하드코딩하지 않는다."
     )
 
 

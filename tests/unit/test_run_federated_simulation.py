@@ -1343,7 +1343,7 @@ def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -
 def test_simulation_server_runtime_rejects_partitioned_policy_for_non_lora_family() -> (
     None
 ):
-    with pytest.raises(ValueError, match="lora_classifier"):
+    with pytest.raises(ValueError, match="not supported by adapter family"):
         resolve_simulation_aggregation_backend_name(
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",

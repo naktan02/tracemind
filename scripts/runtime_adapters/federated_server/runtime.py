@@ -33,10 +33,10 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
-from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import (
-    resolve_server_update_policy_aggregation_backend_name,
+from methods.adaptation.federated_ssl_server_update import (
+    resolve_federated_ssl_server_update_backend_name,
 )
+from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.prototype.building.base import PrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
@@ -280,12 +280,12 @@ def resolve_simulation_aggregation_backend_name(
 ) -> str:
     """server update policy를 simulation aggregation backend 이름으로 해석한다."""
 
-    return resolve_server_update_policy_aggregation_backend_name(
+    return resolve_federated_ssl_server_update_backend_name(
+        adapter_family_name=adapter_family_name,
         server_update_policy_name=(
             None
             if capability_plan is None
             else capability_plan.server_update_policy_name
         ),
-        adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
     )

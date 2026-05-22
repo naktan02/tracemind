@@ -5,6 +5,8 @@ LoRA/classifier 학습 loop와 shared update payload로 실행하는 slice다.
 
 - `method_owned_training.py`: method descriptor의 `runtime_entrypoint`를 읽어
   LoRA-classifier method-owned local core를 호출한다.
+- `server_update_policy.py`: FL SSL `server_update_policy`를 LoRA-classifier
+  aggregation backend로 해석한다.
 - `fedmatch_training.py`: FedMatch local objective를 LoRA-classifier model/loaders,
   delta materialization, update envelope에 연결한다.
 - `fedmatch_partitioned_loop.py`: LoRA-classifier trainable tensor 위에서 FedMatch
