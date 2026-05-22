@@ -28,7 +28,6 @@ def test_model_manifest_payload_accepts_active_fields(
         model_revision="rev_001",
         artifact_kind=ArtifactKind.EMBEDDING_BACKBONE,
         artifact_ref="models/rev_001",
-        prototype_version="proto_001",
         training_scope=TrainingScope.ADAPTER_ONLY,
         training_enabled=True,
         compatible_task_types=[TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING],
@@ -36,6 +35,19 @@ def test_model_manifest_payload_accepts_active_fields(
 
     assert payload.training_enabled is True
     assert payload.training_scope == TrainingScope.ADAPTER_ONLY
+    assert payload.prototype_version is None
+
+
+def test_model_manifest_payload_keeps_prototype_as_optional_auxiliary(
+    make_model_manifest_payload,
+) -> None:
+    payload = make_model_manifest_payload(
+        prototype_version="proto_001",
+        auxiliary_artifact_versions={"prototype_pack": "proto_001"},
+    )
+
+    assert payload.prototype_version == "proto_001"
+    assert payload.auxiliary_artifact_versions == {"prototype_pack": "proto_001"}
 
 
 def test_training_payloads_capture_round_and_revision(

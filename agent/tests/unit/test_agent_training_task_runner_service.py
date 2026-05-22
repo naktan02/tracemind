@@ -214,3 +214,53 @@ def test_runner_syncs_shared_state_and_uses_matching_manifest() -> None:
     call_kwargs = federation_runtime.run_current_task.call_args.kwargs
     assert call_kwargs["model_manifest"].model_revision == "rev_001"
     assert call_kwargs["task_payload"].model_revision == "rev_001"
+
+
+def test_runner_does_not_pull_prototype_when_manifest_has_no_auxiliary_pack() -> None:
+    repo = MagicMock()
+    repo.get_recent_stored.return_value = ()
+    proto_service = MagicMock()
+    proto_sync_service = MagicMock()
+    shared_adapter_sync_service = MagicMock()
+    active_manifest = make_embedding_manifest(
+        model_id="tracemind-embed",
+        model_revision="rev_001",
+        artifact_ref="/server/state/rev_001.json",
+    )
+    active_state = make_identity_state_payload(
+        model_id="tracemind-embed",
+        model_revision="rev_001",
+        embedding_dim=2,
+    )
+    shared_adapter_runtime_service = MagicMock()
+    shared_adapter_runtime_service.get_active_manifest.return_value = active_manifest
+    shared_adapter_runtime_service.get_active_state.return_value = active_state
+    round_client = MagicMock()
+    round_client.fetch_current_task.return_value = _build_supported_task_payload()
+    round_client_factory = MagicMock(return_value=round_client)
+    federation_runtime = MagicMock()
+    federation_runtime.run_current_task.return_value = FederationRunResult(
+        status=FederationRunStatus.INSUFFICIENT_EXAMPLES,
+        round_id="round_0001",
+        task_id="task_001",
+    )
+    runtime_factory = MagicMock(return_value=federation_runtime)
+    service = _build_service(
+        repo=repo,
+        proto_service=proto_service,
+        proto_sync_service=proto_sync_service,
+        shared_adapter_runtime_service=shared_adapter_runtime_service,
+        shared_adapter_sync_service=shared_adapter_sync_service,
+        round_client_factory=round_client_factory,
+        runtime_factory=runtime_factory,
+    )
+
+    response = service.run_current_task(
+        AgentTrainingTaskRunRequest(server_base_url="http://server.test")
+    )
+
+    assert response.status == str(FederationRunStatus.INSUFFICIENT_EXAMPLES)
+    proto_sync_service.pull_version.assert_not_called()
+    proto_service.get_active_pack.assert_not_called()
+    call_kwargs = federation_runtime.run_current_task.call_args.kwargs
+    assert call_kwargs["training_examples"] == ()

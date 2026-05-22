@@ -170,7 +170,6 @@ def _fallback_manifest_from_task(task: TrainingTask) -> ModelManifest:
     return make_embedding_manifest(
         model_id=task.model_id,
         model_revision=task.model_revision,
-        prototype_version=f"task::{task.round_id}",
         artifact_ref=f"training_task::{task.task_id}",
         published_at=datetime.now(tz=timezone.utc),
         training_scope=task.training_scope,

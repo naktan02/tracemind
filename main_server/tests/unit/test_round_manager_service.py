@@ -150,6 +150,9 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
 
     assert publication.next_manifest.model_revision == "rev_001"
     assert publication.next_manifest.prototype_version == "proto_001"
+    assert publication.next_manifest.auxiliary_artifact_versions == {
+        "prototype_pack": "proto_001"
+    }
     assert publication.next_manifest.artifact_kind == "shared_adapter_state"
     assert publication.next_manifest.artifact_ref == repository.ref_for_revision(
         "rev_001"
@@ -230,7 +233,6 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
                 published_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
                 artifact_kind="shared_adapter_state",
                 artifact_ref=repository.ref_for_revision("rev_000"),
-                prototype_version="proto_000",
                 training_scope="adapter_only",
                 training_enabled=True,
                 compatible_task_types=("pseudo_label_self_training",),
@@ -251,12 +253,13 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
                 )
             ],
             next_model_revision="rev_001",
-            next_prototype_version="proto_001",
         )
     )
 
     assert isinstance(publication.next_state, LoraClassifierState)
     assert publication.next_manifest.model_revision == "rev_001"
+    assert publication.next_manifest.prototype_version is None
+    assert publication.next_manifest.auxiliary_artifact_versions == {}
     assert publication.next_manifest.artifact_ref == repository.ref_for_revision(
         "rev_001"
     )

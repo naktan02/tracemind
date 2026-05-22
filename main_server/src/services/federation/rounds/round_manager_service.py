@@ -49,7 +49,7 @@ SharedAdapterUpdateRepository = (
 
 @dataclass(slots=True)
 class RoundPublication:
-    """한 라운드 집계 후 발행되는 새 active pair 메타데이터."""
+    """한 라운드 집계 후 발행되는 새 active manifest 메타데이터."""
 
     next_manifest: ModelManifest
     next_state: SharedAdapterState
@@ -59,18 +59,19 @@ class RoundPublication:
 
 @dataclass(slots=True)
 class RoundPublicationRequest:
-    """집계 후 active pair 발행 요청."""
+    """집계 후 active manifest 발행 요청."""
 
     base_manifest: ModelManifest
     updates: tuple[TrainingUpdateEnvelope, ...] | list[TrainingUpdateEnvelope]
-    next_prototype_version: str
     next_model_revision: str | None = None
+    next_auxiliary_artifact_versions: Mapping[str, str] = field(default_factory=dict)
+    next_prototype_version: str | None = None
     published_at: datetime | None = None
 
 
 @dataclass(slots=True)
 class RoundManagerService:
-    """라운드용 task를 만들고 새 model/prototype pair를 발행한다."""
+    """라운드용 task를 만들고 새 active manifest를 발행한다."""
 
     adapter_family: SharedAdapterRoundFamily = field(
         default_factory=lambda: build_shared_adapter_round_family(
@@ -137,6 +138,11 @@ class RoundManagerService:
             aggregation.next_state
         )
         self.artifact_repository.save_shared_adapter_state(next_state_payload)
+        next_auxiliary_versions = _build_next_auxiliary_artifact_versions(
+            base_manifest=request.base_manifest,
+            next_auxiliary_artifact_versions=(request.next_auxiliary_artifact_versions),
+            next_prototype_version=request.next_prototype_version,
+        )
         next_manifest = ModelManifest(
             schema_version=request.base_manifest.schema_version,
             model_id=request.base_manifest.model_id,
@@ -146,7 +152,8 @@ class RoundManagerService:
             artifact_ref=self.artifact_repository.ref_for_revision(
                 aggregation.next_state.model_revision
             ),
-            prototype_version=request.next_prototype_version,
+            prototype_version=next_auxiliary_versions.get("prototype_pack"),
+            auxiliary_artifact_versions=next_auxiliary_versions,
             training_scope=request.base_manifest.training_scope,
             training_enabled=request.base_manifest.training_enabled,
             compatible_task_types=request.base_manifest.compatible_task_types,
@@ -223,3 +230,26 @@ class RoundManagerService:
         if source is None:
             return build_runtime_fallback_secure_aggregation_config()
         return SecureAggregationConfig.from_mapping(source)
+
+
+def _build_next_auxiliary_artifact_versions(
+    *,
+    base_manifest: ModelManifest,
+    next_auxiliary_artifact_versions: Mapping[str, str],
+    next_prototype_version: str | None,
+) -> dict[str, str]:
+    """prototype 같은 부속 artifact version을 중립 map으로 누적한다."""
+
+    result = dict(base_manifest.auxiliary_artifact_versions)
+    if base_manifest.prototype_version is not None:
+        result.setdefault("prototype_pack", base_manifest.prototype_version)
+    result.update(
+        {
+            str(key): str(value)
+            for key, value in next_auxiliary_artifact_versions.items()
+            if str(key).strip() and str(value).strip()
+        }
+    )
+    if next_prototype_version is not None:
+        result["prototype_pack"] = next_prototype_version
+    return result

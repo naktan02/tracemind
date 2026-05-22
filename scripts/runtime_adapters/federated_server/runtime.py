@@ -251,7 +251,7 @@ class SimulationServerRuntime:
         *,
         round_id: str,
         next_model_revision: str,
-        next_manifest_state_token: str,
+        next_auxiliary_artifact_versions: dict[str, str] | None = None,
     ) -> RoundRecord:
         """main_server round lifecycle을 통해 aggregate/finalize를 실행한다."""
 
@@ -259,7 +259,9 @@ class SimulationServerRuntime:
             round_id,
             RoundFinalizeRequest(
                 next_model_revision=next_model_revision,
-                next_prototype_version=next_manifest_state_token,
+                next_auxiliary_artifact_versions=(
+                    next_auxiliary_artifact_versions or {}
+                ),
             ),
         )
 

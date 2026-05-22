@@ -35,8 +35,12 @@
 서버가 배포하는 전역 model/shared-adapter manifest를 정의한다.
 
 - `ModelManifest`
-  - `model_id`, `model_revision`, `artifact_ref`, `prototype_version`,
-    `training_scope`를 묶은 현재 전역 shared artifact 설명
+  - `model_id`, `model_revision`, `artifact_ref`, `training_scope`를 묶은 현재
+    전역 shared artifact 설명
+  - `prototype_version`은 legacy prototype-pack 경로용 선택 필드다. classifier나
+    LoRA-classifier 같은 prototype-free artifact에는 채우지 않는다
+  - `auxiliary_artifact_versions`는 prototype pack처럼 주 artifact에 부속되는
+    artifact version을 중립 이름으로 기록한다
   - main server가 revision별 manifest와 active pointer를 소유한다
   - `artifact_ref`는 server-owned opaque ref이며, 파일 경로 해석은
     main server repository 내부 compatibility로만 처리한다

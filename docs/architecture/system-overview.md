@@ -156,7 +156,7 @@ Raw Event / Local Signal
 -> Local Training
 -> SharedClassifierUpdate or SharedAdapterUpdate
 -> Central Aggregation
--> New ModelManifest / PrototypePack pair
+-> New ModelManifest / optional auxiliary artifacts
 ```
 
 논문 비교 관점에서는 이 레일이 `FL SSL under non-IID`의 메인 비교 위치다.

@@ -193,7 +193,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     finalize_response = fl_rounds_api.finalize_round(
         "round_0001",
         RoundFinalizeRequestPayload(
-            next_prototype_version="proto_001",
+            next_auxiliary_artifact_versions={"prototype_pack": "proto_001"},
             next_model_revision="rev_001",
         ),
         service=service,
@@ -202,6 +202,7 @@ def test_fl_rounds_api_runs_open_update_finalize_flow(
     assert finalize_response.status == "finalized"
     assert finalize_response.publication is not None
     assert finalize_response.publication.next_manifest.model_revision == "rev_001"
+    assert finalize_response.publication.next_manifest.prototype_version == "proto_001"
     active_manifest_response = fl_rounds_api.get_active_model_manifest(service=service)
     assert active_manifest_response.model_revision == "rev_001"
 

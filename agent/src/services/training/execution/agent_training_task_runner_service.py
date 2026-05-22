@@ -130,32 +130,35 @@ class AgentTrainingTaskRunnerService:
         stored_events = self.scored_event_repository.get_recent_stored(
             days=request.scored_event_days
         )
-        try:
-            self.prototype_sync_service.pull_version(
-                server_base_url=request.server_base_url,
-                prototype_version=active_manifest.prototype_version,
-            )
-            active_pack = self.prototype_runtime_service.get_active_pack()
-        except FileNotFoundError:
+        if active_manifest.prototype_version is None:
             training_examples = ()
         else:
-            scoring_service = ScoringService.from_objective_config(
-                task_payload.objective_config,
-                shared_state=active_state,
-            )
-            training_example_service = TrainingExampleService.from_objective_config(
-                task_payload.objective_config
-            )
-            training_examples = (
-                training_example_service.build_examples_from_stored_events(
-                    StoredEventTrainingExampleBuildRequest(
-                        stored_events=stored_events,
-                        prototype_pack=active_pack,
-                        scoring_service=scoring_service,
-                        adapter_state=active_state,
+            try:
+                self.prototype_sync_service.pull_version(
+                    server_base_url=request.server_base_url,
+                    prototype_version=active_manifest.prototype_version,
+                )
+                active_pack = self.prototype_runtime_service.get_active_pack()
+            except FileNotFoundError:
+                training_examples = ()
+            else:
+                scoring_service = ScoringService.from_objective_config(
+                    task_payload.objective_config,
+                    shared_state=active_state,
+                )
+                training_example_service = TrainingExampleService.from_objective_config(
+                    task_payload.objective_config
+                )
+                training_examples = (
+                    training_example_service.build_examples_from_stored_events(
+                        StoredEventTrainingExampleBuildRequest(
+                            stored_events=stored_events,
+                            prototype_pack=active_pack,
+                            scoring_service=scoring_service,
+                            adapter_state=active_state,
+                        )
                     )
                 )
-            )
 
         service = self.federation_runtime_service_factory(request.server_base_url)
         result: FederationRunResult = service.run_current_task(

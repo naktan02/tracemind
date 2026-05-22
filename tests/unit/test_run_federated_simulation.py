@@ -648,7 +648,6 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     manifest = make_embedding_manifest(
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
-        prototype_version="classifier_only",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
     active_state = build_initial_shared_state(
@@ -906,7 +905,6 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     manifest = make_embedding_manifest(
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
-        prototype_version="classifier_only",
         artifact_ref="shared_adapter_state::sim_rev_0000",
     )
     active_state = build_initial_shared_state(

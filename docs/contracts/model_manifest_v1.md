@@ -8,7 +8,7 @@
 
 1. 어떤 모델 revision이 활성인지
 2. 어떤 artifact가 함께 배포되어야 하는지
-3. 어떤 `PrototypePack`과 호환되는지
+3. 필요한 부속 artifact가 있는지
 4. 해당 모델이 추론 전용인지, 학습 참여 가능한지
 
 즉 `ModelManifest`는 모델 가중치 자체가 아니라,
@@ -24,7 +24,8 @@ v1 원칙:
 2. 로컬 `agent`는 이를 pull해서 현재 활성 모델 구성을 동기화한다.
 3. artifact 자체와 manifest를 분리한다.
 4. 추론 호환성과 학습 가능 범위를 함께 명시한다.
-5. v1에서는 `model_revision + prototype_version` 조합이 하나의 active pair를 이룬다.
+5. prototype은 manifest의 필수 의미가 아니다. 필요한 방법론만 선택적
+   auxiliary artifact로 `prototype_pack` version을 기록한다.
 6. 이 문서는 현재 시스템/FL runtime의 배포 메타데이터를 설명한다. 논문 트랙의
    중앙집중형 LoRA trainer checkpoint/optimizer state는 범위 밖이다.
 
@@ -52,17 +53,14 @@ v1 원칙:
 6. `artifact_ref`
    - 실제 artifact 위치 또는 조회 키
 
-7. `prototype_version`
-   - 함께 사용해야 하는 `PrototypePack` 버전
-
-8. `training_scope`
+7. `training_scope`
    - 허용된 학습 범위
    - 예: `head_only`, `adapter_only`, `selected_encoder_block`, `full_encoder`
 
-9. `training_enabled`
+8. `training_enabled`
    - 현재 revision이 학습 참여 가능한지 여부
 
-10. `compatible_task_types`
+9. `compatible_task_types`
     - 예: `pseudo_label_self_training`, `feedback_supervised`
 
 ### 선택 필드
@@ -71,7 +69,11 @@ v1 원칙:
 2. `base_model_revision`
 3. `translation_model_id`
 4. `translation_model_revision`
-5. `notes`
+5. `prototype_version`
+   - legacy prototype-pack 경로의 선택 필드
+6. `auxiliary_artifact_versions`
+   - 예: `{ "prototype_pack": "proto_2026_03_28_163056" }`
+7. `notes`
 
 ---
 
@@ -96,7 +98,6 @@ v1에서는 아래를 포함하지 않는다.
   "published_at": "2026-03-29T12:00:00Z",
   "artifact_kind": "decision_head",
   "artifact_ref": "models/tracemind-embed/heads/tm_head_2026_03_29_001",
-  "prototype_version": "proto_2026_03_28_163056",
   "training_scope": "head_only",
   "training_enabled": true,
   "compatible_task_types": [
@@ -116,7 +117,9 @@ checkpoint 배치 방식이 이 예시와 다를 수 있다.
 
 ## 6. 검증 기준
 
-1. manifest만 보고 로컬이 필요한 모델/프로토타입 조합을 결정할 수 있어야 한다.
+1. manifest만 보고 로컬이 필요한 모델 artifact와 optional auxiliary artifact를
+   결정할 수 있어야 한다.
 2. 어떤 revision에서 나온 update인지 추적 가능해야 한다.
 3. `training_scope`가 비어 있지 않아야 한다.
-4. 같은 round의 추론과 pseudo-label 생성이 동일한 active pair를 참조할 수 있어야 한다.
+4. 같은 round의 추론과 pseudo-label 생성이 동일한 active model revision을
+   참조할 수 있어야 한다.

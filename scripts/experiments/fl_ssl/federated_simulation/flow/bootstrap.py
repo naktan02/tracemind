@@ -32,8 +32,6 @@ from shared.src.contracts.model_contracts import ModelManifest
 
 from ..io.run_artifact_writer import RunArtifactWriter
 
-CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN = "classifier_only"
-
 
 def bootstrap_simulation(
     request: SimulationRunRequest,
@@ -158,7 +156,6 @@ def _build_bootstrap_manifest(
         published_at=published_at,
         artifact_kind="shared_adapter_state",
         artifact_ref=initial_state_ref,
-        prototype_version=CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN,
         training_scope=request.training_scope,
         training_enabled=True,
         compatible_task_types=(compatible_task_type,),

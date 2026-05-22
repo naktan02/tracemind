@@ -7,7 +7,7 @@
 1. 현재 active manifest를 기준으로 training task를 만든다.
 2. agent update를 수집하고 검증한다.
 3. aggregation으로 다음 shared adapter state를 만든다.
-4. 다음 `ModelManifest / PrototypePack` 쌍 발행까지 연결한다.
+4. 다음 `ModelManifest`와 필요한 optional auxiliary artifact 발행까지 연결한다.
 
 ## 먼저 읽을 파일
 

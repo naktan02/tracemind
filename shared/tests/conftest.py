@@ -52,7 +52,6 @@ def make_model_manifest_payload(
             "published_at": fixed_utc_time,
             "artifact_kind": ArtifactKind.SHARED_ADAPTER_STATE,
             "artifact_ref": "/tmp/rev_001.json",
-            "prototype_version": "proto_001",
             "training_scope": TrainingScope.ADAPTER_ONLY,
             "training_enabled": True,
             "compatible_task_types": (TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,),

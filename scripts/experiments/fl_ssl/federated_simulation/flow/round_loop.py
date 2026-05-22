@@ -32,7 +32,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 
 from ..io.run_artifact_writer import RunArtifactWriter
-from .bootstrap import CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN
 
 
 def run_one_round(
@@ -181,7 +180,6 @@ def _finalize_round_publication(
     finalized_round = bootstrapped.server_runtime.finalize_round(
         round_id=round_id,
         next_model_revision=next_model_revision,
-        next_manifest_state_token=CLASSIFIER_ONLY_MANIFEST_STATE_TOKEN,
     )
     if finalized_round.publication is None:
         raise ValueError("Finalized simulation round must contain publication.")

@@ -274,14 +274,22 @@ class RoundLifecycleService:
             RoundPublicationRequest(
                 base_manifest=record.active_manifest,
                 updates=record.updates,
-                next_prototype_version=request.next_prototype_version,
                 next_model_revision=request.next_model_revision,
+                next_auxiliary_artifact_versions=(
+                    request.next_auxiliary_artifact_versions
+                ),
+                next_prototype_version=request.next_prototype_version,
                 published_at=request.published_at,
             )
         )
         finalized_at = publication.next_manifest.published_at
         rebuild_result = None
         if self.prototype_rebuild_runtime_service is not None:
+            if publication.next_manifest.prototype_version is None:
+                raise RoundValidationError(
+                    "Prototype rebuild runtime requires prototype_pack auxiliary "
+                    "artifact version."
+                )
             rebuild_result = self.prototype_rebuild_runtime_service.rebuild(
                 StoredReferencePrototypeRebuildRequest(
                     adapter_state=publication.next_state,
