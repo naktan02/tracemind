@@ -103,8 +103,8 @@ FedMatch 다음 구현 결정:
   backend는 원본 sparse S2C/C2S sync 전체가 아니라 logical partition delta 평균
   simulation slice다.
   FixMatch 같은 stateless local SSL policy와 조합하는 full hybrid는 capability surface만
-  열려 있고, local trainer가 Query SSL objective를 partitioned sigma/psi loop에 주입하는
-  단계가 남아 있다.
+  열려 있다. 현재 simulation runtime support validator는 실행을 막고, local trainer가
+  Query SSL objective를 partitioned sigma/psi loop에 주입하는 단계가 남아 있다.
 - local pseudo-label/consistency objective는 `local_ssl_policy`로 분리했다.
   FixMatch/FlexMatch/FreeMatch 파라미터는 기존 `query_ssl_method`가 계속 소유하고,
   `fedmatch_agreement`는 FedMatch method package가 소유한다. FlexMatch/FreeMatch처럼

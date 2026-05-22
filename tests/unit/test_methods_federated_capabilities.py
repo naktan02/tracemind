@@ -25,6 +25,11 @@ from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_local_ssl_policy_alignment,
+    validate_federated_ssl_simulation_runtime_support,
+)
+from methods.federated_ssl.execution_plan import (
+    COMPOSITION_MODE_MANUAL,
+    COMPOSITION_MODE_METHOD_OWNED,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
@@ -198,7 +203,7 @@ def test_fedmatch_partitioned_server_update_requires_partitioned_update() -> Non
         )
 
 
-def test_fedmatch_partitioned_server_update_can_pair_with_fixmatch_policy() -> None:
+def test_fedmatch_partitioned_server_update_can_express_fixmatch_policy() -> None:
     descriptor = resolve_federated_ssl_method_descriptor("fedmatch")
     plan = FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy={"name": "all_clients"},
@@ -217,6 +222,48 @@ def test_fedmatch_partitioned_server_update_can_pair_with_fixmatch_policy() -> N
         method_descriptor=descriptor,
         capability_plan=plan,
     )
+
+
+def test_fedmatch_partitioned_fixmatch_is_not_simulation_supported_yet() -> None:
+    plan = FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "shared_client_seed"},
+        local_supervision_regime={"name": "client_labeled_and_unlabeled"},
+        server_step_policy={"name": "none"},
+        peer_context_policy={"name": "prediction_similarity_topk"},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": LOCAL_SSL_POLICY_FIXMATCH},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
+        query_multiview_source={"name": "materialized_rows"},
+    )
+
+    with pytest.raises(ValueError, match="fedmatch_agreement"):
+        validate_federated_ssl_simulation_runtime_support(
+            capability_plan=plan,
+            composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+        )
+
+
+def test_manual_partitioned_server_update_waits_for_partition_producer() -> None:
+    plan = FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "shared_client_seed"},
+        local_supervision_regime={"name": "client_labeled_and_unlabeled"},
+        server_step_policy={"name": "none"},
+        peer_context_policy={"name": "none"},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": LOCAL_SSL_POLICY_FIXMATCH},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
+        query_multiview_source={"name": "materialized_rows"},
+    )
+
+    with pytest.raises(ValueError, match="partitioned_deltas"):
+        validate_federated_ssl_simulation_runtime_support(
+            capability_plan=plan,
+            composition_mode=COMPOSITION_MODE_MANUAL,
+        )
 
 
 def test_fedmatch_partitioned_blocks_stateful_local_ssl_until_state_surface() -> None:

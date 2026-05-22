@@ -21,6 +21,7 @@ from methods.federated_ssl.capability_plan import (
     UPDATE_PARTITION_PARTITIONED,
     FederatedSslCapabilityPlan,
 )
+from methods.federated_ssl.execution_plan import COMPOSITION_MODE_MANUAL
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 
 
@@ -238,6 +239,29 @@ def validate_federated_ssl_local_ssl_policy_alignment(
         raise ValueError(
             "local_ssl_policy must match query_ssl_method.algorithm_name: "
             f"{local_ssl_policy_name!r} != {actual!r}."
+        )
+
+
+def validate_federated_ssl_simulation_runtime_support(
+    *,
+    capability_plan: FederatedSslCapabilityPlan,
+    composition_mode: str,
+) -> None:
+    """현재 simulation runtime이 실제 생산/소비 가능한 capability 조합인지 검증한다."""
+
+    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
+        return
+    if composition_mode == COMPOSITION_MODE_MANUAL:
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned requires a local runtime that "
+            "emits partitioned_deltas. Manual Query SSL hybrid partition producer is "
+            "not implemented yet."
+        )
+    if capability_plan.local_ssl_policy_name != LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned currently requires "
+            "local_ssl_policy=fedmatch_agreement in simulation. Query SSL local "
+            "objectives with partitioned sigma/psi loops are the next hybrid step."
         )
 
 

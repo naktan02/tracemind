@@ -5,16 +5,13 @@ from __future__ import annotations
 from typing import Any
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import (
-    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
-    SERVER_UPDATE_FEDMATCH_PARTITIONED,
-)
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
     validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_local_ssl_policy_alignment,
     validate_federated_ssl_profile_compatibility,
+    validate_federated_ssl_simulation_runtime_support,
 )
 from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
@@ -145,9 +142,9 @@ def _require_runtime_compatibility(
         aggregation_backend_name=request.round_runtime_config.aggregation_backend_name,
         capability_plan=_resolve_capability_plan(request),
     )
-    _require_partitioned_update_producer_support(
+    validate_federated_ssl_simulation_runtime_support(
         capability_plan=_resolve_capability_plan(request),
-        execution_plan=execution_plan,
+        composition_mode=execution_plan.composition_mode,
     )
     if ssl_method_descriptor is None:
         return
@@ -182,27 +179,6 @@ def _resolve_capability_plan(
         server_update_policy=None,
         query_multiview_source=None,
     )
-
-
-def _require_partitioned_update_producer_support(
-    *,
-    capability_plan: FederatedSslCapabilityPlan,
-    execution_plan: FederatedSslExecutionPlan,
-) -> None:
-    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
-        return
-    if execution_plan.composition_mode == COMPOSITION_MODE_MANUAL:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned requires a local runtime that "
-            "emits partitioned_deltas. Manual Query SSL hybrid partition producer is "
-            "not implemented yet."
-        )
-    if capability_plan.local_ssl_policy_name != LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned currently requires "
-            "local_ssl_policy=fedmatch_agreement in simulation. Query SSL local "
-            "objectives with partitioned sigma/psi loops are the next hybrid step."
-        )
 
 
 def _resolve_execution_plan(request: SimulationRunRequest) -> FederatedSslExecutionPlan:

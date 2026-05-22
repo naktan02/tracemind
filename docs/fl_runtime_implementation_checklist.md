@@ -83,7 +83,8 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   `local_ssl_policy=query_ssl_method`는 FixMatch/FlexMatch/FreeMatch 파라미터를
   기존 `query_ssl_method`에서 읽고, `fedmatch_agreement`는 FedMatch method package가
   소유한다. 현재 validator는 `fedmatch_partitioned + unified`를 막고,
-  `fedmatch_partitioned + fixmatch + partitioned`를 표현 가능하게 열며,
+  `fedmatch_partitioned + fixmatch + partitioned`를 capability surface에서 표현
+  가능하게 열되 simulation runtime support validator가 아직 실행은 막으며,
   FlexMatch/FreeMatch처럼 state surface가 필요한 조합은 실행 전에 막는다.
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
