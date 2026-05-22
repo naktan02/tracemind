@@ -19,8 +19,10 @@ from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
 )
 from methods.federated_ssl.fedmatch.lora_classifier_training import (
-    run_fedmatch_lora_classifier_partitioned_step,
     run_method_owned_lora_classifier_training_core,
+)
+from methods.federated_ssl.fedmatch.lora_partitioned_loop import (
+    run_fedmatch_lora_classifier_partitioned_step,
     train_fedmatch_lora_classifier,
 )
 from methods.federated_ssl.fedmatch.parameter_routing import (

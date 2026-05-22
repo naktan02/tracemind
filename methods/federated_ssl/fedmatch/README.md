@@ -6,9 +6,11 @@
 - `descriptor.py`: method identity, required views, runtime capability surface
 - `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
   agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
-- `lora_classifier_training.py`: LoRA-classifier local training에서 FedMatch
-  supervised/unsupervised step을 실행하고 logical `sigma`/`psi` delta를 누적해
-  shared LoRA-classifier update의 `partitioned_deltas`에 싣는 method-owned core
+- `lora_classifier_training.py`: LoRA-classifier simulation bridge. model/loaders,
+  partitioned loop 호출, delta materialization, shared update envelope 조립을 맡는다.
+- `lora_partitioned_loop.py`: LoRA-classifier local training에서 FedMatch
+  supervised/unsupervised step을 실행하고 logical `sigma`/`psi` delta를 누적하는
+  method-owned optimizer loop
 - `server_policy.py`: labels-at-client / labels-at-server policy metadata
 - `round_policy.py`: helper context policy metadata
 - `helper_selection.py`: 원본 KDTree helper selection을 generic vector top-k로 보존한 core
