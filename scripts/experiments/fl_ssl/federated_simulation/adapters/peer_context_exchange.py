@@ -108,7 +108,17 @@ def _resolve_method_peer_context_parameters(
             "prediction_similarity_topk peer context requires method "
             "round_state_exchange parameters."
         )
-    return round_state_exchange
+    effective_parameters = getattr(ssl_method_config, "effective_parameters", {})
+    if not isinstance(effective_parameters, Mapping):
+        effective_parameters = {}
+    resolved = dict(round_state_exchange)
+    if "num_helpers" in effective_parameters:
+        resolved["num_helpers"] = effective_parameters["num_helpers"]
+    if "helper_refresh_interval" in effective_parameters:
+        resolved["refresh_interval"] = effective_parameters["helper_refresh_interval"]
+    elif "refresh_interval" in effective_parameters:
+        resolved["refresh_interval"] = effective_parameters["refresh_interval"]
+    return resolved
 
 
 def _required_positive_or_zero_int(

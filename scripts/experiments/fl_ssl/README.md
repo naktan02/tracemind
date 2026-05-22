@@ -263,10 +263,10 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   federated_run_budget.rounds=1
 ```
 
-현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot이 열려
-있지만, method-owned tensor local objective와 custom server/peer runtime은 아직 후속
-구현 단계다. 따라서 위 명령은 config/compatibility 형태를 보여주며, 실제 실행은
-runtime wiring이 추가된 뒤 가능하다.
+현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot,
+method-owned LoRA-classifier local objective, partitioned update 제출, peer helper
+context injection까지 simulation slice에서 실행된다. sparse S2C/C2S와
+labels-at-server server step은 아직 후속 runtime capability다.
 
 원본 기본값은 YAML에 복제하지 않고
 `methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.
@@ -279,8 +279,14 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   strategy_axes/fl/update_partition_policy=partitioned \
   strategy_axes/fl/aggregation_weight_policy=uniform \
   +ssl_method.parameter_overrides.confidence_threshold=0.85 \
-  +ssl_method.parameter_overrides.num_helpers=4
+  +ssl_method.parameter_overrides.num_helpers=4 \
+  +ssl_method.parameter_overrides.helper_refresh_interval=1
 ```
+
+`prediction_similarity_topk` runtime은 helper 개수와 refresh 주기를
+`ssl_method.effective_parameters`에서 먼저 읽는다. 따라서 smoke처럼 짧은 round에서
+helper injection을 검증할 때는 `helper_refresh_interval=1`만 override하고, 논문 기본
+실행에서는 원본 `h_interval=10`을 유지한다.
 
 ## Report Index 갱신
 

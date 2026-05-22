@@ -60,6 +60,30 @@ def test_prediction_similarity_peer_context_respects_refresh_interval() -> None:
     assert contexts["client_a"].metadata["refresh_due"] is False
 
 
+def test_prediction_similarity_peer_context_uses_method_parameter_overrides() -> None:
+    contexts = peer_context_exchange.build_peer_context_by_client(
+        capability_plan=_capability_plan("prediction_similarity_topk"),
+        ssl_method_config=SimpleNamespace(
+            round_state_exchange={"num_helpers": 2, "refresh_interval": 10},
+            effective_parameters={
+                "num_helpers": 1,
+                "helper_refresh_interval": 1,
+            },
+        ),
+        selected_client_ids=("client_a",),
+        round_index=2,
+        client_vectors={
+            "client_a": (0.0, 0.0),
+            "client_b": (0.2, 0.0),
+            "client_c": (0.1, 0.0),
+        },
+    )
+
+    assert contexts["client_a"].helper_client_ids == ("client_c",)
+    assert contexts["client_a"].metadata["num_helpers"] == 1
+    assert contexts["client_a"].metadata["refresh_interval"] == 1
+
+
 def test_prediction_similarity_peer_context_requires_method_parameters() -> None:
     with pytest.raises(ValueError, match="ssl_method_config"):
         peer_context_exchange.build_peer_context_by_client(
