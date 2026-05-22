@@ -19,7 +19,7 @@ def test_prediction_similarity_peer_context_is_supported_capability() -> None:
     )
 
 
-def test_prediction_similarity_peer_context_selects_topk_on_refresh_round() -> None:
+def test_prediction_similarity_peer_context_selects_nearest_on_refresh_round() -> None:
     contexts = peer_context_exchange.build_peer_context_by_client(
         capability_plan=_capability_plan("prediction_similarity_topk"),
         ssl_method_config=SimpleNamespace(
@@ -38,7 +38,12 @@ def test_prediction_similarity_peer_context_selects_topk_on_refresh_round() -> N
     assert contexts["client_a"].helper_client_ids == ("client_d", "client_b")
     assert contexts["client_a"].refreshed is True
     assert contexts["client_a"].metadata["refresh_due"] is True
-    assert contexts["client_a"].metadata["parameter_source"] == "method_descriptor"
+    assert contexts["client_a"].metadata["parameter_source"] == "effective_parameters"
+    assert contexts["client_a"].metadata["selection_index_backend"] in {
+        "scipy_kdtree",
+        "full_scan",
+    }
+    assert contexts["client_a"].metadata["selection_query_size"] == 3
 
 
 def test_prediction_similarity_peer_context_respects_refresh_interval() -> None:

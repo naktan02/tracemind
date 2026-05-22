@@ -284,8 +284,9 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```
 
 `prediction_similarity_topk` runtime은 helper 개수와 refresh 주기를
-`ssl_method.effective_parameters`에서 먼저 읽는다. 따라서 smoke처럼 짧은 round에서
-helper injection을 검증할 때는 `helper_refresh_interval=1`만 override하고, 논문 기본
+`ssl_method.effective_parameters`에서 먼저 읽고, refresh round에서는 KDTree 우선
+nearest-neighbor index로 helper를 고른다. 따라서 smoke처럼 짧은 round에서 helper
+injection을 검증할 때는 `helper_refresh_interval=1`만 override하고, 논문 기본
 실행에서는 원본 `h_interval=10`을 유지한다.
 
 ## Report Index 갱신

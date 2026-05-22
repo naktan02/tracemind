@@ -11,7 +11,7 @@ from methods.federated_ssl.capability_plan import (
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerContext,
-    select_nearest_peer_client_ids,
+    NearestPeerClientIndex,
     should_refresh_peer_context,
 )
 
@@ -43,7 +43,8 @@ def build_peer_context_by_client(
     """round 시작 전 client별 peer/helper context를 만든다.
 
     `prediction_similarity_topk`는 mechanism만 공통으로 구현한다. helper 개수와
-    refresh interval 같은 의미 있는 기본값은 method descriptor에서 읽는다.
+    refresh interval 같은 의미 있는 값은 method effective parameters에서 읽고,
+    FedMatch 원본 의미에 맞춰 KDTree 우선 nearest-neighbor index를 사용한다.
     """
 
     policy_name = capability_plan.peer_context_policy_name
@@ -64,14 +65,18 @@ def build_peer_context_by_client(
         refresh_interval=refresh_interval,
     )
     vectors = {} if client_vectors is None else dict(client_vectors)
+    helper_index = (
+        NearestPeerClientIndex(client_vectors=vectors, prefer_kdtree=True)
+        if refresh_due and vectors
+        else None
+    )
     contexts: dict[str, FederatedSslPeerContext] = {}
     for client_id in selected_client_ids:
         has_selection_vector = client_id in vectors
         helper_client_ids: tuple[str, ...] = ()
-        if refresh_due and has_selection_vector:
-            helper_client_ids = select_nearest_peer_client_ids(
+        if refresh_due and has_selection_vector and helper_index is not None:
+            helper_client_ids = helper_index.query(
                 client_id=client_id,
-                client_vectors=vectors,
                 peer_count=num_helpers,
             )
         contexts[client_id] = FederatedSslPeerContext(
@@ -88,7 +93,17 @@ def build_peer_context_by_client(
                 "selection_vector_source": (
                     "provided" if has_selection_vector else "unavailable"
                 ),
-                "parameter_source": "method_descriptor",
+                "selection_index_backend": (
+                    helper_index.backend_name if helper_index is not None else "none"
+                ),
+                "selection_query_size": (
+                    helper_index.query_size_including_self(
+                        peer_count=num_helpers,
+                    )
+                    if helper_index is not None
+                    else 0
+                ),
+                "parameter_source": "effective_parameters",
             },
         )
     return contexts

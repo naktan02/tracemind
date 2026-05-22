@@ -9,6 +9,7 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_ORIGINAL_METHOD_DEFAULTS,
 )
 from methods.federated_ssl.peer_context import (
+    NearestPeerClientIndex,
     select_nearest_peer_client_ids,
     should_refresh_peer_context,
 )
@@ -32,6 +33,7 @@ class FedMatchHelperSelectionSpec:
     original_probe_source: str
     trace_probe_source: str
     similarity_name: str
+    preferred_index_backend: str
 
 
 helper_selection_spec = FedMatchHelperSelectionSpec(
@@ -41,6 +43,7 @@ helper_selection_spec = FedMatchHelperSelectionSpec(
     original_probe_source=FEDMATCH_ORIGINAL_HELPER_PROBE,
     trace_probe_source=FEDMATCH_TRACE_HELPER_PROBE,
     similarity_name="euclidean_nearest",
+    preferred_index_backend="scipy_kdtree",
 )
 
 
@@ -63,10 +66,20 @@ def select_helper_client_ids(
     client_vectors: Mapping[str, Sequence[float]],
     num_helpers: int = FEDMATCH_DEFAULT_NUM_HELPERS,
 ) -> tuple[str, ...]:
-    """client prediction vector 기준 최근접 helper client를 고른다."""
+    """원본 FedMatch처럼 KDTree 우선 index로 최근접 helper client를 고른다."""
 
     return select_nearest_peer_client_ids(
         client_id=client_id,
         client_vectors=client_vectors,
         peer_count=num_helpers,
+        prefer_kdtree=True,
     )
+
+
+def build_helper_index(
+    *,
+    client_vectors: Mapping[str, Sequence[float]],
+) -> NearestPeerClientIndex:
+    """FedMatch helper selection용 KDTree 우선 index를 만든다."""
+
+    return NearestPeerClientIndex(client_vectors=client_vectors, prefer_kdtree=True)

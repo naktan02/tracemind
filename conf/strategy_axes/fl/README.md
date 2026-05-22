@@ -48,7 +48,8 @@ LoRA-classifier `partitioned_delta_average` simulation backend로 해석한다.
 surface를 재사용한다. `fedmatch_agreement`처럼 method-local objective는 method
 descriptor가 source of truth다.
 마찬가지로 `prediction_similarity_topk`는 공통 peer-context mechanism만 표현하고,
-FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은
+nearest-neighbor 실행은 `methods/federated_ssl/peer_context.py`의 KDTree 우선 index가
+소유한다. FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은
 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가 소유한다.
 
 ## `fl_method` 실행 계획

@@ -7,6 +7,7 @@ import torch
 from torch.nn import functional as F
 
 from methods.federated_ssl.fedmatch.helper_selection import (
+    build_helper_index,
     select_helper_client_ids,
     should_refresh_helper_context,
 )
@@ -349,7 +350,7 @@ def test_fedmatch_agreement_pseudo_label_uses_client_and_helper_argmax_votes() -
     assert labels == (2, 0, 1)
 
 
-def test_fedmatch_helper_refresh_and_topk_selection_preserve_original_policy() -> None:
+def test_fedmatch_helper_refresh_and_nearest_selection_match_original() -> None:
     assert should_refresh_helper_context(round_index_zero_based=8) is False
     assert should_refresh_helper_context(round_index_zero_based=9) is True
 
@@ -365,6 +366,30 @@ def test_fedmatch_helper_refresh_and_topk_selection_preserve_original_policy() -
     )
 
     assert helpers == ("client_d", "client_b")
+
+
+def test_fedmatch_helper_index_prefers_kdtree_when_scipy_is_available() -> None:
+    index = build_helper_index(
+        client_vectors={
+            "client_a": (0.0, 0.0),
+            "client_b": (0.2, 0.0),
+            "client_c": (3.0, 0.0),
+            "client_d": (0.1, 0.0),
+        },
+    )
+
+    try:
+        import scipy.spatial  # noqa: F401
+    except ImportError:
+        expected_backend = "full_scan"
+    else:
+        expected_backend = "scipy_kdtree"
+    assert index.backend_name == expected_backend
+    assert index.query_size_including_self(peer_count=2) == 3
+    assert index.query(client_id="client_a", peer_count=2) == (
+        "client_d",
+        "client_b",
+    )
 
 
 def test_fedmatch_lora_classifier_partition_mapping_is_explicit() -> None:

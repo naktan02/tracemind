@@ -142,9 +142,9 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     config에 복제하지 않는다.
   - `peer_context=prediction_similarity_topk`는 method `effective_parameters`의
     helper 개수와 refresh interval을 읽어 client별 helper context를 만든다.
-    현재 slice는 이전 round
-    client-local LoRA snapshot과 validation probe vector로 helper client를 고르고,
-    선택된 helper snapshot의 weak-view probability를 method-owned trainer에 주입한다.
+    현재 slice는 이전 round client-local LoRA snapshot과 validation probe vector로
+    KDTree 우선 nearest-neighbor helper client를 고르고, 선택된 helper snapshot의
+    weak-view probability를 method-owned trainer에 주입한다.
   - `agent_generated_or_cached`는 live agent stored-event 경로가 weak/strong view를
     만들거나 캐시할 때 열 후속 축이다.
 - `fl_client_split_materialization.labeled_policy`

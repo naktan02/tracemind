@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from types import MappingProxyType
+from typing import Any
+
+_SCIPY_KDTREE_BACKEND_NAME = "scipy_kdtree"
+_FULL_SCAN_BACKEND_NAME = "full_scan"
 
 
 @dataclass(frozen=True, slots=True)
@@ -104,26 +108,119 @@ def select_nearest_peer_client_ids(
     client_id: str,
     client_vectors: Mapping[str, Sequence[float]],
     peer_count: int,
+    prefer_kdtree: bool = False,
 ) -> tuple[str, ...]:
     """client vector 기준 최근접 peer client를 deterministic하게 고른다."""
 
-    if peer_count < 0:
-        raise ValueError("peer_count must be non-negative.")
-    if peer_count == 0 or client_id not in client_vectors:
-        return ()
+    index = NearestPeerClientIndex(
+        client_vectors=client_vectors,
+        prefer_kdtree=prefer_kdtree,
+    )
+    return index.query(client_id=client_id, peer_count=peer_count)
 
-    target = _validate_vector(client_vectors[client_id], name=client_id)
-    distances: list[tuple[float, str]] = []
-    for candidate_id, candidate_vector in client_vectors.items():
-        if candidate_id == client_id:
-            continue
-        vector = _validate_vector(candidate_vector, name=candidate_id)
-        if len(vector) != len(target):
-            raise ValueError("all peer selection vectors must share one dimension.")
-        distances.append((_squared_euclidean_distance(target, vector), candidate_id))
 
-    distances.sort(key=lambda item: (item[0], item[1]))
-    return tuple(candidate_id for _, candidate_id in distances[:peer_count])
+class NearestPeerClientIndex:
+    """client output vector의 최근접 peer 조회 index.
+
+    FedMatch 원본은 `scipy.spatial.KDTree.query(k=num_helpers + 1)`로 helper를
+    고른다. experiments dependency가 없는 실행도 깨지지 않도록 KDTree를 우선
+    쓰되, scipy를 사용할 수 없으면 같은 Euclidean 기준의 full-scan으로 내린다.
+    """
+
+    def __init__(
+        self,
+        *,
+        client_vectors: Mapping[str, Sequence[float]],
+        prefer_kdtree: bool = False,
+    ) -> None:
+        self._client_ids: tuple[str, ...] = tuple(client_vectors)
+        self._vectors: dict[str, tuple[float, ...]] = {
+            client_id: _validate_vector(vector, name=client_id)
+            for client_id, vector in client_vectors.items()
+        }
+        self._dimension = self._validate_shared_dimension()
+        self._rows: tuple[tuple[float, ...], ...] = tuple(
+            self._vectors[client_id] for client_id in self._client_ids
+        )
+        self._tree: Any | None = None
+        self._backend_name = _FULL_SCAN_BACKEND_NAME
+        if prefer_kdtree and self._rows:
+            self._tree = _build_scipy_kdtree(self._rows)
+            if self._tree is not None:
+                self._backend_name = _SCIPY_KDTREE_BACKEND_NAME
+
+    @property
+    def backend_name(self) -> str:
+        return self._backend_name
+
+    @property
+    def client_count(self) -> int:
+        return len(self._client_ids)
+
+    @property
+    def dimension(self) -> int:
+        return self._dimension
+
+    def query_size_including_self(self, *, peer_count: int) -> int:
+        """nearest query에서 self 제거를 고려해 `peer_count + 1`개를 요청한다."""
+
+        if peer_count < 0:
+            raise ValueError("peer_count must be non-negative.")
+        return min(self.client_count, peer_count + 1)
+
+    def query(self, *, client_id: str, peer_count: int) -> tuple[str, ...]:
+        if peer_count < 0:
+            raise ValueError("peer_count must be non-negative.")
+        if peer_count == 0 or client_id not in self._vectors:
+            return ()
+        if self._tree is not None:
+            return self._query_kdtree(client_id=client_id, peer_count=peer_count)
+        return self._query_full_scan(client_id=client_id, peer_count=peer_count)
+
+    def _query_kdtree(self, *, client_id: str, peer_count: int) -> tuple[str, ...]:
+        query_size = self.query_size_including_self(peer_count=peer_count)
+        if query_size <= 0:
+            return ()
+        distances, indices = self._tree.query(self._vectors[client_id], k=query_size)
+        candidates: list[tuple[float, str]] = []
+        for distance, index in zip(
+            _as_tuple(distances),
+            _as_tuple(indices),
+            strict=True,
+        ):
+            candidate_index = int(index)
+            if candidate_index < 0 or candidate_index >= len(self._client_ids):
+                continue
+            candidate_id = self._client_ids[candidate_index]
+            if candidate_id == client_id:
+                continue
+            candidates.append((float(distance), candidate_id))
+        candidates.sort(key=lambda item: (item[0], item[1]))
+        return tuple(candidate_id for _, candidate_id in candidates[:peer_count])
+
+    def _query_full_scan(self, *, client_id: str, peer_count: int) -> tuple[str, ...]:
+        target = self._vectors[client_id]
+        distances: list[tuple[float, str]] = []
+        for candidate_id, vector in self._vectors.items():
+            if candidate_id == client_id:
+                continue
+            distances.append(
+                (_squared_euclidean_distance(target, vector), candidate_id)
+            )
+        distances.sort(key=lambda item: (item[0], item[1]))
+        return tuple(candidate_id for _, candidate_id in distances[:peer_count])
+
+    def _validate_shared_dimension(self) -> int:
+        dimension = 0
+        for client_id, vector in self._vectors.items():
+            if not client_id.strip():
+                raise ValueError("client_id must not be empty.")
+            if dimension == 0:
+                dimension = len(vector)
+                continue
+            if len(vector) != dimension:
+                raise ValueError("all peer selection vectors must share one dimension.")
+        return dimension
 
 
 def _squared_euclidean_distance(
@@ -137,3 +234,21 @@ def _validate_vector(vector: Sequence[float], *, name: str) -> tuple[float, ...]
     if not vector:
         raise ValueError(f"peer selection vector for {name!r} must not be empty.")
     return tuple(float(value) for value in vector)
+
+
+def _build_scipy_kdtree(rows: Sequence[Sequence[float]]) -> Any | None:
+    try:
+        from scipy import spatial
+    except ImportError:
+        return None
+    return spatial.KDTree(rows)
+
+
+def _as_tuple(value: object) -> tuple[object, ...]:
+    if isinstance(value, (list, tuple)):
+        return tuple(value)
+    if hasattr(value, "tolist"):
+        converted = value.tolist()
+        if isinstance(converted, list):
+            return tuple(converted)
+    return (value,)
