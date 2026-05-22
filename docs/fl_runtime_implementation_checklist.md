@@ -64,15 +64,16 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [x] Hydra 실행 조합은 `conf/strategy_axes/fl/*`가 소유한다.
 - [x] incompatible method/profile/runtime 조합은 simulation bootstrap 전에
   compatibility validator에서 실패한다.
-- [ ] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
-  2026-05-18 사용자 응답으로 이 선택은 아직 보류한다.
-- [ ] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
-  먼저 문서화한다.
+- [x] FedMatch/FedLGMatch/(FL)^2 중 실제 구현할 첫 method를 확정한다.
+  첫 method는 FedMatch이며, 현재 descriptor와 capability surface를 열었다.
+- [x] 확정 method의 custom round-state exchange나 server policy capability가 필요한지
+  먼저 문서화한다. FedMatch v1은 `sigma_psi` partition과 `uniform` aggregation
+  weight를 요구하고, custom local objective/server runtime은 후속 구현이다.
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
   payload family를 바꾸지 않는 FedMatch method-owned local objective다.
-  구현을 열려면 `first_fed_ssl_method` 선택이 필요하며, 선택 전에는 method
-  placeholder config나 production method 폴더를 만들지 않는다.
+  FedMatch 외 method는 선택 전에는 method placeholder config나 production method
+  폴더를 만들지 않는다.
 - [x] `tests/architecture/test_layer_dependencies.py`가 method descriptor YAML과
   실제 `methods/federated_ssl/<method>/` 구현 파일 일치를 검증해 선택 전
   placeholder config를 막는다.

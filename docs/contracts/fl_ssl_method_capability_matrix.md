@@ -1,9 +1,10 @@
 # FL SSL Method Capability Matrix
 
-이 문서는 FedMatch/FedLGMatch/(FL)^2 중 다음에 구현할 method를 고르기 위한
-capability matrix다. 구현 source of truth는 선택된 뒤
+이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
+FedMatch는 첫 method로 선택되어 capability surface와 descriptor skeleton이 열렸다.
+실제 loss/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy,
-round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
+round policy가 된다.
 
 ## 현재 Runtime Surface
 
@@ -27,6 +28,18 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 - `method_owned` composition
   - FedMatch/FedLGMatch/(FL)^2처럼 client objective와 server/round policy를 함께
     소유하는 논문 method용이다.
+- `FederatedSslCapabilityPlan`
+  - labeled exposure, local supervision regime, server step, peer context,
+    update partition, aggregation weight, query multiview source,
+    client participation을 공통 capability 축으로 기록한다.
+  - 기본값은 `shared_client_seed`, `all_clients`, `client_labeled_and_unlabeled`,
+    `server_step=none`, `peer_context=none`, `update_partition=unified`,
+    `aggregation_weight=example_count`, `query_multiview_source=materialized_rows`다.
+- `methods/federated_ssl/fedmatch/`
+  - FedMatch descriptor, local objective/server/round policy skeleton, recipe,
+    sigma/psi partition metadata를 소유한다.
+  - 현재 status는 `capability_surface_v1`이다. custom local objective와 server step
+    runtime은 아직 실행되지 않는다.
 
 현재 구현하지 않을 것:
 
@@ -40,48 +53,40 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | 현재 `materialized_client_split`가 client별 labeled/unlabeled pool을 모두 가지므로 가장 가깝다. | method-owned descriptor, local objective, maybe `client_metric_summary`, FedAvg server policy. LoRA/classifier parameter split을 실제로 어떻게 표현할지 결정 필요. | 중간 | 1순위 |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor는 열림. 실행에는 method-owned local objective, sigma/psi partition 적용, optional peer context/server step runtime 필요. | 중간 | 1순위, surface opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
 ## First Method Recommendation
 
-첫 구현 후보는 FedMatch가 가장 안전하다.
+첫 구현 후보는 FedMatch로 확정했다. 현재 완료된 범위는 capability surface다.
 
 이유:
 
-- 현재 TraceMind main comparison은 `client별 labeled + unlabeled` split이다.
+- 현재 TraceMind main comparison은 `shared_client_seed + client별 unlabeled` split을
+  기본으로 두고, `client_local_split`도 legacy/ablation으로 유지한다.
 - 현재 기본 조합인 `FixMatch + FedAvg + LoRA-classifier`에서 local objective만 더
   깊게 method-owned로 바꾸는 경로가 가장 짧다.
-- server policy는 처음에는 FedAvg를 유지하고, 필요한 client metric summary만 추가해도
-  descriptor seam을 검증할 수 있다.
+- FedMatch descriptor는 `sigma_psi` update partition과 `uniform` aggregation weight를
+  요구하도록 capability validator에 고정했다.
 - FedLGMatch와 (FL)^2는 global pseudo-label cache 또는 labels-at-server regime 때문에
   dataset/split/report 의미까지 같이 바뀔 가능성이 크다.
 
-단, FedMatch도 다음 결정을 먼저 내려야 한다.
+FedMatch 다음 구현 결정:
 
-- parameter decomposition을 LoRA adapter/head 안에서 어떻게 표현할지
-  - option A: LoRA adapter와 classifier head를 기존처럼 하나의 `lora_classifier`
-    update family로 유지하고, method-local objective만 분해한다.
-  - option B: shared/private parameter split을 adapter family payload에 드러낸다.
-    이 경우 shared contract와 materialization test가 필요하다.
-- inter-client consistency가 요구하는 state surface
-  - option A: global model prediction/threshold만 사용하면 custom exchange 없이 시작한다.
-  - option B: client pseudo-label statistics가 필요하면 `client_metric_summary`로 시작한다.
-  - option C: logits/prototype/cache를 round state로 주고받아야 하면 custom
-    `round_state_exchange` capability를 먼저 추가한다.
-
-권장 시작점은 option A + option A다. 즉 payload family를 바꾸지 않고
-`methods/federated_ssl/fedmatch/` method-owned local objective를 먼저 구현해,
-실제 objective 변경과 report metadata 변경이 동시에 남는지 확인한다.
+- parameter decomposition은 우선 기존 `lora_classifier` family 위에서
+  `sigma/psi` partition helper로 표현한다. shared contract를 바꾸는 payload split은
+  실제 필요가 확인될 때만 연다.
+- inter-client consistency는 처음에는 `peer_context=none`으로 시작하고, client 간
+  prediction similarity가 필요해지는 시점에 `peer_context_policy=prediction_similarity_topk`
+  runtime adapter를 추가한다.
+- labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
+  열 수 있지만, v1 FedMatch 실행 범위에는 넣지 않는다.
 
 ## Open Selection Gate
 
-구현을 시작하려면 아래 결정을 먼저 확정한다.
+FedMatch 이후 새 method를 시작하려면 아래 결정을 먼저 확정한다.
 
-- `first_fed_ssl_method`: `fedmatch`, `fedlgmatch`, `(fl)^2` 중 하나.
-- FedMatch를 선택하면 기본 시작점은 `lora_classifier` payload family 유지,
-  custom round-state exchange 없음, FedAvg server policy 유지다.
 - FedLGMatch를 선택하면 global/local pseudo-label state를 어떤 artifact나
   `round_state_exchange`로 주고받을지 먼저 정한다.
 - `(FL)^2`를 선택하면 labels-at-server regime을 맞추기 위해 split/source policy부터
@@ -89,7 +94,7 @@ round policy가 된다. 이 문서는 선택 전 의사결정 보조 자료다.
 - 어떤 method를 선택해도 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
   wiring과 metadata를 확인한 뒤 full-budget 비교로 올린다.
 
-선택 전에는 `methods/federated_ssl/<method>/` 구현 파일과
+FedMatch 외 method는 선택 전에는 `methods/federated_ssl/<method>/` 구현 파일과
 `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
 
 ## Implementation Gate

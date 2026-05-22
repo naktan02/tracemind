@@ -147,10 +147,10 @@ uv run python scripts/experiments/fl_ssl/materialize_fl_client_split.py \
   strategy_axes/fl/shard_policy=dirichlet_alpha03
 ```
 
-기본 `labeled_exposure_policy=client_local_split`은 선택된 labeled source를
-server/bootstrap seed와 client-local labeled pool로 나누고, unlabeled source는
-client별 non-IID shard로 둔다. 모든 client가 같은 public labeled seed를 쓰는
-검증은 `strategy_axes/fl/labeled_exposure_policy=shared_client_seed`로 별도
+기본 `labeled_exposure_policy=shared_client_seed`는 모든 client가 같은 public
+labeled seed를 쓰고, unlabeled source만 client별 non-IID shard로 둔다.
+legacy/ablation으로 client-local labeled pool을 쓰려면
+`strategy_axes/fl/labeled_exposure_policy=client_local_split`을 명시해 별도
 manifest를 만든다.
 위 명령은 client split manifest를 만드는 단계라 round loop를 실행하지 않는다.
 라벨 데이터를 일부만 쓰는 ablation은 split 생성 시 정책을 명시한다.
@@ -245,7 +245,7 @@ uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py \
   --expected-shard-policy-name dirichlet_label_skew \
   --expected-shard-alpha 0.3 \
   --expected-split-id-contains alpha0.3 \
-  --expected-labeled-exposure-policy client_local_split \
+  --expected-labeled-exposure-policy shared_client_seed \
   --expected-run-control-budget-name smoke \
   --expected-run-control-output-dir runs/_smoke/fl_ssl \
   --expected-ssl-algorithm fixmatch \

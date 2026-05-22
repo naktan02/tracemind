@@ -163,12 +163,13 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     명시한다. 이 선택은 manifest와 report metadata에 남긴다.
 - `strategy_axes/fl/labeled_exposure_policy`
   - 선택된 labeled rows를 server/client 어디에 노출할지 결정한다.
-  - `client_local_split`은 기존 기본값으로, server bootstrap subset과 client-local
-    labeled pool을 분리한다.
-  - `shared_client_seed`는 같은 selected labeled seed를 모든 client에 공유하고,
+  - `shared_client_seed`가 현재 entrypoint 기본값이며, 같은 selected labeled seed를
+    모든 client에 공유하고,
     server bootstrap subset은 기존 `bootstrap_ratio`로 유지한다.
-  - `server_only_seed`는 FSSL method-owned runtime과 함께 열 예정이며, 현재
-    materialization에서는 명시적으로 차단한다.
+  - `client_local_split`은 legacy/ablation 값으로, server bootstrap subset과
+    client-local labeled pool을 분리한다.
+  - `server_only_seed`는 artifact/request metadata까지 열려 있지만, 실제 실행은
+    method-owned server step runtime과 compatibility 조건이 충족될 때만 허용한다.
   - materialized split artifact는 실행자 표면을 단순하게 유지하기 위해
     `data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json`
     아래에 둔다. manifest 내부 policy name은 canonical 값

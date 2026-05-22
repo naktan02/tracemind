@@ -13,12 +13,28 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 | `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
 | `labeled_exposure_policy/` | `labeled_exposure_policy` | 선택된 labeled seed가 client-local split인지, 모든 client가 공유하는 public seed인지, 또는 server-only seed인지 구분 |
+| `client_participation_policy/` | `client_participation_policy` | round별 학습 참여 client subset 선택 방식 |
+| `local_supervision_regime/` | `local_supervision_regime` | client local step이 labeled/unlabeled/server-labeled regime 중 무엇을 쓰는지 |
+| `server_step_policy/` | `server_step_policy` | server-side supervised seed step 같은 추가 server step 여부 |
+| `peer_context_policy/` | `peer_context_policy` | client 간/round 간 helper context 교환 방식 |
+| `update_partition_policy/` | `update_partition_policy` | unified update인지 FedMatch류 sigma/psi partition update인지 |
+| `aggregation_weight_policy/` | `aggregation_weight_policy` | FedAvg류 aggregation weight 기준 |
+| `query_multiview_source/` | `query_multiview_source` | weak/strong view가 materialized row에서 오는지, live agent가 만들지 |
 
 `shard_policy`는 unlabeled/client pool의 non-IID 분배 방식을 소유하고,
 `labeled_exposure_policy`는 선택된 labeled seed가 어느 boundary에 노출되는지를
 소유한다. 즉 `shared_client_seed`는 shard policy가 아니라 exposure policy다.
-`server_only_seed`는 method/runtime이 client unlabeled-only local step을 지원할 때까지
-예약값이며, 현재 materializer와 FL run request resolver에서 실행 전에 거부한다.
+현재 entrypoint 기본 exposure는 `shared_client_seed`다. `client_local_split`은
+legacy/ablation으로 남긴다. `server_only_seed`는 materialized artifact와 run request
+metadata까지는 열려 있지만, 실제 simulation 실행은 method-owned descriptor,
+`server_step_policy=supervised_seed_step`, client-unlabeled regime, server step runtime이
+붙기 전까지 compatibility validator가 막는다.
+
+나머지 capability 축은 FedMatch 전용이 아니라 FL SSL 공통 조합 표면이다. 예를 들어
+client participation은 `all_clients`, `fraction_random`, `fixed_count_random` 중에서
+고르고, aggregation weight는 `example_count`, `uniform`, `accepted_count` 중에서 고른다.
+FedMatch는 이 공통 축 중 `sigma_psi` partition과 `uniform` aggregation weight를 요구하는
+method descriptor로 표현된다.
 
 ## `fl_method` 실행 계획
 
@@ -63,10 +79,11 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 `local_update_profile`, server round runtime 조합은 `round_runtime.*` leaf에서 온다.
 
 따라서 새 논문 method를 추가할 때는 descriptor config만 추가하지 않는다.
-`docs/contracts/fl_ssl_method_capability_matrix.md`의 `first_fed_ssl_method` 선택이
-먼저 있어야 하며, 선택 전에는 `methods/federated_ssl/<method>/` 구현 폴더나
-`method_descriptor/<method>.yaml` placeholder를 만들지 않는다. 선택된 method의
-descriptor/recipe metadata와 필요한 methods core를 구현한 뒤 이 config group을 연다.
+`docs/contracts/fl_ssl_method_capability_matrix.md`에서 capability 요구사항을 먼저
+정리하고, 선택 전에는 `methods/federated_ssl/<method>/` 구현 폴더나
+`method_descriptor/<method>.yaml` placeholder를 만들지 않는다. FedMatch는 첫 method로
+선택되어 capability surface가 열린 예외다. 선택된 method의 descriptor/recipe metadata와
+필요한 methods core를 구현한 뒤 이 config group을 연다.
 method-only local/server/aggregation 변형은 method 폴더에 둘 수 있고,
 `agent`/`main_server`에는 capability adapter만 둔다.
 

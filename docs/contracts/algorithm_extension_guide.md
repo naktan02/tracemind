@@ -16,8 +16,9 @@
   이 폴더는 descriptor, optional recipe, local objective, server/round policy, method-only
   aggregation 변형을 묶는다. 두 개 이상 방법론에서 공유되는 계산은 축별 methods
   패키지로 승격한다.
-- FL SSL 논문 method는 `first_fed_ssl_method` 선택 전에는 구현 폴더나
+- FL SSL 논문 method는 선택 전에는 구현 폴더나
   `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+  현재 선택된 첫 method는 FedMatch이며, capability surface만 열린 상태다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
@@ -32,6 +33,9 @@
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |
 | Prototype SSL method | `methods/ssl/*` + `methods/prototype/*` | central/FL SSL runner | SSL/prototype strategy axes | SSL comparison smoke |
 | FL shard policy | `methods/federated/shard_policy/*` | scripts FL simulation | `conf/strategy_axes/fl/shard_policy/*` | shard determinism unit |
+| FL client participation | `methods/federated/participation.py` | scripts FL simulation round loop | `conf/strategy_axes/fl/client_participation_policy/*` | participation unit, round report |
+| FL aggregation weighting | `methods/federated/aggregation_weighting.py` | family FedAvg cores | `conf/strategy_axes/fl/aggregation_weight_policy/*` | weighting unit, aggregation unit |
+| FL SSL capability plan | `methods/federated_ssl/capability_plan.py` | scripts FL simulation compatibility adapters, future runtime adapters | `conf/strategy_axes/fl/*_policy/*` | capability compatibility unit |
 | FL aggregation | method-only는 `methods/federated_ssl/<method>/aggregation.py`, 재사용 backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/*` projection | main_server aggregation adapter | `conf/strategy_axes/fl/method_descriptor/*` | aggregation unit, round integration |
 | FL SSL method descriptor | `methods/federated_ssl/*` | scripts FL simulation, future runtime translation | `conf/strategy_axes/fl/method_descriptor/*` | simulation smoke |
 | Secure update codec | `shared/src/services/*` | agent/main_server privacy/update boundary | shared config or runtime config | contract/integration |
@@ -40,7 +44,7 @@
 
 1. 논문/방법 이름, 고정 변수, 변경 변수, dataset split, seed, metric, output metadata를 먼저 적는다.
 2. FL SSL 논문 방법론이면 `docs/contracts/fl_ssl_method_capability_matrix.md`에서
-   `first_fed_ssl_method`를 먼저 확정한다.
+   기존 capability 축으로 표현 가능한지 먼저 확인한다.
 3. 논문 방법론이면 `methods/federated_ssl/<method>/descriptor.py`에 recipe metadata로
    조합을 먼저 드러내고, 조합표가 커질 때만 `recipe.py`로 분리한다.
 4. 재사용 계산이면 `methods/<axis>/<method_name>/` 또는 기존 축 파일에 core를 둔다.

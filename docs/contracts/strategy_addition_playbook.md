@@ -34,10 +34,11 @@
 4. 논문 단위로 local objective, server/round policy, method-only aggregation 변형이
    묶이면 `methods/federated_ssl/<method>/`를 먼저 만든다.
 
-새 FL SSL 논문 method는 `docs/contracts/fl_ssl_method_capability_matrix.md`의
-`first_fed_ssl_method` 선택이 먼저 있어야 한다. 선택 전에는
+새 FL SSL 논문 method는 `docs/contracts/fl_ssl_method_capability_matrix.md`에서
+capability 요구사항을 먼저 정리한다. 선택 전에는
 `methods/federated_ssl/<method>/` 구현 폴더나
 `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
+현재 첫 선택 method는 FedMatch이며, capability surface만 열린 상태다.
 `tests/architecture/test_layer_dependencies.py`가 descriptor YAML과 실제 method 구현
 파일 일치를 검증한다.
 

@@ -111,6 +111,25 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - manifest에는 source selection, split seed, shard policy, client count,
     labeled source 선택 정책, `weak=text`, `strong=[aug_0, aug_1]` view schema와
     sha256 provenance가 report에 남는다.
+- `labeled_exposure_policy`
+  - 현재 entrypoint 기본값은 `shared_client_seed`다.
+  - `client_local_split`은 legacy/ablation으로 유지한다.
+  - `server_only_seed`는 materialized artifact와 request metadata는 지원하지만,
+    실제 실행은 method-owned supervised server step runtime이 열릴 때까지 막힌다.
+- `client_participation_policy`
+  - 기본은 `all_clients`다.
+  - `fraction_random`, `fixed_count_random`은 FedMatch류 partial participation
+    실험을 method와 무관하게 round loop에서 적용한다.
+- `aggregation_weight_policy`
+  - 기본은 기존 FedAvg와 같은 `example_count`다.
+  - method가 요구하면 `uniform`이나 `accepted_count`를 capability plan으로 고른다.
+- `server_step_policy`, `peer_context_policy`, `update_partition_policy`,
+  `query_multiview_source`
+  - method 전용 파일명이 아니라 공통 capability axis다.
+  - 현재 실행 가능 기본은 `server_step=none`, `peer_context=none`,
+    `update_partition=unified`, `query_multiview_source=materialized_rows`다.
+  - `agent_generated_or_cached`는 live agent stored-event 경로가 weak/strong view를
+    만들거나 캐시할 때 열 후속 축이다.
 - `fl_client_split_materialization.labeled_policy`
   - split 생성 entrypoint 전용 값이다.
   - 기본 `mode=all`은 선택된 labeled source 전체를 bootstrap/client labeled pool로
@@ -281,8 +300,9 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
   sweep runner는 같은 seed/config에서 client 수만 바꾼 report와
   `reports/fl_ssl_client_count_sweep.summary.json`을 남긴다.
 - `weak_strong_pair` example backend는 source row에 weak/strong view가 이미 있어야 한다.
-  현재 기본 JSONL row shape는 그 view를 따로 저장하지 않으므로, 별도 multiview row 공급이 없으면
-  `prototype_rescore`를 계속 써야 한다.
+  FL SSL v1은 scripts data pipeline에서 materialize한 `.with_views.jsonl`의
+  `text + aug_0 + aug_1`를 `materialized_rows` source로 쓴다. live agent가
+  weak/strong view를 생성하거나 캐시하는 경로는 후속 작업이다.
 - `weak_strong_pair`는 generic multiview input backend다.
   real agent의 stored scored event 경로는 아직 weak/strong view를 저장하지 않으므로
   현재는 simulation/row-source 경로가 우선이다.

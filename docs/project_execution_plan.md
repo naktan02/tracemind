@@ -51,14 +51,16 @@ central fixed embedding + classifier seed
 - FL SSL 기본/main split은 `alpha=0.3`이다.
 - `alpha=0.1`은 기본 비교가 아니라 마지막 stress/robustness 확인 요소로 둔다.
 - materialized FL split은 labeled source 선택량과 labeled exposure 위치를 분리한다.
-  현재 기본값은 `client_local_split`으로, 선택된 labeled source를
-  bootstrap/server seed와 client-local labeled pool에 나눠 둔다.
-  - `shared_client_seed`: 같은 public labeled seed를 모든 client가 local SSL에 쓰고,
+  현재 entrypoint 기본값은 `shared_client_seed`로, 같은 public labeled seed를
+  모든 client가 local SSL에 쓰고,
     unlabeled source만 client별 non-IID split으로 둔다. materialized split
     생성/로드 경로를 지원한다.
+  - `client_local_split`: legacy/ablation 값으로, 선택된 labeled source를
+    bootstrap/server seed와 client-local labeled pool에 나눠 둔다.
   - `server_only_seed`: labeled source는 server/bootstrap boundary에만 두고,
     client는 local unlabeled shard만 가진다. client labeled batch를 요구하는 method는
-    compatibility validator에서 실행 전에 막는다. 이 runtime은 아직 계획 단계다.
+    compatibility validator에서 실행 전에 막는다. materialized artifact와 request
+    metadata는 지원하지만, supervised server step runtime은 아직 후속 단계다.
   labeled source는 `ourafla_reddit` 또는 `szegeelim_general4` 중에서
   `query_data_selection.labeled`로 고른다.
 - 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시

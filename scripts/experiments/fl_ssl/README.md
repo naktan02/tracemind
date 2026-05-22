@@ -13,6 +13,8 @@ FixMatch USB objective + LoRA-classifier local update + FedAvg aggregation
 
 FedMatch/FedLGMatch 같은 method-owned FL SSL method는 선택/구현 전까지
 descriptor/config placeholder를 만들지 않는다.
+현재 FedMatch는 첫 method로 선택되어 `methods/federated_ssl/fedmatch/`의
+capability surface만 열려 있다.
 
 ## 먼저 확인
 
@@ -31,6 +33,8 @@ budget=smoke
 client_count=4
 rounds=3
 shard_policy=label_dominant
+labeled_exposure_policy=shared_client_seed
+client_participation_policy=all_clients
 composition_mode=manual
 query_ssl_method=fixmatch_usb_v1
 local_update_profile=lora_pseudo_label_v1
@@ -75,7 +79,8 @@ query_data_selection
 `<exposure_group>`은 실행자가 고르는 labeled exposure 표면이다.
 `client_local_labeled`는 client-local labeled split,
 `shared_client_labeled`는 모든 client가 같은 public labeled seed를 보는 split,
-`server_only_labeled`는 아직 runtime 미지원이라 reserved 상태다. manifest 내부에는
+`server_only_labeled`는 server/bootstrap boundary에만 labeled seed를 두는 split이다.
+manifest 내부에는
 canonical policy name(`client_local_split`, `shared_client_seed`, `server_only_seed`)이
 남는다.
 
@@ -107,9 +112,10 @@ uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
 나누는 `shared_client_seed` split은 labeled exposure policy만 바꿔 별도
 manifest로 materialize한다. split id에는 `shared_client_seed_`가 들어가 기존
 `client_local_split` manifest를 덮어쓰지 않는다.
-`server_only_seed`는 runtime capability가 열리기 전까지 예약된 축이다. 현재
-materialization과 `fl_data.source_mode=materialized_client_split` 실행 request는
-`server_only_seed` manifest를 모두 실행 전에 거부한다.
+`server_only_seed`는 materialization과 request metadata까지는 지원한다. 실제
+simulation 실행은 method-owned descriptor, `server_step_policy=supervised_seed_step`,
+client-unlabeled regime, server step runtime이 함께 열릴 때까지 compatibility
+validator가 막는다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
@@ -251,12 +257,15 @@ client/server 정책을 함께 소유할 때 사용한다. 이 경우
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=method_owned \
   strategy_axes/fl/method_descriptor=fedmatch \
+  strategy_axes/fl/update_partition_policy=sigma_psi \
+  strategy_axes/fl/aggregation_weight_policy=uniform \
   federated_run_budget.client_count=10 \
   federated_run_budget.rounds=1
 ```
 
-현재 FedMatch descriptor/구현은 아직 열지 않았으므로 위 명령은 구현 이후의
-형태를 보여주는 예시다.
+현재 FedMatch는 descriptor와 capability surface가 열려 있지만, method-owned local
+objective와 custom server/peer runtime은 아직 후속 구현 단계다. 따라서 위 명령은
+config/compatibility 형태를 보여주며, 실제 실행은 runtime wiring이 추가된 뒤 가능하다.
 
 ## Report Index 갱신
 

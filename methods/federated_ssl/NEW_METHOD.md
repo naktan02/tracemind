@@ -64,6 +64,12 @@ lower-axis mechanism 조합 baseline/ablation을 명시할 때만 쓴다. 이때
 method 이름 파일을 `agent`/`main_server`에 추가하지 말고 capability adapter와
 compatibility validator를 추가한다.
 
+`required_capabilities`에는 method가 요구하는 공통 FL SSL capability를 적는다.
+예를 들어 FedMatch는 `update_partition_policy=sigma_psi`와
+`aggregation_weight_policy=uniform`을 요구한다. client participation, labeled exposure,
+server step, peer context, query multiview source도 method 전용 분기가 아니라
+`FederatedSslCapabilityPlan`의 공통 축으로 검증한다.
+
 ## Registry
 
 `methods/federated_ssl/registry.py`는 `<method_name>/descriptor.py` convention을
