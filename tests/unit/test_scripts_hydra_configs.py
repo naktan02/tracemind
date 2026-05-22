@@ -760,7 +760,7 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     )
     assert ssl_method_config is not None
 
-    assert cfg.ssl_method.implementation_status == "lora_partitioned_step_core_v1"
+    assert cfg.ssl_method.implementation_status == "lora_local_runtime_slice_v1"
     assert cfg.ssl_method.original_source.repository == FEDMATCH_ORIGINAL_REPOSITORY
     assert cfg.ssl_method.original_source.commit == FEDMATCH_ORIGINAL_COMMIT
     assert "original_parameters" not in cfg.ssl_method

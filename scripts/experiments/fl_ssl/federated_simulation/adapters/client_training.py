@@ -78,6 +78,16 @@ def run_client_round(
     if query_ssl_execution is not None:
         return query_ssl_execution
 
+    descriptor = ssl_method_runtime.descriptor
+    if (
+        descriptor is not None
+        and descriptor.runtime_capabilities.requires_custom_client_runtime
+    ):
+        raise NotImplementedError(
+            "Federated SSL method requires a custom client runtime that is not "
+            f"wired for this adapter family: {descriptor.name}"
+        )
+
     training_plan = ssl_method_runtime.build_local_training_plan(
         context=FederatedClientLocalTrainingContext(
             shard=shard,

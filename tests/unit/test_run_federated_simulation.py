@@ -30,6 +30,9 @@ from methods.evaluation.classification_report import (
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
+from methods.federated_ssl.fedmatch.original_spec import (
+    fedmatch_original_parameter_mapping,
+)
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
@@ -75,7 +78,10 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     _build_validated_ssl_runtime,
     run_simulation_request,
 )
-from scripts.runtime_adapters.federated_agent import query_ssl_client_round
+from scripts.runtime_adapters.federated_agent import (
+    method_owned_client_round,
+    query_ssl_client_round,
+)
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     prepare_delta_materialization,
 )
@@ -786,6 +792,252 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert "agent-local://" not in accepted_payload.model_dump_json()
 
 
+def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    labeled_row = _row("l1", "labeled panic", "anxiety")
+    unlabeled_row = _row("u1", "weak panic", "anxiety")
+    unlabeled_row["aug_0"] = "strong panic de"
+    unlabeled_row["aug_1"] = "strong panic fr"
+    shard = FederatedClientShard(
+        client_id="agent_01",
+        rows=[labeled_row, unlabeled_row],
+        labeled_rows=[labeled_row],
+        unlabeled_rows=[unlabeled_row],
+        client_pool_split_enforced=True,
+    )
+    training_task = TrainingTask(
+        task_id="task_round_0001",
+        round_id="round_0001",
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0000",
+        task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
+        training_scope="adapter_only",
+        local_epochs=3,
+        batch_size=2,
+        learning_rate=1e-4,
+        max_steps=9,
+        objective_config=TrainingObjectiveConfig.from_mapping(
+            {
+                "training_backend_name": "lora_classifier_trainer",
+                "confidence_threshold": 0.0,
+                "margin_threshold": 0.0,
+                "example_generation_backend_name": "prototype_rescore",
+                "scorer_backend_name": "classifier_head_logits",
+                "pseudo_label_algorithm_name": "top1_margin_threshold",
+                "privacy_guard_name": "noop",
+                **_lora_objective_extras(
+                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+                ),
+            }
+        ),
+        selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 4}),
+        gradient_clip_norm=1.0,
+        min_required_examples=1,
+    )
+    manifest = make_embedding_manifest(
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0000",
+        prototype_version="proto_v0",
+        artifact_ref="shared_adapter_state::sim_rev_0000",
+    )
+    active_state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="mxbai-lora-classifier",
+        base_model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        backbone=_lora_runtime_config().backbone_payload(),
+        lora_config=_lora_runtime_config().lora_config_payload(),
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_parameter_deltas={"lora.test": [0.1]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.1, 0.0],
+            "normal": [0.0, -0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        mean_confidence=0.5,
+        delta_l2_norm=0.2,
+    )
+    update_envelope = make_training_update_envelope(
+        update_id="update_test",
+        round_id="round_0001",
+        task_id="task_round_0001",
+        model_id="mxbai-lora-classifier",
+        base_model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        payload_ref="client-submission::update_test",
+        payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        example_count=2,
+        client_metrics={
+            "delta_l2_norm": 0.2,
+            "mean_confidence": 0.5,
+            "mean_margin": 0.0,
+            "query_ssl_local_steps": 3.0,
+            "fedmatch_local_runtime": 1.0,
+        },
+    )
+    method_calls: list[dict[str, object]] = []
+
+    def _fake_method_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
+        method_calls.append(dict(kwargs))
+        return QuerySslLoraClientTrainingResult(
+            update_envelope=update_envelope,
+            update_payload=update_payload,
+            candidate_count=1,
+            accepted_count=1,
+            local_step_plan=build_query_ssl_local_step_plan(
+                labeled_loader_steps=1,
+                unlabeled_loader_steps=1,
+                uses_labeled_batches=True,
+                local_epochs=3,
+                max_steps=9,
+            ),
+            client_metrics=update_envelope.client_metrics,
+            pseudo_label_quality=PseudoLabelQualitySummary(
+                pseudo_label_confidence_mean=0.91,
+                pseudo_label_margin_mean=0.33,
+                pseudo_label_correct_count=1,
+                pseudo_label_evaluated_count=1,
+                accepted_label_distribution={"anxiety": 1},
+                rejected_label_distribution={},
+            ),
+        )
+
+    def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
+        raise AssertionError("manual Query SSL trainer must not run for method-owned.")
+
+    monkeypatch.setattr(
+        method_owned_client_round.method_trainer,
+        "run_method_owned_lora_classifier_local_training",
+        _fake_method_trainer,
+    )
+    monkeypatch.setattr(
+        query_ssl_client_round,
+        "run_query_ssl_lora_classifier_local_training",
+        _unexpected_query_ssl_trainer,
+    )
+
+    class _ServerRuntime:
+        def __init__(self) -> None:
+            self.accepted: list[tuple[str, object, object]] = []
+
+        def accept_update(
+            self,
+            round_id: str,
+            update_envelope: object,
+            update_payload: object,
+        ) -> None:
+            self.accepted.append((round_id, update_envelope, update_payload))
+
+    server_runtime = _ServerRuntime()
+    request = _default_simulation_request(
+        tmp_path,
+        train_rows=[labeled_row, unlabeled_row],
+        validation_rows=[labeled_row],
+        output_dir=tmp_path,
+        client_count=1,
+        rounds=1,
+        bootstrap_ratio=0.0,
+        seed=42,
+        model_id="mxbai-lora-classifier",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+            ),
+        ),
+        validation_config=_default_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+        ssl_method_config=FederatedSslMethodConfig(
+            schema_version="federated_ssl_method.v1",
+            name="fedmatch",
+            display_name="FedMatch",
+            method_role="method_owned",
+            implementation_status="lora_local_runtime_slice_v1",
+            scenario="labels-at-client",
+            effective_parameters=fedmatch_original_parameter_mapping(),
+        ),
+        query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
+            method_name="fixmatch_usb_v1",
+            algorithm_name="fixmatch",
+            parameters={"unlabeled_batch_size": 2},
+            strong_view_policy="second_aug",
+            unlabeled_batch_size=2,
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cpu",
+            local_files_only=True,
+            cache_dir="hf_cache",
+            classifier_dropout=0.1,
+        ),
+    )
+    execution = client_training.run_client_round(
+        request=request,
+        bootstrapped=BootstrappedSimulation(
+            dataset_split=FederatedDatasetSplit(
+                bootstrap_rows=[],
+                client_shards=(shard,),
+            ),
+            validation_client_shards=(),
+            adapter=object(),
+            server_runtime=server_runtime,  # type: ignore[arg-type]
+            initial_model_revision="sim_rev_0000",
+            initial_prototype_version="proto_v0",
+            initial_validation=object(),  # type: ignore[arg-type]
+            active=ActiveSimulationState(
+                manifest=manifest,
+                adapter_state=active_state,
+                prototype_pack=_pack_payload(),
+            ),
+        ),
+        active=ActiveSimulationState(
+            manifest=manifest,
+            adapter_state=active_state,
+            prototype_pack=_pack_payload(),
+        ),
+        ssl_method_runtime=object(),
+        round_id="round_0001",
+        shard=shard,
+        training_task=training_task,
+        training_scoring_service=object(),
+    )
+
+    assert execution.update_submitted is True
+    assert execution.summary.accepted_label_distribution == {"anxiety": 1}
+    assert server_runtime.accepted
+    assert method_calls
+    assert method_calls[0]["ssl_method_config"] is request.ssl_method_config
+    assert method_calls[0]["labeled_rows"] == [labeled_row]
+    assert method_calls[0]["unlabeled_rows"] == [unlabeled_row]
+    assert method_calls[0]["strong_view_policy"] == "second_aug"
+    assert method_calls[0]["unlabeled_batch_size"] == 2
+
+
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:
     rows = [
         _row("a1", "panic panic", "anxiety"),
@@ -977,6 +1229,12 @@ def test_manual_federated_ssl_simulation_runtime_has_no_method_descriptor() -> N
     assert runtime.runtime_name == "manual_baseline"
     assert runtime.descriptor is None
     assert runtime.training_task_type == "pseudo_label_self_training"
+
+    fedmatch_runtime = build_federated_ssl_simulation_runtime("fedmatch")
+    assert fedmatch_runtime.runtime_name == "fedmatch"
+    assert fedmatch_runtime.descriptor is not None
+    assert fedmatch_runtime.descriptor.requires_custom_client_runtime is True
+    assert fedmatch_runtime.descriptor.requires_custom_server_runtime is False
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")

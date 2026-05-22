@@ -42,7 +42,7 @@ FEDMATCH_METHOD_NAME = "fedmatch"
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
-    implementation_status="lora_partitioned_step_core_v1",
+    implementation_status="lora_local_runtime_slice_v1",
     method_role="method_owned",
     required_views=FederatedSslRequiredViews(
         view_names=("text", "aug_0", "aug_1"),
@@ -56,8 +56,8 @@ descriptor = FederatedSslMethodDescriptor(
     ),
     server_step=FederatedSslServerStepSpec(
         server_aggregator_name="round_runtime_aggregation_backend",
-        round_policy_name="method_owned_server_step",
-        server_aggregate_hint="fedmatch_sigma_psi_partitioned_update",
+        round_policy_name="round_active_pair_only",
+        server_aggregate_hint="fedmatch_lora_merged_delta_from_local_sigma_psi_steps",
     ),
     round_state_exchange=FederatedSslRoundStateExchangeSpec(
         exchange_name="peer_context",
@@ -70,7 +70,7 @@ descriptor = FederatedSslMethodDescriptor(
         live_agent_supported=False,
         live_server_supported=False,
         requires_custom_client_runtime=True,
-        requires_custom_server_runtime=True,
+        requires_custom_server_runtime=False,
     ),
     recipe=FederatedSslMethodRecipe(
         method_name=FEDMATCH_METHOD_NAME,

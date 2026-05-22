@@ -1,4 +1,4 @@
-"""FL simulation Query SSL client-round runtime bridge."""
+"""FL simulation method-owned client-round runtime bridge."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
+from scripts.runtime_adapters.federated_agent import (
+    method_owned_lora_classifier_trainer as method_trainer,
+)
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     upload_agent_local_lora_classifier_update,
-)
-from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
-    run_query_ssl_lora_classifier_local_training,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
@@ -30,7 +30,7 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
-def run_query_ssl_client_round_if_supported(
+def run_method_owned_client_round_if_supported(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
@@ -39,11 +39,11 @@ def run_query_ssl_client_round_if_supported(
     shard: FederatedClientShard,
     training_task: Any,
 ) -> ClientRoundExecution | None:
-    """Query SSL raw-row client training이 가능한 조합이면 해당 경로로 실행한다."""
+    """method-owned LoRA raw-row training이 가능한 조합이면 실행한다."""
 
-    if not _supports_query_ssl_lora_client_training(request):
+    if not _supports_method_owned_lora_client_training(request):
         return None
-    return _run_query_ssl_lora_client_round(
+    return _run_method_owned_lora_client_round(
         request=request,
         bootstrapped=bootstrapped,
         active=active,
@@ -53,19 +53,18 @@ def run_query_ssl_client_round_if_supported(
     )
 
 
-def _supports_query_ssl_lora_client_training(
+def _supports_method_owned_lora_client_training(
     request: SimulationRunRequest,
 ) -> bool:
     return (
-        request.ssl_method_config is None
-        and request.query_ssl_objective_config is not None
+        request.ssl_method_config is not None
         and str(request.round_runtime_config.adapter_family_name).strip().lower()
         == LORA_CLASSIFIER_ADAPTER_KIND
         and request.round_runtime_config.lora_classifier is not None
     )
 
 
-def _run_query_ssl_lora_client_round(
+def _run_method_owned_lora_client_round(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
@@ -74,13 +73,14 @@ def _run_query_ssl_lora_client_round(
     shard: FederatedClientShard,
     training_task: Any,
 ) -> ClientRoundExecution:
-    if request.query_ssl_objective_config is None:
-        raise ValueError("query_ssl_objective_config is required.")
+    if request.ssl_method_config is None:
+        raise ValueError("ssl_method_config is required.")
     if request.round_runtime_config.lora_classifier is None:
         raise ValueError("LoRA-classifier runtime config is required.")
 
+    query_ssl_config = request.query_ssl_objective_config
     training_started_at = time.perf_counter()
-    local_result = run_query_ssl_lora_classifier_local_training(
+    local_result = method_trainer.run_method_owned_lora_classifier_local_training(
         client_id=shard.client_id,
         seed=request.seed,
         output_dir=request.output_dir,
@@ -89,7 +89,15 @@ def _run_query_ssl_lora_client_round(
         active_adapter_state=active.adapter_state,
         training_task=training_task,
         model_manifest=active.manifest,
-        query_ssl_config=request.query_ssl_objective_config,
+        ssl_method_config=request.ssl_method_config,
+        strong_view_policy=(
+            "first_aug"
+            if query_ssl_config is None
+            else query_ssl_config.strong_view_policy
+        ),
+        unlabeled_batch_size=(
+            None if query_ssl_config is None else query_ssl_config.unlabeled_batch_size
+        ),
         trainer_runtime_config=request.local_trainer_runtime_config,
     )
     client_train_time_seconds = time.perf_counter() - training_started_at

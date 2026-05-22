@@ -15,10 +15,14 @@ from methods.federated_ssl.fedmatch.local_objective import (
 )
 from methods.federated_ssl.fedmatch.lora_classifier_training import (
     run_fedmatch_lora_classifier_partitioned_step,
+    run_method_owned_lora_classifier_training_core,
 )
 from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
+)
+from methods.federated_ssl.lora_classifier_training import (
+    resolve_method_owned_lora_classifier_training_core,
 )
 
 
@@ -52,6 +56,12 @@ class TinyLoraClassifier(nn.Module):
     ) -> Tensor:
         del attention_mask
         return self.classifier(self.encoder_lora(input_ids.float()))
+
+
+def test_method_owned_lora_classifier_core_resolves_fedmatch_by_convention() -> None:
+    core = resolve_method_owned_lora_classifier_training_core("fedmatch")
+
+    assert core is run_method_owned_lora_classifier_training_core
 
 
 def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:

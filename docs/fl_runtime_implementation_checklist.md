@@ -72,8 +72,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
   pseudo-label/helper top-k selection, supervised/unsupervised tensor loss는
   methods core에 고정했다. LoRA trainer 한 step의 logical sigma/psi delta split도
-  methods core에 추가했으며, method-owned simulation wiring과 server runtime은 후속
-  구현이다.
+  methods core에 추가했다. method-owned LoRA local simulation wiring은 열렸고,
+  helper prediction exchange, sparse S2C/C2S, labels-at-server server runtime은
+  후속 구현이다.
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는
   payload family를 바꾸지 않는 FedMatch method-owned local objective다.
@@ -130,6 +131,9 @@ methods/evaluation/                            # stable metric helper만
   round2 applied delta` 수식을 테스트로 고정했다.
 - [x] manual `Query SSL + LoRA-classifier` simulation 경로는
   `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
+- [x] method-owned FedMatch LoRA simulation 경로는 manual Query SSL trainer를 우회해
+  `methods/federated_ssl/fedmatch` local objective를 호출하고, v1에서는 기존
+  LoRA-classifier merged delta/FedAvg server path로 제출한다.
 - [x] client별 local optimizer step 수는 `training_task.local_epochs`,
   `training_task.batch_size`, `training_task.max_steps`,
   `query_ssl_method.unlabeled_batch_size`로 동적으로 바뀐다.

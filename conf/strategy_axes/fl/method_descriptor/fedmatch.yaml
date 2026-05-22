@@ -4,7 +4,7 @@ schema_version: federated_ssl_method.v1
 name: fedmatch
 display_name: FedMatch
 method_role: method_owned
-implementation_status: lora_partitioned_step_core_v1
+implementation_status: lora_local_runtime_slice_v1
 original_source:
   repository: https://github.com/wyjeong/FedMatch.git
   commit: 4947aa255d59bd37915e25a719763aaaf5d7e067
@@ -29,12 +29,11 @@ client_step:
   confidence_filter: confidence_threshold
   pseudo_labeler_name: agreement_based_argmax_vote
 server_step:
-  custom_round_policy_required: true
+  custom_round_policy_required: false
   labels_at_client:
     server_step_policy: none
     aggregated_partitions:
-      - sigma
-      - psi
+      - merged_lora_classifier_delta
   labels_at_server:
     server_step_policy: supervised_seed_step
     server_trainable_partition: sigma
@@ -53,4 +52,4 @@ report_tags:
   - fedmatch
 notes:
   - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - LoRA-classifier trainer can now split one local step into logical sigma/psi deltas; full runtime wiring still requires method-owned round execution.
+  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper exchange, sparse S2C/C2S, and labels-at-server server step remain future runtime capabilities.

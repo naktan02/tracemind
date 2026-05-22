@@ -174,12 +174,9 @@ def build_federated_ssl_simulation_runtime(
             "Federated SSL method is not available in simulation runtime: "
             f"{descriptor.name}"
         )
-    if (
-        descriptor.runtime_capabilities.requires_custom_client_runtime
-        or descriptor.runtime_capabilities.requires_custom_server_runtime
-    ):
+    if descriptor.runtime_capabilities.requires_custom_server_runtime:
         raise NotImplementedError(
-            "Federated SSL method requires a custom simulation runtime: "
+            "Federated SSL method requires a custom server simulation runtime: "
             f"{descriptor.name}"
         )
     return DefaultFederatedSslSimulationRuntime(

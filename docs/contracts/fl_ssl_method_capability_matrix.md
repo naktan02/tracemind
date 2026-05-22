@@ -3,7 +3,8 @@
 이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
 method-owned tensor local objective core, LoRA-classifier logical partition step
-core까지 추가했다. 실제 method-owned simulation wiring/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
+core, method-owned LoRA local simulation bridge까지 추가했다. full 원본 parity에
+필요한 peer context/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
 
@@ -39,12 +40,13 @@ policy가 된다.
 - `methods/federated_ssl/fedmatch/`
   - FedMatch descriptor, 원본 설정 snapshot, local objective/server/round policy,
     recipe, sigma/psi partition metadata를 소유한다.
-  - 현재 status는 `lora_partitioned_step_core_v1`이다. 원본 설정값, confidence
+  - 현재 status는 `lora_local_runtime_slice_v1`이다. 원본 설정값, confidence
     filter, agreement pseudo-label vote, helper top-k selection, supervised/unsupervised
-    FedMatch tensor loss, LoRA-classifier sigma/psi step delta split은 methods core에
-    고정했다.
-  - helper prediction exchange, sparse S2C/C2S sync, method-owned simulation wiring,
-    server step runtime은 아직 실행되지 않는다.
+    FedMatch tensor loss, LoRA-classifier sigma/psi step delta split, method-owned
+    LoRA local simulation bridge는 methods/scripts capability 경계에 고정했다.
+  - helper prediction exchange, sparse S2C/C2S sync, labels-at-server server step
+    runtime은 아직 실행되지 않는다. 현재 labels-at-client slice는 기존
+    LoRA-classifier FedAvg에 merged delta를 제출한다.
 
 현재 구현하지 않을 것:
 
@@ -58,14 +60,15 @@ policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core, LoRA partitioned step core는 열림. 실행에는 method-owned simulation wiring, optional peer context/server step runtime 필요. | 중간 | 1순위, partitioned step core opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core, LoRA partitioned step core, method-owned local simulation bridge는 열림. full 원본 parity에는 peer context/server step runtime이 추가로 필요하다. | 중간 | 1순위, local runtime slice opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
 ## First Method Recommendation
 
 첫 구현 후보는 FedMatch로 확정했다. 현재 완료된 범위는 capability surface,
-원본 core/config snapshot, tensor local objective core, LoRA partitioned step core다.
+원본 core/config snapshot, tensor local objective core, LoRA partitioned step core,
+method-owned LoRA local simulation bridge다.
 
 이유:
 
