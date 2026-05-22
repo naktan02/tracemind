@@ -34,14 +34,13 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
+from methods.federated_ssl.capability_axes import (
+    resolve_server_update_policy_aggregation_backend_name,
+)
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.prototype.building.base import PrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -281,23 +280,12 @@ def resolve_simulation_aggregation_backend_name(
 ) -> str:
     """server update policy를 simulation aggregation backend 이름으로 해석한다."""
 
-    if (
-        capability_plan is None
-        or capability_plan.server_update_policy_name
-        != SERVER_UPDATE_FEDMATCH_PARTITIONED
-    ):
-        return aggregation_backend_name
-
-    normalized_adapter_family = adapter_family_name.strip().lower()
-    if normalized_adapter_family != LORA_CLASSIFIER_ADAPTER_KIND:
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned currently requires "
-            "round_runtime.adapter_family_name=lora_classifier."
-        )
-    normalized_backend = aggregation_backend_name.strip().lower()
-    if normalized_backend != "fedavg":
-        raise ValueError(
-            "server_update_policy=fedmatch_partitioned currently maps from "
-            "round_runtime.aggregation_backend_name=fedavg to partitioned_fedavg."
-        )
-    return "partitioned_fedavg"
+    return resolve_server_update_policy_aggregation_backend_name(
+        server_update_policy_name=(
+            None
+            if capability_plan is None
+            else capability_plan.server_update_policy_name
+        ),
+        adapter_family_name=adapter_family_name,
+        aggregation_backend_name=aggregation_backend_name,
+    )

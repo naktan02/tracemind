@@ -5,6 +5,10 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
+
 LOCAL_SSL_POLICY_PROFILE_PSEUDO_LABEL = "profile_pseudo_label"
 LOCAL_SSL_POLICY_PSEUDOLABEL = "pseudolabel"
 LOCAL_SSL_POLICY_FIXMATCH = "fixmatch"
@@ -38,6 +42,7 @@ LOCAL_SSL_POLICY_NAMES = frozenset(
 
 SERVER_UPDATE_FEDAVG_MERGED_DELTA = "fedavg_merged_delta"
 SERVER_UPDATE_FEDMATCH_PARTITIONED = "fedmatch_partitioned"
+SERVER_UPDATE_PARTITIONED_DELTA_AVERAGE_BACKEND = "partitioned_delta_average"
 SERVER_UPDATE_POLICY_NAMES = frozenset(
     {
         SERVER_UPDATE_FEDAVG_MERGED_DELTA,
@@ -123,3 +128,35 @@ class ServerUpdatePolicy:
 
     def to_payload(self) -> dict[str, object]:
         return {"name": self.name}
+
+
+def resolve_server_update_policy_aggregation_backend_name(
+    *,
+    server_update_policy_name: str | None,
+    adapter_family_name: str,
+    aggregation_backend_name: str,
+) -> str:
+    """server update policy가 요구하는 effective aggregation backend를 반환한다."""
+
+    normalized_policy = (
+        SERVER_UPDATE_FEDAVG_MERGED_DELTA
+        if server_update_policy_name is None
+        else server_update_policy_name.strip().lower().replace("-", "_")
+    )
+    if normalized_policy != SERVER_UPDATE_FEDMATCH_PARTITIONED:
+        return aggregation_backend_name
+
+    normalized_adapter_family = adapter_family_name.strip().lower()
+    if normalized_adapter_family != LORA_CLASSIFIER_ADAPTER_KIND:
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned currently requires "
+            "round_runtime.adapter_family_name=lora_classifier."
+        )
+    normalized_backend = aggregation_backend_name.strip().lower()
+    if normalized_backend != "fedavg":
+        raise ValueError(
+            "server_update_policy=fedmatch_partitioned currently maps from "
+            "round_runtime.aggregation_backend_name=fedavg to "
+            f"{SERVER_UPDATE_PARTITIONED_DELTA_AVERAGE_BACKEND}."
+        )
+    return SERVER_UPDATE_PARTITIONED_DELTA_AVERAGE_BACKEND

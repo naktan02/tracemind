@@ -13,9 +13,9 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
     materialize_lora_classifier_partitioned_update,
     materialize_lora_classifier_update,
 )
-from methods.adaptation.lora_classifier.aggregation.partitioned_fedavg import (
-    LoraClassifierPartitionedFedAvgUpdate,
-    compute_lora_classifier_partitioned_fedavg,
+from methods.adaptation.lora_classifier.aggregation.partitioned_delta_average import (
+    LoraClassifierPartitionedDeltaAverageUpdate,
+    compute_lora_classifier_partitioned_delta_average,
 )
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     merge_partitioned_lora_classifier_deltas,
@@ -324,11 +324,13 @@ def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -
     )
 
 
-def test_lora_classifier_partitioned_fedavg_merges_partitions_per_client() -> None:
-    result = compute_lora_classifier_partitioned_fedavg(
+def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client() -> (
+    None
+):
+    result = compute_lora_classifier_partitioned_delta_average(
         label_schema=("anxiety", "normal"),
         updates=(
-            LoraClassifierPartitionedFedAvgUpdate(
+            LoraClassifierPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",
@@ -353,7 +355,7 @@ def test_lora_classifier_partitioned_fedavg_merges_partitions_per_client() -> No
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            LoraClassifierPartitionedFedAvgUpdate(
+            LoraClassifierPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",

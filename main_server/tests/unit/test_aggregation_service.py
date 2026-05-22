@@ -115,11 +115,11 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
         is True
     )
     assert (
-        entries["lora_classifier.partitioned_fedavg"].implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.partitioned_fedavg"
+        entries["lora_classifier.partitioned_delta_average"].implementation_module
+        == "methods.adaptation.lora_classifier.aggregation.partitioned_delta_average"
     )
     assert (
-        entries["lora_classifier.partitioned_fedavg"].metadata[
+        entries["lora_classifier.partitioned_delta_average"].metadata[
             "requires_partitioned_deltas"
         ]
         is True
@@ -339,7 +339,7 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     assert result.update_count == 2
 
 
-def test_lora_classifier_partitioned_fedavg_publishes_next_state_refs(
+def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
     tmp_path,
 ) -> None:
     artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
@@ -359,7 +359,7 @@ def test_lora_classifier_partitioned_fedavg_publishes_next_state_refs(
     )
     backend = build_shared_adapter_aggregation_backend(
         adapter_kind="lora_classifier",
-        backend_name="partitioned_fedavg",
+        backend_name="partitioned_delta_average",
         overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
         artifact_store=artifact_store,
     )

@@ -1337,7 +1337,7 @@ def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -
         capability_plan=_partitioned_server_update_capability_plan(),
     )
 
-    assert backend_name == "partitioned_fedavg"
+    assert backend_name == "partitioned_delta_average"
 
 
 def test_simulation_server_runtime_rejects_partitioned_policy_for_non_lora_family() -> (

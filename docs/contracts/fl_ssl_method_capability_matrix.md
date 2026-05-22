@@ -99,7 +99,9 @@ FedMatch 다음 구현 결정:
 - server update/delta 해석은 `server_update_policy`로 분리했다. 현재 실행되는 FedMatch
   slice는 `fedavg_merged_delta`로 merged LoRA-classifier delta를 기존 FedAvg path에
   제출하거나, `fedmatch_partitioned`로 shared update의 `partitioned_deltas`를
-  LoRA-classifier `partitioned_fedavg` simulation backend에서 소비한다.
+  LoRA-classifier `partitioned_delta_average` simulation backend에서 소비한다. 이
+  backend는 원본 sparse S2C/C2S sync 전체가 아니라 logical partition delta 평균
+  simulation slice다.
   FixMatch 같은 stateless local SSL policy와 조합하는 full hybrid는 capability surface만
   열려 있고, local trainer가 Query SSL objective를 partitioned sigma/psi loop에 주입하는
   단계가 남아 있다.

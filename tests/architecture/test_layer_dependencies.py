@@ -1312,6 +1312,22 @@ def test_fedavg_aggregation_package_stays_generic() -> None:
     )
 
 
+def test_partitioned_delta_average_does_not_create_generic_backend_folder() -> None:
+    package_root = METHODS_SRC / "federated" / "aggregation" / "partitioned_fedavg"
+    violations = (
+        []
+        if not package_root.exists()
+        else [_relative_repo_path(path) for path in _iter_python_files(package_root)]
+    )
+
+    assert not violations, (
+        "partitioned delta 평균은 adapter-family payload 해석이 먼저 필요한 backend다. "
+        "registry convention만 만족시키는 methods/federated/aggregation/partitioned_* "
+        "얇은 package를 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_main_server_federation_assets_package_has_no_source_modules() -> None:
     package_root = MAIN_SERVER_SRC / "services" / "federation" / "assets"
     violations = [

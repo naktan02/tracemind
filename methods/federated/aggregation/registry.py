@@ -83,7 +83,6 @@ def get_federated_aggregation_method_spec(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=normalized_key[1],
     )
-    _import_aggregation_strategy_module(normalized_method_name=module_method_name)
     _import_adapter_aggregation_module(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=module_method_name,
@@ -110,7 +109,6 @@ def build_federated_aggregation_strategy(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=normalized_key[1],
     )
-    _import_aggregation_strategy_module(normalized_method_name=module_method_name)
     _import_adapter_aggregation_module(
         normalized_adapter_kind=normalized_key[0],
         normalized_method_name=module_method_name,
@@ -161,19 +159,6 @@ def _adapter_method_module_name(
     if normalized_method_name.startswith(adapter_prefixed_name):
         return normalized_method_name.removeprefix(adapter_prefixed_name)
     return normalized_method_name
-
-
-def _import_aggregation_strategy_module(*, normalized_method_name: str) -> None:
-    method_package = f"{_AGGREGATION_PACKAGE}.{normalized_method_name}"
-    try:
-        importlib.import_module(f"{method_package}.strategy")
-    except ModuleNotFoundError as error:
-        expected_module = f"{method_package}.strategy"
-        if error.name not in {method_package, expected_module}:
-            raise
-        raise ValueError(
-            f"Unsupported federated aggregation method module: {normalized_method_name}"
-        ) from error
 
 
 def _import_adapter_aggregation_module(

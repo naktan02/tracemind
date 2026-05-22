@@ -45,5 +45,6 @@ sync, labels-at-server supervised server step은 다음 단계 capability로 남
 현재 실행 server path는 `server_step_policy=none`에서
 `server_update_policy=fedavg_merged_delta`면 기존 LoRA-classifier FedAvg가 merged
 delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
-runtime이 LoRA-classifier `partitioned_fedavg` backend로 `partitioned_deltas`를
-소비한다.
+runtime이 LoRA-classifier `partitioned_delta_average` backend로 `partitioned_deltas`를
+소비한다. 이 backend는 원본 FedMatch sparse S2C/C2S sync 전체가 아니라
+LoRA-classifier logical partition delta를 평균하는 simulation slice다.

@@ -327,12 +327,14 @@ def test_federated_aggregation_method_registry_points_to_partitioned_lora_core()
 ):
     spec = get_federated_aggregation_method_spec(
         adapter_kind="lora_classifier",
-        method_name="partitioned_fedavg",
+        method_name="partitioned_delta_average",
     )
 
-    assert spec.method_name == "partitioned_fedavg"
+    assert spec.method_name == "partitioned_delta_average"
     assert (
         spec.implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.partitioned_fedavg"
+        == "methods.adaptation.lora_classifier.aggregation.partitioned_delta_average"
     )
-    assert spec.core_function_name == "compute_lora_classifier_partitioned_fedavg"
+    assert (
+        spec.core_function_name == "compute_lora_classifier_partitioned_delta_average"
+    )

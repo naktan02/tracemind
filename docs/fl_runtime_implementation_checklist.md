@@ -78,7 +78,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   후속 구현이다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
-  `fedmatch_partitioned`는 LoRA-classifier `partitioned_fedavg` simulation backend로
+  `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로
   shared update의 `partitioned_deltas`를 소비한다.
   `local_ssl_policy=query_ssl_method`는 FixMatch/FlexMatch/FreeMatch 파라미터를
   기존 `query_ssl_method`에서 읽고, `fedmatch_agreement`는 FedMatch method package가

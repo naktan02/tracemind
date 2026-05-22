@@ -1,4 +1,4 @@
-"""LoRA-classifier partitioned FedAvg aggregation backend."""
+"""LoRA-classifier partitioned delta average backend."""
 
 from __future__ import annotations
 
@@ -11,9 +11,9 @@ from methods.federated.aggregation.base import (
     FederatedAggregationContext,
     FederatedAggregationResult,
 )
-from methods.federated.aggregation.fedavg.strategy import FedAvgAdapterStrategySpec
-from methods.federated.aggregation.partitioned_fedavg.strategy import (
-    register_partitioned_fedavg_adapter_strategy,
+from methods.federated.aggregation.fedavg.strategy import (
+    FedAvgAdapterStrategySpec,
+    register_fedavg_adapter_strategy,
 )
 from methods.federated.aggregation_weighting import (
     AGGREGATION_WEIGHT_EXAMPLE_COUNT,
@@ -44,9 +44,11 @@ from .materialization import (
 from .partitioned_state import merge_partitioned_lora_classifier_deltas
 from .state_projection import build_lora_classifier_state_projection
 
+PARTITIONED_DELTA_AVERAGE_BACKEND_NAME = "partitioned_delta_average"
+
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierPartitionedFedAvgUpdate:
+class LoraClassifierPartitionedDeltaAverageUpdate:
     """partitioned server update policy가 소비하는 client delta."""
 
     partitions: Mapping[str, LoraClassifierPartitionDelta]
@@ -56,13 +58,13 @@ class LoraClassifierPartitionedFedAvgUpdate:
     delta_l2_norm: float
 
 
-def compute_lora_classifier_partitioned_fedavg(
+def compute_lora_classifier_partitioned_delta_average(
     *,
     label_schema: Sequence[str],
-    updates: Sequence[LoraClassifierPartitionedFedAvgUpdate],
+    updates: Sequence[LoraClassifierPartitionedDeltaAverageUpdate],
     weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
 ) -> LoraClassifierFedAvgResult:
-    """client별 partition을 먼저 병합한 뒤 LoRA/head delta를 FedAvg한다."""
+    """client별 partition을 병합한 뒤 LoRA/head delta를 policy weight로 평균한다."""
 
     valid_updates = tuple(update for update in updates if update.example_count > 0)
     if not valid_updates:
@@ -111,7 +113,7 @@ def compute_lora_classifier_partitioned_fedavg(
     )
 
 
-def aggregate_lora_classifier_partitioned_fedavg(
+def aggregate_lora_classifier_partitioned_delta_average(
     base_state: SharedAdapterState,
     update_payloads: Sequence[SharedAdapterUpdate],
     context: FederatedAggregationContext,
@@ -119,7 +121,7 @@ def aggregate_lora_classifier_partitioned_fedavg(
 ) -> FederatedAggregationResult:
     """partitioned payload를 materialize한 뒤 다음 LoRA-classifier state를 만든다."""
 
-    _validate_lora_classifier_partitioned_fedavg_overrides(overrides)
+    _validate_lora_classifier_partitioned_delta_average_overrides(overrides)
 
     base_state = cast(LoraClassifierState, base_state)
     updates = [cast(LoraClassifierDelta, payload) for payload in update_payloads]
@@ -130,13 +132,13 @@ def aggregate_lora_classifier_partitioned_fedavg(
         )
         for payload in updates
     ]
-    method_result = compute_lora_classifier_partitioned_fedavg(
+    method_result = compute_lora_classifier_partitioned_delta_average(
         label_schema=base_state.label_schema,
         updates=method_updates,
         weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
-        context="LoRA-classifier partitioned FedAvg"
+        context="LoRA-classifier partitioned delta average"
     )
     lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
@@ -173,12 +175,12 @@ def _to_lora_classifier_partitioned_method_update(
     *,
     base_state: LoraClassifierState,
     payload: LoraClassifierDelta,
-) -> LoraClassifierPartitionedFedAvgUpdate:
+) -> LoraClassifierPartitionedDeltaAverageUpdate:
     validate_lora_classifier_update_matches_base(
         base_state=base_state,
         payload=payload,
     )
-    return LoraClassifierPartitionedFedAvgUpdate(
+    return LoraClassifierPartitionedDeltaAverageUpdate(
         partitions=materialize_lora_classifier_partitioned_update(payload=payload),
         example_count=payload.example_count,
         mean_confidence=payload.mean_confidence,
@@ -187,7 +189,7 @@ def _to_lora_classifier_partitioned_method_update(
     )
 
 
-def _validate_lora_classifier_partitioned_fedavg_overrides(
+def _validate_lora_classifier_partitioned_delta_average_overrides(
     overrides: Mapping[str, AggregationConfigScalar] | None,
 ) -> None:
     if overrides is None:
@@ -197,24 +199,27 @@ def _validate_lora_classifier_partitioned_fedavg_overrides(
     )
     if unknown_keys:
         raise ValueError(
-            "Unsupported LoRA-classifier partitioned FedAvg artifact config key(s): "
+            "Unsupported LoRA-classifier partitioned delta average config key(s): "
             f"{unknown_keys}."
         )
 
 
-register_partitioned_fedavg_adapter_strategy(
+register_fedavg_adapter_strategy(
     FedAvgAdapterStrategySpec(
         adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
         state_type=LoraClassifierState,
         update_type=LoraClassifierDelta,
         context="LoRA-classifier partitioned",
-        aliases=("lora_classifier_partitioned_fedavg",),
-        implementation_module=compute_lora_classifier_partitioned_fedavg.__module__,
-        core_function_name=compute_lora_classifier_partitioned_fedavg.__name__,
+        aliases=("lora_classifier_partitioned_delta_average",),
+        implementation_module=(
+            compute_lora_classifier_partitioned_delta_average.__module__
+        ),
+        core_function_name=compute_lora_classifier_partitioned_delta_average.__name__,
         metadata={
             "adapter_kind": LORA_CLASSIFIER_ADAPTER_KIND,
             "requires_partitioned_deltas": True,
         },
-        aggregate=aggregate_lora_classifier_partitioned_fedavg,
+        aggregate=aggregate_lora_classifier_partitioned_delta_average,
+        method_name=PARTITIONED_DELTA_AVERAGE_BACKEND_NAME,
     )
 )
