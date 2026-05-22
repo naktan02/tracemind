@@ -21,7 +21,11 @@ from methods.federated_ssl.capability_axes import (
     SERVER_UPDATE_FEDAVG_MERGED_DELTA,
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capability_plan import (
+    PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
+    FederatedSslCapabilityPlan,
+)
 from methods.federated_ssl.compatibility import (
     validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_local_ssl_policy_alignment,
@@ -56,6 +60,26 @@ def test_participation_policy_defaults_to_all_clients() -> None:
     assert selected_clients == ("agent_01", "agent_02", "agent_03")
     assert selection.selected_indices == (0, 1, 2)
     assert selection.skipped_indices == ()
+
+
+def test_peer_context_legacy_topk_name_normalizes_to_fixed_probe_knn() -> None:
+    plan = FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy=None,
+        aggregation_weight_policy=None,
+        labeled_exposure_policy=None,
+        local_supervision_regime=None,
+        server_step_policy=None,
+        peer_context_policy={"name": PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK},
+        update_partition_policy=None,
+        local_ssl_policy=None,
+        server_update_policy=None,
+        query_multiview_source=None,
+    )
+
+    assert plan.peer_context_policy_name == PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN
+    assert plan.to_payload()["peer_context_policy"] == {
+        "name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+    }
 
 
 def test_fraction_random_participation_is_round_deterministic() -> None:
@@ -189,7 +213,7 @@ def test_fedmatch_partitioned_server_update_requires_partitioned_update() -> Non
         labeled_exposure_policy={"name": "shared_client_seed"},
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
-        peer_context_policy={"name": "prediction_similarity_topk"},
+        peer_context_policy={"name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN},
         update_partition_policy={"name": "unified"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FIXMATCH},
         server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
@@ -211,7 +235,7 @@ def test_fedmatch_partitioned_server_update_can_express_fixmatch_policy() -> Non
         labeled_exposure_policy={"name": "shared_client_seed"},
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
-        peer_context_policy={"name": "prediction_similarity_topk"},
+        peer_context_policy={"name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN},
         update_partition_policy={"name": "partitioned"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FIXMATCH},
         server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
@@ -231,7 +255,7 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
         labeled_exposure_policy={"name": "shared_client_seed"},
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
-        peer_context_policy={"name": "prediction_similarity_topk"},
+        peer_context_policy={"name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN},
         update_partition_policy={"name": "partitioned"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FIXMATCH},
         server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
@@ -273,7 +297,7 @@ def test_fedmatch_partitioned_blocks_stateful_local_ssl_until_state_surface() ->
         labeled_exposure_policy={"name": "shared_client_seed"},
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
-        peer_context_policy={"name": "prediction_similarity_topk"},
+        peer_context_policy={"name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN},
         update_partition_policy={"name": "partitioned"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FLEXMATCH},
         server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},

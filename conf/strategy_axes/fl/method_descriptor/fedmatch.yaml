@@ -45,7 +45,7 @@ server_step:
 round_state_exchange:
   exchange_name: peer_context
   custom_exchange_required: true
-  helper_selection_name: prediction_similarity_topk
+  helper_selection_name: fixed_probe_output_knn
   required_client_metric_keys:
     - mean_confidence
 report_tags:

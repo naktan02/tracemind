@@ -5,8 +5,8 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from methods.federated_ssl.capability_plan import (
+    PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     PEER_CONTEXT_NONE,
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
     FederatedSslCapabilityPlan,
 )
 from methods.federated_ssl.peer_context import (
@@ -23,7 +23,7 @@ def require_supported_peer_context(
 
     if capability_plan.peer_context_policy_name in {
         PEER_CONTEXT_NONE,
-        PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
+        PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     }:
         return
     raise NotImplementedError(
@@ -42,7 +42,7 @@ def build_peer_context_by_client(
 ) -> dict[str, FederatedSslPeerContext]:
     """round 시작 전 client별 peer/helper context를 만든다.
 
-    `prediction_similarity_topk`는 mechanism만 공통으로 구현한다. helper 개수와
+    `fixed_probe_output_knn`은 mechanism만 공통으로 구현한다. helper 개수와
     refresh interval 같은 의미 있는 값은 method effective parameters에서 읽고,
     FedMatch 원본 의미에 맞춰 KDTree 우선 nearest-neighbor index를 사용한다.
     """
@@ -50,7 +50,7 @@ def build_peer_context_by_client(
     policy_name = capability_plan.peer_context_policy_name
     if policy_name == PEER_CONTEXT_NONE:
         return {}
-    if policy_name != PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK:
+    if policy_name != PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN:
         require_supported_peer_context(capability_plan)
         return {}
     if round_index <= 0:
@@ -114,13 +114,13 @@ def _resolve_method_peer_context_parameters(
 ) -> Mapping[str, object]:
     if ssl_method_config is None:
         raise ValueError(
-            "prediction_similarity_topk peer context requires ssl_method_config "
+            "fixed_probe_output_knn peer context requires ssl_method_config "
             "because its parameters come from the method descriptor."
         )
     round_state_exchange = getattr(ssl_method_config, "round_state_exchange", None)
     if not isinstance(round_state_exchange, Mapping):
         raise ValueError(
-            "prediction_similarity_topk peer context requires method "
+            "fixed_probe_output_knn peer context requires method "
             "round_state_exchange parameters."
         )
     effective_parameters = getattr(ssl_method_config, "effective_parameters", {})

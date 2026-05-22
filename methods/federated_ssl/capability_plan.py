@@ -36,13 +36,17 @@ SERVER_STEP_SUPERVISED_SEED = "supervised_seed_step"
 SERVER_STEP_POLICIES = frozenset({SERVER_STEP_NONE, SERVER_STEP_SUPERVISED_SEED})
 
 PEER_CONTEXT_NONE = "none"
+PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN = "fixed_probe_output_knn"
 PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK = "prediction_similarity_topk"
 PEER_CONTEXT_POLICIES = frozenset(
     {
         PEER_CONTEXT_NONE,
-        PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
+        PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     }
 )
+PEER_CONTEXT_POLICY_ALIASES = {
+    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK: PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+}
 
 UPDATE_PARTITION_UNIFIED = "unified"
 UPDATE_PARTITION_PARTITIONED = "partitioned"
@@ -115,7 +119,7 @@ class FederatedSslCapabilityPlan:
             server_update_policy_name=ServerUpdatePolicy.from_mapping(
                 server_update_policy
             ).name,
-            peer_context_policy_name=_policy_name(
+            peer_context_policy_name=_peer_context_policy_name(
                 peer_context_policy,
                 default=PEER_CONTEXT_NONE,
             ),
@@ -131,6 +135,11 @@ class FederatedSslCapabilityPlan:
         )
 
     def __post_init__(self) -> None:
+        object.__setattr__(
+            self,
+            "peer_context_policy_name",
+            _normalize_peer_context_policy_name(self.peer_context_policy_name),
+        )
         _validate_name(
             self.labeled_exposure_policy_name,
             allowed=LABELED_EXPOSURE_POLICY_NAMES,
@@ -215,6 +224,18 @@ def _policy_name(source: Mapping[str, object] | None, *, default: str) -> str:
     if source is None:
         return default
     return str(source.get("name", default)).strip() or default
+
+
+def _peer_context_policy_name(
+    source: Mapping[str, object] | None,
+    *,
+    default: str,
+) -> str:
+    return _normalize_peer_context_policy_name(_policy_name(source, default=default))
+
+
+def _normalize_peer_context_policy_name(name: str) -> str:
+    return PEER_CONTEXT_POLICY_ALIASES.get(name, name)
 
 
 def _validate_name(

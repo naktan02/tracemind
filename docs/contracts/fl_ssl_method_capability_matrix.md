@@ -23,7 +23,7 @@ policy가 된다.
   - `client_metric_summary`
   - custom exchange는 descriptor에서 선언할 수 있지만 default live runtime에서는
     bootstrap/finalize 전에 실패한다.
-  - simulation에서는 `peer_context=prediction_similarity_topk`가 이전 round
+  - simulation에서는 `peer_context=fixed_probe_output_knn`가 이전 round
     client-local LoRA snapshot과 validation probe vector 기반 helper context를 만든다.
 - `DefaultServerPolicyExecutor`
   - 현재는 `round_runtime_aggregation_backend` + `round_active_pair_only`만 지원한다.
@@ -119,7 +119,7 @@ FedMatch 다음 구현 결정:
   `fedmatch_agreement`는 FedMatch method package가 소유한다. FlexMatch/FreeMatch처럼
   algorithm state 저장 surface가 필요한 조합은 실행 전에 validator가 막는다.
 - inter-client consistency는 `peer_context=none` baseline을 유지하면서,
-  `peer_context_policy=prediction_similarity_topk` runtime adapter로 helper client
+  `peer_context_policy=fixed_probe_output_knn` runtime adapter로 helper client
   선택과 method-owned trainer 주입 seam을 열었다. helper selection은 원본
   `KDTree.query(num_helpers + 1)` 의미를 보존해 KDTree를 우선 사용하고, experiments
   dependency가 없는 실행에서는 같은 Euclidean nearest 기준의 full-scan으로 fallback한다.

@@ -248,7 +248,7 @@ Runtime translation:
 
 1. FedMatch의 현재 method-owned simulation slice를 기준으로 reduced run을 다시
    닫는다. 확인 대상은 `method_owned`, `local_ssl_policy=fedmatch_agreement`,
-   `peer_context=prediction_similarity_topk`, `server_update_policy=fedmatch_partitioned`,
+   `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas` 소비, final report metadata다.
 2. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
    FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.

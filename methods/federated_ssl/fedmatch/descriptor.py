@@ -32,8 +32,8 @@ from methods.federated_ssl.capability_axes import (
 from methods.federated_ssl.capability_plan import (
     LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
     LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
+    PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     PEER_CONTEXT_NONE,
-    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
     QUERY_MULTIVIEW_SOURCE_MATERIALIZED_ROWS,
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
@@ -110,7 +110,7 @@ descriptor = FederatedSslMethodDescriptor(
         ),
         peer_context_policy_names=(
             PEER_CONTEXT_NONE,
-            PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
+            PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
         ),
         update_partition_policy_names=(UPDATE_PARTITION_PARTITIONED,),
         local_ssl_policy_names=(

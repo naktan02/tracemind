@@ -76,7 +76,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   split과 method-owned local simulation wiring은
   `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral
   adapter-family slice에 추가했다.
-  `prediction_similarity_topk` helper client context 주입 seam과 KDTree 우선
+  `fixed_probe_output_knn` helper client context 주입 seam과 KDTree 우선
   helper index, 이전 round client-local LoRA snapshot 기반 helper weak-probability
   provider는 열렸고,
   sparse S2C/C2S, labels-at-server server runtime은 후속 구현이다.

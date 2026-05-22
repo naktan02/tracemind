@@ -130,7 +130,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - manual baseline의 현재 실행 기본은 `server_step=none`, `peer_context=none`,
     `server_update=fedavg_merged_delta`, `update_partition=unified`,
     `local_ssl_policy=query_ssl_method`, `query_multiview_source=materialized_rows`다.
-  - FedMatch method-owned slice는 `peer_context=prediction_similarity_topk`와
+  - FedMatch method-owned slice는 `peer_context=fixed_probe_output_knn`와
     `server_update=fedmatch_partitioned`를 실행할 수 있다. 이때 local runtime이
     `partitioned_deltas`를 생산하고, server runtime이 LoRA-classifier
     `partitioned_delta_average` backend로 소비한다.
@@ -140,7 +140,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
   - `local_ssl_policy=query_ssl_method`는 `query_ssl_method.algorithm_name`을
     canonical local SSL policy 이름으로 쓴다. FixMatch류 파라미터를 FL capability
     config에 복제하지 않는다.
-  - `peer_context=prediction_similarity_topk`는 method `effective_parameters`의
+  - `peer_context=fixed_probe_output_knn`는 method `effective_parameters`의
     helper 개수와 refresh interval을 읽어 client별 helper context를 만든다.
     현재 slice는 이전 round client-local LoRA snapshot과 validation probe vector로
     KDTree 우선 nearest-neighbor helper client를 고르고, 선택된 helper snapshot의

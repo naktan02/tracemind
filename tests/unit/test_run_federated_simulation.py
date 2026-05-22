@@ -429,7 +429,7 @@ def _partitioned_server_update_capability_plan() -> FederatedSslCapabilityPlan:
         labeled_exposure_policy={"name": "shared_client_seed"},
         local_supervision_regime={"name": "client_labeled_and_unlabeled"},
         server_step_policy={"name": "none"},
-        peer_context_policy={"name": "prediction_similarity_topk"},
+        peer_context_policy={"name": "fixed_probe_output_knn"},
         update_partition_policy={"name": "partitioned"},
         local_ssl_policy={"name": "fixmatch"},
         server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
@@ -1108,7 +1108,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     )
     peer_context = FederatedSslPeerContext(
         client_id="agent_01",
-        policy_name="prediction_similarity_topk",
+        policy_name="fixed_probe_output_knn",
         round_index_zero_based=0,
         helper_client_ids=("agent_02",),
         refreshed=True,

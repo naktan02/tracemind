@@ -810,7 +810,7 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
                 "strategy_axes/fl/server_update_policy=fedmatch_partitioned",
                 "strategy_axes/fl/update_partition_policy=partitioned",
                 "strategy_axes/fl/aggregation_weight_policy=uniform",
-                "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
+                "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
                 "strategy_axes/ssl/consistency_method=fixmatch_usb_v1",
             ],
         )
@@ -825,6 +825,28 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
     assert capability_plan.local_ssl_policy_name == "fixmatch"
     assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
     assert capability_plan.update_partition_policy_name == "partitioned"
+    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+
+
+def test_federated_simulation_legacy_peer_context_override_uses_canonical_name() -> (
+    None
+):
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/peer_context_policy=prediction_similarity_topk",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+    )
+
+    assert cfg.peer_context_policy.name == "fixed_probe_output_knn"
+    assert cfg.peer_context_policy.legacy_alias_name == "prediction_similarity_topk"
+    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
 
 
 def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> None:

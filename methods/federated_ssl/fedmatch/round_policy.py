@@ -9,7 +9,7 @@ from methods.federated_ssl.fedmatch.helper_selection import (
 )
 from methods.federated_ssl.peer_context import FederatedSslPeerContextPolicy
 
-FEDMATCH_HELPER_POLICY = "fedmatch_prediction_similarity_topk"
+FEDMATCH_HELPER_POLICY = "fedmatch_fixed_probe_output_knn"
 
 helper_context_policy = FederatedSslPeerContextPolicy(
     policy_name=FEDMATCH_HELPER_POLICY,

@@ -6,22 +6,29 @@ from types import SimpleNamespace
 
 import pytest
 
-from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.capability_plan import (
+    PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
+    PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
+    FederatedSslCapabilityPlan,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     peer_context_exchange,
 )
 
 
-def test_prediction_similarity_peer_context_is_supported_capability() -> None:
+def test_fixed_probe_knn_peer_context_is_supported_capability() -> None:
     peer_context_exchange.require_supported_peer_context(_capability_plan("none"))
     peer_context_exchange.require_supported_peer_context(
-        _capability_plan("prediction_similarity_topk")
+        _capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN)
+    )
+    peer_context_exchange.require_supported_peer_context(
+        _capability_plan(PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK)
     )
 
 
-def test_prediction_similarity_peer_context_selects_nearest_on_refresh_round() -> None:
+def test_fixed_probe_knn_peer_context_selects_nearest_on_refresh_round() -> None:
     contexts = peer_context_exchange.build_peer_context_by_client(
-        capability_plan=_capability_plan("prediction_similarity_topk"),
+        capability_plan=_capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN),
         ssl_method_config=SimpleNamespace(
             round_state_exchange={"num_helpers": 2, "refresh_interval": 10}
         ),
@@ -46,9 +53,9 @@ def test_prediction_similarity_peer_context_selects_nearest_on_refresh_round() -
     assert contexts["client_a"].metadata["selection_query_size"] == 3
 
 
-def test_prediction_similarity_peer_context_respects_refresh_interval() -> None:
+def test_fixed_probe_knn_peer_context_respects_refresh_interval() -> None:
     contexts = peer_context_exchange.build_peer_context_by_client(
-        capability_plan=_capability_plan("prediction_similarity_topk"),
+        capability_plan=_capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN),
         ssl_method_config=SimpleNamespace(
             round_state_exchange={"num_helpers": 2, "refresh_interval": 10}
         ),
@@ -65,9 +72,9 @@ def test_prediction_similarity_peer_context_respects_refresh_interval() -> None:
     assert contexts["client_a"].metadata["refresh_due"] is False
 
 
-def test_prediction_similarity_peer_context_uses_method_parameter_overrides() -> None:
+def test_fixed_probe_knn_peer_context_uses_method_parameter_overrides() -> None:
     contexts = peer_context_exchange.build_peer_context_by_client(
-        capability_plan=_capability_plan("prediction_similarity_topk"),
+        capability_plan=_capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN),
         ssl_method_config=SimpleNamespace(
             round_state_exchange={"num_helpers": 2, "refresh_interval": 10},
             effective_parameters={
@@ -89,10 +96,10 @@ def test_prediction_similarity_peer_context_uses_method_parameter_overrides() ->
     assert contexts["client_a"].metadata["refresh_interval"] == 1
 
 
-def test_prediction_similarity_peer_context_requires_method_parameters() -> None:
+def test_fixed_probe_knn_peer_context_requires_method_parameters() -> None:
     with pytest.raises(ValueError, match="ssl_method_config"):
         peer_context_exchange.build_peer_context_by_client(
-            capability_plan=_capability_plan("prediction_similarity_topk"),
+            capability_plan=_capability_plan(PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN),
             ssl_method_config=None,
             selected_client_ids=("client_a",),
             round_index=1,

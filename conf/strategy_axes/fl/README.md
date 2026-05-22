@@ -47,10 +47,12 @@ LoRA-classifier `partitioned_delta_average` simulation backend로 해석한다.
 읽어 `fixmatch`, `flexmatch`, `freematch` 같은 기존 Query SSL algorithm parameter
 surface를 재사용한다. `fedmatch_agreement`처럼 method-local objective는 method
 descriptor가 source of truth다.
-마찬가지로 `prediction_similarity_topk`는 공통 peer-context mechanism만 표현하고,
+마찬가지로 `fixed_probe_output_knn`은 공통 peer-context mechanism만 표현하고,
 nearest-neighbor 실행은 `methods/federated_ssl/peer_context.py`의 KDTree 우선 index가
 소유한다. FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은
 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가 소유한다.
+`prediction_similarity_topk` config file은 기존 override 호환용 alias이며 canonical
+report name은 `fixed_probe_output_knn`이다.
 
 ## `fl_method` 실행 계획
 
