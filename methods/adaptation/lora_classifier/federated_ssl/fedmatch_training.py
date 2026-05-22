@@ -1,4 +1,4 @@
-"""FedMatch LoRA-classifier simulation bridge."""
+"""LoRA-classifier family에서 FedMatch local objective를 실행하는 bridge."""
 
 from __future__ import annotations
 
@@ -14,6 +14,9 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.lora_classifier.federated_ssl.fedmatch_partitioned_loop import (
+    train_fedmatch_lora_classifier,
 )
 from methods.adaptation.lora_classifier.training.delta_extraction import (
     extract_lora_classifier_parameter_deltas,
@@ -56,9 +59,6 @@ from methods.federated_ssl.capability_axes import (
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
-)
-from methods.federated_ssl.fedmatch.lora_partitioned_loop import (
-    train_fedmatch_lora_classifier,
 )
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,

@@ -7,16 +7,16 @@
   method-owned local runtime entrypoint
 - `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
   agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
-- `lora_classifier_training.py`: LoRA-classifier simulation bridge. model/loaders,
-  partitioned loop 호출, delta materialization, shared update envelope 조립을 맡는다.
-- `lora_partitioned_loop.py`: LoRA-classifier local training에서 FedMatch
-  supervised/unsupervised step을 실행하고 logical `sigma`/`psi` delta를 누적하는
-  method-owned optimizer loop
 - `server_policy.py`: labels-at-client / labels-at-server policy metadata
 - `round_policy.py`: helper context policy metadata
 - `helper_selection.py`: 원본 KDTree helper selection을 generic vector top-k로 보존한 core
 - `parameter_routing.py`: 원본 full parameter sigma/psi를 LoRA-classifier trainable
   scope로 매핑하는 metadata
+
+LoRA-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned optimizer
+loop는 `methods/adaptation/lora_classifier/federated_ssl/`가 소유한다. 이 폴더는
+FedMatch의 원본 의미와 policy를 읽는 시작점이고, adapter family 구현 파일을 누적하지
+않는다.
 
 현재 상태는 `lora_local_runtime_slice_v1`이다. 원본 FedMatch snapshot은
 `https://github.com/wyjeong/FedMatch.git`
@@ -31,14 +31,14 @@
   sigma/psi L2 regularization을 PyTorch tensor core로 계산
 - LoRA-classifier trainable tensor에 supervised step과 unsupervised step을 순차
   적용하고, sub-step delta를 각각 logical `sigma`/`psi` partition으로 기록
-- method-owned FL simulation client runtime에서 FedMatch local objective를 호출하고,
-  기존 merged LoRA-classifier delta와 logical `sigma`/`psi` partition delta를 함께 제출
+- LoRA-classifier family slice에서 FedMatch local objective를 호출하고, 기존 merged
+  LoRA-classifier delta와 logical `sigma`/`psi` partition delta를 함께 제출
 - helper refresh/top-k selection helper
 - 공통 `peer_context=prediction_similarity_topk` simulation adapter에서 FedMatch
   descriptor의 `num_helpers`/`refresh_interval`을 읽어 helper client context를 만들고
   method-owned LoRA trainer까지 전달하는 seam
-- full ResNet9 sigma/psi decomposition을 LoRA adapter + classifier head의
-  logical sigma/psi partition으로 매핑
+- full ResNet9 sigma/psi decomposition을 LoRA adapter + classifier head의 logical
+  sigma/psi partition으로 매핑하는 metadata
 - `server_update_policy`와 `local_ssl_policy` 축에서 FedMatch-style partitioned
   server update와 FixMatch local SSL policy 조합을 표현/검증하는 capability surface
 

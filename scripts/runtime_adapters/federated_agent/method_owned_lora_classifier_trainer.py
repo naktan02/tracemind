@@ -20,13 +20,13 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
+from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
+    run_method_owned_lora_classifier_training_core,
+)
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
-from methods.federated_ssl.lora_classifier_training import (
-    run_method_owned_lora_classifier_training_core,
-)
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,

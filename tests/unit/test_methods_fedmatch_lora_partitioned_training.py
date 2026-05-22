@@ -7,6 +7,16 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.lora_classifier.federated_ssl.fedmatch_partitioned_loop import (
+    run_fedmatch_lora_classifier_partitioned_step,
+    train_fedmatch_lora_classifier,
+)
+from methods.adaptation.lora_classifier.federated_ssl.fedmatch_training import (
+    run_method_owned_lora_classifier_training_core,
+)
+from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
+    resolve_method_owned_lora_classifier_training_core,
+)
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
@@ -18,19 +28,9 @@ from methods.adaptation.query_classifier_adaptation.local_training_budget import
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
 )
-from methods.federated_ssl.fedmatch.lora_classifier_training import (
-    run_method_owned_lora_classifier_training_core,
-)
-from methods.federated_ssl.fedmatch.lora_partitioned_loop import (
-    run_fedmatch_lora_classifier_partitioned_step,
-    train_fedmatch_lora_classifier,
-)
 from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
-)
-from methods.federated_ssl.lora_classifier_training import (
-    resolve_method_owned_lora_classifier_training_core,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 

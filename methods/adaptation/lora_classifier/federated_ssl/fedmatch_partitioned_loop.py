@@ -1,4 +1,4 @@
-"""FedMatch LoRA-classifier sigma/psi partitioned local loop."""
+"""LoRA-classifier family에서 FedMatch sigma/psi partitioned loop를 실행한다."""
 
 from __future__ import annotations
 

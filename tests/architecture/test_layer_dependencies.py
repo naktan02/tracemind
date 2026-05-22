@@ -572,6 +572,32 @@ def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
     )
 
 
+def test_federated_ssl_method_packages_do_not_own_adapter_family_runtime_files() -> (
+    None
+):
+    forbidden_fragments = (
+        "lora_classifier",
+        "classifier_head",
+        "diagonal_scale",
+        "full_encoder",
+        "dora",
+    )
+    violations: list[Path] = []
+    for method_dir in sorted(METHODS_FEDERATED_SSL_SRC.iterdir()):
+        if not method_dir.is_dir() or method_dir.name.startswith("__"):
+            continue
+        for path in _iter_python_files(method_dir):
+            if any(fragment in path.stem.lower() for fragment in forbidden_fragments):
+                violations.append(_relative_repo_path(path))
+
+    assert not violations, (
+        "methods/federated_ssl/<method>/는 논문 method 의미와 policy를 소유한다. "
+        "LoRA-classifier/full encoder/DoRA 같은 adapter-family 실행 구현은 "
+        "methods/adaptation/<family>/federated_ssl/에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_fl_peer_context_policy_configs_stay_mechanism_only() -> None:
     """공통 peer context capability에 FedMatch helper 기본값을 올리지 않는다."""
 

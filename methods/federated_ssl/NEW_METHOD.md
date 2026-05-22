@@ -33,7 +33,9 @@ custom client runtime core가 필요한 method는 `descriptor.py`의
 `FederatedSslLocalStepSpec.runtime_entrypoint`에 `module:function`을 명시한다.
 generic runtime resolver가 `<method>/lora_classifier_training.py` 같은 파일명을
 추측하게 두지 않는다. method 폴더를 읽는 사람이 descriptor에서 호출 위치를 바로
-확인할 수 있어야 한다.
+확인할 수 있어야 한다. 특정 adapter family에서 method를 실행하는 구현은
+`methods/adaptation/<family>/federated_ssl/`에 둔다. method 폴더에는 원본 의미,
+policy, parameter routing처럼 family를 넘어 유지되는 내용을 남긴다.
 
 round별 pseudo-label statistics, client metric summary, calibration state가 필요하면
 `FederatedSslRoundStateExchangeSpec`에 `exchange_name`과

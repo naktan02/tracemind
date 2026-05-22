@@ -71,8 +71,10 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   먼저 문서화한다. FedMatch v1은 공통 `partitioned` update capability와 `uniform`
   aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
   pseudo-label/helper top-k selection, supervised/unsupervised tensor loss는
-  methods core에 고정했다. LoRA trainer 한 step의 logical sigma/psi delta split도
-  methods core에 추가했다. method-owned LoRA local simulation wiring과
+  FedMatch method core에 고정했다. LoRA trainer 한 step의 logical sigma/psi delta
+  split과 method-owned local simulation wiring은
+  `methods/adaptation/lora_classifier/federated_ssl/` adapter-family slice에
+  추가했다.
   `prediction_similarity_topk` helper client context 주입 seam은 열렸고, helper
   model prediction tensor 생성, sparse S2C/C2S, labels-at-server server runtime은
   후속 구현이다.
@@ -144,7 +146,7 @@ methods/evaluation/                            # stable metric helper만
 - [x] manual `Query SSL + LoRA-classifier` simulation 경로는
   `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
 - [x] method-owned FedMatch LoRA simulation 경로는 manual Query SSL trainer를 우회해
-  `methods/federated_ssl/fedmatch` local objective를 호출하고, merged delta와
+  FedMatch local objective를 LoRA-classifier family slice에서 호출하고, merged delta와
   logical `sigma`/`psi` partition delta를 함께 제출한다.
 - [x] `fedmatch_partitioned` server update adapter를 simulation에 연결해 partitioned
   LoRA-classifier delta를 aggregate하고 published state를 `sigma_plus_psi`로 만든다.
