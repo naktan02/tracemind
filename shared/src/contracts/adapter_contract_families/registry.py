@@ -120,9 +120,7 @@ def parse_shared_adapter_state_payload(
         return source
     _ensure_builtin_payload_families_loaded()
     data = dict(source)
-    adapter_kind = _normalize_adapter_kind(
-        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
-    )
+    adapter_kind = _adapter_kind_from_payload(data, payload_role="state")
     payload_type = _STATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter state kind: {adapter_kind}")
@@ -137,13 +135,27 @@ def parse_shared_adapter_update_payload(
         return source
     _ensure_builtin_payload_families_loaded()
     data = dict(source)
-    adapter_kind = _normalize_adapter_kind(
-        data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)
-    )
+    adapter_kind = _adapter_kind_from_payload(data, payload_role="update")
     payload_type = _UPDATE_PAYLOAD_TYPES.get(adapter_kind)
     if payload_type is None:
         raise ValueError(f"Unsupported shared adapter update kind: {adapter_kind}")
     return payload_type.model_validate(data)
+
+
+def _adapter_kind_from_payload(
+    data: Mapping[str, object],
+    *,
+    payload_role: str,
+) -> str:
+    raw_adapter_kind = data.get("adapter_kind")
+    if raw_adapter_kind is not None:
+        return _normalize_adapter_kind(raw_adapter_kind)
+    schema_version = str(data.get("schema_version", "")).strip()
+    if payload_role == "state" and schema_version == "vector_adapter_state.v1":
+        return AdapterKind.DIAGONAL_SCALE.value
+    if payload_role == "update" and schema_version == "vector_adapter_delta.v1":
+        return AdapterKind.DIAGONAL_SCALE.value
+    raise ValueError("Shared adapter payload requires adapter_kind.")
 
 
 def _normalize_adapter_kind(adapter_kind: object) -> str:

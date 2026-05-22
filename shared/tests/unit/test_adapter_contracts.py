@@ -34,6 +34,7 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 from shared.src.contracts.adapter_contract_families.registry import (
     get_shared_adapter_canonical_update_payload_format,
     get_shared_adapter_update_payload_formats,
+    parse_shared_adapter_update_payload,
     register_shared_adapter_payload_family,
 )
 
@@ -103,6 +104,7 @@ def test_shared_adapter_loader_accepts_registered_custom_family(
     )
 
     state = TestAdapterStatePayload(
+        schema_version="test_adapter_state.v1",
         adapter_kind="test_family",
         model_id="tracemind-embed",
         model_revision="rev_test",
@@ -111,6 +113,7 @@ def test_shared_adapter_loader_accepts_registered_custom_family(
         bias=0.1,
     )
     update = TestAdapterUpdatePayload(
+        schema_version="test_adapter_update.v1",
         adapter_kind="test_family",
         model_id="tracemind-embed",
         base_model_revision="rev_test",
@@ -369,3 +372,32 @@ def test_payload_registry_exposes_lora_classifier_update_formats() -> None:
     assert get_shared_adapter_update_payload_formats("lora_classifier") == (
         LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     )
+
+
+def test_adapter_registry_requires_adapter_kind_without_legacy_vector_schema() -> None:
+    with pytest.raises(ValueError, match="adapter_kind"):
+        parse_shared_adapter_update_payload(
+            {
+                "schema_version": "custom_adapter_delta.v1",
+                "model_id": "model",
+                "base_model_revision": "rev_1",
+                "training_scope": "adapter_only",
+                "example_count": 1,
+            }
+        )
+
+
+def test_adapter_registry_keeps_legacy_vector_schema_compatibility() -> None:
+    parsed = parse_shared_adapter_update_payload(
+        {
+            "schema_version": "vector_adapter_delta.v1",
+            "model_id": "model",
+            "base_model_revision": "rev_1",
+            "training_scope": "adapter_only",
+            "dimension_deltas": [0.1],
+            "example_count": 1,
+            "mean_confidence": 0.8,
+        }
+    )
+
+    assert parsed.adapter_kind == "diagonal_scale"

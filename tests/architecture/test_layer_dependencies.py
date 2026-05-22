@@ -209,6 +209,29 @@ def test_shared_training_contracts_do_not_own_adapter_payload_format_catalog() -
     )
 
 
+def test_shared_adapter_base_does_not_default_to_diagonal_scale() -> None:
+    checked_paths = (
+        SHARED_SRC / "contracts" / "adapter_contract_families" / "base.py",
+        SHARED_SRC / "contracts" / "adapter_contract_families" / "registry.py",
+    )
+    forbidden_snippets = (
+        "default=AdapterKind.DIAGONAL_SCALE.value",
+        'data.get("adapter_kind", AdapterKind.DIAGONAL_SCALE.value)',
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "shared adapter base/registry는 새 payload를 diagonal_scale로 암묵 해석하지 "
+        "않는다. legacy vector_adapter schema compatibility만 명시적으로 허용한다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)

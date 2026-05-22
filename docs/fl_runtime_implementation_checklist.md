@@ -168,11 +168,10 @@ methods/evaluation/                            # stable metric helper만
 ## Main Comparison Gate
 
 - [x] main split: `10 clients`, Dirichlet `alpha=0.3`, split `seed=42`,
-  `50 rounds`. 기존 full report는 round/split/method/delta 기준으로 검증됐지만
-  runtime metadata 도입 전 산출물이라 `gpu_local + mxbai` 여부는 report 자체로
-  재검증할 수 없다. 현재 main preset은 후속 실행 비용을 낮추기 위해 `30 rounds`를
-  기본 full-budget으로 둔다.
-- [ ] final stress split: Dirichlet `alpha=0.1`, `50 rounds`. 이 항목은 마지막
+  `30 rounds`. 기존 50-round report는 round/split/method/delta 기준으로 검증됐지만
+  runtime metadata 도입 전 산출물이므로 현재 main preset source of truth는 아니다.
+  현재 full-budget preset은 `30 rounds`다.
+- [ ] final stress split: Dirichlet `alpha=0.1`, `30 rounds`. 이 항목은 마지막
   stress 확인 요소다. 기본/main 비교 조건은 `alpha=0.3`이며, 실행 시 후보와
   비교 조건을 별도로 명시한다.
 - [x] accidental long run 방지: FL SSL runner는 총 예정 communication round가
@@ -183,11 +182,10 @@ methods/evaluation/                            # stable metric helper만
 - [x] `client_count=1..10` sweep runner와 summary JSON을 추가했다.
 - [x] `client_count=1..10` 1-round summary는 report artifact verifier로
   `FixMatch + FedAvg + LoRA-classifier` metadata를 재검증했다.
-- [ ] `gpu_local + mxbai` runtime metadata가 있는 smoke/main/sweep 산출물을 남긴다.
+- [ ] `gpu_local + mxbai` runtime metadata가 있는 main/sweep 산출물을 남긴다.
   현재는 `alpha=0.3` 같은 split의 1-round smoke와 5-round reduced ablation에서
-  runtime metadata를 확인했다. alpha=0.3 50-round full report와 1-round
-  client-count sweep은 runtime metadata 도입 전 산출물이라
-  round/split/method/delta 기준만 재검증한다. final stress/ablation/sweep과
+  runtime metadata를 확인했다. runtime metadata 도입 전 50-round report와 1-round
+  client-count sweep은 archive/reference로만 보고, final stress/ablation/sweep과
   full-budget main 실행은 후보와 비교 조건이 확정된 뒤 현재 `30-round` preset으로
   별도 실행한다.
 - [x] 새 FL simulation report protocol은 `embedding_adapter`와

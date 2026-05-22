@@ -12,10 +12,13 @@ from pydantic import Field
 from shared.src.contracts.common_types import TrainingScope
 
 from .base import (
+    VECTOR_ADAPTER_DELTA_V1,
     VECTOR_ADAPTER_STATE_V1,
     AdapterKind,
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
+    VectorAdapterDeltaSchemaVersion,
+    VectorAdapterStateSchemaVersion,
 )
 
 DIAGONAL_SCALE_ADAPTER_KIND = AdapterKind.DIAGONAL_SCALE.value
@@ -29,6 +32,10 @@ DIAGONAL_SCALE_ACCEPTED_UPDATE_PAYLOAD_FORMATS = (
 class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
     """임베딩 각 차원에 곱하는 scale 벡터를 공유하는 adapter state."""
 
+    schema_version: VectorAdapterStateSchemaVersion = Field(
+        default=VECTOR_ADAPTER_STATE_V1,
+        description="Diagonal-scale state payload contract 버전.",
+    )
     adapter_kind: str = Field(default=DIAGONAL_SCALE_ADAPTER_KIND)
     dimension_scales: list[float] = Field(description="임베딩 차원별 전역 scale 벡터.")
 
@@ -75,6 +82,10 @@ class DiagonalScaleAdapterStatePayload(SharedAdapterStatePayload):
 class DiagonalScaleAdapterUpdatePayload(SharedAdapterUpdatePayload):
     """Diagonal-scale adapter update payload."""
 
+    schema_version: VectorAdapterDeltaSchemaVersion = Field(
+        default=VECTOR_ADAPTER_DELTA_V1,
+        description="Diagonal-scale update payload contract 버전.",
+    )
     adapter_kind: str = Field(default=DIAGONAL_SCALE_ADAPTER_KIND)
     canonical_update_payload_format: ClassVar[str] = (
         DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT

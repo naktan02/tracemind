@@ -43,12 +43,8 @@ class SharedAdapterStatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: VectorAdapterStateSchemaVersion = Field(
-        default=VECTOR_ADAPTER_STATE_V1,
-        description="Payload contract 버전.",
-    )
+    schema_version: str = Field(description="Payload contract 버전.")
     adapter_kind: str = Field(
-        default=AdapterKind.DIAGONAL_SCALE.value,
         description="Adapter family discriminator.",
     )
     model_id: str = Field(description="이 adapter가 결합되는 backbone/model 식별자.")
@@ -64,12 +60,8 @@ class SharedAdapterUpdatePayload(BaseModel):
 
     model_config = ConfigDict(extra="forbid")
 
-    schema_version: VectorAdapterDeltaSchemaVersion = Field(
-        default=VECTOR_ADAPTER_DELTA_V1,
-        description="Payload contract 버전.",
-    )
+    schema_version: str = Field(description="Payload contract 버전.")
     adapter_kind: str = Field(
-        default=AdapterKind.DIAGONAL_SCALE.value,
         description="Adapter family discriminator.",
     )
     model_id: str = Field(

@@ -137,7 +137,7 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - main non-IID: Dirichlet label-skew `alpha=0.3`
 - final stress non-IID: Dirichlet label-skew `alpha=0.1`
 - split seed: `42`
-- full round budget preset: `50`
+- full round budget preset: `30`
 - execution policy: 새 wiring/method 검증은 먼저 `1-round` smoke 또는 `5-round`
   reduced run으로 확인하고, full-budget 비교는 후보와 조건이 확정된 뒤 실행한다.
 - local update budget: `local_epochs=1`, `max_steps=50`
@@ -246,33 +246,22 @@ Runtime translation:
 
 다음 우선순위:
 
-1. FedMatch를 첫 method로 확정했고, `methods/federated_ssl/fedmatch/`와
-   `conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`에 capability surface와
-   원본 core/config snapshot을 열었다. 원본 snapshot은
-   `wyjeong/FedMatch` commit `4947aa255d59bd37915e25a719763aaaf5d7e067`이다.
-2. FedMatch method-owned tensor local objective core는 열었다. 원본 `loss_fn_s`의
-   supervised CE는 `sigma`, `loss_fn_u`의 confidence/helper/agreement/regularization
-   loss는 `psi` partition으로 라우팅한다.
-3. LoRA-classifier trainer 한 step의 sigma/psi logical optimizer split core는 열었다.
-   supervised sub-step delta는 `sigma`, unsupervised sub-step delta는 `psi`로 기록한다.
-4. method-owned FedMatch simulation wiring과 `prediction_similarity_topk` helper
-   client context 주입 seam은 열었다. 이전 round client-local LoRA snapshot과
-   validation probe vector 기반 helper weak-probability provider도 simulation에
-   연결했다. 다음 구현은 sparse S2C/C2S sync와 필요한 runtime capability adapter
-   순서로 진행한다.
-5. FedMatch-style server update와 local SSL policy는 별도 capability 축으로 분리했다.
-   현재 `fedavg_merged_delta`는 실행 중인 merged delta/FedAvg path이고,
-   `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로
-   shared update의 `partitioned_deltas`를 소비한다. `local_ssl_policy=query_ssl_method`는
-   FixMatch류 파라미터를 기존 `query_ssl_method`에서 읽고, `fedmatch_agreement`는
-   FedMatch method package가 소유한다.
-6. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
-   method metadata와 실제 local/server policy 변경을 검증한다.
-7. full ablation, full `client_count=1..10` sweep, full-budget main run은
-   후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
-   아니라 최후 stress 확인으로 남기고, `alpha=0.3` 기준 후보 비교가 정리된 뒤
-   같은 split seed 42와 같은 local budget으로 연다.
-8. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+1. FedMatch의 현재 method-owned simulation slice를 기준으로 reduced run을 다시
+   닫는다. 확인 대상은 `method_owned`, `local_ssl_policy=fedmatch_agreement`,
+   `peer_context=prediction_similarity_topk`, `server_update_policy=fedmatch_partitioned`,
+   helper injection, `partitioned_deltas` 소비, final report metadata다.
+2. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
+   FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
+3. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
+   validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
+   실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
+   막는다.
+4. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
+   parity 후보로 남기되, 현재 다음 실행 게이트는 아니다.
+5. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
+   비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
+   stress 확인으로 남긴다.
+6. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

@@ -128,7 +128,7 @@ central fixed embedding + classifier seed
   두 개 이상 method에서 같은 scheme이 반복될 때만 공통 scheme으로 승격한다.
 - 공통 peer context 축은 `prediction_similarity_topk` 같은 exchange mechanism까지만
   표현한다. FedMatch의 `num_helpers`, `h_interval` 같은 원본 helper 기본값은
-  method descriptor와 method package가 소유한다.
+  `methods/federated_ssl/fedmatch/original_spec.py`와 method package가 소유한다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
@@ -208,3 +208,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   agent-local artifact upload, server-owned materialization, manifest/version
   compatibility는 닫혔다. live `agent`/`main_server` runtime translation은 winner
   method 확정 뒤 별도 범위로 진행한다.
+- live `main_server`의 no-config round runtime fallback은 legacy
+  `diagonal_scale` compatibility path다. 새 논문/FL SSL 실행 기본값으로 해석하지
+  않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시 `round_runtime.*`
+  leaf를 source of truth로 사용한다.

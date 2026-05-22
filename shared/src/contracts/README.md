@@ -242,6 +242,9 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 - `adapter_kind`
   - adapter family discriminator
   - 예: `diagonal_scale`, `classifier_head`, `lora_classifier`
+  - base shared adapter payload는 특정 family를 기본값으로 추정하지 않는다
+  - 구형 `vector_adapter_*` schema만 registry compatibility에서 `diagonal_scale`로
+    명시 변환한다
 - `payload_format`
   - 동일 family 안에서도 state/update envelope 해석에 쓰는 포맷 식별자
   - `TrainingUpdateSubmissionPayload`에서는 update payload type이 허용하는

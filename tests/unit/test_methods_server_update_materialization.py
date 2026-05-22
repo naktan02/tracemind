@@ -22,6 +22,7 @@ from shared.src.contracts.adapter_contract_families.factories import (
 
 def test_unknown_adapter_kind_materialization_defaults_to_noop() -> None:
     payload = SharedAdapterUpdatePayload(
+        schema_version="unit_test_adapter_update.v1",
         adapter_kind="unit_test_adapter",
         model_id="tracemind-test",
         base_model_revision="rev_000",
@@ -75,6 +76,7 @@ def test_lora_materialization_allows_server_owned_refs_without_inline_delta() ->
 
 def test_lora_classifier_materialization_rejects_mismatched_payload_type() -> None:
     payload = SharedAdapterUpdatePayload(
+        schema_version="lora_classifier_delta.v1",
         adapter_kind="lora_classifier",
         model_id="tracemind-test",
         base_model_revision="rev_000",

@@ -288,6 +288,7 @@ class _TestShiftAggregationBackend:
             / total_examples
         )
         next_state = _TestShiftStatePayload(
+            schema_version="test_shift_state.v1",
             model_id=base_state.model_id,
             model_revision=next_model_revision,
             training_scope=base_state.training_scope,
@@ -1163,6 +1164,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
     )
     state_repository.save_shared_adapter_state(
         _TestShiftStatePayload(
+            schema_version="test_shift_state.v1",
             model_id="tracemind-embed",
             model_revision="rev_000",
             training_scope="adapter_only",
@@ -1212,6 +1214,7 @@ def test_round_lifecycle_finalizes_registered_custom_family(
 
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update_payload = _TestShiftUpdatePayload(
+        schema_version="test_shift_update.v1",
         model_id="tracemind-embed",
         base_model_revision="rev_000",
         training_scope="adapter_only",

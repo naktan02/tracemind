@@ -17,14 +17,14 @@ ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
 ROUND_METHOD_DESCRIPTOR_ENV = "TRACEMIND_ROUND_METHOD_DESCRIPTOR"
-DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME = DIAGONAL_SCALE_ADAPTER_KIND
+LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK = DIAGONAL_SCALE_ADAPTER_KIND
 
 
 @dataclass(slots=True)
 class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
-    adapter_family_name: str = DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME
+    adapter_family_name: str = LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK
     aggregation_backend_name: str = "fedavg"
     method_descriptor_name: str | None = None
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
@@ -42,7 +42,7 @@ def load_server_round_runtime_config_from_env(
     return ServerRoundRuntimeConfig(
         adapter_family_name=source.get(
             ROUND_ADAPTER_FAMILY_ENV,
-            DEFAULT_SERVER_ROUND_ADAPTER_FAMILY_NAME,
+            LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,

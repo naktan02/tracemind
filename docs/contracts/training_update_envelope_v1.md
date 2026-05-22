@@ -43,7 +43,8 @@ v1 원칙:
    - 실제 update tensor/blob 위치 또는 조회 키
 
 9. `payload_format`
-   - 예: `classifier_head_update`, `diagonal_scale_update`, `lora_delta`
+   - 예: `classifier_head_update`, `diagonal_scale_update`,
+     `lora_classifier_update`
 
 10. `example_count`
 

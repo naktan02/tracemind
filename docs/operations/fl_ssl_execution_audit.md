@@ -8,7 +8,11 @@ report/summary를 검증했다.
 
 ## 판정
 
-전체 목표는 아직 완료가 아니다.
+전체 목표는 아직 완료가 아니다. 이 감사표의 2026-05-18 artifact 검증은
+manual baseline과 LoRA-classifier artifact path를 확인한 기록이다. 이후 FedMatch가
+첫 method로 확정되어 method-owned simulation slice가 열렸으므로, method 선택 상태는
+`docs/project_execution_plan.md`와 `docs/contracts/fl_ssl_method_capability_matrix.md`를
+우선한다.
 
 완료/검증된 항목:
 
@@ -21,10 +25,10 @@ report/summary를 검증했다.
   upload/materialize하는 경로와 compatibility preflight는 구현 및 테스트로 닫혔다.
   current manifest는 shared update 파일 수, server-owned ref target 파일,
   `agent-local://` ref 미노출, 최종 LoRA/head aggregate snapshot까지 검증한다.
-- `10 clients`, Dirichlet `alpha=0.3`, split seed `42`, `50 rounds`,
+- `10 clients`, Dirichlet `alpha=0.3`, split seed `42`, historical `50 rounds`,
   `FixMatch + FedAvg + LoRA-classifier` main baseline report는 round/split/method/delta
-  기준 verifier로 확인됐다. 이 report는 runtime metadata 도입 전 산출물이라
-  `gpu_local + mxbai` 여부는 report 자체로는 재검증할 수 없다.
+  기준 verifier로 확인됐다. 이 report는 runtime metadata 도입 전 산출물이며,
+  현재 full-budget preset source of truth는 `30 rounds`다.
 - FlexMatch/FreeMatch/PseudoLabel ablation은 5-round reduced run으로 method
   metadata와 실제 local objective 변경을 확인했다.
 - Dirichlet `alpha=0.1` final stress는 현재 `runs/fl_ssl` method-first layout 아래
@@ -37,17 +41,21 @@ report/summary를 검증했다.
 
 후보와 비교 조건 확정 뒤 별도 실행할 항목:
 
-- Dirichlet `alpha=0.1` final stress의 full `50 rounds` 실행.
+- Dirichlet `alpha=0.1` final stress의 current full-budget `30 rounds` 실행.
 - FlexMatch/FreeMatch/PseudoLabel full-budget ablation.
 - `client_count=1..10` full sweep. `5 rounds x 10 client-counts`처럼 합계
   `50` rounds인 sweep도 long-run guard 대상이다.
 
-결정 대기 항목:
+현재 이 감사표 이후 열린 항목:
 
-- FedMatch/FedLGMatch/(FL)^2 중 첫 구현 method 선택.
-  현재 추천 선택지는 FedMatch이며, 기본 시작점은 `lora_classifier` payload family 유지,
-  custom round-state exchange 없음, FedAvg server policy 유지다.
-  2026-05-18 사용자 응답으로 첫 method 선택은 아직 확정하지 않는다.
+- FedMatch가 첫 method로 확정됐다.
+- `methods/federated_ssl/fedmatch/`와
+  `conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`가 source-of-truth method
+  package/config다.
+- helper peer-context simulation, method-owned local objective,
+  `fedmatch_partitioned` server update slice는 열렸다.
+- sparse S2C/C2S와 labels-at-server supervised server step은 아직 full parity 후보로
+  남아 있다.
 
 ## Prompt-To-Artifact Checklist
 
@@ -60,7 +68,7 @@ report/summary를 검증했다.
 | agent-local artifact upload | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py`, `upload_agent_local_lora_classifier_update` | 완료 |
 | server-owned materialization | `main_server/src/services/federation/rounds/aggregation/artifact_refs.py`, `methods/adaptation/lora_classifier/aggregation/materialization.py` | 완료 |
 | manifest/version compatibility | `methods/adaptation/lora_classifier/server_preflight.py`, `methods/adaptation/server_update_materialization.py`, related unit tests | 완료 |
-| alpha=0.3 main baseline | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json`는 round/split/method/delta 기준 PASS. runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
+| alpha=0.3 main baseline | 과거 `clients10_rounds50` report는 round/split/method/delta 기준 PASS지만 runtime metadata 도입 전 산출물이다. 현재 source-of-truth full-budget preset은 30 rounds이며, runtime metadata는 current 1-round smoke와 reduced runs에서 검증 | 부분 |
 | alpha=0.1 final stress | 현재 `runs/fl_ssl` 아래 검증 가능한 report가 없음. 기본 비교가 아니라 마지막 stress 확인으로 남김 | 대기 |
 | FlexMatch/FreeMatch/PseudoLabel ablation | 5-round reduced reports verified. full budget 비교는 후보와 조건 확정 뒤 별도 실행 | 부분 |
 | client_count=1..10 sweep | 1-round summary verified and indexed. full sweep은 후보와 조건 확정 뒤 별도 실행 | 부분 |
@@ -109,14 +117,11 @@ Result index read-only ingest:
 - methods: `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`,
   `pseudolabel_usb_v1`
 - algorithms: `fixmatch`, `flexmatch`, `freematch`, `pseudolabel`
-- round budgets: `[1, 5, 50]`
+- historical artifact round budgets: `[1, 5, 50]`
 - shard alphas: `[0.3]`
 
 ## Next Gate
 
-다음 실행성 작업은 후보와 비교 조건을 먼저 확정한 뒤 진행한다. 구현성 작업의 다음
-게이트는 FedMatch/FedLGMatch/(FL)^2 중 첫 method 선택이다.
-`docs/contracts/fl_ssl_method_capability_matrix.md`와
-`methods/federated_ssl/NEW_METHOD.md`는 이미 선택 전/선택 후 경계를 나눠 둔 상태다.
-현재 권장 첫 후보는 payload family를 바꾸지 않는 FedMatch method-owned local
-objective다.
+다음 실행성 작업은 FedMatch method-owned reduced run을 current runtime metadata와
+함께 닫는 것이다. manual FixMatch baseline과 같은 split/seed/local budget으로 맞춘 뒤
+full-budget 비교 후보로 올린다.
