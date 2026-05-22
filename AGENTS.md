@@ -56,6 +56,10 @@ Path-specific instructions: `shared/`, `agent/`, `main_server/`, `scripts/`,
 method-specific 파일을 추가하지 않는다. 새 runtime capability가 정말 필요하면
 method 이름이 아니라 capability 이름의 port/adapter를 추가하고, method identity,
 local objective, server/round policy 의미는 `methods/`에 둔다.
+adapter family 실행 구현도 method 이름 파일로 증식시키지 않는다.
+`methods/adaptation/<family>/federated_ssl/`는 `partitioned_training_loop.py`처럼
+family execution primitive 이름을 쓰고, FedMatch/FedLGMatch 같은 method 의미는
+`methods/federated_ssl/<method>/`와 descriptor entrypoint에서만 보이게 한다.
 
 ## Source Of Truth
 

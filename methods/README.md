@@ -47,6 +47,10 @@ core interface로 변환하는 adapter만 소유한다.
 aggregation 변형을 묶는다. 반대로 두 개 이상 방법론에서 재사용되는 SSL hook,
 aggregation backend, adapter projection, prototype builder는 축별 패키지로 승격한다.
 이 기준은 method 응집도와 교체 가능한 core 재사용성을 동시에 지키기 위한 것이다.
+adapter family가 method-owned objective를 실행해야 할 때도
+`methods/adaptation/<family>/federated_ssl/<method>_*.py`를 기본값으로 만들지
+않는다. family 폴더는 `partitioned_training_loop.py` 같은 실행 primitive를 소유하고,
+method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/`에서 읽힌다.
 
 ## 하위 패키지 지도
 

@@ -36,6 +36,10 @@ generic runtime resolver가 `<method>/lora_classifier_training.py` 같은 파일
 확인할 수 있어야 한다. 특정 adapter family에서 method를 실행하는 구현은
 `methods/adaptation/<family>/federated_ssl/`에 둔다. method 폴더에는 원본 의미,
 policy, parameter routing처럼 family를 넘어 유지되는 내용을 남긴다.
+이때 adapter family 폴더에도 `<method>_training.py` 같은 파일을 기본값으로 만들지
+않는다. family 쪽 파일명은 `partitioned_objective_training.py`,
+`server_update_policy.py`처럼 실행 primitive나 capability 이름을 사용하고, method
+이름은 descriptor entrypoint와 method package에서만 드러나게 한다.
 
 round별 pseudo-label statistics, client metric summary, calibration state가 필요하면
 `FederatedSslRoundStateExchangeSpec`에 `exchange_name`과
