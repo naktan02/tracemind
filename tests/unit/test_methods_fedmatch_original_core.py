@@ -3,14 +3,25 @@
 from __future__ import annotations
 
 import pytest
+import torch
+from torch.nn import functional as F
 
 from methods.federated_ssl.fedmatch.helper_selection import (
     select_helper_client_ids,
     should_refresh_helper_context,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
+    FEDMATCH_AGREEMENT_PSEUDO_LABEL_CE,
+    FEDMATCH_INTER_CLIENT_KL,
     FEDMATCH_LOSS_COMPONENTS,
+    FEDMATCH_PSI_L1_REGULARIZATION,
+    FEDMATCH_SIGMA_PSI_L2_REGULARIZATION,
+    FEDMATCH_SUPERVISED_CE,
+    FedMatchLocalObjectiveParameters,
+    FedMatchParameterPartitions,
     agreement_pseudo_label_indices,
+    compute_fedmatch_supervised_loss,
+    compute_fedmatch_unsupervised_loss,
     fedmatch_loss_weights,
     select_confident_prediction_indices,
 )
@@ -108,6 +119,182 @@ def test_fedmatch_confidence_filter_is_inclusive_like_original_numpy_where() -> 
     )
 
     assert selected == (1, 2)
+
+
+def test_fedmatch_supervised_tensor_loss_routes_to_sigma_partition() -> None:
+    parameters = FedMatchLocalObjectiveParameters.from_original_scenario()
+    logits = torch.tensor([[2.0, 0.0], [0.0, 3.0]], dtype=torch.float32)
+    labels = torch.tensor([0, 1], dtype=torch.long)
+
+    result = compute_fedmatch_supervised_loss(
+        labeled_logits=logits,
+        labels=labels,
+        parameters=parameters,
+    )
+
+    expected = F.cross_entropy(logits, labels) * parameters.lambda_s
+    torch.testing.assert_close(result.total_loss, expected)
+    torch.testing.assert_close(result.partition_losses["sigma"], expected)
+    torch.testing.assert_close(result.loss_components[FEDMATCH_SUPERVISED_CE], expected)
+    torch.testing.assert_close(result.metrics["labeled_count"], torch.tensor(2.0))
+
+
+def test_fedmatch_unsupervised_tensor_loss_preserves_original_components() -> None:
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.75,
+        lambda_s=10.0,
+        lambda_i=1.0,
+        lambda_a=2.0,
+        lambda_l2=0.5,
+        lambda_l1=0.1,
+    )
+    weak_probabilities = torch.tensor(
+        [[0.8, 0.2], [0.6, 0.4], [0.1, 0.9]],
+        dtype=torch.float32,
+    )
+    weak_logits = torch.log(weak_probabilities)
+    strong_logits = torch.tensor(
+        [[0.0, 2.0], [2.0, 0.0], [0.0, 1.0]],
+        dtype=torch.float32,
+    )
+    helper_probabilities = torch.tensor(
+        [
+            [[0.2, 0.8], [0.6, 0.4], [0.3, 0.7]],
+            [[0.1, 0.9], [0.4, 0.6], [0.8, 0.2]],
+        ],
+        dtype=torch.float32,
+    )
+    partitions = FedMatchParameterPartitions(
+        sigma={"layer": torch.tensor([1.0, 3.0])},
+        psi={"layer": torch.tensor([0.5, -1.0])},
+    )
+
+    result = compute_fedmatch_unsupervised_loss(
+        weak_logits=weak_logits,
+        strong_logits=strong_logits,
+        helper_weak_probabilities=helper_probabilities,
+        parameter_partitions=partitions,
+        parameters=parameters,
+    )
+
+    selected_weak = weak_probabilities[[0, 2]]
+    selected_helpers = helper_probabilities[:, [0, 2], :]
+    expected_kl = F.kl_div(
+        torch.log(selected_weak).unsqueeze(0).expand(2, -1, -1).reshape(-1, 2),
+        selected_helpers.reshape(-1, 2),
+        reduction="batchmean",
+    )
+    expected_agreement = (
+        F.cross_entropy(
+            strong_logits[[0, 2]],
+            torch.tensor([1, 1], dtype=torch.long),
+        )
+        * 2.0
+    )
+    expected_l1 = torch.tensor((abs(0.5) + abs(-1.0)) * 0.1)
+    expected_l2 = torch.tensor(((1.0 - 0.5) ** 2 + (3.0 - -1.0) ** 2) * 0.5)
+    expected_total = expected_kl + expected_agreement + expected_l1 + expected_l2
+
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_INTER_CLIENT_KL],
+        expected_kl,
+    )
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_AGREEMENT_PSEUDO_LABEL_CE],
+        expected_agreement,
+    )
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_PSI_L1_REGULARIZATION],
+        expected_l1,
+    )
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_SIGMA_PSI_L2_REGULARIZATION],
+        expected_l2,
+    )
+    torch.testing.assert_close(result.total_loss, expected_total)
+    torch.testing.assert_close(result.partition_losses["psi"], expected_total)
+    torch.testing.assert_close(result.metrics["confident_count"], torch.tensor(2.0))
+    torch.testing.assert_close(result.metrics["util_ratio"], torch.tensor(2.0 / 3.0))
+    torch.testing.assert_close(result.metrics["helper_count"], torch.tensor(2.0))
+    torch.testing.assert_close(
+        result.debug_tensors["confidence_mask"],
+        torch.tensor([True, False, True]),
+    )
+    torch.testing.assert_close(
+        result.debug_tensors["agreement_pseudo_labels"],
+        torch.tensor([1, 1]),
+    )
+
+
+def test_fedmatch_unsupervised_tensor_loss_can_disable_round_zero_kl() -> None:
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.5,
+        lambda_s=10.0,
+        lambda_i=1.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+
+    result = compute_fedmatch_unsupervised_loss(
+        weak_logits=torch.log(torch.tensor([[0.8, 0.2]], dtype=torch.float32)),
+        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        helper_weak_probabilities=torch.tensor(
+            [[[0.1, 0.9]]],
+            dtype=torch.float32,
+        ),
+        parameter_partitions=FedMatchParameterPartitions(sigma={}, psi={}),
+        parameters=parameters,
+        enable_inter_client_consistency=False,
+    )
+
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_INTER_CLIENT_KL],
+        torch.tensor(0.0),
+    )
+
+
+def test_fedmatch_unsupervised_loss_keeps_regularization_without_confidence() -> None:
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.99,
+        lambda_s=10.0,
+        lambda_i=1.0,
+        lambda_a=1.0,
+        lambda_l2=1.0,
+        lambda_l1=1.0,
+    )
+
+    result = compute_fedmatch_unsupervised_loss(
+        weak_logits=torch.log(torch.tensor([[0.6, 0.4]], dtype=torch.float32)),
+        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        parameter_partitions=FedMatchParameterPartitions(
+            sigma={"layer": torch.tensor([2.0])},
+            psi={"layer": torch.tensor([-1.0])},
+        ),
+        parameters=parameters,
+    )
+
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_AGREEMENT_PSEUDO_LABEL_CE],
+        torch.tensor(0.0),
+    )
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_PSI_L1_REGULARIZATION],
+        torch.tensor(1.0),
+    )
+    torch.testing.assert_close(
+        result.loss_components[FEDMATCH_SIGMA_PSI_L2_REGULARIZATION],
+        torch.tensor(9.0),
+    )
+    torch.testing.assert_close(result.metrics["confident_count"], torch.tensor(0.0))
+
+
+def test_fedmatch_parameter_partitions_reject_shape_drift() -> None:
+    with pytest.raises(ValueError, match="matching shapes"):
+        FedMatchParameterPartitions(
+            sigma={"layer": torch.tensor([1.0, 2.0])},
+            psi={"layer": torch.tensor([1.0])},
+        )
 
 
 def test_fedmatch_agreement_pseudo_label_uses_client_and_helper_argmax_votes() -> None:

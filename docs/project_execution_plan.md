@@ -250,11 +250,15 @@ Runtime translation:
    `conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`에 capability surface와
    원본 core/config snapshot을 열었다. 원본 snapshot은
    `wyjeong/FedMatch` commit `4947aa255d59bd37915e25a719763aaaf5d7e067`이다.
-2. 다음 구현은 FedMatch method-owned tensor local objective, helper prediction
-   exchange, sparse S2C/C2S sync, 필요한 runtime capability adapter 순서로 진행한다.
-3. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+2. FedMatch method-owned tensor local objective core는 열었다. 원본 `loss_fn_s`의
+   supervised CE는 `sigma`, `loss_fn_u`의 confidence/helper/agreement/regularization
+   loss는 `psi` partition으로 라우팅한다.
+3. 다음 구현은 LoRA-classifier trainer의 sigma/psi logical optimizer split,
+   helper prediction exchange, sparse S2C/C2S sync, 필요한 runtime capability adapter
+   순서로 진행한다.
+4. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
-4. full ablation, full `client_count=1..10` sweep, full-budget main run은
+5. full ablation, full `client_count=1..10` sweep, full-budget main run은
    후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
    아니라 최후 stress 확인으로 남기고, `alpha=0.3` 기준 후보 비교가 정리된 뒤
    같은 split seed 42와 같은 local budget으로 연다.

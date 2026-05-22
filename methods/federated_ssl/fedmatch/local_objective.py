@@ -1,11 +1,17 @@
-"""FedMatch local objective metadata and pure decision helpers."""
+"""FedMatch local objective metadata, pure helpers, and tensor loss core."""
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Sequence
 
+import torch
+from torch import Tensor
+from torch.nn import functional as F
+
 from methods.federated_ssl.fedmatch.original_spec import (
+    FEDMATCH_ORIGINAL_METHOD_DEFAULTS,
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
     resolve_original_scenario_spec,
 )
@@ -82,6 +88,96 @@ FEDMATCH_LOSS_COMPONENTS = (
     ),
 )
 
+
+@dataclass(frozen=True, slots=True)
+class FedMatchLocalObjectiveParameters:
+    """FedMatch tensor loss가 쓰는 원본 hyperparameter subset."""
+
+    confidence_threshold: float
+    lambda_s: float
+    lambda_i: float
+    lambda_a: float
+    lambda_l2: float
+    lambda_l1: float
+
+    def __post_init__(self) -> None:
+        if self.confidence_threshold < 0.0 or self.confidence_threshold > 1.0:
+            raise ValueError("confidence_threshold must be between 0 and 1.")
+        for name in ("lambda_s", "lambda_i", "lambda_a", "lambda_l2", "lambda_l1"):
+            if float(getattr(self, name)) < 0.0:
+                raise ValueError(f"{name} must not be negative.")
+
+    @classmethod
+    def from_mapping(
+        cls,
+        parameters: Mapping[str, object],
+    ) -> FedMatchLocalObjectiveParameters:
+        """original/effective parameter mapping에서 tensor objective 값을 읽는다."""
+
+        return cls(
+            confidence_threshold=float(parameters["confidence_threshold"]),
+            lambda_s=float(parameters["lambda_s"]),
+            lambda_i=float(parameters["lambda_i"]),
+            lambda_a=float(parameters["lambda_a"]),
+            lambda_l2=float(parameters["lambda_l2"]),
+            lambda_l1=float(parameters["lambda_l1"]),
+        )
+
+    @classmethod
+    def from_original_scenario(
+        cls,
+        *,
+        scenario_name: str = FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+    ) -> FedMatchLocalObjectiveParameters:
+        """FedMatch 원본 scenario 기본값으로 tensor objective parameter를 만든다."""
+
+        scenario = resolve_original_scenario_spec(scenario_name)
+        return cls(
+            confidence_threshold=FEDMATCH_ORIGINAL_METHOD_DEFAULTS.confidence_threshold,
+            lambda_s=scenario.lambda_s,
+            lambda_i=scenario.lambda_i,
+            lambda_a=scenario.lambda_a,
+            lambda_l2=scenario.lambda_l2,
+            lambda_l1=scenario.lambda_l1,
+        )
+
+
+@dataclass(frozen=True, slots=True)
+class FedMatchParameterPartitions:
+    """FedMatch sigma/psi logical partition tensor 묶음."""
+
+    sigma: Mapping[str, Tensor]
+    psi: Mapping[str, Tensor]
+
+    def __post_init__(self) -> None:
+        sigma_keys = set(self.sigma)
+        psi_keys = set(self.psi)
+        if sigma_keys != psi_keys:
+            missing_sigma = sorted(psi_keys - sigma_keys)
+            missing_psi = sorted(sigma_keys - psi_keys)
+            raise ValueError(
+                "sigma and psi partitions must contain the same parameter keys: "
+                f"missing_sigma={missing_sigma}, missing_psi={missing_psi}"
+            )
+        for key in sorted(sigma_keys):
+            if self.sigma[key].shape != self.psi[key].shape:
+                raise ValueError(
+                    "sigma and psi partition tensors must have matching shapes for "
+                    f"{key!r}."
+                )
+
+
+@dataclass(frozen=True, slots=True)
+class FedMatchTensorLocalObjectiveResult:
+    """FedMatch tensor step의 loss, partition routing, diagnostics."""
+
+    total_loss: Tensor
+    partition_losses: Mapping[str, Tensor]
+    loss_components: Mapping[str, Tensor]
+    metrics: Mapping[str, Tensor]
+    debug_tensors: Mapping[str, Tensor]
+
+
 local_objective_spec = FederatedSslLocalObjectiveSpec(
     objective_name=FEDMATCH_LOCAL_OBJECTIVE_NAME,
     required_batch_views=("weak_text", "strong_text"),
@@ -109,6 +205,108 @@ def fedmatch_loss_weights(
         "lambda_l2": scenario.lambda_l2,
         "lambda_l1": scenario.lambda_l1,
     }
+
+
+def compute_fedmatch_supervised_loss(
+    *,
+    labeled_logits: Tensor,
+    labels: Tensor,
+    parameters: FedMatchLocalObjectiveParameters,
+) -> FedMatchTensorLocalObjectiveResult:
+    """원본 `loss_fn_s`처럼 CE에 `lambda_s`를 곱하고 sigma partition에 라우팅한다."""
+
+    _validate_logits_2d(labeled_logits, tensor_name="labeled_logits")
+    if labels.ndim != 1:
+        raise ValueError("labels must be a 1D class-index tensor.")
+    if labels.shape[0] != labeled_logits.shape[0]:
+        raise ValueError("labels row count must match labeled_logits.")
+
+    supervised_loss = F.cross_entropy(labeled_logits, labels, reduction="mean")
+    weighted_loss = supervised_loss * parameters.lambda_s
+    labeled_count = labeled_logits.new_tensor(float(labeled_logits.shape[0]))
+    return FedMatchTensorLocalObjectiveResult(
+        total_loss=weighted_loss,
+        partition_losses={"sigma": weighted_loss},
+        loss_components={FEDMATCH_SUPERVISED_CE: weighted_loss},
+        metrics={"labeled_count": labeled_count},
+        debug_tensors={},
+    )
+
+
+def compute_fedmatch_unsupervised_loss(
+    *,
+    weak_logits: Tensor,
+    strong_logits: Tensor,
+    parameter_partitions: FedMatchParameterPartitions,
+    parameters: FedMatchLocalObjectiveParameters,
+    helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
+    enable_inter_client_consistency: bool = True,
+) -> FedMatchTensorLocalObjectiveResult:
+    """원본 `loss_fn_u`의 confidence, helper KL, agreement CE, 정규화를 계산한다."""
+
+    _validate_logits_2d(weak_logits, tensor_name="weak_logits")
+    _validate_logits_2d(strong_logits, tensor_name="strong_logits")
+    if strong_logits.shape != weak_logits.shape:
+        raise ValueError("weak_logits and strong_logits must have the same shape.")
+
+    weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
+    confidence_mask = (
+        torch.max(weak_probabilities, dim=-1).values >= parameters.confidence_threshold
+    )
+    selected_count = int(confidence_mask.sum().item())
+    selected_weak_probabilities = weak_probabilities[confidence_mask]
+    selected_strong_logits = strong_logits[confidence_mask]
+    selected_helper_probabilities = _select_helper_probabilities(
+        helper_weak_probabilities=helper_weak_probabilities,
+        confidence_mask=confidence_mask,
+        expected_row_count=weak_logits.shape[0],
+        expected_class_count=weak_logits.shape[1],
+        reference=weak_logits,
+    )
+
+    agreement_loss, pseudo_labels = _compute_agreement_pseudo_label_loss(
+        selected_strong_logits=selected_strong_logits,
+        selected_weak_probabilities=selected_weak_probabilities,
+        selected_helper_probabilities=selected_helper_probabilities,
+        lambda_a=parameters.lambda_a,
+    )
+    inter_client_loss = _compute_inter_client_consistency_loss(
+        selected_weak_probabilities=selected_weak_probabilities,
+        selected_helper_probabilities=selected_helper_probabilities,
+        lambda_i=parameters.lambda_i,
+        enabled=enable_inter_client_consistency,
+    )
+    l1_loss, l2_loss = _compute_sigma_psi_regularization_losses(
+        parameter_partitions=parameter_partitions,
+        lambda_l1=parameters.lambda_l1,
+        lambda_l2=parameters.lambda_l2,
+        reference=weak_logits,
+    )
+    total_loss = agreement_loss + inter_client_loss + l1_loss + l2_loss
+    helper_count = (
+        0
+        if selected_helper_probabilities is None
+        else int(selected_helper_probabilities.shape[0])
+    )
+    return FedMatchTensorLocalObjectiveResult(
+        total_loss=total_loss,
+        partition_losses={"psi": total_loss},
+        loss_components={
+            FEDMATCH_INTER_CLIENT_KL: inter_client_loss,
+            FEDMATCH_AGREEMENT_PSEUDO_LABEL_CE: agreement_loss,
+            FEDMATCH_PSI_L1_REGULARIZATION: l1_loss,
+            FEDMATCH_SIGMA_PSI_L2_REGULARIZATION: l2_loss,
+        },
+        metrics={
+            "confident_count": weak_logits.new_tensor(float(selected_count)),
+            "util_ratio": confidence_mask.float().mean(),
+            "helper_count": weak_logits.new_tensor(float(helper_count)),
+        },
+        debug_tensors={
+            "confidence_mask": confidence_mask,
+            "agreement_pseudo_labels": pseudo_labels,
+        },
+    )
 
 
 def select_confident_prediction_indices(
@@ -190,3 +388,162 @@ def _validate_probability_rows(rows: Sequence[Sequence[float]]) -> int:
 def _validate_probability_row(row: Sequence[float]) -> None:
     if not row:
         raise ValueError("probability row must not be empty.")
+
+
+def _validate_logits_2d(logits: Tensor, *, tensor_name: str) -> None:
+    if logits.ndim != 2:
+        raise ValueError(f"{tensor_name} must be a 2D [batch, class] tensor.")
+    if logits.shape[0] == 0:
+        raise ValueError(f"{tensor_name} batch dimension must not be empty.")
+    if logits.shape[1] == 0:
+        raise ValueError(f"{tensor_name} class dimension must not be empty.")
+
+
+def _select_helper_probabilities(
+    *,
+    helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
+    confidence_mask: Tensor,
+    expected_row_count: int,
+    expected_class_count: int,
+    reference: Tensor,
+) -> Tensor | None:
+    helpers = _normalize_helper_probability_tensor(
+        helper_weak_probabilities=helper_weak_probabilities,
+        expected_row_count=expected_row_count,
+        expected_class_count=expected_class_count,
+        reference=reference,
+    )
+    if helpers is None:
+        return None
+    return helpers[:, confidence_mask, :]
+
+
+def _normalize_helper_probability_tensor(
+    *,
+    helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
+    expected_row_count: int,
+    expected_class_count: int,
+    reference: Tensor,
+) -> Tensor | None:
+    if helper_weak_probabilities is None:
+        return None
+    if isinstance(helper_weak_probabilities, Tensor):
+        helper_tensor = helper_weak_probabilities
+        if helper_tensor.ndim == 2:
+            helper_tensor = helper_tensor.unsqueeze(0)
+    else:
+        helper_values = tuple(helper_weak_probabilities)
+        if not helper_values:
+            return None
+        helper_tensor = torch.stack(helper_values, dim=0)
+
+    if helper_tensor.ndim != 3:
+        raise ValueError(
+            "helper_weak_probabilities must have shape [helper, batch, class]."
+        )
+    if helper_tensor.shape[1] != expected_row_count:
+        raise ValueError("helper probability row count must match weak_logits.")
+    if helper_tensor.shape[2] != expected_class_count:
+        raise ValueError("helper probability class count must match weak_logits.")
+    return helper_tensor.to(device=reference.device, dtype=reference.dtype)
+
+
+def _compute_agreement_pseudo_label_loss(
+    *,
+    selected_strong_logits: Tensor,
+    selected_weak_probabilities: Tensor,
+    selected_helper_probabilities: Tensor | None,
+    lambda_a: float,
+) -> tuple[Tensor, Tensor]:
+    if selected_weak_probabilities.shape[0] == 0:
+        empty_labels = torch.empty(
+            0,
+            device=selected_strong_logits.device,
+            dtype=torch.long,
+        )
+        return selected_strong_logits.new_zeros(()), empty_labels
+
+    pseudo_labels = _compute_agreement_pseudo_labels(
+        selected_weak_probabilities=selected_weak_probabilities,
+        selected_helper_probabilities=selected_helper_probabilities,
+    )
+    loss = F.cross_entropy(
+        selected_strong_logits,
+        pseudo_labels,
+        reduction="mean",
+    )
+    return loss * lambda_a, pseudo_labels
+
+
+def _compute_agreement_pseudo_labels(
+    *,
+    selected_weak_probabilities: Tensor,
+    selected_helper_probabilities: Tensor | None,
+) -> Tensor:
+    class_count = int(selected_weak_probabilities.shape[1])
+    local_votes = torch.argmax(selected_weak_probabilities, dim=-1).unsqueeze(0)
+    if selected_helper_probabilities is None:
+        votes = local_votes
+    else:
+        helper_votes = torch.argmax(selected_helper_probabilities, dim=-1)
+        votes = torch.cat((local_votes, helper_votes), dim=0)
+    vote_counts = F.one_hot(votes.T, num_classes=class_count).sum(dim=1)
+    return torch.argmax(vote_counts, dim=-1)
+
+
+def _compute_inter_client_consistency_loss(
+    *,
+    selected_weak_probabilities: Tensor,
+    selected_helper_probabilities: Tensor | None,
+    lambda_i: float,
+    enabled: bool,
+) -> Tensor:
+    if (
+        not enabled
+        or selected_helper_probabilities is None
+        or selected_weak_probabilities.shape[0] == 0
+    ):
+        return selected_weak_probabilities.new_zeros(())
+
+    helper_count = selected_helper_probabilities.shape[0]
+    clamp_min = torch.finfo(selected_weak_probabilities.dtype).eps
+    local_log_probabilities = torch.log(
+        selected_weak_probabilities.clamp_min(clamp_min)
+    )
+    expanded_local = local_log_probabilities.unsqueeze(0).expand(
+        helper_count,
+        -1,
+        -1,
+    )
+    kl_loss = F.kl_div(
+        expanded_local.reshape(-1, expanded_local.shape[-1]),
+        selected_helper_probabilities.reshape(
+            -1,
+            selected_helper_probabilities.shape[-1],
+        ),
+        reduction="batchmean",
+    )
+    return kl_loss * lambda_i
+
+
+def _compute_sigma_psi_regularization_losses(
+    *,
+    parameter_partitions: FedMatchParameterPartitions,
+    lambda_l1: float,
+    lambda_l2: float,
+    reference: Tensor,
+) -> tuple[Tensor, Tensor]:
+    l1_loss = reference.new_zeros(())
+    l2_loss = reference.new_zeros(())
+    for key in sorted(parameter_partitions.psi):
+        psi_tensor = parameter_partitions.psi[key].to(
+            device=reference.device,
+            dtype=reference.dtype,
+        )
+        sigma_tensor = parameter_partitions.sigma[key].to(
+            device=reference.device,
+            dtype=reference.dtype,
+        )
+        l1_loss = l1_loss + torch.sum(torch.abs(psi_tensor))
+        l2_loss = l2_loss + torch.sum(torch.square(sigma_tensor - psi_tensor))
+    return l1_loss * lambda_l1, l2_loss * lambda_l2

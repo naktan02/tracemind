@@ -18,7 +18,8 @@
   패키지로 승격한다.
 - FL SSL 논문 method는 선택 전에는 구현 폴더나
   `conf/strategy_axes/fl/method_descriptor/<method>.yaml` placeholder를 만들지 않는다.
-  현재 선택된 첫 method는 FedMatch이며, capability surface만 열린 상태다.
+  현재 선택된 첫 method는 FedMatch이며, capability surface와 tensor local objective
+  core까지 열린 상태다.
 - 단일 사용처용 추상화와 compatibility layer는 만들지 않는다.
 
 ## 전략 표면
