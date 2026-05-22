@@ -96,7 +96,9 @@ def test_federated_ssl_descriptor_registry_has_no_manual_baseline_builtin() -> N
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         resolve_federated_ssl_method_descriptor("fedavg_pseudo_label")
 
-    assert list_federated_ssl_method_descriptors() == ()
+    descriptors = list_federated_ssl_method_descriptors()
+
+    assert [descriptor.name for descriptor in descriptors] == ["fedmatch"]
 
 
 def test_federated_ssl_execution_plan_defaults_to_method_owned_plaintext() -> None:
@@ -239,7 +241,10 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
 def test_builtin_federated_ssl_registry_excludes_test_only_extension() -> None:
     descriptors = list_federated_ssl_method_descriptors()
 
-    assert descriptors == ()
+    assert [descriptor.name for descriptor in descriptors] == ["fedmatch"]
+    assert "dummy_metric_weighted_ssl" not in {
+        descriptor.name for descriptor in descriptors
+    }
 
 
 def test_federated_ssl_method_package_does_not_keep_manual_baseline_descriptor() -> (

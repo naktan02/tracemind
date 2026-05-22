@@ -12,8 +12,18 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
     materialize_base_lora_classifier_state,
     materialize_lora_classifier_update,
 )
+from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
+    merge_partitioned_lora_classifier_deltas,
+)
 from methods.adaptation.lora_classifier.aggregation.state_projection import (
     build_lora_classifier_state_projection,
+)
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+    normalize_partition_deltas,
+)
+from methods.adaptation.lora_classifier.update.partitioned_payload_builder import (
+    build_partitioned_delta_payload,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.factories import (
@@ -220,6 +230,55 @@ def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> 
             },
             classifier_head_bias_deltas={},
         )
+
+
+def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> None:
+    partitions = normalize_partition_deltas(
+        (
+            LoraClassifierPartitionDelta(
+                partition_name="private",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, -0.1]},
+                classifier_head_weight_deltas={"anxiety": [0.1, 0.3]},
+                classifier_head_bias_deltas={"anxiety": 0.05},
+            ),
+            LoraClassifierPartitionDelta(
+                partition_name="shared",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.4, 0.5]},
+                classifier_head_weight_deltas={"anxiety": [0.2, -0.1]},
+                classifier_head_bias_deltas={"anxiety": 0.15},
+            ),
+        )
+    )
+
+    merged = merge_partitioned_lora_classifier_deltas(partitions)
+
+    assert merged.partition_name == "merged"
+    assert merged.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.6, 0.4]
+    )
+    assert merged.classifier_head_weight_deltas["anxiety"] == pytest.approx([0.3, 0.2])
+    assert merged.classifier_head_bias_deltas["anxiety"] == pytest.approx(0.2)
+
+
+def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
+    payload = build_partitioned_delta_payload(
+        (
+            LoraClassifierPartitionDelta(
+                partition_name="shared",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.4]},
+            ),
+        )
+    )
+
+    assert payload == {
+        "partitions": {
+            "shared": {
+                "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.4]},
+                "classifier_head_weight_deltas": {},
+                "classifier_head_bias_deltas": {},
+            }
+        }
+    }
 
 
 def _aggregation_context(

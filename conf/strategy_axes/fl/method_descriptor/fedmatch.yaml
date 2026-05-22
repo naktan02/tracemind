@@ -1,0 +1,23 @@
+# @package ssl_method
+
+schema_version: federated_ssl_method.v1
+name: fedmatch
+display_name: FedMatch
+method_role: method_owned
+implementation_status: capability_surface_v1
+client_step:
+  task_type: fedmatch_local_step
+  custom_method_runtime_required: true
+server_step:
+  custom_round_policy_required: true
+round_state_exchange:
+  exchange_name: peer_context
+  custom_exchange_required: true
+  required_client_metric_keys:
+    - mean_confidence
+report_tags:
+  - fl_ssl_main_comparison
+  - fedmatch
+notes:
+  - FedMatch v1 exposes the method-owned capability surface first.
+  - Runtime execution requires sigma_psi update partition and method-owned local objective wiring.
