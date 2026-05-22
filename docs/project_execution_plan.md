@@ -253,12 +253,14 @@ Runtime translation:
 2. FedMatch method-owned tensor local objective core는 열었다. 원본 `loss_fn_s`의
    supervised CE는 `sigma`, `loss_fn_u`의 confidence/helper/agreement/regularization
    loss는 `psi` partition으로 라우팅한다.
-3. 다음 구현은 LoRA-classifier trainer의 sigma/psi logical optimizer split,
-   helper prediction exchange, sparse S2C/C2S sync, 필요한 runtime capability adapter
+3. LoRA-classifier trainer 한 step의 sigma/psi logical optimizer split core는 열었다.
+   supervised sub-step delta는 `sigma`, unsupervised sub-step delta는 `psi`로 기록한다.
+4. 다음 구현은 method-owned FedMatch simulation wiring, helper prediction exchange,
+   sparse S2C/C2S sync, 필요한 runtime capability adapter
    순서로 진행한다.
-4. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
+5. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
-5. full ablation, full `client_count=1..10` sweep, full-budget main run은
+6. full ablation, full `client_count=1..10` sweep, full-budget main run은
    후보와 비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가
    아니라 최후 stress 확인으로 남기고, `alpha=0.3` 기준 후보 비교가 정리된 뒤
    같은 split seed 42와 같은 local budget으로 연다.

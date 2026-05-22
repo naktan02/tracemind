@@ -123,7 +123,8 @@ central fixed embedding + classifier seed
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
   agreement pseudo-label vote, helper selection, LoRA-classifier sigma/psi 매핑,
-  supervised/unsupervised tensor local objective까지 이 package에 고정했다.
+  supervised/unsupervised tensor local objective, LoRA partitioned step core까지
+  이 package에 고정했다.
   method-only 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 aggregation, adapter projection, SSL hook은 축별 methods
   패키지로 승격한다.

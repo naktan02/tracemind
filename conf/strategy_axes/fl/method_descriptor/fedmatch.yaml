@@ -4,7 +4,7 @@ schema_version: federated_ssl_method.v1
 name: fedmatch
 display_name: FedMatch
 method_role: method_owned
-implementation_status: original_core_spec_v1
+implementation_status: lora_partitioned_step_core_v1
 original_source:
   repository: https://github.com/wyjeong/FedMatch.git
   commit: 4947aa255d59bd37915e25a719763aaaf5d7e067
@@ -53,4 +53,4 @@ report_tags:
   - fedmatch
 notes:
   - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - Runtime execution still requires partitioned update capability and method-owned local objective wiring.
+  - LoRA-classifier trainer can now split one local step into logical sigma/psi deltas; full runtime wiring still requires method-owned round execution.

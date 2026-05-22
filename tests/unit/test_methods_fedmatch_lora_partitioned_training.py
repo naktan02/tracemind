@@ -1,0 +1,149 @@
+"""FedMatch LoRA-classifier partitioned optimizer step tests."""
+
+from __future__ import annotations
+
+import torch
+from torch import Tensor, nn
+
+from methods.adaptation.lora_classifier.training.partitioned_deltas import (
+    build_lora_classifier_partition_delta_from_parameter_deltas,
+    diff_parameter_snapshots,
+    snapshot_trainable_parameter_tensors,
+)
+from methods.federated_ssl.fedmatch.local_objective import (
+    FedMatchLocalObjectiveParameters,
+)
+from methods.federated_ssl.fedmatch.lora_classifier_training import (
+    run_fedmatch_lora_classifier_partitioned_step,
+)
+from methods.federated_ssl.fedmatch.parameter_routing import (
+    FEDMATCH_PSI_PARTITION,
+    FEDMATCH_SIGMA_PARTITION,
+)
+
+
+class TinyLoraClassifier(nn.Module):
+    """transformer 의존 없이 LoRA/head parameter naming만 흉내내는 test model."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.encoder_lora = nn.Linear(3, 3, bias=False)
+        self.classifier = nn.Linear(3, 2)
+        with torch.no_grad():
+            self.encoder_lora.weight.copy_(
+                torch.tensor(
+                    [
+                        [0.2, 0.0, 0.1],
+                        [0.0, 0.3, 0.1],
+                        [0.1, 0.0, 0.4],
+                    ]
+                )
+            )
+            self.classifier.weight.copy_(
+                torch.tensor([[0.5, -0.2, 0.1], [-0.1, 0.3, 0.2]])
+            )
+            self.classifier.bias.copy_(torch.tensor([0.1, -0.1]))
+
+    def forward(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        del attention_mask
+        return self.classifier(self.encoder_lora(input_ids.float()))
+
+
+def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
+    partition = build_lora_classifier_partition_delta_from_parameter_deltas(
+        partition_name="custom",
+        labels=("anxiety", "normal"),
+        parameter_deltas={
+            "backbone.lora_A.weight": torch.tensor([[1.0, 2.0]]),
+            "classifier.weight": torch.tensor([[0.1, 0.2], [0.3, 0.4]]),
+            "classifier.bias": torch.tensor([0.5, -0.25]),
+        },
+    )
+
+    assert partition.partition_name == "custom"
+    assert partition.lora_parameter_deltas == {"backbone.lora_A.weight": [1.0, 2.0]}
+    assert partition.classifier_head_weight_deltas == {
+        "anxiety": [0.10000000149011612, 0.20000000298023224],
+        "normal": [0.30000001192092896, 0.4000000059604645],
+    }
+    assert partition.classifier_head_bias_deltas == {
+        "anxiety": 0.5,
+        "normal": -0.25,
+    }
+
+
+def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
+    model = TinyLoraClassifier()
+    labels = ("anxiety", "normal")
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    labeled_batch = {
+        "input_ids": torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
+        "attention_mask": torch.ones(2, 3),
+        "labels": torch.tensor([0, 1], dtype=torch.long),
+    }
+    unlabeled_batch = {
+        "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+        "weak_attention_mask": torch.ones(2, 3),
+        "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1], [0.1, 0.4, 1.0]]),
+        "strong_attention_mask": torch.ones(2, 3),
+    }
+    before = snapshot_trainable_parameter_tensors(model)
+
+    result = run_fedmatch_lora_classifier_partitioned_step(
+        model=model,
+        labels=labels,
+        labeled_batch=labeled_batch,
+        unlabeled_batch=unlabeled_batch,
+        parameters=parameters,
+        sigma_optimizer=sigma_optimizer,
+        psi_optimizer=psi_optimizer,
+    )
+
+    after = snapshot_trainable_parameter_tensors(model)
+    total_delta = diff_parameter_snapshots(after=after, before=before)
+    assert set(result.partition_deltas) == {
+        FEDMATCH_SIGMA_PARTITION,
+        FEDMATCH_PSI_PARTITION,
+    }
+    assert "encoder_lora.weight" in (
+        result.partition_deltas[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas
+    )
+    assert set(
+        result.partition_deltas[
+            FEDMATCH_SIGMA_PARTITION
+        ].classifier_head_weight_deltas.keys()
+    ) == set(labels)
+    assert set(
+        result.partition_deltas[
+            FEDMATCH_PSI_PARTITION
+        ].classifier_head_bias_deltas.keys()
+    ) == set(labels)
+    for name, delta in total_delta.items():
+        torch.testing.assert_close(
+            result.sigma_parameter_deltas[name] + result.psi_parameter_deltas[name],
+            delta,
+        )
+    assert float(result.supervised.total_loss.detach().item()) > 0.0
+    assert float(result.unsupervised.total_loss.detach().item()) > 0.0
+    torch.testing.assert_close(
+        result.metrics["sigma_labeled_count"],
+        torch.tensor(2.0),
+    )
+    torch.testing.assert_close(
+        result.metrics["psi_confident_count"],
+        torch.tensor(2.0),
+    )

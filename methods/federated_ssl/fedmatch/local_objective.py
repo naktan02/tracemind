@@ -249,12 +249,17 @@ def compute_fedmatch_unsupervised_loss(
     if strong_logits.shape != weak_logits.shape:
         raise ValueError("weak_logits and strong_logits must have the same shape.")
 
-    weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
+    weak_probabilities = torch.softmax(weak_logits, dim=-1)
+    weak_probabilities_for_selection = weak_probabilities.detach()
     confidence_mask = (
-        torch.max(weak_probabilities, dim=-1).values >= parameters.confidence_threshold
+        torch.max(weak_probabilities_for_selection, dim=-1).values
+        >= parameters.confidence_threshold
     )
     selected_count = int(confidence_mask.sum().item())
     selected_weak_probabilities = weak_probabilities[confidence_mask]
+    selected_weak_probabilities_for_labels = weak_probabilities_for_selection[
+        confidence_mask
+    ]
     selected_strong_logits = strong_logits[confidence_mask]
     selected_helper_probabilities = _select_helper_probabilities(
         helper_weak_probabilities=helper_weak_probabilities,
@@ -266,7 +271,7 @@ def compute_fedmatch_unsupervised_loss(
 
     agreement_loss, pseudo_labels = _compute_agreement_pseudo_label_loss(
         selected_strong_logits=selected_strong_logits,
-        selected_weak_probabilities=selected_weak_probabilities,
+        selected_weak_probabilities=selected_weak_probabilities_for_labels,
         selected_helper_probabilities=selected_helper_probabilities,
         lambda_a=parameters.lambda_a,
     )

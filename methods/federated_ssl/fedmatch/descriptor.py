@@ -42,7 +42,7 @@ FEDMATCH_METHOD_NAME = "fedmatch"
 
 descriptor = FederatedSslMethodDescriptor(
     name=FEDMATCH_METHOD_NAME,
-    implementation_status="original_core_spec_v1",
+    implementation_status="lora_partitioned_step_core_v1",
     method_role="method_owned",
     required_views=FederatedSslRequiredViews(
         view_names=("text", "aug_0", "aug_1"),

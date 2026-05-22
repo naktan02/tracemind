@@ -254,6 +254,34 @@ def test_fedmatch_unsupervised_tensor_loss_can_disable_round_zero_kl() -> None:
     )
 
 
+def test_fedmatch_inter_client_kl_keeps_weak_prediction_gradient() -> None:
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.5,
+        lambda_s=10.0,
+        lambda_i=1.0,
+        lambda_a=0.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    weak_logits = torch.log(torch.tensor([[0.8, 0.2]], dtype=torch.float32))
+    weak_logits.requires_grad_(True)
+
+    result = compute_fedmatch_unsupervised_loss(
+        weak_logits=weak_logits,
+        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        helper_weak_probabilities=torch.tensor(
+            [[[0.1, 0.9]]],
+            dtype=torch.float32,
+        ),
+        parameter_partitions=FedMatchParameterPartitions(sigma={}, psi={}),
+        parameters=parameters,
+    )
+    result.total_loss.backward()
+
+    assert weak_logits.grad is not None
+    assert torch.count_nonzero(weak_logits.grad).item() > 0
+
+
 def test_fedmatch_unsupervised_loss_keeps_regularization_without_confidence() -> None:
     parameters = FedMatchLocalObjectiveParameters(
         confidence_threshold=0.99,
