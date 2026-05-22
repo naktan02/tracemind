@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -29,6 +30,7 @@ def run_method_or_manual_local_objective_if_supported(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    peer_context: FederatedSslPeerContext | None = None,
 ) -> ClientRoundExecution | None:
     """현재 지원되는 local objective fast path를 실행한다."""
 
@@ -39,6 +41,7 @@ def run_method_or_manual_local_objective_if_supported(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        peer_context=peer_context,
     )
     if method_execution is not None:
         return method_execution

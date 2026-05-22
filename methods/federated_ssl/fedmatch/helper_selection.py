@@ -5,6 +5,11 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
+from methods.federated_ssl.peer_context import (
+    select_nearest_peer_client_ids,
+    should_refresh_peer_context,
+)
+
 FEDMATCH_HELPER_SELECTION_NAME = "prediction_similarity_topk"
 FEDMATCH_DEFAULT_NUM_HELPERS = 2
 FEDMATCH_DEFAULT_REFRESH_INTERVAL = 10
@@ -41,11 +46,10 @@ def should_refresh_helper_context(
 ) -> bool:
     """원본 `(curr_round + 1) % h_interval == 0` refresh 조건."""
 
-    if round_index_zero_based < 0:
-        raise ValueError("round_index_zero_based must be non-negative.")
-    if refresh_interval <= 0:
-        raise ValueError("refresh_interval must be positive.")
-    return (round_index_zero_based + 1) % refresh_interval == 0
+    return should_refresh_peer_context(
+        round_index_zero_based=round_index_zero_based,
+        refresh_interval=refresh_interval,
+    )
 
 
 def select_helper_client_ids(
@@ -56,33 +60,8 @@ def select_helper_client_ids(
 ) -> tuple[str, ...]:
     """client prediction vector 기준 최근접 helper client를 고른다."""
 
-    if num_helpers < 0:
-        raise ValueError("num_helpers must be non-negative.")
-    if num_helpers == 0 or client_id not in client_vectors:
-        return ()
-
-    target = _validate_vector(client_vectors[client_id], name=client_id)
-    distances: list[tuple[float, str]] = []
-    for candidate_id, candidate_vector in client_vectors.items():
-        if candidate_id == client_id:
-            continue
-        vector = _validate_vector(candidate_vector, name=candidate_id)
-        if len(vector) != len(target):
-            raise ValueError("all helper selection vectors must share one dimension.")
-        distances.append((_squared_euclidean_distance(target, vector), candidate_id))
-
-    distances.sort(key=lambda item: (item[0], item[1]))
-    return tuple(candidate_id for _, candidate_id in distances[:num_helpers])
-
-
-def _squared_euclidean_distance(
-    left: Sequence[float],
-    right: Sequence[float],
-) -> float:
-    return sum((float(a) - float(b)) ** 2 for a, b in zip(left, right, strict=True))
-
-
-def _validate_vector(vector: Sequence[float], *, name: str) -> tuple[float, ...]:
-    if not vector:
-        raise ValueError(f"helper selection vector for {name!r} must not be empty.")
-    return tuple(float(value) for value in vector)
+    return select_nearest_peer_client_ids(
+        client_id=client_id,
+        client_vectors=client_vectors,
+        peer_count=num_helpers,
+    )

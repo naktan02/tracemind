@@ -33,6 +33,7 @@ from methods.federated_ssl.execution_plan import build_federated_ssl_execution_p
 from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
@@ -996,6 +997,13 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             classifier_dropout=0.1,
         ),
     )
+    peer_context = FederatedSslPeerContext(
+        client_id="agent_01",
+        policy_name="prediction_similarity_topk",
+        round_index_zero_based=0,
+        helper_client_ids=("agent_02",),
+        refreshed=True,
+    )
     execution = client_training.run_client_round(
         request=request,
         bootstrapped=BootstrappedSimulation(
@@ -1025,6 +1033,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         shard=shard,
         training_task=training_task,
         training_scoring_service=object(),
+        peer_context=peer_context,
     )
 
     assert execution.update_submitted is True
@@ -1034,6 +1043,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["ssl_method_config"] is request.ssl_method_config
     assert method_calls[0]["labeled_rows"] == [labeled_row]
     assert method_calls[0]["unlabeled_rows"] == [unlabeled_row]
+    assert method_calls[0]["peer_context"] is peer_context
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
 

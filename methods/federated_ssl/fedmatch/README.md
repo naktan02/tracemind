@@ -31,10 +31,14 @@
 - method-owned FL simulation client runtime에서 FedMatch local objective를 호출하고,
   서버에는 기존 LoRA-classifier merged delta/FedAvg 경로로 제출
 - helper refresh/top-k selection helper
+- 공통 `peer_context=prediction_similarity_topk` simulation adapter에서 FedMatch
+  descriptor의 `num_helpers`/`refresh_interval`을 읽어 helper client context를 만들고
+  method-owned LoRA trainer까지 전달하는 seam
 - full ResNet9 sigma/psi decomposition을 LoRA adapter + classifier head의
   logical sigma/psi partition으로 매핑
 
-아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper prediction
-exchange, sparse S2C/C2S delta sync, labels-at-server supervised server step은 다음
-단계 capability로 남긴다. 현재 server path는 `server_step_policy=none`에서 기존
-LoRA-classifier FedAvg가 merged delta를 aggregation한다.
+아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper client id
+선택 seam은 열렸지만 helper model prediction tensor 생성, sparse S2C/C2S delta
+sync, labels-at-server supervised server step은 다음 단계 capability로 남긴다.
+현재 server path는 `server_step_policy=none`에서 기존 LoRA-classifier FedAvg가
+merged delta를 aggregation한다.

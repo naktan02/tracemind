@@ -93,9 +93,11 @@ FedMatch 다음 구현 결정:
   generic `partitioned` update capability로 표현한다. `sigma/psi` partition scheme은
   FedMatch-local metadata로 두고, shared contract를 바꾸는 payload split은 실제 필요가
   확인될 때만 연다.
-- inter-client consistency는 처음에는 `peer_context=none`으로 시작하고, client 간
-  prediction similarity가 필요해지는 시점에 `peer_context_policy=prediction_similarity_topk`
-  runtime adapter를 추가한다.
+- inter-client consistency는 `peer_context=none` baseline을 유지하면서,
+  `peer_context_policy=prediction_similarity_topk` runtime adapter로 helper client
+  선택과 method-owned trainer 주입 seam을 열었다. 실제 helper model prediction
+  tensor는 이전 round client model snapshot/probe vector 저장 capability가 열린 뒤
+  FedMatch KL loss에 연결한다.
 - labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
   열 수 있지만, v1 FedMatch 실행 범위에는 넣지 않는다.
 

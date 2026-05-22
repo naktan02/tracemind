@@ -7,6 +7,9 @@ from pathlib import Path
 
 from methods.federated.participation import select_participating_clients
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    peer_context_exchange,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.client_training import (
     build_round_training_scoring_service,
     run_client_round,
@@ -79,6 +82,13 @@ def run_one_round(
         bootstrapped.dataset_split.client_shards[index].client_id
         for index in participation_selection.skipped_indices
     )
+    peer_context_by_client = peer_context_exchange.build_peer_context_by_client(
+        capability_plan=capability_plan,
+        ssl_method_config=request.ssl_method_config,
+        selected_client_ids=tuple(shard.client_id for shard in selected_shards),
+        round_index=round_index,
+        client_vectors=None,
+    )
 
     client_executions = tuple(
         run_client_round(
@@ -90,6 +100,7 @@ def run_one_round(
             shard=shard,
             training_task=training_task,
             training_scoring_service=training_scoring_service,
+            peer_context=peer_context_by_client.get(shard.client_id),
         )
         for shard in selected_shards
     )

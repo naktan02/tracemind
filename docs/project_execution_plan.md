@@ -255,9 +255,10 @@ Runtime translation:
    loss는 `psi` partition으로 라우팅한다.
 3. LoRA-classifier trainer 한 step의 sigma/psi logical optimizer split core는 열었다.
    supervised sub-step delta는 `sigma`, unsupervised sub-step delta는 `psi`로 기록한다.
-4. 다음 구현은 method-owned FedMatch simulation wiring, helper prediction exchange,
-   sparse S2C/C2S sync, 필요한 runtime capability adapter
-   순서로 진행한다.
+4. method-owned FedMatch simulation wiring과 `prediction_similarity_topk` helper
+   client context 주입 seam은 열었다. 다음 구현은 이전 round client model/probe
+   snapshot 기반 helper prediction tensor 생성, sparse S2C/C2S sync, 필요한 runtime
+   capability adapter 순서로 진행한다.
 5. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
 6. full ablation, full `client_count=1..10` sweep, full-budget main run은

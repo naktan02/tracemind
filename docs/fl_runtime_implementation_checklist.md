@@ -72,8 +72,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   aggregation weight를 요구하고, `sigma/psi` scheme, confidence filter/agreement
   pseudo-label/helper top-k selection, supervised/unsupervised tensor loss는
   methods core에 고정했다. LoRA trainer 한 step의 logical sigma/psi delta split도
-  methods core에 추가했다. method-owned LoRA local simulation wiring은 열렸고,
-  helper prediction exchange, sparse S2C/C2S, labels-at-server server runtime은
+  methods core에 추가했다. method-owned LoRA local simulation wiring과
+  `prediction_similarity_topk` helper client context 주입 seam은 열렸고, helper
+  model prediction tensor 생성, sparse S2C/C2S, labels-at-server server runtime은
   후속 구현이다.
 - [x] 선택 전 capability matrix는
   `docs/contracts/fl_ssl_method_capability_matrix.md`에 정리했다. 현재 권장 첫 후보는

@@ -18,6 +18,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -82,6 +83,7 @@ def run_method_owned_lora_classifier_training_core(
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
+    peer_context: FederatedSslPeerContext | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """선택된 method-owned LoRA-classifier local training core를 실행한다."""
 
@@ -96,6 +98,7 @@ def run_method_owned_lora_classifier_training_core(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
+        peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,
         lora_config=lora_config,

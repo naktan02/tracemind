@@ -80,6 +80,7 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from methods.ssl.base import TextBatchClassifier
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
@@ -113,6 +114,17 @@ class FedMatchMethodLocalTrainingConfig(Protocol):
     effective_parameters: Mapping[str, object]
 
 
+class FedMatchHelperWeakProbabilityProvider(Protocol):
+    """batch별 helper weak-view probability를 공급하는 runtime seam."""
+
+    def __call__(
+        self,
+        *,
+        unlabeled_batch: Mapping[str, Tensor],
+    ) -> Tensor | Sequence[Tensor] | None:
+        """helper model들이 현재 client batch에 낸 weak-view 확률을 반환한다."""
+
+
 def run_method_owned_lora_classifier_training_core(
     *,
     client_id: str,
@@ -130,6 +142,7 @@ def run_method_owned_lora_classifier_training_core(
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
+    peer_context: FederatedSslPeerContext | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """FedMatch 원본 local objective를 LoRA-classifier simulation update로 실행한다."""
 
@@ -221,6 +234,10 @@ def run_method_owned_lora_classifier_training_core(
             if training_task.gradient_clip_norm is None
             else float(training_task.gradient_clip_norm)
         ),
+        helper_weak_probability_provider=None,
+        enable_inter_client_consistency=(
+            peer_context is not None and peer_context.helper_count > 0
+        ),
     )
     pseudo_label_quality = _build_fedmatch_final_snapshot_pseudo_label_quality(
         model=model,
@@ -271,10 +288,20 @@ def run_method_owned_lora_classifier_training_core(
         ),
         include_inline_deltas=delta_materialization.include_inline_deltas,
     )
+    peer_context_helper_count = 0.0 if peer_context is None else float(
+        peer_context.helper_count
+    )
     client_metrics = {
         **dict(update_build_result.client_metrics),
         "fedmatch_local_runtime": 1.0,
-        "fedmatch_helper_count": 0.0,
+        "fedmatch_helper_count": _history_float(
+            history_record,
+            "train_fedmatch_psi_helper_count",
+        ),
+        "fedmatch_peer_context_helper_count": peer_context_helper_count,
+        "fedmatch_peer_context_refreshed": (
+            0.0 if peer_context is None else float(peer_context.refreshed)
+        ),
     }
     update_envelope = make_training_update_envelope(
         update_id=update_id,
@@ -313,6 +340,10 @@ def train_fedmatch_lora_classifier(
     classifier_learning_rate: float,
     weight_decay: float,
     max_grad_norm: float,
+    helper_weak_probability_provider: (
+        FedMatchHelperWeakProbabilityProvider | None
+    ) = None,
+    enable_inter_client_consistency: bool = True,
 ) -> dict[str, float]:
     """FedMatch supervised/unsupervised 분리 step을 budget만큼 실행한다."""
 
@@ -352,6 +383,17 @@ def train_fedmatch_lora_classifier(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
+            device_unlabeled_batch = _move_tensor_batch_to_device(
+                batch=unlabeled_batch,
+                device=device,
+            )
+            helper_weak_probabilities = (
+                None
+                if helper_weak_probability_provider is None
+                else helper_weak_probability_provider(
+                    unlabeled_batch=device_unlabeled_batch,
+                )
+            )
             step_result = run_fedmatch_lora_classifier_partitioned_step(
                 model=model,
                 labels=labels,
@@ -359,15 +401,15 @@ def train_fedmatch_lora_classifier(
                     batch=labeled_batch,
                     device=device,
                 ),
-                unlabeled_batch=_move_tensor_batch_to_device(
-                    batch=unlabeled_batch,
-                    device=device,
-                ),
+                unlabeled_batch=device_unlabeled_batch,
                 parameters=parameters,
                 sigma_optimizer=sigma_optimizer,
                 psi_optimizer=psi_optimizer,
-                helper_weak_probabilities=None,
-                enable_inter_client_consistency=False,
+                helper_weak_probabilities=helper_weak_probabilities,
+                enable_inter_client_consistency=(
+                    enable_inter_client_consistency
+                    and helper_weak_probabilities is not None
+                ),
                 max_grad_norm=max_grad_norm,
             )
             completed_steps += 1
@@ -640,6 +682,16 @@ def _parameter_delta_l2(parameter_deltas: Mapping[str, Tensor]) -> float:
     for delta in parameter_deltas.values():
         squared_norm += float(torch.sum(torch.square(delta.detach())).item())
     return squared_norm**0.5
+
+
+def _history_float(
+    history_record: Mapping[str, object],
+    key: str,
+) -> float:
+    value = history_record.get(key)
+    if value is None:
+        return 0.0
+    return float(value)
 
 
 def _build_fedmatch_final_snapshot_pseudo_label_quality(

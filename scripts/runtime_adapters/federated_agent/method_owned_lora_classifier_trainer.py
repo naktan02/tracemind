@@ -27,6 +27,7 @@ from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.lora_classifier_training import (
     run_method_owned_lora_classifier_training_core,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedSslMethodConfig,
@@ -56,6 +57,7 @@ def run_method_owned_lora_classifier_local_training(
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
+    peer_context: FederatedSslPeerContext | None = None,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
 ) -> QuerySslLoraClientTrainingResult:
@@ -81,6 +83,7 @@ def run_method_owned_lora_classifier_local_training(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
+        peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,
         lora_config=lora_config

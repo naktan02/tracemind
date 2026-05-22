@@ -8,6 +8,7 @@ from typing import Any
 from methods.evaluation.pseudo_label_quality import (
     build_pseudo_label_quality_summary,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedClientLocalTrainingContext,
     FederatedSslSimulationRuntime,
@@ -64,6 +65,7 @@ def run_client_round(
     shard: FederatedClientShard,
     training_task: Any,
     training_scoring_service: Any,
+    peer_context: FederatedSslPeerContext | None = None,
 ) -> ClientRoundExecution:
     """client shard 하나의 local training을 실행하고 update를 제출한다."""
 
@@ -74,6 +76,7 @@ def run_client_round(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        peer_context=peer_context,
     )
     if query_ssl_execution is not None:
         return query_ssl_execution
