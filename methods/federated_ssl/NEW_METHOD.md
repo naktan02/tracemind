@@ -85,8 +85,9 @@ compatibility validator를 추가한다.
 labeled exposure, server step, peer context, query multiview source도 method 전용
 분기가 아니라 `FederatedSslCapabilityPlan`의 공통 축으로 검증한다.
 단, `peer_context_policy=prediction_similarity_topk` 같은 공통 capability는 mechanism만
-표현한다. `num_helpers`, refresh interval처럼 논문 원본에서 온 값은 method descriptor와
-method-local policy module에 둔다.
+표현한다. `num_helpers`, refresh interval처럼 논문 원본에서 온 값은
+`methods/federated_ssl/<method>/original_spec.py`와 method-local policy module에 둔다.
+method descriptor YAML에는 실행 override hook과 trace/report metadata만 둔다.
 
 ## Registry
 

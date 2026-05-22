@@ -46,8 +46,6 @@ round_state_exchange:
   exchange_name: peer_context
   custom_exchange_required: true
   helper_selection_name: prediction_similarity_topk
-  num_helpers: 2
-  refresh_interval: 10
   required_client_metric_keys:
     - mean_confidence
 report_tags:

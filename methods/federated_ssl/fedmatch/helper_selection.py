@@ -5,14 +5,19 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Mapping, Sequence
 
+from methods.federated_ssl.fedmatch.original_spec import (
+    FEDMATCH_ORIGINAL_METHOD_DEFAULTS,
+)
 from methods.federated_ssl.peer_context import (
     select_nearest_peer_client_ids,
     should_refresh_peer_context,
 )
 
 FEDMATCH_HELPER_SELECTION_NAME = "prediction_similarity_topk"
-FEDMATCH_DEFAULT_NUM_HELPERS = 2
-FEDMATCH_DEFAULT_REFRESH_INTERVAL = 10
+FEDMATCH_DEFAULT_NUM_HELPERS = FEDMATCH_ORIGINAL_METHOD_DEFAULTS.num_helpers
+FEDMATCH_DEFAULT_REFRESH_INTERVAL = (
+    FEDMATCH_ORIGINAL_METHOD_DEFAULTS.helper_refresh_interval
+)
 FEDMATCH_ORIGINAL_HELPER_PROBE = "fixed_gaussian_noise_model_output"
 FEDMATCH_TRACE_HELPER_PROBE = "fixed_probe_text_batch_model_output"
 

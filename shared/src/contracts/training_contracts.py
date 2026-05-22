@@ -62,15 +62,6 @@ TrainingUpdateSubmissionSchemaVersion: TypeAlias = Literal[
 DecisionFeedbackSignalSchemaVersion: TypeAlias = Literal["decision_feedback_signal.v1"]
 
 
-class UpdatePayloadFormat(StrEnum):
-    """Training update payload 포맷의 알려진 상수 모음."""
-
-    DIAGONAL_SCALE_UPDATE = "diagonal_scale_update"
-    CLASSIFIER_HEAD_UPDATE = "classifier_head_update"
-    LORA_CLASSIFIER_UPDATE = "lora_classifier_update"
-    LEGACY_VECTOR_ADAPTER_DELTA = "vector_adapter_delta"
-
-
 class FeedbackSignalType(StrEnum):
     """로컬 학습 signal taxonomy."""
 
@@ -468,11 +459,11 @@ def make_training_update_envelope(
     model_id: str,
     base_model_revision: str,
     payload_ref: str,
+    payload_format: str,
     example_count: int,
     client_metrics: dict[str, float],
     update_id: str | None = None,
     training_scope: TrainingScope = TrainingScope.ADAPTER_ONLY,
-    payload_format: str = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE.value,
     agent_id: str | None = None,
     secure_aggregation: SecureAggregationSubmissionPayload | None = None,
     clipped: bool = False,
@@ -493,6 +484,7 @@ def make_training_update_envelope(
     ...     model_id="bg-m3",
     ...     base_model_revision="rev_001",
     ...     payload_ref="client-submission::delta_001",
+    ...     payload_format="diagonal_scale_update",
     ...     example_count=10,
     ...     client_metrics={"mean_confidence": 0.85},
     ... )

@@ -5,8 +5,9 @@ FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config 
 method-owned tensor local objective core를 추가했다. LoRA-classifier logical partition
 step과 method-owned local simulation bridge는
 `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
-소유한다. full 원본 parity에
-필요한 peer context/server-step runtime은 다음 구현 단계다. 각 method의 source of truth는
+소유한다. 현재 helper peer context simulation slice는 열려 있고, full 원본 parity에
+필요한 sparse S2C/C2S sync와 labels-at-server server-step runtime은 다음 구현 단계다.
+각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
 
@@ -22,6 +23,8 @@ policy가 된다.
   - `client_metric_summary`
   - custom exchange는 descriptor에서 선언할 수 있지만 default live runtime에서는
     bootstrap/finalize 전에 실패한다.
+  - simulation에서는 `peer_context=prediction_similarity_topk`가 이전 round
+    client-local LoRA snapshot과 validation probe vector 기반 helper context를 만든다.
 - `DefaultServerPolicyExecutor`
   - 현재는 `round_runtime_aggregation_backend` + `round_active_pair_only`만 지원한다.
   - custom server policy는 method-specific 분기가 아니라 capability executor 추가로
@@ -69,7 +72,7 @@ policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice는 adapter family package에 열림. full 원본 parity에는 peer context/server step runtime이 추가로 필요하다. | 중간 | 1순위, local runtime slice opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice와 helper peer-context simulation slice는 열림. full 원본 parity에는 sparse S2C/C2S sync와 labels-at-server server step runtime이 추가로 필요하다. | 중간 | 1순위, local runtime slice opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
@@ -134,7 +137,8 @@ FedMatch 원본에서 보존한 기본값:
 
 위 값의 source of truth는 `methods/federated_ssl/fedmatch/original_spec.py`다.
 `conf/strategy_axes/fl/method_descriptor/fedmatch.yaml`은 `scenario`,
-`use_original_parameters`, `parameter_overrides`만 노출하고, runner가 report protocol에
+`use_original_parameters`, `parameter_overrides`와 trace/report wiring metadata만 노출하고,
+원본 numeric 기본값은 복제하지 않는다. runner가 report protocol에
 `original_parameters`, `effective_parameters`, `parameter_override_status`를 주입한다.
 
 ## Open Selection Gate

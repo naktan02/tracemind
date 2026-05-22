@@ -127,17 +127,22 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `server_step_policy`, `server_update_policy`, `peer_context_policy`,
   `update_partition_policy`, `local_ssl_policy`, `query_multiview_source`
   - method 전용 파일명이 아니라 공통 capability axis다.
-  - 현재 실행 가능 기본은 `server_step=none`, `peer_context=none`,
+  - manual baseline의 현재 실행 기본은 `server_step=none`, `peer_context=none`,
     `server_update=fedavg_merged_delta`, `update_partition=unified`,
     `local_ssl_policy=query_ssl_method`, `query_multiview_source=materialized_rows`다.
+  - FedMatch method-owned slice는 `peer_context=prediction_similarity_topk`와
+    `server_update=fedmatch_partitioned`를 실행할 수 있다. 이때 local runtime이
+    `partitioned_deltas`를 생산하고, server runtime이 LoRA-classifier
+    `partitioned_delta_average` backend로 소비한다.
   - `server_update_policy`는 server가 merged/partitioned update payload를 어떤
     의미로 해석할지 나타내며, server-side supervised seed step 여부인
     `server_step_policy`와 분리한다.
   - `local_ssl_policy=query_ssl_method`는 `query_ssl_method.algorithm_name`을
     canonical local SSL policy 이름으로 쓴다. FixMatch류 파라미터를 FL capability
     config에 복제하지 않는다.
-  - `peer_context=prediction_similarity_topk`는 method descriptor의 helper 개수와
-    refresh interval을 읽어 client별 helper context를 만든다. 현재 slice는 이전 round
+  - `peer_context=prediction_similarity_topk`는 method `effective_parameters`의
+    helper 개수와 refresh interval을 읽어 client별 helper context를 만든다.
+    현재 slice는 이전 round
     client-local LoRA snapshot과 validation probe vector로 helper client를 고르고,
     선택된 helper snapshot의 weak-view probability를 method-owned trainer에 주입한다.
   - `agent_generated_or_cached`는 live agent stored-event 경로가 weak/strong view를

@@ -50,6 +50,9 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_diagonal_delta_payload,
     make_identity_state_payload,
@@ -363,6 +366,7 @@ def test_full_round_lifecycle(
         model_id=MODEL_ID,
         base_model_revision=MODEL_REVISION,
         payload_ref=str(artifact_root / "agent_only_delta.json"),
+        payload_format=DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
         example_count=5,
         client_metrics={"mean_confidence": 0.82, "mean_margin": 0.14},
     )

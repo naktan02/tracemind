@@ -190,6 +190,25 @@ def test_shared_training_contracts_do_not_own_runtime_backend_defaults() -> None
     )
 
 
+def test_shared_training_contracts_do_not_own_adapter_payload_format_catalog() -> None:
+    path = SHARED_SRC / "contracts" / "training_contracts.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "class UpdatePayloadFormat",
+        "DIAGONAL_SCALE_UPDATE",
+        "CLASSIFIER_HEAD_UPDATE",
+        "LORA_CLASSIFIER_UPDATE",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "shared training envelope는 payload_format 문자열 필드만 소유한다. "
+        "adapter-family별 canonical/accepted format은 "
+        "shared/src/contracts/adapter_contract_families/<family>.py가 소유한다.\n"
+        f"violations={violations}"
+    )
+
+
 def test_python_modules_do_not_define_dunder_all() -> None:
     violations = [
         _relative_repo_path(path)
@@ -473,6 +492,25 @@ def test_fl_method_descriptor_configs_point_to_real_method_modules() -> None:
                     "values must stay in methods/federated_ssl/<method>/"
                     f"original_spec.py, not YAML: {duplicated_keys}"
                 )
+            round_state_exchange = payload.get("round_state_exchange")
+            if isinstance(round_state_exchange, dict):
+                duplicated_round_state_keys = sorted(
+                    key
+                    for key in (
+                        "num_helpers",
+                        "refresh_interval",
+                        "helper_refresh_interval",
+                    )
+                    if key in round_state_exchange
+                )
+                if duplicated_round_state_keys:
+                    violations.append(
+                        f"{_relative_repo_path(config_path)}: original helper "
+                        "parameter values must stay in "
+                        "methods/federated_ssl/<method>/original_spec.py, not "
+                        "round_state_exchange YAML: "
+                        f"{duplicated_round_state_keys}"
+                    )
         if not method_dir.is_dir():
             violations.append(
                 f"{_relative_repo_path(config_path)}: missing "

@@ -27,6 +27,7 @@ from shared.src.contracts.adapter_contract_families.io import (
     load_shared_adapter_update_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierAdapterStatePayload,
     LoraClassifierAdapterUpdatePayload,
 )
@@ -35,7 +36,6 @@ from shared.src.contracts.adapter_contract_families.registry import (
     get_shared_adapter_update_payload_formats,
     register_shared_adapter_payload_family,
 )
-from shared.src.contracts.training_contracts import UpdatePayloadFormat
 
 
 def test_shared_adapter_payloads_capture_revision_and_scales(
@@ -364,8 +364,8 @@ def test_lora_classifier_update_requires_artifact_ref_or_inline_delta(
 def test_payload_registry_exposes_lora_classifier_update_formats() -> None:
     assert (
         get_shared_adapter_canonical_update_payload_format("lora_classifier")
-        == UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value
+        == LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
     )
     assert get_shared_adapter_update_payload_formats("lora_classifier") == (
-        "lora_classifier_update",
+        LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     )

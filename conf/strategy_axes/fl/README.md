@@ -48,8 +48,8 @@ LoRA-classifier `partitioned_delta_average` simulation backend로 해석한다.
 surface를 재사용한다. `fedmatch_agreement`처럼 method-local objective는 method
 descriptor가 source of truth다.
 마찬가지로 `prediction_similarity_topk`는 공통 peer-context mechanism만 표현하고,
-FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은 FedMatch descriptor와
-method package가 소유한다.
+FedMatch의 `num_helpers=2`, `h_interval=10` 같은 값은
+`methods/federated_ssl/fedmatch/original_spec.py`와 method package가 소유한다.
 
 ## `fl_method` 실행 계획
 
@@ -92,7 +92,8 @@ server round 조합은 별도 YAML group이 아니라 최종 compose된
 `method_descriptor`는 논문 method의 identity, report role, custom runtime 필요
 여부와 원본 parameter snapshot 사용 여부를 표현한다. 원본 상세값 자체는
 `methods/federated_ssl/<method>/original_spec.py`가 소유하고, YAML은
-`scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면만 둔다.
+`scenario`, `use_original_parameters`, `parameter_overrides` 같은 실행 표면과
+trace/report wiring metadata만 둔다. 원본 numeric 기본값은 복제하지 않는다.
 실제 local update 계산 조합은 `local_update_profile`, server round runtime 조합은
 `round_runtime.*` leaf에서 온다.
 

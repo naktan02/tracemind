@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfigPayload,
     TrainingObjectiveConfigPayload,
@@ -44,6 +47,7 @@ def _envelope():
         model_id="model",
         base_model_revision="rev_1",
         payload_ref="/tmp/update.json",
+        payload_format=DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
         example_count=1,
         client_metrics={"accepted_ratio": 1.0},
     )

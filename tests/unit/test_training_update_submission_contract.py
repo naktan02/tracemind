@@ -4,13 +4,18 @@ from __future__ import annotations
 
 import pytest
 
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_diagonal_delta_payload,
     make_lora_classifier_delta_payload,
 )
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+)
 from shared.src.contracts.training_contracts import (
     TrainingUpdateSubmissionPayload,
-    UpdatePayloadFormat,
     make_training_update_envelope,
     make_training_update_submission,
 )
@@ -29,7 +34,7 @@ def _update_payload():
 def _envelope(
     *,
     example_count: int = 2,
-    payload_format: str = UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE.value,
+    payload_format: str = DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
 ):
     return make_training_update_envelope(
         round_id="round_1",
@@ -69,9 +74,7 @@ def test_training_update_submission_rejects_misaligned_payload() -> None:
 def test_training_update_submission_rejects_payload_format_mismatch() -> None:
     with pytest.raises(ValueError, match="payload_format"):
         make_training_update_submission(
-            envelope=_envelope(
-                payload_format=UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value
-            ),
+            envelope=_envelope(payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT),
             update_payload=_update_payload(),
         )
 
@@ -103,9 +106,7 @@ def test_training_update_submission_parses_lora_classifier_update_payload() -> N
         lora_delta_artifact_ref="client-submission::lora_delta",
     )
     submission = make_training_update_submission(
-        envelope=_envelope(
-            payload_format=UpdatePayloadFormat.LORA_CLASSIFIER_UPDATE.value
-        ),
+        envelope=_envelope(payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT),
         update_payload=update_payload,
     )
 

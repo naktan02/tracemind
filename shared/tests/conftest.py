@@ -6,6 +6,7 @@ from datetime import datetime, timezone
 import pytest
 
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
 )
@@ -29,7 +30,6 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicyPayload,
     TrainingTaskPayload,
     TrainingUpdateEnvelopePayload,
-    UpdatePayloadFormat,
 )
 
 FIXED_UTC_TIME = datetime(2026, 1, 1, tzinfo=timezone.utc)
@@ -143,7 +143,7 @@ def make_training_update_envelope_payload(
             "base_model_revision": "rev_001",
             "training_scope": TrainingScope.ADAPTER_ONLY,
             "payload_ref": "updates/update_001",
-            "payload_format": UpdatePayloadFormat.DIAGONAL_SCALE_UPDATE,
+            "payload_format": DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
             "example_count": 12,
             "client_metrics": {"mean_loss": 0.5},
             "created_at": fixed_utc_time,
