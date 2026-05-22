@@ -49,6 +49,7 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
 )
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
+METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
     AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
 )
@@ -541,6 +542,33 @@ def test_fl_update_partition_policy_configs_stay_mechanism_only() -> None:
         "표현한다. sigma/psi 같은 scheme 이름과 routing 의미는 method package가 "
         "소유한다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_federated_ssl_capability_axes_do_not_split_tiny_policy_files() -> None:
+    forbidden_paths = (
+        METHODS_FEDERATED_SSL_SRC / "local_ssl_policy.py",
+        METHODS_FEDERATED_SSL_SRC / "server_update_policy.py",
+    )
+    violations = [
+        _relative_repo_path(path) for path in forbidden_paths if path.exists()
+    ]
+
+    assert not violations, (
+        "FL SSL local/server capability 이름과 작은 normalizer는 "
+        "capability_axes.py에 함께 둔다. 이름/상수만 가진 sibling policy 파일은 "
+        "reader path를 늘린다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_fedmatch_descriptor_does_not_keep_recipe_pass_through() -> None:
+    recipe_path = METHODS_FEDERATED_SSL_SRC / "fedmatch" / "recipe.py"
+
+    assert not recipe_path.exists(), (
+        "FedMatch recipe metadata는 descriptor.py에서 바로 읽는다. descriptor.recipe를 "
+        "다시 노출하는 pass-through recipe.py는 만들지 않는다.\n"
+        f"recipe path={_relative_repo_path(recipe_path)}"
     )
 
 
