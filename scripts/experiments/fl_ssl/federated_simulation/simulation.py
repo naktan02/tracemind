@@ -5,8 +5,10 @@ from __future__ import annotations
 from typing import Any
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.compatibility import (
     FederatedSslProfileCompatibilityContext,
+    validate_federated_ssl_capability_compatibility,
     validate_federated_ssl_profile_compatibility,
 )
 from methods.federated_ssl.execution_plan import (
@@ -15,7 +17,9 @@ from methods.federated_ssl.execution_plan import (
     build_federated_ssl_execution_plan,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
+    peer_context_exchange,
     runtime_compatibility,
+    server_step_execution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedSslSimulationRuntime,
@@ -47,6 +51,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     """typed request 기반으로 FL SSL simulation을 실행한다."""
 
     execution_plan = _resolve_execution_plan(request)
+    request.capability_plan = _resolve_capability_plan(request)
     ssl_method_runtime = _build_validated_ssl_runtime(
         request.ssl_method_config,
         execution_plan=execution_plan,
@@ -110,6 +115,16 @@ def _require_runtime_compatibility(
         local_adapter_kind=local_adapter_kind,
     )
     ssl_method_descriptor = ssl_method_runtime.descriptor
+    validate_federated_ssl_capability_compatibility(
+        method_descriptor=ssl_method_descriptor,
+        capability_plan=_resolve_capability_plan(request),
+    )
+    server_step_execution.require_supported_server_step(
+        _resolve_capability_plan(request)
+    )
+    peer_context_exchange.require_supported_peer_context(
+        _resolve_capability_plan(request)
+    )
     if ssl_method_descriptor is None:
         return
     validate_federated_ssl_profile_compatibility(
@@ -121,7 +136,25 @@ def _require_runtime_compatibility(
             round_aggregation_backend_name=(
                 request.round_runtime_config.aggregation_backend_name
             ),
+            capability_plan=_resolve_capability_plan(request),
         )
+    )
+
+
+def _resolve_capability_plan(
+    request: SimulationRunRequest,
+) -> FederatedSslCapabilityPlan:
+    if request.capability_plan is not None:
+        return request.capability_plan
+    return FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy=None,
+        aggregation_weight_policy=None,
+        labeled_exposure_policy=request.data_source_config.labeled_exposure_policy,
+        local_supervision_regime=None,
+        server_step_policy=None,
+        peer_context_policy=None,
+        update_partition_policy=None,
+        query_multiview_source=None,
     )
 
 

@@ -24,6 +24,11 @@ from methods.federated.aggregation.fedavg.weighted_average import (
     WeightedVectorUpdate,
     weighted_average_vectors,
 )
+from methods.federated.aggregation_weighting import (
+    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AggregationWeightPolicy,
+    aggregation_weight_for_update,
+)
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
     VectorAdapterDelta,
@@ -61,8 +66,9 @@ def compute_diagonal_scale_fedavg(
     updates: Sequence[DiagonalScaleFedAvgUpdate],
     min_scale: float,
     max_scale: float,
+    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
 ) -> DiagonalScaleFedAvgResult:
-    """차원별 scale delta를 example_count로 평균하고 clamp한다."""
+    """차원별 scale delta를 policy weight로 평균하고 clamp한다."""
 
     if min_scale > max_scale:
         raise ValueError("min_scale must be less than or equal to max_scale.")
@@ -72,11 +78,12 @@ def compute_diagonal_scale_fedavg(
         raise ValueError("base_dimension_scales must not be empty.")
 
     valid_updates = tuple(update for update in updates if update.example_count > 0)
+    weight_policy = AggregationWeightPolicy(name=weight_policy_name)
     weighted_delta = weighted_average_vectors(
         [
             WeightedVectorUpdate(
                 values=update.dimension_deltas,
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -154,6 +161,7 @@ def aggregate_diagonal_scale_fedavg(
             "max_scale",
             DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
         ),
+        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
     next_state = VectorAdapterState(
         schema_version=base_state.schema_version,

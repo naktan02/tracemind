@@ -25,6 +25,11 @@ from methods.federated.aggregation.fedavg.weighted_average import (
     weighted_average_scalar_mappings,
     weighted_average_vector_mappings,
 )
+from methods.federated.aggregation_weighting import (
+    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AggregationWeightPolicy,
+    aggregation_weight_for_update,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierDelta,
@@ -73,10 +78,12 @@ def compute_lora_classifier_fedavg(
     *,
     label_schema: Sequence[str],
     updates: Sequence[LoraClassifierFedAvgUpdate],
+    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
 ) -> LoraClassifierFedAvgResult:
-    """LoRA parameter delta와 classifier-head delta를 example_count로 평균한다."""
+    """LoRA parameter delta와 classifier-head delta를 policy weight로 평균한다."""
 
     labels = _normalize_label_schema(label_schema)
+    weight_policy = AggregationWeightPolicy(name=weight_policy_name)
     valid_updates = tuple(update for update in updates if update.example_count > 0)
     if not valid_updates:
         raise ValueError("At least one non-empty LoRA-classifier update is required.")
@@ -85,7 +92,7 @@ def compute_lora_classifier_fedavg(
         [
             WeightedVectorMappingUpdate(
                 values=update.lora_parameter_deltas,
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -97,7 +104,7 @@ def compute_lora_classifier_fedavg(
                     update,
                     labels=labels,
                 ),
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -109,7 +116,7 @@ def compute_lora_classifier_fedavg(
                     update,
                     labels=labels,
                 ),
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -121,6 +128,9 @@ def compute_lora_classifier_fedavg(
         classifier_head_bias_deltas=classifier_head_bias_deltas,
         aggregated_metrics={
             **_aggregate_common_metrics(valid_updates),
+            "aggregation_weight_policy_example_count": float(
+                weight_policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT
+            ),
             "lora_parameter_count": float(len(lora_parameter_deltas)),
             "classifier_head_label_count": float(len(classifier_head_weight_deltas)),
         },
@@ -209,6 +219,7 @@ def aggregate_lora_classifier_fedavg(
     method_result = compute_lora_classifier_fedavg(
         label_schema=base_state.label_schema,
         updates=method_updates,
+        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="LoRA-classifier FedAvg"
@@ -284,7 +295,9 @@ def _validate_lora_classifier_fedavg_overrides(
 ) -> None:
     if overrides is None:
         return
-    unknown_keys = sorted(set(overrides) - {"artifact_ref_prefix", "artifact_format"})
+    unknown_keys = sorted(
+        set(overrides) - {"artifact_ref_prefix", "artifact_format", "weight_policy"}
+    )
     if unknown_keys:
         raise ValueError(
             "Unsupported LoRA-classifier aggregate artifact config key(s): "

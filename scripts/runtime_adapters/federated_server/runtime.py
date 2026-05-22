@@ -34,6 +34,7 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.prototype.building.base import PrototypeBuildStrategy
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
@@ -83,6 +84,7 @@ class SimulationServerRuntime:
         round_runtime_config: Any,
         prototype_build_strategy: PrototypeBuildStrategy,
         method_descriptor: FederatedSslMethodDescriptor | None = None,
+        capability_plan: FederatedSslCapabilityPlan | None = None,
     ) -> "SimulationServerRuntime":
         """simulation output root 기준 main_server runtime adapter를 만든다."""
 
@@ -92,6 +94,13 @@ class SimulationServerRuntime:
                 adapter_family_name=round_runtime_config.adapter_family_name,
                 aggregation_backend_name=(
                     round_runtime_config.aggregation_backend_name
+                ),
+                aggregation_backend_overrides=(
+                    None
+                    if capability_plan is None
+                    else {
+                        "weight_policy": capability_plan.aggregation_weight_policy.name
+                    }
                 ),
                 output_dir=output_dir,
             ),
@@ -242,12 +251,14 @@ def build_simulation_round_family(
     *,
     adapter_family_name: str,
     aggregation_backend_name: str,
+    aggregation_backend_overrides: dict[str, str] | None = None,
     output_dir: Path,
 ):
     """simulation이 사용할 round family 조합을 만든다."""
     return build_shared_adapter_round_family(
         adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
+        aggregation_backend_overrides=aggregation_backend_overrides,
         aggregation_artifact_store=AggregationArtifactStore(
             state_root=output_dir / "main_server" / "aggregation_artifacts"
         ),

@@ -10,6 +10,7 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from methods.prototype.building.base import PrototypeBuildStrategy
@@ -369,6 +370,7 @@ class SimulationRunRequest:
     report_config: FederatedReportConfig | None = None
     local_update_profile: LocalUpdateProfile | None = None
     execution_plan: FederatedSslExecutionPlan | None = None
+    capability_plan: FederatedSslCapabilityPlan | None = None
     query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig = field(
         default_factory=FederatedLocalTrainerRuntimeConfig

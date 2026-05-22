@@ -8,6 +8,7 @@ from hydra.utils import instantiate
 from omegaconf import DictConfig
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     FederatedSslExecutionPlan,
@@ -19,6 +20,7 @@ from methods.federated_ssl.local_update_profile import (
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
+    optional_plain_dict,
     to_plain_dict,
 )
 from scripts.experiments.fl_ssl.federated_simulation.data_source_request import (
@@ -86,7 +88,12 @@ def build_simulation_request_from_config(
         cfg=cfg,
         client_count=int(cfg.federated_run_budget.client_count),
         bootstrap_ratio=float(cfg.federated_run_budget.bootstrap_ratio),
+        seed=actual_seed,
         shard_policy=shard_policy,
+    )
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=fl_data_source.data_source_config.labeled_exposure_policy,
     )
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
@@ -117,6 +124,7 @@ def build_simulation_request_from_config(
         report_config=FederatedReportConfig(**to_plain_dict(cfg.report)),
         local_update_profile=local_update_profile,
         execution_plan=execution_plan,
+        capability_plan=capability_plan,
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig.from_mapping(
             to_plain_dict(cfg.query_ssl_method),
             strong_view_policy=str(cfg.query_ssl_strong_view_policy),
@@ -128,6 +136,30 @@ def build_simulation_request_from_config(
             trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
             classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
         ),
+    )
+
+
+def _build_capability_plan(
+    *,
+    cfg: DictConfig,
+    labeled_exposure_policy: dict[str, object],
+) -> FederatedSslCapabilityPlan:
+    """Hydra FL strategy axes를 runtime capability plan으로 정규화한다."""
+
+    return FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy=optional_plain_dict(
+            cfg, "client_participation_policy"
+        ),
+        aggregation_weight_policy=optional_plain_dict(cfg, "aggregation_weight_policy"),
+        labeled_exposure_policy=(
+            labeled_exposure_policy
+            or optional_plain_dict(cfg, "labeled_exposure_policy")
+        ),
+        local_supervision_regime=optional_plain_dict(cfg, "local_supervision_regime"),
+        server_step_policy=optional_plain_dict(cfg, "server_step_policy"),
+        peer_context_policy=optional_plain_dict(cfg, "peer_context_policy"),
+        update_partition_policy=optional_plain_dict(cfg, "update_partition_policy"),
+        query_multiview_source=optional_plain_dict(cfg, "query_multiview_source"),
     )
 
 

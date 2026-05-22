@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.aggregation_diagnostics import (
     build_aggregation_diagnostics,
@@ -63,6 +64,7 @@ class SimulationReportBuilder:
         validation_config: FederatedValidationConfig,
         round_runtime_config: FederatedRoundRuntimeConfig,
         execution_plan: FederatedSslExecutionPlan | None = None,
+        capability_plan: FederatedSslCapabilityPlan | None = None,
         data_source_config: FederatedDataSourceConfig | None = None,
         embedding_spec: EmbeddingAdapterSpec | None = None,
         local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
@@ -125,13 +127,17 @@ class SimulationReportBuilder:
                 validation_config=validation_config,
                 round_runtime_config=round_runtime_config,
                 execution_plan=execution_plan,
+                capability_plan=capability_plan,
                 data_source_config=data_source_config,
                 embedding_spec=embedding_spec,
                 local_trainer_runtime_config=local_trainer_runtime_config,
             ),
             "diagnostics": {
                 "round_progression": round_progression,
-                "aggregation": build_aggregation_diagnostics(result),
+                "aggregation": build_aggregation_diagnostics(
+                    result,
+                    capability_plan=capability_plan,
+                ),
                 "pseudo_label_quality": build_pseudo_label_quality_diagnostics(result),
                 "communication_cost": communication_cost,
             },

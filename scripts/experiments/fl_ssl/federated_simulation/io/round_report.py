@@ -24,6 +24,10 @@ def build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                 "model_revision": round_summary.model_revision,
                 "prototype_version": round_summary.prototype_version,
                 "update_count": round_summary.update_count,
+                "total_client_count": round_summary.total_client_count,
+                "selected_client_count": round_summary.selected_client_count,
+                "skipped_client_count": round_summary.skipped_client_count,
+                "skipped_client_ids": list(round_summary.skipped_client_ids),
                 "validation": evaluation_to_payload(round_summary.validation),
                 "global_validation": evaluation_to_payload(round_summary.validation),
                 "delta_from_previous_round": evaluation_delta(

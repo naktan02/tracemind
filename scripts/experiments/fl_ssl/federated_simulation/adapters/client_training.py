@@ -22,9 +22,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_client_round import (
-    run_query_ssl_client_round_if_supported,
-)
 from scripts.runtime_adapters.federated_agent.scoring_runtime import (
     build_federated_scoring_service,
 )
@@ -39,6 +36,7 @@ from .client_update_submission import (
     extract_delta_l2_norm,
     payload_byte_count,
 )
+from .local_objective_execution import run_method_or_manual_local_objective_if_supported
 
 
 def build_round_training_scoring_service(
@@ -69,7 +67,7 @@ def run_client_round(
 ) -> ClientRoundExecution:
     """client shard 하나의 local training을 실행하고 update를 제출한다."""
 
-    query_ssl_execution = run_query_ssl_client_round_if_supported(
+    query_ssl_execution = run_method_or_manual_local_objective_if_supported(
         request=request,
         bootstrapped=bootstrapped,
         active=active,

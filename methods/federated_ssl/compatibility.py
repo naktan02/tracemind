@@ -5,7 +5,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 from methods.common.config_reading import normalize_non_empty_str
+from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
+from methods.federated_ssl.capability_plan import (
+    LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
+    LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
+    SERVER_STEP_NONE,
+    SERVER_STEP_SUPERVISED_SEED,
+    FederatedSslCapabilityPlan,
+)
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 
 
@@ -18,6 +26,7 @@ class FederatedSslProfileCompatibilityContext:
     local_update_adapter_kind: str
     round_adapter_family_name: str
     round_aggregation_backend_name: str
+    capability_plan: FederatedSslCapabilityPlan | None = None
 
     def __post_init__(self) -> None:
         object.__setattr__(
@@ -98,3 +107,127 @@ def validate_federated_ssl_profile_compatibility(
             f"adapter_family={context.round_adapter_family_name}, "
             f"aggregation_backend={context.round_aggregation_backend_name}."
         )
+
+    if context.capability_plan is not None:
+        validate_federated_ssl_capability_compatibility(
+            method_descriptor=context.method_descriptor,
+            capability_plan=context.capability_plan,
+        )
+
+
+def validate_federated_ssl_capability_compatibility(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor | None,
+    capability_plan: FederatedSslCapabilityPlan,
+) -> None:
+    """data exposure/runtime capability 조합을 bootstrap 전에 검증한다."""
+
+    _validate_server_only_semantics(
+        method_descriptor=method_descriptor,
+        capability_plan=capability_plan,
+    )
+    if method_descriptor is None:
+        _validate_manual_capability_plan(capability_plan)
+        return
+    required = method_descriptor.required_capabilities
+    _require_supported_capability(
+        actual=capability_plan.labeled_exposure_policy_name,
+        supported=required.labeled_exposure_policy_names,
+        field_name="labeled_exposure_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.local_supervision_regime_name,
+        supported=required.local_supervision_regime_names,
+        field_name="local_supervision_regime",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.server_step_policy_name,
+        supported=required.server_step_policy_names,
+        field_name="server_step_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.peer_context_policy_name,
+        supported=required.peer_context_policy_names,
+        field_name="peer_context_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.update_partition_policy_name,
+        supported=required.update_partition_policy_names,
+        field_name="update_partition_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.aggregation_weight_policy.name,
+        supported=required.aggregation_weight_policy_names,
+        field_name="aggregation_weight_policy",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.query_multiview_source_name,
+        supported=required.query_multiview_source_names,
+        field_name="query_multiview_source",
+        method_name=method_descriptor.name,
+    )
+    _require_supported_capability(
+        actual=capability_plan.client_participation_policy.name,
+        supported=required.client_participation_policy_names,
+        field_name="client_participation_policy",
+        method_name=method_descriptor.name,
+    )
+
+
+def _validate_manual_capability_plan(
+    capability_plan: FederatedSslCapabilityPlan,
+) -> None:
+    if capability_plan.server_step_policy_name != SERVER_STEP_NONE:
+        raise ValueError(
+            "manual FL SSL baseline only supports server_step_policy=none."
+        )
+
+
+def _validate_server_only_semantics(
+    *,
+    method_descriptor: FederatedSslMethodDescriptor | None,
+    capability_plan: FederatedSslCapabilityPlan,
+) -> None:
+    if (
+        capability_plan.labeled_exposure_policy_name
+        != LABELED_EXPOSURE_SERVER_ONLY_SEED
+    ):
+        return
+    if capability_plan.server_step_policy_name != SERVER_STEP_SUPERVISED_SEED:
+        raise ValueError(
+            "server_only_seed requires server_step_policy=supervised_seed_step."
+        )
+    if capability_plan.local_supervision_regime_name not in {
+        LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
+        LOCAL_SUPERVISION_SERVER_LABELED_ONLY,
+    }:
+        raise ValueError(
+            "server_only_seed requires a local supervision regime that does not "
+            "expose labeled rows to clients."
+        )
+    if method_descriptor is None:
+        raise ValueError("server_only_seed requires a method-owned FL SSL descriptor.")
+
+
+def _require_supported_capability(
+    *,
+    actual: str,
+    supported: tuple[str, ...],
+    field_name: str,
+    method_name: str,
+) -> None:
+    if not supported:
+        return
+    if actual.lower() in {value.lower() for value in supported}:
+        return
+    raise ValueError(
+        "FL SSL compatibility failed: method does not support "
+        f"{field_name}={actual!r}: method={method_name}, "
+        f"supported={list(supported)}."
+    )

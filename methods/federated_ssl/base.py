@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Protocol
 
 TRAINING_ROW_SOURCE_ALL_ROWS = "all_rows"
@@ -144,6 +144,38 @@ class FederatedSslRoundStateExchangeSpec:
 
 
 @dataclass(frozen=True, slots=True)
+class FederatedSslRequiredCapabilities:
+    """method-owned FL SSL method가 요구하는 공통 runtime capability."""
+
+    labeled_exposure_policy_names: tuple[str, ...] = ()
+    local_supervision_regime_names: tuple[str, ...] = ()
+    server_step_policy_names: tuple[str, ...] = ()
+    peer_context_policy_names: tuple[str, ...] = ()
+    update_partition_policy_names: tuple[str, ...] = ()
+    aggregation_weight_policy_names: tuple[str, ...] = ()
+    query_multiview_source_names: tuple[str, ...] = ()
+    client_participation_policy_names: tuple[str, ...] = ()
+
+    def __post_init__(self) -> None:
+        _set_unique_names(
+            self,
+            "labeled_exposure_policy_names",
+            allow_empty=True,
+        )
+        _set_unique_names(
+            self,
+            "local_supervision_regime_names",
+            allow_empty=True,
+        )
+        _set_unique_names(self, "server_step_policy_names", allow_empty=True)
+        _set_unique_names(self, "peer_context_policy_names", allow_empty=True)
+        _set_unique_names(self, "update_partition_policy_names", allow_empty=True)
+        _set_unique_names(self, "aggregation_weight_policy_names", allow_empty=True)
+        _set_unique_names(self, "query_multiview_source_names", allow_empty=True)
+        _set_unique_names(self, "client_participation_policy_names", allow_empty=True)
+
+
+@dataclass(frozen=True, slots=True)
 class FederatedSslRuntimeCapabilities:
     """method가 현재 지원하는 실행 표면."""
 
@@ -234,6 +266,9 @@ class FederatedSslMethodDescriptor:
     method_role: str = "method"
     round_state_exchange: FederatedSslRoundStateExchangeSpec | None = None
     recipe: FederatedSslMethodRecipe | None = None
+    required_capabilities: FederatedSslRequiredCapabilities = field(
+        default_factory=FederatedSslRequiredCapabilities
+    )
 
     def __post_init__(self) -> None:
         _set_non_empty(self, "name")

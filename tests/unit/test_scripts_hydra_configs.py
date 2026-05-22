@@ -545,6 +545,14 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.client_pool_split.unlabeled_ratio == 0.9
     assert cfg.report.labeled_ratio == 0.1
     assert cfg.report.unlabeled_ratio == 0.9
+    assert cfg.labeled_exposure_policy.name == "shared_client_seed"
+    assert cfg.client_participation_policy.name == "all_clients"
+    assert cfg.local_supervision_regime.name == "client_labeled_and_unlabeled"
+    assert cfg.server_step_policy.name == "none"
+    assert cfg.peer_context_policy.name == "none"
+    assert cfg.update_partition_policy.name == "unified"
+    assert cfg.aggregation_weight_policy.name == "example_count"
+    assert cfg.query_multiview_source.name == "materialized_rows"
 
 
 def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> None:
@@ -586,8 +594,8 @@ def test_fl_client_split_materialization_uses_query_data_source_and_budget() -> 
     assert cfg.fl_client_split_materialization.labeled_policy.mode == "all"
     assert cfg.fl_client_split_materialization.labeled_policy.count_per_class is None
     assert cfg.fl_client_split_materialization.labeled_policy.fraction is None
-    assert cfg.labeled_exposure_policy.name == "client_local_split"
-    assert cfg.labeled_exposure_policy.split_id_component == ""
+    assert cfg.labeled_exposure_policy.name == "shared_client_seed"
+    assert cfg.labeled_exposure_policy.split_id_component == "shared_client_seed_"
     assert cfg.fl_client_split_materialization.view_schema.weak_text_field == "text"
     assert list(cfg.fl_client_split_materialization.view_schema.strong_text_fields) == [
         "aug_0",

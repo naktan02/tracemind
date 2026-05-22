@@ -57,6 +57,7 @@ def bootstrap_simulation(
         round_runtime_config=request.round_runtime_config,
         prototype_build_strategy=request.prototype_build_strategy,
         method_descriptor=ssl_method_descriptor,
+        capability_plan=request.capability_plan,
     )
 
     initial_model_revision = "sim_rev_0000"

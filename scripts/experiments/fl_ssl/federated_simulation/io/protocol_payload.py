@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.split_diagnostics import (
     build_client_pool_split_payload,
@@ -44,6 +45,7 @@ def build_protocol_payload(
     validation_config: FederatedValidationConfig,
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
+    capability_plan: FederatedSslCapabilityPlan | None = None,
     data_source_config: FederatedDataSourceConfig | None = None,
     embedding_spec: EmbeddingAdapterSpec | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
@@ -87,6 +89,7 @@ def build_protocol_payload(
                 round_runtime_config.classifier_head_bootstrap_logit_scale
             ),
         },
+        "fl_capabilities": _capability_plan_to_payload(capability_plan),
         "embedding_adapter": _embedding_spec_to_payload(embedding_spec),
         "local_trainer_runtime": _local_trainer_runtime_to_payload(
             local_trainer_runtime_config
@@ -104,6 +107,17 @@ def build_protocol_payload(
     if execution_plan is not None:
         payload["fl_method"] = execution_plan.to_mapping()
     return payload
+
+
+def _capability_plan_to_payload(
+    capability_plan: FederatedSslCapabilityPlan | None,
+) -> dict[str, object]:
+    if capability_plan is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        **capability_plan.to_payload(),
+    }
 
 
 def _run_control_to_payload(

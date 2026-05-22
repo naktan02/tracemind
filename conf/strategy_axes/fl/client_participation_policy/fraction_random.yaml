@@ -1,0 +1,6 @@
+# @package client_participation_policy
+
+name: fraction_random
+fraction: 0.1
+count: null
+min_clients: 1

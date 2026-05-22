@@ -11,6 +11,7 @@ import hydra
 from omegaconf import DictConfig
 
 from methods.federated.client_split import (
+    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
     LABELED_EXPOSURE_SERVER_ONLY_SEED,
     FederatedLabeledExposurePolicy,
     FederatedLabeledPoolPolicy,
@@ -87,10 +88,6 @@ def materialize_fl_client_split(
     resolved_labeled_exposure_policy = _resolve_labeled_exposure_policy(
         labeled_exposure_policy
     )
-    if resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
-        raise ValueError(
-            "server_only_seed materialization is planned but not implemented yet."
-        )
     validate_rows_have_view_schema(
         unlabeled_rows,
         view_schema=view_schema,
@@ -148,7 +145,15 @@ def materialize_fl_client_split(
         validation_jsonl=output_dir / "validation.jsonl",
         test_jsonl=output_dir / "test.jsonl",
     )
-    dump_split_rows(artifacts.bootstrap_labeled_jsonl, labeled_split.bootstrap_rows)
+    dump_split_rows(
+        artifacts.bootstrap_labeled_jsonl,
+        (
+            selected_labeled_rows
+            if resolved_labeled_exposure_policy.name
+            == LABELED_EXPOSURE_SERVER_ONLY_SEED
+            else labeled_split.bootstrap_rows
+        ),
+    )
     if artifacts.shared_client_labeled_jsonl is not None:
         dump_split_rows(artifacts.shared_client_labeled_jsonl, selected_labeled_rows)
     dump_split_rows(artifacts.validation_jsonl, validation_rows)
@@ -160,7 +165,13 @@ def materialize_fl_client_split(
         client_dir = clients_dir / client_id
         labeled_path = client_dir / "labeled.jsonl"
         unlabeled_path = client_dir / "unlabeled.jsonl"
-        if artifacts.shared_client_labeled_jsonl is None:
+        if resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+            client_labeled_rows = []
+            client_labeled_ref = _relative_ref(output_dir, labeled_path)
+            dump_split_rows(labeled_path, client_labeled_rows)
+        elif (
+            resolved_labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
+        ):
             client_labeled_rows = list(labeled_client_shard.rows)
             client_labeled_ref = _relative_ref(output_dir, labeled_path)
             dump_split_rows(labeled_path, client_labeled_rows)

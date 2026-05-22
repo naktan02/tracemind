@@ -87,6 +87,10 @@ class SimulationRoundSummary:
     round_time_seconds: float | None = None
     total_payload_bytes: int | None = None
     gpu_memory_peak_mb: float | None = None
+    total_client_count: int = 0
+    selected_client_count: int = 0
+    skipped_client_count: int = 0
+    skipped_client_ids: tuple[str, ...] = ()
 
 
 @dataclass(slots=True)

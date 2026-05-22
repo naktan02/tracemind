@@ -9,6 +9,15 @@ defaults:
   - /strategy_axes/adaptation/peft_adapter: default
   - /run_controls/fl_ssl/budget: smoke
   - /strategy_axes/fl/shard_policy: label_dominant
+  - /strategy_axes/fl/labeled_exposure_policy: shared_client_seed
+  - /strategy_axes/fl/client_participation_policy: all_clients
+  - /strategy_axes/fl/local_supervision_regime: client_labeled_and_unlabeled
+  - /strategy_axes/fl/server_step_policy: none
+  - /strategy_axes/fl/peer_context_policy: none
+  - /strategy_axes/fl/update_partition_policy: unified
+  - /strategy_axes/fl/aggregation_weight_policy: example_count
+  - /strategy_axes/fl/query_multiview_source: materialized_rows
+  - /strategy_axes/fl/method_descriptor: null
   - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/prototype/build_strategy: single

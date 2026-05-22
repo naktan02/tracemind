@@ -5,6 +5,8 @@ from __future__ import annotations
 import time
 from pathlib import Path
 
+from methods.federated.participation import select_participating_clients
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from scripts.experiments.fl_ssl.federated_simulation.adapters.client_training import (
     build_round_training_scoring_service,
     run_client_round,
@@ -54,6 +56,30 @@ def run_one_round(
         training_task=training_task,
     )
 
+    capability_plan = (
+        request.capability_plan
+        or FederatedSslCapabilityPlan.from_mappings(
+            client_participation_policy=None,
+            aggregation_weight_policy=None,
+            labeled_exposure_policy=None,
+            local_supervision_regime=None,
+            server_step_policy=None,
+            peer_context_policy=None,
+            update_partition_policy=None,
+            query_multiview_source=None,
+        )
+    )
+    selected_shards, participation_selection = select_participating_clients(
+        clients=bootstrapped.dataset_split.client_shards,
+        policy=capability_plan.client_participation_policy,
+        seed=request.seed,
+        round_index=round_index,
+    )
+    skipped_client_ids = tuple(
+        bootstrapped.dataset_split.client_shards[index].client_id
+        for index in participation_selection.skipped_indices
+    )
+
     client_executions = tuple(
         run_client_round(
             request=request,
@@ -65,7 +91,7 @@ def run_one_round(
             training_task=training_task,
             training_scoring_service=training_scoring_service,
         )
-        for shard in bootstrapped.dataset_split.client_shards
+        for shard in selected_shards
     )
     update_count = sum(
         1 for execution in client_executions if execution.update_submitted
@@ -103,6 +129,10 @@ def run_one_round(
                 execution.summary.client_payload_bytes or 0
                 for execution in client_executions
             ),
+            total_client_count=len(bootstrapped.dataset_split.client_shards),
+            selected_client_count=participation_selection.selected_count,
+            skipped_client_count=participation_selection.skipped_count,
+            skipped_client_ids=skipped_client_ids,
         ),
     )
 

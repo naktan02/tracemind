@@ -25,6 +25,11 @@ from methods.federated.aggregation.fedavg.weighted_average import (
     weighted_average_scalar_mappings,
     weighted_average_vector_mappings,
 )
+from methods.federated.aggregation_weighting import (
+    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AggregationWeightPolicy,
+    aggregation_weight_for_update,
+)
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
     ClassifierHeadDelta,
@@ -63,11 +68,13 @@ def compute_classifier_head_fedavg(
     base_label_weights: Mapping[str, Sequence[float]],
     base_label_biases: Mapping[str, float],
     updates: Sequence[ClassifierHeadFedAvgUpdate],
+    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
 ) -> ClassifierHeadFedAvgResult:
-    """label별 weight/bias delta를 example_count로 평균해 다음 head를 계산한다."""
+    """label별 weight/bias delta를 policy weight로 평균해 다음 head를 계산한다."""
 
     normalized_base_weights = _normalize_base_label_weights(base_label_weights)
     labels = tuple(sorted(normalized_base_weights))
+    weight_policy = AggregationWeightPolicy(name=weight_policy_name)
     normalized_base_biases = _normalize_base_label_biases(
         base_label_biases=base_label_biases,
         labels=labels,
@@ -83,7 +90,7 @@ def compute_classifier_head_fedavg(
         [
             WeightedVectorMappingUpdate(
                 values=update.label_weight_deltas,
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -98,7 +105,7 @@ def compute_classifier_head_fedavg(
         [
             WeightedScalarMappingUpdate(
                 values=_normalize_bias_deltas(update, labels=labels),
-                weight=float(update.example_count),
+                weight=aggregation_weight_for_update(update, policy=weight_policy),
             )
             for update in valid_updates
         ]
@@ -194,8 +201,6 @@ def aggregate_classifier_head_fedavg(
 ) -> FederatedAggregationResult:
     """Classifier-head update payload를 FedAvg core 입력으로 변환한다."""
 
-    del overrides
-
     base_state = cast(ClassifierHeadState, base_state)
     updates = [cast(ClassifierHeadDelta, payload) for payload in update_payloads]
     labels = base_state.labels
@@ -224,6 +229,7 @@ def aggregate_classifier_head_fedavg(
         base_label_weights=base_state.label_weights,
         base_label_biases=base_state.label_biases,
         updates=method_updates,
+        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
 
     next_state = ClassifierHeadState(

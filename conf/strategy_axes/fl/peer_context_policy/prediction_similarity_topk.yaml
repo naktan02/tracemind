@@ -1,0 +1,5 @@
+# @package peer_context_policy
+
+name: prediction_similarity_topk
+num_helpers: 2
+refresh_interval: 10

@@ -7,8 +7,16 @@ from pathlib import Path
 
 from omegaconf import DictConfig
 
-from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
+from methods.federated.client_split import (
+    LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
+    LABELED_EXPOSURE_SERVER_ONLY_SEED,
+    FederatedLabeledExposurePolicy,
+)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
+    split_rows_for_federation,
+    split_rows_into_client_shards,
+)
 from scripts.experiments.fl_ssl.federated_simulation.config_utils import (
     optional_plain_dict,
 )
@@ -20,6 +28,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.rows import load_jsonl_r
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT,
     FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN,
+    FederatedClientShard,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
 )
@@ -39,6 +48,7 @@ def resolve_fl_data_source(
     cfg: DictConfig,
     client_count: int,
     bootstrap_ratio: float,
+    seed: int,
     shard_policy: FederatedShardPolicyConfig,
 ) -> ResolvedFlDataSource:
     fl_data_cfg = cfg.get("fl_data", {})
@@ -46,17 +56,42 @@ def resolve_fl_data_source(
         fl_data_cfg.get("source_mode", FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN)
     )
     if source_mode == FL_DATA_SOURCE_RUNTIME_SPLIT_FROM_TRAIN:
+        labeled_rows = load_jsonl_rows(Path(str(cfg.train_jsonl)))
+        unlabeled_jsonl = (
+            str(cfg.unlabeled_jsonl)
+            if "unlabeled_jsonl" in cfg and cfg.unlabeled_jsonl is not None
+            else str(cfg.train_jsonl)
+        )
+        unlabeled_rows = load_jsonl_rows(Path(unlabeled_jsonl))
+        labeled_exposure_policy = FederatedLabeledExposurePolicy.from_mapping(
+            optional_plain_dict(cfg, "labeled_exposure_policy")
+        )
+        dataset_split = _build_runtime_dataset_split(
+            labeled_rows=labeled_rows,
+            unlabeled_rows=unlabeled_rows,
+            client_count=client_count,
+            bootstrap_ratio=bootstrap_ratio,
+            seed=seed,
+            shard_policy=shard_policy,
+            labeled_exposure_policy=labeled_exposure_policy,
+        )
         return ResolvedFlDataSource(
-            train_rows=load_jsonl_rows(Path(str(cfg.train_jsonl))),
+            train_rows=[
+                *dataset_split.bootstrap_rows,
+                *[row for shard in dataset_split.client_shards for row in shard.rows],
+            ],
             validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
-            materialized_dataset_split=None,
+            materialized_dataset_split=dataset_split,
             data_source_config=FederatedDataSourceConfig(
                 source_mode=source_mode,
                 source_selection=optional_plain_dict(cfg, "query_data_selection"),
                 source_jsonl={
-                    "train": str(cfg.train_jsonl),
+                    "labeled": str(cfg.train_jsonl),
+                    "unlabeled": unlabeled_jsonl,
                     "validation": str(cfg.validation_jsonl),
                 },
+                labeled_policy={"mode": "all"},
+                labeled_exposure_policy=labeled_exposure_policy.to_payload(),
             ),
         )
     if source_mode != FL_DATA_SOURCE_MATERIALIZED_CLIENT_SPLIT:
@@ -118,7 +153,6 @@ def require_manifest_matches_config(
             f"{bootstrap_ratio}."
         )
     _require_manifest_shard_policy_matches_config(manifest.shard_policy, shard_policy)
-    _require_manifest_labeled_exposure_is_supported(manifest.labeled_exposure_policy)
     configured_source_selection = optional_plain_dict(cfg, "query_data_selection")
     if (
         configured_source_selection
@@ -162,13 +196,58 @@ def _require_manifest_shard_policy_matches_config(
             )
 
 
-def _require_manifest_labeled_exposure_is_supported(
-    labeled_exposure_policy: dict[str, object],
-) -> None:
-    policy_name = str(labeled_exposure_policy.get("name", "")).strip()
-    if policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
-        raise ValueError(
-            "fl_data materialized manifest labeled_exposure_policy "
-            "server_only_seed is planned but not supported by the current "
-            "FL SSL local training runtime."
+def _build_runtime_dataset_split(
+    *,
+    labeled_rows: list[LabeledQueryRow],
+    unlabeled_rows: list[LabeledQueryRow],
+    client_count: int,
+    bootstrap_ratio: float,
+    seed: int,
+    shard_policy: FederatedShardPolicyConfig,
+    labeled_exposure_policy: FederatedLabeledExposurePolicy,
+) -> FederatedDatasetSplit:
+    """runtime_split fallback에서도 labeled exposure policy를 명시적으로 적용한다."""
+
+    labeled_split = split_rows_for_federation(
+        labeled_rows,
+        bootstrap_ratio=bootstrap_ratio,
+        client_count=client_count,
+        seed=seed,
+        shard_policy=shard_policy,
+    )
+    unlabeled_shards = split_rows_into_client_shards(
+        unlabeled_rows,
+        client_count=client_count,
+        seed=seed + 1,
+        shard_policy=shard_policy,
+    )
+    unlabeled_by_client = {
+        shard.client_id: list(shard.rows) for shard in unlabeled_shards
+    }
+    client_shards: list[FederatedClientShard] = []
+    for labeled_shard in labeled_split.client_shards:
+        unlabeled = unlabeled_by_client[labeled_shard.client_id]
+        if labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+            labeled = []
+        elif labeled_exposure_policy.name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
+            labeled = list(labeled_shard.rows)
+        else:
+            labeled = list(labeled_rows)
+        client_shards.append(
+            FederatedClientShard(
+                client_id=labeled_shard.client_id,
+                rows=[*labeled, *unlabeled],
+                labeled_rows=labeled,
+                unlabeled_rows=unlabeled,
+                client_pool_split_enforced=True,
+            )
         )
+    bootstrap_rows = (
+        list(labeled_rows)
+        if labeled_exposure_policy.name == LABELED_EXPOSURE_SERVER_ONLY_SEED
+        else list(labeled_split.bootstrap_rows)
+    )
+    return FederatedDatasetSplit(
+        bootstrap_rows=bootstrap_rows,
+        client_shards=tuple(client_shards),
+    )

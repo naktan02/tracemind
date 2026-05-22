@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+from methods.federated.aggregation_weighting import (
+    AGGREGATION_WEIGHT_ACCEPTED_COUNT,
+    AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+    AGGREGATION_WEIGHT_UNIFORM,
+    AggregationWeightPolicy,
+)
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     numeric_summary,
 )
@@ -12,12 +19,25 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 
 
-def build_aggregation_diagnostics(result: SimulationResult) -> dict[str, object]:
+def build_aggregation_diagnostics(
+    result: SimulationResult,
+    *,
+    capability_plan: FederatedSslCapabilityPlan | None = None,
+) -> dict[str, object]:
+    weight_policy = (
+        AggregationWeightPolicy()
+        if capability_plan is None
+        else capability_plan.aggregation_weight_policy
+    )
     return {
-        "weight_basis": "update_envelope.example_count",
+        "weight_basis": _aggregation_weight_basis_label(weight_policy),
+        "weight_policy_name": weight_policy.name,
         "client_weight_details_excluded": True,
         "rounds": [
-            _round_aggregation_diagnostics(round_summary)
+            _round_aggregation_diagnostics(
+                round_summary,
+                weight_policy=weight_policy,
+            )
             for round_summary in result.rounds
         ],
     }
@@ -31,6 +51,8 @@ def aggregation_example_count(client: ClientRoundSummary) -> int:
 
 def _round_aggregation_diagnostics(
     round_summary: SimulationRoundSummary,
+    *,
+    weight_policy: AggregationWeightPolicy,
 ) -> dict[str, object]:
     aggregation_example_counts = [
         aggregation_example_count(client)
@@ -42,11 +64,16 @@ def _round_aggregation_diagnostics(
         for client in round_summary.clients
         if client.update_generated
     ]
-    total_aggregation_examples = sum(aggregation_example_counts)
+    aggregation_weights = [
+        _client_aggregation_weight(client, policy=weight_policy)
+        for client in round_summary.clients
+        if client.update_generated
+    ]
+    total_aggregation_weight = sum(aggregation_weights)
     normalized_weights = [
-        example_count / total_aggregation_examples
-        for example_count in aggregation_example_counts
-        if total_aggregation_examples > 0
+        weight / total_aggregation_weight
+        for weight in aggregation_weights
+        if total_aggregation_weight > 0
     ]
     delta_l2_norms = [
         client.delta_l2_norm
@@ -59,15 +86,24 @@ def _round_aggregation_diagnostics(
     delta_l2_norm_summary = numeric_summary(delta_l2_norms)
     return {
         "round_id": round_summary.round_id,
+        "total_client_count": (
+            round_summary.total_client_count or len(round_summary.clients)
+        ),
+        "selected_client_count": (
+            round_summary.selected_client_count or len(round_summary.clients)
+        ),
         "participating_client_count": len(round_summary.clients),
+        "skipped_client_count": round_summary.skipped_client_count,
         "update_count": round_summary.update_count,
         "zero_update_client_count": zero_update_client_count,
         "total_candidate_count": sum(
             client.candidate_count for client in round_summary.clients
         ),
         "total_accepted_count": sum(accepted_counts),
-        "total_aggregation_examples": total_aggregation_examples,
+        "total_aggregation_examples": sum(aggregation_example_counts),
+        "total_aggregation_weight": total_aggregation_weight,
         "aggregation_example_basis": "update_envelope.example_count",
+        "aggregation_weight_basis": weight_policy.name,
         "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_example_count_summary": numeric_summary(
             aggregation_example_counts
@@ -78,3 +114,23 @@ def _round_aggregation_diagnostics(
         "max_delta_l2_norm": delta_l2_norm_summary["max"],
         "update_norm_variance": delta_l2_norm_summary["variance"],
     }
+
+
+def _client_aggregation_weight(
+    client: ClientRoundSummary,
+    *,
+    policy: AggregationWeightPolicy,
+) -> float:
+    if policy.name == AGGREGATION_WEIGHT_UNIFORM:
+        return 1.0
+    if policy.name == AGGREGATION_WEIGHT_ACCEPTED_COUNT:
+        return float(client.accepted_count)
+    if policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT:
+        return float(aggregation_example_count(client))
+    raise ValueError(f"Unsupported aggregation weight policy: {policy.name}")
+
+
+def _aggregation_weight_basis_label(policy: AggregationWeightPolicy) -> str:
+    if policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT:
+        return "update_envelope.example_count"
+    return policy.name

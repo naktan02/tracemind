@@ -277,14 +277,25 @@ def test_materialize_fl_client_split_shared_seed_writes_single_labeled_artifact(
     )
 
 
-def test_materialize_fl_client_split_rejects_server_only_seed_until_runtime_exists(
+def test_materialize_fl_client_split_supports_server_only_seed_artifacts(
     tmp_path: Path,
 ) -> None:
-    with pytest.raises(ValueError, match="server_only_seed"):
-        _materialize_test_split(
-            tmp_path,
-            labeled_exposure_policy={"name": "server_only_seed"},
-        )
+    manifest_path = _materialize_test_split(
+        tmp_path,
+        labeled_exposure_policy={"name": "server_only_seed"},
+    )
+
+    loaded = load_materialized_client_split(manifest_path)
+
+    assert manifest_path == (
+        tmp_path / "splits" / "server_only_labeled" / "test_split" / "manifest.json"
+    )
+    assert loaded.manifest.labeled_exposure_policy == {"name": "server_only_seed"}
+    assert {row["query_id"] for row in loaded.dataset_split.bootstrap_rows} == {
+        f"l_a_{index}" for index in range(6)
+    } | {f"l_n_{index}" for index in range(6)}
+    assert all(not shard.labeled_rows for shard in loaded.dataset_split.client_shards)
+    assert all(shard.unlabeled_rows for shard in loaded.dataset_split.client_shards)
 
 
 def test_materialize_fl_client_split_supports_labeled_count_per_class_policy(
@@ -431,7 +442,7 @@ def test_run_federated_simulation_rejects_manifest_client_count_drift(
         build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
 
 
-def test_run_federated_simulation_rejects_server_only_seed_manifest(
+def test_run_federated_simulation_records_server_only_seed_manifest_capability(
     tmp_path: Path,
 ) -> None:
     manifest_path = _materialize_test_split(tmp_path, client_count=2)
@@ -456,8 +467,13 @@ def test_run_federated_simulation_rejects_server_only_seed_manifest(
             ],
         )
 
-    with pytest.raises(ValueError, match="server_only_seed"):
-        build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
+    request = build_simulation_request_from_config(cfg, output_dir=tmp_path / "run")
+
+    assert request.capability_plan is not None
+    assert request.capability_plan.labeled_exposure_policy_name == "server_only_seed"
+    assert request.data_source_config.labeled_exposure_policy == {
+        "name": "server_only_seed"
+    }
 
 
 def test_run_federated_simulation_allows_materialized_split_ratio_metadata_drift(
