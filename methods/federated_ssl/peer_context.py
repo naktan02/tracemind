@@ -53,6 +53,35 @@ class FederatedSslPeerContext:
         return len(self.helper_client_ids)
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedSslPeerClientSnapshot:
+    """다음 round peer selection/prediction에 쓰는 client-local snapshot."""
+
+    client_id: str
+    selection_vector: tuple[float, ...]
+    payload_kind: str
+    payload: object
+    metadata: Mapping[str, object] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if not self.client_id.strip():
+            raise ValueError("client_id must not be empty.")
+        if not self.selection_vector:
+            raise ValueError("selection_vector must not be empty.")
+        if not self.payload_kind.strip():
+            raise ValueError("payload_kind must not be empty.")
+        object.__setattr__(
+            self,
+            "selection_vector",
+            tuple(float(value) for value in self.selection_vector),
+        )
+        object.__setattr__(
+            self,
+            "metadata",
+            MappingProxyType(dict(self.metadata)),
+        )
+
+
 FederatedSslPeerContextByClient = Mapping[str, FederatedSslPeerContext]
 
 

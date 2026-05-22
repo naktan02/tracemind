@@ -16,7 +16,11 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
+    HelperWeakProbabilityProvider,
     train_partitioned_lora_classifier,
+)
+from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
+    build_lora_classifier_peer_client_snapshot,
 )
 from methods.adaptation.lora_classifier.training.delta_extraction import (
     extract_lora_classifier_parameter_deltas,
@@ -109,6 +113,8 @@ def run_method_owned_lora_classifier_training_core(
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
     peer_context: FederatedSslPeerContext | None = None,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
+    peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
@@ -209,11 +215,9 @@ def run_method_owned_lora_classifier_training_core(
             if training_task.gradient_clip_norm is None
             else float(training_task.gradient_clip_norm)
         ),
-        helper_weak_probability_provider=None,
+        helper_weak_probability_provider=helper_weak_probability_provider,
         psi_query_ssl_algorithm=psi_query_ssl_algorithm,
-        enable_inter_client_consistency=(
-            peer_context is not None and peer_context.helper_count > 0
-        ),
+        enable_inter_client_consistency=(helper_weak_probability_provider is not None),
     )
     history_record = training_result.metrics
     pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
@@ -312,6 +316,16 @@ def run_method_owned_lora_classifier_training_core(
         local_step_plan=step_plan,
         client_metrics=client_metrics,
         pseudo_label_quality=pseudo_label_quality,
+        peer_client_snapshot=build_lora_classifier_peer_client_snapshot(
+            client_id=client_id,
+            model=model,
+            tokenizer=tokenizer,
+            probe_rows=() if peer_probe_rows is None else peer_probe_rows,
+            labels=effective_labels,
+            lora_config=lora_config,
+            trainer_runtime_config=trainer_runtime_config,
+            probe_batch_size=unlabeled_batch_size or int(training_task.batch_size),
+        ),
     )
 
 

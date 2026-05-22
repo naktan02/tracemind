@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -23,11 +23,18 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     run_method_owned_lora_classifier_training_core,
 )
+from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
+    build_lora_classifier_helper_probability_provider,
+)
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+from methods.federated_ssl.peer_context import (
+    FederatedSslPeerClientSnapshot,
+    FederatedSslPeerContext,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
@@ -61,6 +68,8 @@ def run_method_owned_lora_classifier_local_training(
     unlabeled_batch_size: int | None,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
     peer_context: FederatedSslPeerContext | None = None,
+    peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
+    peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
 ) -> QuerySslLoraClientTrainingResult:
@@ -76,12 +85,31 @@ def run_method_owned_lora_classifier_local_training(
         output_dir=output_dir,
         aggregated_at=effective_created_at,
     )
+    effective_lora_config = (
+        lora_config
+        or build_lora_classifier_training_backend_config(training_task.objective_config)
+    )
+    labels = tuple(str(label) for label in active_adapter_state.label_schema)
+    helper_weak_probability_provider = None
+    if (
+        local_ssl_policy_name.strip().lower().replace("-", "_")
+        == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+    ):
+        helper_weak_probability_provider = (
+            build_lora_classifier_helper_probability_provider(
+                peer_context=peer_context,
+                peer_snapshots=peer_snapshots,
+                labels=labels,
+                lora_config=effective_lora_config,
+                trainer_runtime_config=trainer_runtime_config,
+            )
+        )
     result = run_method_owned_lora_classifier_training_core(
         client_id=client_id,
         seed=seed,
         labeled_rows=labeled_rows,
         unlabeled_rows=unlabeled_rows,
-        labels=tuple(str(label) for label in active_adapter_state.label_schema),
+        labels=labels,
         base_parameters=base_parameters,
         training_task=training_task,
         model_manifest=model_manifest,
@@ -91,15 +119,14 @@ def run_method_owned_lora_classifier_local_training(
         peer_context=peer_context,
         strong_view_policy=strong_view_policy,
         unlabeled_batch_size=unlabeled_batch_size,
-        lora_config=lora_config
-        or build_lora_classifier_training_backend_config(
-            training_task.objective_config
-        ),
+        lora_config=effective_lora_config,
         trainer_runtime_config=trainer_runtime_config,
         created_at=effective_created_at,
         delta_materializer=SimulationQuerySslLoraDeltaMaterializer(
             output_dir=output_dir
         ),
+        helper_weak_probability_provider=helper_weak_probability_provider,
+        peer_probe_rows=peer_probe_rows,
     )
     TrainingArtifactRepository(
         state_root=output_dir / "agents" / client_id

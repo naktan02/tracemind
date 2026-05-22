@@ -17,6 +17,9 @@ from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop 
     run_partitioned_lora_classifier_step,
     train_partitioned_lora_classifier,
 )
+from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
+    extract_lora_classifier_materialized_state,
+)
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
@@ -97,6 +100,20 @@ def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
         "anxiety": 0.5,
         "normal": -0.25,
     }
+
+
+def test_lora_classifier_peer_snapshot_extracts_current_trainable_state() -> None:
+    model = TinyLoraClassifier()
+    labels = ("anxiety", "normal")
+
+    snapshot = extract_lora_classifier_materialized_state(
+        model=model,  # type: ignore[arg-type]
+        labels=labels,
+    )
+
+    assert "encoder_lora.weight" in snapshot.lora_parameters
+    assert set(snapshot.classifier_head_weights) == set(labels)
+    assert set(snapshot.classifier_head_biases) == set(labels)
 
 
 def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:

@@ -38,6 +38,7 @@ from methods.evaluation.pseudo_label_quality import (
     PseudoLabelQualitySummary,
     build_pseudo_label_quality_summary,
 )
+from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
@@ -119,6 +120,7 @@ class QuerySslLoraClientTrainingResult:
     pseudo_label_quality: PseudoLabelQualitySummary = field(
         default_factory=PseudoLabelQualitySummary.empty
     )
+    peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
 
 
 def run_query_ssl_lora_classifier_training_core(

@@ -37,6 +37,9 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.result_builder import 
 from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     run_one_round,
 )
+from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
+    PeerContextSimulationState,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedQuerySslObjectiveConfig,
     FederatedSslMethodConfig,
@@ -76,6 +79,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
         ssl_method_descriptor=ssl_method_runtime.descriptor,
     )
     active = bootstrapped.active
+    peer_context_state = PeerContextSimulationState()
     round_summaries: list[SimulationRoundSummary] = []
 
     for round_index in range(1, request.rounds + 1):
@@ -85,10 +89,12 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
             active=active,
             ssl_method_runtime=ssl_method_runtime,
             round_index=round_index,
+            peer_context_state=peer_context_state,
         )
         if round_execution.summary is None:
             break
         active = round_execution.active
+        peer_context_state = round_execution.peer_context_state
         round_summaries.append(round_execution.summary)
 
     return build_simulation_result(

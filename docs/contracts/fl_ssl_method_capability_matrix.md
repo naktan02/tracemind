@@ -51,10 +51,11 @@ policy가 된다.
     LoRA-classifier model/loaders, logical partition delta, shared update payload로
     실행하는 adapter-family slice다. FedMatch method 의미는
     `methods/federated_ssl/fedmatch/`에서 읽는다.
-  - helper prediction exchange, sparse S2C/C2S sync, labels-at-server server step
-    runtime은 아직 실행되지 않는다. 현재 labels-at-client slice는 기존
-    LoRA-classifier FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는
-    `partitioned_deltas`를 함께 제출한다.
+  - helper prediction exchange는 이전 round client-local LoRA snapshot과 validation
+    probe vector 기반 simulation slice로 실행된다. sparse S2C/C2S sync,
+    labels-at-server server step runtime은 아직 실행되지 않는다. 현재 labels-at-client
+    slice는 기존 LoRA-classifier FedAvg merged delta와 `fedmatch_partitioned`에서
+    쓰는 `partitioned_deltas`를 함께 제출한다.
 
 현재 구현하지 않을 것:
 
@@ -116,9 +117,9 @@ FedMatch 다음 구현 결정:
   algorithm state 저장 surface가 필요한 조합은 실행 전에 validator가 막는다.
 - inter-client consistency는 `peer_context=none` baseline을 유지하면서,
   `peer_context_policy=prediction_similarity_topk` runtime adapter로 helper client
-  선택과 method-owned trainer 주입 seam을 열었다. 실제 helper model prediction
-  tensor는 이전 round client model snapshot/probe vector 저장 capability가 열린 뒤
-  FedMatch KL loss에 연결한다.
+  선택과 method-owned trainer 주입 seam을 열었다. 실제 helper weak-view probability는
+  이전 round client-local LoRA snapshot/probe vector를 이용해 FedMatch KL loss에
+  연결한다.
 - labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
   열 수 있지만, v1 FedMatch 실행 범위에는 넣지 않는다.
 

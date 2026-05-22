@@ -256,9 +256,10 @@ Runtime translation:
 3. LoRA-classifier trainer 한 step의 sigma/psi logical optimizer split core는 열었다.
    supervised sub-step delta는 `sigma`, unsupervised sub-step delta는 `psi`로 기록한다.
 4. method-owned FedMatch simulation wiring과 `prediction_similarity_topk` helper
-   client context 주입 seam은 열었다. 다음 구현은 이전 round client model/probe
-   snapshot 기반 helper prediction tensor 생성, sparse S2C/C2S sync, 필요한 runtime
-   capability adapter 순서로 진행한다.
+   client context 주입 seam은 열었다. 이전 round client-local LoRA snapshot과
+   validation probe vector 기반 helper weak-probability provider도 simulation에
+   연결했다. 다음 구현은 sparse S2C/C2S sync와 필요한 runtime capability adapter
+   순서로 진행한다.
 5. FedMatch-style server update와 local SSL policy는 별도 capability 축으로 분리했다.
    현재 `fedavg_merged_delta`는 실행 중인 merged delta/FedAvg path이고,
    `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로

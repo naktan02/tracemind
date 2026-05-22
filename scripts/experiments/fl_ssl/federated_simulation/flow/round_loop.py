@@ -23,6 +23,8 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime imp
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
+    ClientRoundExecution,
+    PeerContextSimulationState,
     RoundExecution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -41,6 +43,7 @@ def run_one_round(
     active: ActiveSimulationState,
     ssl_method_runtime: FederatedSslSimulationRuntime,
     round_index: int,
+    peer_context_state: PeerContextSimulationState,
 ) -> RoundExecution:
     """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
 
@@ -87,7 +90,7 @@ def run_one_round(
         ssl_method_config=request.ssl_method_config,
         selected_client_ids=tuple(shard.client_id for shard in selected_shards),
         round_index=round_index,
-        client_vectors=None,
+        client_vectors=peer_context_state.selection_vectors(),
     )
 
     client_executions = tuple(
@@ -101,6 +104,7 @@ def run_one_round(
             training_task=training_task,
             training_scoring_service=training_scoring_service,
             peer_context=peer_context_by_client.get(shard.client_id),
+            peer_snapshots=peer_context_state.client_snapshots,
         )
         for shard in selected_shards
     )
@@ -108,7 +112,15 @@ def run_one_round(
         1 for execution in client_executions if execution.update_submitted
     )
     if update_count == 0:
-        return RoundExecution(active=active, summary=None)
+        return RoundExecution(
+            active=active,
+            peer_context_state=peer_context_state,
+            summary=None,
+        )
+    next_peer_context_state = _build_next_peer_context_state(
+        previous=peer_context_state,
+        client_executions=client_executions,
+    )
 
     next_model_revision = f"sim_rev_{round_index:04d}"
     next_prototype_version = f"proto_sim_{round_index:04d}"
@@ -128,6 +140,7 @@ def run_one_round(
     )
     return RoundExecution(
         active=next_active,
+        peer_context_state=next_peer_context_state,
         summary=SimulationRoundSummary(
             round_id=round_id,
             model_revision=next_model_revision,
@@ -146,6 +159,21 @@ def run_one_round(
             skipped_client_ids=skipped_client_ids,
         ),
     )
+
+
+def _build_next_peer_context_state(
+    *,
+    previous: PeerContextSimulationState,
+    client_executions: tuple[ClientRoundExecution, ...],
+) -> PeerContextSimulationState:
+    snapshots = dict(previous.client_snapshots)
+    for execution in client_executions:
+        if execution.peer_client_snapshot is None:
+            continue
+        snapshots[execution.peer_client_snapshot.client_id] = (
+            execution.peer_client_snapshot
+        )
+    return PeerContextSimulationState(client_snapshots=snapshots)
 
 
 def _finalize_round_publication(

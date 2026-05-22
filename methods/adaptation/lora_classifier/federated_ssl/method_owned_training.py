@@ -106,6 +106,8 @@ def run_method_owned_lora_classifier_training_core(
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
     peer_context: FederatedSslPeerContext | None = None,
+    helper_weak_probability_provider: object | None = None,
+    peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """선택된 method-owned LoRA-classifier local training core를 실행한다."""
 
@@ -129,4 +131,6 @@ def run_method_owned_lora_classifier_training_core(
         trainer_runtime_config=trainer_runtime_config,
         created_at=created_at,
         delta_materializer=delta_materializer,
+        helper_weak_probability_provider=helper_weak_probability_provider,
+        peer_probe_rows=peer_probe_rows,
     )

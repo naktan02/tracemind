@@ -55,4 +55,4 @@ report_tags:
   - fedmatch
 notes:
   - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection is wired through the common peer_context axis, while helper prediction tensors, sparse S2C/C2S, and labels-at-server server step remain future runtime capabilities.
+  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and LoRA-classifier family slice, while sparse S2C/C2S and labels-at-server server step remain future runtime capabilities.

@@ -3,10 +3,14 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.peer_context import (
+    FederatedSslPeerClientSnapshot,
+    FederatedSslPeerContext,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
@@ -41,6 +45,7 @@ def run_method_owned_client_round_if_supported(
     shard: FederatedClientShard,
     training_task: Any,
     peer_context: FederatedSslPeerContext | None = None,
+    peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution | None:
     """method-owned LoRA raw-row training이 가능한 조합이면 실행한다."""
 
@@ -54,6 +59,7 @@ def run_method_owned_client_round_if_supported(
         shard=shard,
         training_task=training_task,
         peer_context=peer_context,
+        peer_snapshots=peer_snapshots,
     )
 
 
@@ -77,6 +83,7 @@ def _run_method_owned_lora_client_round(
     shard: FederatedClientShard,
     training_task: Any,
     peer_context: FederatedSslPeerContext | None = None,
+    peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution:
     if request.ssl_method_config is None:
         raise ValueError("ssl_method_config is required.")
@@ -102,6 +109,8 @@ def _run_method_owned_lora_client_round(
         ),
         query_ssl_config=request.query_ssl_objective_config,
         peer_context=peer_context,
+        peer_snapshots=peer_snapshots,
+        peer_probe_rows=request.validation_rows,
         strong_view_policy=(
             "first_aug"
             if query_ssl_config is None
@@ -168,4 +177,5 @@ def _run_method_owned_lora_client_round(
             ),
         ),
         update_submitted=update_submitted,
+        peer_client_snapshot=local_result.peer_client_snapshot,
     )

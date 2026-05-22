@@ -11,6 +11,8 @@ LoRA/classifier 학습 loop와 shared update payload로 실행하는 slice다.
   LoRA-classifier model/loaders, delta materialization, update envelope에 연결한다.
 - `partitioned_training_loop.py`: LoRA-classifier trainable tensor 위에서 logical
   partition step을 실행한다.
+- `peer_predictions.py`: 이전 round client-local LoRA snapshot을 helper weak-view
+  probability provider와 peer selection vector로 materialize한다.
 
 FedMatch의 원본 의미, hyperparameter snapshot, agreement loss, helper policy,
 server/round policy는 `methods/federated_ssl/fedmatch/`가 소유한다. 이 폴더는 그

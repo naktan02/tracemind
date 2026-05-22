@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 
+from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     FederatedClientShard,
@@ -28,6 +30,21 @@ class ActiveSimulationState:
 
 
 @dataclass(frozen=True, slots=True)
+class PeerContextSimulationState:
+    """simulation round 사이에 유지하는 peer selection/prediction snapshot."""
+
+    client_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] = field(
+        default_factory=dict
+    )
+
+    def selection_vectors(self) -> dict[str, tuple[float, ...]]:
+        return {
+            client_id: snapshot.selection_vector
+            for client_id, snapshot in self.client_snapshots.items()
+        }
+
+
+@dataclass(frozen=True, slots=True)
 class BootstrappedSimulation:
     """bootstrap 이후 FL simulation loop에 필요한 context."""
 
@@ -47,6 +64,7 @@ class ClientRoundExecution:
 
     summary: ClientRoundSummary
     update_submitted: bool
+    peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -54,4 +72,5 @@ class RoundExecution:
     """round 실행 후 새 active 상태와 summary."""
 
     active: ActiveSimulationState
+    peer_context_state: PeerContextSimulationState
     summary: SimulationRoundSummary | None

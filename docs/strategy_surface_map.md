@@ -75,7 +75,7 @@ central fixed embedding + classifier seed
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
 | Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, adapter-family server update resolver | merged FedAvg active, partitioned LoRA `partitioned_delta_average` simulation active |
-| Peer context policy | `none`, `prediction_similarity_topk` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter | `none` active, top-k helper context selection active, helper prediction tensor planned |
+| Peer context policy | `none`, `prediction_similarity_topk` | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter | `none` active, top-k helper context selection and LoRA helper weak-probability provider active |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Local SSL policy | `profile_pseudo_label`, `fixmatch`, `flexmatch`, `freematch`, `adamatch`, `pseudolabel`, `fedmatch_agreement` | `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method` | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement active in method-owned slice |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
@@ -140,8 +140,10 @@ central fixed embedding + classifier seed
   현재 server path는 원본 sparse sigma/psi sync가 아니라 LoRA-classifier merged
   delta/FedAvg 또는 `server_update_policy=fedmatch_partitioned`에서
   LoRA-classifier `partitioned_delta_average` simulation backend다. 이 backend는
-  원본 sparse sigma/psi sync 전체가 아니라 logical partition delta 평균 slice다. helper prediction
-  tensor exchange와 labels-at-server server step은 후속 capability로 남긴다.
+  원본 sparse sigma/psi sync 전체가 아니라 logical partition delta 평균 slice다.
+  이전 round client-local LoRA snapshot 기반 helper weak-probability provider는
+  simulation에서 활성화했고, sparse S2C/C2S와 labels-at-server server step은 후속
+  capability로 남긴다.
   method-only 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 aggregation, adapter projection, SSL hook은 축별 methods
   패키지로 승격한다.

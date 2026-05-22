@@ -9,6 +9,9 @@ from pathlib import Path
 
 import pytest
 
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -35,7 +38,10 @@ from methods.federated_ssl.execution_plan import build_federated_ssl_execution_p
 from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
 )
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.peer_context import (
+    FederatedSslPeerClientSnapshot,
+    FederatedSslPeerContext,
+)
 from methods.prototype.building.single import (
     SinglePrototypeBuildStrategy,
 )
@@ -911,6 +917,32 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             "fedmatch_local_runtime": 1.0,
         },
     )
+    peer_snapshot = FederatedSslPeerClientSnapshot(
+        client_id="agent_02",
+        selection_vector=(0.2, 0.8),
+        payload_kind="lora_classifier_materialized_state.v1",
+        payload=LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.2]},
+            classifier_head_weights={
+                "anxiety": [0.2, 0.0],
+                "normal": [0.0, -0.2],
+            },
+            classifier_head_biases={"anxiety": 0.02, "normal": -0.02},
+        ),
+    )
+    returned_peer_snapshot = FederatedSslPeerClientSnapshot(
+        client_id="agent_01",
+        selection_vector=(0.7, 0.3),
+        payload_kind="lora_classifier_materialized_state.v1",
+        payload=LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.3]},
+            classifier_head_weights={
+                "anxiety": [0.3, 0.0],
+                "normal": [0.0, -0.3],
+            },
+            classifier_head_biases={"anxiety": 0.03, "normal": -0.03},
+        ),
+    )
     method_calls: list[dict[str, object]] = []
 
     def _fake_method_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
@@ -936,6 +968,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 accepted_label_distribution={"anxiety": 1},
                 rejected_label_distribution={},
             ),
+            peer_client_snapshot=returned_peer_snapshot,
         )
 
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
@@ -1054,6 +1087,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         training_task=training_task,
         training_scoring_service=object(),
         peer_context=peer_context,
+        peer_snapshots={"agent_02": peer_snapshot},
     )
 
     assert execution.update_submitted is True
@@ -1064,8 +1098,11 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["labeled_rows"] == [labeled_row]
     assert method_calls[0]["unlabeled_rows"] == [unlabeled_row]
     assert method_calls[0]["peer_context"] is peer_context
+    assert method_calls[0]["peer_snapshots"] == {"agent_02": peer_snapshot}
+    assert method_calls[0]["peer_probe_rows"] == request.validation_rows
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
+    assert execution.peer_client_snapshot is returned_peer_snapshot
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:

@@ -75,9 +75,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   split과 method-owned local simulation wiring은
   `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral
   adapter-family slice에 추가했다.
-  `prediction_similarity_topk` helper client context 주입 seam은 열렸고, helper
-  model prediction tensor 생성, sparse S2C/C2S, labels-at-server server runtime은
-  후속 구현이다.
+  `prediction_similarity_topk` helper client context 주입 seam과 이전 round
+  client-local LoRA snapshot 기반 helper weak-probability provider는 열렸고,
+  sparse S2C/C2S, labels-at-server server runtime은 후속 구현이다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
   `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로

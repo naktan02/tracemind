@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from methods.evaluation.pseudo_label_quality import (
     build_pseudo_label_quality_summary,
 )
-from methods.federated_ssl.peer_context import FederatedSslPeerContext
+from methods.federated_ssl.peer_context import (
+    FederatedSslPeerClientSnapshot,
+    FederatedSslPeerContext,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     FederatedClientLocalTrainingContext,
     FederatedSslSimulationRuntime,
@@ -66,6 +70,7 @@ def run_client_round(
     training_task: Any,
     training_scoring_service: Any,
     peer_context: FederatedSslPeerContext | None = None,
+    peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution:
     """client shard 하나의 local training을 실행하고 update를 제출한다."""
 
@@ -77,6 +82,7 @@ def run_client_round(
         shard=shard,
         training_task=training_task,
         peer_context=peer_context,
+        peer_snapshots=peer_snapshots,
     )
     if query_ssl_execution is not None:
         return query_ssl_execution
