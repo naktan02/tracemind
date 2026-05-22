@@ -7,8 +7,8 @@
 - `local_objective.py`: sigma/psi loss routing metadata, confidence filter,
   agreement pseudo-label vote helper, tensor-level supervised/unsupervised loss core
 - `lora_classifier_training.py`: LoRA-classifier local training에서 FedMatch
-  supervised/unsupervised step을 실행하고 logical `sigma`/`psi` delta 진단을 남기는
-  method-owned core
+  supervised/unsupervised step을 실행하고 logical `sigma`/`psi` delta를 누적해
+  shared LoRA-classifier update의 `partitioned_deltas`에 싣는 method-owned core
 - `server_policy.py`: labels-at-client / labels-at-server policy metadata
 - `round_policy.py`: helper context policy metadata
 - `helper_selection.py`: 원본 KDTree helper selection을 generic vector top-k로 보존한 core
@@ -29,7 +29,7 @@
 - LoRA-classifier trainable tensor에 supervised step과 unsupervised step을 순차
   적용하고, sub-step delta를 각각 logical `sigma`/`psi` partition으로 기록
 - method-owned FL simulation client runtime에서 FedMatch local objective를 호출하고,
-  서버에는 기존 LoRA-classifier merged delta/FedAvg 경로로 제출
+  기존 merged LoRA-classifier delta와 logical `sigma`/`psi` partition delta를 함께 제출
 - helper refresh/top-k selection helper
 - 공통 `peer_context=prediction_similarity_topk` simulation adapter에서 FedMatch
   descriptor의 `num_helpers`/`refresh_interval`을 읽어 helper client context를 만들고
@@ -41,7 +41,9 @@
 
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper client id
 선택 seam은 열렸지만 helper model prediction tensor 생성, sparse S2C/C2S delta
-sync, `fedmatch_partitioned` server update adapter, labels-at-server supervised server
-step은 다음 단계 capability로 남긴다. 현재 실행 server path는
-`server_step_policy=none`, `server_update_policy=fedavg_merged_delta`에서 기존
-LoRA-classifier FedAvg가 merged delta를 aggregation한다.
+sync, labels-at-server supervised server step은 다음 단계 capability로 남긴다.
+현재 실행 server path는 `server_step_policy=none`에서
+`server_update_policy=fedavg_merged_delta`면 기존 LoRA-classifier FedAvg가 merged
+delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
+runtime이 LoRA-classifier `partitioned_fedavg` backend로 `partitioned_deltas`를
+소비한다.

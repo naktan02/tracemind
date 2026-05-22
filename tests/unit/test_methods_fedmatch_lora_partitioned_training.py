@@ -2,13 +2,18 @@
 
 from __future__ import annotations
 
+import pytest
 import torch
 from torch import Tensor, nn
+from torch.utils.data import DataLoader
 
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
     snapshot_trainable_parameter_tensors,
+)
+from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+    build_query_ssl_local_step_plan,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
@@ -16,6 +21,7 @@ from methods.federated_ssl.fedmatch.local_objective import (
 from methods.federated_ssl.fedmatch.lora_classifier_training import (
     run_fedmatch_lora_classifier_partitioned_step,
     run_method_owned_lora_classifier_training_core,
+    train_fedmatch_lora_classifier,
 )
 from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
@@ -156,4 +162,96 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
     torch.testing.assert_close(
         result.metrics["psi_confident_count"],
         torch.tensor(2.0),
+    )
+
+
+def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
+    model = TinyLoraClassifier()
+    labels = ("anxiety", "normal")
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    train_loader = DataLoader(
+        [
+            {
+                "input_ids": torch.tensor([1.0, 0.0, 0.5]),
+                "attention_mask": torch.ones(3),
+                "labels": torch.tensor(0, dtype=torch.long),
+            },
+            {
+                "input_ids": torch.tensor([0.0, 1.0, 0.5]),
+                "attention_mask": torch.ones(3),
+                "labels": torch.tensor(1, dtype=torch.long),
+            },
+        ],
+        batch_size=2,
+    )
+    unlabeled_loader = DataLoader(
+        [
+            {
+                "weak_input_ids": torch.tensor([1.0, 0.2, 0.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.8, 0.3, 0.1]),
+                "strong_attention_mask": torch.ones(3),
+            },
+            {
+                "weak_input_ids": torch.tensor([0.0, 0.5, 1.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.1, 0.4, 1.0]),
+                "strong_attention_mask": torch.ones(3),
+            },
+        ],
+        batch_size=2,
+    )
+    step_plan = build_query_ssl_local_step_plan(
+        labeled_loader_steps=1,
+        unlabeled_loader_steps=1,
+        uses_labeled_batches=True,
+        local_epochs=1,
+        max_steps=2,
+    )
+    before = snapshot_trainable_parameter_tensors(model)
+
+    result = train_fedmatch_lora_classifier(
+        model=model,
+        train_loader=train_loader,
+        unlabeled_loader=unlabeled_loader,
+        labels=labels,
+        parameters=parameters,
+        step_plan=step_plan,
+        device="cpu",
+        learning_rate=0.2,
+        classifier_learning_rate=0.2,
+        weight_decay=0.0,
+        max_grad_norm=0.0,
+    )
+
+    after = snapshot_trainable_parameter_tensors(model)
+    total_partition = build_lora_classifier_partition_delta_from_parameter_deltas(
+        partition_name="total",
+        labels=labels,
+        parameter_deltas=diff_parameter_snapshots(after=after, before=before),
+    )
+    sigma = result.partition_deltas[FEDMATCH_SIGMA_PARTITION]
+    psi = result.partition_deltas[FEDMATCH_PSI_PARTITION]
+    combined_lora = [
+        left + right
+        for left, right in zip(
+            sigma.lora_parameter_deltas["encoder_lora.weight"],
+            psi.lora_parameter_deltas["encoder_lora.weight"],
+        )
+    ]
+
+    assert result.metrics["train_total_loss"] > 0.0
+    assert set(result.partition_deltas) == {
+        FEDMATCH_SIGMA_PARTITION,
+        FEDMATCH_PSI_PARTITION,
+    }
+    assert combined_lora == pytest.approx(
+        total_partition.lora_parameter_deltas["encoder_lora.weight"]
     )

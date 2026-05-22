@@ -57,6 +57,7 @@
     "lora_parameter_deltas": null,
     "classifier_head_weight_deltas": null,
     "classifier_head_bias_deltas": {},
+    "partitioned_deltas": null,
     "delta_format": "artifact_ref",
     "mean_confidence": 0.87,
     "mean_margin": 0.24,

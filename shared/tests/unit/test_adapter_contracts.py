@@ -310,6 +310,41 @@ def test_lora_classifier_update_supports_inline_delta_without_artifact_ref(
     )
 
 
+def test_lora_classifier_update_supports_partitioned_delta_material(
+    fixed_utc_time,
+) -> None:
+    update = make_lora_classifier_delta_payload(
+        model_id="mxbai-lora-classifier",
+        base_model_revision="rev_lora_001",
+        training_scope="adapter_only",
+        created_at=fixed_utc_time,
+        backbone=_lora_backbone_mapping(),
+        lora_config=_lora_config_mapping(),
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        partitioned_deltas={
+            "sigma": {
+                "lora_parameter_deltas": {"backbone.q_proj.lora_A": [0.3, 0.4]},
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.1, 0.2],
+                    "normal": [-0.1, -0.2],
+                },
+                "classifier_head_bias_deltas": {"anxiety": 0.05},
+            }
+        },
+        delta_format="partitioned_update",
+    )
+
+    assert set(update.partitioned_deltas or {}) == {"sigma"}
+    assert (update.partitioned_deltas or {})["sigma"].classifier_head_bias_deltas == {
+        "anxiety": 0.05,
+        "normal": 0.0,
+    }
+    assert update.l2_norm() == pytest.approx(
+        (0.3**2 + 0.4**2 + 0.1**2 + 0.2**2 + 0.1**2 + 0.2**2 + 0.05**2) ** 0.5
+    )
+
+
 def test_lora_classifier_update_requires_artifact_ref_or_inline_delta(
     fixed_utc_time,
 ) -> None:

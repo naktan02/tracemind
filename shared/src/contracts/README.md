@@ -101,6 +101,9 @@ runtime과 test는 family별 direct import를 사용한다.
     열어 둔다
   - 작은 smoke나 deterministic 단위 검증에는 선택적 inline delta 필드를 쓸 수
     있지만, runtime은 artifact-ref와 inline delta를 명시적으로 구분해야 한다
+  - `partitioned_deltas`는 server update policy가 logical partition을 소비해야 할 때
+    쓰는 선택적 canonical shape다. partition 이름과 sigma/psi 같은 method 의미는
+    `shared`가 아니라 `methods/`의 method package가 소유한다
 
 ### `training_objective_contracts.py`
 

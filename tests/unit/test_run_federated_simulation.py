@@ -29,6 +29,8 @@ from methods.evaluation.classification_report import (
 )
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
+from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import build_federated_ssl_execution_plan
 from methods.federated_ssl.fedmatch.original_spec import (
     fedmatch_original_parameter_mapping,
@@ -100,7 +102,10 @@ from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
     build_round_open_request,
 )
-from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
+from scripts.runtime_adapters.federated_server.runtime import (
+    SimulationServerRuntime,
+    resolve_simulation_aggregation_backend_name,
+)
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )
@@ -361,6 +366,21 @@ def _default_round_runtime_config(
         aggregation_backend_name=aggregation_backend_name,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=lora_classifier,
+    )
+
+
+def _partitioned_server_update_capability_plan() -> FederatedSslCapabilityPlan:
+    return FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "shared_client_seed"},
+        local_supervision_regime={"name": "client_labeled_and_unlabeled"},
+        server_step_policy={"name": "none"},
+        peer_context_policy={"name": "prediction_similarity_topk"},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": "fixmatch"},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
+        query_multiview_source={"name": "materialized_rows"},
     )
 
 
@@ -1308,6 +1328,64 @@ def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) 
     )
 
     assert runtime.lifecycle_service.method_descriptor is None
+
+
+def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -> None:
+    backend_name = resolve_simulation_aggregation_backend_name(
+        adapter_family_name="lora_classifier",
+        aggregation_backend_name="fedavg",
+        capability_plan=_partitioned_server_update_capability_plan(),
+    )
+
+    assert backend_name == "partitioned_fedavg"
+
+
+def test_simulation_server_runtime_rejects_partitioned_policy_for_non_lora_family() -> (
+    None
+):
+    with pytest.raises(ValueError, match="lora_classifier"):
+        resolve_simulation_aggregation_backend_name(
+            adapter_family_name="diagonal_scale",
+            aggregation_backend_name="fedavg",
+            capability_plan=_partitioned_server_update_capability_plan(),
+        )
+
+
+def test_run_simulation_request_rejects_manual_partitioned_update_until_producer(
+    tmp_path: Path,
+) -> None:
+    request = _default_simulation_request(
+        tmp_path,
+        output_dir=tmp_path,
+        rounds=0,
+        model_id="mxbai-lora-classifier",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+            ),
+        ),
+        query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
+            method_name="fixmatch_usb_v1",
+            algorithm_name="fixmatch",
+            parameters={"unlabeled_batch_size": 2},
+            strong_view_policy="second_aug",
+            unlabeled_batch_size=2,
+        ),
+    )
+    request.capability_plan = _partitioned_server_update_capability_plan()
+
+    with pytest.raises(ValueError, match="partitioned_deltas"):
+        run_simulation_request(request)
 
 
 def test_federated_ssl_runtime_rejects_manual_ssl_method_config() -> None:

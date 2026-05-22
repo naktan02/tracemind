@@ -29,6 +29,7 @@ from .local_update import (
     LoraClassifierTrainArtifacts,
     build_lora_classifier_delta_payload_from_artifacts,
 )
+from .partitioned_delta import LoraClassifierPartitionDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -53,6 +54,7 @@ def build_query_ssl_lora_update_payload(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
     created_at: datetime,
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     lora_delta_artifact_ref: str | None = None,
@@ -96,6 +98,7 @@ def build_query_ssl_lora_update_payload(
             classifier_head_bias_deltas=(
                 classifier_head_bias_deltas if include_inline_deltas else None
             ),
+            partitioned_deltas=partitioned_deltas,
             delta_l2_norm=delta_l2_norm,
         ),
         delta_format=normalized_delta_format,

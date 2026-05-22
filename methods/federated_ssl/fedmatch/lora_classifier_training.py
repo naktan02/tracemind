@@ -106,6 +106,14 @@ class FedMatchLoraPartitionedStepResult:
     metrics: Mapping[str, Tensor]
 
 
+@dataclass(frozen=True, slots=True)
+class FedMatchLoraTrainingResult:
+    """FedMatch local loop 결과와 누적 partition delta."""
+
+    metrics: Mapping[str, float]
+    partition_deltas: Mapping[str, LoraClassifierPartitionDelta]
+
+
 class FedMatchMethodLocalTrainingConfig(Protocol):
     """FedMatch local trainer가 읽는 method config surface."""
 
@@ -218,7 +226,7 @@ def run_method_owned_lora_classifier_training_core(
         max_steps=int(training_task.max_steps),
     )
 
-    history_record = train_fedmatch_lora_classifier(
+    training_result = train_fedmatch_lora_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -239,6 +247,7 @@ def run_method_owned_lora_classifier_training_core(
             peer_context is not None and peer_context.helper_count > 0
         ),
     )
+    history_record = training_result.metrics
     pseudo_label_quality = _build_fedmatch_final_snapshot_pseudo_label_quality(
         model=model,
         tokenizer=tokenizer,
@@ -280,6 +289,7 @@ def run_method_owned_lora_classifier_training_core(
         lora_parameter_deltas=lora_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
+        partitioned_deltas=training_result.partition_deltas,
         created_at=created_at,
         delta_format=delta_materialization.delta_format,
         lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
@@ -288,8 +298,8 @@ def run_method_owned_lora_classifier_training_core(
         ),
         include_inline_deltas=delta_materialization.include_inline_deltas,
     )
-    peer_context_helper_count = 0.0 if peer_context is None else float(
-        peer_context.helper_count
+    peer_context_helper_count = (
+        0.0 if peer_context is None else float(peer_context.helper_count)
     )
     client_metrics = {
         **dict(update_build_result.client_metrics),
@@ -301,6 +311,9 @@ def run_method_owned_lora_classifier_training_core(
         "fedmatch_peer_context_helper_count": peer_context_helper_count,
         "fedmatch_peer_context_refreshed": (
             0.0 if peer_context is None else float(peer_context.refreshed)
+        ),
+        "fedmatch_partitioned_delta_count": float(
+            len(training_result.partition_deltas)
         ),
     }
     update_envelope = make_training_update_envelope(
@@ -344,7 +357,7 @@ def train_fedmatch_lora_classifier(
         FedMatchHelperWeakProbabilityProvider | None
     ) = None,
     enable_inter_client_consistency: bool = True,
-) -> dict[str, float]:
+) -> FedMatchLoraTrainingResult:
     """FedMatch supervised/unsupervised 분리 step을 budget만큼 실행한다."""
 
     sigma_optimizer = build_optimizer(
@@ -368,6 +381,8 @@ def train_fedmatch_lora_classifier(
     )
     completed_steps = 0
     scalar_sums: dict[str, float] = {}
+    sigma_parameter_delta_sums: dict[str, Tensor] = {}
+    psi_parameter_delta_sums: dict[str, Tensor] = {}
 
     for _epoch in range(1, min(int(step_plan.local_epochs), total_steps) + 1):
         model.train()
@@ -453,13 +468,39 @@ def train_fedmatch_lora_classifier(
                 "fedmatch_psi_delta_l2",
                 _parameter_delta_l2(step_result.psi_parameter_deltas),
             )
+            _accumulate_parameter_deltas(
+                sigma_parameter_delta_sums,
+                step_result.sigma_parameter_deltas,
+            )
+            _accumulate_parameter_deltas(
+                psi_parameter_delta_sums,
+                step_result.psi_parameter_deltas,
+            )
         if completed_steps >= total_steps:
             break
 
-    return {
-        f"train_{name}": round(safe_divide(value, completed_steps), 6)
-        for name, value in scalar_sums.items()
-    }
+    return FedMatchLoraTrainingResult(
+        metrics={
+            f"train_{name}": round(safe_divide(value, completed_steps), 6)
+            for name, value in scalar_sums.items()
+        },
+        partition_deltas={
+            FEDMATCH_SIGMA_PARTITION: (
+                build_lora_classifier_partition_delta_from_parameter_deltas(
+                    partition_name=FEDMATCH_SIGMA_PARTITION,
+                    parameter_deltas=sigma_parameter_delta_sums,
+                    labels=labels,
+                )
+            ),
+            FEDMATCH_PSI_PARTITION: (
+                build_lora_classifier_partition_delta_from_parameter_deltas(
+                    partition_name=FEDMATCH_PSI_PARTITION,
+                    parameter_deltas=psi_parameter_delta_sums,
+                    labels=labels,
+                )
+            ),
+        },
+    )
 
 
 def run_fedmatch_lora_classifier_partitioned_step(
@@ -675,6 +716,20 @@ def _accumulate_mapping_scalars(
 ) -> None:
     for name, value in values.items():
         _accumulate_named_scalar(sums, f"{prefix}_{name}", value)
+
+
+def _accumulate_parameter_deltas(
+    sums: dict[str, Tensor],
+    values: Mapping[str, Tensor],
+) -> None:
+    for name, value in values.items():
+        detached = value.detach().cpu()
+        if name not in sums:
+            sums[name] = detached.clone()
+            continue
+        if sums[name].shape != detached.shape:
+            raise ValueError("FedMatch partition delta shape changed during training.")
+        sums[name] = sums[name] + detached
 
 
 def _parameter_delta_l2(parameter_deltas: Mapping[str, Tensor]) -> float:

@@ -78,7 +78,8 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   후속 구현이다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
-  `fedmatch_partitioned`는 partitioned delta 해석 capability다.
+  `fedmatch_partitioned`는 LoRA-classifier `partitioned_fedavg` simulation backend로
+  shared update의 `partitioned_deltas`를 소비한다.
   `local_ssl_policy=query_ssl_method`는 FixMatch/FlexMatch/FreeMatch 파라미터를
   기존 `query_ssl_method`에서 읽고, `fedmatch_agreement`는 FedMatch method package가
   소유한다. 현재 validator는 `fedmatch_partitioned + unified`를 막고,
@@ -141,10 +142,12 @@ methods/evaluation/                            # stable metric helper만
 - [x] manual `Query SSL + LoRA-classifier` simulation 경로는
   `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
 - [x] method-owned FedMatch LoRA simulation 경로는 manual Query SSL trainer를 우회해
-  `methods/federated_ssl/fedmatch` local objective를 호출하고, v1에서는 기존
-  LoRA-classifier merged delta/FedAvg server path로 제출한다.
-- [ ] `fedmatch_partitioned` server update adapter를 simulation에 연결해 partitioned
+  `methods/federated_ssl/fedmatch` local objective를 호출하고, merged delta와
+  logical `sigma`/`psi` partition delta를 함께 제출한다.
+- [x] `fedmatch_partitioned` server update adapter를 simulation에 연결해 partitioned
   LoRA-classifier delta를 aggregate하고 published state를 `sigma_plus_psi`로 만든다.
+- [ ] FixMatch 같은 Query SSL local objective를 같은 partitioned sigma/psi loop에
+  주입하는 hybrid local trainer를 연다. 현재는 capability/validator surface만 열려 있다.
 - [x] client별 local optimizer step 수는 `training_task.local_epochs`,
   `training_task.batch_size`, `training_task.max_steps`,
   `query_ssl_method.unlabeled_batch_size`로 동적으로 바뀐다.

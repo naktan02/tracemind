@@ -320,3 +320,19 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
         == "methods.adaptation.lora_classifier.aggregation.fedavg"
     )
     assert spec.core_function_name == "compute_lora_classifier_fedavg"
+
+
+def test_federated_aggregation_method_registry_points_to_partitioned_lora_core() -> (
+    None
+):
+    spec = get_federated_aggregation_method_spec(
+        adapter_kind="lora_classifier",
+        method_name="partitioned_fedavg",
+    )
+
+    assert spec.method_name == "partitioned_fedavg"
+    assert (
+        spec.implementation_module
+        == "methods.adaptation.lora_classifier.aggregation.partitioned_fedavg"
+    )
+    assert spec.core_function_name == "compute_lora_classifier_partitioned_fedavg"

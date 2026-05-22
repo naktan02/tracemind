@@ -50,6 +50,7 @@
     "anxiety": 0.05,
     "normal": 0.0
   },
+  "partitioned_deltas": null,
   "delta_format": "inline_delta",
   "mean_confidence": 0.87,
   "mean_margin": 0.24,

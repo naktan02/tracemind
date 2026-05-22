@@ -15,6 +15,8 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
 
+from ..update.partitioned_delta import LoraClassifierPartitionDelta
+
 LORA_STATE_PARAMETERS_KEY = "lora_parameters"
 CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
 CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
@@ -146,6 +148,42 @@ def materialize_lora_classifier_update(
     )
 
 
+def materialize_lora_classifier_partitioned_update(
+    *,
+    payload: LoraClassifierDelta,
+) -> dict[str, LoraClassifierPartitionDelta]:
+    """shared payload의 partitioned delta를 methods-owned delta object로 읽는다."""
+
+    if payload.partitioned_deltas is None:
+        raise ValueError(
+            "LoRA-classifier partitioned aggregation requires partitioned_deltas."
+        )
+    partitions: dict[str, LoraClassifierPartitionDelta] = {}
+    for partition_name, partition in payload.partitioned_deltas.items():
+        partitions[partition_name] = LoraClassifierPartitionDelta(
+            partition_name=partition_name,
+            lora_parameter_deltas=_normalize_optional_vector_mapping(
+                partition.lora_parameter_deltas,
+                field_name=(
+                    f"partitioned_deltas.{partition_name}.lora_parameter_deltas"
+                ),
+            ),
+            classifier_head_weight_deltas=_normalize_optional_vector_mapping(
+                partition.classifier_head_weight_deltas,
+                field_name=(
+                    f"partitioned_deltas.{partition_name}.classifier_head_weight_deltas"
+                ),
+            ),
+            classifier_head_bias_deltas=_normalize_scalar_mapping(
+                partition.classifier_head_bias_deltas,
+                field_name=(
+                    f"partitioned_deltas.{partition_name}.classifier_head_bias_deltas"
+                ),
+            ),
+        )
+    return partitions
+
+
 def _load_lora_parameter_deltas(
     *,
     payload: LoraClassifierDelta,
@@ -245,6 +283,16 @@ def _normalize_vector_mapping(
             raise ValueError(f"{field_name} artifact vectors must not be empty.")
         result[normalized_key] = vector
     return result
+
+
+def _normalize_optional_vector_mapping(
+    source: object,
+    *,
+    field_name: str,
+) -> dict[str, list[float]]:
+    if source == {}:
+        return {}
+    return _normalize_vector_mapping(source, field_name=field_name)
 
 
 def _normalize_scalar_mapping(

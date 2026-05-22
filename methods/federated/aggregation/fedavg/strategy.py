@@ -47,6 +47,7 @@ class FedAvgAdapterStrategySpec:
     core_function_name: str
     metadata: Mapping[str, AggregationConfigScalar | None]
     aggregate: FedAvgAggregate
+    method_name: str = "fedavg"
 
 
 @dataclass(slots=True)
@@ -55,7 +56,12 @@ class FedAvgAggregationStrategy:
 
     spec: FedAvgAdapterStrategySpec
     overrides: Mapping[str, AggregationConfigScalar] | None = None
-    method_name: str = "fedavg"
+
+    @property
+    def method_name(self) -> str:
+        """registry에서 선택한 aggregation backend 이름."""
+
+        return self.spec.method_name
 
     @property
     def adapter_kind(self) -> str:
@@ -100,7 +106,7 @@ def register_fedavg_adapter_strategy(spec: FedAvgAdapterStrategySpec) -> None:
 
     register_federated_aggregation_strategy(
         adapter_kind=spec.adapter_kind,
-        method_name="fedavg",
+        method_name=spec.method_name,
         aliases=spec.aliases,
         implementation_module=spec.implementation_module,
         core_function_name=spec.core_function_name,

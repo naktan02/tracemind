@@ -261,10 +261,10 @@ Runtime translation:
    capability adapter 순서로 진행한다.
 5. FedMatch-style server update와 local SSL policy는 별도 capability 축으로 분리했다.
    현재 `fedavg_merged_delta`는 실행 중인 merged delta/FedAvg path이고,
-   `fedmatch_partitioned`는 partitioned delta server 해석을 여는 다음 runtime adapter
-   대상이다. `local_ssl_policy=query_ssl_method`는 FixMatch류 파라미터를 기존
-   `query_ssl_method`에서 읽고, `fedmatch_agreement`는 FedMatch method package가
-   소유한다.
+   `fedmatch_partitioned`는 LoRA-classifier `partitioned_fedavg` simulation backend로
+   shared update의 `partitioned_deltas`를 소비한다. `local_ssl_policy=query_ssl_method`는
+   FixMatch류 파라미터를 기존 `query_ssl_method`에서 읽고, `fedmatch_agreement`는
+   FedMatch method package가 소유한다.
 6. FedMatch는 먼저 `1-round` smoke와 필요 시 `5-round` reduced run으로
    method metadata와 실제 local/server policy 변경을 검증한다.
 7. full ablation, full `client_count=1..10` sweep, full-budget main run은

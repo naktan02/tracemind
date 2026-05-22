@@ -125,6 +125,67 @@ class LoraClassifierAdapterStatePayload(SharedAdapterStatePayload):
         return [value / norm for value in vector]
 
 
+class LoraClassifierPartitionDeltaPayload(BaseModel):
+    """하나의 logical partition이 가진 LoRA/head delta payload."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    lora_parameter_deltas: dict[str, list[float]] = Field(default_factory=dict)
+    classifier_head_weight_deltas: dict[str, list[float]] = Field(default_factory=dict)
+    classifier_head_bias_deltas: dict[str, float] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def _validate_partition_delta(self) -> "LoraClassifierPartitionDeltaPayload":
+        if self.lora_parameter_deltas:
+            validate_non_empty_vector_mapping(
+                self.lora_parameter_deltas,
+                field_name="partitioned_deltas.lora_parameter_deltas",
+            )
+        if self.classifier_head_weight_deltas:
+            validate_non_empty_vector_mapping(
+                self.classifier_head_weight_deltas,
+                field_name="partitioned_deltas.classifier_head_weight_deltas",
+            )
+        if not self._has_update_material():
+            raise ValueError("partitioned_deltas partitions must not be empty.")
+        normalized_biases: dict[str, float] = {}
+        for label, value in self.classifier_head_bias_deltas.items():
+            normalized_label = str(label).strip()
+            if not normalized_label:
+                raise ValueError(
+                    "partitioned_deltas.classifier_head_bias_deltas keys must not "
+                    "be empty."
+                )
+            normalized_biases[normalized_label] = float(value)
+        self.classifier_head_bias_deltas = normalized_biases
+        return self
+
+    def _has_update_material(self) -> bool:
+        return any(
+            (
+                self.lora_parameter_deltas,
+                self.classifier_head_weight_deltas,
+                self.classifier_head_bias_deltas,
+            )
+        )
+
+    def squared_l2_norm(self) -> float:
+        """partition 안 delta의 squared L2 norm을 계산한다."""
+
+        squared_norm = 0.0
+        if self.lora_parameter_deltas:
+            squared_norm += squared_vector_mapping_norm(self.lora_parameter_deltas)
+        if self.classifier_head_weight_deltas:
+            squared_norm += squared_vector_mapping_norm(
+                self.classifier_head_weight_deltas
+            )
+        squared_norm += sum(
+            float(value) * float(value)
+            for value in self.classifier_head_bias_deltas.values()
+        )
+        return squared_norm
+
+
 class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
     """LoRA-classifier family update payload."""
 
@@ -147,6 +208,7 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
     lora_parameter_deltas: dict[str, list[float]] | None = None
     classifier_head_weight_deltas: dict[str, list[float]] | None = None
     classifier_head_bias_deltas: dict[str, float] = Field(default_factory=dict)
+    partitioned_deltas: dict[str, LoraClassifierPartitionDeltaPayload] | None = None
     delta_format: str = "artifact_ref"
     mean_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     mean_margin: float | None = None
@@ -181,6 +243,8 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
                 self.lora_parameter_deltas,
                 field_name="lora_parameter_deltas",
             )
+        if self.partitioned_deltas is not None:
+            self.partitioned_deltas = self._normalize_partitioned_deltas()
         return self
 
     def _has_update_material(self) -> bool:
@@ -191,8 +255,38 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
                 self.lora_parameter_deltas,
                 self.classifier_head_weight_deltas,
                 self.classifier_head_bias_deltas,
+                self.partitioned_deltas,
             )
         )
+
+    def _normalize_partitioned_deltas(
+        self,
+    ) -> dict[str, LoraClassifierPartitionDeltaPayload]:
+        if self.partitioned_deltas is None:
+            return {}
+        labels = tuple(self.label_schema)
+        normalized: dict[str, LoraClassifierPartitionDeltaPayload] = {}
+        for raw_name, partition in self.partitioned_deltas.items():
+            name = str(raw_name).strip()
+            if not name:
+                raise ValueError(
+                    "partitioned_deltas partition names must not be empty."
+                )
+            if name in normalized:
+                raise ValueError(f"Duplicate partitioned_deltas partition: {name}")
+            if partition.classifier_head_weight_deltas:
+                validate_label_vector_mapping(
+                    partition.classifier_head_weight_deltas,
+                    labels=labels,
+                    field_name=f"partitioned_deltas.{name}.classifier_head_weight_deltas",
+                )
+            partition.classifier_head_bias_deltas = normalize_label_scalar_mapping(
+                partition.classifier_head_bias_deltas,
+                labels=labels,
+                field_name=f"partitioned_deltas.{name}.classifier_head_bias_deltas",
+            )
+            normalized[name] = partition
+        return normalized
 
     @property
     def labels(self) -> tuple[str, ...]:
@@ -202,16 +296,26 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
         if self.delta_l2_norm is not None:
             return self.delta_l2_norm
         squared_norm = 0.0
+        has_primary_delta_material = False
         if self.lora_parameter_deltas is not None:
+            has_primary_delta_material = True
             squared_norm += squared_vector_mapping_norm(self.lora_parameter_deltas)
         if self.classifier_head_weight_deltas is not None:
+            has_primary_delta_material = True
             squared_norm += squared_vector_mapping_norm(
                 self.classifier_head_weight_deltas
             )
-        squared_norm += sum(
-            float(value) * float(value)
-            for value in self.classifier_head_bias_deltas.values()
-        )
+        if self.classifier_head_bias_deltas:
+            has_primary_delta_material = True
+            squared_norm += sum(
+                float(value) * float(value)
+                for value in self.classifier_head_bias_deltas.values()
+            )
+        if not has_primary_delta_material and self.partitioned_deltas is not None:
+            squared_norm += sum(
+                partition.squared_l2_norm()
+                for partition in self.partitioned_deltas.values()
+            )
         return math.sqrt(squared_norm)
 
 

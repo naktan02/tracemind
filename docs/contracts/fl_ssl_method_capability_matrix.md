@@ -48,7 +48,8 @@ policy가 된다.
     LoRA local simulation bridge는 methods/scripts capability 경계에 고정했다.
   - helper prediction exchange, sparse S2C/C2S sync, labels-at-server server step
     runtime은 아직 실행되지 않는다. 현재 labels-at-client slice는 기존
-    LoRA-classifier FedAvg에 merged delta를 제출한다.
+    LoRA-classifier FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는
+    `partitioned_deltas`를 함께 제출한다.
 
 현재 구현하지 않을 것:
 
@@ -97,9 +98,11 @@ FedMatch 다음 구현 결정:
   확인될 때만 연다.
 - server update/delta 해석은 `server_update_policy`로 분리했다. 현재 실행되는 FedMatch
   slice는 `fedavg_merged_delta`로 merged LoRA-classifier delta를 기존 FedAvg path에
-  제출한다. `fedmatch_partitioned`는 `update_partition_policy=partitioned`와 함께
-  FixMatch 같은 stateless local SSL policy를 조합할 수 있게 capability/validator
-  surface를 열었고, 실제 partitioned server aggregation adapter는 다음 구현 단계다.
+  제출하거나, `fedmatch_partitioned`로 shared update의 `partitioned_deltas`를
+  LoRA-classifier `partitioned_fedavg` simulation backend에서 소비한다.
+  FixMatch 같은 stateless local SSL policy와 조합하는 full hybrid는 capability surface만
+  열려 있고, local trainer가 Query SSL objective를 partitioned sigma/psi loop에 주입하는
+  단계가 남아 있다.
 - local pseudo-label/consistency objective는 `local_ssl_policy`로 분리했다.
   FixMatch/FlexMatch/FreeMatch 파라미터는 기존 `query_ssl_method`가 계속 소유하고,
   `fedmatch_agreement`는 FedMatch method package가 소유한다. FlexMatch/FreeMatch처럼

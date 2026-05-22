@@ -17,6 +17,8 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
+from .partitioned_delta import LoraClassifierPartitionDelta
+
 
 @dataclass(frozen=True, slots=True)
 class LoraClassifierTrainingRow:
@@ -37,6 +39,7 @@ class LoraClassifierTrainArtifacts:
     lora_parameter_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_weight_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_bias_deltas: Mapping[str, float] | None = None
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None
     delta_l2_norm: float = 0.0
 
 
@@ -197,6 +200,9 @@ def build_lora_classifier_delta_payload_from_artifacts(
                 for key, value in artifacts.classifier_head_bias_deltas.items()
             }
         ),
+        partitioned_deltas=_build_partitioned_delta_payload(
+            artifacts.partitioned_deltas
+        ),
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,
@@ -206,3 +212,27 @@ def build_lora_classifier_delta_payload_from_artifacts(
         delta_l2_norm=artifacts.delta_l2_norm,
         created_at=created_at,
     )
+
+
+def _build_partitioned_delta_payload(
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+) -> dict[str, dict[str, object]] | None:
+    if partitioned_deltas is None:
+        return None
+    return {
+        str(name): {
+            "lora_parameter_deltas": {
+                key: [float(value) for value in values]
+                for key, values in delta.lora_parameter_deltas.items()
+            },
+            "classifier_head_weight_deltas": {
+                key: [float(value) for value in values]
+                for key, values in delta.classifier_head_weight_deltas.items()
+            },
+            "classifier_head_bias_deltas": {
+                key: float(value)
+                for key, value in delta.classifier_head_bias_deltas.items()
+            },
+        }
+        for name, delta in sorted(partitioned_deltas.items())
+    }

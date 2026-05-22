@@ -261,16 +261,10 @@ def _to_lora_classifier_method_update(
     payload: LoraClassifierDelta,
     context: FederatedAggregationContext,
 ) -> LoraClassifierFedAvgUpdate:
-    if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
-        raise ValueError("All LoRA-classifier updates must match the backbone.")
-    if _payload_snapshot(payload.lora_config) != _payload_snapshot(
-        base_state.lora_config
-    ):
-        raise ValueError("All LoRA-classifier updates must match the LoRA config.")
-    if payload.labels != base_state.labels:
-        raise ValueError(
-            "LoRA-classifier updates must share the base ordered label_schema."
-        )
+    validate_lora_classifier_update_matches_base(
+        base_state=base_state,
+        payload=payload,
+    )
     materialized = materialize_lora_classifier_update(
         payload=payload,
         context=context,
@@ -284,6 +278,25 @@ def _to_lora_classifier_method_update(
         mean_margin=payload.mean_margin,
         delta_l2_norm=materialized.delta_l2_norm,
     )
+
+
+def validate_lora_classifier_update_matches_base(
+    *,
+    base_state: LoraClassifierState,
+    payload: LoraClassifierDelta,
+) -> None:
+    """LoRA-classifier update가 base global state와 같은 lineage인지 검증한다."""
+
+    if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
+        raise ValueError("All LoRA-classifier updates must match the backbone.")
+    if _payload_snapshot(payload.lora_config) != _payload_snapshot(
+        base_state.lora_config
+    ):
+        raise ValueError("All LoRA-classifier updates must match the LoRA config.")
+    if payload.labels != base_state.labels:
+        raise ValueError(
+            "LoRA-classifier updates must share the base ordered label_schema."
+        )
 
 
 def _payload_snapshot(payload) -> dict[str, object]:

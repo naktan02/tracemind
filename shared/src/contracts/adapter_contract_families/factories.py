@@ -31,6 +31,7 @@ from .lora_classifier import (
     LoraClassifierAdapterUpdatePayload,
     LoraClassifierBackbonePayload,
     LoraClassifierConfigPayload,
+    LoraClassifierPartitionDeltaPayload,
 )
 
 
@@ -174,6 +175,9 @@ def make_lora_classifier_delta_payload(
     lora_parameter_deltas: dict[str, list[float]] | None = None,
     classifier_head_weight_deltas: dict[str, list[float]] | None = None,
     classifier_head_bias_deltas: dict[str, float] | None = None,
+    partitioned_deltas: (
+        dict[str, LoraClassifierPartitionDeltaPayload | Mapping[str, object]] | None
+    ) = None,
     delta_format: str = "artifact_ref",
     mean_confidence: float | None = None,
     mean_margin: float | None = None,
@@ -198,6 +202,7 @@ def make_lora_classifier_delta_payload(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas or {},
+        partitioned_deltas=partitioned_deltas,
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,

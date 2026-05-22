@@ -114,6 +114,16 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
         ]
         is True
     )
+    assert (
+        entries["lora_classifier.partitioned_fedavg"].implementation_module
+        == "methods.adaptation.lora_classifier.aggregation.partitioned_fedavg"
+    )
+    assert (
+        entries["lora_classifier.partitioned_fedavg"].metadata[
+            "requires_partitioned_deltas"
+        ]
+        is True
+    )
 
 
 def test_diagonal_scale_aggregation_applies_backend_overrides() -> None:
@@ -327,6 +337,101 @@ def test_lora_classifier_fedavg_aggregation_publishes_next_state_refs(
     assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
     assert result.aggregated_metrics["lora_parameter_count"] == 2.0
     assert result.update_count == 2
+
+
+def test_lora_classifier_partitioned_fedavg_publishes_next_state_refs(
+    tmp_path,
+) -> None:
+    artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
+    artifact_store.save_json_artifact(
+        "rev_000/lora_adapter",
+        {"lora_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
+    )
+    artifact_store.save_json_artifact(
+        "rev_000/classifier_head",
+        {
+            "classifier_head_weights": {
+                "anxiety": [1.0, 0.0],
+                "normal": [0.0, 1.0],
+            },
+            "classifier_head_biases": {"anxiety": 0.1, "normal": -0.1},
+        },
+    )
+    backend = build_shared_adapter_aggregation_backend(
+        adapter_kind="lora_classifier",
+        backend_name="partitioned_fedavg",
+        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
+        artifact_store=artifact_store,
+    )
+
+    result = backend.aggregate(
+        base_state=_build_lora_state(
+            lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/lora_adapter"
+            ),
+            classifier_head_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/classifier_head"
+            ),
+        ),
+        update_payloads=(
+            make_lora_classifier_delta_payload(
+                model_id="tracemind-lora",
+                base_model_revision="rev_000",
+                training_scope="adapter_only",
+                backbone=_lora_backbone(),
+                lora_config=_lora_config(),
+                label_schema=("anxiety", "normal"),
+                example_count=2,
+                partitioned_deltas={
+                    "sigma": {
+                        "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.2, 0.0]},
+                        "classifier_head_weight_deltas": {
+                            "anxiety": [0.1, 0.0],
+                            "normal": [-0.1, 0.0],
+                        },
+                    },
+                    "psi": {
+                        "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1, 0.3]},
+                        "classifier_head_weight_deltas": {
+                            "anxiety": [0.2, 0.2],
+                            "normal": [-0.2, -0.2],
+                        },
+                        "classifier_head_bias_deltas": {"anxiety": 0.03},
+                    },
+                },
+                delta_format="partitioned_update",
+                mean_confidence=0.9,
+                mean_margin=0.2,
+                created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+            ),
+        ),
+        next_model_revision="rev_001",
+        aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(backend, MethodAggregationBackend)
+    assert backend.adapter_kind == "lora_classifier"
+    lora_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.lora_adapter_artifact_ref or ""
+    )
+    head_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.classifier_head_artifact_ref or ""
+    )
+    assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.3, 1.3]
+    )
+    assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
+        [1.3, 0.2]
+    )
+    assert head_artifact["classifier_head_weights"]["normal"] == pytest.approx(
+        [-0.3, 0.8]
+    )
+    assert head_artifact["classifier_head_biases"] == pytest.approx(
+        {"anxiety": 0.13, "normal": -0.1}
+    )
+    assert result.aggregated_metrics["server_update_partitioned"] == 1.0
+    assert result.aggregated_metrics["partition_count_total"] == 2.0
+    assert result.update_count == 1
 
 
 def test_lora_classifier_fedavg_two_rounds_accumulates_global_snapshot(

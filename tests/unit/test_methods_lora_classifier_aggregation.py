@@ -10,7 +10,12 @@ import pytest
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
     materialize_base_lora_classifier_state,
+    materialize_lora_classifier_partitioned_update,
     materialize_lora_classifier_update,
+)
+from methods.adaptation.lora_classifier.aggregation.partitioned_fedavg import (
+    LoraClassifierPartitionedFedAvgUpdate,
+    compute_lora_classifier_partitioned_fedavg,
 )
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     merge_partitioned_lora_classifier_deltas,
@@ -281,6 +286,106 @@ def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
     }
 
 
+def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -> None:
+    update = _lora_update(
+        lora_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        partitioned_deltas={
+            "sigma": {
+                "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.2]},
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.1, 0.0],
+                    "normal": [-0.1, 0.0],
+                },
+                "classifier_head_bias_deltas": {"anxiety": 0.05},
+            },
+            "psi": {
+                "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.3]},
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.2, 0.0],
+                    "normal": [-0.2, 0.0],
+                },
+                "classifier_head_bias_deltas": {"normal": -0.04},
+            },
+        },
+        delta_format="partitioned_update",
+        delta_l2_norm=None,
+    )
+
+    partitions = materialize_lora_classifier_partitioned_update(payload=update)
+
+    assert set(partitions) == {"sigma", "psi"}
+    assert partitions["sigma"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.2])
+    assert partitions["psi"].classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.0, "normal": -0.04}
+    )
+
+
+def test_lora_classifier_partitioned_fedavg_merges_partitions_per_client() -> None:
+    result = compute_lora_classifier_partitioned_fedavg(
+        label_schema=("anxiety", "normal"),
+        updates=(
+            LoraClassifierPartitionedFedAvgUpdate(
+                partitions={
+                    "sigma": LoraClassifierPartitionDelta(
+                        partition_name="sigma",
+                        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
+                        classifier_head_weight_deltas={
+                            "anxiety": [0.1, 0.0],
+                            "normal": [-0.1, 0.0],
+                        },
+                    ),
+                    "psi": LoraClassifierPartitionDelta(
+                        partition_name="psi",
+                        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
+                        classifier_head_weight_deltas={
+                            "anxiety": [0.2, 0.2],
+                            "normal": [-0.2, -0.2],
+                        },
+                        classifier_head_bias_deltas={"anxiety": 0.03},
+                    ),
+                },
+                example_count=2,
+                mean_confidence=0.9,
+                mean_margin=0.3,
+                delta_l2_norm=0.5,
+            ),
+            LoraClassifierPartitionedFedAvgUpdate(
+                partitions={
+                    "sigma": LoraClassifierPartitionDelta(
+                        partition_name="sigma",
+                        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.0, 0.6]},
+                        classifier_head_weight_deltas={
+                            "anxiety": [0.0, 0.3],
+                            "normal": [0.0, -0.3],
+                        },
+                        classifier_head_bias_deltas={"normal": -0.06},
+                    )
+                },
+                example_count=1,
+                mean_confidence=0.6,
+                mean_margin=0.1,
+                delta_l2_norm=0.2,
+            ),
+        ),
+    )
+
+    assert result.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.2, 0.4]
+    )
+    assert result.classifier_head_weight_deltas["anxiety"] == pytest.approx(
+        [0.2, 0.23333333333333334]
+    )
+    assert result.classifier_head_bias_deltas["anxiety"] == pytest.approx(0.02)
+    assert result.classifier_head_bias_deltas["normal"] == pytest.approx(-0.02)
+    assert result.aggregated_metrics["server_update_partitioned"] == 1.0
+    assert result.aggregated_metrics["partition_count_total"] == 3.0
+    assert result.update_count == 2
+
+
 def _aggregation_context(
     *,
     loader: InMemoryJsonArtifactLoader | None = None,
@@ -315,6 +420,7 @@ def _lora_update(
     lora_parameter_deltas: dict[str, list[float]] | None = None,
     classifier_head_weight_deltas: dict[str, list[float]] | None = None,
     classifier_head_bias_deltas: dict[str, float] | None = None,
+    partitioned_deltas: dict[str, dict[str, object]] | None = None,
     lora_delta_artifact_ref: str | None = None,
     classifier_head_delta_artifact_ref: str | None = None,
     delta_l2_norm: float | None = 1.0,
@@ -333,6 +439,7 @@ def _lora_update(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
+        partitioned_deltas=partitioned_deltas,
         delta_format=delta_format,
         mean_confidence=0.9,
         mean_margin=0.2,
