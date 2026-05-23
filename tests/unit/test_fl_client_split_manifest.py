@@ -8,6 +8,10 @@ from pathlib import Path
 import pytest
 from hydra import compose, initialize_config_module
 
+from methods.federated.client_split import (
+    FederatedLabeledPoolPolicy,
+    select_labeled_pool_items,
+)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from scripts.experiments.fl_ssl.federated_simulation.config_request import (
     build_simulation_request_from_config,
@@ -331,6 +335,35 @@ def test_materialize_fl_client_split_supports_labeled_count_per_class_policy(
         label: sum(1 for row in labeled_rows if row["mapped_label_4"] == label)
         for label in {"anxiety", "normal"}
     } == {"anxiety": 2, "normal": 2}
+
+
+def test_labeled_count_per_class_policy_is_nested_for_same_seed() -> None:
+    rows = [_row(f"a_{index}", "anxiety") for index in range(8)] + [
+        _row(f"n_{index}", "normal") for index in range(8)
+    ]
+
+    selected_2 = select_labeled_pool_items(
+        rows,
+        policy=FederatedLabeledPoolPolicy(
+            mode="count_per_class",
+            count_per_class=2,
+        ),
+        seed=42,
+        label_getter=lambda row: str(row["mapped_label_4"]),
+    )
+    selected_5 = select_labeled_pool_items(
+        rows,
+        policy=FederatedLabeledPoolPolicy(
+            mode="count_per_class",
+            count_per_class=5,
+        ),
+        seed=42,
+        label_getter=lambda row: str(row["mapped_label_4"]),
+    )
+
+    assert {row["query_id"] for row in selected_2} < {
+        row["query_id"] for row in selected_5
+    }
 
 
 def test_materialize_fl_client_split_requires_unlabeled_views(

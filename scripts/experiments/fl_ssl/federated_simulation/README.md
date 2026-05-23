@@ -154,6 +154,10 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     분배한다.
   - 라벨 데이터 일부만 쓰는 ablation은 `mode=count_per_class` 또는
     `mode=fraction`으로 manifest 생성 시 명시한다.
+  - 같은 source와 seed에서 `count_per_class` budget은 class별 deterministic prefix를
+    쓰므로 `25/class ⊂ 100/class ⊂ 400/class ⊂ 1024/class`처럼 nested subset으로
+    해석한다. 여러 budget manifest를 만들 때는 overwrite를 피하도록 split id에
+    `labels_pc<N>`를 명시한다.
 - `security_policy`
   - 현재 simulation은 `plaintext`만 지원한다.
   - secure aggregation, DP, 암호화 artifact ref는 method가 아니라 runtime capability

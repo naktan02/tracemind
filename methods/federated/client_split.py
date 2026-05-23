@@ -171,6 +171,8 @@ def _select_items_by_count_per_class(
     seed: int,
     label_getter: Callable[[ItemT], str],
 ) -> list[ItemT]:
+    """class별 deterministic prefix로 labeled budget 간 nested subset을 보존한다."""
+
     if count_per_class is None or count_per_class <= 0:
         raise ValueError(
             "labeled_policy.count_per_class must be positive when mode is "
@@ -179,7 +181,8 @@ def _select_items_by_count_per_class(
     rng = random.Random(seed)
     selected_items: list[ItemT] = []
     buckets = _group_items_by_label(items, label_getter=label_getter)
-    for label, bucket in buckets.items():
+    for label in sorted(buckets):
+        bucket = buckets[label]
         if len(bucket) < count_per_class:
             raise ValueError(
                 "labeled_policy.count_per_class exceeds source labeled rows for "

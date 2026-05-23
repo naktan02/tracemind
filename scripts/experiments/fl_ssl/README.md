@@ -108,6 +108,13 @@ uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
 
 출력되는 `manifest_json=...` 값을 다음 실행의 `fl_data.split_manifest`로 넘긴다.
 
+라벨 budget ablation은 이미 materialize된 labeled-with-views source에서
+`fl_client_split_materialization.labeled_policy.mode=count_per_class`와
+`count_per_class=<N>`만 바꿔 만든다. 새 역번역은 하지 않는다. 같은 seed에서
+class별 deterministic prefix를 쓰므로 `25/class`, `100/class`, `400/class`,
+`1024/class` budget은 nested subset이다. split id에는 `labels_pc<N>`를 넣어 서로
+덮어쓰지 않게 한다.
+
 모든 client가 같은 public labeled seed를 보고, unlabeled만 client별 non-IID로
 나누는 `shared_client_seed` split은 labeled exposure policy만 바꿔 별도
 manifest로 materialize한다. split id에는 `shared_client_seed_`가 들어가 기존
