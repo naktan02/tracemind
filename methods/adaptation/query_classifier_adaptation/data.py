@@ -3,91 +3,16 @@
 from __future__ import annotations
 
 import hashlib
-from collections.abc import Sequence
-from dataclasses import dataclass, field
 from typing import Any
 
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from methods.common.runtime_resources import RuntimeResourceCache
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
-
-TEXT_TOKENIZATION_CACHE_RESOURCE_KEY = (
-    "query_classifier_adaptation:text_tokenization_cache:v1"
+from methods.adaptation.query_classifier_adaptation.tokenization import (
+    TextTokenizationCache,
+    encode_texts,
 )
-
-
-@dataclass(frozen=True, slots=True)
-class TextTokenizationCacheKey:
-    """tokenizer config와 text 기준 tokenization cache key."""
-
-    namespace: str
-    max_length: int
-    text: str
-
-
-@dataclass(slots=True)
-class TextTokenizationCache:
-    """선택된 text의 tokenizer 결과를 run-local로 재사용한다."""
-
-    _entries: dict[
-        TextTokenizationCacheKey,
-        tuple[tuple[int, ...], tuple[int, ...]],
-    ] = field(default_factory=dict)
-
-    def encode(
-        self,
-        *,
-        text: str,
-        tokenizer: Any,
-        namespace: str,
-        max_length: int,
-    ) -> tuple[tuple[int, ...], tuple[int, ...]]:
-        key = TextTokenizationCacheKey(
-            namespace=str(namespace),
-            max_length=int(max_length),
-            text=str(text),
-        )
-        cached = self._entries.get(key)
-        if cached is not None:
-            return cached
-        encoded = tokenizer(
-            str(text),
-            padding=False,
-            truncation=True,
-            max_length=int(max_length),
-            return_attention_mask=True,
-        )
-        input_ids = tuple(int(value) for value in encoded["input_ids"])
-        attention_mask = tuple(int(value) for value in encoded["attention_mask"])
-        self._entries[key] = (input_ids, attention_mask)
-        return input_ids, attention_mask
-
-
-def resolve_text_tokenization_cache(
-    runtime_resource_cache: RuntimeResourceCache | None,
-) -> TextTokenizationCache | None:
-    """runtime cache에서 text tokenization cache를 가져오거나 생성한다."""
-
-    if runtime_resource_cache is None or not hasattr(
-        runtime_resource_cache, "get_resource"
-    ):
-        return None
-    cached = runtime_resource_cache.get_resource(TEXT_TOKENIZATION_CACHE_RESOURCE_KEY)
-    if cached is None:
-        tokenization_cache = TextTokenizationCache()
-        runtime_resource_cache.set_resource(
-            TEXT_TOKENIZATION_CACHE_RESOURCE_KEY,
-            tokenization_cache,
-        )
-        return tokenization_cache
-    if not isinstance(cached, TextTokenizationCache):
-        raise TypeError(
-            "Runtime resource cache key is occupied by non-tokenization cache: "
-            f"{type(cached)!r}."
-        )
-    return cached
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
 class TextLabelDataset(Dataset[dict[str, Any]]):
@@ -228,7 +153,7 @@ def build_dataloader(
     def collate(batch: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
         texts = [str(item["text"]) for item in batch]
         labels = [int(item["label"]) for item in batch]
-        encoded = _encode_texts(
+        encoded = encode_texts(
             texts,
             tokenizer=tokenizer,
             max_length=max_length,
@@ -267,7 +192,7 @@ def build_weak_dataloader(
 
     def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
         weak_texts = [str(item["weak_text"]) for item in batch]
-        weak_encoded = _encode_texts(
+        weak_encoded = encode_texts(
             weak_texts,
             tokenizer=tokenizer,
             max_length=max_length,
@@ -315,14 +240,14 @@ def build_multiview_dataloader(
     def collate(batch: list[dict[str, Any]]) -> dict[str, Any]:
         weak_texts = [str(item["weak_text"]) for item in batch]
         strong_texts = [str(item["strong_text"]) for item in batch]
-        weak_encoded = _encode_texts(
+        weak_encoded = encode_texts(
             weak_texts,
             tokenizer=tokenizer,
             max_length=max_length,
             tokenization_cache=tokenization_cache,
             tokenization_cache_namespace=tokenization_cache_namespace,
         )
-        strong_encoded = _encode_texts(
+        strong_encoded = encode_texts(
             strong_texts,
             tokenizer=tokenizer,
             max_length=max_length,
@@ -347,87 +272,6 @@ def build_multiview_dataloader(
         collate_fn=collate,
         pin_memory=_should_pin_memory(),
     )
-
-
-def _encode_texts(
-    texts: Sequence[str],
-    *,
-    tokenizer: Any,
-    max_length: int,
-    tokenization_cache: TextTokenizationCache | None,
-    tokenization_cache_namespace: str | None,
-) -> dict[str, torch.Tensor]:
-    if tokenization_cache is None:
-        return tokenizer(
-            [str(text) for text in texts],
-            padding=True,
-            truncation=True,
-            max_length=max_length,
-            return_tensors="pt",
-        )
-    namespace = (
-        str(tokenization_cache_namespace)
-        if tokenization_cache_namespace is not None
-        else _tokenizer_namespace(tokenizer)
-    )
-    encoded = [
-        tokenization_cache.encode(
-            text=str(text),
-            tokenizer=tokenizer,
-            namespace=namespace,
-            max_length=max_length,
-        )
-        for text in texts
-    ]
-    pad_token_id = int(getattr(tokenizer, "pad_token_id", 0) or 0)
-    padding_side = str(getattr(tokenizer, "padding_side", "right") or "right")
-    return _pad_encoded_texts(
-        encoded=encoded,
-        pad_token_id=pad_token_id,
-        padding_side=padding_side,
-    )
-
-
-def _pad_encoded_texts(
-    *,
-    encoded: Sequence[tuple[Sequence[int], Sequence[int]]],
-    pad_token_id: int,
-    padding_side: str,
-) -> dict[str, torch.Tensor]:
-    max_size = max((len(input_ids) for input_ids, _mask in encoded), default=0)
-    input_ids_tensor = torch.full(
-        (len(encoded), max_size),
-        int(pad_token_id),
-        dtype=torch.long,
-    )
-    attention_mask_tensor = torch.zeros(
-        (len(encoded), max_size),
-        dtype=torch.long,
-    )
-    for row_index, (input_ids, attention_mask) in enumerate(encoded):
-        size = len(input_ids)
-        if padding_side == "left":
-            start = max_size - size
-            stop = max_size
-        else:
-            start = 0
-            stop = size
-        input_ids_tensor[row_index, start:stop] = torch.tensor(
-            list(input_ids),
-            dtype=torch.long,
-        )
-        attention_mask_tensor[row_index, start:stop] = torch.tensor(
-            list(attention_mask),
-            dtype=torch.long,
-        )
-    return {
-        "input_ids": input_ids_tensor,
-        "attention_mask": attention_mask_tensor,
-    }
-
-
-def _tokenizer_namespace(tokenizer: Any) -> str:
-    return str(getattr(tokenizer, "name_or_path", type(tokenizer).__qualname__))
 
 
 def _should_pin_memory() -> bool:

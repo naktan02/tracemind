@@ -4,10 +4,12 @@ from __future__ import annotations
 
 from methods.adaptation.query_classifier_adaptation.data import (
     TextMultiviewDataset,
-    TextTokenizationCache,
     TextWeakDataset,
     build_multiview_dataloader,
     build_weak_dataloader,
+)
+from methods.adaptation.query_classifier_adaptation.tokenization import (
+    TextTokenizationCache,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 

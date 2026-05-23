@@ -13,6 +13,7 @@ from torch.utils.data import DataLoader
 
 from methods.adaptation.lora_classifier.training.loops import (
     build_optimizer,
+    move_tensor_batch_to_device,
     trainable_model_parameters,
 )
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
@@ -138,7 +139,7 @@ def train_partitioned_lora_classifier(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
-            device_unlabeled_batch = _move_tensor_batch_to_device(
+            device_unlabeled_batch = move_tensor_batch_to_device(
                 batch=unlabeled_batch,
                 device=device,
             )
@@ -147,7 +148,7 @@ def train_partitioned_lora_classifier(
                 labeled_batch=(
                     None
                     if labeled_batch is None
-                    else _move_tensor_batch_to_device(
+                    else move_tensor_batch_to_device(
                         batch=labeled_batch,
                         device=device,
                     )
@@ -558,21 +559,6 @@ def _next_batch(
     except StopIteration:
         refreshed_iterator = iter(loader)
         return next(refreshed_iterator), refreshed_iterator
-
-
-def _move_tensor_batch_to_device(
-    *,
-    batch: Mapping[str, Any],
-    device: str,
-) -> dict[str, Any]:
-    moved: dict[str, Any] = {}
-    for key, value in batch.items():
-        moved[key] = (
-            value.to(device, non_blocking=str(device).startswith("cuda"))
-            if isinstance(value, torch.Tensor)
-            else value
-        )
-    return moved
 
 
 def _accumulate_named_scalar(

@@ -258,11 +258,13 @@ def _next_batch(
         return next(refreshed_iterator), refreshed_iterator
 
 
-def _move_tensor_batch_to_device(
+def move_tensor_batch_to_device(
     *,
-    batch: dict[str, Any],
+    batch: Mapping[str, Any],
     device: str,
 ) -> dict[str, Any]:
+    """tensor 값만 target device로 이동하고 non-tensor metadata는 보존한다."""
+
     moved: dict[str, Any] = {}
     for key, value in batch.items():
         if isinstance(value, torch.Tensor):
@@ -433,7 +435,7 @@ def train_query_ssl_classifier(
                     loader=train_loader,
                     iterator=labeled_iterator,
                 )
-                labeled_batch = _move_tensor_batch_to_device(
+                labeled_batch = move_tensor_batch_to_device(
                     batch=labeled_batch,
                     device=device,
                 )
@@ -443,7 +445,7 @@ def train_query_ssl_classifier(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
-            unlabeled_batch = _move_tensor_batch_to_device(
+            unlabeled_batch = move_tensor_batch_to_device(
                 batch=unlabeled_batch,
                 device=device,
             )

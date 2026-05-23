@@ -9,8 +9,6 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-import torch
-
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
 )
@@ -24,15 +22,17 @@ from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
 )
 from methods.adaptation.query_classifier_adaptation.data import (
-    TextTokenizationCache,
     build_dataloader,
     build_multiview_dataloader,
     build_weak_dataloader,
-    resolve_text_tokenization_cache,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     QuerySslLocalStepPlan,
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.query_classifier_adaptation.tokenization import (
+    TextTokenizationCache,
+    resolve_text_tokenization_cache,
 )
 from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
@@ -41,11 +41,7 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
-from methods.evaluation.pseudo_label_quality import (
-    PseudoLabelCandidateRecord,
-    PseudoLabelQualitySummary,
-    build_pseudo_label_quality_summary,
-)
+from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
@@ -66,6 +62,10 @@ from .delta_extraction import (
 )
 from .loops import set_seed, train_query_ssl_classifier
 from .modeling import LoraTextClassifier, build_lora_text_classifier_from_config
+from .pseudo_label_diagnostics import (
+    build_final_snapshot_pseudo_label_quality,
+    tokenization_cache_namespace,
+)
 
 
 class QuerySslLoraObjectiveRuntimeConfig(Protocol):
@@ -178,7 +178,7 @@ def run_query_ssl_lora_classifier_training_core(
         labels=effective_labels,
     )
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
-    tokenization_cache_namespace = _tokenization_cache_namespace(lora_config)
+    tokenization_cache_namespace_value = tokenization_cache_namespace(lora_config)
 
     with _measure(timing_recorder, "core_model_prepare_seconds"):
         with _measure(timing_recorder, "core_seed_seconds"):
@@ -209,7 +209,7 @@ def run_query_ssl_lora_classifier_training_core(
             task_prefix=lora_config.task_prefix,
             shuffle=True,
             tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
+            tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
         selection_loader = build_dataloader(
             rows=effective_labeled_rows,
@@ -220,7 +220,7 @@ def run_query_ssl_lora_classifier_training_core(
             task_prefix=lora_config.task_prefix,
             shuffle=False,
             tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
+            tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
         unlabeled_loader = _build_unlabeled_loader(
             rows=effective_unlabeled_rows,
@@ -232,7 +232,7 @@ def run_query_ssl_lora_classifier_training_core(
             strong_view_policy=query_ssl_config.strong_view_policy,
             view_builder_name=descriptor.required_views.view_builder_name,
             tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
+            tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
         step_plan = build_query_ssl_local_step_plan(
             labeled_loader_steps=len(train_loader),
@@ -264,7 +264,7 @@ def run_query_ssl_lora_classifier_training_core(
             algorithm=algorithm,
         )
     with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
-        pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
+        pseudo_label_quality = build_final_snapshot_pseudo_label_quality(
             model=model,
             tokenizer=tokenizer,
             rows=(
@@ -274,10 +274,11 @@ def run_query_ssl_lora_classifier_training_core(
             ),
             labels=effective_labels,
             lora_config=lora_config,
-            query_ssl_config=query_ssl_config,
+            acceptance_threshold=_resolve_fixed_threshold(query_ssl_config.parameters),
             trainer_runtime_config=trainer_runtime_config,
+            unlabeled_batch_size=query_ssl_config.unlabeled_batch_size or 1,
             tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
+            tokenization_cache_namespace=tokenization_cache_namespace_value,
         )
 
     with _measure(timing_recorder, "core_delta_extract_seconds"):
@@ -407,77 +408,6 @@ def _build_unlabeled_loader(
     raise ValueError(f"Unsupported Query SSL view builder: {view_builder_name}.")
 
 
-def _build_final_snapshot_pseudo_label_quality(
-    *,
-    model: LoraTextClassifier,
-    tokenizer: Any,
-    rows: Sequence[LabeledQueryRow],
-    labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
-    tokenization_cache: TextTokenizationCache | None,
-    tokenization_cache_namespace: str,
-) -> PseudoLabelQualitySummary:
-    """round 종료 시점 local classifier snapshot의 pseudo-label 품질을 계산한다."""
-
-    effective_rows = list(rows)
-    if not effective_rows:
-        return PseudoLabelQualitySummary.empty()
-
-    confidence_threshold = _resolve_fixed_threshold(query_ssl_config.parameters)
-    loader = build_weak_dataloader(
-        rows=effective_rows,
-        tokenizer=tokenizer,
-        batch_size=query_ssl_config.unlabeled_batch_size or 1,
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
-        shuffle=False,
-        tokenization_cache=tokenization_cache,
-        tokenization_cache_namespace=tokenization_cache_namespace,
-    )
-    candidates: list[PseudoLabelCandidateRecord] = []
-    model.eval()
-    with torch.no_grad():
-        for batch in loader:
-            input_ids = batch["weak_input_ids"].to(trainer_runtime_config.device)
-            attention_mask = batch["weak_attention_mask"].to(
-                trainer_runtime_config.device
-            )
-            probabilities = torch.softmax(
-                model(input_ids=input_ids, attention_mask=attention_mask),
-                dim=-1,
-            )
-            top_k = min(2, probabilities.shape[-1])
-            top_values, top_indices = torch.topk(probabilities, k=top_k, dim=-1)
-            query_ids = [str(query_id) for query_id in batch["query_ids"]]
-            for row_index, query_id in enumerate(query_ids):
-                top1_index = int(top_indices[row_index, 0].detach().cpu().item())
-                top1_score = float(top_values[row_index, 0].detach().cpu().item())
-                top2_score = (
-                    float(top_values[row_index, 1].detach().cpu().item())
-                    if top_k > 1
-                    else 0.0
-                )
-                candidates.append(
-                    PseudoLabelCandidateRecord(
-                        source_event_ref=query_id,
-                        label=str(labels[top1_index]),
-                        confidence=top1_score,
-                        margin=top1_score - top2_score,
-                        accepted=(
-                            confidence_threshold is not None
-                            and top1_score >= confidence_threshold
-                        ),
-                    )
-                )
-
-    return build_pseudo_label_quality_summary(
-        candidates=tuple(candidates),
-        rows_with_simulation_labels=effective_rows,
-    )
-
-
 def _resolve_fixed_threshold(parameters: Mapping[str, object]) -> float | None:
     """고정 confidence threshold가 있는 Query SSL method만 acceptance를 계산한다."""
 
@@ -485,15 +415,6 @@ def _resolve_fixed_threshold(parameters: Mapping[str, object]) -> float | None:
     if raw_value is None:
         return None
     return float(raw_value)
-
-
-def _tokenization_cache_namespace(
-    lora_config: LoraClassifierTrainingBackendConfig,
-) -> str:
-    return (
-        f"tokenizer={lora_config.tokenizer_model_id}"
-        f"|revision={lora_config.tokenizer_revision}"
-    )
 
 
 def _validate_labeled_rows_have_known_labels(

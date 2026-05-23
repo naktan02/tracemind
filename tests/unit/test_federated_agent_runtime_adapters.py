@@ -340,7 +340,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qcore,
-        "_build_final_snapshot_pseudo_label_quality",
+        "build_final_snapshot_pseudo_label_quality",
         lambda **_kwargs: PseudoLabelQualitySummary(
             pseudo_label_confidence_mean=0.97,
             pseudo_label_margin_mean=0.5,
