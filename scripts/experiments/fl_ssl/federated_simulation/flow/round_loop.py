@@ -75,6 +75,13 @@ def run_one_round(
     round_timing["round_server_step_seconds"] = time.perf_counter() - started_at
 
     started_at = time.perf_counter()
+    if bootstrapped.round_base_snapshot_cache is not None:
+        bootstrapped.round_base_snapshot_cache.clear()
+    round_timing["round_base_snapshot_cache_clear_seconds"] = (
+        time.perf_counter() - started_at
+    )
+
+    started_at = time.perf_counter()
     round_record = bootstrapped.server_runtime.open_round(
         ssl_method_runtime.build_round_open_request(
             round_id=round_id,

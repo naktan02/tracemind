@@ -127,6 +127,7 @@ def _run_method_owned_lora_client_round(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             runtime_resource_cache=bootstrapped.runtime_resource_cache,
+            round_base_snapshot_cache=bootstrapped.round_base_snapshot_cache,
             peer_probe_rows=(
                 bootstrapped.peer_probe_rows
                 if bootstrapped.peer_probe_rows

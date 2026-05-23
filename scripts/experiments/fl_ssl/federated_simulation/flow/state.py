@@ -15,6 +15,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationEvaluation,
     SimulationRoundSummary,
 )
+from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    RoundBaseSnapshotCache,
+)
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -57,6 +60,7 @@ class BootstrappedSimulation:
     peer_probe_rows: tuple[LabeledQueryRow, ...] = ()
     peer_probe_manifest: FederatedPeerProbeManifest | None = None
     runtime_resource_cache: RuntimeResourceCache | None = None
+    round_base_snapshot_cache: RoundBaseSnapshotCache | None = None
 
 
 @dataclass(frozen=True, slots=True)

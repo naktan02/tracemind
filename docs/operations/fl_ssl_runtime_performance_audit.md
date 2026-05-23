@@ -432,3 +432,56 @@ Client timing:
   세부 계측상 model build 평균 `0.332s`, base parameter load 평균 `0.088s`라서
   현재 주요 병목은 여전히 `core_training_loop_seconds`, pseudo-label diagnostics,
   validation, sequential client execution이다.
+
+## 2026-05-24 Round Base Snapshot Cache Reduced 재실행
+
+적용된 변경:
+
+- simulation runtime resource로 `RoundBaseSnapshotCache`를 추가했다.
+- round 시작 시 cache를 clear하고, 같은 round 안에서 동일 active global base state
+  materialization을 공유한다.
+- cache 자체는 family/method 의미를 모른다. LoRA-classifier는 첫 integration으로
+  `adapter_kind`, `model_revision`, state artifact refs, schema version을 key로 사용한다.
+- manual Query SSL/FedAvg 경로와 method-owned FedMatch 경로 모두 같은
+  `round_base_snapshot_cache`를 통과한다.
+- cache 대상은 materialized global base snapshot뿐이다. `nn.Module`, PEFT model,
+  optimizer, dataloader, pseudo-label 결과, client-local state는 cache하지 않는다.
+
+비교 run:
+
+| 구분 | run directory | 적용 상태 |
+|---|---|---|
+| 이전 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T181111Z` | merged delta `safetensors`, base materialization client별 반복 |
+| 이후 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T184942Z` | merged delta `safetensors`, round base snapshot cache |
+
+결과:
+
+| 지표 | 이전 | 이후 | 변화 |
+|---|---:|---:|---:|
+| final macro-F1 | `0.685966` | `0.685966` | 동일 |
+| final accuracy | `0.712760` | `0.712760` | 동일 |
+| total accepted | `743` | `743` | 동일 |
+| report `total_artifact_bytes` | `714,566,000` | `714,566,000` | 동일 |
+| `round_time_seconds.mean` | `159.416s` | `146.235s` | `-8.27%` |
+| 5-round total time estimate | `797.082s` | `731.177s` | `-65.905s` |
+| `round_client_execution_seconds.mean` | `125.036s` | `112.059s` | `-10.38%` |
+| `local_training_total_seconds.mean` | `12.500s` | `11.202s` | `-10.38%` |
+| `adapter_base_materialization_seconds.mean` | `1.321s` | `0.125s` | `-90.55%` |
+| `adapter_base_materialization_seconds.total` | `66.049s` | `6.244s` | `-59.806s` |
+| `core_model_prepare_seconds.mean` | `0.421s` | `0.343s` | `-18.55%` |
+| `core_training_loop_seconds.total` | `403.696s` | `402.644s` | `-1.052s` |
+| `core_pseudo_label_diagnostics_seconds.total` | `102.533s` | `102.742s` | `+0.209s` |
+| `round_validation_seconds.total` | `108.790s` | `108.795s` | 동일 범위 |
+
+해석:
+
+- cache 적용 전 예상한 병목인 `adapter_base_materialization_seconds`가 총
+  `66.049s`에서 `6.244s`로 줄었다. 5 rounds x 10 clients 구조에서 round당 첫
+  materialization만 비용을 내고 나머지는 cache hit가 된 결과다.
+- 5-round reduced 총 round 시간은 약 `65.9s` 줄었다. 저장 포맷 전환 이후 남은
+  병목 중 base materialization 반복 비용은 대부분 제거됐다.
+- final macro-F1, accuracy, total accepted가 완전히 동일하므로 이 변경은 학습 의미를
+  바꾸지 않는 runtime materialization 최적화로 볼 수 있다.
+- 남은 큰 병목은 `core_training_loop_seconds` 약 `402.6s`, pseudo-label diagnostics
+  약 `102.7s`, validation 약 `108.8s`다. base materialization은 더 이상 1순위 병목이
+  아니다.

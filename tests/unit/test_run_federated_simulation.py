@@ -76,6 +76,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedValidationConfig,
     SimulationRunRequest,
 )
+from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    RoundBaseSnapshotCache,
+)
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     _build_validated_ssl_runtime,
     run_simulation_request,
@@ -1025,6 +1028,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
             classifier_dropout=0.1,
         ),
     )
+    round_base_snapshot_cache = RoundBaseSnapshotCache()
     execution = client_training.run_client_round(
         request=request,
         bootstrapped=BootstrappedSimulation(
@@ -1041,6 +1045,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 adapter_state=active_state,
             ),
             peer_probe_rows=(labeled_row,),
+            round_base_snapshot_cache=round_base_snapshot_cache,
         ),
         active=ActiveSimulationState(
             manifest=manifest,
@@ -1066,6 +1071,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["training_task"] is training_task
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
     assert trainer_calls[0]["active_adapter_state"] is active_state
+    assert trainer_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
     assert trainer_calls[0]["persist_agent_local_update"] is False
     assert "lora_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
@@ -1317,6 +1323,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         helper_client_ids=("agent_02",),
         refreshed=True,
     )
+    round_base_snapshot_cache = RoundBaseSnapshotCache()
     execution = client_training.run_client_round(
         request=request,
         bootstrapped=BootstrappedSimulation(
@@ -1333,6 +1340,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 adapter_state=active_state,
             ),
             peer_probe_rows=(labeled_row,),
+            round_base_snapshot_cache=round_base_snapshot_cache,
         ),
         active=ActiveSimulationState(
             manifest=manifest,
@@ -1357,6 +1365,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["peer_context"] is peer_context
     assert method_calls[0]["peer_snapshots"] == {"agent_02": peer_snapshot}
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
+    assert method_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
     assert method_calls[0]["persist_agent_local_update"] is False

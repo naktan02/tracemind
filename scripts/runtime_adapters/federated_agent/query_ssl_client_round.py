@@ -108,6 +108,7 @@ def _run_query_ssl_lora_client_round(
             query_ssl_config=request.query_ssl_objective_config,
             trainer_runtime_config=request.local_trainer_runtime_config,
             runtime_resource_cache=bootstrapped.runtime_resource_cache,
+            round_base_snapshot_cache=bootstrapped.round_base_snapshot_cache,
             timing_recorder=timing,
             persist_agent_local_update=(
                 request.artifact_persistence_config.persist_agent_local_updates

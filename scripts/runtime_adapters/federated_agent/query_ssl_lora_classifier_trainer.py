@@ -13,12 +13,8 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslLocalTrainingService,
     QuerySslLoraLocalTrainingRequest,
 )
-from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
-    AggregationArtifactStore,
-)
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
-    materialize_base_lora_classifier_state,
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
@@ -32,13 +28,18 @@ from methods.adaptation.lora_classifier.training_backend import (
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
-from methods.federated.aggregation.base import FederatedAggregationContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
 )
+from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    RoundBaseSnapshotCache,
+)
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     SimulationQuerySslLoraDeltaMaterializer,
+)
+from scripts.runtime_adapters.federated_agent.lora_classifier_base_state import (
+    load_lora_classifier_base_parameters,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
@@ -63,7 +64,9 @@ def run_query_ssl_lora_classifier_local_training(
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
+    base_parameters: LoraClassifierMaterializedState | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
+    round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
@@ -74,18 +77,20 @@ def run_query_ssl_lora_classifier_local_training(
             "Query SSL LoRA local training requires active LoraClassifierState."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
-    if timing_recorder is None:
-        base_parameters = _load_base_parameters(
+    if base_parameters is None and timing_recorder is None:
+        base_parameters = load_lora_classifier_base_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=effective_created_at,
+            round_base_snapshot_cache=round_base_snapshot_cache,
         )
-    else:
+    elif base_parameters is None:
         with timing_recorder.measure("adapter_base_materialization_seconds"):
-            base_parameters = _load_base_parameters(
+            base_parameters = load_lora_classifier_base_parameters(
                 active_adapter_state=active_adapter_state,
                 output_dir=output_dir,
                 aggregated_at=effective_created_at,
+                round_base_snapshot_cache=round_base_snapshot_cache,
             )
     service = QuerySslLocalTrainingService(
         repository=TrainingArtifactRepository(
@@ -119,22 +124,4 @@ def run_query_ssl_lora_classifier_local_training(
                 output_dir=output_dir
             ),
         )
-    )
-
-
-def _load_base_parameters(
-    *,
-    active_adapter_state: LoraClassifierState,
-    output_dir: Path,
-    aggregated_at: datetime,
-) -> LoraClassifierMaterializedState:
-    return materialize_base_lora_classifier_state(
-        base_state=active_adapter_state,
-        context=FederatedAggregationContext(
-            next_model_revision=active_adapter_state.model_revision,
-            aggregated_at=aggregated_at,
-            artifact_loader=AggregationArtifactStore(
-                state_root=output_dir / "main_server" / "aggregation_artifacts"
-            ),
-        ),
     )

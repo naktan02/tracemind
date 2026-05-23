@@ -11,6 +11,9 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
 )
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -38,6 +41,12 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
 )
+from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    RoundBaseSnapshotCache,
+)
+from scripts.runtime_adapters.federated_agent import (
+    lora_classifier_base_state as base_state_adapter,
+)
 from scripts.runtime_adapters.federated_agent import (
     query_ssl_lora_classifier_trainer as qtrainer,
 )
@@ -47,6 +56,9 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     prepare_delta_materialization,
     upload_agent_local_lora_classifier_update,
+)
+from scripts.runtime_adapters.federated_agent.lora_classifier_base_state import (
+    load_lora_classifier_base_parameters,
 )
 from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
     run_query_ssl_lora_classifier_local_training,
@@ -130,6 +142,61 @@ def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> No
         rows=[{"query_id": "q1", "text": "panic"}],
         backend_name="prototype_rescore",
     )
+
+
+def test_lora_classifier_base_parameters_use_round_cache(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    active_state = make_lora_classifier_state_payload(
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0003",
+        training_scope="adapter_only",
+        backbone=LoraClassifierTrainingBackendConfig().to_backbone_payload(),
+        lora_config=LoraClassifierTrainingBackendConfig().to_lora_config_payload(),
+        label_schema=("anxiety", "normal"),
+        lora_adapter_artifact_ref="server-aggregate://sim_rev_0003/lora_adapter",
+        classifier_head_artifact_ref="server-aggregate://sim_rev_0003/head",
+    )
+    materialized = LoraClassifierMaterializedState(
+        lora_parameters={"lora.test": [0.1]},
+        classifier_head_weights={
+            "anxiety": [0.2, 0.0],
+            "normal": [0.0, -0.2],
+        },
+        classifier_head_biases={"anxiety": 0.01, "normal": -0.01},
+    )
+    calls = {"count": 0}
+
+    def _fake_materialize(**_kwargs):
+        calls["count"] += 1
+        return materialized
+
+    monkeypatch.setattr(
+        base_state_adapter,
+        "_materialize_base_parameters",
+        _fake_materialize,
+    )
+    cache = RoundBaseSnapshotCache()
+
+    first = load_lora_classifier_base_parameters(
+        active_adapter_state=active_state,
+        output_dir=tmp_path,
+        aggregated_at=SimpleNamespace(),
+        round_base_snapshot_cache=cache,
+    )
+    second = load_lora_classifier_base_parameters(
+        active_adapter_state=active_state,
+        output_dir=tmp_path,
+        aggregated_at=SimpleNamespace(),
+        round_base_snapshot_cache=cache,
+    )
+
+    assert first is materialized
+    assert second is materialized
+    assert calls["count"] == 1
+    assert cache.miss_count == 1
+    assert cache.hit_count == 1
 
 
 @pytest.mark.parametrize(
@@ -231,7 +298,11 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
         "_build_lora_classifier_model",
         _fake_build_lora_classifier_model,
     )
-    monkeypatch.setattr(qtrainer, "_load_base_parameters", lambda **_kwargs: object())
+    monkeypatch.setattr(
+        qtrainer,
+        "load_lora_classifier_base_parameters",
+        lambda **_kwargs: object(),
+    )
     monkeypatch.setattr(
         qcore,
         "load_lora_classifier_base_parameters_into_model",

@@ -25,6 +25,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     InMemoryRuntimeResourceCache,
+    RoundBaseSnapshotCache,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
@@ -112,6 +113,7 @@ def bootstrap_simulation(
         peer_probe_rows=peer_probe_rows,
         peer_probe_manifest=peer_probe_manifest,
         runtime_resource_cache=InMemoryRuntimeResourceCache(),
+        round_base_snapshot_cache=RoundBaseSnapshotCache(),
     )
 
 

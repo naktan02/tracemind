@@ -15,6 +15,9 @@ from methods.adaptation.lora_classifier.config import (
 )
 from methods.adaptation.lora_classifier.federated_ssl import peer_predictions
 from methods.adaptation.lora_classifier.training import modeling
+from methods.adaptation.lora_classifier.training.delta_extraction import (
+    load_lora_classifier_base_parameters_into_model,
+)
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -111,6 +114,43 @@ def test_lora_classifier_model_builder_reuses_runtime_resources(
     assert calls == {"tokenizer": 1, "model": 1}
     assert tokenizer_a is tokenizer_b
     assert model_a.backbone is not model_b.backbone
+
+
+def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None:
+    class _Backbone(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.config = SimpleNamespace(hidden_size=2)
+
+    model = modeling.LoraTextClassifier(
+        backbone=_Backbone(),
+        hidden_size=2,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    base_parameters = LoraClassifierMaterializedState(
+        lora_parameters={},
+        classifier_head_weights={
+            "anxiety": [0.1, 0.2],
+            "normal": [-0.1, -0.2],
+        },
+        classifier_head_biases={"anxiety": 0.03, "normal": -0.03},
+    )
+    original_weights = {
+        label: list(values)
+        for label, values in base_parameters.classifier_head_weights.items()
+    }
+    original_biases = dict(base_parameters.classifier_head_biases)
+
+    load_lora_classifier_base_parameters_into_model(
+        model=model,
+        labels=("anxiety", "normal"),
+        base_parameters=base_parameters,
+        device="cpu",
+    )
+
+    assert base_parameters.classifier_head_weights == original_weights
+    assert base_parameters.classifier_head_biases == original_biases
 
 
 def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
