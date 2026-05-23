@@ -131,13 +131,6 @@ def train_partitioned_lora_classifier(
                 batch=unlabeled_batch,
                 device=device,
             )
-            helper_weak_probabilities = (
-                None
-                if helper_weak_probability_provider is None
-                else helper_weak_probability_provider(
-                    unlabeled_batch=device_unlabeled_batch,
-                )
-            )
             step_result = run_partitioned_lora_classifier_step(
                 model=model,
                 labeled_batch=_move_tensor_batch_to_device(
@@ -148,11 +141,11 @@ def train_partitioned_lora_classifier(
                 parameters=parameters,
                 sigma_optimizer=sigma_optimizer,
                 psi_optimizer=psi_optimizer,
-                helper_weak_probabilities=helper_weak_probabilities,
+                helper_weak_probability_provider=helper_weak_probability_provider,
                 psi_query_ssl_algorithm=psi_query_ssl_algorithm,
                 enable_inter_client_consistency=(
                     enable_inter_client_consistency
-                    and helper_weak_probabilities is not None
+                    and helper_weak_probability_provider is not None
                     and psi_query_ssl_algorithm is None
                 ),
                 max_grad_norm=max_grad_norm,
@@ -241,7 +234,7 @@ def run_partitioned_lora_classifier_step(
     parameters: FedMatchLocalObjectiveParameters,
     sigma_optimizer: torch.optim.Optimizer,
     psi_optimizer: torch.optim.Optimizer,
-    helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     max_grad_norm: float = 0.0,
@@ -286,7 +279,7 @@ def run_partitioned_lora_classifier_step(
             unlabeled_batch=unlabeled_batch,
             parameters=parameters,
             optimizer=psi_optimizer,
-            helper_weak_probabilities=helper_weak_probabilities,
+            helper_weak_probability_provider=helper_weak_probability_provider,
             enable_inter_client_consistency=enable_inter_client_consistency,
             max_grad_norm=max_grad_norm,
         )
@@ -343,7 +336,7 @@ def _apply_fedmatch_unsupervised_step(
     unlabeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
     optimizer: torch.optim.Optimizer,
-    helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None,
     enable_inter_client_consistency: bool,
     max_grad_norm: float,
 ) -> FedMatchTensorLocalObjectiveResult:
@@ -352,14 +345,25 @@ def _apply_fedmatch_unsupervised_step(
         input_ids=unlabeled_batch["weak_input_ids"],
         attention_mask=unlabeled_batch["weak_attention_mask"],
     )
-    strong_logits = model(
-        input_ids=unlabeled_batch["strong_input_ids"],
-        attention_mask=unlabeled_batch["strong_attention_mask"],
+    confidence_mask = _fedmatch_confidence_mask(
+        weak_logits=weak_logits,
+        confidence_threshold=parameters.confidence_threshold,
+    )
+    selected_strong_logits = _forward_selected_strong_view(
+        model=model,
+        unlabeled_batch=unlabeled_batch,
+        confidence_mask=confidence_mask,
+        reference_logits=weak_logits,
+    )
+    selected_helper_probabilities = _compute_selected_helper_probabilities(
+        helper_weak_probability_provider=helper_weak_probability_provider,
+        unlabeled_batch=unlabeled_batch,
+        confidence_mask=confidence_mask,
     )
     result = compute_fedmatch_unsupervised_loss(
         weak_logits=weak_logits,
-        strong_logits=strong_logits,
-        helper_weak_probabilities=helper_weak_probabilities,
+        selected_strong_logits=selected_strong_logits,
+        selected_helper_weak_probabilities=selected_helper_probabilities,
         parameter_partitions=FedMatchParameterPartitions(
             sigma={
                 key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
@@ -377,6 +381,68 @@ def _apply_fedmatch_unsupervised_step(
     )
     optimizer.step()
     return result
+
+
+def _compute_selected_helper_probabilities(
+    *,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None,
+    unlabeled_batch: Mapping[str, Tensor],
+    confidence_mask: Tensor,
+) -> Tensor | Sequence[Tensor] | None:
+    if helper_weak_probability_provider is None:
+        return None
+    if int(confidence_mask.sum().item()) == 0:
+        return None
+    return helper_weak_probability_provider(
+        unlabeled_batch=_select_weak_view_batch(
+            unlabeled_batch=unlabeled_batch,
+            confidence_mask=confidence_mask,
+        ),
+    )
+
+
+def _select_weak_view_batch(
+    *,
+    unlabeled_batch: Mapping[str, Tensor],
+    confidence_mask: Tensor,
+) -> dict[str, Tensor]:
+    expected_rows = int(confidence_mask.shape[0])
+    selected_batch: dict[str, Tensor] = {}
+    for key, value in unlabeled_batch.items():
+        if (
+            isinstance(value, Tensor)
+            and value.ndim > 0
+            and value.shape[0] == expected_rows
+        ):
+            selected_batch[key] = value[confidence_mask]
+        elif isinstance(value, Tensor):
+            selected_batch[key] = value
+    return selected_batch
+
+
+def _fedmatch_confidence_mask(
+    *,
+    weak_logits: Tensor,
+    confidence_threshold: float,
+) -> Tensor:
+    weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
+    return torch.max(weak_probabilities, dim=-1).values >= confidence_threshold
+
+
+def _forward_selected_strong_view(
+    *,
+    model: TextBatchClassifier,
+    unlabeled_batch: Mapping[str, Tensor],
+    confidence_mask: Tensor,
+    reference_logits: Tensor,
+) -> Tensor:
+    selected_count = int(confidence_mask.sum().item())
+    if selected_count == 0:
+        return reference_logits.new_empty((0, int(reference_logits.shape[1])))
+    return model(
+        input_ids=unlabeled_batch["strong_input_ids"][confidence_mask],
+        attention_mask=unlabeled_batch["strong_attention_mask"][confidence_mask],
+    )
 
 
 def _apply_query_ssl_psi_step(

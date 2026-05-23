@@ -172,8 +172,8 @@ def test_fedmatch_unsupervised_tensor_loss_preserves_original_components() -> No
 
     result = compute_fedmatch_unsupervised_loss(
         weak_logits=weak_logits,
-        strong_logits=strong_logits,
-        helper_weak_probabilities=helper_probabilities,
+        selected_strong_logits=strong_logits[[0, 2]],
+        selected_helper_weak_probabilities=helper_probabilities[:, [0, 2], :],
         parameter_partitions=partitions,
         parameters=parameters,
     )
@@ -239,8 +239,8 @@ def test_fedmatch_unsupervised_tensor_loss_can_disable_round_zero_kl() -> None:
 
     result = compute_fedmatch_unsupervised_loss(
         weak_logits=torch.log(torch.tensor([[0.8, 0.2]], dtype=torch.float32)),
-        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
-        helper_weak_probabilities=torch.tensor(
+        selected_strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        selected_helper_weak_probabilities=torch.tensor(
             [[[0.1, 0.9]]],
             dtype=torch.float32,
         ),
@@ -269,8 +269,8 @@ def test_fedmatch_inter_client_kl_keeps_weak_prediction_gradient() -> None:
 
     result = compute_fedmatch_unsupervised_loss(
         weak_logits=weak_logits,
-        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
-        helper_weak_probabilities=torch.tensor(
+        selected_strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        selected_helper_weak_probabilities=torch.tensor(
             [[[0.1, 0.9]]],
             dtype=torch.float32,
         ),
@@ -295,7 +295,7 @@ def test_fedmatch_unsupervised_loss_keeps_regularization_without_confidence() ->
 
     result = compute_fedmatch_unsupervised_loss(
         weak_logits=torch.log(torch.tensor([[0.6, 0.4]], dtype=torch.float32)),
-        strong_logits=torch.tensor([[0.0, 1.0]], dtype=torch.float32),
+        selected_strong_logits=torch.empty((0, 2), dtype=torch.float32),
         parameter_partitions=FedMatchParameterPartitions(
             sigma={"layer": torch.tensor([2.0])},
             psi={"layer": torch.tensor([-1.0])},
@@ -316,6 +316,32 @@ def test_fedmatch_unsupervised_loss_keeps_regularization_without_confidence() ->
         torch.tensor(9.0),
     )
     torch.testing.assert_close(result.metrics["confident_count"], torch.tensor(0.0))
+
+
+def test_fedmatch_unsupervised_loss_requires_selected_rows_to_match_confidence() -> (
+    None
+):
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.75,
+        lambda_s=10.0,
+        lambda_i=1.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+
+    with pytest.raises(ValueError, match="confident_count"):
+        compute_fedmatch_unsupervised_loss(
+            weak_logits=torch.log(
+                torch.tensor([[0.8, 0.2], [0.4, 0.6]], dtype=torch.float32)
+            ),
+            selected_strong_logits=torch.tensor(
+                [[0.0, 1.0], [1.0, 0.0]],
+                dtype=torch.float32,
+            ),
+            parameter_partitions=FedMatchParameterPartitions(sigma={}, psi={}),
+            parameters=parameters,
+        )
 
 
 def test_fedmatch_parameter_partitions_reject_shape_drift() -> None:

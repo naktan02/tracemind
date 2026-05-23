@@ -236,18 +236,15 @@ def compute_fedmatch_supervised_loss(
 def compute_fedmatch_unsupervised_loss(
     *,
     weak_logits: Tensor,
-    strong_logits: Tensor,
+    selected_strong_logits: Tensor,
     parameter_partitions: FedMatchParameterPartitions,
     parameters: FedMatchLocalObjectiveParameters,
-    helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
+    selected_helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
     enable_inter_client_consistency: bool = True,
 ) -> FedMatchTensorLocalObjectiveResult:
-    """원본 `loss_fn_u`의 confidence, helper KL, agreement CE, 정규화를 계산한다."""
+    """원본 `loss_fn_u`처럼 confident subset 기준 unsupervised loss를 계산한다."""
 
     _validate_logits_2d(weak_logits, tensor_name="weak_logits")
-    _validate_logits_2d(strong_logits, tensor_name="strong_logits")
-    if strong_logits.shape != weak_logits.shape:
-        raise ValueError("weak_logits and strong_logits must have the same shape.")
 
     weak_probabilities = torch.softmax(weak_logits, dim=-1)
     weak_probabilities_for_selection = weak_probabilities.detach()
@@ -260,13 +257,16 @@ def compute_fedmatch_unsupervised_loss(
     selected_weak_probabilities_for_labels = weak_probabilities_for_selection[
         confidence_mask
     ]
-    selected_strong_logits = strong_logits[confidence_mask]
-    selected_helper_probabilities = _select_helper_probabilities(
-        helper_weak_probabilities=helper_weak_probabilities,
-        confidence_mask=confidence_mask,
-        expected_row_count=weak_logits.shape[0],
+    selected_helper_probabilities = _normalize_selected_helper_probability_tensor(
+        selected_helper_weak_probabilities=selected_helper_weak_probabilities,
+        expected_row_count=selected_count,
         expected_class_count=weak_logits.shape[1],
         reference=weak_logits,
+    )
+    _validate_selected_strong_logits(
+        selected_strong_logits=selected_strong_logits,
+        selected_count=selected_count,
+        class_count=weak_logits.shape[1],
     )
 
     agreement_loss, pseudo_labels = _compute_agreement_pseudo_label_loss(
@@ -404,50 +404,50 @@ def _validate_logits_2d(logits: Tensor, *, tensor_name: str) -> None:
         raise ValueError(f"{tensor_name} class dimension must not be empty.")
 
 
-def _select_helper_probabilities(
+def _validate_selected_strong_logits(
     *,
-    helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
-    confidence_mask: Tensor,
+    selected_strong_logits: Tensor,
+    selected_count: int,
+    class_count: int,
+) -> None:
+    if selected_strong_logits.ndim != 2:
+        raise ValueError(
+            "selected_strong_logits must be a 2D [selected, class] tensor."
+        )
+    if selected_strong_logits.shape[0] != selected_count:
+        raise ValueError("selected_strong_logits row count must match confident_count.")
+    if selected_strong_logits.shape[1] != class_count:
+        raise ValueError("selected_strong_logits class count must match weak_logits.")
+
+
+def _normalize_selected_helper_probability_tensor(
+    *,
+    selected_helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
     expected_row_count: int,
     expected_class_count: int,
     reference: Tensor,
 ) -> Tensor | None:
-    helpers = _normalize_helper_probability_tensor(
-        helper_weak_probabilities=helper_weak_probabilities,
-        expected_row_count=expected_row_count,
-        expected_class_count=expected_class_count,
-        reference=reference,
-    )
-    if helpers is None:
+    if selected_helper_weak_probabilities is None:
         return None
-    return helpers[:, confidence_mask, :]
-
-
-def _normalize_helper_probability_tensor(
-    *,
-    helper_weak_probabilities: Tensor | Sequence[Tensor] | None,
-    expected_row_count: int,
-    expected_class_count: int,
-    reference: Tensor,
-) -> Tensor | None:
-    if helper_weak_probabilities is None:
-        return None
-    if isinstance(helper_weak_probabilities, Tensor):
-        helper_tensor = helper_weak_probabilities
+    if isinstance(selected_helper_weak_probabilities, Tensor):
+        helper_tensor = selected_helper_weak_probabilities
         if helper_tensor.ndim == 2:
             helper_tensor = helper_tensor.unsqueeze(0)
     else:
-        helper_values = tuple(helper_weak_probabilities)
+        helper_values = tuple(selected_helper_weak_probabilities)
         if not helper_values:
             return None
         helper_tensor = torch.stack(helper_values, dim=0)
 
     if helper_tensor.ndim != 3:
         raise ValueError(
-            "helper_weak_probabilities must have shape [helper, batch, class]."
+            "selected_helper_weak_probabilities must have shape "
+            "[helper, selected, class]."
         )
     if helper_tensor.shape[1] != expected_row_count:
-        raise ValueError("helper probability row count must match weak_logits.")
+        raise ValueError(
+            "selected helper probability row count must match confident_count."
+        )
     if helper_tensor.shape[2] != expected_class_count:
         raise ValueError("helper probability class count must match weak_logits.")
     return helper_tensor.to(device=reference.device, dtype=reference.dtype)

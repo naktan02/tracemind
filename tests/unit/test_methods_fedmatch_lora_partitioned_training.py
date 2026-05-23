@@ -228,6 +228,160 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
     assert "util_ratio" in result.unsupervised.metrics
 
 
+def test_fedmatch_partitioned_step_forwards_strong_view_only_for_confident_rows() -> (
+    None
+):
+    class CountingTinyLoraClassifier(TinyLoraClassifier):
+        def __init__(self) -> None:
+            super().__init__()
+            self.forward_shapes: list[tuple[int, int]] = []
+
+        def forward(
+            self,
+            *,
+            input_ids: Tensor,
+            attention_mask: Tensor,
+        ) -> Tensor:
+            self.forward_shapes.append(tuple(input_ids.shape))
+            logits = super().forward(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+            )
+            if len(self.forward_shapes) == 2:
+                return torch.tensor(
+                    [[4.0, 0.0], [0.0, 4.0], [0.55, 0.45]],
+                    dtype=logits.dtype,
+                    device=logits.device,
+                )
+            return logits
+
+    model = CountingTinyLoraClassifier()
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.9,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+
+    result = run_partitioned_lora_classifier_step(
+        model=model,
+        labeled_batch={
+            "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
+            "attention_mask": torch.ones(1, 3),
+            "labels": torch.tensor([0], dtype=torch.long),
+        },
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor(
+                [[1.0, 0.2, 0.0], [0.0, 0.5, 1.0], [0.4, 0.4, 0.4]]
+            ),
+            "weak_attention_mask": torch.ones(3, 3),
+            "strong_input_ids": torch.tensor(
+                [[0.8, 0.3, 0.1], [0.1, 0.4, 1.0], [0.5, 0.5, 0.5]]
+            ),
+            "strong_attention_mask": torch.ones(3, 3),
+        },
+        parameters=parameters,
+        sigma_optimizer=sigma_optimizer,
+        psi_optimizer=psi_optimizer,
+    )
+
+    assert model.forward_shapes == [(1, 3), (3, 3), (2, 3)]
+    torch.testing.assert_close(
+        result.unsupervised.metrics["confident_count"],
+        torch.tensor(2.0),
+    )
+
+
+def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows() -> (
+    None
+):
+    class CountingTinyLoraClassifier(TinyLoraClassifier):
+        def __init__(self) -> None:
+            super().__init__()
+            self.forward_shapes: list[tuple[int, int]] = []
+
+        def forward(
+            self,
+            *,
+            input_ids: Tensor,
+            attention_mask: Tensor,
+        ) -> Tensor:
+            self.forward_shapes.append(tuple(input_ids.shape))
+            logits = super().forward(
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+            )
+            if len(self.forward_shapes) == 2:
+                return torch.tensor(
+                    [[4.0, 0.0], [0.0, 4.0], [0.55, 0.45]],
+                    dtype=logits.dtype,
+                    device=logits.device,
+                )
+            return logits
+
+    provider_calls: list[tuple[int, int]] = []
+
+    def helper_provider(
+        *,
+        unlabeled_batch: dict[str, Tensor],
+    ) -> Tensor:
+        input_ids = unlabeled_batch["weak_input_ids"]
+        provider_calls.append(tuple(input_ids.shape))
+        torch.testing.assert_close(
+            input_ids,
+            torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+        )
+        return torch.tensor(
+            [[[0.9, 0.1], [0.1, 0.9]]],
+            dtype=torch.float32,
+        )
+
+    model = CountingTinyLoraClassifier()
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.9,
+        lambda_s=1.0,
+        lambda_i=1.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+
+    result = run_partitioned_lora_classifier_step(
+        model=model,
+        labeled_batch={
+            "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
+            "attention_mask": torch.ones(1, 3),
+            "labels": torch.tensor([0], dtype=torch.long),
+        },
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor(
+                [[1.0, 0.2, 0.0], [0.0, 0.5, 1.0], [0.4, 0.4, 0.4]]
+            ),
+            "weak_attention_mask": torch.ones(3, 3),
+            "strong_input_ids": torch.tensor(
+                [[0.8, 0.3, 0.1], [0.1, 0.4, 1.0], [0.5, 0.5, 0.5]]
+            ),
+            "strong_attention_mask": torch.ones(3, 3),
+        },
+        parameters=parameters,
+        sigma_optimizer=sigma_optimizer,
+        psi_optimizer=psi_optimizer,
+        helper_weak_probability_provider=helper_provider,
+    )
+
+    assert provider_calls == [(2, 3)]
+    torch.testing.assert_close(
+        result.unsupervised.metrics["confident_count"],
+        torch.tensor(2.0),
+    )
+
+
 def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
