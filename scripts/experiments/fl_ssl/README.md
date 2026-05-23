@@ -257,6 +257,11 @@ unlabeled pool 크기는 report의 `candidate_count`로 유지하고 진단 subs
 `update_upload_materialize_seconds`, `server_update_submit_seconds` 같은 구간별
 wall-clock 시간을 기록한다. batch/step 단위 로그나 GPU sync를 추가하지 않는다.
 
+Simulation artifact 저장 정책은 `artifact_persistence.persist_agent_local_updates`
+가 소유한다. 기본값은 `false`이며, server-owned aggregation artifact를 canonical
+update source로 보고 agent-local update 사본은 저장하지 않는다. 디버그 목적으로
+client별 local update 사본이 필요할 때만 `true`로 override한다.
+
 `fl_method.composition_mode=method_owned`는 FedMatch처럼 상위 FL SSL method가
 client/server 정책을 함께 소유할 때 사용한다. 이 경우
 `strategy_axes/fl/method_descriptor=<method>`와 실제

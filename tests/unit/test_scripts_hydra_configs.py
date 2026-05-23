@@ -551,6 +551,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.report.table_role == "main_comparison"
     assert cfg.client_pool_split.labeled_ratio == 0.1
     assert cfg.client_pool_split.unlabeled_ratio == 0.9
+    assert cfg.artifact_persistence.persist_agent_local_updates is False
     assert cfg.diagnostic_view.enabled is True
     assert cfg.diagnostic_view.selection_policy == "deterministic_random"
     assert cfg.diagnostic_view.max_rows == 512

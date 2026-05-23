@@ -53,6 +53,7 @@ class QuerySslLoraLocalTrainingRequest:
     agent_id: str | None = None
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None
     timing_recorder: TimingRecorder | None = None
+    persist_update_artifact: bool = True
 
 
 class QuerySslLoraTrainingBackend(Protocol):
@@ -127,17 +128,18 @@ class QuerySslLocalTrainingService:
             delta_materializer=request.delta_materializer,
             timing_recorder=request.timing_recorder,
         )
-        if request.timing_recorder is None:
-            self.repository.save_shared_adapter_update(
-                result.update_envelope.update_id,
-                result.update_payload,
-            )
-        else:
-            with request.timing_recorder.measure("agent_repository_save_seconds"):
+        if request.persist_update_artifact:
+            if request.timing_recorder is None:
                 self.repository.save_shared_adapter_update(
                     result.update_envelope.update_id,
                     result.update_payload,
                 )
+            else:
+                with request.timing_recorder.measure("agent_repository_save_seconds"):
+                    self.repository.save_shared_adapter_update(
+                        result.update_envelope.update_id,
+                        result.update_payload,
+                    )
         update_envelope = result.update_envelope
         if request.agent_id is not None:
             update_envelope = update_envelope.model_copy(

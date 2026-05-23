@@ -412,3 +412,54 @@ def test_query_ssl_local_training_service_runs_lora_backend(
         result.update_envelope.update_id
     )
     assert loaded_payload == update_payload
+
+
+def test_query_ssl_local_training_service_can_skip_local_update_persistence(
+    tmp_path: Path,
+) -> None:
+    update_payload = make_lora_classifier_delta_payload(
+        model_id="tracemind-lora",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone=lora_config.LoraClassifierTrainingBackendConfig().to_backbone_payload(),
+        lora_config=(
+            lora_config.LoraClassifierTrainingBackendConfig().to_lora_config_payload()
+        ),
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        lora_parameter_deltas={"lora.test": [0.1]},
+        classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
+        classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
+        delta_format="inline_delta",
+    )
+    backend = _QuerySslLoraBackend(update_payload)
+    repository = TrainingArtifactRepository(state_root=tmp_path / "agent_state")
+    service = QuerySslLocalTrainingService(
+        repository=repository,
+        backend=backend,
+    )
+
+    result = service.run_lora(
+        QuerySslLoraLocalTrainingRequest(
+            client_id="agent_01",
+            seed=42,
+            labeled_rows=[
+                {"query_id": "l1", "text": "panic", "mapped_label_4": "anxiety"}
+            ],
+            unlabeled_rows=[
+                {"query_id": "u1", "text": "weak", "mapped_label_4": "normal"}
+            ],
+            labels=("anxiety", "normal"),
+            base_parameters=object(),
+            training_task=_build_task(),
+            model_manifest=_build_manifest(),
+            query_ssl_config=object(),
+            trainer_runtime_config=object(),
+            delta_materializer=object(),
+            persist_update_artifact=False,
+        )
+    )
+
+    assert backend.called is True
+    with pytest.raises(FileNotFoundError):
+        repository.load_shared_adapter_update(result.update_envelope.update_id)

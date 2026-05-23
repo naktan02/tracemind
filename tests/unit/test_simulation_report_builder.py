@@ -12,6 +12,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientEvaluationSummary,
     ClientRoundSummary,
+    FederatedArtifactPersistenceConfig,
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
@@ -306,6 +307,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             trust_remote_code=False,
             classifier_dropout=0.1,
         ),
+        artifact_persistence_config=FederatedArtifactPersistenceConfig(
+            persist_agent_local_updates=False,
+        ),
         diagnostic_view_config=FederatedDiagnosticViewConfig(
             enabled=True,
             selection_policy="deterministic_random",
@@ -465,6 +469,12 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert local_trainer_runtime["metadata_status"] == "recorded"
     assert local_trainer_runtime["device"] == "cuda"
     assert local_trainer_runtime["local_files_only"] is True
+    artifact_persistence = payload["protocol"]["artifact_persistence"]
+    assert artifact_persistence["metadata_status"] == "recorded"
+    assert artifact_persistence["persist_agent_local_updates"] is False
+    assert artifact_persistence["canonical_update_source"] == (
+        "server_owned_aggregation_artifact"
+    )
     diagnostic_view = payload["protocol"]["diagnostic_view"]
     assert diagnostic_view["metadata_status"] == "recorded"
     assert diagnostic_view["selection_policy"] == "deterministic_random"

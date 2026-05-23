@@ -880,6 +880,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["training_task"] is training_task
     assert trainer_calls[0]["query_ssl_config"] is request.query_ssl_objective_config
     assert trainer_calls[0]["active_adapter_state"] is active_state
+    assert trainer_calls[0]["persist_agent_local_update"] is False
     assert "lora_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
     assert accepted_payload.delta_format == (
@@ -1172,6 +1173,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
+    assert method_calls[0]["persist_agent_local_update"] is False
     assert execution.peer_client_snapshot is returned_peer_snapshot
 
 
@@ -1974,6 +1976,9 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert report["protocol"]["local_trainer_runtime"]["metadata_status"] == (
         "recorded"
     )
+    assert report["protocol"]["artifact_persistence"][
+        "persist_agent_local_updates"
+    ] is False
     assert report["protocol"]["ssl_method"]["metadata_status"] == "not_applicable"
     assert report["protocol"]["ssl_method"]["reason"] == "manual_composition"
     assert report["protocol"]["fl_method"]["descriptor_name"] is None

@@ -78,6 +78,26 @@ class FederatedDiagnosticsConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class FederatedArtifactPersistenceConfig:
+    """simulation artifact 사본 저장 정책."""
+
+    persist_agent_local_updates: bool = False
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedArtifactPersistenceConfig":
+        if source is None:
+            return cls()
+        return cls(
+            persist_agent_local_updates=bool(
+                source.get("persist_agent_local_updates", False)
+            )
+        )
+
+
+@dataclass(frozen=True, slots=True)
 class FederatedDiagnosticViewConfig:
     """client-local pseudo-label diagnostics에 쓸 unlabeled subset 설정."""
 
@@ -452,6 +472,9 @@ class SimulationRunRequest:
     training_task_config: FederatedTrainingTaskConfig
     validation_config: FederatedValidationConfig
     diagnostics_config: FederatedDiagnosticsConfig
+    artifact_persistence_config: FederatedArtifactPersistenceConfig = field(
+        default_factory=FederatedArtifactPersistenceConfig
+    )
     run_budget_name: str | None = None
     run_output_dir: str | None = None
     ssl_method_config: FederatedSslMethodConfig | None = None

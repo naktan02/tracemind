@@ -67,6 +67,7 @@ def build_simulation_result(
             data_source_config=request.data_source_config,
             embedding_spec=request.embedding_spec,
             local_trainer_runtime_config=request.local_trainer_runtime_config,
+            artifact_persistence_config=request.artifact_persistence_config,
             diagnostic_view_config=request.diagnostic_view_config,
             peer_probe_manifest=bootstrapped.peer_probe_manifest,
         )

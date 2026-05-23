@@ -59,6 +59,10 @@ source of truth로 본다.
   이는 batch/step마다 로그를 찍지 않는 wall-clock 구간 계측이며, model prepare,
   training loop, pseudo-label diagnostics, delta/update materialization, server submit
   같은 병목을 reduced run report에서 확인하기 위한 metadata다.
+- [x] Simulation 기본 artifact 저장 정책은 server-owned aggregation artifact를
+  canonical update source로 둔다. agent-local update 사본은 디버그용이므로
+  `artifact_persistence.persist_agent_local_updates=false` 기본값에서는 저장하지
+  않는다. 학습/aggregation 의미는 바꾸지 않고 local 사본 저장 비용만 제거한다.
 
 주의: FL prototype score의 `loss`는 현재 raw score를 softmax 분포로 바꾼 NLL
 proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야 한다.

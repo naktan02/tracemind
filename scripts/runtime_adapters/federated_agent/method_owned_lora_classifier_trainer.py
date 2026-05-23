@@ -77,6 +77,7 @@ def run_method_owned_lora_classifier_local_training(
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     timing_recorder: TimingRecorder | None = None,
+    persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 선택된 method-owned LoRA core에 연결한다."""
 
@@ -161,17 +162,18 @@ def run_method_owned_lora_classifier_local_training(
     repository = TrainingArtifactRepository(
         state_root=output_dir / "agents" / client_id
     )
-    if timing_recorder is None:
-        repository.save_shared_adapter_update(
-            result.update_envelope.update_id,
-            result.update_payload,
-        )
-    else:
-        with timing_recorder.measure("agent_repository_save_seconds"):
+    if persist_agent_local_update:
+        if timing_recorder is None:
             repository.save_shared_adapter_update(
                 result.update_envelope.update_id,
                 result.update_payload,
             )
+        else:
+            with timing_recorder.measure("agent_repository_save_seconds"):
+                repository.save_shared_adapter_update(
+                    result.update_envelope.update_id,
+                    result.update_payload,
+                )
     return result
 
 

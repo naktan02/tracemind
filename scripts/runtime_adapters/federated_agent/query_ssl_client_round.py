@@ -107,6 +107,9 @@ def _run_query_ssl_lora_client_round(
             query_ssl_config=request.query_ssl_objective_config,
             trainer_runtime_config=request.local_trainer_runtime_config,
             timing_recorder=timing,
+            persist_agent_local_update=(
+                request.artifact_persistence_config.persist_agent_local_updates
+            ),
         )
     client_train_time_seconds = time.perf_counter() - training_started_at
     with timing.measure("update_upload_materialize_seconds"):

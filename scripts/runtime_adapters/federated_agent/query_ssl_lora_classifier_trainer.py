@@ -63,6 +63,7 @@ def run_query_ssl_lora_classifier_local_training(
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     timing_recorder: TimingRecorder | None = None,
+    persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
 
@@ -110,6 +111,7 @@ def run_query_ssl_lora_classifier_local_training(
             trainer_runtime_config=trainer_runtime_config,
             created_at=effective_created_at,
             timing_recorder=timing_recorder,
+            persist_update_artifact=persist_agent_local_update,
             delta_materializer=SimulationQuerySslLoraDeltaMaterializer(
                 output_dir=output_dir
             ),

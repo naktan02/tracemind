@@ -11,6 +11,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.split_diagnostics import
     build_client_pool_split_payload,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    FederatedArtifactPersistenceConfig,
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
@@ -51,6 +52,7 @@ def build_protocol_payload(
     data_source_config: FederatedDataSourceConfig | None = None,
     embedding_spec: EmbeddingAdapterSpec | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
+    artifact_persistence_config: FederatedArtifactPersistenceConfig | None = None,
     diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
     peer_probe_manifest: FederatedPeerProbeManifest | None = None,
 ) -> dict[str, object]:
@@ -97,6 +99,9 @@ def build_protocol_payload(
         "embedding_adapter": _embedding_spec_to_payload(embedding_spec),
         "local_trainer_runtime": _local_trainer_runtime_to_payload(
             local_trainer_runtime_config
+        ),
+        "artifact_persistence": _artifact_persistence_to_payload(
+            artifact_persistence_config
         ),
         "diagnostic_view": _diagnostic_view_to_payload(diagnostic_view_config),
         "peer_probe": _peer_probe_to_payload(peer_probe_manifest),
@@ -188,6 +193,18 @@ def _diagnostic_view_to_payload(
         "seed_offset": config.seed_offset,
         "source": "client_unlabeled_pool",
         "scope": "pseudo_label_diagnostics_only",
+    }
+
+
+def _artifact_persistence_to_payload(
+    config: FederatedArtifactPersistenceConfig | None,
+) -> dict[str, object]:
+    if config is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        "persist_agent_local_updates": config.persist_agent_local_updates,
+        "canonical_update_source": "server_owned_aggregation_artifact",
     }
 
 
