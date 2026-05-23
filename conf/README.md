@@ -142,6 +142,14 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     `query_ssl_method.unlabeled_batch_size=${training_task.batch_size}`라서
     unlabeled loader step 수도 함께 바꾼다. 필요하면
     `query_ssl_method.unlabeled_batch_size=<N>`으로 따로 override한다.
+- `training_task.objective`
+  - Hydra YAML에서는 `query_ssl`, `lora_classifier`, `evidence_backend`처럼
+    owner scope별 nested mapping으로 적을 수 있다.
+  - `shared` contract 경계에서는 기존 report/runtime compatibility를 위해
+    `query_ssl.algorithm_name`, `lora_classifier.delta_format` 같은 dotted flat key로
+    정규화된다.
+  - 새 adapter family 값을 추가할 때도 entrypoint에 긴 quoted dotted key를 늘리기보다
+    owner scope 아래에 묶고, canonical 해석은 `TrainingObjectiveConfig`가 맡긴다.
 - `seed_sweep`
   - FL SSL seed sweep runner가 순회할 seed 목록과 sweep output root를 소유한다.
   - `seed_sweep.seeds` 길이는 `report.seed_count`와 같아야 한다.

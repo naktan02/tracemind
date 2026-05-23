@@ -239,6 +239,39 @@ def test_training_objective_config_round_trips_policy_fields() -> None:
     }
 
 
+def test_training_objective_config_normalizes_nested_component_extras() -> None:
+    config = TrainingObjectiveConfig.from_mapping(
+        {
+            "training_backend_name": "lora_classifier_trainer",
+            "evidence_backend": {"temperature": 0.7},
+            "query_ssl": {
+                "method_name": "fixmatch_usb_v1",
+                "algorithm_name": "fixmatch",
+            },
+            "lora_classifier": {
+                "delta_format": "server_uploaded_artifact_ref",
+                "rank": 8,
+            },
+        }
+    )
+
+    assert config.extras == {
+        "evidence_backend.temperature": 0.7,
+        "query_ssl.method_name": "fixmatch_usb_v1",
+        "query_ssl.algorithm_name": "fixmatch",
+        "lora_classifier.delta_format": "server_uploaded_artifact_ref",
+        "lora_classifier.rank": 8,
+    }
+    assert config.get_component_extras("query_ssl") == {
+        "method_name": "fixmatch_usb_v1",
+        "algorithm_name": "fixmatch",
+    }
+    assert config.get_component_extras("lora_classifier") == {
+        "delta_format": "server_uploaded_artifact_ref",
+        "rank": 8,
+    }
+
+
 def test_training_objective_config_preserves_algorithm_profile_without_expansion() -> (
     None
 ):

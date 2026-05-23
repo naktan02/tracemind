@@ -158,29 +158,34 @@ training_task:
     pseudo_label_algorithm_name: ${local_update_profile.pseudo_label_algorithm_name}
     acceptance_policy_name: ${local_update_profile.acceptance_policy_name}
     privacy_guard_name: ${local_update_profile.privacy_guard_name}
-    evidence_backend.temperature: ${local_update_profile.evidence_backend_temperature}
-    "query_ssl.method_name": ${query_ssl_method.name}
-    "query_ssl.algorithm_name": ${query_ssl_method.algorithm_name}
-    "query_ssl.strong_view_policy": ${query_ssl_strong_view_policy}
-    "query_ssl.unlabeled_batch_size": ${query_ssl_method.unlabeled_batch_size}
-    "lora_classifier.backbone_model_id": ${round_runtime.lora_classifier.backbone_model_id}
-    "lora_classifier.backbone_revision": ${round_runtime.lora_classifier.backbone_revision}
-    "lora_classifier.tokenizer_model_id": ${round_runtime.lora_classifier.tokenizer_model_id}
-    "lora_classifier.tokenizer_revision": ${round_runtime.lora_classifier.tokenizer_revision}
-    "lora_classifier.pooling": ${round_runtime.lora_classifier.pooling}
-    "lora_classifier.max_length": ${round_runtime.lora_classifier.max_length}
-    "lora_classifier.task_prefix": ${round_runtime.lora_classifier.task_prefix}
-    "lora_classifier.peft_adapter_name": ${round_runtime.lora_classifier.peft_adapter_name}
-    "lora_classifier.rank": ${round_runtime.lora_classifier.rank}
-    "lora_classifier.alpha": ${round_runtime.lora_classifier.alpha}
-    "lora_classifier.dropout": ${round_runtime.lora_classifier.dropout}
-    "lora_classifier.bias": ${round_runtime.lora_classifier.bias}
-    "lora_classifier.target_modules": ${round_runtime.lora_classifier.target_modules}
-    "lora_classifier.use_rslora": ${round_runtime.lora_classifier.use_rslora}
-    "lora_classifier.delta_format": server_uploaded_artifact_ref
-    "lora_classifier.artifact_ref_prefix": agent-local://lora_classifier
-    "lora_classifier.text_metadata_keys": strong_text,training_text,raw_text,text,weak_text
-    "lora_classifier.label_schema": anxiety,depression,normal,suicidal
+    # Contract 경계에서는 dotted flat key로 정규화된다. YAML은 사람이 읽기 쉽도록
+    # owner scope별로 묶는다.
+    evidence_backend:
+      temperature: ${local_update_profile.evidence_backend_temperature}
+    query_ssl:
+      method_name: ${query_ssl_method.name}
+      algorithm_name: ${query_ssl_method.algorithm_name}
+      strong_view_policy: ${query_ssl_strong_view_policy}
+      unlabeled_batch_size: ${query_ssl_method.unlabeled_batch_size}
+    lora_classifier:
+      backbone_model_id: ${round_runtime.lora_classifier.backbone_model_id}
+      backbone_revision: ${round_runtime.lora_classifier.backbone_revision}
+      tokenizer_model_id: ${round_runtime.lora_classifier.tokenizer_model_id}
+      tokenizer_revision: ${round_runtime.lora_classifier.tokenizer_revision}
+      pooling: ${round_runtime.lora_classifier.pooling}
+      max_length: ${round_runtime.lora_classifier.max_length}
+      task_prefix: ${round_runtime.lora_classifier.task_prefix}
+      peft_adapter_name: ${round_runtime.lora_classifier.peft_adapter_name}
+      rank: ${round_runtime.lora_classifier.rank}
+      alpha: ${round_runtime.lora_classifier.alpha}
+      dropout: ${round_runtime.lora_classifier.dropout}
+      bias: ${round_runtime.lora_classifier.bias}
+      target_modules: ${round_runtime.lora_classifier.target_modules}
+      use_rslora: ${round_runtime.lora_classifier.use_rslora}
+      delta_format: server_uploaded_artifact_ref
+      artifact_ref_prefix: agent-local://lora_classifier
+      text_metadata_keys: strong_text,training_text,raw_text,text,weak_text
+      label_schema: anxiety,depression,normal,suicidal
   selection_policy:
     max_examples: ${federated_run_budget.max_examples}
 

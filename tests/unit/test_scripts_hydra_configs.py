@@ -512,9 +512,9 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.train_batch_size == 12
     assert cfg.query_ssl_method.unlabeled_batch_size == cfg.training_task.batch_size
     assert cfg.query_ssl_strong_view_policy == "first_aug"
-    assert cfg.training_task.objective["query_ssl.method_name"] == "fixmatch_usb_v1"
-    assert cfg.training_task.objective["query_ssl.algorithm_name"] == "fixmatch"
-    assert cfg.training_task.objective["query_ssl.strong_view_policy"] == "first_aug"
+    assert cfg.training_task.objective.query_ssl.method_name == "fixmatch_usb_v1"
+    assert cfg.training_task.objective.query_ssl.algorithm_name == "fixmatch"
+    assert cfg.training_task.objective.query_ssl.strong_view_policy == "first_aug"
     assert cfg.local_update_profile.validation_scorer_backend_name == (
         "lora_classifier_eval"
     )
@@ -1260,8 +1260,8 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
     assert cfg.training_task.batch_size == 8
     assert cfg.training_task.max_steps == 7
     assert cfg.query_ssl_method.unlabeled_batch_size == 8
-    assert cfg.training_task.objective["query_ssl.method_name"] == ("flexmatch_usb_v1")
-    assert cfg.training_task.objective["query_ssl.algorithm_name"] == "flexmatch"
+    assert cfg.training_task.objective.query_ssl.method_name == "flexmatch_usb_v1"
+    assert cfg.training_task.objective.query_ssl.algorithm_name == "flexmatch"
     assert plan.manual_axes.client_ssl_objective == "flexmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
     assert plan.manual_axes.update_family == "lora_classifier"

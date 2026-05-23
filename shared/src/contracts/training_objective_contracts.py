@@ -7,6 +7,7 @@ from collections.abc import Collection, Mapping
 from pydantic import AliasChoices, BaseModel, ConfigDict, Field
 
 TrainingConfigScalar = str | int | float | bool
+TrainingConfigInputValue = TrainingConfigScalar | None | Mapping[str, object]
 
 _OBJECTIVE_CONFIG_KEYS = {
     "training_backend_name",
@@ -101,12 +102,12 @@ class TrainingObjectiveConfigPayload(BaseModel):
     @classmethod
     def from_mapping(
         cls,
-        source: Mapping[str, TrainingConfigScalar] | None,
+        source: Mapping[str, TrainingConfigInputValue] | None,
     ) -> "TrainingObjectiveConfigPayload":
         """Mapping 입력을 canonical objective config로 정규화한다."""
         if source is None:
             raise ValueError("training_backend_name is required.")
-        source = dict(source)
+        source = _flatten_objective_mapping(source)
         backend_name = source.get("training_backend_name", source.get("loss"))
         if backend_name is None:
             raise ValueError("training_backend_name is required.")
@@ -211,6 +212,24 @@ class TrainingObjectiveConfigPayload(BaseModel):
     def loss(self) -> str:
         """구버전 config key와의 호환을 위한 deprecated alias."""
         return self.training_backend_name
+
+
+def _flatten_objective_mapping(
+    source: Mapping[str, TrainingConfigInputValue],
+) -> dict[str, object]:
+    """Hydra nested source를 dotted canonical objective key로 낮춘다."""
+
+    result: dict[str, object] = {}
+    for key, value in source.items():
+        normalized_key = str(key).strip()
+        if not normalized_key:
+            raise ValueError("training objective keys must not be empty.")
+        if isinstance(value, Mapping):
+            for nested_key, nested_value in _flatten_objective_mapping(value).items():
+                result[f"{normalized_key}.{nested_key}"] = nested_value
+        else:
+            result[normalized_key] = value
+    return result
 
 
 class TrainingSelectionPolicyPayload(BaseModel):
