@@ -712,6 +712,10 @@ def test_federated_simulation_materialized_split_axis_selects_manifest() -> None
     assert cfg.query_data_selection.validation == "ourafla_reddit"
     assert cfg.query_data_selection.test == "ourafla_reddit"
     assert cfg.federated_run_budget.client_count == 10
+    assert cfg.federated_run_budget.bootstrap_ratio == 0.2
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.labeled_exposure_policy.name == "shared_client_seed"
     assert cfg.fl_data.split_manifest == (
         "data/datasets/fl_client_splits/shared_client_labeled/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
@@ -752,6 +756,9 @@ def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
     assert cfg.fl_data.source_mode == "materialized_client_split"
     assert cfg.query_data_selection.labeled == labeled
     assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
+    assert cfg.shard_policy.name == "dirichlet_label_skew"
+    assert cfg.shard_policy.alpha == 0.3
+    assert cfg.labeled_exposure_policy.name == "shared_client_seed"
     assert f"labels_pc{budget}_" in cfg.fl_data.split_manifest
     assert cfg.fl_data.split_manifest.endswith("clients10_seed42/manifest.json")
 

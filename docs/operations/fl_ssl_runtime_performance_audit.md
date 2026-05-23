@@ -242,3 +242,89 @@ Client timing:
 - partitioned update는 `safetensors` 50개로 저장됐고, shared update JSON은 208KB로
   유지됐다. partitioned-only verifier 보강 후 `--expect-server-owned-update-artifacts`
   검증까지 PASS한다.
+
+## 2026-05-24 Manual FixMatch+FedAvg materialized selector reduced
+
+목적:
+
+- `strategy_axes/fl/materialized_split` selector가 긴
+  `fl_data.split_manifest=...` override 없이 source pair, labeled budget, shard
+  policy, manifest path를 함께 고정하는지 확인한다.
+- FedMatch 전용 경로가 아니라 manual `FixMatch + FedAvg + LoRA-classifier`에서도
+  공통 FL SSL runtime 최적화가 적용되는지 확인한다.
+
+조건:
+
+- Method composition: manual `fixmatch_usb_v1 + lora_classifier + fedavg`
+- Selector:
+  `strategy_axes/fl/materialized_split=shared_general_reddit_pc100_alpha03_clients10`
+- Source pair: labeled `szegeelim_general4`, unlabeled/validation/test
+  `ourafla_reddit`
+- Labeled budget: `100/class`, shared-client exposure
+- Split: Dirichlet alpha=0.3, clients=10, seed=42
+- Budget: reduced, 5 rounds, `training_task.max_steps=20`
+- Runtime: `gpu_local + mxbai`, CUDA
+
+검증:
+
+- 첫 실행은 manifest 검증에서 중단됐다. 원인은 selector가 manifest path와
+  source pair만 고정하고 `shard_policy` 기본값은 `label_dominant`로 남긴 것이다.
+- selector YAML에 `shard_policy=dirichlet_label_skew(alpha=0.3)`,
+  `bootstrap_ratio=0.2`, `labeled_exposure_policy=shared_client_seed`를 추가한 뒤
+  compose와 reduced run이 통과했다.
+- Report:
+  `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T172345Z/reports/fl_ssl_main_comparison.report.json`
+
+결과:
+
+| 지표 | 값 |
+|---|---:|
+| final macro-F1 | `0.686146` |
+| final accuracy | `0.712760` |
+| worst-client macro-F1 | `0.319268` |
+| total client updates | `50` |
+| total candidates | `202,775` |
+| total accepted | `750` |
+| acceptance ratio | `0.0037` |
+| report `total_payload_bytes` | `66,737` |
+| report `total_artifact_bytes` | `5,242,689,449` |
+| report `total_update_material_bytes` | `5,242,756,186` |
+
+Round timing:
+
+| timing key | mean | max |
+|---|---:|---:|
+| `round_total_seconds` | `189.822s` | `194.079s` |
+| `round_client_execution_seconds` | `148.588s` | `152.481s` |
+| `round_finalize_publication_seconds` | `19.457s` | `19.922s` |
+| `round_validation_seconds` | `21.774s` | `21.992s` |
+
+Client timing:
+
+| timing key | mean | max |
+|---|---:|---:|
+| `local_training_total_seconds` | `14.855s` | `16.056s` |
+| `core_training_loop_seconds` | `8.062s` | `8.526s` |
+| `core_delta_materialization_seconds` | `2.377s` | `2.480s` |
+| `core_pseudo_label_diagnostics_seconds` | `2.044s` | `2.410s` |
+| `adapter_base_materialization_seconds` | `1.340s` | `1.742s` |
+| `core_model_prepare_seconds` | `0.557s` | `0.742s` |
+| `core_delta_extract_seconds` | `0.293s` | `0.345s` |
+| `server_update_submit_seconds` | `0.002s` | `0.011s` |
+
+해석:
+
+- selector는 source pair와 manifest metadata를 정상 기록했다. report의
+  `fl_data_source.source_selection`은 labeled `szegeelim_general4`,
+  unlabeled/validation/test `ourafla_reddit`이고, `labeled_policy`는
+  `count_per_class=100`이다.
+- 공통 최적화는 manual baseline에도 적용됐다. agent-local update 중복 저장은
+  꺼져 있고, diagnostic view와 timing breakdown도 동일 report에 남았다.
+- 이 조합은 FixMatch acceptance가 낮다. 5-round 전체 acceptance ratio는 `0.0037`로,
+  초반 round는 accepted pseudo-label이 거의 없고 후반에 일부만 생긴다. 따라서 이
+  결과는 selector/runtime 검증으로 보고, SSL 효과 비교에는 threshold/budget/source
+  ablation이 필요하다.
+- manual FedAvg merged delta는 FedMatch partitioned safetensors 경로와 다르므로
+  partitioned artifact 최적화 효과는 직접 적용되지 않는다. 남은 큰 병목은
+  client sequential execution, client별 training loop, merged delta materialization,
+  validation/finalization이다.

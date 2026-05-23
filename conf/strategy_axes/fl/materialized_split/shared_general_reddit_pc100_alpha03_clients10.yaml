@@ -8,6 +8,17 @@ query_data_selection:
 
 federated_run_budget:
   client_count: 10
+  bootstrap_ratio: 0.2
+
+shard_policy:
+  name: dirichlet_label_skew
+  client_id_prefix: agent
+  dominant_ratio: null
+  alpha: 0.3
+
+labeled_exposure_policy:
+  name: shared_client_seed
+  split_id_component: shared_client_seed_
 
 fl_data:
   source_mode: materialized_client_split
