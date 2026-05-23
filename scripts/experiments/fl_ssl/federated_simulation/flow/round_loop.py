@@ -46,18 +46,27 @@ def run_one_round(
     """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
 
     round_started_at = time.perf_counter()
+    round_timing: dict[str, float] = {}
     round_id = f"round_{round_index:04d}"
+
+    started_at = time.perf_counter()
     round_record = bootstrapped.server_runtime.open_round(
         ssl_method_runtime.build_round_open_request(
             round_id=round_id,
             training_task_config=request.training_task_config,
         )
     )
+    round_timing["round_open_seconds"] = time.perf_counter() - started_at
     training_task = round_record.training_task
+
+    started_at = time.perf_counter()
     training_scoring_service = build_round_training_scoring_service(
         request=request,
         active=active,
         training_task=training_task,
+    )
+    round_timing["round_training_scoring_prepare_seconds"] = (
+        time.perf_counter() - started_at
     )
 
     capability_plan = (
@@ -73,16 +82,20 @@ def run_one_round(
             query_multiview_source=None,
         )
     )
+    started_at = time.perf_counter()
     selected_shards, participation_selection = select_participating_clients(
         clients=bootstrapped.dataset_split.client_shards,
         policy=capability_plan.client_participation_policy,
         seed=request.seed,
         round_index=round_index,
     )
+    round_timing["round_client_selection_seconds"] = time.perf_counter() - started_at
     skipped_client_ids = tuple(
         bootstrapped.dataset_split.client_shards[index].client_id
         for index in participation_selection.skipped_indices
     )
+
+    started_at = time.perf_counter()
     peer_context_by_client = peer_context_exchange.build_peer_context_by_client(
         capability_plan=capability_plan,
         ssl_method_config=request.ssl_method_config,
@@ -90,7 +103,11 @@ def run_one_round(
         round_index=round_index,
         client_vectors=peer_context_state.selection_vectors(),
     )
+    round_timing["round_peer_context_prepare_seconds"] = (
+        time.perf_counter() - started_at
+    )
 
+    started_at = time.perf_counter()
     client_executions = tuple(
         run_client_round(
             request=request,
@@ -106,6 +123,7 @@ def run_one_round(
         )
         for shard in selected_shards
     )
+    round_timing["round_client_execution_seconds"] = time.perf_counter() - started_at
     update_count = sum(
         1 for execution in client_executions if execution.update_submitted
     )
@@ -115,23 +133,44 @@ def run_one_round(
             peer_context_state=peer_context_state,
             summary=None,
         )
+    started_at = time.perf_counter()
     next_peer_context_state = _build_next_peer_context_state(
         previous=peer_context_state,
         client_executions=client_executions,
     )
+    round_timing["round_peer_state_build_seconds"] = (
+        time.perf_counter() - started_at
+    )
 
     next_model_revision = f"sim_rev_{round_index:04d}"
+    started_at = time.perf_counter()
     next_active = _finalize_round_publication(
         request=request,
         bootstrapped=bootstrapped,
         round_id=round_id,
         next_model_revision=next_model_revision,
     )
+    round_timing["round_finalize_publication_seconds"] = (
+        time.perf_counter() - started_at
+    )
+    started_at = time.perf_counter()
     validation = evaluate_simulation_validation(
         request=request,
         active=next_active,
         rows=request.validation_rows,
         objective_config=training_task.objective_config,
+    )
+    round_timing["round_validation_seconds"] = time.perf_counter() - started_at
+    round_elapsed = time.perf_counter() - round_started_at
+    round_timing["round_total_seconds"] = round_elapsed
+    measured_without_total = sum(
+        value
+        for key, value in round_timing.items()
+        if key not in {"round_total_seconds", "round_unattributed_seconds"}
+    )
+    round_timing["round_unattributed_seconds"] = max(
+        0.0,
+        round_elapsed - measured_without_total,
     )
     return RoundExecution(
         active=next_active,
@@ -142,7 +181,8 @@ def run_one_round(
             update_count=update_count,
             validation=validation,
             clients=tuple(execution.summary for execution in client_executions),
-            round_time_seconds=time.perf_counter() - round_started_at,
+            round_time_seconds=round_elapsed,
+            round_timing_breakdown=round_timing,
             total_payload_bytes=sum(
                 execution.summary.client_payload_bytes or 0
                 for execution in client_executions

@@ -23,6 +23,7 @@ central fixed embedding + classifier seed
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
+| `docs/operations/fl_ssl_runtime_performance_audit.md` | FL SSL runtime 최적화 전후 수치 기록 |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
 | `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
@@ -37,6 +38,7 @@ central fixed embedding + classifier seed
 | `docs/contracts/central_lora_classifier_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
 | `docs/operations/fl_ssl_execution_audit.md` | 현재 FL SSL 목표 대비 artifact 검증 감사표 |
+| `docs/operations/fl_ssl_runtime_performance_audit.md` | FedMatch reduced runtime 개선 수치와 남은 병목 |
 | `docs/staged_execution_roadmap.md` | Phase map과 current checkpoint |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
 | `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |

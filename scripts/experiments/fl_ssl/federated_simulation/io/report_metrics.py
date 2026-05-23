@@ -105,7 +105,10 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         if client.client_train_time_seconds is not None
     ]
     timing_breakdown_values: dict[str, list[float]] = {}
+    round_timing_breakdown_values: dict[str, list[float]] = {}
     for round_summary in result.rounds:
+        for key, value in round_summary.round_timing_breakdown.items():
+            round_timing_breakdown_values.setdefault(key, []).append(float(value))
         for client in round_summary.clients:
             for key, value in client.timing_breakdown.items():
                 timing_breakdown_values.setdefault(key, []).append(float(value))
@@ -136,6 +139,9 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         "client_train_time_seconds": numeric_summary(client_train_times),
         "timing_breakdown_summary": _timing_breakdown_summary(
             timing_breakdown_values
+        ),
+        "round_timing_breakdown_summary": _timing_breakdown_summary(
+            round_timing_breakdown_values
         ),
         "gpu_memory_peak_mb": numeric_summary(gpu_memory_peaks),
         "system_cost_status": (

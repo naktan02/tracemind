@@ -45,6 +45,7 @@ active_entrypoints:
   - docs/contracts/central_lora_classifier_trainer_contract.md
   - docs/contracts/fl_ssl_method_capability_matrix.md
   - docs/fl_runtime_implementation_checklist.md
+  - docs/operations/fl_ssl_runtime_performance_audit.md
   - docs/strategy_surface_map.md
   - docs/operations/local-runbook.md
   - docs/quality/test-strategy.md

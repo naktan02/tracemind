@@ -256,6 +256,9 @@ unlabeled pool 크기는 report의 `candidate_count`로 유지하고 진단 subs
 `core_training_loop_seconds`, `core_pseudo_label_diagnostics_seconds`,
 `update_upload_materialize_seconds`, `server_update_submit_seconds` 같은 구간별
 wall-clock 시간을 기록한다. batch/step 단위 로그나 GPU sync를 추가하지 않는다.
+Round summary에는 별도 `round_timing_breakdown`도 남긴다. 이 값은 client timing
+밖에 있는 `round_finalize_publication_seconds`, `round_validation_seconds`,
+`round_peer_state_build_seconds` 같은 round-level gap을 분리하기 위한 metadata다.
 
 Simulation artifact 저장 정책은 `artifact_persistence.persist_agent_local_updates`
 가 소유한다. 기본값은 `false`이며, server-owned aggregation artifact를 canonical

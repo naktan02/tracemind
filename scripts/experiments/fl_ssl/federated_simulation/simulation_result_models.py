@@ -98,6 +98,7 @@ class SimulationRoundSummary:
     validation: SimulationEvaluation
     clients: tuple[ClientRoundSummary, ...]
     round_time_seconds: float | None = None
+    round_timing_breakdown: dict[str, float] = field(default_factory=dict)
     total_payload_bytes: int | None = None
     gpu_memory_peak_mb: float | None = None
     total_client_count: int = 0

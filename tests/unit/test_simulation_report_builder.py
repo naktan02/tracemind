@@ -147,6 +147,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 update_count=1,
                 validation=_evaluation(macro_f1=0.4, loss=0.8),
                 round_time_seconds=1.5,
+                round_timing_breakdown={
+                    "round_client_execution_seconds": 1.0,
+                    "round_validation_seconds": 0.2,
+                },
                 total_payload_bytes=100,
                 clients=(
                     ClientRoundSummary(
@@ -193,6 +197,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 update_count=2,
                 validation=_evaluation(macro_f1=0.6, loss=0.5),
                 round_time_seconds=2.5,
+                round_timing_breakdown={
+                    "round_client_execution_seconds": 1.7,
+                    "round_validation_seconds": 0.3,
+                },
                 total_payload_bytes=200,
                 clients=(
                     ClientRoundSummary(
@@ -396,6 +404,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert communication_cost["total_payload_bytes"] == 300
     assert communication_cost["payload_byte_accounting_status"] == "measured"
     assert communication_cost["round_time_seconds"]["mean"] == pytest.approx(2.0)
+    assert communication_cost["round_timing_breakdown_summary"][
+        "round_validation_seconds"
+    ]["mean"] == pytest.approx(0.25)
     assert communication_cost["client_train_time_seconds"]["max"] == pytest.approx(0.3)
     assert communication_cost["timing_breakdown_summary"][
         "core_training_loop_seconds"
