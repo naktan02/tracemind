@@ -114,3 +114,59 @@ partitioned path 전용 적용:
   logits에 pseudo-label CE를 적용한다.
 - 이 저장 포맷 변경은 해당 objective 의미를 바꾸지 않는다. original FedMatch에 더
   충실한 single-view 해석이 필요한지는 별도 ablation/semantic audit으로 다룬다.
+
+## 2026-05-24 Labels-at-server smoke
+
+목적:
+
+- `server_only_seed + supervised_seed_step + client_unlabeled_only` 경로가 실제
+  simulation에서 round open 전 server supervised seed step을 실행하고, client는
+  `psi` partition-only update를 제출하는지 확인한다.
+- reduced run 전에 verifier가 `partitioned_deltas_artifact_ref`만 있는
+  server-owned update artifact를 PASS할 수 있는지 확인한다.
+
+공통 조건:
+
+- Method: FedMatch method-owned LoRA-classifier
+- Scenario: `labels-at-server`
+- Split: server-only seed, Dirichlet alpha=0.3, clients=2, seed=42
+- Budget: smoke override, 1 round, `training_task.max_steps=1`
+- Runtime: `gpu_local + mxbai`, CUDA
+- Capability: `server_step_policy=supervised_seed_step`,
+  `server_update_policy=fedmatch_partitioned`,
+  `local_supervision_regime=client_unlabeled_only`,
+  `local_ssl_policy=fedmatch_agreement`
+
+결과:
+
+| 구분 | 값 |
+|---|---:|
+| 원본 `server_batch_size=100` | CUDA OOM |
+| 실행 override `server_batch_size=12` | PASS |
+| GPU peak 관찰값 | 약 `6.6GB / 16GB` |
+| 전체 1-round smoke | `111.95s` |
+| `round_server_step_seconds` | `69.77s` |
+| `round_client_execution_seconds` | `11.69s` |
+| `round_finalize_publication_seconds` | `8.89s` |
+| `round_validation_seconds` | `21.59s` |
+| final macro-F1 | `0.736076` |
+
+검증:
+
+- Report:
+  `runs/_smoke/fl_ssl/fedmatch/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_server_only_seed_seed42/clients2_rounds1/20260523T160803Z/reports/fl_ssl_main_comparison.report.json`
+- `verify_federated_report_artifacts.py`는
+  `--expect-server-owned-update-artifacts` 사용 시 primary LoRA/head artifact뿐 아니라
+  `partitioned_deltas_artifact_ref` 단독 update도 server-owned artifact로 검증한다.
+- 이 smoke는 `partitioned_delta.safetensors` 존재, agent-local ref 미노출, 최종
+  LoRA-classifier aggregate snapshot 존재까지 PASS했다.
+
+해석:
+
+- 원본 FedMatch의 `server_batch_size=100`은 CIFAR/ResNet 기준 값이라
+  Transformer LoRA-classifier server step에는 그대로 적용하기 어렵다.
+- main fair comparison의 LoRA-classifier batch 기준과 맞추기 위해 labels-at-server
+  reduced run은 원본값을 report에 보존하되
+  `+ssl_method.parameter_overrides.server_batch_size=12`를 명시한다.
+  이 override는 batch 메모리 단위 조정이며 labeled source, objective, round count,
+  client local budget 의미를 바꾸지 않는다.

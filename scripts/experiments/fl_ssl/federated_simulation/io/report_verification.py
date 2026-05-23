@@ -423,25 +423,73 @@ def _verify_shared_update_payload(
         errors.append(f"{update_label} must not contain agent-local artifact refs.")
     if not expectation.expect_server_owned_update_artifacts:
         return
-    for field_name in (
-        "lora_delta_artifact_ref",
-        "classifier_head_delta_artifact_ref",
+    _verify_server_owned_update_refs(
+        errors=errors,
+        run_dir=run_dir,
+        update_label=update_label,
+        update_payload=update_payload,
+    )
+
+
+def _verify_server_owned_update_refs(
+    *,
+    errors: list[str],
+    run_dir: Path,
+    update_label: str,
+    update_payload: Mapping[str, object],
+) -> None:
+    """merged-delta와 partitioned-only update artifact ref를 함께 검증한다."""
+
+    partitioned_ref = update_payload.get("partitioned_deltas_artifact_ref")
+    primary_refs = (
+        update_payload.get("lora_delta_artifact_ref"),
+        update_payload.get("classifier_head_delta_artifact_ref"),
+    )
+    if partitioned_ref is not None:
+        _verify_server_owned_artifact_ref(
+            errors=errors,
+            run_dir=run_dir,
+            update_label=update_label,
+            field_name="partitioned_deltas_artifact_ref",
+            artifact_ref=partitioned_ref,
+        )
+        return
+    for field_name, artifact_ref in zip(
+        ("lora_delta_artifact_ref", "classifier_head_delta_artifact_ref"),
+        primary_refs,
+        strict=True,
     ):
-        artifact_ref = update_payload.get(field_name)
-        if not isinstance(artifact_ref, str) or not artifact_ref:
-            errors.append(f"{update_label}.{field_name} must be a non-empty string.")
-            continue
-        if not artifact_ref.startswith("aggregation_artifact::"):
-            errors.append(
-                f"{update_label}.{field_name} must start with "
-                f"'aggregation_artifact::', got {artifact_ref!r}."
-            )
-            continue
-        artifact_path = _aggregation_artifact_path(run_dir, artifact_ref)
-        if not artifact_path.exists():
-            errors.append(
-                f"{update_label}.{field_name} target does not exist: {artifact_path}."
-            )
+        _verify_server_owned_artifact_ref(
+            errors=errors,
+            run_dir=run_dir,
+            update_label=update_label,
+            field_name=field_name,
+            artifact_ref=artifact_ref,
+        )
+
+
+def _verify_server_owned_artifact_ref(
+    *,
+    errors: list[str],
+    run_dir: Path,
+    update_label: str,
+    field_name: str,
+    artifact_ref: object,
+) -> None:
+    if not isinstance(artifact_ref, str) or not artifact_ref:
+        errors.append(f"{update_label}.{field_name} must be a non-empty string.")
+        return
+    if not artifact_ref.startswith("aggregation_artifact::"):
+        errors.append(
+            f"{update_label}.{field_name} must start with "
+            f"'aggregation_artifact::', got {artifact_ref!r}."
+        )
+        return
+    artifact_path = _aggregation_artifact_path(run_dir, artifact_ref)
+    if not artifact_path.exists():
+        errors.append(
+            f"{update_label}.{field_name} target does not exist: {artifact_path}."
+        )
 
 
 def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
@@ -451,7 +499,13 @@ def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
     )
     if artifact_path.suffix:
         return artifact_path
-    return artifact_path.with_suffix(".json")
+    json_path = artifact_path.with_suffix(".json")
+    if json_path.exists():
+        return json_path
+    safetensors_path = artifact_path.with_suffix(".safetensors")
+    if safetensors_path.exists():
+        return safetensors_path
+    return json_path
 
 
 def _verify_lora_classifier_aggregate_snapshot(

@@ -153,6 +153,7 @@ def _write_report_run_with_server_update_artifacts(
     tmp_path: Path,
     *,
     payload: dict[str, object],
+    partitioned_only: bool = False,
 ) -> Path:
     run_dir = tmp_path / "run"
     report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
@@ -172,24 +173,33 @@ def _write_report_run_with_server_update_artifacts(
             ref_prefix = f"client_updates/{round_id}/{client_id}/{update_id}"
             lora_ref = f"aggregation_artifact::{ref_prefix}/lora_delta"
             head_ref = f"aggregation_artifact::{ref_prefix}/classifier_head_delta"
+            partitioned_ref = f"aggregation_artifact::{ref_prefix}/partitioned_delta"
             (artifact_root / ref_prefix).mkdir(parents=True)
-            (artifact_root / f"{ref_prefix}/lora_delta.json").write_text(
-                json.dumps({"lora_parameters": {"a": [1.0]}}),
-                encoding="utf-8",
-            )
-            (artifact_root / f"{ref_prefix}/classifier_head_delta.json").write_text(
-                json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
-                encoding="utf-8",
-            )
+            if partitioned_only:
+                partitioned_path = (
+                    artifact_root / f"{ref_prefix}/partitioned_delta.safetensors"
+                )
+                partitioned_path.write_text("fake-safetensors", encoding="utf-8")
+            else:
+                (artifact_root / f"{ref_prefix}/lora_delta.json").write_text(
+                    json.dumps({"lora_parameters": {"a": [1.0]}}),
+                    encoding="utf-8",
+                )
+                (artifact_root / f"{ref_prefix}/classifier_head_delta.json").write_text(
+                    json.dumps({"classifier_head_weights": {"normal": [1.0]}}),
+                    encoding="utf-8",
+                )
+            update_payload = {
+                "update_id": update_id,
+                "delta_format": "server_uploaded_artifact_ref",
+            }
+            if partitioned_only:
+                update_payload["partitioned_deltas_artifact_ref"] = partitioned_ref
+            else:
+                update_payload["lora_delta_artifact_ref"] = lora_ref
+                update_payload["classifier_head_delta_artifact_ref"] = head_ref
             (update_dir / f"{update_id}.json").write_text(
-                json.dumps(
-                    {
-                        "update_id": update_id,
-                        "delta_format": "server_uploaded_artifact_ref",
-                        "lora_delta_artifact_ref": lora_ref,
-                        "classifier_head_delta_artifact_ref": head_ref,
-                    }
-                ),
+                json.dumps(update_payload),
                 encoding="utf-8",
             )
 
@@ -405,6 +415,29 @@ def test_verify_federated_report_checks_server_owned_update_artifacts(
     report_path = _write_report_run_with_server_update_artifacts(
         tmp_path,
         payload=_report_payload(client_count=2, completed_rounds=2, round_budget=2),
+    )
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_server_owned_update_artifacts=True,
+            expect_no_agent_local_update_refs=True,
+            expect_lora_classifier_aggregate_snapshot=True,
+        ),
+    )
+
+    assert result.passed
+
+
+def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(client_count=2, completed_rounds=1, round_budget=1),
+        partitioned_only=True,
     )
 
     result = verify_federated_simulation_report_path(
