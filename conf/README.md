@@ -37,6 +37,7 @@ conf/
 │   │   ├── peft_adapter/
 │   │   └── transformer_backbone/
 │   ├── fl/
+│   │   ├── materialized_split/
 │   │   ├── local_update_profile/
 │   │   ├── method_descriptor/
 │   │   └── shard_policy/
@@ -105,6 +106,19 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.
+- `strategy_axes/fl/materialized_split`
+  - `cfg.fl_data.source_mode`, `cfg.fl_data.split_manifest`,
+    `cfg.query_data_selection.*`를 함께 고르는 실행 selector다.
+  - 논문 비교에서 긴 manifest path를 직접 override하지 않기 위한 축이며,
+    method semantics나 labeled exposure policy 의미를 소유하지 않는다.
+  - 현재 열린 selector는 `shared_client_seed` exposure의 10-client,
+    Dirichlet alpha=0.3 split만 대상으로 한다.
+  - source pair는 `shared_reddit_reddit_*`와 `shared_general_reddit_*`로
+    분리한다. 여기서 `general_reddit`은 labeled source가
+    `szegeelim_general4`, unlabeled/validation/test source가
+    `ourafla_reddit`인 조합이다.
+  - labeled budget은 `pc25`, `pc100`, `pc400`, `pc1024`처럼 class당 labeled
+    row 수로 표현한다.
 - `run_controls/fl_ssl/budget`
   - client 수, round budget, output dir 같은 FL SSL 실행 budget을 소유한다.
   - method semantics나 local update policy를 소유하지 않는다.

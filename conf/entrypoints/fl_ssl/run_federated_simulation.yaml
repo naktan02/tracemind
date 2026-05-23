@@ -22,9 +22,10 @@ defaults:
   - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/fl/local_ssl_policy: query_ssl_method
+  - _self_
+  - /strategy_axes/fl/materialized_split: null
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
-  - _self_
 
 train_jsonl: ${dataset.train_jsonl}
 validation_jsonl: ${dataset.validation_jsonl}

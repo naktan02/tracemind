@@ -1,0 +1,14 @@
+# @package _global_
+
+query_data_selection:
+  labeled: szegeelim_general4
+  unlabeled: ourafla_reddit
+  validation: ourafla_reddit
+  test: ourafla_reddit
+
+federated_run_budget:
+  client_count: 10
+
+fl_data:
+  source_mode: materialized_client_split
+  split_manifest: data/datasets/fl_client_splits/shared_client_labeled/${query_data_selection_slug}_labels_pc1024_shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_clients10_seed42/manifest.json

@@ -12,6 +12,7 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 | `local_update_profile/` | `local_update_profile` | agent local update를 만들 때 쓰는 training/evidence/scoring/privacy 조합 |
 | `round_runtime.*` | `round_runtime` | server round의 adapter family와 aggregation backend 직접 leaf |
 | `shard_policy/` | `shard_policy` | non-IID client split 방식 |
+| `materialized_split/` | `fl_data`, `query_data_selection` | 고정 FL split manifest와 source pair/budget 선택 |
 | `labeled_exposure_policy/` | `labeled_exposure_policy` | 선택된 labeled seed가 client-local split인지, 모든 client가 공유하는 public seed인지, 또는 server-only seed인지 구분 |
 | `client_participation_policy/` | `client_participation_policy` | round별 학습 참여 client subset 선택 방식 |
 | `local_supervision_regime/` | `local_supervision_regime` | client local step이 labeled/unlabeled/server-labeled regime 중 무엇을 쓰는지 |
@@ -30,6 +31,15 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 legacy/ablation으로 남긴다. `server_only_seed`는 materialized artifact와 run request
 metadata를 보존하고, method-owned descriptor, `server_step_policy=supervised_seed_step`,
 client-unlabeled regime 조합에서 round open 전 supervised server seed step을 실행한다.
+
+`materialized_split`은 이미 생성된 manifest를 고르는 실행 selector다. 이 축은
+source pair와 labeled budget을 같이 고정해서 `query_data_selection.*`와
+`fl_data.split_manifest`가 drift하지 않게 한다. 현재 열린 main 후보는
+`shared_client_seed`, 10 clients, alpha=0.3 조합의 `pc25/pc100/pc400/pc1024`이며,
+source pair는 `shared_reddit_reddit_*`와 `shared_general_reddit_*`만 둔다.
+`shared_general_reddit_*`는 labeled source가 `szegeelim_general4`, unlabeled pool과
+evaluation source가 `ourafla_reddit`인 조합이다. `client_local_labeled` exposure는
+현재 main 후보가 아니므로 selector와 materialized artifact를 만들지 않는다.
 
 나머지 capability 축은 FedMatch 전용이 아니라 FL SSL 공통 조합 표면이다. 예를 들어
 client participation은 `all_clients`, `fraction_random`, `fixed_count_random` 중에서

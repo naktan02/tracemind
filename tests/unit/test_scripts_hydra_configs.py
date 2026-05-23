@@ -676,6 +676,8 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(config_name="entrypoints/fl_ssl/run_federated_simulation")
 
+    assert cfg.fl_data.source_mode == "runtime_split_from_train"
+    assert cfg.fl_data.split_manifest is None
     assert "ssl_method" not in cfg
     assert cfg.fl_method.composition_mode == "manual"
     assert "training_algorithm_profile" not in cfg
@@ -693,6 +695,65 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.report.unlabeled_ratio == cfg.client_pool_split.unlabeled_ratio
     assert len(cfg.seed_sweep.seeds) == cfg.report.seed_count
     assert cfg.report.seed_count == 3
+
+
+def test_federated_simulation_materialized_split_axis_selects_manifest() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/materialized_split=shared_general_reddit_pc100_alpha03_clients10",
+            ],
+        )
+
+    assert cfg.fl_data.source_mode == "materialized_client_split"
+    assert cfg.query_data_selection.labeled == "szegeelim_general4"
+    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
+    assert cfg.query_data_selection.validation == "ourafla_reddit"
+    assert cfg.query_data_selection.test == "ourafla_reddit"
+    assert cfg.federated_run_budget.client_count == 10
+    assert cfg.fl_data.split_manifest == (
+        "data/datasets/fl_client_splits/shared_client_labeled/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "validation-ourafla_reddit_test-ourafla_reddit_labels_pc100_"
+        "shared_client_seed_dirichlet_label_skew_dominantNone_alpha0.3_"
+        "clients10_seed42/manifest.json"
+    )
+
+
+@pytest.mark.parametrize(
+    ("selector", "labeled", "budget"),
+    [
+        ("shared_reddit_reddit_pc25_alpha03_clients10", "ourafla_reddit", 25),
+        ("shared_reddit_reddit_pc100_alpha03_clients10", "ourafla_reddit", 100),
+        ("shared_reddit_reddit_pc400_alpha03_clients10", "ourafla_reddit", 400),
+        ("shared_reddit_reddit_pc1024_alpha03_clients10", "ourafla_reddit", 1024),
+        ("shared_general_reddit_pc25_alpha03_clients10", "szegeelim_general4", 25),
+        ("shared_general_reddit_pc100_alpha03_clients10", "szegeelim_general4", 100),
+        ("shared_general_reddit_pc400_alpha03_clients10", "szegeelim_general4", 400),
+        (
+            "shared_general_reddit_pc1024_alpha03_clients10",
+            "szegeelim_general4",
+            1024,
+        ),
+    ],
+)
+def test_federated_simulation_materialized_split_axis_covers_shared_budgets(
+    selector: str,
+    labeled: str,
+    budget: int,
+) -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[f"strategy_axes/fl/materialized_split={selector}"],
+        )
+
+    assert cfg.fl_data.source_mode == "materialized_client_split"
+    assert cfg.query_data_selection.labeled == labeled
+    assert cfg.query_data_selection.unlabeled == "ourafla_reddit"
+    assert f"labels_pc{budget}_" in cfg.fl_data.split_manifest
+    assert cfg.fl_data.split_manifest.endswith("clients10_seed42/manifest.json")
 
 
 @pytest.mark.parametrize(
