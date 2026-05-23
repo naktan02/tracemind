@@ -5,7 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
 from datetime import datetime
-from math import ceil
 from typing import Any, Protocol
 from uuid import uuid4
 
@@ -16,6 +15,10 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.lora_classifier.federated_ssl.partitioned_budget import (
+    normalize_partitioned_local_budget_policy,
+    resolve_partitioned_local_budget,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     HelperWeakProbabilityProvider,
@@ -48,12 +51,7 @@ from methods.adaptation.query_classifier_adaptation.data import (
     build_weak_dataloader,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
-    LOCAL_BUDGET_POLICY_ITERATION_CAPPED,
-    LOCAL_BUDGET_POLICY_LABELED_ANCHORED,
     LOCAL_BUDGET_POLICY_ORIGINAL_METHOD,
-    QuerySslLocalStepPlan,
-    build_labeled_anchored_query_ssl_batch_plan,
-    build_query_ssl_local_step_plan,
 )
 from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
@@ -70,6 +68,10 @@ from methods.federated_ssl.capability_axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
 )
+from methods.federated_ssl.capability_plan import (
+    LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
+    LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
+)
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
 )
@@ -80,6 +82,11 @@ from methods.federated_ssl.fedmatch.original_spec import (
 from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_SIGMA_PARTITION,
     upload_partitions_for_scenario,
+)
+from methods.federated_ssl.local_supervision import (
+    FederatedSslLocalSupervisionRegime,
+    require_rows_match_local_supervision_regime,
+    resolve_local_supervision_regime,
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -140,21 +147,16 @@ def run_method_owned_lora_classifier_training_core(
     """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
     scenario_name = _normalize_fedmatch_scenario_name(ssl_method_config.scenario)
-    uses_client_labeled_rows = scenario_name == FEDMATCH_SCENARIO_LABELS_AT_CLIENT
+    local_supervision_regime = _resolve_fedmatch_local_supervision_regime(scenario_name)
 
     effective_labeled_rows = list(labeled_rows)
     effective_unlabeled_rows = list(unlabeled_rows)
-    if uses_client_labeled_rows and not effective_labeled_rows:
-        raise ValueError(
-            "FedMatch labels-at-client local runtime requires labeled_rows."
-        )
-    if not uses_client_labeled_rows and effective_labeled_rows:
-        raise ValueError(
-            "FedMatch labels-at-server local runtime must not receive "
-            "client labeled_rows."
-        )
-    if not effective_unlabeled_rows:
-        raise ValueError("FedMatch local runtime requires unlabeled_rows.")
+    require_rows_match_local_supervision_regime(
+        regime=local_supervision_regime,
+        labeled_rows=effective_labeled_rows,
+        unlabeled_rows=effective_unlabeled_rows,
+        context=f"FedMatch {scenario_name} local runtime",
+    )
 
     validate_query_ssl_unlabeled_views(
         rows=effective_unlabeled_rows,
@@ -164,7 +166,7 @@ def run_method_owned_lora_classifier_training_core(
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
         raise ValueError("FedMatch LoRA classifier label schema must not be empty.")
-    if uses_client_labeled_rows:
+    if local_supervision_regime.uses_client_labeled_rows:
         _validate_labeled_rows_have_known_labels(
             rows=effective_labeled_rows,
             labels=effective_labels,
@@ -188,20 +190,22 @@ def run_method_owned_lora_classifier_training_core(
             device=trainer_runtime_config.device,
         )
 
-    local_budget_policy = _normalize_local_budget_policy(
+    local_budget_policy = normalize_partitioned_local_budget_policy(
         ssl_method_config.local_budget_policy
     )
     with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
         label_to_index = {label: index for index, label in enumerate(effective_labels)}
         labeled_batch_size, resolved_unlabeled_batch_size, step_plan = (
-            _resolve_partitioned_local_budget(
+            resolve_partitioned_local_budget(
                 policy_name=local_budget_policy,
                 labeled_count=len(effective_labeled_rows),
                 unlabeled_count=len(effective_unlabeled_rows),
                 training_task=training_task,
                 configured_unlabeled_batch_size=unlabeled_batch_size,
                 effective_parameters=ssl_method_config.effective_parameters,
-                uses_labeled_batches=uses_client_labeled_rows,
+                uses_labeled_batches=(
+                    local_supervision_regime.uses_client_labeled_rows
+                ),
             )
         )
         train_loader = (
@@ -214,7 +218,7 @@ def run_method_owned_lora_classifier_training_core(
                 task_prefix=lora_config.task_prefix,
                 shuffle=True,
             )
-            if uses_client_labeled_rows
+            if local_supervision_regime.uses_client_labeled_rows
             else None
         )
         unlabeled_loader = build_multiview_dataloader(
@@ -258,7 +262,7 @@ def run_method_owned_lora_classifier_training_core(
             enable_inter_client_consistency=(
                 helper_weak_probability_provider is not None
             ),
-            use_supervised_steps=uses_client_labeled_rows,
+            use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
             emit_sigma_partition=(
                 FEDMATCH_SIGMA_PARTITION
                 in upload_partitions_for_scenario(scenario_name=scenario_name)
@@ -471,23 +475,6 @@ def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     return timing_recorder.measure(key)
 
 
-def _normalize_local_budget_policy(policy_name: str | None) -> str:
-    normalized = (policy_name or LOCAL_BUDGET_POLICY_ITERATION_CAPPED).strip().lower()
-    normalized = normalized.replace("-", "_")
-    if normalized == LOCAL_BUDGET_POLICY_LABELED_ANCHORED:
-        return LOCAL_BUDGET_POLICY_ORIGINAL_METHOD
-    if normalized not in {
-        LOCAL_BUDGET_POLICY_ITERATION_CAPPED,
-        LOCAL_BUDGET_POLICY_ORIGINAL_METHOD,
-    }:
-        raise ValueError(
-            "FedMatch local_budget_policy must be one of "
-            f"{LOCAL_BUDGET_POLICY_ITERATION_CAPPED!r}, "
-            f"{LOCAL_BUDGET_POLICY_ORIGINAL_METHOD!r}."
-        )
-    return normalized
-
-
 def _normalize_fedmatch_scenario_name(scenario_name: str | None) -> str:
     normalized = (scenario_name or FEDMATCH_SCENARIO_LABELS_AT_CLIENT).replace(
         "_",
@@ -501,86 +488,16 @@ def _normalize_fedmatch_scenario_name(scenario_name: str | None) -> str:
     return normalized
 
 
-def _resolve_partitioned_local_budget(
-    *,
-    policy_name: str,
-    labeled_count: int,
-    unlabeled_count: int,
-    training_task: TrainingTask,
-    configured_unlabeled_batch_size: int | None,
-    effective_parameters: Mapping[str, object],
-    uses_labeled_batches: bool,
-) -> tuple[int, int, QuerySslLocalStepPlan]:
-    if policy_name == LOCAL_BUDGET_POLICY_ORIGINAL_METHOD:
-        if not uses_labeled_batches:
-            batch_size = _required_positive_int(
-                effective_parameters,
-                "client_batch_size",
-            )
-            local_epochs = _required_positive_int(
-                effective_parameters,
-                "client_epochs",
-            )
-            unlabeled_loader_steps = ceil(unlabeled_count / batch_size)
-            total_steps = local_epochs * unlabeled_loader_steps
-            return (
-                0,
-                batch_size,
-                build_query_ssl_local_step_plan(
-                    labeled_loader_steps=0,
-                    unlabeled_loader_steps=unlabeled_loader_steps,
-                    uses_labeled_batches=False,
-                    local_epochs=local_epochs,
-                    max_steps=total_steps,
-                ),
-            )
-        local_budget = build_labeled_anchored_query_ssl_batch_plan(
-            labeled_count=labeled_count,
-            unlabeled_count=unlabeled_count,
-            labeled_batch_size=_required_positive_int(
-                effective_parameters,
-                "client_batch_size",
-            ),
-            local_epochs=_required_positive_int(
-                effective_parameters,
-                "client_epochs",
-            ),
+def _resolve_fedmatch_local_supervision_regime(
+    scenario_name: str,
+) -> FederatedSslLocalSupervisionRegime:
+    if scenario_name == FEDMATCH_SCENARIO_LABELS_AT_CLIENT:
+        return resolve_local_supervision_regime(
+            LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED
         )
-        return (
-            local_budget.labeled_batch_size,
-            local_budget.unlabeled_batch_size,
-            local_budget.step_plan,
-        )
-
-    labeled_batch_size = int(training_task.batch_size)
-    resolved_unlabeled_batch_size = (
-        configured_unlabeled_batch_size or labeled_batch_size
-    )
-    labeled_loader_steps = ceil(labeled_count / labeled_batch_size)
-    unlabeled_loader_steps = ceil(unlabeled_count / resolved_unlabeled_batch_size)
-    return (
-        labeled_batch_size if uses_labeled_batches else 0,
-        resolved_unlabeled_batch_size,
-        build_query_ssl_local_step_plan(
-            labeled_loader_steps=labeled_loader_steps,
-            unlabeled_loader_steps=unlabeled_loader_steps,
-            uses_labeled_batches=uses_labeled_batches,
-            local_epochs=int(training_task.local_epochs),
-            max_steps=int(training_task.max_steps),
-        ),
-    )
-
-
-def _required_positive_int(
-    source: Mapping[str, object],
-    key: str,
-) -> int:
-    if key not in source:
-        raise ValueError(f"FedMatch effective_parameters missing {key!r}.")
-    value = int(source[key])
-    if value <= 0:
-        raise ValueError(f"FedMatch effective_parameters.{key} must be positive.")
-    return value
+    if scenario_name == FEDMATCH_SCENARIO_LABELS_AT_SERVER:
+        return resolve_local_supervision_regime(LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY)
+    raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}.")
 
 
 def _resolve_snapshot_acceptance_threshold(

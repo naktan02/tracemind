@@ -22,6 +22,8 @@ from methods.federated_ssl.capability_axes import (
     SERVER_UPDATE_FEDMATCH_PARTITIONED,
 )
 from methods.federated_ssl.capability_plan import (
+    LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
+    LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
     PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     PEER_CONTEXT_PREDICTION_SIMILARITY_TOPK,
     FederatedSslCapabilityPlan,
@@ -34,6 +36,10 @@ from methods.federated_ssl.compatibility import (
 from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     COMPOSITION_MODE_METHOD_OWNED,
+)
+from methods.federated_ssl.local_supervision import (
+    require_rows_match_local_supervision_regime,
+    resolve_local_supervision_regime,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 
@@ -80,6 +86,32 @@ def test_peer_context_legacy_topk_name_normalizes_to_fixed_probe_knn() -> None:
     assert plan.to_payload()["peer_context_policy"] == {
         "name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN,
     }
+
+
+def test_local_supervision_regime_requires_client_labeled_rows_when_exposed() -> None:
+    regime = resolve_local_supervision_regime(
+        LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED
+    )
+
+    with pytest.raises(ValueError, match="requires client labeled_rows"):
+        require_rows_match_local_supervision_regime(
+            regime=regime,
+            labeled_rows=[],
+            unlabeled_rows=[{"query_id": "u1", "text": "weak"}],
+            context="test local runtime",
+        )
+
+
+def test_local_supervision_regime_rejects_labeled_rows_for_unlabeled_clients() -> None:
+    regime = resolve_local_supervision_regime(LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY)
+
+    with pytest.raises(ValueError, match="must not receive client labeled_rows"):
+        require_rows_match_local_supervision_regime(
+            regime=regime,
+            labeled_rows=[{"query_id": "l1", "text": "labeled"}],
+            unlabeled_rows=[{"query_id": "u1", "text": "weak"}],
+            context="test local runtime",
+        )
 
 
 def test_fraction_random_participation_is_round_deterministic() -> None:

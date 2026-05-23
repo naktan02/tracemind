@@ -61,6 +61,10 @@ aggregation/DP/암호화 artifact ref는 method가 아니라 runtime capability 
 분리한다. 전자는 server-side supervised seed step 같은 추가 학습 여부이고, 후자는
 client가 제출한 merged/partitioned delta를 server가 어떤 의미로 해석할지다.
 `local_ssl_policy`는 local pseudo-label/consistency objective 이름만 소유한다.
+`labeled_exposure_policy`와 `local_supervision_regime`은 모든 FL SSL method가 공유하는
+client/server labeled row 노출 계약이다. `server_only_seed`나
+`client_unlabeled_only`는 FedMatch 전용 조건문으로 해석하지 않고
+`local_supervision.py`의 공통 helper를 거쳐 adapter-family runtime에 전달한다.
 FixMatch/FlexMatch/FreeMatch의 threshold와 state parameter는 기존
 `query_ssl_method`가 계속 소유하고, FedMatch agreement vote 같은 method-local 의미는
 `methods/federated_ssl/<method>/`가 소유한다.
