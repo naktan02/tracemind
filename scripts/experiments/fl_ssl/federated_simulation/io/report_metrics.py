@@ -87,6 +87,12 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         for client in round_summary.clients
         if client.client_payload_bytes is not None
     ]
+    artifact_bytes = [
+        client.client_artifact_bytes
+        for round_summary in result.rounds
+        for client in round_summary.clients
+        if client.client_artifact_bytes is not None
+    ]
     round_times = [
         round_summary.round_time_seconds
         for round_summary in result.rounds
@@ -115,6 +121,12 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         "total_candidates": total_candidates,
         "total_accepted": total_accepted,
         "total_payload_bytes": sum(payload_bytes) if payload_bytes else None,
+        "total_artifact_bytes": sum(artifact_bytes) if artifact_bytes else None,
+        "total_update_material_bytes": (
+            sum(payload_bytes) + sum(artifact_bytes)
+            if payload_bytes or artifact_bytes
+            else None
+        ),
         "payload_byte_accounting_status": (
             "measured" if payload_bytes else "not_instrumented"
         ),

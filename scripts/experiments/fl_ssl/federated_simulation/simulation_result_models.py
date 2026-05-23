@@ -18,6 +18,7 @@ class ClientRoundSummary:
     aggregation_example_count: int | None = None
     client_train_time_seconds: float | None = None
     client_payload_bytes: int | None = None
+    client_artifact_bytes: int | None = None
     pseudo_label_confidence_mean: float | None = None
     pseudo_label_margin_mean: float | None = None
     pseudo_label_correct_count: int = 0

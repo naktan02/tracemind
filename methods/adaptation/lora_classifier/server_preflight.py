@@ -87,6 +87,7 @@ def require_lora_classifier_update_is_server_materializable(
                 if head_ref_required
                 else None
             ),
+            update_payload.partitioned_deltas_artifact_ref,
         )
         if artifact_ref is not None
         and artifact_ref.startswith(AGENT_LOCAL_ARTIFACT_REF_PREFIX)

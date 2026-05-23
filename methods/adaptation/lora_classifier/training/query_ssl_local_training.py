@@ -17,6 +17,9 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
 from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
 )
@@ -89,6 +92,7 @@ class QuerySslLoraDeltaMaterialization:
     lora_delta_artifact_ref: str | None
     classifier_head_delta_artifact_ref: str | None
     include_inline_deltas: bool
+    partitioned_deltas_artifact_ref: str | None = None
 
 
 class QuerySslLoraDeltaMaterializer(Protocol):
@@ -105,6 +109,8 @@ class QuerySslLoraDeltaMaterializer(Protocol):
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
+        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+        materialize_primary_deltas: bool = True,
     ) -> QuerySslLoraDeltaMaterialization:
         """delta 저장 방식을 결정하고 artifact ref를 반환한다."""
 

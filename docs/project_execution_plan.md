@@ -291,21 +291,26 @@ Runtime translation:
 7. simulation에서는 agent-local update 사본 저장을 기본 끈다. server aggregation과
    verifier는 server-owned artifact를 기준으로 유지하고, report protocol에 저장 정책을
    남긴다.
-8. `training_view`는 현재 기본 계획에서 제외한다. 학습 pool을 제한하면 model update
+8. FedMatch처럼 partitioned server update policy가 partition별 material만 소비하는
+   경로는 `partitioned_deltas_artifact_ref`를 canonical payload에 남기고, 큰
+   partitioned delta material은 server-owned aggregation artifact로 저장한다. 이 경로는
+   primary LoRA/head delta artifact도 생략해 shared update payload와 중복 artifact 저장을
+   줄인다. Inline `partitioned_deltas`는 smoke/debug compatibility로만 유지한다.
+9. `training_view`는 현재 기본 계획에서 제외한다. 학습 pool을 제한하면 model update
    의미가 바뀌므로, runtime이 여전히 과한 경우에만 별도 debug/runtime ablation으로
    검토한다.
-9. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
+10. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
    `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
-   helper injection, `partitioned_deltas` 소비, final report metadata다.
+   helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata다.
    비교용 reduced 조건은 우선 `10 clients`, `5 rounds`, `max_steps=20`으로 둔다.
    FedMatch도 기본 `local_budget_policy=iteration_capped`로 같은 local update
    budget을 쓰고, 원본 labels-at-client budget은
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
-10. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
+11. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
    FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
-11. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
+12. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
    막는다.

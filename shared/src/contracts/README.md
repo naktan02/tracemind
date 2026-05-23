@@ -109,6 +109,9 @@ runtime과 test는 family별 direct import를 사용한다.
   - `partitioned_deltas`는 server update policy가 logical partition을 소비해야 할 때
     쓰는 선택적 canonical shape다. partition 이름과 sigma/psi 같은 method 의미는
     `shared`가 아니라 `methods/`의 method package가 소유한다
+  - `partitioned_deltas_artifact_ref`는 같은 partitioned delta material을 server-owned
+    artifact로 옮긴 경로다. 큰 FL SSL update runtime은 payload에는 ref/metadata만
+    남기고, aggregation consumer가 artifact loader로 materialize한다
 
 ### `training_objective_contracts.py`
 

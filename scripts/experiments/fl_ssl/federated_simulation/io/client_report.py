@@ -86,6 +86,7 @@ def _aggregate_client_round_summaries(
     accepted_count_by_client: dict[str, int] = {}
     aggregation_example_count_by_client: dict[str, int] = {}
     payload_bytes_by_client: dict[str, int] = {}
+    artifact_bytes_by_client: dict[str, int] = {}
     update_generated_by_client: dict[str, bool] = {}
     update_generated_round_count_by_client: dict[str, int] = {}
     latest_round_id_by_client: dict[str, str] = {}
@@ -123,6 +124,11 @@ def _aggregate_client_round_summaries(
                 payload_bytes_by_client[client.client_id] = (
                     payload_bytes_by_client.get(client.client_id, 0)
                     + client.client_payload_bytes
+                )
+            if client.client_artifact_bytes is not None:
+                artifact_bytes_by_client[client.client_id] = (
+                    artifact_bytes_by_client.get(client.client_id, 0)
+                    + client.client_artifact_bytes
                 )
             latest_round_id_by_client[client.client_id] = round_summary.round_id
             latest_update_generated_by_client[client.client_id] = (
@@ -183,6 +189,7 @@ def _aggregate_client_round_summaries(
             accepted_count=accepted_count_by_client.get(client_id, 0),
             aggregation_examples=aggregation_example_count_by_client.get(client_id, 0),
             payload_bytes=payload_bytes_by_client.get(client_id),
+            artifact_bytes=artifact_bytes_by_client.get(client_id),
             client_update_generated=update_generated_by_client.get(client_id, False),
             update_generated_round_count=(
                 update_generated_round_count_by_client.get(client_id, 0)
@@ -225,6 +232,7 @@ def _client_round_summary_payload(
     accepted_count: int,
     aggregation_examples: int,
     payload_bytes: int | None,
+    artifact_bytes: int | None,
     client_update_generated: bool,
     update_generated_round_count: int,
     latest_round_id: str | None,
@@ -246,6 +254,7 @@ def _client_round_summary_payload(
         "client_accepted_ratio": safe_ratio(accepted_count, candidate_count),
         "aggregation_example_count": aggregation_examples,
         "client_payload_bytes": payload_bytes,
+        "client_artifact_bytes": artifact_bytes,
         "client_update_generated": client_update_generated,
         "latest_round_id": latest_round_id,
         "latest_update_generated": latest_update_generated,

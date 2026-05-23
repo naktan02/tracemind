@@ -17,6 +17,9 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
@@ -371,6 +374,53 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
     assert head_artifact["classifier_head_bias_deltas"] == {
         "anxiety": 0.05,
         "normal": -0.05,
+    }
+
+
+def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(
+    tmp_path,
+) -> None:
+    plan = prepare_delta_materialization(
+        output_dir=tmp_path,
+        update_id="update_round_0001_agent_01_test",
+        training_task=SimpleNamespace(round_id="round_0001"),
+        client_id="agent_01",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+        classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
+        classifier_head_bias_deltas={"anxiety": 0.05},
+        partitioned_deltas={
+            "sigma": LoraClassifierPartitionDelta(
+                partition_name="sigma",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+                classifier_head_weight_deltas={"anxiety": [0.2]},
+                classifier_head_bias_deltas={"anxiety": 0.03},
+            )
+        },
+        materialize_primary_deltas=False,
+    )
+
+    assert plan.lora_delta_artifact_ref is None
+    assert plan.classifier_head_delta_artifact_ref is None
+    assert plan.partitioned_deltas_artifact_ref is not None
+    assert plan.partitioned_deltas_artifact_ref.startswith(
+        AGGREGATION_ARTIFACT_REF_PREFIX
+    )
+    store = AggregationArtifactStore(
+        state_root=tmp_path / "main_server" / "aggregation_artifacts"
+    )
+    artifact = store.load_json_artifact(
+        artifact_ref=plan.partitioned_deltas_artifact_ref
+    )
+    assert artifact["schema_version"] == (
+        "lora_classifier_client_partitioned_delta_artifact.v1"
+    )
+    assert artifact["partitions"] == {
+        "sigma": {
+            "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1]},
+            "classifier_head_weight_deltas": {"anxiety": [0.2]},
+            "classifier_head_bias_deltas": {"anxiety": 0.03},
+        }
     }
 
 

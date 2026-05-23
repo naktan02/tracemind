@@ -40,6 +40,7 @@ class LoraClassifierTrainArtifacts:
     classifier_head_weight_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_bias_deltas: Mapping[str, float] | None = None
     partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None
+    partitioned_deltas_artifact_ref: str | None = None
     delta_l2_norm: float = 0.0
 
 
@@ -203,6 +204,7 @@ def build_lora_classifier_delta_payload_from_artifacts(
         partitioned_deltas=_build_partitioned_delta_payload(
             artifacts.partitioned_deltas
         ),
+        partitioned_deltas_artifact_ref=artifacts.partitioned_deltas_artifact_ref,
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,

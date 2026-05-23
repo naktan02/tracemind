@@ -324,6 +324,60 @@ def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -
     )
 
 
+def test_materialize_lora_classifier_partitioned_update_reads_artifact_ref() -> None:
+    loader = InMemoryJsonArtifactLoader(
+        {
+            "aggregation_artifact://client/partitioned_delta": {
+                "partitions": {
+                    "sigma": {
+                        "lora_parameter_deltas": {
+                            "encoder.q_proj.lora_A": [0.2],
+                        },
+                        "classifier_head_weight_deltas": {
+                            "anxiety": [0.1, 0.0],
+                            "normal": [-0.1, 0.0],
+                        },
+                        "classifier_head_bias_deltas": {"anxiety": 0.05},
+                    },
+                    "psi": {
+                        "lora_parameter_deltas": {
+                            "encoder.q_proj.lora_A": [0.3],
+                        },
+                        "classifier_head_weight_deltas": {
+                            "anxiety": [0.2, 0.0],
+                            "normal": [-0.2, 0.0],
+                        },
+                        "classifier_head_bias_deltas": {"normal": -0.04},
+                    },
+                }
+            }
+        }
+    )
+    update = _lora_update(
+        lora_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        partitioned_deltas_artifact_ref=(
+            "aggregation_artifact://client/partitioned_delta"
+        ),
+        delta_format="server_uploaded_artifact_ref",
+        delta_l2_norm=1.5,
+    )
+
+    partitions = materialize_lora_classifier_partitioned_update(
+        payload=update,
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert set(partitions) == {"sigma", "psi"}
+    assert partitions["sigma"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.2])
+    assert partitions["psi"].classifier_head_bias_deltas == pytest.approx(
+        {"normal": -0.04}
+    )
+
+
 def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client() -> (
     None
 ):
@@ -423,6 +477,7 @@ def _lora_update(
     classifier_head_weight_deltas: dict[str, list[float]] | None = None,
     classifier_head_bias_deltas: dict[str, float] | None = None,
     partitioned_deltas: dict[str, dict[str, object]] | None = None,
+    partitioned_deltas_artifact_ref: str | None = None,
     lora_delta_artifact_ref: str | None = None,
     classifier_head_delta_artifact_ref: str | None = None,
     delta_l2_norm: float | None = 1.0,
@@ -442,6 +497,7 @@ def _lora_update(
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
         partitioned_deltas=partitioned_deltas,
+        partitioned_deltas_artifact_ref=partitioned_deltas_artifact_ref,
         delta_format=delta_format,
         mean_confidence=0.9,
         mean_margin=0.2,

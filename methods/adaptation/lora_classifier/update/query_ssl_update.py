@@ -59,6 +59,7 @@ def build_query_ssl_lora_update_payload(
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     lora_delta_artifact_ref: str | None = None,
     classifier_head_delta_artifact_ref: str | None = None,
+    partitioned_deltas_artifact_ref: str | None = None,
     include_inline_deltas: bool = True,
 ) -> QuerySslLoraUpdateBuildResult:
     """학습 결과 delta와 history를 shared payload/metric으로 변환한다."""
@@ -66,11 +67,17 @@ def build_query_ssl_lora_update_payload(
     normalized_delta_format = str(delta_format).strip()
     if not normalized_delta_format:
         raise ValueError("delta_format must not be empty.")
-    if not include_inline_deltas and (
-        lora_delta_artifact_ref is None or classifier_head_delta_artifact_ref is None
+    has_primary_artifact_refs = (
+        lora_delta_artifact_ref is not None
+        and classifier_head_delta_artifact_ref is not None
+    )
+    has_partitioned_artifact_ref = partitioned_deltas_artifact_ref is not None
+    if not include_inline_deltas and not (
+        has_primary_artifact_refs or has_partitioned_artifact_ref
     ):
         raise ValueError(
-            "artifact-ref Query SSL LoRA update requires both lora/head delta refs."
+            "artifact-ref Query SSL LoRA update requires lora/head delta refs or "
+            "partitioned_deltas_artifact_ref."
         )
     util_ratio = finite_float_or_none(history_record.get("train_util_ratio"))
     accepted_unlabeled_count = int(round((util_ratio or 0.0) * len(unlabeled_rows)))
@@ -98,7 +105,12 @@ def build_query_ssl_lora_update_payload(
             classifier_head_bias_deltas=(
                 classifier_head_bias_deltas if include_inline_deltas else None
             ),
-            partitioned_deltas=partitioned_deltas,
+            partitioned_deltas=(
+                None
+                if partitioned_deltas_artifact_ref is not None
+                else partitioned_deltas
+            ),
+            partitioned_deltas_artifact_ref=partitioned_deltas_artifact_ref,
             delta_l2_norm=delta_l2_norm,
         ),
         delta_format=normalized_delta_format,

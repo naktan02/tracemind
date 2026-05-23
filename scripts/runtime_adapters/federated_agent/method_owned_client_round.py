@@ -32,6 +32,7 @@ from scripts.runtime_adapters.federated_agent import (
     method_owned_lora_classifier_trainer as method_trainer,
 )
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
+    server_owned_lora_classifier_update_artifact_byte_count,
     upload_agent_local_lora_classifier_update,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
@@ -179,6 +180,14 @@ def _run_method_owned_lora_client_round(
             client_train_time_seconds=client_train_time_seconds,
             client_payload_bytes=(
                 client_update_submission.payload_byte_count(server_update_payload)
+                if update_submitted
+                else None
+            ),
+            client_artifact_bytes=(
+                server_owned_lora_classifier_update_artifact_byte_count(
+                    output_dir=request.output_dir,
+                    update_payload=server_update_payload,
+                )
                 if update_submitted
                 else None
             ),

@@ -178,6 +178,7 @@ def make_lora_classifier_delta_payload(
     partitioned_deltas: (
         dict[str, LoraClassifierPartitionDeltaPayload | Mapping[str, object]] | None
     ) = None,
+    partitioned_deltas_artifact_ref: str | None = None,
     delta_format: str = "artifact_ref",
     mean_confidence: float | None = None,
     mean_margin: float | None = None,
@@ -203,6 +204,7 @@ def make_lora_classifier_delta_payload(
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas or {},
         partitioned_deltas=partitioned_deltas,
+        partitioned_deltas_artifact_ref=partitioned_deltas_artifact_ref,
         delta_format=delta_format,
         mean_confidence=mean_confidence,
         mean_margin=mean_margin,

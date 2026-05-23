@@ -127,6 +127,7 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
         "delta_l2_norm": client.delta_l2_norm,
         "client_train_time_seconds": client.client_train_time_seconds,
         "client_payload_bytes": client.client_payload_bytes,
+        "client_artifact_bytes": client.client_artifact_bytes,
         "candidate_confidence_mean": client.pseudo_label_confidence_mean,
         "candidate_margin_mean": client.pseudo_label_margin_mean,
         "pseudo_label_confidence_mean": client.pseudo_label_confidence_mean,

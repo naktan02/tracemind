@@ -129,6 +129,7 @@ def aggregate_lora_classifier_partitioned_delta_average(
         _to_lora_classifier_partitioned_method_update(
             base_state=base_state,
             payload=payload,
+            context=context,
         )
         for payload in updates
     ]
@@ -175,13 +176,17 @@ def _to_lora_classifier_partitioned_method_update(
     *,
     base_state: LoraClassifierState,
     payload: LoraClassifierDelta,
+    context: FederatedAggregationContext,
 ) -> LoraClassifierPartitionedDeltaAverageUpdate:
     validate_lora_classifier_update_matches_base(
         base_state=base_state,
         payload=payload,
     )
     return LoraClassifierPartitionedDeltaAverageUpdate(
-        partitions=materialize_lora_classifier_partitioned_update(payload=payload),
+        partitions=materialize_lora_classifier_partitioned_update(
+            payload=payload,
+            context=context,
+        ),
         example_count=payload.example_count,
         mean_confidence=payload.mean_confidence,
         mean_margin=payload.mean_margin,

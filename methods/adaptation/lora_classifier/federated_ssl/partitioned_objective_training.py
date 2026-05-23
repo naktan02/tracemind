@@ -287,6 +287,8 @@ def run_method_owned_lora_classifier_training_core(
             lora_parameter_deltas=lora_deltas,
             classifier_head_weight_deltas=head_weight_deltas,
             classifier_head_bias_deltas=head_bias_deltas,
+            partitioned_deltas=training_result.partition_deltas,
+            materialize_primary_deltas=False,
         )
     with _measure(timing_recorder, "core_update_payload_build_seconds"):
         update_build_result = build_query_ssl_lora_update_payload(
@@ -307,6 +309,9 @@ def run_method_owned_lora_classifier_training_core(
             lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
             classifier_head_delta_artifact_ref=(
                 delta_materialization.classifier_head_delta_artifact_ref
+            ),
+            partitioned_deltas_artifact_ref=(
+                delta_materialization.partitioned_deltas_artifact_ref
             ),
             include_inline_deltas=delta_materialization.include_inline_deltas,
         )

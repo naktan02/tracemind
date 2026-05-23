@@ -151,31 +151,68 @@ def materialize_lora_classifier_update(
 def materialize_lora_classifier_partitioned_update(
     *,
     payload: LoraClassifierDelta,
+    context: FederatedAggregationContext | None = None,
 ) -> dict[str, LoraClassifierPartitionDelta]:
     """shared payload의 partitioned delta를 methods-owned delta object로 읽는다."""
 
-    if payload.partitioned_deltas is None:
+    partitioned_deltas = payload.partitioned_deltas
+    if partitioned_deltas is None and payload.partitioned_deltas_artifact_ref:
+        if context is None:
+            raise ValueError(
+                "LoRA-classifier partitioned artifact materialization requires an "
+                "aggregation context."
+            )
+        loader = context.require_artifact_loader(
+            context="LoRA-classifier partitioned aggregation materialization"
+        )
+        artifact = loader.load_json_artifact(
+            artifact_ref=payload.partitioned_deltas_artifact_ref
+        )
+        source = artifact.get("partitions", artifact)
+        if not isinstance(source, Mapping):
+            raise ValueError(
+                "LoRA-classifier partitioned delta artifact must contain a "
+                "mapping payload."
+            )
+        partitioned_deltas = source
+
+    if partitioned_deltas is None:
         raise ValueError(
-            "LoRA-classifier partitioned aggregation requires partitioned_deltas."
+            "LoRA-classifier partitioned aggregation requires partitioned_deltas "
+            "or partitioned_deltas_artifact_ref."
         )
     partitions: dict[str, LoraClassifierPartitionDelta] = {}
-    for partition_name, partition in payload.partitioned_deltas.items():
+    for partition_name, partition in partitioned_deltas.items():
+        if isinstance(partition, Mapping):
+            lora_parameter_deltas = partition.get("lora_parameter_deltas", {})
+            classifier_head_weight_deltas = partition.get(
+                "classifier_head_weight_deltas",
+                {},
+            )
+            classifier_head_bias_deltas = partition.get(
+                "classifier_head_bias_deltas",
+                {},
+            )
+        else:
+            lora_parameter_deltas = partition.lora_parameter_deltas
+            classifier_head_weight_deltas = partition.classifier_head_weight_deltas
+            classifier_head_bias_deltas = partition.classifier_head_bias_deltas
         partitions[partition_name] = LoraClassifierPartitionDelta(
             partition_name=partition_name,
             lora_parameter_deltas=_normalize_optional_vector_mapping(
-                partition.lora_parameter_deltas,
+                lora_parameter_deltas,
                 field_name=(
                     f"partitioned_deltas.{partition_name}.lora_parameter_deltas"
                 ),
             ),
             classifier_head_weight_deltas=_normalize_optional_vector_mapping(
-                partition.classifier_head_weight_deltas,
+                classifier_head_weight_deltas,
                 field_name=(
                     f"partitioned_deltas.{partition_name}.classifier_head_weight_deltas"
                 ),
             ),
             classifier_head_bias_deltas=_normalize_scalar_mapping(
-                partition.classifier_head_bias_deltas,
+                classifier_head_bias_deltas,
                 field_name=(
                     f"partitioned_deltas.{partition_name}.classifier_head_bias_deltas"
                 ),

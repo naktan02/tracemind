@@ -18,6 +18,9 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraDeltaMaterialization,
 )
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
 )
@@ -26,6 +29,9 @@ from shared.src.contracts.training_contracts import TrainingTask
 AGENT_LOCAL_ARTIFACT_REF_PREFIX = "agent-local://"
 LORA_DELTA_ARTIFACT_SCHEMA_VERSION = "lora_classifier_client_delta_artifact.v1"
 HEAD_DELTA_ARTIFACT_SCHEMA_VERSION = "lora_classifier_client_head_delta_artifact.v1"
+PARTITIONED_DELTA_ARTIFACT_SCHEMA_VERSION = (
+    "lora_classifier_client_partitioned_delta_artifact.v1"
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,6 +51,8 @@ class SimulationQuerySslLoraDeltaMaterializer:
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
+        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+        materialize_primary_deltas: bool = True,
     ) -> QuerySslLoraDeltaMaterialization:
         return prepare_delta_materialization(
             output_dir=self.output_dir,
@@ -56,6 +64,8 @@ class SimulationQuerySslLoraDeltaMaterializer:
             lora_parameter_deltas=lora_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
+            partitioned_deltas=partitioned_deltas,
+            materialize_primary_deltas=materialize_primary_deltas,
         )
 
 
@@ -69,6 +79,8 @@ def prepare_delta_materialization(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+    materialize_primary_deltas: bool = True,
     artifact_ref_prefix: str = "agent-local://lora_classifier",
 ) -> QuerySslLoraDeltaMaterialization:
     """delta_format에 맞게 LoRA/classifier delta artifact ref를 준비한다."""
@@ -82,6 +94,10 @@ def prepare_delta_materialization(
             include_inline_deltas=True,
         )
     if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL:
+        if not materialize_primary_deltas and partitioned_deltas is None:
+            raise ValueError(
+                "Skipping primary LoRA/head artifacts requires partitioned_deltas."
+            )
         return _prepare_agent_local_delta_materialization(
             output_dir=output_dir,
             update_id=update_id,
@@ -91,10 +107,16 @@ def prepare_delta_materialization(
             lora_parameter_deltas=lora_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
+            partitioned_deltas=partitioned_deltas,
+            materialize_primary_deltas=materialize_primary_deltas,
         )
     if normalized_delta_format != LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED:
         raise ValueError(
             f"Unsupported Query SSL LoRA delta_format: {normalized_delta_format!r}."
+        )
+    if not materialize_primary_deltas and partitioned_deltas is None:
+        raise ValueError(
+            "Skipping primary LoRA/head artifacts requires partitioned_deltas."
         )
     return _prepare_server_uploaded_delta_materialization(
         output_dir=output_dir,
@@ -104,6 +126,8 @@ def prepare_delta_materialization(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
+        partitioned_deltas=partitioned_deltas,
+        materialize_primary_deltas=materialize_primary_deltas,
     )
 
 
@@ -127,10 +151,42 @@ def upload_agent_local_lora_classifier_update(
                 agent_local_ref=update_payload.classifier_head_delta_artifact_ref,
             )
         )
+    if _is_agent_local_ref(update_payload.partitioned_deltas_artifact_ref):
+        update_fields["partitioned_deltas_artifact_ref"] = _upload_agent_local_artifact(
+            output_dir=output_dir,
+            agent_local_ref=update_payload.partitioned_deltas_artifact_ref,
+        )
     if not update_fields:
         return update_payload
     update_fields["delta_format"] = LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
     return update_payload.model_copy(update=update_fields)
+
+
+def server_owned_lora_classifier_update_artifact_byte_count(
+    *,
+    output_dir: Path,
+    update_payload: LoraClassifierDelta,
+) -> int:
+    """server-owned update artifact ref들이 가리키는 JSON 파일 크기를 합산한다."""
+
+    store = AggregationArtifactStore(
+        state_root=output_dir / "main_server" / "aggregation_artifacts"
+    )
+    total = 0
+    for artifact_ref in (
+        update_payload.lora_delta_artifact_ref,
+        update_payload.classifier_head_delta_artifact_ref,
+        update_payload.partitioned_deltas_artifact_ref,
+    ):
+        if artifact_ref is None:
+            continue
+        artifact_id = store.artifact_id_from_ref(artifact_ref)
+        if artifact_id is None:
+            continue
+        path = store.path_for_artifact(artifact_id)
+        if path.exists():
+            total += path.stat().st_size
+    return total
 
 
 def _prepare_agent_local_delta_materialization(
@@ -143,47 +199,72 @@ def _prepare_agent_local_delta_materialization(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+    materialize_primary_deltas: bool,
 ) -> QuerySslLoraDeltaMaterialization:
-    lora_delta_ref = _agent_local_ref_for_artifact(
-        artifact_ref_prefix=artifact_ref_prefix,
-        training_task=training_task,
-        client_id=client_id,
-        update_id=update_id,
-        artifact_name="lora_delta",
-    )
-    head_delta_ref = _agent_local_ref_for_artifact(
-        artifact_ref_prefix=artifact_ref_prefix,
-        training_task=training_task,
-        client_id=client_id,
-        update_id=update_id,
-        artifact_name="classifier_head_delta",
-    )
-    _save_agent_local_json_artifact(
-        output_dir=output_dir,
-        artifact_ref=lora_delta_ref,
-        payload=_build_lora_delta_artifact_payload(
-            update_id=update_id,
+    lora_delta_ref = None
+    head_delta_ref = None
+    if materialize_primary_deltas:
+        lora_delta_ref = _agent_local_ref_for_artifact(
+            artifact_ref_prefix=artifact_ref_prefix,
             training_task=training_task,
             client_id=client_id,
-            lora_parameter_deltas=lora_parameter_deltas,
-        ),
-    )
-    _save_agent_local_json_artifact(
-        output_dir=output_dir,
-        artifact_ref=head_delta_ref,
-        payload=_build_classifier_head_delta_artifact_payload(
             update_id=update_id,
+            artifact_name="lora_delta",
+        )
+        head_delta_ref = _agent_local_ref_for_artifact(
+            artifact_ref_prefix=artifact_ref_prefix,
             training_task=training_task,
             client_id=client_id,
-            classifier_head_weight_deltas=classifier_head_weight_deltas,
-            classifier_head_bias_deltas=classifier_head_bias_deltas,
-        ),
-    )
+            update_id=update_id,
+            artifact_name="classifier_head_delta",
+        )
+        _save_agent_local_json_artifact(
+            output_dir=output_dir,
+            artifact_ref=lora_delta_ref,
+            payload=_build_lora_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                lora_parameter_deltas=lora_parameter_deltas,
+            ),
+        )
+        _save_agent_local_json_artifact(
+            output_dir=output_dir,
+            artifact_ref=head_delta_ref,
+            payload=_build_classifier_head_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                classifier_head_weight_deltas=classifier_head_weight_deltas,
+                classifier_head_bias_deltas=classifier_head_bias_deltas,
+            ),
+        )
+    partitioned_delta_ref = None
+    if partitioned_deltas is not None:
+        partitioned_delta_ref = _agent_local_ref_for_artifact(
+            artifact_ref_prefix=artifact_ref_prefix,
+            training_task=training_task,
+            client_id=client_id,
+            update_id=update_id,
+            artifact_name="partitioned_delta",
+        )
+        _save_agent_local_json_artifact(
+            output_dir=output_dir,
+            artifact_ref=partitioned_delta_ref,
+            payload=_build_partitioned_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                partitioned_deltas=partitioned_deltas,
+            ),
+        )
     return QuerySslLoraDeltaMaterialization(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
         lora_delta_artifact_ref=lora_delta_ref,
         classifier_head_delta_artifact_ref=head_delta_ref,
         include_inline_deltas=False,
+        partitioned_deltas_artifact_ref=partitioned_delta_ref,
     )
 
 
@@ -196,6 +277,8 @@ def _prepare_server_uploaded_delta_materialization(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+    materialize_primary_deltas: bool,
 ) -> QuerySslLoraDeltaMaterialization:
     store = AggregationArtifactStore(
         state_root=output_dir / "main_server" / "aggregation_artifacts"
@@ -203,34 +286,58 @@ def _prepare_server_uploaded_delta_materialization(
     artifact_id_prefix = (
         f"client_updates/{training_task.round_id}/{client_id}/{update_id}"
     )
-    lora_delta_ref = store.ref_for_artifact(f"{artifact_id_prefix}/lora_delta")
-    head_delta_ref = store.ref_for_artifact(
-        f"{artifact_id_prefix}/classifier_head_delta"
+    lora_delta_ref = (
+        store.ref_for_artifact(f"{artifact_id_prefix}/lora_delta")
+        if materialize_primary_deltas
+        else None
     )
-    store.save_json_artifact_ref(
-        artifact_ref=lora_delta_ref,
-        payload=_build_lora_delta_artifact_payload(
-            update_id=update_id,
-            training_task=training_task,
-            client_id=client_id,
-            lora_parameter_deltas=lora_parameter_deltas,
-        ),
+    head_delta_ref = (
+        store.ref_for_artifact(f"{artifact_id_prefix}/classifier_head_delta")
+        if materialize_primary_deltas
+        else None
     )
-    store.save_json_artifact_ref(
-        artifact_ref=head_delta_ref,
-        payload=_build_classifier_head_delta_artifact_payload(
-            update_id=update_id,
-            training_task=training_task,
-            client_id=client_id,
-            classifier_head_weight_deltas=classifier_head_weight_deltas,
-            classifier_head_bias_deltas=classifier_head_bias_deltas,
-        ),
+    partitioned_delta_ref = (
+        None
+        if partitioned_deltas is None
+        else store.ref_for_artifact(f"{artifact_id_prefix}/partitioned_delta")
     )
+    if lora_delta_ref is not None:
+        store.save_json_artifact_ref(
+            artifact_ref=lora_delta_ref,
+            payload=_build_lora_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                lora_parameter_deltas=lora_parameter_deltas,
+            ),
+        )
+    if head_delta_ref is not None:
+        store.save_json_artifact_ref(
+            artifact_ref=head_delta_ref,
+            payload=_build_classifier_head_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                classifier_head_weight_deltas=classifier_head_weight_deltas,
+                classifier_head_bias_deltas=classifier_head_bias_deltas,
+            ),
+        )
+    if partitioned_delta_ref is not None:
+        store.save_json_artifact_ref(
+            artifact_ref=partitioned_delta_ref,
+            payload=_build_partitioned_delta_artifact_payload(
+                update_id=update_id,
+                training_task=training_task,
+                client_id=client_id,
+                partitioned_deltas=partitioned_deltas or {},
+            ),
+        )
     return QuerySslLoraDeltaMaterialization(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
         lora_delta_artifact_ref=lora_delta_ref,
         classifier_head_delta_artifact_ref=head_delta_ref,
         include_inline_deltas=False,
+        partitioned_deltas_artifact_ref=partitioned_delta_ref,
     )
 
 
@@ -395,5 +502,37 @@ def _build_classifier_head_delta_artifact_payload(
         },
         "classifier_head_bias_deltas": {
             str(key): float(value) for key, value in classifier_head_bias_deltas.items()
+        },
+    }
+
+
+def _build_partitioned_delta_artifact_payload(
+    *,
+    update_id: str,
+    training_task: TrainingTask,
+    client_id: str,
+    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta],
+) -> dict[str, object]:
+    return {
+        "schema_version": PARTITIONED_DELTA_ARTIFACT_SCHEMA_VERSION,
+        "update_id": update_id,
+        "round_id": training_task.round_id,
+        "client_id": client_id,
+        "partitions": {
+            str(name): {
+                "lora_parameter_deltas": {
+                    str(key): [float(value) for value in values]
+                    for key, values in delta.lora_parameter_deltas.items()
+                },
+                "classifier_head_weight_deltas": {
+                    str(key): [float(value) for value in values]
+                    for key, values in delta.classifier_head_weight_deltas.items()
+                },
+                "classifier_head_bias_deltas": {
+                    str(key): float(value)
+                    for key, value in delta.classifier_head_bias_deltas.items()
+                },
+            }
+            for name, delta in sorted(partitioned_deltas.items())
         },
     }

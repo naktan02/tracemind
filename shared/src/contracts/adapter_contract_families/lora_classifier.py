@@ -209,6 +209,14 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
     classifier_head_weight_deltas: dict[str, list[float]] | None = None
     classifier_head_bias_deltas: dict[str, float] = Field(default_factory=dict)
     partitioned_deltas: dict[str, LoraClassifierPartitionDeltaPayload] | None = None
+    partitioned_deltas_artifact_ref: str | None = Field(
+        default=None,
+        description=(
+            "Server-owned artifact ref containing partitioned_deltas. Runtime paths "
+            "use this when partitioned delta material is too large for the canonical "
+            "update payload."
+        ),
+    )
     delta_format: str = "artifact_ref"
     mean_confidence: float | None = Field(default=None, ge=0.0, le=1.0)
     mean_margin: float | None = None
@@ -256,6 +264,7 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
                 self.classifier_head_weight_deltas,
                 self.classifier_head_bias_deltas,
                 self.partitioned_deltas,
+                self.partitioned_deltas_artifact_ref,
             )
         )
 
@@ -315,6 +324,15 @@ class LoraClassifierAdapterUpdatePayload(SharedAdapterUpdatePayload):
             squared_norm += sum(
                 partition.squared_l2_norm()
                 for partition in self.partitioned_deltas.values()
+            )
+        if (
+            not has_primary_delta_material
+            and self.partitioned_deltas is None
+            and self.partitioned_deltas_artifact_ref is not None
+        ):
+            raise ValueError(
+                "partitioned_deltas_artifact_ref updates require delta_l2_norm for "
+                "metadata-only norm calculation."
             )
         return math.sqrt(squared_norm)
 

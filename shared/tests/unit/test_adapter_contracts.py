@@ -348,6 +348,31 @@ def test_lora_classifier_update_supports_partitioned_delta_material(
     )
 
 
+def test_lora_classifier_update_supports_partitioned_delta_artifact_ref(
+    fixed_utc_time,
+) -> None:
+    update = make_lora_classifier_delta_payload(
+        model_id="mxbai-lora-classifier",
+        base_model_revision="rev_lora_001",
+        training_scope="adapter_only",
+        created_at=fixed_utc_time,
+        backbone=_lora_backbone_mapping(),
+        lora_config=_lora_config_mapping(),
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        partitioned_deltas_artifact_ref=(
+            "aggregation_artifact::client_updates/round_0001/agent_01/"
+            "update_001/partitioned_delta"
+        ),
+        delta_format="server_uploaded_artifact_ref",
+        delta_l2_norm=1.25,
+    )
+
+    assert update.partitioned_deltas is None
+    assert update.partitioned_deltas_artifact_ref is not None
+    assert update.l2_norm() == pytest.approx(1.25)
+
+
 def test_lora_classifier_update_requires_artifact_ref_or_inline_delta(
     fixed_utc_time,
 ) -> None:
