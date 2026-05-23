@@ -485,3 +485,55 @@ Client timing:
 - 남은 큰 병목은 `core_training_loop_seconds` 약 `402.6s`, pseudo-label diagnostics
   약 `102.7s`, validation 약 `108.8s`다. base materialization은 더 이상 1순위 병목이
   아니다.
+
+## 2026-05-24 Tokenization/Transfer/Clip Reduced 재실행
+
+적용된 변경:
+
+- FL SSL local runtime의 `RuntimeResourceCache`에 run-local text tokenization cache를
+  추가했다.
+- labeled train/selection loader, weak unlabeled loader, multiview unlabeled loader,
+  final pseudo-label diagnostics loader가 같은 tokenizer namespace와 text 기준 cache를
+  공유한다.
+- CUDA 환경에서 DataLoader `pin_memory=True`와 tensor 이동
+  `non_blocking=True`를 사용한다.
+- gradient clipping 대상은 전체 parameter iterator가 아니라
+  `requires_grad=True` trainable parameter tuple로 제한한다.
+- 정보 로그와 round별 diagnostic 평가 빈도는 유지했다.
+
+비교 run:
+
+| 구분 | run directory | 적용 상태 |
+|---|---|---|
+| 이전 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T184942Z` | merged delta `safetensors`, round base snapshot cache |
+| 이후 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T192005Z` | tokenization cache, pinned/non-blocking transfer, trainable-only grad clipping 추가 |
+
+결과:
+
+| 지표 | 이전 | 이후 | 변화 |
+|---|---:|---:|---:|
+| final macro-F1 | `0.685966` | `0.685966` | 동일 |
+| final accuracy | `0.712760` | `0.712760` | 동일 |
+| final loss | `0.685471` | `0.685471` | 동일 |
+| total accepted | `743` | `743` | 동일 |
+| `round_time_seconds.mean` | `146.235s` | `143.398s` | `-1.94%` |
+| 5-round total time estimate | `731.177s` | `716.992s` | `-14.186s` |
+| `client_train_time_seconds.mean` | `11.204s` | `10.948s` | `-2.28%` |
+| `core_training_loop_seconds.mean` | `8.053s` | `7.834s` | `-2.71%` |
+| `core_training_loop_seconds.total` | `402.644s` | `391.715s` | `-10.929s` |
+| `core_pseudo_label_diagnostics_seconds.mean` | `2.055s` | `2.014s` | `-1.97%` |
+| `core_pseudo_label_diagnostics_seconds.total` | `102.742s` | `100.720s` | `-2.023s` |
+| `core_delta_materialization_seconds.mean` | `0.173s` | `0.167s` | `-3.44%` |
+| `adapter_base_materialization_seconds.total` | `6.244s` | `6.461s` | `+0.217s` |
+
+해석:
+
+- metric, loss, accepted 수가 완전히 동일하므로 이번 변경은 학습 의미를 바꾸지 않는
+  runtime 최적화로 볼 수 있다.
+- 개선 폭은 저장 포맷 전환이나 round base cache보다 작다. 병목 대부분은 여전히 실제
+  forward/backward와 diagnostic forward에 남아 있기 때문이다.
+- `core_training_loop_seconds.total`이 약 `10.9s` 줄었고, 전체 5-round 합산은 약
+  `14.2s` 줄었다. 이 개선은 반복 tokenization 감소, pinned/non-blocking transfer,
+  trainable-only gradient clipping이 합쳐진 결과이며, 현재 report에는 세 항목별 분리
+  타이밍은 없다.
+- round별 diagnostic 평가는 유지했기 때문에 report 정보량은 줄지 않았다.

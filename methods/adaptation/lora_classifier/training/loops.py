@@ -133,6 +133,14 @@ def build_optimizer(
     )
 
 
+def trainable_model_parameters(model: nn.Module) -> tuple[nn.Parameter, ...]:
+    """gradient update 대상 parameter만 반환한다."""
+
+    return tuple(
+        parameter for parameter in model.parameters() if parameter.requires_grad
+    )
+
+
 def train_classifier(
     *,
     model: LoraTextClassifier,
@@ -156,6 +164,7 @@ def train_classifier(
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
+    trainable_parameters = trainable_model_parameters(model)
     criterion = nn.CrossEntropyLoss()
     full_epoch_steps = len(train_loader)
     if max_train_steps is not None and max_train_steps <= 0:
@@ -195,7 +204,7 @@ def train_classifier(
             loss = criterion(logits, labels)
             loss.backward()
             if max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
             optimizer.step()
 
             batch_rows = len(labels)
@@ -257,10 +266,17 @@ def _move_tensor_batch_to_device(
     moved: dict[str, Any] = {}
     for key, value in batch.items():
         if isinstance(value, torch.Tensor):
-            moved[key] = value.to(device)
+            moved[key] = value.to(
+                device,
+                non_blocking=_is_cuda_device(device),
+            )
         else:
             moved[key] = value
     return moved
+
+
+def _is_cuda_device(device: str) -> bool:
+    return str(device).startswith("cuda")
 
 
 def _accumulate_scalar_tensors(
@@ -366,6 +382,7 @@ def train_query_ssl_classifier(
         classifier_learning_rate=classifier_learning_rate,
         weight_decay=weight_decay,
     )
+    trainable_parameters = trainable_model_parameters(model)
 
     resume_state = load_query_ssl_training_checkpoint(
         path=resume_checkpoint_path,
@@ -439,7 +456,7 @@ def train_query_ssl_classifier(
             )
             step_output.total_loss.backward()
             if max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(model.parameters(), max_grad_norm)
+                torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
             optimizer.step()
 
             step_count += 1

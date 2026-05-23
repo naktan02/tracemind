@@ -4,8 +4,10 @@ from __future__ import annotations
 
 from methods.adaptation.query_classifier_adaptation.data import (
     TextMultiviewDataset,
+    TextTokenizationCache,
     TextWeakDataset,
     build_multiview_dataloader,
+    build_weak_dataloader,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -129,3 +131,54 @@ def test_multiview_dataloader_emits_stable_row_indices() -> None:
 
     assert batch["query_ids"] == ["q1", "q2"]
     assert batch["row_indices"].tolist() == [0, 1]
+
+
+def test_text_tokenization_cache_reuses_selected_texts() -> None:
+    class _Tokenizer:
+        pad_token_id = 0
+        padding_side = "right"
+        name_or_path = "unit-tokenizer"
+
+        def __init__(self) -> None:
+            self.calls: list[str] = []
+
+        def __call__(self, texts, **_kwargs):
+            self.calls.append(str(texts))
+            values = [ord(char) % 17 + 1 for char in str(texts)]
+            return {
+                "input_ids": values,
+                "attention_mask": [1 for _value in values],
+            }
+
+    row = _row("q1", "same text")
+    cache = TextTokenizationCache()
+    tokenizer = _Tokenizer()
+
+    first_loader = build_weak_dataloader(
+        rows=[row],
+        tokenizer=tokenizer,
+        batch_size=1,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        tokenization_cache=cache,
+        tokenization_cache_namespace="unit",
+    )
+    second_loader = build_weak_dataloader(
+        rows=[row],
+        tokenizer=tokenizer,
+        batch_size=1,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        tokenization_cache=cache,
+        tokenization_cache_namespace="unit",
+    )
+
+    first_batch = next(iter(first_loader))
+    second_batch = next(iter(second_loader))
+
+    assert tokenizer.calls == ["same text"]
+    assert first_batch["weak_input_ids"].tolist() == second_batch[
+        "weak_input_ids"
+    ].tolist()

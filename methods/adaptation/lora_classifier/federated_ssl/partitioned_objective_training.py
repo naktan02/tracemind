@@ -46,9 +46,11 @@ from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
 )
 from methods.adaptation.query_classifier_adaptation.data import (
+    TextTokenizationCache,
     build_dataloader,
     build_multiview_dataloader,
     build_weak_dataloader,
+    resolve_text_tokenization_cache,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     LOCAL_BUDGET_POLICY_ORIGINAL_METHOD,
@@ -175,6 +177,8 @@ def run_method_owned_lora_classifier_training_core(
     parameters = FedMatchLocalObjectiveParameters.from_mapping(
         ssl_method_config.effective_parameters
     )
+    tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
+    tokenization_cache_namespace = _tokenization_cache_namespace(lora_config)
     with _measure(timing_recorder, "core_model_prepare_seconds"):
         with _measure(timing_recorder, "core_seed_seconds"):
             set_seed(int(seed))
@@ -220,6 +224,8 @@ def run_method_owned_lora_classifier_training_core(
                 max_length=lora_config.max_length,
                 task_prefix=lora_config.task_prefix,
                 shuffle=True,
+                tokenization_cache=tokenization_cache,
+                tokenization_cache_namespace=tokenization_cache_namespace,
             )
             if local_supervision_regime.uses_client_labeled_rows
             else None
@@ -232,6 +238,8 @@ def run_method_owned_lora_classifier_training_core(
             task_prefix=lora_config.task_prefix,
             shuffle=True,
             strong_view_policy=strong_view_policy,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
         )
         psi_query_ssl_algorithm = _build_psi_query_ssl_algorithm(
             local_ssl_policy_name=local_ssl_policy_name,
@@ -290,6 +298,8 @@ def run_method_owned_lora_classifier_training_core(
             ),
             trainer_runtime_config=trainer_runtime_config,
             unlabeled_batch_size=resolved_unlabeled_batch_size,
+            tokenization_cache=tokenization_cache,
+            tokenization_cache_namespace=tokenization_cache_namespace,
         )
 
     with _measure(timing_recorder, "core_delta_extract_seconds"):
@@ -539,6 +549,8 @@ def _build_final_snapshot_pseudo_label_quality(
     acceptance_threshold: float,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     unlabeled_batch_size: int,
+    tokenization_cache: TextTokenizationCache | None,
+    tokenization_cache_namespace: str,
 ) -> PseudoLabelQualitySummary:
     effective_rows = list(rows)
     if not effective_rows:
@@ -551,6 +563,8 @@ def _build_final_snapshot_pseudo_label_quality(
         max_length=lora_config.max_length,
         task_prefix=lora_config.task_prefix,
         shuffle=False,
+        tokenization_cache=tokenization_cache,
+        tokenization_cache_namespace=tokenization_cache_namespace,
     )
     candidates: list[PseudoLabelCandidateRecord] = []
     model.eval()
@@ -588,6 +602,15 @@ def _build_final_snapshot_pseudo_label_quality(
     return build_pseudo_label_quality_summary(
         candidates=tuple(candidates),
         rows_with_simulation_labels=effective_rows,
+    )
+
+
+def _tokenization_cache_namespace(
+    lora_config: LoraClassifierTrainingBackendConfig,
+) -> str:
+    return (
+        f"tokenizer={lora_config.tokenizer_model_id}"
+        f"|revision={lora_config.tokenizer_revision}"
     )
 
 

@@ -11,7 +11,10 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.training.loops import build_optimizer
+from methods.adaptation.lora_classifier.training.loops import (
+    build_optimizer,
+    trainable_model_parameters,
+)
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
@@ -536,7 +539,7 @@ def _clip_gradients_if_needed(
 ) -> None:
     if max_grad_norm > 0.0:
         torch.nn.utils.clip_grad_norm_(
-            _as_torch_module(model).parameters(),
+            trainable_model_parameters(_as_torch_module(model)),
             max_grad_norm,
         )
 
@@ -564,7 +567,11 @@ def _move_tensor_batch_to_device(
 ) -> dict[str, Any]:
     moved: dict[str, Any] = {}
     for key, value in batch.items():
-        moved[key] = value.to(device) if isinstance(value, torch.Tensor) else value
+        moved[key] = (
+            value.to(device, non_blocking=str(device).startswith("cuda"))
+            if isinstance(value, torch.Tensor)
+            else value
+        )
     return moved
 
 
