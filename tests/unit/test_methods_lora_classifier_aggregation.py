@@ -23,6 +23,12 @@ from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
 from methods.adaptation.lora_classifier.aggregation.state_projection import (
     build_lora_classifier_state_projection,
 )
+from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
+    build_classifier_head_delta_tensor_artifact,
+    build_lora_delta_tensor_artifact,
+    parse_classifier_head_delta_tensor_artifact,
+    parse_lora_delta_tensor_artifact,
+)
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
     normalize_partition_deltas,
@@ -118,6 +124,93 @@ def test_materialize_lora_classifier_update_reads_server_artifact_refs() -> None
                 },
             },
         }
+    )
+    update = _lora_update(
+        lora_delta_artifact_ref="aggregation_artifact://client/lora_delta",
+        classifier_head_delta_artifact_ref="aggregation_artifact://client/head_delta",
+        lora_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        delta_format="server_uploaded_artifact_ref",
+    )
+
+    materialized = materialize_lora_classifier_update(
+        payload=update,
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert materialized.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.2, 0.4]
+    )
+    assert materialized.classifier_head_weight_deltas["normal"] == pytest.approx(
+        [-0.5, 0.1]
+    )
+    assert materialized.classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.2, "normal": -0.2}
+    )
+
+
+def test_merged_delta_tensor_artifacts_roundtrip() -> None:
+    lora_tensors, lora_metadata = build_lora_delta_tensor_artifact(
+        {
+            "encoder.q_proj.lora_A": [0.2, -0.1],
+        }
+    )
+    head_tensors, head_metadata = build_classifier_head_delta_tensor_artifact(
+        classifier_head_weight_deltas={
+            "anxiety": [0.5, -0.1],
+            "normal": [-0.5, 0.1],
+        },
+        classifier_head_bias_deltas={
+            "anxiety": 0.2,
+            "normal": -0.2,
+        },
+    )
+
+    lora_deltas = parse_lora_delta_tensor_artifact(
+        tensors=lora_tensors,
+        metadata=lora_metadata,
+    )
+    head_weight_deltas, head_bias_deltas = parse_classifier_head_delta_tensor_artifact(
+        tensors=head_tensors,
+        metadata=head_metadata,
+    )
+
+    assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.2, -0.1])
+    assert head_weight_deltas["normal"] == pytest.approx([-0.5, 0.1])
+    assert head_bias_deltas == pytest.approx({"anxiety": 0.2, "normal": -0.2})
+
+
+def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() -> (
+    None
+):
+    lora_tensors, lora_metadata = build_lora_delta_tensor_artifact(
+        {
+            "encoder.q_proj.lora_A": [0.2, 0.4],
+        }
+    )
+    head_tensors, head_metadata = build_classifier_head_delta_tensor_artifact(
+        classifier_head_weight_deltas={
+            "anxiety": [0.5, -0.1],
+            "normal": [-0.5, 0.1],
+        },
+        classifier_head_bias_deltas={
+            "anxiety": 0.2,
+            "normal": -0.2,
+        },
+    )
+    loader = InMemoryTensorArtifactLoader(
+        artifacts={},
+        tensor_artifacts={
+            "aggregation_artifact://client/lora_delta": (
+                lora_tensors,
+                lora_metadata,
+            ),
+            "aggregation_artifact://client/head_delta": (
+                head_tensors,
+                head_metadata,
+            ),
+        },
     )
     update = _lora_update(
         lora_delta_artifact_ref="aggregation_artifact://client/lora_delta",

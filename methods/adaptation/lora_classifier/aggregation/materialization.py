@@ -18,6 +18,10 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
 
+from ..update.merged_tensor_artifact import (
+    parse_classifier_head_delta_tensor_artifact,
+    parse_lora_delta_tensor_artifact,
+)
 from ..update.partitioned_delta import LoraClassifierPartitionDelta
 from ..update.partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
 
@@ -270,6 +274,12 @@ def _load_lora_parameter_deltas(
         raise ValueError(
             "LoRA-classifier artifact materialization requires lora_delta_artifact_ref."
         )
+    tensor_deltas = _try_load_lora_delta_tensor_artifact(
+        loader=loader,
+        artifact_ref=payload.lora_delta_artifact_ref,
+    )
+    if tensor_deltas is not None:
+        return tensor_deltas
     artifact = loader.load_json_artifact(artifact_ref=payload.lora_delta_artifact_ref)
     source = artifact.get("lora_parameter_deltas", artifact)
     return _normalize_vector_mapping(source, field_name="lora_parameter_deltas")
@@ -285,6 +295,12 @@ def _load_classifier_head_artifact(
             "LoRA-classifier artifact materialization requires "
             "classifier_head_delta_artifact_ref."
         )
+    tensor_artifact = _try_load_classifier_head_tensor_artifact(
+        loader=loader,
+        artifact_ref=payload.classifier_head_delta_artifact_ref,
+    )
+    if tensor_artifact is not None:
+        return tensor_artifact
     artifact = loader.load_json_artifact(
         artifact_ref=payload.classifier_head_delta_artifact_ref
     )
@@ -299,6 +315,48 @@ def _load_classifier_head_artifact(
             bias_source,
             field_name="classifier_head_bias_deltas",
         ),
+    )
+
+
+def _try_load_lora_delta_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> dict[str, list[float]] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except FileNotFoundError:
+        return None
+    return parse_lora_delta_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+
+def _try_load_classifier_head_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> tuple[dict[str, list[float]], dict[str, float]] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except FileNotFoundError:
+        return None
+    return parse_classifier_head_delta_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
     )
 
 

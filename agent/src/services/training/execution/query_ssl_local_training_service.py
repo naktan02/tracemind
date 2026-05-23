@@ -23,6 +23,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -52,6 +53,7 @@ class QuerySslLoraLocalTrainingRequest:
     created_at: datetime | None = None
     agent_id: str | None = None
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None
+    runtime_resource_cache: RuntimeResourceCache | None = None
     timing_recorder: TimingRecorder | None = None
     persist_update_artifact: bool = True
 
@@ -80,6 +82,7 @@ class QuerySslLoraTrainingBackend(Protocol):
         trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
         created_at: datetime,
         delta_materializer: QuerySslLoraDeltaMaterializer,
+        runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
     ) -> QuerySslLoraClientTrainingResult:
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
@@ -126,6 +129,7 @@ class QuerySslLocalTrainingService:
             trainer_runtime_config=request.trainer_runtime_config,
             created_at=effective_created_at,
             delta_materializer=request.delta_materializer,
+            runtime_resource_cache=request.runtime_resource_cache,
             timing_recorder=request.timing_recorder,
         )
         if request.persist_update_artifact:

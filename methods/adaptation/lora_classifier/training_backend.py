@@ -23,6 +23,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.update.local_update import (
     LoraClassifierTrainExecutor,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
@@ -130,6 +131,7 @@ class LoraClassifierTrainingBackend:
         trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
         created_at: datetime,
         delta_materializer: QuerySslLoraDeltaMaterializer,
+        runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
     ) -> QuerySslLoraClientTrainingResult:
         """Query SSL raw rows를 methods-owned LoRA local core로 학습한다."""
@@ -149,6 +151,7 @@ class LoraClassifierTrainingBackend:
             trainer_runtime_config=trainer_runtime_config,
             created_at=created_at,
             delta_materializer=delta_materializer,
+            runtime_resource_cache=runtime_resource_cache,
             timing_recorder=timing_recorder,
         )
 

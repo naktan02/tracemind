@@ -328,3 +328,107 @@ Client timing:
   partitioned artifact 최적화 효과는 직접 적용되지 않는다. 남은 큰 병목은
   client sequential execution, client별 training loop, merged delta materialization,
   validation/finalization이다.
+
+## 2026-05-24 Manual Merged Delta Binary Format 변경
+
+적용된 변경:
+
+- manual Query SSL/FedAvg 계열의 server-owned merged LoRA/head client delta artifact를
+  JSON 대신 `safetensors`로 저장한다.
+- `lora_delta_artifact_ref`와 `classifier_head_delta_artifact_ref`의 opaque ref 의미는
+  유지했다. 같은 ref에서 `.safetensors`를 우선 읽고, 파일이 없으면 기존 JSON artifact를
+  읽는다.
+- FedMatch partitioned 경로는 이미 `partitioned_deltas_artifact_ref`를 `safetensors`로
+  저장하고 있었으므로 이 변경의 직접 대상은 FixMatch/FlexMatch/FreeMatch/PseudoLabel
+  + FedAvg 같은 merged delta 경로다.
+- run-scoped `RuntimeResourceCache`를 manual Query SSL LoRA local training에도 연결했다.
+  method-owned 경로와 동일하게 tokenizer와 backbone base를 cache하고, client별 학습
+  모델은 cached base를 `deepcopy`한 뒤 새 LoRA/head를 붙인다.
+- `core_model_prepare_seconds` 내부를 `core_seed_seconds`,
+  `core_model_build_seconds`, `core_base_parameter_load_seconds`로 추가 계측한다.
+
+의미 보존:
+
+- dtype은 기존 tensor delta와 같은 float32 저장 경로다.
+- aggregation consumer는 materialized `dict[str, list[float]]`로 복원한 뒤 기존 FedAvg
+  계산을 그대로 수행한다.
+- diagnostic forward 재사용, tokenization cache, mixed precision, client 병렬화는 적용하지
+  않았다. 이들은 결과/상태 격리 또는 실행환경 변수 영향이 있어 별도 ablation 전까지
+  보류한다.
+
+기대 효과와 다음 측정:
+
+- 직전 manual reduced run에서 `total_artifact_bytes`는 약 `5.24GB`,
+  `core_delta_materialization_seconds.mean`은 `2.377s/client`였다.
+- 새 포맷은 JSON float 문자열 직렬화와 파싱을 제거하므로 artifact size와
+  `core_delta_materialization_seconds`가 크게 줄어야 한다.
+- 실제 개선 폭은 다음 manual reduced run에서 같은 selector
+  `shared_general_reddit_pc100_alpha03_clients10`, 10 clients, 5 rounds,
+  `max_steps=20` 조건으로 기록한다.
+
+## 2026-05-24 Manual Merged Delta Binary Format Reduced 재실행
+
+조건:
+
+- Method composition: manual `fixmatch_usb_v1 + lora_classifier + fedavg`
+- Selector:
+  `strategy_axes/fl/materialized_split=shared_general_reddit_pc100_alpha03_clients10`
+- Source pair: labeled `szegeelim_general4`, unlabeled/validation/test
+  `ourafla_reddit`
+- Labeled budget: `100/class`, shared-client exposure
+- Split: Dirichlet alpha=0.3, clients=10, seed=42
+- Budget: reduced, 5 rounds, `training_task.max_steps=20`
+- Runtime: `gpu_local + mxbai`, CUDA
+
+비교 run:
+
+| 구분 | run directory | 저장 포맷 |
+|---|---|---|
+| 이전 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T172345Z` | merged LoRA/head delta JSON |
+| 이후 | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_shared_client_seed_seed42/clients10_rounds5/20260523T181111Z` | merged LoRA/head delta `safetensors` |
+
+결과:
+
+| 지표 | 이전 | 이후 | 변화 |
+|---|---:|---:|---:|
+| final macro-F1 | `0.686146` | `0.685966` | `-0.000180` |
+| final accuracy | `0.712760` | `0.712760` | 동일 |
+| total accepted | `750` | `743` | `-7` |
+| report `total_artifact_bytes` | `5,242,689,449` | `714,566,000` | `-86.37%` |
+| report `total_update_material_bytes` | `5,242,756,186` | `714,632,745` | `-86.37%` |
+| run directory size | `5.9G` | `1.7G` | 약 `71%` 감소 |
+| `main_server/aggregation_artifacts` | `5.9G` | `1.7G` | 약 `71%` 감소 |
+| client update artifact files | `100 JSON` | `100 safetensors` | binary tensor 전환 |
+| `round_time_seconds.mean` | `189.822s` | `159.416s` | `-16.02%` |
+| `round_client_execution_seconds.mean` | `148.588s` | `125.036s` | `-15.85%` |
+| `round_finalize_publication_seconds.mean` | `19.457s` | `12.621s` | `-35.13%` |
+| `local_training_total_seconds.mean` | `14.855s` | `12.500s` | `-15.85%` |
+| `core_delta_materialization_seconds.mean` | `2.377s` | `0.169s` | `-92.89%` |
+| `core_model_prepare_seconds.mean` | `0.557s` | `0.421s` | `-24.50%` |
+| `core_training_loop_seconds.mean` | `8.062s` | `8.074s` | `+0.15%` |
+| `core_pseudo_label_diagnostics_seconds.mean` | `2.044s` | `2.051s` | `+0.33%` |
+
+새 계측:
+
+| timing key | mean | max |
+|---|---:|---:|
+| `core_model_build_seconds` | `0.332s` | `0.531s` |
+| `core_base_parameter_load_seconds` | `0.088s` | `0.124s` |
+| `core_seed_seconds` | `0.00035s` | `0.00082s` |
+
+해석:
+
+- 성능 개선의 주 원인은 merged LoRA/head delta를 JSON float 문자열로 직렬화하지 않고
+  `safetensors` binary tensor artifact로 저장한 것이다.
+- aggregator의 입력 의미는 그대로다. 새 consumer는 `.safetensors`를 읽어 기존과 같은
+  `dict[str, list[float]]` materialized delta로 복원한 뒤 기존 FedAvg 계산을 수행한다.
+- `core_training_loop_seconds`와 pseudo-label diagnostics는 거의 변하지 않았다. 따라서
+  이번 개선은 학습 objective 속도 개선이 아니라 client update materialization과
+  publication/finalization IO 감소다.
+- final macro-F1과 accuracy는 동등 범위다. accepted pseudo-label 수 차이 `-7`은
+  stochastic/local ordering 수준으로 보며, 저장 포맷 변경이 aggregation 의미를 바꾼
+  신호는 아니다.
+- manual runtime cache 연결로 `core_model_prepare_seconds`도 일부 줄었다. 다만 새
+  세부 계측상 model build 평균 `0.332s`, base parameter load 평균 `0.088s`라서
+  현재 주요 병목은 여전히 `core_training_loop_seconds`, pseudo-label diagnostics,
+  validation, sequential client execution이다.

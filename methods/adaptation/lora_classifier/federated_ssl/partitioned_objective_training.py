@@ -176,19 +176,22 @@ def run_method_owned_lora_classifier_training_core(
         ssl_method_config.effective_parameters
     )
     with _measure(timing_recorder, "core_model_prepare_seconds"):
-        set_seed(int(seed))
-        model, tokenizer = build_lora_text_classifier_from_config(
-            labels=list(effective_labels),
-            lora_config=lora_config,
-            runtime_config=trainer_runtime_config,
-            runtime_resource_cache=runtime_resource_cache,
-        )
-        load_lora_classifier_base_parameters_into_model(
-            model=model,
-            labels=effective_labels,
-            base_parameters=base_parameters,
-            device=trainer_runtime_config.device,
-        )
+        with _measure(timing_recorder, "core_seed_seconds"):
+            set_seed(int(seed))
+        with _measure(timing_recorder, "core_model_build_seconds"):
+            model, tokenizer = build_lora_text_classifier_from_config(
+                labels=list(effective_labels),
+                lora_config=lora_config,
+                runtime_config=trainer_runtime_config,
+                runtime_resource_cache=runtime_resource_cache,
+            )
+        with _measure(timing_recorder, "core_base_parameter_load_seconds"):
+            load_lora_classifier_base_parameters_into_model(
+                model=model,
+                labels=effective_labels,
+                base_parameters=base_parameters,
+                device=trainer_runtime_config.device,
+            )
 
     local_budget_policy = normalize_partitioned_local_budget_policy(
         ssl_method_config.local_budget_policy

@@ -37,6 +37,7 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_WEAK_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
 from methods.evaluation.pseudo_label_quality import (
     PseudoLabelCandidateRecord,
@@ -148,6 +149,7 @@ def run_query_ssl_lora_classifier_training_core(
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """client-local raw text/views로 Query SSL LoRA update를 생성한다."""
@@ -175,18 +177,22 @@ def run_query_ssl_lora_classifier_training_core(
     )
 
     with _measure(timing_recorder, "core_model_prepare_seconds"):
-        set_seed(int(seed))
-        model, tokenizer = _build_lora_classifier_model(
-            labels=effective_labels,
-            lora_config=lora_config,
-            trainer_runtime_config=trainer_runtime_config,
-        )
-        load_lora_classifier_base_parameters_into_model(
-            model=model,
-            labels=effective_labels,
-            base_parameters=base_parameters,
-            device=trainer_runtime_config.device,
-        )
+        with _measure(timing_recorder, "core_seed_seconds"):
+            set_seed(int(seed))
+        with _measure(timing_recorder, "core_model_build_seconds"):
+            model, tokenizer = _build_lora_classifier_model(
+                labels=effective_labels,
+                lora_config=lora_config,
+                trainer_runtime_config=trainer_runtime_config,
+                runtime_resource_cache=runtime_resource_cache,
+            )
+        with _measure(timing_recorder, "core_base_parameter_load_seconds"):
+            load_lora_classifier_base_parameters_into_model(
+                model=model,
+                labels=effective_labels,
+                base_parameters=base_parameters,
+                device=trainer_runtime_config.device,
+            )
 
     with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
         label_to_index = {label: index for index, label in enumerate(effective_labels)}
@@ -335,11 +341,13 @@ def _build_lora_classifier_model(
     labels: Sequence[str],
     lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
 ) -> tuple[LoraTextClassifier, Any]:
     return build_lora_text_classifier_from_config(
         labels=[str(label) for label in labels],
         lora_config=lora_config,
         runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
     )
 
 

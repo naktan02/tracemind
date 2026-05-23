@@ -17,6 +17,12 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
+    HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
+    LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
+    parse_classifier_head_delta_tensor_artifact,
+    parse_lora_delta_tensor_artifact,
+)
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
@@ -214,11 +220,16 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     )
+    runtime_resource_cache = object()
+
+    def _fake_build_lora_classifier_model(**kwargs):
+        captured["runtime_resource_cache"] = kwargs["runtime_resource_cache"]
+        return object(), object()
 
     monkeypatch.setattr(
         qcore,
         "_build_lora_classifier_model",
-        lambda **_kwargs: (object(), object()),
+        _fake_build_lora_classifier_model,
     )
     monkeypatch.setattr(qtrainer, "_load_base_parameters", lambda **_kwargs: object())
     monkeypatch.setattr(
@@ -324,9 +335,11 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             device="cpu",
             local_files_only=True,
         ),
+        runtime_resource_cache=runtime_resource_cache,
     )
 
     assert captured["algorithm"].algorithm_name == algorithm_name
+    assert captured["runtime_resource_cache"] is runtime_resource_cache
     if algorithm_name == "flexmatch":
         assert captured["algorithm"].thresh_warmup is True
     assert result.update_payload == update_payload
@@ -362,23 +375,39 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
     store = AggregationArtifactStore(
         state_root=tmp_path / "main_server" / "aggregation_artifacts"
     )
-    lora_artifact = store.load_json_artifact(artifact_ref=plan.lora_delta_artifact_ref)
-    head_artifact = store.load_json_artifact(
+    lora_tensors, lora_metadata = store.load_safetensors_artifact(
+        artifact_ref=plan.lora_delta_artifact_ref
+    )
+    head_tensors, head_metadata = store.load_safetensors_artifact(
         artifact_ref=plan.classifier_head_delta_artifact_ref
     )
-    assert lora_artifact["schema_version"] == (
-        "lora_classifier_client_delta_artifact.v1"
+    assert LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in lora_metadata
+    assert HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in head_metadata
+    for artifact_ref in (
+        plan.lora_delta_artifact_ref,
+        plan.classifier_head_delta_artifact_ref,
+    ):
+        artifact_id = store.artifact_id_from_ref(artifact_ref)
+        assert artifact_id is not None
+        assert store.path_for_safetensors_artifact(artifact_id).exists()
+        assert not store.path_for_artifact(artifact_id).exists()
+
+    lora_deltas = parse_lora_delta_tensor_artifact(
+        tensors=lora_tensors,
+        metadata=lora_metadata,
     )
-    assert lora_artifact["lora_parameter_deltas"] == {
-        "encoder.q_proj.lora_A": [0.1, -0.2]
-    }
-    assert head_artifact["schema_version"] == (
-        "lora_classifier_client_head_delta_artifact.v1"
+    head_weight_deltas, head_bias_deltas = parse_classifier_head_delta_tensor_artifact(
+        tensors=head_tensors,
+        metadata=head_metadata,
     )
-    assert head_artifact["classifier_head_bias_deltas"] == {
-        "anxiety": 0.05,
-        "normal": -0.05,
-    }
+    assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.1, -0.2])
+    assert head_weight_deltas["anxiety"] == pytest.approx([0.3, -0.1])
+    assert head_bias_deltas == pytest.approx(
+        {
+            "anxiety": 0.05,
+            "normal": -0.05,
+        }
+    )
 
 
 def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(

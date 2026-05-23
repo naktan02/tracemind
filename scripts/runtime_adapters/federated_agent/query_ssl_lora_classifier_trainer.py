@@ -30,6 +30,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
 from methods.federated.aggregation.base import FederatedAggregationContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -62,6 +63,7 @@ def run_query_ssl_lora_classifier_local_training(
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
@@ -110,6 +112,7 @@ def run_query_ssl_lora_classifier_local_training(
             query_ssl_config=query_ssl_config,
             trainer_runtime_config=trainer_runtime_config,
             created_at=effective_created_at,
+            runtime_resource_cache=runtime_resource_cache,
             timing_recorder=timing_recorder,
             persist_update_artifact=persist_agent_local_update,
             delta_materializer=SimulationQuerySslLoraDeltaMaterializer(

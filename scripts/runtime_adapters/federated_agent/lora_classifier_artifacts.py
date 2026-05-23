@@ -18,6 +18,10 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraDeltaMaterialization,
 )
+from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
+    build_classifier_head_delta_tensor_artifact,
+    build_lora_delta_tensor_artifact,
+)
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
@@ -308,25 +312,21 @@ def _prepare_server_uploaded_delta_materialization(
         else store.ref_for_artifact(f"{artifact_id_prefix}/partitioned_delta")
     )
     if lora_delta_ref is not None:
-        store.save_json_artifact_ref(
+        tensors, metadata = build_lora_delta_tensor_artifact(lora_parameter_deltas)
+        store.save_safetensors_artifact_ref(
             artifact_ref=lora_delta_ref,
-            payload=_build_lora_delta_artifact_payload(
-                update_id=update_id,
-                training_task=training_task,
-                client_id=client_id,
-                lora_parameter_deltas=lora_parameter_deltas,
-            ),
+            tensors=tensors,
+            metadata=metadata,
         )
     if head_delta_ref is not None:
-        store.save_json_artifact_ref(
+        tensors, metadata = build_classifier_head_delta_tensor_artifact(
+            classifier_head_weight_deltas=classifier_head_weight_deltas,
+            classifier_head_bias_deltas=classifier_head_bias_deltas,
+        )
+        store.save_safetensors_artifact_ref(
             artifact_ref=head_delta_ref,
-            payload=_build_classifier_head_delta_artifact_payload(
-                update_id=update_id,
-                training_task=training_task,
-                client_id=client_id,
-                classifier_head_weight_deltas=classifier_head_weight_deltas,
-                classifier_head_bias_deltas=classifier_head_bias_deltas,
-            ),
+            tensors=tensors,
+            metadata=metadata,
         )
     if partitioned_delta_ref is not None:
         if partitioned_deltas is None:
