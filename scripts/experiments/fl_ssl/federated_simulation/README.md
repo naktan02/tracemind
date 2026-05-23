@@ -115,8 +115,9 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
 - `labeled_exposure_policy`
   - 현재 entrypoint 기본값은 `shared_client_seed`다.
   - `client_local_split`은 legacy/ablation으로 유지한다.
-  - `server_only_seed`는 materialized artifact와 request metadata는 지원하지만,
-    실제 실행은 method-owned supervised server step runtime이 열릴 때까지 막힌다.
+  - `server_only_seed`는 materialized artifact와 request metadata를 보존하고,
+    `server_step_policy=supervised_seed_step`과 함께 쓰면 round open 전에 server
+    bootstrap rows로 supervised seed step을 실행한다.
 - `client_participation_policy`
   - 기본은 `all_clients`다.
   - `fraction_random`, `fixed_count_random`은 FedMatch류 partial participation

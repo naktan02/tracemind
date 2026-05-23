@@ -60,7 +60,8 @@ central fixed embedding + classifier seed
   - `server_only_seed`: labeled source는 server/bootstrap boundary에만 두고,
     client는 local unlabeled shard만 가진다. client labeled batch를 요구하는 method는
     compatibility validator에서 실행 전에 막는다. materialized artifact와 request
-    metadata는 지원하지만, supervised server step runtime은 아직 후속 단계다.
+    metadata를 지원하고, `server_step_policy=supervised_seed_step` 조합에서는
+    round open 전 supervised server seed step을 실행한다.
   labeled source는 `ourafla_reddit` 또는 `szegeelim_general4` 중에서
   `query_data_selection.labeled`로 고른다.
 - 라벨 데이터를 일부만 쓰는 ablation은 materialized split 생성 시
@@ -314,8 +315,8 @@ Runtime translation:
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
    막는다.
-12. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
-   parity 후보로 남기되, 현재 다음 실행 게이트는 아니다.
+12. sparse S2C/C2S sync는 full FedMatch parity 후보로 남기되, 현재 다음 실행
+   게이트는 아니다.
 13. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
    비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
    stress 확인으로 남긴다.

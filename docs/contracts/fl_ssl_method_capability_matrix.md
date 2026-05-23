@@ -5,8 +5,9 @@ FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config 
 method-owned tensor local objective core를 추가했다. LoRA-classifier logical partition
 step과 method-owned local simulation bridge는
 `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
-소유한다. 현재 helper peer context simulation slice는 열려 있고, full 원본 parity에
-필요한 sparse S2C/C2S sync와 labels-at-server server-step runtime은 다음 구현 단계다.
+소유한다. 현재 helper peer context simulation slice와 labels-at-server supervised
+seed server step은 열려 있고, full 원본 parity에 필요한 sparse S2C/C2S sync는 다음
+구현 단계다.
 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
@@ -55,10 +56,11 @@ policy가 된다.
     실행하는 adapter-family slice다. FedMatch method 의미는
     `methods/federated_ssl/fedmatch/`에서 읽는다.
   - helper prediction exchange는 이전 round client-local LoRA snapshot과 validation
-    probe vector 기반 simulation slice로 실행된다. sparse S2C/C2S sync,
-    labels-at-server server step runtime은 아직 실행되지 않는다. 현재 labels-at-client
-    slice는 기존 LoRA-classifier FedAvg merged delta와 `fedmatch_partitioned`에서
-    쓰는 `partitioned_deltas`를 함께 제출한다.
+    probe vector 기반 simulation slice로 실행된다. labels-at-server는
+    `server_only_seed + supervised_seed_step` server runtime과 client-local `psi`
+    upload slice로 실행된다. 현재 labels-at-client slice는 기존 LoRA-classifier
+    FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는 `partitioned_deltas`를
+    함께 제출한다. sparse S2C/C2S sync는 아직 실행되지 않는다.
 
 현재 구현하지 않을 것:
 
@@ -72,7 +74,7 @@ policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice와 helper peer-context simulation slice는 열림. full 원본 parity에는 sparse S2C/C2S sync와 labels-at-server server step runtime이 추가로 필요하다. | 중간 | 1순위, local runtime slice opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice, helper peer-context simulation slice, labels-at-server supervised seed server step은 열림. full 원본 parity에는 sparse S2C/C2S sync가 추가로 필요하다. | 중간 | 1순위, local/runtime slice opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 
@@ -126,7 +128,9 @@ FedMatch 다음 구현 결정:
   실제 helper weak-view probability는 이전 round client-local LoRA snapshot/probe
   vector를 이용해 FedMatch KL loss에 연결한다.
 - labels-at-server variant는 `server_only_seed + supervised_seed_step` capability로
-  열 수 있지만, v1 FedMatch 실행 범위에는 넣지 않는다.
+  simulation에서 열었다. server step은 round open 전에 bootstrap labeled rows로
+  active LoRA-classifier state를 발행하고, client side는 unlabeled-only `psi`
+  partition update를 제출한다.
 
 FedMatch 원본에서 보존한 기본값:
 

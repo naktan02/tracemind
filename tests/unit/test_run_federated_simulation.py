@@ -45,6 +45,7 @@ from methods.federated_ssl.peer_context import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_training,
+    server_step_execution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     evaluation as evaluation_adapter,
@@ -632,6 +633,191 @@ def test_labeled_anchored_query_ssl_batch_plan_covers_unlabeled_pool() -> None:
     assert plan.step_plan.full_epoch_steps == 410
     assert plan.step_plan.total_steps == 410
     assert plan.step_plan.max_steps == 410
+
+
+def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    bootstrap_row = _row("seed_1", "server labeled panic", "anxiety")
+    active_state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        model_id="mxbai-lora-classifier",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+    active = ActiveSimulationState(
+        manifest=make_embedding_manifest(
+            model_id="mxbai-lora-classifier",
+            model_revision="sim_rev_0000",
+            artifact_ref="shared_adapter_state::sim_rev_0000",
+        ),
+        adapter_state=active_state,
+    )
+    request = _default_simulation_request(
+        tmp_path,
+        output_dir=tmp_path,
+        train_rows=[bootstrap_row],
+        validation_rows=[bootstrap_row],
+        client_count=1,
+        rounds=1,
+        bootstrap_ratio=1.0,
+        model_id="mxbai-lora-classifier",
+        ssl_method_config=FederatedSslMethodConfig(
+            schema_version="federated_ssl_method.v1",
+            name="fedmatch",
+            display_name="FedMatch",
+            method_role="method_owned",
+            implementation_status="active",
+            server_step={"name": "supervised_seed_step"},
+            effective_parameters={
+                "server_pretrain_epochs": 2,
+                "server_epochs": 1,
+                "server_batch_size": 3,
+            },
+        ),
+        local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
+            device="cpu",
+            local_files_only=True,
+            cache_dir="hf_cache",
+        ),
+    )
+    capability_plan = FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "server_only_seed"},
+        local_supervision_regime={"name": "client_unlabeled_only"},
+        server_step_policy={"name": "supervised_seed_step"},
+        peer_context_policy={"name": "none"},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": "fixmatch"},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
+        query_multiview_source={"name": "materialized_rows"},
+    )
+    calls: dict[str, object] = {}
+
+    class _AdapterFamily:
+        def state_to_payload(self, state: object) -> object:
+            calls["state_to_payload"] = state
+            return state
+
+    class _RoundManager:
+        adapter_family = _AdapterFamily()
+
+    class _StateRepository:
+        def __init__(self) -> None:
+            self.saved: list[object] = []
+
+        def save_shared_adapter_state(self, state: object) -> None:
+            self.saved.append(state)
+
+        def ref_for_revision(self, revision: str) -> str:
+            return f"shared_adapter_state::{revision}"
+
+    class _ServerRuntime:
+        def __init__(self) -> None:
+            self.round_manager = _RoundManager()
+            self.state_repository = _StateRepository()
+            self.activated: list[object] = []
+
+        def activate_manifest(self, manifest: object) -> object:
+            self.activated.append(manifest)
+            return manifest
+
+    server_runtime = _ServerRuntime()
+
+    def _fake_build_model(**_: object) -> tuple[object, object]:
+        return object(), object()
+
+    def _fake_materialize(**_: object) -> LoraClassifierMaterializedState:
+        return LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.0]},
+            classifier_head_weights={
+                "anxiety": [0.0, 0.0],
+                "normal": [0.0, 0.0],
+            },
+            classifier_head_biases={"anxiety": 0.0, "normal": 0.0},
+        )
+
+    def _fake_build_dataloader(**kwargs: object) -> list[str]:
+        calls["dataloader_rows"] = list(kwargs["rows"])  # type: ignore[index]
+        calls["dataloader_batch_size"] = kwargs["batch_size"]
+        return ["server-batch"]
+
+    def _fake_train_classifier(**kwargs: object) -> None:
+        calls["train_epochs"] = kwargs["epochs"]
+        calls["train_loader"] = kwargs["train_loader"]
+
+    monkeypatch.setattr(
+        server_step_execution,
+        "build_lora_text_classifier_from_config",
+        _fake_build_model,
+    )
+    monkeypatch.setattr(
+        server_step_execution,
+        "materialize_base_lora_classifier_state",
+        _fake_materialize,
+    )
+    monkeypatch.setattr(
+        server_step_execution,
+        "load_lora_classifier_base_parameters_into_model",
+        lambda **_: None,
+    )
+    monkeypatch.setattr(
+        server_step_execution,
+        "build_dataloader",
+        _fake_build_dataloader,
+    )
+    monkeypatch.setattr(
+        server_step_execution,
+        "train_classifier",
+        _fake_train_classifier,
+    )
+    monkeypatch.setattr(
+        server_step_execution,
+        "extract_lora_classifier_parameter_deltas",
+        lambda **_: (
+            {"lora.test": [0.5]},
+            {"anxiety": [0.1, 0.0], "normal": [0.0, -0.1]},
+            {"anxiety": 0.01, "normal": -0.01},
+        ),
+    )
+
+    result = server_step_execution.run_server_step_if_supported(
+        request=request,
+        bootstrapped=BootstrappedSimulation(
+            dataset_split=FederatedDatasetSplit(
+                bootstrap_rows=[bootstrap_row],
+                client_shards=(),
+            ),
+            validation_client_shards=(),
+            server_runtime=server_runtime,  # type: ignore[arg-type]
+            initial_model_revision="sim_rev_0000",
+            initial_validation=object(),  # type: ignore[arg-type]
+            active=active,
+        ),
+        active=active,
+        capability_plan=capability_plan,
+        round_index=1,
+    )
+
+    assert result.model_revision == "sim_rev_0001_server_seed"
+    assert result.active.adapter_state.model_revision == "sim_rev_0001_server_seed"
+    assert result.metrics["server_step_labeled_count"] == 1.0
+    assert result.metrics["server_step_epochs"] == 2.0
+    assert result.metrics["server_step_batch_size"] == 3.0
+    assert calls["dataloader_rows"] == [bootstrap_row]
+    assert calls["dataloader_batch_size"] == 3
+    assert calls["train_epochs"] == 2
+    assert calls["train_loader"] == ["server-batch"]
+    assert server_runtime.state_repository.saved == [result.active.adapter_state]
+    assert len(server_runtime.activated) == 1
 
 
 def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
@@ -1976,9 +2162,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert report["protocol"]["local_trainer_runtime"]["metadata_status"] == (
         "recorded"
     )
-    assert report["protocol"]["artifact_persistence"][
-        "persist_agent_local_updates"
-    ] is False
+    assert (
+        report["protocol"]["artifact_persistence"]["persist_agent_local_updates"]
+        is False
+    )
     assert report["protocol"]["ssl_method"]["metadata_status"] == "not_applicable"
     assert report["protocol"]["ssl_method"]["reason"] == "manual_composition"
     assert report["protocol"]["fl_method"]["descriptor_name"] is None

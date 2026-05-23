@@ -73,7 +73,7 @@ central fixed embedding + classifier seed
 | Validation evaluator | `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/lora_classifier/evaluation.py` | FL SSL simulation |
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
-| Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
+| Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | simulation active; `supervised_seed_step` currently LoRA-classifier runtime slice |
 | Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, adapter-family server update resolver | merged FedAvg active, partitioned LoRA `partitioned_delta_average` simulation active |
 | Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and LoRA helper weak-probability provider active |
 | Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
@@ -147,9 +147,9 @@ central fixed embedding + classifier seed
   delta/FedAvg 또는 `server_update_policy=fedmatch_partitioned`에서
   LoRA-classifier `partitioned_delta_average` simulation backend다. 이 backend는
   원본 sparse sigma/psi sync 전체가 아니라 logical partition delta 평균 slice다.
-  이전 round client-local LoRA snapshot 기반 helper weak-probability provider는
-  simulation에서 활성화했고, sparse S2C/C2S와 labels-at-server server step은 후속
-  capability로 남긴다.
+  이전 round client-local LoRA snapshot 기반 helper weak-probability provider와
+  labels-at-server supervised seed server step은 simulation에서 활성화했다.
+  sparse S2C/C2S는 후속 capability로 남긴다.
   method-only 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 aggregation, adapter projection, SSL hook은 축별 methods
   패키지로 승격한다.

@@ -172,8 +172,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     server bootstrap subset은 기존 `bootstrap_ratio`로 유지한다.
   - `client_local_split`은 legacy/ablation 값으로, server bootstrap subset과
     client-local labeled pool을 분리한다.
-  - `server_only_seed`는 artifact/request metadata까지 열려 있지만, 실제 실행은
-    method-owned server step runtime과 compatibility 조건이 충족될 때만 허용한다.
+  - `server_only_seed`는 artifact/request metadata를 보존하고,
+    `server_step_policy=supervised_seed_step` 조합에서 round open 전 supervised server
+    seed step을 실행한다.
   - materialized split artifact는 실행자 표면을 단순하게 유지하기 위해
     `data/datasets/fl_client_splits/<exposure_group>/<split_id>/manifest.json`
     아래에 둔다. manifest 내부 policy name은 canonical 값

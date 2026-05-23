@@ -28,9 +28,8 @@ YAML `# @package`는 기존 compose shape를 유지하므로, 폴더명과 compo
 소유한다. 즉 `shared_client_seed`는 shard policy가 아니라 exposure policy다.
 현재 entrypoint 기본 exposure는 `shared_client_seed`다. `client_local_split`은
 legacy/ablation으로 남긴다. `server_only_seed`는 materialized artifact와 run request
-metadata까지는 열려 있지만, 실제 simulation 실행은 method-owned descriptor,
-`server_step_policy=supervised_seed_step`, client-unlabeled regime, server step runtime이
-붙기 전까지 compatibility validator가 막는다.
+metadata를 보존하고, method-owned descriptor, `server_step_policy=supervised_seed_step`,
+client-unlabeled regime 조합에서 round open 전 supervised server seed step을 실행한다.
 
 나머지 capability 축은 FedMatch 전용이 아니라 FL SSL 공통 조합 표면이다. 예를 들어
 client participation은 `all_clients`, `fraction_random`, `fixed_count_random` 중에서

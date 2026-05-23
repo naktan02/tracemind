@@ -112,10 +112,10 @@ uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
 나누는 `shared_client_seed` split은 labeled exposure policy만 바꿔 별도
 manifest로 materialize한다. split id에는 `shared_client_seed_`가 들어가 기존
 `client_local_split` manifest를 덮어쓰지 않는다.
-`server_only_seed`는 materialization과 request metadata까지는 지원한다. 실제
-simulation 실행은 method-owned descriptor, `server_step_policy=supervised_seed_step`,
-client-unlabeled regime, server step runtime이 함께 열릴 때까지 compatibility
-validator가 막는다.
+`server_only_seed`는 materialization과 request metadata를 지원한다. method-owned
+descriptor, `server_step_policy=supervised_seed_step`, client-unlabeled regime을 함께
+고르면 simulation이 round open 전에 bootstrap labeled rows로 supervised seed step을
+실행한다.
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.materialize_fl_client_split \
@@ -289,8 +289,8 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 
 현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot,
 method-owned LoRA-classifier local objective, partitioned update 제출, peer helper
-context injection까지 simulation slice에서 실행된다. sparse S2C/C2S와
-labels-at-server server step은 아직 후속 runtime capability다.
+context injection, labels-at-server supervised seed step까지 simulation slice에서
+실행된다. sparse S2C/C2S는 아직 후속 runtime capability다.
 
 원본 기본값은 YAML에 복제하지 않고
 `methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.

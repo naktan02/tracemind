@@ -8,6 +8,7 @@ from methods.federated.participation import select_participating_clients
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     peer_context_exchange,
+    server_step_execution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.client_training import (
     build_round_training_scoring_service,
@@ -48,6 +49,30 @@ def run_one_round(
     round_started_at = time.perf_counter()
     round_timing: dict[str, float] = {}
     round_id = f"round_{round_index:04d}"
+    capability_plan = (
+        request.capability_plan
+        or FederatedSslCapabilityPlan.from_mappings(
+            client_participation_policy=None,
+            aggregation_weight_policy=None,
+            labeled_exposure_policy=None,
+            local_supervision_regime=None,
+            server_step_policy=None,
+            peer_context_policy=None,
+            update_partition_policy=None,
+            query_multiview_source=None,
+        )
+    )
+
+    started_at = time.perf_counter()
+    server_step = server_step_execution.run_server_step_if_supported(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+        capability_plan=capability_plan,
+        round_index=round_index,
+    )
+    active = server_step.active
+    round_timing["round_server_step_seconds"] = time.perf_counter() - started_at
 
     started_at = time.perf_counter()
     round_record = bootstrapped.server_runtime.open_round(
@@ -69,19 +94,6 @@ def run_one_round(
         time.perf_counter() - started_at
     )
 
-    capability_plan = (
-        request.capability_plan
-        or FederatedSslCapabilityPlan.from_mappings(
-            client_participation_policy=None,
-            aggregation_weight_policy=None,
-            labeled_exposure_policy=None,
-            local_supervision_regime=None,
-            server_step_policy=None,
-            peer_context_policy=None,
-            update_partition_policy=None,
-            query_multiview_source=None,
-        )
-    )
     started_at = time.perf_counter()
     selected_shards, participation_selection = select_participating_clients(
         clients=bootstrapped.dataset_split.client_shards,
@@ -138,9 +150,7 @@ def run_one_round(
         previous=peer_context_state,
         client_executions=client_executions,
     )
-    round_timing["round_peer_state_build_seconds"] = (
-        time.perf_counter() - started_at
-    )
+    round_timing["round_peer_state_build_seconds"] = time.perf_counter() - started_at
 
     next_model_revision = f"sim_rev_{round_index:04d}"
     started_at = time.perf_counter()
