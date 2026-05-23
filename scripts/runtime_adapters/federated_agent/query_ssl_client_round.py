@@ -8,6 +8,9 @@ from typing import Any
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
+from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
+    build_client_diagnostic_unlabeled_view,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -80,12 +83,20 @@ def _run_query_ssl_lora_client_round(
         raise ValueError("LoRA-classifier runtime config is required.")
 
     training_started_at = time.perf_counter()
+    diagnostic_unlabeled_rows = build_client_diagnostic_unlabeled_view(
+        rows=shard.unlabeled_rows,
+        config=request.diagnostic_view_config,
+        run_seed=request.seed,
+        round_index=_round_index_from_id(round_id),
+        client_id=shard.client_id,
+    )
     local_result = run_query_ssl_lora_classifier_local_training(
         client_id=shard.client_id,
         seed=request.seed,
         output_dir=request.output_dir,
         labeled_rows=shard.labeled_rows,
         unlabeled_rows=shard.unlabeled_rows,
+        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
         active_adapter_state=active.adapter_state,
         training_task=training_task,
         model_manifest=active.manifest,
@@ -108,6 +119,7 @@ def _run_query_ssl_lora_client_round(
         summary=ClientRoundSummary(
             client_id=shard.client_id,
             candidate_count=local_result.candidate_count,
+            diagnostic_candidate_count=len(diagnostic_unlabeled_rows),
             accepted_count=local_result.accepted_count,
             update_generated=update_submitted,
             delta_l2_norm=client_update_submission.extract_delta_l2_norm(
@@ -149,3 +161,7 @@ def _run_query_ssl_lora_client_round(
         ),
         update_submitted=update_submitted,
     )
+
+
+def _round_index_from_id(round_id: str) -> int:
+    return int(round_id.rsplit("_", maxsplit=1)[-1])

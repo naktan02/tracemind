@@ -5,15 +5,18 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     FederatedClientShard,
     FederatedDatasetSplit,
+    FederatedPeerProbeManifest,
     SimulationEvaluation,
     SimulationRoundSummary,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
+from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
@@ -51,6 +54,9 @@ class BootstrappedSimulation:
     initial_model_revision: str
     initial_validation: SimulationEvaluation
     active: ActiveSimulationState
+    peer_probe_rows: tuple[LabeledQueryRow, ...] = ()
+    peer_probe_manifest: FederatedPeerProbeManifest | None = None
+    runtime_resource_cache: RuntimeResourceCache | None = None
 
 
 @dataclass(frozen=True, slots=True)

@@ -83,6 +83,22 @@ run_safety:
 diagnostics:
   dump_dir_name: selection_dumps
 
+diagnostic_view:
+  # 성능 평가는 validation set으로 수행한다. 이 view는 client-local pseudo-label
+  # diagnostics만 위한 작은 deterministic subset이다.
+  enabled: true
+  selection_policy: deterministic_random
+  max_rows: 512
+  seed_offset: 1309
+
+peer_probe:
+  # FedMatch fixed Gaussian probe에 대응하는 TraceMind fixed text probe다.
+  # 전체 validation set을 매 round/client마다 평가하지 않고 작은 deterministic subset만 쓴다.
+  enabled: true
+  selection_policy: label_balanced
+  max_rows: 128
+  seed_offset: 907
+
 client_pool_split:
   labeled_ratio: 0.1
   unlabeled_ratio: 0.9
@@ -120,7 +136,7 @@ training_task:
   local_epochs: 1
   batch_size: 12
   learning_rate: 0.0001
-  max_steps: 50
+  max_steps: 20
   min_required_examples: ${federated_run_budget.min_required_examples}
   gradient_clip_norm: 0.5
   objective:

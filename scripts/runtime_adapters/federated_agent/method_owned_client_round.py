@@ -14,6 +14,9 @@ from methods.federated_ssl.peer_context import (
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
+from scripts.experiments.fl_ssl.federated_simulation.adapters.diagnostic_view import (
+    build_client_diagnostic_unlabeled_view,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
@@ -92,12 +95,20 @@ def _run_method_owned_lora_client_round(
 
     query_ssl_config = request.query_ssl_objective_config
     training_started_at = time.perf_counter()
+    diagnostic_unlabeled_rows = build_client_diagnostic_unlabeled_view(
+        rows=shard.unlabeled_rows,
+        config=request.diagnostic_view_config,
+        run_seed=request.seed,
+        round_index=_round_index_from_id(round_id),
+        client_id=shard.client_id,
+    )
     local_result = method_trainer.run_method_owned_lora_classifier_local_training(
         client_id=shard.client_id,
         seed=request.seed,
         output_dir=request.output_dir,
         labeled_rows=shard.labeled_rows,
         unlabeled_rows=shard.unlabeled_rows,
+        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
         active_adapter_state=active.adapter_state,
         training_task=training_task,
         model_manifest=active.manifest,
@@ -110,7 +121,12 @@ def _run_method_owned_lora_client_round(
         query_ssl_config=request.query_ssl_objective_config,
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
-        peer_probe_rows=request.validation_rows,
+        runtime_resource_cache=bootstrapped.runtime_resource_cache,
+        peer_probe_rows=(
+            bootstrapped.peer_probe_rows
+            if bootstrapped.peer_probe_rows
+            else tuple(request.validation_rows)
+        ),
         strong_view_policy=(
             "first_aug"
             if query_ssl_config is None
@@ -137,6 +153,7 @@ def _run_method_owned_lora_client_round(
         summary=ClientRoundSummary(
             client_id=shard.client_id,
             candidate_count=local_result.candidate_count,
+            diagnostic_candidate_count=len(diagnostic_unlabeled_rows),
             accepted_count=local_result.accepted_count,
             update_generated=update_submitted,
             delta_l2_norm=client_update_submission.extract_delta_l2_norm(
@@ -179,3 +196,7 @@ def _run_method_owned_lora_client_round(
         update_submitted=update_submitted,
         peer_client_snapshot=local_result.peer_client_snapshot,
     )
+
+
+def _round_index_from_id(round_id: str) -> int:
+    return int(round_id.rsplit("_", maxsplit=1)[-1])

@@ -29,7 +29,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedDiagnosticViewConfig,
     FederatedLocalTrainerRuntimeConfig,
+    FederatedPeerProbeManifest,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -68,6 +70,8 @@ class SimulationReportBuilder:
         data_source_config: FederatedDataSourceConfig | None = None,
         embedding_spec: EmbeddingAdapterSpec | None = None,
         local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
+        diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
+        peer_probe_manifest: FederatedPeerProbeManifest | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
             result=result,
@@ -131,6 +135,8 @@ class SimulationReportBuilder:
                 data_source_config=data_source_config,
                 embedding_spec=embedding_spec,
                 local_trainer_runtime_config=local_trainer_runtime_config,
+                diagnostic_view_config=diagnostic_view_config,
+                peer_probe_manifest=peer_probe_manifest,
             ),
             "diagnostics": {
                 "round_progression": round_progression,

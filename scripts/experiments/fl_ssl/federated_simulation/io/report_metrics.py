@@ -140,6 +140,9 @@ def build_pseudo_label_quality_diagnostics(
     total_candidates = sum(
         int(payload["candidate_count"]) for payload in round_payloads
     )
+    total_diagnostic_candidates = sum(
+        int(payload["diagnostic_candidate_count"]) for payload in round_payloads
+    )
     total_accepted = sum(int(payload["accepted_count"]) for payload in round_payloads)
     total_correct = sum(
         int(payload["pseudo_label_correct_count"]) for payload in round_payloads
@@ -150,6 +153,7 @@ def build_pseudo_label_quality_diagnostics(
     return {
         "summary": {
             "candidate_count": total_candidates,
+            "diagnostic_candidate_count": total_diagnostic_candidates,
             "accepted_count": total_accepted,
             "accepted_ratio": safe_ratio(total_accepted, total_candidates),
             "pseudo_label_accuracy": safe_ratio(total_correct, total_evaluated),
@@ -161,22 +165,22 @@ def build_pseudo_label_quality_diagnostics(
             "pseudo_label_confidence_mean": _weighted_round_mean(
                 round_payloads,
                 value_key="pseudo_label_confidence_mean",
-                weight_key="candidate_count",
+                weight_key="diagnostic_candidate_count",
             ),
             "candidate_confidence_mean": _weighted_round_mean(
                 round_payloads,
                 value_key="pseudo_label_confidence_mean",
-                weight_key="candidate_count",
+                weight_key="diagnostic_candidate_count",
             ),
             "pseudo_label_margin_mean": _weighted_round_mean(
                 round_payloads,
                 value_key="pseudo_label_margin_mean",
-                weight_key="candidate_count",
+                weight_key="diagnostic_candidate_count",
             ),
             "candidate_margin_mean": _weighted_round_mean(
                 round_payloads,
                 value_key="pseudo_label_margin_mean",
-                weight_key="candidate_count",
+                weight_key="diagnostic_candidate_count",
             ),
             "accepted_label_distribution": _sum_distributions(
                 payload["accepted_label_distribution"] for payload in round_payloads
@@ -193,6 +197,9 @@ def _round_pseudo_label_quality(
     round_summary: SimulationRoundSummary,
 ) -> dict[str, object]:
     candidate_count = sum(client.candidate_count for client in round_summary.clients)
+    diagnostic_candidate_count = sum(
+        client.diagnostic_candidate_count for client in round_summary.clients
+    )
     accepted_count = sum(client.accepted_count for client in round_summary.clients)
     correct_count = sum(
         client.pseudo_label_correct_count for client in round_summary.clients
@@ -203,6 +210,7 @@ def _round_pseudo_label_quality(
     return {
         "round_id": round_summary.round_id,
         "candidate_count": candidate_count,
+        "diagnostic_candidate_count": diagnostic_candidate_count,
         "accepted_count": accepted_count,
         "accepted_ratio": safe_ratio(accepted_count, candidate_count),
         "pseudo_label_accuracy": safe_ratio(correct_count, evaluated_count),
@@ -212,22 +220,22 @@ def _round_pseudo_label_quality(
         "pseudo_label_confidence_mean": _weighted_client_mean(
             round_summary.clients,
             value_attr="pseudo_label_confidence_mean",
-            weight_attr="candidate_count",
+            weight_attr="diagnostic_candidate_count",
         ),
         "candidate_confidence_mean": _weighted_client_mean(
             round_summary.clients,
             value_attr="pseudo_label_confidence_mean",
-            weight_attr="candidate_count",
+            weight_attr="diagnostic_candidate_count",
         ),
         "pseudo_label_margin_mean": _weighted_client_mean(
             round_summary.clients,
             value_attr="pseudo_label_margin_mean",
-            weight_attr="candidate_count",
+            weight_attr="diagnostic_candidate_count",
         ),
         "candidate_margin_mean": _weighted_client_mean(
             round_summary.clients,
             value_attr="pseudo_label_margin_mean",
-            weight_attr="candidate_count",
+            weight_attr="diagnostic_candidate_count",
         ),
         "accepted_label_distribution": _sum_distributions(
             client.accepted_label_distribution for client in round_summary.clients

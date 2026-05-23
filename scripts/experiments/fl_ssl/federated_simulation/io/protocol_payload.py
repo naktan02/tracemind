@@ -14,7 +14,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedDiagnosticViewConfig,
     FederatedLocalTrainerRuntimeConfig,
+    FederatedPeerProbeManifest,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
@@ -49,6 +51,8 @@ def build_protocol_payload(
     data_source_config: FederatedDataSourceConfig | None = None,
     embedding_spec: EmbeddingAdapterSpec | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
+    diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
+    peer_probe_manifest: FederatedPeerProbeManifest | None = None,
 ) -> dict[str, object]:
     resolved_data_source_config = data_source_config or FederatedDataSourceConfig()
     payload: dict[str, object] = {
@@ -94,6 +98,8 @@ def build_protocol_payload(
         "local_trainer_runtime": _local_trainer_runtime_to_payload(
             local_trainer_runtime_config
         ),
+        "diagnostic_view": _diagnostic_view_to_payload(diagnostic_view_config),
+        "peer_probe": _peer_probe_to_payload(peer_probe_manifest),
         "objective": config_to_mapping(training_task_config.objective_config),
         "validation": {
             "similarity_name": validation_config.similarity_name,
@@ -169,6 +175,30 @@ def _local_trainer_runtime_to_payload(
     }
 
 
+def _diagnostic_view_to_payload(
+    config: FederatedDiagnosticViewConfig | None,
+) -> dict[str, object]:
+    if config is None:
+        return {"metadata_status": "not_recorded"}
+    return {
+        "metadata_status": "recorded",
+        "enabled": config.enabled,
+        "selection_policy": config.selection_policy,
+        "max_rows": config.max_rows,
+        "seed_offset": config.seed_offset,
+        "source": "client_unlabeled_pool",
+        "scope": "pseudo_label_diagnostics_only",
+    }
+
+
+def _peer_probe_to_payload(
+    manifest: FederatedPeerProbeManifest | None,
+) -> dict[str, object]:
+    if manifest is None:
+        return {"metadata_status": "disabled"}
+    return manifest.to_payload()
+
+
 def config_to_mapping(value: object) -> dict[str, object]:
     if value is None:
         return {}
@@ -210,6 +240,7 @@ def _ssl_method_to_payload(
         "original_source": dict(ssl_method_config.original_source),
         "scenario": ssl_method_config.scenario,
         "use_original_parameters": ssl_method_config.use_original_parameters,
+        "local_budget_policy": ssl_method_config.local_budget_policy,
         "original_parameters": dict(ssl_method_config.original_parameters),
         "parameter_overrides": dict(ssl_method_config.parameter_overrides),
         "effective_parameters": dict(ssl_method_config.effective_parameters),

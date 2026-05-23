@@ -8,6 +8,9 @@ from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
+from scripts.experiments.fl_ssl.federated_simulation.adapters.peer_probe import (
+    build_fixed_peer_probe,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
@@ -19,6 +22,9 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     SimulationRunRequest,
+)
+from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    InMemoryRuntimeResourceCache,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
@@ -91,6 +97,11 @@ def bootstrap_simulation(
         rows=request.validation_rows,
         objective_config=request.training_task_config.objective_config,
     )
+    peer_probe_rows, peer_probe_manifest = build_fixed_peer_probe(
+        rows=request.validation_rows,
+        config=request.peer_probe_config,
+        run_seed=request.seed,
+    )
     return BootstrappedSimulation(
         dataset_split=dataset_split,
         validation_client_shards=validation_client_shards,
@@ -98,6 +109,9 @@ def bootstrap_simulation(
         initial_model_revision=initial_model_revision,
         initial_validation=initial_validation,
         active=active,
+        peer_probe_rows=peer_probe_rows,
+        peer_probe_manifest=peer_probe_manifest,
+        runtime_resource_cache=InMemoryRuntimeResourceCache(),
     )
 
 

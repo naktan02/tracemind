@@ -76,6 +76,7 @@ central fixed embedding + classifier seed
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, simulation server-step adapter | `none` active, supervised step planned |
 | Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, adapter-family server update resolver | merged FedAvg active, partitioned LoRA `partitioned_delta_average` simulation active |
 | Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and LoRA helper weak-probability provider active |
+| Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Local SSL policy | `profile_pseudo_label`, `fixmatch`, `flexmatch`, `freematch`, `adamatch`, `pseudolabel`, `fedmatch_agreement` | `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method` | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement active in method-owned slice |
 | Aggregation weight policy | `example_count`, `uniform`, `accepted_count` | `strategy_axes/fl/aggregation_weight_policy` | `methods/federated/aggregation_weighting.py` + family FedAvg cores | simulation capability |
@@ -86,6 +87,7 @@ central fixed embedding + classifier seed
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/query_ssl_lora_classifier_trainer.py` + `methods/adaptation/lora_classifier/training/` | simulation |
+| Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
 | Security policy | `plaintext` | `security_policy.name` | `methods/federated_ssl/execution_plan.py`, future secure-update runtime capability | simulation validator |
@@ -131,6 +133,8 @@ central fixed embedding + classifier seed
   KDTree 우선 index가 소유하고, FedMatch의 `num_helpers`, `h_interval` 같은 원본
   helper 기본값은 `methods/federated_ssl/fedmatch/original_spec.py`와 method package가
   소유한다. `prediction_similarity_topk`는 기존 config override 호환용 alias다.
+  TraceMind fixed text probe surface는 `peer_probe.*` 실행 metadata가 소유하며,
+  report protocol에 source, row count, label distribution, query id hash를 남긴다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   FedMatch는 원본 repository/commit과 config snapshot, confidence filter,
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
@@ -152,6 +156,10 @@ central fixed embedding + classifier seed
 - method descriptor YAML은 원본 상세값을 복제하지 않는다. `scenario`와
   `parameter_overrides`만 실행 표면으로 열고, `original_parameters`와
   `effective_parameters`는 method-local `original_spec.py`에서 runner/report로 주입한다.
+- Runtime resource cache는 method identity가 아니라 simulation/live runtime별 lifecycle
+  concern이다. Protocol은 `methods.common`에 두고, simulation은 run-scoped in-memory
+  cache를 소유한다. Live agent translation 때는 같은 protocol을 agent process/round
+  lifecycle에 맞는 implementation으로 다시 연결한다.
 
 ## Prototype 축
 

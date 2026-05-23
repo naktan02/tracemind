@@ -551,6 +551,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.report.table_role == "main_comparison"
     assert cfg.client_pool_split.labeled_ratio == 0.1
     assert cfg.client_pool_split.unlabeled_ratio == 0.9
+    assert cfg.diagnostic_view.enabled is True
+    assert cfg.diagnostic_view.selection_policy == "deterministic_random"
+    assert cfg.diagnostic_view.max_rows == 512
+    assert cfg.diagnostic_view.seed_offset == 1309
     assert cfg.report.labeled_ratio == 0.1
     assert cfg.report.unlabeled_ratio == 0.9
     assert cfg.labeled_exposure_policy.name == "shared_client_seed"
@@ -762,6 +766,8 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     assert ssl_method_config is not None
 
     assert cfg.ssl_method.implementation_status == "lora_local_runtime_slice_v1"
+    assert cfg.ssl_method.local_budget_policy == "iteration_capped"
+    assert cfg.training_task.max_steps == 20
     assert cfg.ssl_method.original_source.repository == FEDMATCH_ORIGINAL_REPOSITORY
     assert cfg.ssl_method.original_source.commit == FEDMATCH_ORIGINAL_COMMIT
     assert "original_parameters" not in cfg.ssl_method
@@ -884,6 +890,29 @@ def test_fedmatch_method_config_records_parameter_overrides_as_ablation() -> Non
     assert ssl_method_config.parameter_override_status == "ablation"
 
 
+def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/method_descriptor=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/fl/update_partition_policy=partitioned",
+                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "ssl_method.local_budget_policy=original_method",
+            ],
+        )
+
+    ssl_method_config = _build_ssl_method_config(
+        cfg,
+        execution_plan=_build_execution_plan(cfg),
+    )
+    assert ssl_method_config is not None
+
+    assert ssl_method_config.local_budget_policy == "original_method"
+    assert ssl_method_config.parameter_override_status == "original"
+
+
 @pytest.mark.parametrize(
     "profile_name",
     [
@@ -963,7 +992,7 @@ def test_federated_simulation_main_budget_fixes_main_comparison_budget() -> None
     assert cfg.training_task.local_epochs == 1
     assert cfg.training_task.batch_size == 12
     assert cfg.train_batch_size == 12
-    assert cfg.training_task.max_steps == 50
+    assert cfg.training_task.max_steps == 20
 
 
 def test_federated_simulation_reduced_budget_uses_5_rounds() -> None:

@@ -72,7 +72,7 @@ central fixed embedding + classifier seed
   `runs/fl_ssl` 산출물과 섞지 않는다.
 - FL SSL reduced preset은 검증 실험용 `10 clients`, `5 communication rounds`로 둔다.
 - FL SSL full-budget preset은 `30 communication rounds`, `local_epochs=1`,
-  `max_steps=50`이다. 새 method/wiring은 먼저 smoke/reduced run으로 확인한 뒤
+  `max_steps=20`이다. 새 method/wiring은 먼저 smoke/reduced run으로 확인한 뒤
   full-budget 비교로 올린다.
 - smoke budget은 실행 확인용으로 `3 rounds`를 쓴다.
 - winner 1차 기준은 `macro-F1 + worst-client macro-F1`이다.
@@ -140,7 +140,7 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - full round budget preset: `30`
 - execution policy: 새 wiring/method 검증은 먼저 `1-round` smoke 또는 `5-round`
   reduced run으로 확인하고, full-budget 비교는 후보와 조건이 확정된 뒤 실행한다.
-- local update budget: `local_epochs=1`, `max_steps=50`
+- local update budget: main fair comparison은 `local_epochs=1`, `max_steps=20`
 - labeled/unlabeled source: 기본은 labeled source 전체와 unlabeled source 전체를
   client에 분배한다. 일부 labeled source만 쓰는 경우 `labeled_policy`를 manifest에
   기록하고, 실제 ratio는 report count로 기록한다.
@@ -151,6 +151,10 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   best loss round
 - split/aggregation diagnostics: client별 label distribution, entropy,
   accepted-count 기반 aggregation weight proxy
+- pseudo-label diagnostics: client full unlabeled pool 크기는 `candidate_count`로
+  유지하고, 품질 진단은 `diagnostic_view` deterministic subset의
+  `diagnostic_candidate_count`로 별도 기록한다. global/client 성능 평가는
+  validation/test split 기준이다.
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
 - method selection: 기본 baseline은 `fl_method.composition_mode=manual`,
@@ -257,33 +261,48 @@ Runtime translation:
    확인된 병목은 client/round마다 `AutoModel.from_pretrained()`로 frozen backbone을
    재로딩하는 것, helper snapshot마다 helper model을 다시 materialize하는 것,
    매 round 전체 validation/probe를 반복 평가하는 것이다.
-2. `fixed_probe_output_knn`의 fixed probe surface를 전체 validation rows가 아니라
-   작은 deterministic probe subset으로 계약화한다. 예: label-balanced 64 또는 128 rows,
-   probe manifest/hash, probe row count metadata. 원본 FedMatch의 fixed Gaussian probe에
-   대응하는 TraceMind fixed text probe로 문서화한다.
-3. `lora_classifier` adapter-family simulation runtime에 backbone/tokenizer cache를
-   추가한다. method-specific 파일을 늘리지 않고, shared frozen backbone/tokenizer를
-   재사용하고 client별 LoRA/head state만 로드하도록 한다. helper provider도 같은 cache를
-   사용해 helper model materialization 비용을 줄인다.
-4. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
+2. `fixed_probe_output_knn`의 fixed probe surface는 전체 validation rows가 아니라
+   `peer_probe.selection_policy=label_balanced`, `max_rows=128` 기본값의 작은
+   deterministic subset으로 계약화했다. Report protocol에는 probe source, row count,
+   label distribution, query id hash가 남는다. 이후 reduced run에서는 이 probe surface가
+   helper selection vector 계산 입력이다.
+3. runtime resource cache seam은 `methods.common` protocol과 simulation run-scoped
+   in-memory cache로 열었다. `lora_classifier` model builder는 cache가 있으면
+   tokenizer와 frozen backbone base를 재사용하고, client별 LoRA/head state를 별도 model
+   instance에 로드한다. Helper provider도 같은 cache를 통해 backbone/tokenizer 재로딩
+   비용을 줄인다.
+4. helper snapshot별 materialized helper model cache를 추가했다. 같은 run에서 동일
+   helper snapshot이 다시 선택되면 LoRA-classifier model 복원과 parameter load를
+   재사용한다.
+5. client-local pseudo-label quality 진단은 `diagnostic_view.max_rows=512` 기본값의
+   deterministic subset으로 줄인다. 이는 학습 pool을 자르는 정책이 아니라 보고용
+   diagnostics 입력만 줄이는 공통 runtime capability이며, manual Query SSL과 FedMatch
+   method-owned LoRA-classifier 경로가 같이 사용한다.
+6. 다음 개선은 `training_view`다. full pool을 source of truth로 유지하되, 한 round에서
+   실제 local SSL training에 투입할 unlabeled candidate view를 deterministic하게 제한해
+   runtime을 줄이는지 검토한다. 이 단계는 model update 자체를 바꾸므로 report에는 full
+   pool count, training view count, diagnostic view count를 분리해야 한다.
+7. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
    `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas` 소비, final report metadata다.
-   비교용 reduced 조건은 우선 `10 clients`, `5 rounds`, `batch_size=12`,
-   `training_task.max_steps=20`으로 둔다. config 기본값은 `max_steps=50`이므로
-   비교 실행에서는 명시 override한다.
-5. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
+   비교용 reduced 조건은 우선 `10 clients`, `5 rounds`, `max_steps=20`으로 둔다.
+   FedMatch도 기본 `local_budget_policy=iteration_capped`로 같은 local update
+   budget을 쓰고, 원본 labels-at-client budget은
+   `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
+   사용한다.
+8. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
    FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
-6. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
+9. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
    막는다.
-7. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
+10. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
    parity 후보로 남기되, 현재 다음 실행 게이트는 아니다.
-8. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
+11. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
    비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
    stress 확인으로 남긴다.
-9. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+12. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

@@ -51,6 +51,10 @@ source of truth로 본다.
   adapter/aggregation, delta format, final/initial validation metric을 정규화한다.
   report에 GPU/mxbai runtime metadata가 있으면 embedding/trainer runtime 필드도
   dashboard filter로 노출한다.
+- [x] client-local pseudo-label 품질 진단은 전체 unlabeled pool을 매번 평가하지
+  않고 `diagnostic_view` deterministic subset으로 계산할 수 있다. 성능 평가는 계속
+  validation/test row를 쓰며, report는 full pool 기준 `candidate_count`와 진단 subset
+  기준 `diagnostic_candidate_count`를 분리해 기록한다.
 
 주의: FL prototype score의 `loss`는 현재 raw score를 softmax 분포로 바꾼 NLL
 proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야 한다.
@@ -87,10 +91,21 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
 - [ ] FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
   현재 병목은 client/round마다 frozen transformer backbone/tokenizer를 재로딩하는 것,
   helper snapshot마다 helper model을 materialize하는 것, 전체 validation rows를
-  fixed probe처럼 사용하는 것이다. 다음 구현은 method-specific runtime 파일을 추가하지
-  말고 `lora_classifier` adapter-family simulation runtime에 backbone/tokenizer cache를
-  두며, `fixed_probe_output_knn` probe를 작은 deterministic subset + manifest/hash로
-  계약화한다.
+  fixed probe처럼 사용하는 것이었다. `fixed_probe_output_knn` probe는
+  `peer_probe.selection_policy=label_balanced`, `max_rows=128` 기본값의 deterministic
+  subset + manifest/hash로 계약화했다. 공통 runtime resource cache seam도
+  `methods.common` protocol과 simulation run-scoped in-memory cache로 열었고,
+  LoRA-classifier model builder는 cache가 있으면 tokenizer와 frozen backbone base를
+  재사용한다. Helper snapshot별 materialized helper model도 같은 cache로 재사용한다.
+  client-local pseudo-label quality 진단은 `diagnostic_view.max_rows=512` 기본값의
+  deterministic subset으로 줄였다. 이는 manual Query SSL 경로와 FedMatch
+  method-owned LoRA-classifier 경로가 같이 쓰는 simulation runtime capability다.
+  FedMatch method-owned local budget은 main fair comparison에서
+  `local_budget_policy=iteration_capped`와 `max_steps=20`을 쓴다. 원본
+  labels-at-client budget은 `ssl_method.local_budget_policy=original_method`를
+  명시한 별도 faithful run에서만 공통 labeled-anchored SSL budget primitive로
+  계산한다.
+  남은 작업은 FedMatch method-owned reduced run 검증이다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
   `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로
@@ -166,9 +181,11 @@ methods/evaluation/                            # stable metric helper만
   LoRA-classifier delta를 aggregate하고 published state를 `sigma_plus_psi`로 만든다.
 - [x] FixMatch 같은 stateless Query SSL local objective를 같은 partitioned sigma/psi
   loop의 `psi` objective로 주입하는 hybrid local trainer를 연다.
-- [x] client별 local optimizer step 수는 `training_task.local_epochs`,
-  `training_task.batch_size`, `training_task.max_steps`,
-  `query_ssl_method.unlabeled_batch_size`로 동적으로 바뀐다.
+- [x] manual Query SSL client별 local optimizer step 수는
+  `training_task.local_epochs`, `training_task.batch_size`,
+  `training_task.max_steps`, `query_ssl_method.unlabeled_batch_size`로 동적으로
+  바뀐다. FedMatch method-owned path도 기본은 같은 `iteration_capped` budget을 쓰며,
+  원본 labels-at-client budget은 `original_method` policy로 선택 가능하다.
 - [x] simulation adapter에서 agent-local LoRA artifact ref를 server-owned
   `aggregation_artifact::` ref로 upload/materialize하는 경로를 닫았다. 서버 direct
   submission은 여전히 server-owned ref만 수락한다.

@@ -81,6 +81,7 @@ def _aggregate_client_round_summaries(
 ) -> dict[str, dict[str, object]]:
     client_ids: set[str] = set()
     candidate_count_by_client: dict[str, int] = {}
+    diagnostic_candidate_count_by_client: dict[str, int] = {}
     accepted_count_by_client: dict[str, int] = {}
     aggregation_example_count_by_client: dict[str, int] = {}
     payload_bytes_by_client: dict[str, int] = {}
@@ -103,6 +104,10 @@ def _aggregate_client_round_summaries(
             candidate_count_by_client[client.client_id] = (
                 candidate_count_by_client.get(client.client_id, 0)
                 + client.candidate_count
+            )
+            diagnostic_candidate_count_by_client[client.client_id] = (
+                diagnostic_candidate_count_by_client.get(client.client_id, 0)
+                + client.diagnostic_candidate_count
             )
             accepted_count_by_client[client.client_id] = (
                 accepted_count_by_client.get(client.client_id, 0)
@@ -136,11 +141,14 @@ def _aggregate_client_round_summaries(
                 )
             if client.pseudo_label_confidence_mean is not None:
                 confidence_means_by_client.setdefault(client.client_id, []).append(
-                    (client.pseudo_label_confidence_mean, client.candidate_count)
+                    (
+                        client.pseudo_label_confidence_mean,
+                        client.diagnostic_candidate_count,
+                    )
                 )
             if client.pseudo_label_margin_mean is not None:
                 margin_means_by_client.setdefault(client.client_id, []).append(
-                    (client.pseudo_label_margin_mean, client.candidate_count)
+                    (client.pseudo_label_margin_mean, client.diagnostic_candidate_count)
                 )
             pseudo_label_correct_count_by_client[client.client_id] = (
                 pseudo_label_correct_count_by_client.get(client.client_id, 0)
@@ -160,6 +168,10 @@ def _aggregate_client_round_summaries(
     return {
         client_id: _client_round_summary_payload(
             candidate_count=candidate_count_by_client.get(client_id, 0),
+            diagnostic_candidate_count=diagnostic_candidate_count_by_client.get(
+                client_id,
+                0,
+            ),
             accepted_count=accepted_count_by_client.get(client_id, 0),
             aggregation_examples=aggregation_example_count_by_client.get(client_id, 0),
             payload_bytes=payload_bytes_by_client.get(client_id),
@@ -200,6 +212,7 @@ def _aggregate_client_round_summaries(
 def _client_round_summary_payload(
     *,
     candidate_count: int,
+    diagnostic_candidate_count: int,
     accepted_count: int,
     aggregation_examples: int,
     payload_bytes: int | None,
@@ -218,6 +231,7 @@ def _client_round_summary_payload(
 ) -> dict[str, object]:
     return {
         "candidate_count": candidate_count,
+        "diagnostic_candidate_count": diagnostic_candidate_count,
         "accepted_count": accepted_count,
         "client_accepted_ratio": safe_ratio(accepted_count, candidate_count),
         "aggregation_example_count": aggregation_examples,
@@ -275,6 +289,9 @@ def _client_validation_payload(
             label_distribution(train_shard.rows) if train_shard is not None else {}
         ),
         "client_candidate_count": round_summary.get("candidate_count"),
+        "client_diagnostic_candidate_count": round_summary.get(
+            "diagnostic_candidate_count"
+        ),
         "client_accepted_count": round_summary.get("accepted_count"),
         "client_accepted_ratio": round_summary.get("client_accepted_ratio"),
         "aggregation_example_count": round_summary.get("aggregation_example_count"),

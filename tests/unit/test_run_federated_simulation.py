@@ -22,6 +22,7 @@ from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+    build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
 )
 from methods.evaluation.classification_payload import (
@@ -618,6 +619,21 @@ def test_query_ssl_local_step_plan_uses_epochs_batch_steps_and_cap() -> None:
     assert unlabeled_only.total_steps == 12
 
 
+def test_labeled_anchored_query_ssl_batch_plan_covers_unlabeled_pool() -> None:
+    plan = build_labeled_anchored_query_ssl_batch_plan(
+        labeled_count=4096,
+        unlabeled_count=20305,
+        labeled_batch_size=10,
+        local_epochs=1,
+    )
+
+    assert plan.labeled_batch_size == 10
+    assert plan.unlabeled_batch_size == 50
+    assert plan.step_plan.full_epoch_steps == 410
+    assert plan.step_plan.total_steps == 410
+    assert plan.step_plan.max_steps == 410
+
+
 def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -838,6 +854,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 manifest=manifest,
                 adapter_state=active_state,
             ),
+            peer_probe_rows=(labeled_row,),
         ),
         active=ActiveSimulationState(
             manifest=manifest,
@@ -1128,6 +1145,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 manifest=manifest,
                 adapter_state=active_state,
             ),
+            peer_probe_rows=(labeled_row,),
         ),
         active=ActiveSimulationState(
             manifest=manifest,
@@ -1151,7 +1169,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["unlabeled_rows"] == [unlabeled_row]
     assert method_calls[0]["peer_context"] is peer_context
     assert method_calls[0]["peer_snapshots"] == {"agent_02": peer_snapshot}
-    assert method_calls[0]["peer_probe_rows"] == request.validation_rows
+    assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
     assert execution.peer_client_snapshot is returned_peer_snapshot

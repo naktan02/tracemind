@@ -50,6 +50,7 @@ class QuerySslLoraLocalTrainingRequest:
     delta_materializer: QuerySslLoraDeltaMaterializer
     created_at: datetime | None = None
     agent_id: str | None = None
+    diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None
 
 
 class QuerySslLoraTrainingBackend(Protocol):
@@ -67,6 +68,7 @@ class QuerySslLoraTrainingBackend(Protocol):
         seed: int,
         labeled_rows: Sequence[LabeledQueryRow],
         unlabeled_rows: Sequence[LabeledQueryRow],
+        diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None,
         labels: Sequence[str],
         base_parameters: LoraClassifierMaterializedState,
         training_task: TrainingTask,
@@ -111,6 +113,7 @@ class QuerySslLocalTrainingService:
             seed=request.seed,
             labeled_rows=request.labeled_rows,
             unlabeled_rows=request.unlabeled_rows,
+            diagnostic_unlabeled_rows=request.diagnostic_unlabeled_rows,
             labels=request.labels,
             base_parameters=request.base_parameters,
             training_task=request.training_task,

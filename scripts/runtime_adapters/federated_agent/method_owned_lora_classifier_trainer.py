@@ -29,6 +29,7 @@ from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
 from methods.federated_ssl.peer_context import (
@@ -58,6 +59,7 @@ def run_method_owned_lora_classifier_local_training(
     output_dir: Path,
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
+    diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     active_adapter_state: object,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -70,6 +72,7 @@ def run_method_owned_lora_classifier_local_training(
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
 ) -> QuerySslLoraClientTrainingResult:
@@ -102,6 +105,7 @@ def run_method_owned_lora_classifier_local_training(
                 labels=labels,
                 lora_config=effective_lora_config,
                 trainer_runtime_config=trainer_runtime_config,
+                runtime_resource_cache=runtime_resource_cache,
             )
         )
     result = run_method_owned_lora_classifier_training_core(
@@ -109,6 +113,7 @@ def run_method_owned_lora_classifier_local_training(
         seed=seed,
         labeled_rows=labeled_rows,
         unlabeled_rows=unlabeled_rows,
+        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
         labels=labels,
         base_parameters=base_parameters,
         training_task=training_task,
@@ -127,6 +132,7 @@ def run_method_owned_lora_classifier_local_training(
         ),
         helper_weak_probability_provider=helper_weak_probability_provider,
         peer_probe_rows=peer_probe_rows,
+        runtime_resource_cache=runtime_resource_cache,
     )
     TrainingArtifactRepository(
         state_root=output_dir / "agents" / client_id

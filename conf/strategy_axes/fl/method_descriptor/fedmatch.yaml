@@ -11,6 +11,7 @@ original_source:
   paper: arXiv:2006.12097
 scenario: labels-at-client
 use_original_parameters: true
+local_budget_policy: iteration_capped
 parameter_overrides: {}
 trace_mapping:
   parameter_decomposition: lora_classifier_sigma_psi

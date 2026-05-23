@@ -16,9 +16,12 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     FederatedDatasetSplit,
     FederatedDataSourceConfig,
+    FederatedDiagnosticViewConfig,
     FederatedLocalTrainerRuntimeConfig,
+    FederatedPeerProbeManifest,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
+    FederatedSslMethodConfig,
     FederatedValidationConfig,
     SimulationEvaluation,
     SimulationResult,
@@ -148,6 +151,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                     ClientRoundSummary(
                         client_id="agent_001",
                         candidate_count=10,
+                        diagnostic_candidate_count=5,
                         accepted_count=5,
                         update_generated=True,
                         delta_l2_norm=2.0,
@@ -164,6 +168,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                     ClientRoundSummary(
                         client_id="agent_002",
                         candidate_count=10,
+                        diagnostic_candidate_count=5,
                         accepted_count=0,
                         update_generated=False,
                         client_train_time_seconds=0.07,
@@ -184,6 +189,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                     ClientRoundSummary(
                         client_id="agent_001",
                         candidate_count=10,
+                        diagnostic_candidate_count=5,
                         accepted_count=4,
                         update_generated=True,
                         delta_l2_norm=4.0,
@@ -200,6 +206,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                     ClientRoundSummary(
                         client_id="agent_002",
                         candidate_count=10,
+                        diagnostic_candidate_count=5,
                         accepted_count=6,
                         update_generated=True,
                         delta_l2_norm=6.0,
@@ -243,7 +250,14 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             dominant_ratio=0.75,
         ),
         dataset_split=_dataset_split(),
-        ssl_method_config=None,
+        ssl_method_config=FederatedSslMethodConfig(
+            schema_version="federated_ssl_method.v1",
+            name="fedmatch",
+            display_name="FedMatch",
+            method_role="method_owned",
+            implementation_status="lora_local_runtime_slice_v1",
+            local_budget_policy="iteration_capped",
+        ),
         client_pool_split_config=FederatedClientPoolSplitConfig(
             labeled_ratio=0.1,
             unlabeled_ratio=0.9,
@@ -276,6 +290,28 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             trust_remote_code=False,
             classifier_dropout=0.1,
         ),
+        diagnostic_view_config=FederatedDiagnosticViewConfig(
+            enabled=True,
+            selection_policy="deterministic_random",
+            max_rows=5,
+            seed_offset=1309,
+        ),
+        peer_probe_manifest=FederatedPeerProbeManifest(
+            selection_policy="label_balanced",
+            seed=42,
+            seed_offset=907,
+            source="validation_rows",
+            requested_max_rows=128,
+            row_count=4,
+            query_ids_sha256="abc123",
+            label_distribution={
+                "anxiety": 1,
+                "depression": 1,
+                "normal": 1,
+                "suicidal": 1,
+            },
+            query_ids=("a1", "d1", "n1", "s1"),
+        ),
         data_source_config=FederatedDataSourceConfig(
             source_mode="materialized_client_split",
             split_manifest_path="data/datasets/fl_client_splits/main/manifest.json",
@@ -294,6 +330,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     )
 
     second_round_aggregation = payload["diagnostics"]["aggregation"]["rounds"][1]
+    assert payload["protocol"]["ssl_method"]["local_budget_policy"] == (
+        "iteration_capped"
+    )
     assert payload["rounds"][0]["round_index"] == 1
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
     assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
@@ -320,6 +359,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
 
     pseudo_label_quality = payload["diagnostics"]["pseudo_label_quality"]
     assert pseudo_label_quality["summary"]["candidate_count"] == 40
+    assert pseudo_label_quality["summary"]["diagnostic_candidate_count"] == 20
     assert pseudo_label_quality["summary"]["accepted_count"] == 15
     assert pseudo_label_quality["summary"]["pseudo_label_accuracy"] == pytest.approx(
         11 / 15
@@ -347,6 +387,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert agent_001_summary["client_labeled_count"] == 1
     assert agent_001_summary["client_unlabeled_count"] == 2
     assert agent_001_summary["client_candidate_count"] == 20
+    assert agent_001_summary["client_diagnostic_candidate_count"] == 10
     assert agent_001_summary["client_accepted_count"] == 9
     assert agent_001_summary["client_accepted_ratio"] == pytest.approx(0.45)
     assert agent_001_summary["client_payload_bytes"] == 180
@@ -402,6 +443,16 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert local_trainer_runtime["metadata_status"] == "recorded"
     assert local_trainer_runtime["device"] == "cuda"
     assert local_trainer_runtime["local_files_only"] is True
+    diagnostic_view = payload["protocol"]["diagnostic_view"]
+    assert diagnostic_view["metadata_status"] == "recorded"
+    assert diagnostic_view["selection_policy"] == "deterministic_random"
+    assert diagnostic_view["max_rows"] == 5
+    assert diagnostic_view["scope"] == "pseudo_label_diagnostics_only"
+    peer_probe = payload["protocol"]["peer_probe"]
+    assert peer_probe["metadata_status"] == "recorded"
+    assert peer_probe["selection_policy"] == "label_balanced"
+    assert peer_probe["row_count"] == 4
+    assert peer_probe["query_ids_sha256"] == "abc123"
 
 
 def test_split_diagnostics_separates_shared_seed_exposure_and_unique_counts() -> None:

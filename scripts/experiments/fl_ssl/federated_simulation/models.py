@@ -77,6 +77,41 @@ class FederatedDiagnosticsConfig:
     dump_dir_name: str
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedDiagnosticViewConfig:
+    """client-local pseudo-label diagnostics에 쓸 unlabeled subset 설정."""
+
+    enabled: bool = True
+    selection_policy: str = "deterministic_random"
+    max_rows: int = 512
+    seed_offset: int = 1309
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedDiagnosticViewConfig":
+        if source is None:
+            return cls()
+        return cls(
+            enabled=bool(source.get("enabled", True)),
+            selection_policy=str(
+                source.get("selection_policy", "deterministic_random")
+            ).strip(),
+            max_rows=int(source.get("max_rows", 512)),
+            seed_offset=int(source.get("seed_offset", 1309)),
+        )
+
+    def __post_init__(self) -> None:
+        if self.selection_policy != "deterministic_random":
+            raise ValueError(
+                "diagnostic_view.selection_policy currently supports "
+                "deterministic_random only."
+            )
+        if self.max_rows <= 0:
+            raise ValueError("diagnostic_view.max_rows must be positive.")
+
+
 @dataclass(slots=True)
 class FederatedReportConfig:
     """paper 비교용 report schema 설정."""
@@ -153,6 +188,7 @@ class FederatedSslMethodConfig:
     original_source: dict[str, object] = field(default_factory=dict)
     scenario: str | None = None
     use_original_parameters: bool = True
+    local_budget_policy: str = "iteration_capped"
     original_parameters: dict[str, object] = field(default_factory=dict)
     parameter_overrides: dict[str, object] = field(default_factory=dict)
     effective_parameters: dict[str, object] = field(default_factory=dict)
@@ -334,6 +370,69 @@ class FederatedLocalTrainerRuntimeConfig:
     classifier_dropout: float = 0.1
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedPeerProbeConfig:
+    """peer helper selection vector를 만들 fixed probe surface 설정."""
+
+    enabled: bool = True
+    selection_policy: str = "label_balanced"
+    max_rows: int = 128
+    seed_offset: int = 907
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedPeerProbeConfig":
+        if source is None:
+            return cls()
+        return cls(
+            enabled=bool(source.get("enabled", True)),
+            selection_policy=str(
+                source.get("selection_policy", "label_balanced")
+            ).strip(),
+            max_rows=int(source.get("max_rows", 128)),
+            seed_offset=int(source.get("seed_offset", 907)),
+        )
+
+    def __post_init__(self) -> None:
+        if self.selection_policy != "label_balanced":
+            raise ValueError(
+                "peer_probe.selection_policy currently supports label_balanced only."
+            )
+        if self.max_rows <= 0:
+            raise ValueError("peer_probe.max_rows must be positive.")
+
+
+@dataclass(frozen=True, slots=True)
+class FederatedPeerProbeManifest:
+    """고정 probe subset 재현에 필요한 report metadata."""
+
+    selection_policy: str
+    seed: int
+    seed_offset: int
+    source: str
+    requested_max_rows: int
+    row_count: int
+    query_ids_sha256: str
+    label_distribution: dict[str, int]
+    query_ids: tuple[str, ...]
+
+    def to_payload(self) -> dict[str, object]:
+        return {
+            "metadata_status": "recorded",
+            "selection_policy": self.selection_policy,
+            "seed": self.seed,
+            "seed_offset": self.seed_offset,
+            "source": self.source,
+            "requested_max_rows": self.requested_max_rows,
+            "row_count": self.row_count,
+            "query_ids_sha256": self.query_ids_sha256,
+            "label_distribution": dict(self.label_distribution),
+            "query_ids": list(self.query_ids),
+        }
+
+
 @dataclass(slots=True)
 class SimulationRunRequest:
     """FL SSL simulation 한 번을 실행하는 typed request."""
@@ -368,4 +467,10 @@ class SimulationRunRequest:
     query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig = field(
         default_factory=FederatedLocalTrainerRuntimeConfig
+    )
+    diagnostic_view_config: FederatedDiagnosticViewConfig = field(
+        default_factory=FederatedDiagnosticViewConfig
+    )
+    peer_probe_config: FederatedPeerProbeConfig = field(
+        default_factory=FederatedPeerProbeConfig
     )

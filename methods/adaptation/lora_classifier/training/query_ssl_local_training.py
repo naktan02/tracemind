@@ -129,6 +129,7 @@ def run_query_ssl_lora_classifier_training_core(
     seed: int,
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
+    diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
     base_parameters: LoraClassifierMaterializedState,
     training_task: TrainingTask,
@@ -236,7 +237,11 @@ def run_query_ssl_lora_classifier_training_core(
     pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
         model=model,
         tokenizer=tokenizer,
-        rows=effective_unlabeled_rows,
+        rows=(
+            effective_unlabeled_rows
+            if diagnostic_unlabeled_rows is None
+            else list(diagnostic_unlabeled_rows)
+        ),
         labels=effective_labels,
         lora_config=lora_config,
         query_ssl_config=query_ssl_config,
@@ -300,7 +305,7 @@ def run_query_ssl_lora_classifier_training_core(
         update_envelope=update_envelope,
         update_payload=update_payload,
         candidate_count=len(effective_unlabeled_rows),
-        accepted_count=sum(pseudo_label_quality.accepted_label_distribution.values()),
+        accepted_count=update_build_result.accepted_unlabeled_count,
         local_step_plan=step_plan,
         client_metrics=client_metrics,
         pseudo_label_quality=pseudo_label_quality,

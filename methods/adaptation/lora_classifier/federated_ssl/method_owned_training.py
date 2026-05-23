@@ -19,6 +19,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -92,6 +93,7 @@ def run_method_owned_lora_classifier_training_core(
     seed: int,
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],
+    diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
     base_parameters: LoraClassifierMaterializedState,
     training_task: TrainingTask,
@@ -108,6 +110,7 @@ def run_method_owned_lora_classifier_training_core(
     peer_context: FederatedSslPeerContext | None = None,
     helper_weak_probability_provider: object | None = None,
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """선택된 method-owned LoRA-classifier local training core를 실행한다."""
 
@@ -117,6 +120,7 @@ def run_method_owned_lora_classifier_training_core(
         seed=seed,
         labeled_rows=labeled_rows,
         unlabeled_rows=unlabeled_rows,
+        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
         labels=labels,
         base_parameters=base_parameters,
         training_task=training_task,
@@ -133,4 +137,5 @@ def run_method_owned_lora_classifier_training_core(
         delta_materializer=delta_materializer,
         helper_weak_probability_provider=helper_weak_probability_provider,
         peer_probe_rows=peer_probe_rows,
+        runtime_resource_cache=runtime_resource_cache,
     )

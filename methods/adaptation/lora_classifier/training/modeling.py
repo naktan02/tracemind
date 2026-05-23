@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import copy
+import json
 from typing import Any, Protocol
 
 from torch import nn
@@ -15,6 +17,7 @@ from methods.adaptation.peft.registry import (
     build_peft_adapter_builder,
     resolve_peft_adapter_name,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 
 
 def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
@@ -103,28 +106,25 @@ def build_lora_text_classifier_from_config(
     labels: list[str],
     lora_config: LoraClassifierTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> tuple[LoraTextClassifier, Any]:
     """LoRA-classifier config snapshot에서 평가/학습용 모델을 조립한다."""
 
     AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, _PeftModel = (
         require_transformer_stack()
     )
-    tokenizer = AutoTokenizer.from_pretrained(
-        lora_config.tokenizer_model_id,
-        revision=lora_config.tokenizer_revision,
-        cache_dir=runtime_config.cache_dir,
-        local_files_only=runtime_config.local_files_only,
-        trust_remote_code=runtime_config.trust_remote_code,
+    tokenizer = _load_tokenizer(
+        tokenizer_cls=AutoTokenizer,
+        lora_config=lora_config,
+        runtime_config=runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
     )
-    if tokenizer.pad_token is None:
-        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
 
-    backbone_base = AutoModel.from_pretrained(
-        lora_config.backbone_model_id,
-        revision=lora_config.backbone_revision,
-        cache_dir=runtime_config.cache_dir,
-        local_files_only=runtime_config.local_files_only,
-        trust_remote_code=runtime_config.trust_remote_code,
+    backbone_base = _load_backbone_base(
+        model_cls=AutoModel,
+        lora_config=lora_config,
+        runtime_config=runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
     )
     peft_config = LoraConfig(
         r=int(lora_config.rank),
@@ -143,6 +143,86 @@ def build_lora_text_classifier_from_config(
         classifier_dropout=float(runtime_config.classifier_dropout),
     ).to(runtime_config.device)
     return model, tokenizer
+
+
+def _load_tokenizer(
+    *,
+    tokenizer_cls: Any,
+    lora_config: LoraClassifierTrainingBackendConfig,
+    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
+) -> Any:
+    key = _runtime_resource_key(
+        kind="tokenizer",
+        values={
+            "model_id": lora_config.tokenizer_model_id,
+            "revision": lora_config.tokenizer_revision,
+            "cache_dir": runtime_config.cache_dir,
+            "local_files_only": runtime_config.local_files_only,
+            "trust_remote_code": runtime_config.trust_remote_code,
+        },
+    )
+    if runtime_resource_cache is not None:
+        cached = runtime_resource_cache.get_resource(key)
+        if cached is not None:
+            return cached
+    tokenizer = tokenizer_cls.from_pretrained(
+        lora_config.tokenizer_model_id,
+        revision=lora_config.tokenizer_revision,
+        cache_dir=runtime_config.cache_dir,
+        local_files_only=runtime_config.local_files_only,
+        trust_remote_code=runtime_config.trust_remote_code,
+    )
+    if tokenizer.pad_token is None:
+        tokenizer.pad_token = tokenizer.eos_token or tokenizer.unk_token
+    if runtime_resource_cache is not None:
+        runtime_resource_cache.set_resource(key, tokenizer)
+    return tokenizer
+
+
+def _load_backbone_base(
+    *,
+    model_cls: Any,
+    lora_config: LoraClassifierTrainingBackendConfig,
+    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
+) -> nn.Module:
+    key = _runtime_resource_key(
+        kind="backbone_base",
+        values={
+            "model_id": lora_config.backbone_model_id,
+            "revision": lora_config.backbone_revision,
+            "cache_dir": runtime_config.cache_dir,
+            "local_files_only": runtime_config.local_files_only,
+            "trust_remote_code": runtime_config.trust_remote_code,
+        },
+    )
+    if runtime_resource_cache is not None:
+        cached = runtime_resource_cache.get_resource(key)
+        if cached is not None:
+            if not isinstance(cached, nn.Module):
+                raise TypeError("Cached LoRA-classifier backbone must be nn.Module.")
+            return copy.deepcopy(cached)
+    backbone_base = model_cls.from_pretrained(
+        lora_config.backbone_model_id,
+        revision=lora_config.backbone_revision,
+        cache_dir=runtime_config.cache_dir,
+        local_files_only=runtime_config.local_files_only,
+        trust_remote_code=runtime_config.trust_remote_code,
+    )
+    if runtime_resource_cache is not None:
+        runtime_resource_cache.set_resource(key, backbone_base)
+        return copy.deepcopy(backbone_base)
+    return backbone_base
+
+
+def _runtime_resource_key(
+    *,
+    kind: str,
+    values: dict[str, object],
+) -> str:
+    payload = json.dumps(values, sort_keys=True, separators=(",", ":"))
+    return f"lora_classifier:{kind}:{payload}"
 
 
 def build_model(

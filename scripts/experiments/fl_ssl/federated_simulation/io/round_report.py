@@ -116,6 +116,7 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
     return {
         "client_id": client.client_id,
         "candidate_count": client.candidate_count,
+        "diagnostic_candidate_count": client.diagnostic_candidate_count,
         "accepted_count": client.accepted_count,
         "accepted_ratio": safe_ratio(
             client.accepted_count,

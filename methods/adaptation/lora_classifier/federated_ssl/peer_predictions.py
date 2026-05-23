@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+import hashlib
+import json
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any
@@ -26,6 +28,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     LoraClassifierTrainerRuntimeConfig,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_weak_dataloader
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -191,6 +194,7 @@ def build_lora_classifier_helper_probability_provider(
     labels: Sequence[str],
     lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> LoraClassifierHelperWeakProbabilityProvider | None:
     """선택된 helper snapshot을 weak probability provider로 materialize한다."""
 
@@ -208,16 +212,12 @@ def build_lora_classifier_helper_probability_provider(
                 "LoRA-classifier helper snapshot payload must be "
                 "LoraClassifierMaterializedState."
             )
-        model, _tokenizer = build_lora_text_classifier_from_config(
-            labels=[str(label) for label in labels],
-            lora_config=lora_config,
-            runtime_config=trainer_runtime_config,
-        )
-        load_lora_classifier_base_parameters_into_model(
-            model=model,
+        model = _materialize_helper_model(
+            snapshot=snapshot,
             labels=tuple(str(label) for label in labels),
-            base_parameters=snapshot.payload,
-            device=trainer_runtime_config.device,
+            lora_config=lora_config,
+            trainer_runtime_config=trainer_runtime_config,
+            runtime_resource_cache=runtime_resource_cache,
         )
         model.eval()
         helper_models.append(model)
@@ -227,3 +227,86 @@ def build_lora_classifier_helper_probability_provider(
         helper_models=tuple(helper_models),
         device=trainer_runtime_config.device,
     )
+
+
+def _materialize_helper_model(
+    *,
+    snapshot: FederatedSslPeerClientSnapshot,
+    labels: tuple[str, ...],
+    lora_config: LoraClassifierTrainingBackendConfig,
+    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    runtime_resource_cache: RuntimeResourceCache | None,
+) -> LoraTextClassifier:
+    if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
+        raise TypeError("snapshot payload must be LoraClassifierMaterializedState.")
+    cache_key = _helper_model_cache_key(
+        snapshot=snapshot,
+        labels=labels,
+        lora_config=lora_config,
+        trainer_runtime_config=trainer_runtime_config,
+    )
+    if runtime_resource_cache is not None:
+        cached = runtime_resource_cache.get_resource(cache_key)
+        if cached is not None:
+            if not isinstance(cached, LoraTextClassifier):
+                raise TypeError("Cached helper model must be LoraTextClassifier.")
+            return cached
+
+    model, _tokenizer = build_lora_text_classifier_from_config(
+        labels=list(labels),
+        lora_config=lora_config,
+        runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
+    )
+    load_lora_classifier_base_parameters_into_model(
+        model=model,
+        labels=labels,
+        base_parameters=snapshot.payload,
+        device=trainer_runtime_config.device,
+    )
+    model.eval()
+    if runtime_resource_cache is not None:
+        runtime_resource_cache.set_resource(cache_key, model)
+    return model
+
+
+def _helper_model_cache_key(
+    *,
+    snapshot: FederatedSslPeerClientSnapshot,
+    labels: tuple[str, ...],
+    lora_config: LoraClassifierTrainingBackendConfig,
+    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+) -> str:
+    if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
+        raise TypeError("snapshot payload must be LoraClassifierMaterializedState.")
+    payload = {
+        "client_id": snapshot.client_id,
+        "payload_hash": _materialized_state_hash(snapshot.payload),
+        "labels": labels,
+        "backbone": lora_config.to_backbone_payload(),
+        "lora": lora_config.to_lora_config_payload(),
+        "device": trainer_runtime_config.device,
+        "classifier_dropout": trainer_runtime_config.classifier_dropout,
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return f"lora_classifier:helper_model:{encoded}"
+
+
+def _materialized_state_hash(
+    state: LoraClassifierMaterializedState,
+) -> str:
+    payload = {
+        "lora_parameters": _sorted_numeric_mapping(state.lora_parameters),
+        "classifier_head_weights": _sorted_numeric_mapping(
+            state.classifier_head_weights
+        ),
+        "classifier_head_biases": dict(sorted(state.classifier_head_biases.items())),
+    }
+    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(encoded.encode("utf-8")).hexdigest()
+
+
+def _sorted_numeric_mapping(
+    value: Mapping[str, Sequence[float]],
+) -> dict[str, list[float]]:
+    return {key: list(items) for key, items in sorted(value.items())}

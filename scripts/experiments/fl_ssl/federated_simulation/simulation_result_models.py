@@ -13,6 +13,7 @@ class ClientRoundSummary:
     candidate_count: int
     accepted_count: int
     update_generated: bool
+    diagnostic_candidate_count: int = 0
     delta_l2_norm: float | None = None
     aggregation_example_count: int | None = None
     client_train_time_seconds: float | None = None
@@ -23,6 +24,12 @@ class ClientRoundSummary:
     pseudo_label_evaluated_count: int = 0
     accepted_label_distribution: dict[str, int] = field(default_factory=dict)
     rejected_label_distribution: dict[str, int] = field(default_factory=dict)
+
+    def __post_init__(self) -> None:
+        if self.diagnostic_candidate_count < 0:
+            raise ValueError("diagnostic_candidate_count must be non-negative.")
+        if self.diagnostic_candidate_count == 0 and self.candidate_count > 0:
+            self.diagnostic_candidate_count = self.candidate_count
 
 
 @dataclass(slots=True)

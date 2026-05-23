@@ -35,8 +35,10 @@ from scripts.experiments.fl_ssl.federated_simulation.data_source_request import 
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
+    FederatedDiagnosticViewConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedLoraClassifierRuntimeConfig,
+    FederatedPeerProbeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedRoundRuntimeConfig,
@@ -140,6 +142,12 @@ def build_simulation_request_from_config(
             cache_dir=str(cfg.paper_backbone.cache_dir),
             trust_remote_code=bool(cfg.paper_backbone.trust_remote_code),
             classifier_dropout=float(cfg.paper_backbone.classifier_dropout),
+        ),
+        diagnostic_view_config=FederatedDiagnosticViewConfig.from_mapping(
+            optional_plain_dict(cfg, "diagnostic_view")
+        ),
+        peer_probe_config=FederatedPeerProbeConfig.from_mapping(
+            optional_plain_dict(cfg, "peer_probe")
         ),
     )
 
