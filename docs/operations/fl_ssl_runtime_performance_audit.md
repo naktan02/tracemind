@@ -170,3 +170,75 @@ partitioned path 전용 적용:
   `+ssl_method.parameter_overrides.server_batch_size=12`를 명시한다.
   이 override는 batch 메모리 단위 조정이며 labeled source, objective, round count,
   client local budget 의미를 바꾸지 않는다.
+
+## 2026-05-24 Labels-at-server reduced
+
+조건:
+
+- Method: FedMatch method-owned LoRA-classifier
+- Scenario: `labels-at-server`
+- Split: server-only seed, Dirichlet alpha=0.3, clients=10, seed=42
+- Budget: reduced, 5 rounds, `training_task.max_steps=20`
+- Runtime: `gpu_local + mxbai`, CUDA
+- Override: `+ssl_method.parameter_overrides.server_batch_size=12`
+
+검증:
+
+- Report:
+  `runs/fl_ssl/fedmatch/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_server_only_seed_seed42/clients10_rounds5/20260523T161751Z/reports/fl_ssl_main_comparison.report.json`
+- `verify_federated_report_artifacts.py` PASS:
+  completed rounds 5, client count 10, server-only seed split, FedMatch descriptor,
+  server-owned partitioned update artifact, agent-local ref 미노출, 최종
+  LoRA-classifier aggregate snapshot 존재를 확인했다.
+
+결과:
+
+| 지표 | 값 |
+|---|---:|
+| final macro-F1 | `0.736615` |
+| final accuracy | `0.729893` |
+| worst-client macro-F1 | `0.324624` |
+| total client updates | `50` |
+| total candidates | `202,775` |
+| total accepted | `163,780` |
+| acceptance ratio | `0.8077` |
+| report `total_payload_bytes` | `58,984` |
+| report `total_artifact_bytes` | `714,708,000` |
+| report `total_update_material_bytes` | `714,766,984` |
+| run directory size | `2.6G` |
+| `main_server/aggregation_artifacts` | `2.6G` |
+| `main_server/shared_adapter_updates` | `208K` |
+| partitioned safetensors count | `50` |
+
+Round timing:
+
+| timing key | mean | max |
+|---|---:|---:|
+| `round_total_seconds` | `220.361s` | `233.600s` |
+| `round_server_step_seconds` | `72.242s` | `73.799s` |
+| `round_client_execution_seconds` | `109.082s` | `115.007s` |
+| `round_finalize_publication_seconds` | `17.109s` | `23.395s` |
+| `round_validation_seconds` | `21.926s` | `22.442s` |
+
+Client timing:
+
+| timing key | mean | max |
+|---|---:|---:|
+| `local_training_total_seconds` | `10.904s` | `13.797s` |
+| `core_training_loop_seconds` | `5.104s` | `5.486s` |
+| `core_pseudo_label_diagnostics_seconds` | `2.078s` | `2.418s` |
+| `adapter_base_materialization_seconds` | `1.640s` | `2.714s` |
+| `core_peer_snapshot_build_seconds` | `0.762s` | `0.838s` |
+| `core_model_prepare_seconds` | `0.590s` | `2.146s` |
+| `core_delta_extract_seconds` | `0.344s` | `0.455s` |
+| `server_update_submit_seconds` | `0.002s` | `0.011s` |
+
+해석:
+
+- `server_batch_size=12`는 10-client reduced에서도 OOM 없이 안정적으로 통과했다.
+- round 평균에서 server supervised seed step이 약 33%, client execution이 약 50%를
+  차지한다. labels-at-server reduced의 다음 병목 후보는 server seed step 반복 비용,
+  client sequential execution, validation/materialization이다.
+- partitioned update는 `safetensors` 50개로 저장됐고, shared update JSON은 208KB로
+  유지됐다. partitioned-only verifier 보강 후 `--expect-server-owned-update-artifacts`
+  검증까지 PASS한다.
