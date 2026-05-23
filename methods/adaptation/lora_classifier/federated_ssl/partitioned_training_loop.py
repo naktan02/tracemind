@@ -73,7 +73,7 @@ class HelperWeakProbabilityProvider(Protocol):
 def train_partitioned_lora_classifier(
     *,
     model: LoraTextClassifier,
-    train_loader: DataLoader[dict[str, Any]],
+    train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
     parameters: FedMatchLocalObjectiveParameters,
@@ -86,9 +86,13 @@ def train_partitioned_lora_classifier(
     helper_weak_probability_provider: (HelperWeakProbabilityProvider | None) = None,
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
+    use_supervised_steps: bool = True,
+    emit_sigma_partition: bool = True,
 ) -> PartitionedLoraTrainingResult:
     """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
+    if use_supervised_steps and train_loader is None:
+        raise ValueError("supervised FedMatch steps require train_loader.")
     sigma_optimizer = build_optimizer(
         model=model,
         learning_rate=learning_rate,
@@ -115,14 +119,18 @@ def train_partitioned_lora_classifier(
 
     for _epoch in range(1, min(int(step_plan.local_epochs), total_steps) + 1):
         model.train()
-        labeled_iterator = iter(train_loader)
+        labeled_iterator = iter(train_loader) if use_supervised_steps else None
         unlabeled_iterator = iter(unlabeled_loader)
         epoch_steps = min(steps_per_epoch_budget, total_steps - completed_steps)
         for _step_index in range(1, epoch_steps + 1):
-            labeled_batch, labeled_iterator = _next_batch(
-                loader=train_loader,
-                iterator=labeled_iterator,
-            )
+            labeled_batch = None
+            if use_supervised_steps:
+                if train_loader is None or labeled_iterator is None:
+                    raise ValueError("supervised FedMatch steps require train_loader.")
+                labeled_batch, labeled_iterator = _next_batch(
+                    loader=train_loader,
+                    iterator=labeled_iterator,
+                )
             unlabeled_batch, unlabeled_iterator = _next_batch(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
@@ -133,9 +141,13 @@ def train_partitioned_lora_classifier(
             )
             step_result = run_partitioned_lora_classifier_step(
                 model=model,
-                labeled_batch=_move_tensor_batch_to_device(
-                    batch=labeled_batch,
-                    device=device,
+                labeled_batch=(
+                    None
+                    if labeled_batch is None
+                    else _move_tensor_batch_to_device(
+                        batch=labeled_batch,
+                        device=device,
+                    )
                 ),
                 unlabeled_batch=device_unlabeled_batch,
                 parameters=parameters,
@@ -148,6 +160,7 @@ def train_partitioned_lora_classifier(
                     and helper_weak_probability_provider is not None
                     and psi_query_ssl_algorithm is None
                 ),
+                apply_supervised_step=use_supervised_steps,
                 max_grad_norm=max_grad_norm,
             )
             completed_steps += 1
@@ -191,10 +204,11 @@ def train_partitioned_lora_classifier(
                 "fedmatch_psi_delta_l2",
                 _parameter_delta_l2(step_result.psi_parameter_deltas),
             )
-            _accumulate_parameter_deltas(
-                sigma_parameter_delta_sums,
-                step_result.sigma_parameter_deltas,
-            )
+            if emit_sigma_partition:
+                _accumulate_parameter_deltas(
+                    sigma_parameter_delta_sums,
+                    step_result.sigma_parameter_deltas,
+                )
             _accumulate_parameter_deltas(
                 psi_parameter_delta_sums,
                 step_result.psi_parameter_deltas,
@@ -208,12 +222,18 @@ def train_partitioned_lora_classifier(
             for name, value in scalar_sums.items()
         },
         partition_deltas={
-            FEDMATCH_SIGMA_PARTITION: (
-                build_lora_classifier_partition_delta_from_parameter_deltas(
-                    partition_name=FEDMATCH_SIGMA_PARTITION,
-                    parameter_deltas=sigma_parameter_delta_sums,
-                    labels=labels,
-                )
+            **(
+                {
+                    FEDMATCH_SIGMA_PARTITION: (
+                        build_lora_classifier_partition_delta_from_parameter_deltas(
+                            partition_name=FEDMATCH_SIGMA_PARTITION,
+                            parameter_deltas=sigma_parameter_delta_sums,
+                            labels=labels,
+                        )
+                    )
+                }
+                if emit_sigma_partition
+                else {}
             ),
             FEDMATCH_PSI_PARTITION: (
                 build_lora_classifier_partition_delta_from_parameter_deltas(
@@ -229,7 +249,7 @@ def train_partitioned_lora_classifier(
 def run_partitioned_lora_classifier_step(
     *,
     model: TextBatchClassifier,
-    labeled_batch: Mapping[str, Tensor],
+    labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
     sigma_optimizer: torch.optim.Optimizer,
@@ -237,6 +257,7 @@ def run_partitioned_lora_classifier_step(
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
+    apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
 ) -> PartitionedLoraStepResult:
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
@@ -249,20 +270,29 @@ def run_partitioned_lora_classifier_step(
 
     if not isinstance(model, nn.Module):
         raise TypeError("FedMatch LoRA partitioned step requires a torch nn.Module.")
+    if apply_supervised_step and labeled_batch is None:
+        raise ValueError("FedMatch supervised step requires labeled_batch.")
 
     before_supervised = snapshot_trainable_parameter_tensors(model)
-    supervised = _apply_fedmatch_supervised_step(
-        model=model,
-        labeled_batch=labeled_batch,
-        parameters=parameters,
-        optimizer=sigma_optimizer,
-        max_grad_norm=max_grad_norm,
-    )
-    after_supervised = snapshot_trainable_parameter_tensors(model)
-    sigma_parameter_deltas = diff_parameter_snapshots(
-        after=after_supervised,
-        before=before_supervised,
-    )
+    if apply_supervised_step:
+        if labeled_batch is None:
+            raise ValueError("FedMatch supervised step requires labeled_batch.")
+        supervised = _apply_fedmatch_supervised_step(
+            model=model,
+            labeled_batch=labeled_batch,
+            parameters=parameters,
+            optimizer=sigma_optimizer,
+            max_grad_norm=max_grad_norm,
+        )
+        after_supervised = snapshot_trainable_parameter_tensors(model)
+        sigma_parameter_deltas = diff_parameter_snapshots(
+            after=after_supervised,
+            before=before_supervised,
+        )
+    else:
+        supervised = _empty_supervised_step_result(before_supervised)
+        after_supervised = before_supervised
+        sigma_parameter_deltas = {}
 
     unsupervised = (
         _apply_query_ssl_psi_step(
@@ -327,6 +357,25 @@ def _apply_fedmatch_supervised_step(
     )
     optimizer.step()
     return result
+
+
+def _empty_supervised_step_result(
+    parameter_snapshot: Mapping[str, Tensor],
+) -> FedMatchTensorLocalObjectiveResult:
+    try:
+        reference = next(iter(parameter_snapshot.values()))
+    except StopIteration as error:
+        raise ValueError(
+            "FedMatch partitioned step requires trainable parameters."
+        ) from error
+    zero = reference.new_zeros(())
+    return FedMatchTensorLocalObjectiveResult(
+        total_loss=zero,
+        partition_losses={FEDMATCH_SIGMA_PARTITION: zero},
+        loss_components={},
+        metrics={"labeled_count": reference.new_tensor(0.0)},
+        debug_tensors={},
+    )
 
 
 def _apply_fedmatch_unsupervised_step(

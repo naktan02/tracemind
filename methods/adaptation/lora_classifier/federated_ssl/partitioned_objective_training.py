@@ -75,6 +75,11 @@ from methods.federated_ssl.fedmatch.local_objective import (
 )
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+    FEDMATCH_SCENARIO_LABELS_AT_SERVER,
+)
+from methods.federated_ssl.fedmatch.parameter_routing import (
+    FEDMATCH_SIGMA_PARTITION,
+    upload_partitions_for_scenario,
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -134,18 +139,19 @@ def run_method_owned_lora_classifier_training_core(
 ) -> QuerySslLoraClientTrainingResult:
     """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
-    scenario_name = ssl_method_config.scenario or FEDMATCH_SCENARIO_LABELS_AT_CLIENT
-    if scenario_name != FEDMATCH_SCENARIO_LABELS_AT_CLIENT:
-        raise NotImplementedError(
-            "FedMatch LoRA local runtime slice currently supports only "
-            f"{FEDMATCH_SCENARIO_LABELS_AT_CLIENT}; got {scenario_name!r}."
-        )
+    scenario_name = _normalize_fedmatch_scenario_name(ssl_method_config.scenario)
+    uses_client_labeled_rows = scenario_name == FEDMATCH_SCENARIO_LABELS_AT_CLIENT
 
     effective_labeled_rows = list(labeled_rows)
     effective_unlabeled_rows = list(unlabeled_rows)
-    if not effective_labeled_rows:
+    if uses_client_labeled_rows and not effective_labeled_rows:
         raise ValueError(
             "FedMatch labels-at-client local runtime requires labeled_rows."
+        )
+    if not uses_client_labeled_rows and effective_labeled_rows:
+        raise ValueError(
+            "FedMatch labels-at-server local runtime must not receive "
+            "client labeled_rows."
         )
     if not effective_unlabeled_rows:
         raise ValueError("FedMatch local runtime requires unlabeled_rows.")
@@ -158,10 +164,11 @@ def run_method_owned_lora_classifier_training_core(
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
         raise ValueError("FedMatch LoRA classifier label schema must not be empty.")
-    _validate_labeled_rows_have_known_labels(
-        rows=effective_labeled_rows,
-        labels=effective_labels,
-    )
+    if uses_client_labeled_rows:
+        _validate_labeled_rows_have_known_labels(
+            rows=effective_labeled_rows,
+            labels=effective_labels,
+        )
 
     parameters = FedMatchLocalObjectiveParameters.from_mapping(
         ssl_method_config.effective_parameters
@@ -194,16 +201,21 @@ def run_method_owned_lora_classifier_training_core(
                 training_task=training_task,
                 configured_unlabeled_batch_size=unlabeled_batch_size,
                 effective_parameters=ssl_method_config.effective_parameters,
+                uses_labeled_batches=uses_client_labeled_rows,
             )
         )
-        train_loader = build_dataloader(
-            rows=effective_labeled_rows,
-            label_to_index=label_to_index,
-            tokenizer=tokenizer,
-            batch_size=labeled_batch_size,
-            max_length=lora_config.max_length,
-            task_prefix=lora_config.task_prefix,
-            shuffle=True,
+        train_loader = (
+            build_dataloader(
+                rows=effective_labeled_rows,
+                label_to_index=label_to_index,
+                tokenizer=tokenizer,
+                batch_size=labeled_batch_size,
+                max_length=lora_config.max_length,
+                task_prefix=lora_config.task_prefix,
+                shuffle=True,
+            )
+            if uses_client_labeled_rows
+            else None
         )
         unlabeled_loader = build_multiview_dataloader(
             rows=effective_unlabeled_rows,
@@ -245,6 +257,11 @@ def run_method_owned_lora_classifier_training_core(
             psi_query_ssl_algorithm=psi_query_ssl_algorithm,
             enable_inter_client_consistency=(
                 helper_weak_probability_provider is not None
+            ),
+            use_supervised_steps=uses_client_labeled_rows,
+            emit_sigma_partition=(
+                FEDMATCH_SIGMA_PARTITION
+                in upload_partitions_for_scenario(scenario_name=scenario_name)
             ),
         )
     history_record = training_result.metrics
@@ -340,9 +357,7 @@ def run_method_owned_lora_classifier_training_core(
         ),
         "fedmatch_budget_client_epochs": float(step_plan.local_epochs),
         "fedmatch_budget_labeled_batch_size": float(labeled_batch_size),
-        "fedmatch_budget_unlabeled_batch_size": float(
-            resolved_unlabeled_batch_size
-        ),
+        "fedmatch_budget_unlabeled_batch_size": float(resolved_unlabeled_batch_size),
         "fedmatch_budget_steps_per_epoch": float(step_plan.full_epoch_steps),
         "fedmatch_budget_total_steps": float(step_plan.total_steps),
     }
@@ -473,6 +488,19 @@ def _normalize_local_budget_policy(policy_name: str | None) -> str:
     return normalized
 
 
+def _normalize_fedmatch_scenario_name(scenario_name: str | None) -> str:
+    normalized = (scenario_name or FEDMATCH_SCENARIO_LABELS_AT_CLIENT).replace(
+        "_",
+        "-",
+    )
+    if normalized not in {
+        FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+        FEDMATCH_SCENARIO_LABELS_AT_SERVER,
+    }:
+        raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}.")
+    return normalized
+
+
 def _resolve_partitioned_local_budget(
     *,
     policy_name: str,
@@ -481,8 +509,31 @@ def _resolve_partitioned_local_budget(
     training_task: TrainingTask,
     configured_unlabeled_batch_size: int | None,
     effective_parameters: Mapping[str, object],
+    uses_labeled_batches: bool,
 ) -> tuple[int, int, QuerySslLocalStepPlan]:
     if policy_name == LOCAL_BUDGET_POLICY_ORIGINAL_METHOD:
+        if not uses_labeled_batches:
+            batch_size = _required_positive_int(
+                effective_parameters,
+                "client_batch_size",
+            )
+            local_epochs = _required_positive_int(
+                effective_parameters,
+                "client_epochs",
+            )
+            unlabeled_loader_steps = ceil(unlabeled_count / batch_size)
+            total_steps = local_epochs * unlabeled_loader_steps
+            return (
+                0,
+                batch_size,
+                build_query_ssl_local_step_plan(
+                    labeled_loader_steps=0,
+                    unlabeled_loader_steps=unlabeled_loader_steps,
+                    uses_labeled_batches=False,
+                    local_epochs=local_epochs,
+                    max_steps=total_steps,
+                ),
+            )
         local_budget = build_labeled_anchored_query_ssl_batch_plan(
             labeled_count=labeled_count,
             unlabeled_count=unlabeled_count,
@@ -508,12 +559,12 @@ def _resolve_partitioned_local_budget(
     labeled_loader_steps = ceil(labeled_count / labeled_batch_size)
     unlabeled_loader_steps = ceil(unlabeled_count / resolved_unlabeled_batch_size)
     return (
-        labeled_batch_size,
+        labeled_batch_size if uses_labeled_batches else 0,
         resolved_unlabeled_batch_size,
         build_query_ssl_local_step_plan(
             labeled_loader_steps=labeled_loader_steps,
             unlabeled_loader_steps=unlabeled_loader_steps,
-            uses_labeled_batches=True,
+            uses_labeled_batches=uses_labeled_batches,
             local_epochs=int(training_task.local_epochs),
             max_steps=int(training_task.max_steps),
         ),

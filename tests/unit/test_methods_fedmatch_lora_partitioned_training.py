@@ -472,3 +472,61 @@ def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     assert combined_lora == pytest.approx(
         total_partition.lora_parameter_deltas["encoder_lora.weight"]
     )
+
+
+def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None:
+    model = TinyLoraClassifier()
+    labels = ("anxiety", "normal")
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    unlabeled_loader = DataLoader(
+        [
+            {
+                "weak_input_ids": torch.tensor([1.0, 0.2, 0.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.8, 0.3, 0.1]),
+                "strong_attention_mask": torch.ones(3),
+            },
+            {
+                "weak_input_ids": torch.tensor([0.0, 0.5, 1.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.1, 0.4, 1.0]),
+                "strong_attention_mask": torch.ones(3),
+            },
+        ],
+        batch_size=2,
+    )
+    step_plan = build_query_ssl_local_step_plan(
+        labeled_loader_steps=0,
+        unlabeled_loader_steps=1,
+        uses_labeled_batches=False,
+        local_epochs=1,
+        max_steps=1,
+    )
+
+    result = train_partitioned_lora_classifier(
+        model=model,
+        train_loader=None,
+        unlabeled_loader=unlabeled_loader,
+        labels=labels,
+        parameters=parameters,
+        step_plan=step_plan,
+        device="cpu",
+        learning_rate=0.2,
+        classifier_learning_rate=0.2,
+        weight_decay=0.0,
+        max_grad_norm=0.0,
+        use_supervised_steps=False,
+        emit_sigma_partition=False,
+    )
+
+    assert set(result.partition_deltas) == {FEDMATCH_PSI_PARTITION}
+    assert result.metrics["train_sup_loss"] == 0.0
+    assert result.metrics["train_fedmatch_sigma_delta_l2"] == 0.0
+    assert result.metrics["train_fedmatch_psi_delta_l2"] > 0.0
