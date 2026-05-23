@@ -9,6 +9,7 @@ from scripts.experiments.fl_ssl.federated_simulation.io.aggregation_diagnostics 
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     mean,
+    numeric_summary,
     population_std,
     population_variance,
     safe_ratio,
@@ -97,6 +98,7 @@ def _aggregate_client_round_summaries(
     pseudo_label_evaluated_count_by_client: dict[str, int] = {}
     accepted_label_distribution_by_client: dict[str, Counter[str]] = {}
     rejected_label_distribution_by_client: dict[str, Counter[str]] = {}
+    timing_values_by_client: dict[str, dict[str, list[float]]] = {}
 
     for round_summary in result.rounds:
         for client in round_summary.clients:
@@ -164,6 +166,12 @@ def _aggregate_client_round_summaries(
             rejected_label_distribution_by_client.setdefault(
                 client.client_id, Counter()
             ).update(client.rejected_label_distribution)
+            client_timing_values = timing_values_by_client.setdefault(
+                client.client_id,
+                {},
+            )
+            for key, value in client.timing_breakdown.items():
+                client_timing_values.setdefault(key, []).append(float(value))
 
     return {
         client_id: _client_round_summary_payload(
@@ -204,6 +212,7 @@ def _aggregate_client_round_summaries(
                 client_id,
                 Counter(),
             ),
+            timing_values=timing_values_by_client.get(client_id, {}),
         )
         for client_id in sorted(client_ids)
     }
@@ -228,6 +237,7 @@ def _client_round_summary_payload(
     pseudo_label_evaluated_count: int,
     accepted_label_distribution: Counter[str],
     rejected_label_distribution: Counter[str],
+    timing_values: dict[str, list[float]],
 ) -> dict[str, object]:
     return {
         "candidate_count": candidate_count,
@@ -261,11 +271,22 @@ def _client_round_summary_payload(
         "rejected_label_distribution": dict(
             sorted(rejected_label_distribution.items())
         ),
+        "timing_breakdown_summary": _timing_breakdown_summary(timing_values),
     }
 
 
 def _weighted_pairs_mean(values: list[tuple[float, int]]) -> float | None:
     return weighted_mean(values)
+
+
+def _timing_breakdown_summary(
+    values_by_key: dict[str, list[float]],
+) -> dict[str, dict[str, float | int | None]]:
+    return {
+        key: numeric_summary(values)
+        for key, values in sorted(values_by_key.items())
+        if values
+    }
 
 
 def _client_validation_payload(
@@ -291,6 +312,10 @@ def _client_validation_payload(
         "client_candidate_count": round_summary.get("candidate_count"),
         "client_diagnostic_candidate_count": round_summary.get(
             "diagnostic_candidate_count"
+        ),
+        "client_timing_breakdown_summary": round_summary.get(
+            "timing_breakdown_summary",
+            {},
         ),
         "client_accepted_count": round_summary.get("accepted_count"),
         "client_accepted_ratio": round_summary.get("client_accepted_ratio"),

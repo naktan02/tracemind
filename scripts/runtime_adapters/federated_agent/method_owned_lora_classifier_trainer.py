@@ -30,6 +30,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraClientTrainingResult,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
+from methods.common.timing import TimingRecorder
 from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
 from methods.federated_ssl.peer_context import (
@@ -75,6 +76,7 @@ def run_method_owned_lora_classifier_local_training(
     runtime_resource_cache: RuntimeResourceCache | None = None,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
+    timing_recorder: TimingRecorder | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 선택된 method-owned LoRA core에 연결한다."""
 
@@ -83,11 +85,19 @@ def run_method_owned_lora_classifier_local_training(
             "Method-owned LoRA local training requires active LoraClassifierState."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
-    base_parameters = _load_base_parameters(
-        active_adapter_state=active_adapter_state,
-        output_dir=output_dir,
-        aggregated_at=effective_created_at,
-    )
+    if timing_recorder is None:
+        base_parameters = _load_base_parameters(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=effective_created_at,
+        )
+    else:
+        with timing_recorder.measure("adapter_base_materialization_seconds"):
+            base_parameters = _load_base_parameters(
+                active_adapter_state=active_adapter_state,
+                output_dir=output_dir,
+                aggregated_at=effective_created_at,
+            )
     effective_lora_config = (
         lora_config
         or build_lora_classifier_training_backend_config(training_task.objective_config)
@@ -98,16 +108,29 @@ def run_method_owned_lora_classifier_local_training(
         local_ssl_policy_name.strip().lower().replace("-", "_")
         == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
     ):
-        helper_weak_probability_provider = (
-            build_lora_classifier_helper_probability_provider(
-                peer_context=peer_context,
-                peer_snapshots=peer_snapshots,
-                labels=labels,
-                lora_config=effective_lora_config,
-                trainer_runtime_config=trainer_runtime_config,
-                runtime_resource_cache=runtime_resource_cache,
+        if timing_recorder is None:
+            helper_weak_probability_provider = (
+                build_lora_classifier_helper_probability_provider(
+                    peer_context=peer_context,
+                    peer_snapshots=peer_snapshots,
+                    labels=labels,
+                    lora_config=effective_lora_config,
+                    trainer_runtime_config=trainer_runtime_config,
+                    runtime_resource_cache=runtime_resource_cache,
+                )
             )
-        )
+        else:
+            with timing_recorder.measure("adapter_helper_provider_prepare_seconds"):
+                helper_weak_probability_provider = (
+                    build_lora_classifier_helper_probability_provider(
+                        peer_context=peer_context,
+                        peer_snapshots=peer_snapshots,
+                        labels=labels,
+                        lora_config=effective_lora_config,
+                        trainer_runtime_config=trainer_runtime_config,
+                        runtime_resource_cache=runtime_resource_cache,
+                    )
+                )
     result = run_method_owned_lora_classifier_training_core(
         client_id=client_id,
         seed=seed,
@@ -133,13 +156,22 @@ def run_method_owned_lora_classifier_local_training(
         helper_weak_probability_provider=helper_weak_probability_provider,
         peer_probe_rows=peer_probe_rows,
         runtime_resource_cache=runtime_resource_cache,
+        timing_recorder=timing_recorder,
     )
-    TrainingArtifactRepository(
+    repository = TrainingArtifactRepository(
         state_root=output_dir / "agents" / client_id
-    ).save_shared_adapter_update(
-        result.update_envelope.update_id,
-        result.update_payload,
     )
+    if timing_recorder is None:
+        repository.save_shared_adapter_update(
+            result.update_envelope.update_id,
+            result.update_payload,
+        )
+    else:
+        with timing_recorder.measure("agent_repository_save_seconds"):
+            repository.save_shared_adapter_update(
+                result.update_envelope.update_id,
+                result.update_payload,
+            )
     return result
 
 

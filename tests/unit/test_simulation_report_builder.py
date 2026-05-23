@@ -164,6 +164,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_evaluated_count=5,
                         accepted_label_distribution={"anxiety": 5},
                         rejected_label_distribution={"normal": 5},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.04,
+                            "core_pseudo_label_diagnostics_seconds": 0.01,
+                        },
                     ),
                     ClientRoundSummary(
                         client_id="agent_002",
@@ -175,6 +179,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_confidence_mean=0.4,
                         pseudo_label_margin_mean=0.1,
                         rejected_label_distribution={"depression": 10},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.03,
+                            "core_pseudo_label_diagnostics_seconds": 0.02,
+                        },
                     ),
                 ),
             ),
@@ -202,6 +210,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_evaluated_count=4,
                         accepted_label_distribution={"anxiety": 4},
                         rejected_label_distribution={"normal": 6},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.08,
+                            "core_pseudo_label_diagnostics_seconds": 0.03,
+                        },
                     ),
                     ClientRoundSummary(
                         client_id="agent_002",
@@ -219,6 +231,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_evaluated_count=6,
                         accepted_label_distribution={"depression": 6},
                         rejected_label_distribution={"normal": 4},
+                        timing_breakdown={
+                            "core_training_loop_seconds": 0.12,
+                            "core_pseudo_label_diagnostics_seconds": 0.04,
+                        },
                     ),
                 ),
             ),
@@ -377,6 +393,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert communication_cost["payload_byte_accounting_status"] == "measured"
     assert communication_cost["round_time_seconds"]["mean"] == pytest.approx(2.0)
     assert communication_cost["client_train_time_seconds"]["max"] == pytest.approx(0.3)
+    assert communication_cost["timing_breakdown_summary"][
+        "core_training_loop_seconds"
+    ]["max"] == pytest.approx(0.12)
 
     client_validation = payload["metrics"]["client_validation"]
     agent_001_summary = client_validation["clients"][0]
@@ -396,6 +415,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert agent_001_summary["mean_delta_l2_norm"] == pytest.approx(3.0)
     assert agent_001_summary["client_train_time_seconds"] == pytest.approx(0.2)
     assert agent_001_summary["mean_client_train_time_seconds"] == pytest.approx(0.155)
+    assert agent_001_summary["client_timing_breakdown_summary"][
+        "core_pseudo_label_diagnostics_seconds"
+    ]["mean"] == pytest.approx(0.02)
     assert agent_001_summary["client_validation_loss"] == pytest.approx(0.3)
     assert agent_001_summary["client_validation_macro_f1"] == pytest.approx(0.7)
     assert agent_001_summary["client_validation_ece"] == pytest.approx(0.1)

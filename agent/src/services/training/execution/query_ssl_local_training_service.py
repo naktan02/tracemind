@@ -23,6 +23,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
 )
+from methods.common.timing import TimingRecorder
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -51,6 +52,7 @@ class QuerySslLoraLocalTrainingRequest:
     created_at: datetime | None = None
     agent_id: str | None = None
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None
+    timing_recorder: TimingRecorder | None = None
 
 
 class QuerySslLoraTrainingBackend(Protocol):
@@ -77,6 +79,7 @@ class QuerySslLoraTrainingBackend(Protocol):
         trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
         created_at: datetime,
         delta_materializer: QuerySslLoraDeltaMaterializer,
+        timing_recorder: TimingRecorder | None = None,
     ) -> QuerySslLoraClientTrainingResult:
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
 
@@ -122,11 +125,19 @@ class QuerySslLocalTrainingService:
             trainer_runtime_config=request.trainer_runtime_config,
             created_at=effective_created_at,
             delta_materializer=request.delta_materializer,
+            timing_recorder=request.timing_recorder,
         )
-        self.repository.save_shared_adapter_update(
-            result.update_envelope.update_id,
-            result.update_payload,
-        )
+        if request.timing_recorder is None:
+            self.repository.save_shared_adapter_update(
+                result.update_envelope.update_id,
+                result.update_payload,
+            )
+        else:
+            with request.timing_recorder.measure("agent_repository_save_seconds"):
+                self.repository.save_shared_adapter_update(
+                    result.update_envelope.update_id,
+                    result.update_payload,
+                )
         update_envelope = result.update_envelope
         if request.agent_id is not None:
             update_envelope = update_envelope.model_copy(

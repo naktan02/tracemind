@@ -30,6 +30,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
+from methods.common.timing import TimingRecorder
 from methods.federated.aggregation.base import FederatedAggregationContext
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLocalTrainerRuntimeConfig,
@@ -61,6 +62,7 @@ def run_query_ssl_lora_classifier_local_training(
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
+    timing_recorder: TimingRecorder | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
 
@@ -69,11 +71,19 @@ def run_query_ssl_lora_classifier_local_training(
             "Query SSL LoRA local training requires active LoraClassifierState."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
-    base_parameters = _load_base_parameters(
-        active_adapter_state=active_adapter_state,
-        output_dir=output_dir,
-        aggregated_at=effective_created_at,
-    )
+    if timing_recorder is None:
+        base_parameters = _load_base_parameters(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=effective_created_at,
+        )
+    else:
+        with timing_recorder.measure("adapter_base_materialization_seconds"):
+            base_parameters = _load_base_parameters(
+                active_adapter_state=active_adapter_state,
+                output_dir=output_dir,
+                aggregated_at=effective_created_at,
+            )
     service = QuerySslLocalTrainingService(
         repository=TrainingArtifactRepository(
             state_root=output_dir / "agents" / client_id
@@ -99,6 +109,7 @@ def run_query_ssl_lora_classifier_local_training(
             query_ssl_config=query_ssl_config,
             trainer_runtime_config=trainer_runtime_config,
             created_at=effective_created_at,
+            timing_recorder=timing_recorder,
             delta_materializer=SimulationQuerySslLoraDeltaMaterializer(
                 output_dir=output_dir
             ),

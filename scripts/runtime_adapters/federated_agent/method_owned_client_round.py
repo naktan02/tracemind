@@ -6,6 +6,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -94,60 +95,68 @@ def _run_method_owned_lora_client_round(
         raise ValueError("LoRA-classifier runtime config is required.")
 
     query_ssl_config = request.query_ssl_objective_config
+    timing = TimingRecorder()
     training_started_at = time.perf_counter()
-    diagnostic_unlabeled_rows = build_client_diagnostic_unlabeled_view(
-        rows=shard.unlabeled_rows,
-        config=request.diagnostic_view_config,
-        run_seed=request.seed,
-        round_index=_round_index_from_id(round_id),
-        client_id=shard.client_id,
-    )
-    local_result = method_trainer.run_method_owned_lora_classifier_local_training(
-        client_id=shard.client_id,
-        seed=request.seed,
-        output_dir=request.output_dir,
-        labeled_rows=shard.labeled_rows,
-        unlabeled_rows=shard.unlabeled_rows,
-        diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
-        active_adapter_state=active.adapter_state,
-        training_task=training_task,
-        model_manifest=active.manifest,
-        ssl_method_config=request.ssl_method_config,
-        local_ssl_policy_name=(
-            LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
-            if request.capability_plan is None
-            else request.capability_plan.local_ssl_policy_name
-        ),
-        query_ssl_config=request.query_ssl_objective_config,
-        peer_context=peer_context,
-        peer_snapshots=peer_snapshots,
-        runtime_resource_cache=bootstrapped.runtime_resource_cache,
-        peer_probe_rows=(
-            bootstrapped.peer_probe_rows
-            if bootstrapped.peer_probe_rows
-            else tuple(request.validation_rows)
-        ),
-        strong_view_policy=(
-            "first_aug"
-            if query_ssl_config is None
-            else query_ssl_config.strong_view_policy
-        ),
-        unlabeled_batch_size=(
-            None if query_ssl_config is None else query_ssl_config.unlabeled_batch_size
-        ),
-        trainer_runtime_config=request.local_trainer_runtime_config,
-    )
+    with timing.measure("diagnostic_view_select_seconds"):
+        diagnostic_unlabeled_rows = build_client_diagnostic_unlabeled_view(
+            rows=shard.unlabeled_rows,
+            config=request.diagnostic_view_config,
+            run_seed=request.seed,
+            round_index=_round_index_from_id(round_id),
+            client_id=shard.client_id,
+        )
+    with timing.measure("local_training_total_seconds"):
+        local_result = method_trainer.run_method_owned_lora_classifier_local_training(
+            client_id=shard.client_id,
+            seed=request.seed,
+            output_dir=request.output_dir,
+            labeled_rows=shard.labeled_rows,
+            unlabeled_rows=shard.unlabeled_rows,
+            diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
+            active_adapter_state=active.adapter_state,
+            training_task=training_task,
+            model_manifest=active.manifest,
+            ssl_method_config=request.ssl_method_config,
+            local_ssl_policy_name=(
+                LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+                if request.capability_plan is None
+                else request.capability_plan.local_ssl_policy_name
+            ),
+            query_ssl_config=request.query_ssl_objective_config,
+            peer_context=peer_context,
+            peer_snapshots=peer_snapshots,
+            runtime_resource_cache=bootstrapped.runtime_resource_cache,
+            peer_probe_rows=(
+                bootstrapped.peer_probe_rows
+                if bootstrapped.peer_probe_rows
+                else tuple(request.validation_rows)
+            ),
+            strong_view_policy=(
+                "first_aug"
+                if query_ssl_config is None
+                else query_ssl_config.strong_view_policy
+            ),
+            unlabeled_batch_size=(
+                None
+                if query_ssl_config is None
+                else query_ssl_config.unlabeled_batch_size
+            ),
+            trainer_runtime_config=request.local_trainer_runtime_config,
+            timing_recorder=timing,
+        )
     client_train_time_seconds = time.perf_counter() - training_started_at
-    server_update_payload = upload_agent_local_lora_classifier_update(
-        output_dir=request.output_dir,
-        update_payload=local_result.update_payload,
-    )
-    update_submitted = client_update_submission.accept_client_update(
-        server_runtime=bootstrapped.server_runtime,
-        round_id=round_id,
-        update_envelope=local_result.update_envelope,
-        update_payload=server_update_payload,
-    )
+    with timing.measure("update_upload_materialize_seconds"):
+        server_update_payload = upload_agent_local_lora_classifier_update(
+            output_dir=request.output_dir,
+            update_payload=local_result.update_payload,
+        )
+    with timing.measure("server_update_submit_seconds"):
+        update_submitted = client_update_submission.accept_client_update(
+            server_runtime=bootstrapped.server_runtime,
+            round_id=round_id,
+            update_envelope=local_result.update_envelope,
+            update_payload=server_update_payload,
+        )
     pseudo_label_quality = local_result.pseudo_label_quality
     return ClientRoundExecution(
         summary=ClientRoundSummary(
@@ -192,6 +201,7 @@ def _run_method_owned_lora_client_round(
             rejected_label_distribution=(
                 pseudo_label_quality.rejected_label_distribution
             ),
+            timing_breakdown=timing.to_mapping(),
         ),
         update_submitted=update_submitted,
         peer_client_snapshot=local_result.peer_client_snapshot,

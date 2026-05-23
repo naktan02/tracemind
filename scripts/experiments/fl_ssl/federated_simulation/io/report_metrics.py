@@ -98,6 +98,11 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         for client in round_summary.clients
         if client.client_train_time_seconds is not None
     ]
+    timing_breakdown_values: dict[str, list[float]] = {}
+    for round_summary in result.rounds:
+        for client in round_summary.clients:
+            for key, value in client.timing_breakdown.items():
+                timing_breakdown_values.setdefault(key, []).append(float(value))
     gpu_memory_peaks = [
         round_summary.gpu_memory_peak_mb
         for round_summary in result.rounds
@@ -117,6 +122,9 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         "acceptance_ratio": safe_ratio(total_accepted, total_candidates),
         "round_time_seconds": numeric_summary(round_times),
         "client_train_time_seconds": numeric_summary(client_train_times),
+        "timing_breakdown_summary": _timing_breakdown_summary(
+            timing_breakdown_values
+        ),
         "gpu_memory_peak_mb": numeric_summary(gpu_memory_peaks),
         "system_cost_status": (
             "partially_measured" if round_times or client_train_times else "proxy_only"
@@ -256,6 +264,16 @@ def _weighted_client_mean(
         (getattr(client, value_attr), int(getattr(client, weight_attr)))
         for client in clients
     )
+
+
+def _timing_breakdown_summary(
+    values_by_key: dict[str, list[float]],
+) -> dict[str, dict[str, float | int | None]]:
+    return {
+        key: numeric_summary(values)
+        for key, values in sorted(values_by_key.items())
+        if values
+    }
 
 
 def _weighted_round_mean(

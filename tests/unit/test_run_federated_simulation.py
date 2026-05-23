@@ -2017,6 +2017,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert report["rounds"][0]["round_index"] == 1
     assert "accepted_ratio" in report["rounds"][0]["clients"][0]
     assert "delta_l2_norm" in report["rounds"][0]["clients"][0]
+    assert "timing_breakdown" in report["rounds"][0]["clients"][0]
     assert (
         report["rounds"][0]["delta_from_previous_round"]["macro_f1_delta"]
         == report["rounds"][0]["delta_from_initial"]["macro_f1_delta"]
@@ -2056,6 +2057,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(
         report["metrics"]["secondary"]["communication_cost"]["unit"]
         == "client_update_envelopes"
     )
+    assert (
+        "timing_breakdown_summary"
+        in report["metrics"]["secondary"]["communication_cost"]
+    )
     client_validation = report["metrics"]["client_validation"]
     assert client_validation["evaluated_client_count"] > 0
     assert "macro_f1_std" in client_validation
@@ -2069,6 +2074,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert "delta_l2_norm_status" in client_validation["clients"][0]
     assert "pseudo_label_accuracy" in client_validation["clients"][0]
     assert "accepted_label_distribution" in client_validation["clients"][0]
+    assert "client_timing_breakdown_summary" in client_validation["clients"][0]
 
 
 def test_run_simulation_request_preserves_typed_boundary(tmp_path, monkeypatch) -> None:

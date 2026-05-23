@@ -24,12 +24,18 @@ class ClientRoundSummary:
     pseudo_label_evaluated_count: int = 0
     accepted_label_distribution: dict[str, int] = field(default_factory=dict)
     rejected_label_distribution: dict[str, int] = field(default_factory=dict)
+    timing_breakdown: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
         if self.diagnostic_candidate_count < 0:
             raise ValueError("diagnostic_candidate_count must be non-negative.")
         if self.diagnostic_candidate_count == 0 and self.candidate_count > 0:
             self.diagnostic_candidate_count = self.candidate_count
+        self.timing_breakdown = {
+            str(key): float(value)
+            for key, value in self.timing_breakdown.items()
+            if float(value) >= 0.0
+        }
 
 
 @dataclass(slots=True)

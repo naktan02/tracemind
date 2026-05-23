@@ -155,6 +155,10 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   유지하고, 품질 진단은 `diagnostic_view` deterministic subset의
   `diagnostic_candidate_count`로 별도 기록한다. global/client 성능 평가는
   validation/test split 기준이다.
+- runtime diagnostics: client round report에 `timing_breakdown`을 남긴다. 이 값은
+  stdout 로그가 아니라 report metadata이며, model prepare, training loop,
+  pseudo-label diagnostics, update materialization, server submit 시간을 구간별로
+  확인하는 데만 쓴다.
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
 - method selection: 기본 baseline은 `fl_method.composition_mode=manual`,
@@ -278,11 +282,13 @@ Runtime translation:
    deterministic subset으로 줄인다. 이는 학습 pool을 자르는 정책이 아니라 보고용
    diagnostics 입력만 줄이는 공통 runtime capability이며, manual Query SSL과 FedMatch
    method-owned LoRA-classifier 경로가 같이 사용한다.
-6. 다음 개선은 `training_view`다. full pool을 source of truth로 유지하되, 한 round에서
-   실제 local SSL training에 투입할 unlabeled candidate view를 deterministic하게 제한해
-   runtime을 줄이는지 검토한다. 이 단계는 model update 자체를 바꾸므로 report에는 full
-   pool count, training view count, diagnostic view count를 분리해야 한다.
-7. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
+6. client round별 `timing_breakdown`을 report에 남긴다. 다음 reduced run에서
+   model prepare, training loop, pseudo-label diagnostics, helper/peer snapshot,
+   update materialization 중 실제 병목을 숫자로 확인한다.
+7. `training_view`는 현재 기본 계획에서 제외한다. 학습 pool을 제한하면 model update
+   의미가 바뀌므로, runtime이 여전히 과한 경우에만 별도 debug/runtime ablation으로
+   검토한다.
+8. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
    `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas` 소비, final report metadata다.
@@ -291,18 +297,18 @@ Runtime translation:
    budget을 쓰고, 원본 labels-at-client budget은
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
-8. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
+9. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
    FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
-9. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
+10. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
    막는다.
-10. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
+11. sparse S2C/C2S sync와 labels-at-server supervised server step은 full FedMatch
    parity 후보로 남기되, 현재 다음 실행 게이트는 아니다.
-11. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
+12. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
    비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
    stress 확인으로 남긴다.
-12. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+13. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
 
 ## Validation Criteria
 

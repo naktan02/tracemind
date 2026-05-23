@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Protocol
@@ -33,6 +34,7 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_WEAK_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
 )
+from methods.common.timing import TimingRecorder, timing_mapping
 from methods.evaluation.pseudo_label_quality import (
     PseudoLabelCandidateRecord,
     PseudoLabelQualitySummary,
@@ -121,6 +123,7 @@ class QuerySslLoraClientTrainingResult:
         default_factory=PseudoLabelQualitySummary.empty
     )
     peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
+    timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 
 def run_query_ssl_lora_classifier_training_core(
@@ -139,6 +142,7 @@ def run_query_ssl_lora_classifier_training_core(
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslLoraDeltaMaterializer,
+    timing_recorder: TimingRecorder | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """client-local raw text/views로 Query SSL LoRA update를 생성한다."""
 
@@ -164,128 +168,135 @@ def run_query_ssl_lora_classifier_training_core(
         labels=effective_labels,
     )
 
-    set_seed(int(seed))
-    model, tokenizer = _build_lora_classifier_model(
-        labels=effective_labels,
-        lora_config=lora_config,
-        trainer_runtime_config=trainer_runtime_config,
-    )
-    load_lora_classifier_base_parameters_into_model(
-        model=model,
-        labels=effective_labels,
-        base_parameters=base_parameters,
-        device=trainer_runtime_config.device,
-    )
-
-    label_to_index = {label: index for index, label in enumerate(effective_labels)}
-    train_loader = build_dataloader(
-        rows=effective_labeled_rows,
-        label_to_index=label_to_index,
-        tokenizer=tokenizer,
-        batch_size=int(training_task.batch_size),
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
-        shuffle=True,
-    )
-    selection_loader = build_dataloader(
-        rows=effective_labeled_rows,
-        label_to_index=label_to_index,
-        tokenizer=tokenizer,
-        batch_size=int(training_task.batch_size),
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
-        shuffle=False,
-    )
-    unlabeled_loader = _build_unlabeled_loader(
-        rows=effective_unlabeled_rows,
-        tokenizer=tokenizer,
-        batch_size=query_ssl_config.unlabeled_batch_size
-        or int(training_task.batch_size),
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
-        strong_view_policy=query_ssl_config.strong_view_policy,
-        view_builder_name=descriptor.required_views.view_builder_name,
-    )
-    step_plan = build_query_ssl_local_step_plan(
-        labeled_loader_steps=len(train_loader),
-        unlabeled_loader_steps=len(unlabeled_loader),
-        uses_labeled_batches=algorithm.uses_labeled_batches,
-        local_epochs=int(training_task.local_epochs),
-        max_steps=int(training_task.max_steps),
-    )
-
-    model, history, _best_selection_report = train_query_ssl_classifier(
-        model=model,
-        train_loader=train_loader,
-        unlabeled_loader=unlabeled_loader,
-        selection_loader=selection_loader,
-        categories=list(effective_labels),
-        device=trainer_runtime_config.device,
-        epochs=int(training_task.local_epochs),
-        max_train_steps=step_plan.total_steps,
-        learning_rate=float(training_task.learning_rate),
-        classifier_learning_rate=float(training_task.learning_rate),
-        weight_decay=0.0,
-        max_grad_norm=(
-            0.0
-            if training_task.gradient_clip_norm is None
-            else float(training_task.gradient_clip_norm)
-        ),
-        log_every_steps=0,
-        algorithm=algorithm,
-    )
-    pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
-        model=model,
-        tokenizer=tokenizer,
-        rows=(
-            effective_unlabeled_rows
-            if diagnostic_unlabeled_rows is None
-            else list(diagnostic_unlabeled_rows)
-        ),
-        labels=effective_labels,
-        lora_config=lora_config,
-        query_ssl_config=query_ssl_config,
-        trainer_runtime_config=trainer_runtime_config,
-    )
-
-    lora_deltas, head_weight_deltas, head_bias_deltas = (
-        extract_lora_classifier_parameter_deltas(
-            model=model,
-            base_parameters=base_parameters,
+    with _measure(timing_recorder, "core_model_prepare_seconds"):
+        set_seed(int(seed))
+        model, tokenizer = _build_lora_classifier_model(
             labels=effective_labels,
+            lora_config=lora_config,
+            trainer_runtime_config=trainer_runtime_config,
         )
-    )
+        load_lora_classifier_base_parameters_into_model(
+            model=model,
+            labels=effective_labels,
+            base_parameters=base_parameters,
+            device=trainer_runtime_config.device,
+        )
+
+    with _measure(timing_recorder, "core_dataloader_prepare_seconds"):
+        label_to_index = {label: index for index, label in enumerate(effective_labels)}
+        train_loader = build_dataloader(
+            rows=effective_labeled_rows,
+            label_to_index=label_to_index,
+            tokenizer=tokenizer,
+            batch_size=int(training_task.batch_size),
+            max_length=lora_config.max_length,
+            task_prefix=lora_config.task_prefix,
+            shuffle=True,
+        )
+        selection_loader = build_dataloader(
+            rows=effective_labeled_rows,
+            label_to_index=label_to_index,
+            tokenizer=tokenizer,
+            batch_size=int(training_task.batch_size),
+            max_length=lora_config.max_length,
+            task_prefix=lora_config.task_prefix,
+            shuffle=False,
+        )
+        unlabeled_loader = _build_unlabeled_loader(
+            rows=effective_unlabeled_rows,
+            tokenizer=tokenizer,
+            batch_size=query_ssl_config.unlabeled_batch_size
+            or int(training_task.batch_size),
+            max_length=lora_config.max_length,
+            task_prefix=lora_config.task_prefix,
+            strong_view_policy=query_ssl_config.strong_view_policy,
+            view_builder_name=descriptor.required_views.view_builder_name,
+        )
+        step_plan = build_query_ssl_local_step_plan(
+            labeled_loader_steps=len(train_loader),
+            unlabeled_loader_steps=len(unlabeled_loader),
+            uses_labeled_batches=algorithm.uses_labeled_batches,
+            local_epochs=int(training_task.local_epochs),
+            max_steps=int(training_task.max_steps),
+        )
+
+    with _measure(timing_recorder, "core_training_loop_seconds"):
+        model, history, _best_selection_report = train_query_ssl_classifier(
+            model=model,
+            train_loader=train_loader,
+            unlabeled_loader=unlabeled_loader,
+            selection_loader=selection_loader,
+            categories=list(effective_labels),
+            device=trainer_runtime_config.device,
+            epochs=int(training_task.local_epochs),
+            max_train_steps=step_plan.total_steps,
+            learning_rate=float(training_task.learning_rate),
+            classifier_learning_rate=float(training_task.learning_rate),
+            weight_decay=0.0,
+            max_grad_norm=(
+                0.0
+                if training_task.gradient_clip_norm is None
+                else float(training_task.gradient_clip_norm)
+            ),
+            log_every_steps=0,
+            algorithm=algorithm,
+        )
+    with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
+        pseudo_label_quality = _build_final_snapshot_pseudo_label_quality(
+            model=model,
+            tokenizer=tokenizer,
+            rows=(
+                effective_unlabeled_rows
+                if diagnostic_unlabeled_rows is None
+                else list(diagnostic_unlabeled_rows)
+            ),
+            labels=effective_labels,
+            lora_config=lora_config,
+            query_ssl_config=query_ssl_config,
+            trainer_runtime_config=trainer_runtime_config,
+        )
+
+    with _measure(timing_recorder, "core_delta_extract_seconds"):
+        lora_deltas, head_weight_deltas, head_bias_deltas = (
+            extract_lora_classifier_parameter_deltas(
+                model=model,
+                base_parameters=base_parameters,
+                labels=effective_labels,
+            )
+        )
     update_id = f"update_{training_task.round_id}_{client_id}_{uuid4().hex[:12]}"
-    delta_materialization = delta_materializer.prepare(
-        update_id=update_id,
-        training_task=training_task,
-        client_id=client_id,
-        delta_format=lora_config.delta_format,
-        artifact_ref_prefix=lora_config.artifact_ref_prefix,
-        lora_parameter_deltas=lora_deltas,
-        classifier_head_weight_deltas=head_weight_deltas,
-        classifier_head_bias_deltas=head_bias_deltas,
-    )
-    update_build_result = build_query_ssl_lora_update_payload(
-        training_task=training_task,
-        model_manifest=model_manifest,
-        lora_config=lora_config,
-        labels=effective_labels,
-        labeled_rows=effective_labeled_rows,
-        unlabeled_rows=effective_unlabeled_rows,
-        step_plan=step_plan,
-        history_record=history[-1] if history else {},
-        lora_parameter_deltas=lora_deltas,
-        classifier_head_weight_deltas=head_weight_deltas,
-        classifier_head_bias_deltas=head_bias_deltas,
-        created_at=created_at,
-        delta_format=delta_materialization.delta_format,
-        lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
-        classifier_head_delta_artifact_ref=(
-            delta_materialization.classifier_head_delta_artifact_ref
-        ),
-        include_inline_deltas=delta_materialization.include_inline_deltas,
-    )
+    with _measure(timing_recorder, "core_delta_materialization_seconds"):
+        delta_materialization = delta_materializer.prepare(
+            update_id=update_id,
+            training_task=training_task,
+            client_id=client_id,
+            delta_format=lora_config.delta_format,
+            artifact_ref_prefix=lora_config.artifact_ref_prefix,
+            lora_parameter_deltas=lora_deltas,
+            classifier_head_weight_deltas=head_weight_deltas,
+            classifier_head_bias_deltas=head_bias_deltas,
+        )
+    with _measure(timing_recorder, "core_update_payload_build_seconds"):
+        update_build_result = build_query_ssl_lora_update_payload(
+            training_task=training_task,
+            model_manifest=model_manifest,
+            lora_config=lora_config,
+            labels=effective_labels,
+            labeled_rows=effective_labeled_rows,
+            unlabeled_rows=effective_unlabeled_rows,
+            step_plan=step_plan,
+            history_record=history[-1] if history else {},
+            lora_parameter_deltas=lora_deltas,
+            classifier_head_weight_deltas=head_weight_deltas,
+            classifier_head_bias_deltas=head_bias_deltas,
+            created_at=created_at,
+            delta_format=delta_materialization.delta_format,
+            lora_delta_artifact_ref=delta_materialization.lora_delta_artifact_ref,
+            classifier_head_delta_artifact_ref=(
+                delta_materialization.classifier_head_delta_artifact_ref
+            ),
+            include_inline_deltas=delta_materialization.include_inline_deltas,
+        )
     update_payload = update_build_result.update_payload
     client_metrics = update_build_result.client_metrics
     update_envelope = make_training_update_envelope(
@@ -309,6 +320,7 @@ def run_query_ssl_lora_classifier_training_core(
         local_step_plan=step_plan,
         client_metrics=client_metrics,
         pseudo_label_quality=pseudo_label_quality,
+        timing_breakdown=timing_mapping(timing_recorder),
     )
 
 
@@ -323,6 +335,12 @@ def _build_lora_classifier_model(
         lora_config=lora_config,
         runtime_config=trainer_runtime_config,
     )
+
+
+def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
+    if timing_recorder is None:
+        return nullcontext()
+    return timing_recorder.measure(key)
 
 
 def _build_unlabeled_loader(

@@ -20,6 +20,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraObjectiveRuntimeConfig,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
+from methods.common.timing import TimingRecorder
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -111,6 +112,7 @@ def run_method_owned_lora_classifier_training_core(
     helper_weak_probability_provider: object | None = None,
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
+    timing_recorder: TimingRecorder | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """선택된 method-owned LoRA-classifier local training core를 실행한다."""
 
@@ -138,4 +140,5 @@ def run_method_owned_lora_classifier_training_core(
         helper_weak_probability_provider=helper_weak_probability_provider,
         peer_probe_rows=peer_probe_rows,
         runtime_resource_cache=runtime_resource_cache,
+        timing_recorder=timing_recorder,
     )

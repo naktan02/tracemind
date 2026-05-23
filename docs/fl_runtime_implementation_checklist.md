@@ -55,6 +55,10 @@ source of truth로 본다.
   않고 `diagnostic_view` deterministic subset으로 계산할 수 있다. 성능 평가는 계속
   validation/test row를 쓰며, report는 full pool 기준 `candidate_count`와 진단 subset
   기준 `diagnostic_candidate_count`를 분리해 기록한다.
+- [x] FL SSL simulation report에 client round별 `timing_breakdown`을 남긴다.
+  이는 batch/step마다 로그를 찍지 않는 wall-clock 구간 계측이며, model prepare,
+  training loop, pseudo-label diagnostics, delta/update materialization, server submit
+  같은 병목을 reduced run report에서 확인하기 위한 metadata다.
 
 주의: FL prototype score의 `loss`는 현재 raw score를 softmax 분포로 바꾼 NLL
 proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야 한다.

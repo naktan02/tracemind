@@ -251,6 +251,12 @@ unlabeled pool 크기는 report의 `candidate_count`로 유지하고 진단 subs
 `diagnostic_candidate_count`로 따로 남긴다. global/client 성능 평가는 이 설정과
 무관하게 validation/test split으로 수행한다.
 
+각 client round report에는 `timing_breakdown`도 남는다. 이 값은 stdout 진행 로그가
+아니라 report metadata이며, `core_model_prepare_seconds`,
+`core_training_loop_seconds`, `core_pseudo_label_diagnostics_seconds`,
+`update_upload_materialize_seconds`, `server_update_submit_seconds` 같은 구간별
+wall-clock 시간을 기록한다. batch/step 단위 로그나 GPU sync를 추가하지 않는다.
+
 `fl_method.composition_mode=method_owned`는 FedMatch처럼 상위 FL SSL method가
 client/server 정책을 함께 소유할 때 사용한다. 이 경우
 `strategy_axes/fl/method_descriptor=<method>`와 실제
