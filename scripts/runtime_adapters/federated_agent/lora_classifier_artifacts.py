@@ -21,6 +21,9 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
+from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
+    build_partitioned_delta_tensor_artifact,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
 )
@@ -167,7 +170,7 @@ def server_owned_lora_classifier_update_artifact_byte_count(
     output_dir: Path,
     update_payload: LoraClassifierDelta,
 ) -> int:
-    """server-owned update artifact ref들이 가리키는 JSON 파일 크기를 합산한다."""
+    """server-owned update artifact ref들이 가리키는 파일 크기를 합산한다."""
 
     store = AggregationArtifactStore(
         state_root=output_dir / "main_server" / "aggregation_artifacts"
@@ -183,9 +186,12 @@ def server_owned_lora_classifier_update_artifact_byte_count(
         artifact_id = store.artifact_id_from_ref(artifact_ref)
         if artifact_id is None:
             continue
-        path = store.path_for_artifact(artifact_id)
-        if path.exists():
-            total += path.stat().st_size
+        for path in (
+            store.path_for_artifact(artifact_id),
+            store.path_for_safetensors_artifact(artifact_id),
+        ):
+            if path.exists():
+                total += path.stat().st_size
     return total
 
 
@@ -323,14 +329,13 @@ def _prepare_server_uploaded_delta_materialization(
             ),
         )
     if partitioned_delta_ref is not None:
-        store.save_json_artifact_ref(
+        if partitioned_deltas is None:
+            raise AssertionError("partitioned_deltas must exist before save.")
+        tensors, metadata = build_partitioned_delta_tensor_artifact(partitioned_deltas)
+        store.save_safetensors_artifact_ref(
             artifact_ref=partitioned_delta_ref,
-            payload=_build_partitioned_delta_artifact_payload(
-                update_id=update_id,
-                training_task=training_task,
-                client_id=client_id,
-                partitioned_deltas=partitioned_deltas or {},
-            ),
+            tensors=tensors,
+            metadata=metadata,
         )
     return QuerySslLoraDeltaMaterialization(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,

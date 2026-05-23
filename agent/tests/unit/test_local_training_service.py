@@ -508,6 +508,7 @@ def test_local_training_service_can_use_registered_non_diagonal_backend(
         ) -> TestShiftUpdatePayload:
             del training_task
             return TestShiftUpdatePayload(
+                schema_version="test_shift_update.v1",
                 model_id=model_manifest.model_id,
                 base_model_revision=model_manifest.model_revision,
                 training_scope=model_manifest.training_scope,

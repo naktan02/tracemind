@@ -5,6 +5,9 @@ from __future__ import annotations
 import math
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
+from typing import Protocol, cast
+
+from torch import Tensor
 
 from methods.federated.aggregation.base import (
     AggregationJsonArtifactLoader,
@@ -16,6 +19,7 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 )
 
 from ..update.partitioned_delta import LoraClassifierPartitionDelta
+from ..update.partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
 
 LORA_STATE_PARAMETERS_KEY = "lora_parameters"
 CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
@@ -39,6 +43,15 @@ class LoraClassifierMaterializedState:
     lora_parameters: dict[str, list[float]]
     classifier_head_weights: dict[str, list[float]]
     classifier_head_biases: dict[str, float]
+
+
+class _AggregationTensorArtifactLoader(Protocol):
+    def load_safetensors_artifact(
+        self,
+        *,
+        artifact_ref: str,
+    ) -> tuple[Mapping[str, Tensor], Mapping[str, str]]:
+        """opaque artifact ref를 safetensors tensor payload로 materialize한다."""
 
 
 def materialize_base_lora_classifier_state(
@@ -165,6 +178,12 @@ def materialize_lora_classifier_partitioned_update(
         loader = context.require_artifact_loader(
             context="LoRA-classifier partitioned aggregation materialization"
         )
+        tensor_partitions = _try_load_partitioned_tensor_artifact(
+            loader=loader,
+            artifact_ref=payload.partitioned_deltas_artifact_ref,
+        )
+        if tensor_partitions is not None:
+            return tensor_partitions
         artifact = loader.load_json_artifact(
             artifact_ref=payload.partitioned_deltas_artifact_ref
         )
@@ -219,6 +238,27 @@ def materialize_lora_classifier_partitioned_update(
             ),
         )
     return partitions
+
+
+def _try_load_partitioned_tensor_artifact(
+    *,
+    loader: AggregationJsonArtifactLoader,
+    artifact_ref: str,
+) -> dict[str, LoraClassifierPartitionDelta] | None:
+    tensor_loader = getattr(loader, "load_safetensors_artifact", None)
+    if tensor_loader is None:
+        return None
+    tensor_artifact_loader = cast(_AggregationTensorArtifactLoader, loader)
+    try:
+        tensors, metadata = tensor_artifact_loader.load_safetensors_artifact(
+            artifact_ref=artifact_ref
+        )
+    except FileNotFoundError:
+        return None
+    return parse_partitioned_delta_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
 
 
 def _load_lora_parameter_deltas(

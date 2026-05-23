@@ -20,6 +20,10 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
+from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
+    PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
+    parse_partitioned_delta_tensor_artifact,
+)
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
@@ -409,19 +413,28 @@ def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(
     store = AggregationArtifactStore(
         state_root=tmp_path / "main_server" / "aggregation_artifacts"
     )
-    artifact = store.load_json_artifact(
+    tensors, metadata = store.load_safetensors_artifact(
         artifact_ref=plan.partitioned_deltas_artifact_ref
     )
-    assert artifact["schema_version"] == (
-        "lora_classifier_client_partitioned_delta_artifact.v1"
+    assert PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in metadata
+    artifact_id = store.artifact_id_from_ref(plan.partitioned_deltas_artifact_ref)
+    assert artifact_id is not None
+    assert store.path_for_safetensors_artifact(artifact_id).exists()
+    assert not store.path_for_artifact(artifact_id).exists()
+    partitions = parse_partitioned_delta_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
     )
-    assert artifact["partitions"] == {
-        "sigma": {
-            "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.1]},
-            "classifier_head_weight_deltas": {"anxiety": [0.2]},
-            "classifier_head_bias_deltas": {"anxiety": 0.03},
-        }
-    }
+    assert set(partitions) == {"sigma"}
+    assert partitions["sigma"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.1])
+    assert partitions["sigma"].classifier_head_weight_deltas["anxiety"] == (
+        pytest.approx([0.2])
+    )
+    assert partitions["sigma"].classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.03}
+    )
 
 
 def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(

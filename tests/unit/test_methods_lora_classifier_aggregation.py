@@ -30,6 +30,10 @@ from methods.adaptation.lora_classifier.update.partitioned_delta import (
 from methods.adaptation.lora_classifier.update.partitioned_payload_builder import (
     build_partitioned_delta_payload,
 )
+from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
+    build_partitioned_delta_tensor_artifact,
+    parse_partitioned_delta_tensor_artifact,
+)
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
@@ -47,6 +51,23 @@ class InMemoryJsonArtifactLoader:
 
     def load_json_artifact(self, *, artifact_ref: str) -> Mapping[str, object]:
         return self._artifacts[artifact_ref]
+
+
+class InMemoryTensorArtifactLoader(InMemoryJsonArtifactLoader):
+    def __init__(
+        self,
+        artifacts: Mapping[str, Mapping[str, object]],
+        tensor_artifacts: Mapping[str, tuple[Mapping[str, object], Mapping[str, str]]],
+    ) -> None:
+        super().__init__(artifacts)
+        self._tensor_artifacts = tensor_artifacts
+
+    def load_safetensors_artifact(
+        self,
+        *,
+        artifact_ref: str,
+    ) -> tuple[Mapping[str, object], Mapping[str, str]]:
+        return self._tensor_artifacts[artifact_ref]
 
 
 def test_materialize_lora_classifier_update_uses_inline_deltas_without_loader() -> None:
@@ -373,6 +394,88 @@ def test_materialize_lora_classifier_partitioned_update_reads_artifact_ref() -> 
     assert partitions["sigma"].lora_parameter_deltas[
         "encoder.q_proj.lora_A"
     ] == pytest.approx([0.2])
+    assert partitions["psi"].classifier_head_bias_deltas == pytest.approx(
+        {"normal": -0.04}
+    )
+
+
+def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
+    tensors, metadata = build_partitioned_delta_tensor_artifact(
+        {
+            "sigma": LoraClassifierPartitionDelta(
+                partition_name="sigma",
+                lora_parameter_deltas={
+                    "encoder.q_proj.lora_A": [0.2, -0.1],
+                },
+                classifier_head_weight_deltas={
+                    "anxiety": [0.1, 0.0],
+                },
+                classifier_head_bias_deltas={"anxiety": 0.05},
+            )
+        }
+    )
+
+    partitions = parse_partitioned_delta_tensor_artifact(
+        tensors=tensors,
+        metadata=metadata,
+    )
+
+    assert set(partitions) == {"sigma"}
+    assert partitions["sigma"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.2, -0.1])
+    assert partitions["sigma"].classifier_head_weight_deltas["anxiety"] == (
+        pytest.approx([0.1, 0.0])
+    )
+    assert partitions["sigma"].classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.05}
+    )
+
+
+def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_ref() -> (
+    None
+):
+    tensors, metadata = build_partitioned_delta_tensor_artifact(
+        {
+            "psi": LoraClassifierPartitionDelta(
+                partition_name="psi",
+                lora_parameter_deltas={
+                    "encoder.q_proj.lora_A": [0.3],
+                },
+                classifier_head_weight_deltas={
+                    "anxiety": [0.2, 0.0],
+                    "normal": [-0.2, 0.0],
+                },
+                classifier_head_bias_deltas={"normal": -0.04},
+            )
+        }
+    )
+    loader = InMemoryTensorArtifactLoader(
+        artifacts={},
+        tensor_artifacts={
+            "aggregation_artifact://client/partitioned_delta": (tensors, metadata)
+        },
+    )
+    update = _lora_update(
+        lora_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        partitioned_deltas_artifact_ref=(
+            "aggregation_artifact://client/partitioned_delta"
+        ),
+        delta_format="server_uploaded_artifact_ref",
+        delta_l2_norm=1.5,
+    )
+
+    partitions = materialize_lora_classifier_partitioned_update(
+        payload=update,
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert set(partitions) == {"psi"}
+    assert partitions["psi"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.3])
     assert partitions["psi"].classifier_head_bias_deltas == pytest.approx(
         {"normal": -0.04}
     )

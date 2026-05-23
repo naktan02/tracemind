@@ -48,7 +48,6 @@ class PartitionedLoraStepResult:
     unsupervised: FedMatchTensorLocalObjectiveResult
     sigma_parameter_deltas: Mapping[str, Tensor]
     psi_parameter_deltas: Mapping[str, Tensor]
-    partition_deltas: Mapping[str, LoraClassifierPartitionDelta]
     metrics: Mapping[str, Tensor]
 
 
@@ -141,7 +140,6 @@ def train_partitioned_lora_classifier(
             )
             step_result = run_partitioned_lora_classifier_step(
                 model=model,
-                labels=labels,
                 labeled_batch=_move_tensor_batch_to_device(
                     batch=labeled_batch,
                     device=device,
@@ -238,7 +236,6 @@ def train_partitioned_lora_classifier(
 def run_partitioned_lora_classifier_step(
     *,
     model: TextBatchClassifier,
-    labels: Sequence[str],
     labeled_batch: Mapping[str, Tensor],
     unlabeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
@@ -300,25 +297,11 @@ def run_partitioned_lora_classifier_step(
         before=after_supervised,
     )
 
-    sigma_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
-        partition_name=FEDMATCH_SIGMA_PARTITION,
-        parameter_deltas=sigma_parameter_deltas,
-        labels=labels,
-    )
-    psi_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
-        partition_name=FEDMATCH_PSI_PARTITION,
-        parameter_deltas=psi_parameter_deltas,
-        labels=labels,
-    )
     return PartitionedLoraStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,
         psi_parameter_deltas=psi_parameter_deltas,
-        partition_deltas={
-            FEDMATCH_SIGMA_PARTITION: sigma_delta,
-            FEDMATCH_PSI_PARTITION: psi_delta,
-        },
         metrics={
             **{f"sigma_{key}": value for key, value in supervised.metrics.items()},
             **{f"psi_{key}": value for key, value in unsupervised.metrics.items()},

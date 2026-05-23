@@ -266,7 +266,9 @@ update source로 보고 agent-local update 사본은 저장하지 않는다. 디
 client별 local update 사본이 필요할 때만 `true`로 override한다.
 FedMatch partitioned path처럼 server update policy가 partition별 material을 직접
 소비하는 경우에는 큰 `partitioned_deltas`를 update payload에 inline으로 남기지 않고
-`partitioned_deltas_artifact_ref`로 server-owned artifact를 가리킨다.
+`partitioned_deltas_artifact_ref`로 server-owned artifact를 가리킨다. 새 runtime
+artifact는 safetensors 기반 binary tensor format을 우선 사용한다. JSON partitioned
+artifact는 agent-local debug copy와 이전 run 호환 fallback으로만 남긴다.
 
 `fl_method.composition_mode=method_owned`는 FedMatch처럼 상위 FL SSL method가
 client/server 정책을 함께 소유할 때 사용한다. 이 경우

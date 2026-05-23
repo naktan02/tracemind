@@ -111,7 +111,10 @@ runtime과 test는 family별 direct import를 사용한다.
     `shared`가 아니라 `methods/`의 method package가 소유한다
   - `partitioned_deltas_artifact_ref`는 같은 partitioned delta material을 server-owned
     artifact로 옮긴 경로다. 큰 FL SSL update runtime은 payload에는 ref/metadata만
-    남기고, aggregation consumer가 artifact loader로 materialize한다
+    남기고, aggregation consumer가 artifact loader로 materialize한다. ref는 opaque
+    값이며 실제 저장 포맷은 runtime artifact store가 소유한다. 현재 partitioned
+    runtime은 binary tensor artifact를 우선 사용하고 JSON은 legacy/debug fallback으로
+    유지한다
 
 ### `training_objective_contracts.py`
 

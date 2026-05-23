@@ -84,7 +84,33 @@ partitioned path 전용 적용:
    - 2026-05-23 현재 코드에는 `round_timing_breakdown` metadata가 추가됐다. 다음
      reduced run부터 실제 gap breakdown을 report에서 확인한다.
 2. Partitioned delta binary artifact
-   - 현재 `partitioned_delta.json`은 client update별 약 `240MB`다.
-   - 같은 수치를 `safetensors` 또는 `npz` 같은 binary tensor artifact로 저장하면
-     `core_delta_materialization_seconds`와 artifact size를 줄일 수 있다.
-   - dtype/정밀도를 바꾸지 않는 방식으로 적용해야 실험 의미가 유지된다.
+   - 2026-05-23 현재 코드에는 server-owned partitioned delta를 `safetensors`
+     artifact로 저장하는 경로가 추가됐다.
+   - 기존 reduced run 기준 `partitioned_delta.json`은 client update별 약 `240MB`였고,
+     float32 raw payload는 약 `27MB`였다. 새 run에서는 partitioned artifact 총량이
+     약 `12GB`에서 `1.4-2GB` 범위로 줄 가능성이 높다.
+   - dtype은 float32로 유지하므로 학습 objective, aggregation, validation 의미는
+     바뀌지 않는다. 단, JSON float 문자열을 다시 파싱하던 경로가 binary tensor
+     materialization으로 바뀌므로 새 reduced run으로 실제 size/runtime을 기록해야 한다.
+
+## 2026-05-23 Partitioned Delta Binary Format 변경
+
+적용된 변경:
+
+- `partitioned_deltas_artifact_ref`의 opaque ref 의미는 유지했다.
+- server-owned partitioned update artifact만 `safetensors`로 저장한다.
+- agent-local JSON debug artifact와 legacy JSON artifact ref materialization은 유지한다.
+- aggregation consumer는 safetensors가 있으면 우선 읽고, 없으면 기존 JSON artifact를
+  읽는다.
+- FedMatch LoRA partitioned step은 step마다 `LoraClassifierPartitionDelta`를 만들지
+  않고 tensor delta만 반환한다. 최종 client update용 partition materialization은 local
+  training loop 종료 후 누적 delta에서 한 번만 수행한다.
+
+별도 semantic audit 대상:
+
+- 현재 FedMatch method-owned LoRA runtime은 Query SSL multiview dataloader를 재사용해
+  weak/strong view를 만든다.
+- FedMatch agreement objective에서는 weak logits로 agreement/confidence를 만들고 strong
+  logits에 pseudo-label CE를 적용한다.
+- 이 저장 포맷 변경은 해당 objective 의미를 바꾸지 않는다. original FedMatch에 더
+  충실한 single-view 해석이 필요한지는 별도 ablation/semantic audit으로 다룬다.

@@ -7,6 +7,10 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
+from safetensors import safe_open
+from safetensors.torch import load_file, save_file
+from torch import Tensor
+
 MAIN_SERVER_ROOT = Path(__file__).resolve().parents[5]
 AGGREGATION_ARTIFACT_REF_PREFIX = "aggregation_artifact::"
 SERVER_AGGREGATE_REF_PREFIX = "server-aggregate://"
@@ -45,7 +49,7 @@ class AggregatedArtifactRefBuilder:
 
 @dataclass(slots=True)
 class AggregationArtifactStore:
-    """server-owned aggregation artifact ref를 JSON artifact로 materialize한다."""
+    """server-owned aggregation artifact ref를 repository artifact로 materialize한다."""
 
     state_root: Path = MAIN_SERVER_ROOT / "state" / "aggregation_artifacts"
 
@@ -66,6 +70,13 @@ class AggregationArtifactStore:
 
         parts = _safe_artifact_id_parts(artifact_id)
         leaf = f"{parts[-1]}.json"
+        return self.artifacts_dir.joinpath(*parts[:-1], leaf)
+
+    def path_for_safetensors_artifact(self, artifact_id: str) -> Path:
+        """artifact_id를 repository 내부 safetensors path로 변환한다."""
+
+        parts = _safe_artifact_id_parts(artifact_id)
+        leaf = f"{parts[-1]}.safetensors"
         return self.artifacts_dir.joinpath(*parts[:-1], leaf)
 
     def save_json_artifact(
@@ -121,6 +132,48 @@ class AggregationArtifactStore:
                 f"Aggregation artifact must be a JSON object: {artifact_ref}"
             )
         return payload
+
+    def save_safetensors_artifact_ref(
+        self,
+        *,
+        artifact_ref: str,
+        tensors: dict[str, Tensor],
+        metadata: dict[str, str],
+    ) -> Path:
+        """server-owned artifact ref가 가리키는 safetensors artifact를 저장한다."""
+
+        artifact_id = self.artifact_id_from_ref(artifact_ref)
+        if artifact_id is None:
+            raise ValueError(
+                f"Unsupported aggregation artifact ref for save: {artifact_ref}"
+            )
+        path = self.path_for_safetensors_artifact(artifact_id)
+        path.parent.mkdir(parents=True, exist_ok=True)
+        save_file(tensors, path, metadata=metadata)
+        return path
+
+    def load_safetensors_artifact(
+        self,
+        *,
+        artifact_ref: str,
+    ) -> tuple[dict[str, Tensor], dict[str, str]]:
+        """server-owned artifact ref를 safetensors tensors와 metadata로 읽는다."""
+
+        artifact_id = self.artifact_id_from_ref(artifact_ref)
+        if artifact_id is None:
+            raise FileNotFoundError(
+                "Unsupported aggregation artifact ref. Expected server-owned "
+                f"{AGGREGATION_ARTIFACT_REF_PREFIX!r} or "
+                f"{SERVER_AGGREGATE_REF_PREFIX!r} ref: {artifact_ref}"
+            )
+        path = self.path_for_safetensors_artifact(artifact_id)
+        if not path.exists():
+            raise FileNotFoundError(
+                f"Aggregation safetensors artifact not found: {artifact_ref}"
+            )
+        with safe_open(path, framework="pt", device="cpu") as artifact:
+            metadata = dict(artifact.metadata() or {})
+        return load_file(path, device="cpu"), metadata
 
     @staticmethod
     def artifact_id_from_ref(artifact_ref: str) -> str | None:

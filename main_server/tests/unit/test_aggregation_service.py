@@ -22,6 +22,12 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
     DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
 )
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
+from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
+    build_partitioned_delta_tensor_artifact,
+)
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAggregationStrategy,
 )
@@ -476,6 +482,100 @@ def test_lora_classifier_partitioned_delta_average_reads_partitioned_artifact_re
                 },
             }
         },
+    )
+    backend = build_shared_adapter_aggregation_backend(
+        adapter_kind="lora_classifier",
+        backend_name="partitioned_delta_average",
+        overrides={"artifact_ref_prefix": "server-aggregate://partitioned_lora"},
+        artifact_store=artifact_store,
+    )
+
+    result = backend.aggregate(
+        base_state=_build_lora_state(
+            lora_adapter_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/lora_adapter"
+            ),
+            classifier_head_artifact_ref=artifact_store.ref_for_artifact(
+                "rev_000/classifier_head"
+            ),
+        ),
+        update_payloads=(
+            make_lora_classifier_delta_payload(
+                model_id="tracemind-lora",
+                base_model_revision="rev_000",
+                training_scope="adapter_only",
+                backbone=_lora_backbone(),
+                lora_config=_lora_config(),
+                label_schema=("anxiety", "normal"),
+                example_count=2,
+                partitioned_deltas_artifact_ref=partitioned_ref,
+                delta_format="server_uploaded_artifact_ref",
+                delta_l2_norm=1.0,
+                mean_confidence=0.9,
+                mean_margin=0.2,
+                created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+            ),
+        ),
+        next_model_revision="rev_001",
+        aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
+    )
+
+    lora_artifact = artifact_store.load_json_artifact(
+        artifact_ref=result.next_state.lora_adapter_artifact_ref or ""
+    )
+    assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.3, 1.3]
+    )
+    assert result.aggregated_metrics["server_update_partitioned"] == 1.0
+
+
+def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
+    tmp_path,
+) -> None:
+    artifact_store = AggregationArtifactStore(state_root=tmp_path / "artifacts")
+    artifact_store.save_json_artifact(
+        "rev_000/lora_adapter",
+        {"lora_parameters": {"encoder.q_proj.lora_A": [1.0, 1.0]}},
+    )
+    artifact_store.save_json_artifact(
+        "rev_000/classifier_head",
+        {
+            "classifier_head_weights": {
+                "anxiety": [1.0, 0.0],
+                "normal": [0.0, 1.0],
+            },
+            "classifier_head_biases": {"anxiety": 0.1, "normal": -0.1},
+        },
+    )
+    partitioned_ref = artifact_store.ref_for_artifact(
+        "client_updates/round_0001/agent_01/update_001/partitioned_delta"
+    )
+    tensors, metadata = build_partitioned_delta_tensor_artifact(
+        {
+            "sigma": LoraClassifierPartitionDelta(
+                partition_name="sigma",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
+                classifier_head_weight_deltas={
+                    "anxiety": [0.1, 0.0],
+                    "normal": [-0.1, 0.0],
+                },
+                classifier_head_bias_deltas={},
+            ),
+            "psi": LoraClassifierPartitionDelta(
+                partition_name="psi",
+                lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
+                classifier_head_weight_deltas={
+                    "anxiety": [0.2, 0.2],
+                    "normal": [-0.2, -0.2],
+                },
+                classifier_head_bias_deltas={"anxiety": 0.03},
+            ),
+        }
+    )
+    artifact_store.save_safetensors_artifact_ref(
+        artifact_ref=partitioned_ref,
+        tensors=tensors,
+        metadata=metadata,
     )
     backend = build_shared_adapter_aggregation_backend(
         adapter_kind="lora_classifier",

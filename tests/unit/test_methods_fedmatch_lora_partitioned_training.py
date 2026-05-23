@@ -144,7 +144,6 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
 
     result = run_partitioned_lora_classifier_step(
         model=model,
-        labels=labels,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
         parameters=parameters,
@@ -154,23 +153,19 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
 
     after = snapshot_trainable_parameter_tensors(model)
     total_delta = diff_parameter_snapshots(after=after, before=before)
-    assert set(result.partition_deltas) == {
-        FEDMATCH_SIGMA_PARTITION,
-        FEDMATCH_PSI_PARTITION,
-    }
-    assert "encoder_lora.weight" in (
-        result.partition_deltas[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas
+    sigma_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
+        partition_name=FEDMATCH_SIGMA_PARTITION,
+        parameter_deltas=result.sigma_parameter_deltas,
+        labels=labels,
     )
-    assert set(
-        result.partition_deltas[
-            FEDMATCH_SIGMA_PARTITION
-        ].classifier_head_weight_deltas.keys()
-    ) == set(labels)
-    assert set(
-        result.partition_deltas[
-            FEDMATCH_PSI_PARTITION
-        ].classifier_head_bias_deltas.keys()
-    ) == set(labels)
+    psi_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
+        partition_name=FEDMATCH_PSI_PARTITION,
+        parameter_deltas=result.psi_parameter_deltas,
+        labels=labels,
+    )
+    assert "encoder_lora.weight" in sigma_delta.lora_parameter_deltas
+    assert set(sigma_delta.classifier_head_weight_deltas) == set(labels)
+    assert set(psi_delta.classifier_head_bias_deltas) == set(labels)
     for name, delta in total_delta.items():
         torch.testing.assert_close(
             result.sigma_parameter_deltas[name] + result.psi_parameter_deltas[name],
@@ -190,7 +185,6 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
 
 def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
     model = TinyLoraClassifier()
-    labels = ("anxiety", "normal")
     parameters = FedMatchLocalObjectiveParameters(
         confidence_threshold=0.0,
         lambda_s=1.0,
@@ -215,7 +209,6 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
 
     result = run_partitioned_lora_classifier_step(
         model=model,
-        labels=labels,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
         parameters=parameters,
@@ -230,10 +223,7 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         ),
     )
 
-    assert set(result.partition_deltas) == {
-        FEDMATCH_SIGMA_PARTITION,
-        FEDMATCH_PSI_PARTITION,
-    }
+    assert set(result.sigma_parameter_deltas) == set(result.psi_parameter_deltas)
     assert "unsup_loss" in result.unsupervised.loss_components
     assert "util_ratio" in result.unsupervised.metrics
 
