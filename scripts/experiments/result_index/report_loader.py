@@ -41,14 +41,18 @@ def discover_report_paths(runs_root: Path) -> list[Path]:
 
     if runs_root.is_file():
         return [runs_root]
-    report_names = {"report.json", "fl_ssl_main_comparison.report.json"}
+    report_names = {
+        "report.json",
+        "fl_ssl_main_comparison.report.json",
+        "initial_eval.report.json",
+    }
     exclude_smoke = runs_root.name == "runs"
     report_paths = sorted(
         path
         for path in runs_root.rglob("*.json")
         if path.is_file()
-        and path.parent.name == "reports"
         and path.name in report_names
+        and (path.parent.name == "reports" or path.name == "initial_eval.report.json")
         and not _is_default_excluded_smoke_path(
             runs_root=runs_root,
             path=path,
@@ -332,6 +336,8 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
 
 def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
     parts = set(report_path.parts)
+    if "central_ssl_initial_eval" in parts:
+        return "central_lora_initial_eval"
     if "train_lora_ssl_classifier" in parts:
         return "central_lora_ssl"
     if "train_lora_supervised_classifier" in parts:
@@ -344,7 +350,10 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
 
 def _infer_method_family(payload: dict[str, Any]) -> str:
     schema_version = str(payload.get("schema_version") or "")
-    if schema_version == "central_lora_classifier_eval.v1":
+    if schema_version in {
+        "central_lora_classifier_eval.v1",
+        "central_lora_initial_eval.v1",
+    }:
         return "lora_classifier"
     return "unknown"
 
@@ -359,6 +368,8 @@ def _infer_method_name(
     )
     if preset_name:
         return preset_name
+    if report_path.name == "initial_eval.report.json":
+        return "initial_eval"
     run_dir = report_path.parent.parent
     parent_name = run_dir.parent.name
     if parent_name and not parent_name.startswith("labeled-"):

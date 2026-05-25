@@ -1,5 +1,25 @@
 const DATA_URL = "./data/experiment_dashboard.json";
 const CENTRAL_SSL_TRACK = "central_lora_ssl";
+const CENTRAL_INITIAL_EVAL_TRACK = "central_lora_initial_eval";
+const CENTRAL_EPOCH_METRICS = [
+  "selection_macro_f1",
+  "selection_accuracy_top_1",
+  "selection_expected_calibration_error",
+  "selection_worst_category_f1_value",
+  "selection_worst_category_f1",
+  "selection_loss",
+  "train_loss",
+  "train_sup_loss",
+  "train_unsup_loss",
+  "train_util_ratio",
+];
+const CENTRAL_INITIAL_METRIC_MAP = {
+  selection_accuracy_top_1: "accuracy_top_1",
+  selection_macro_f1: "macro_f1",
+  selection_expected_calibration_error: "expected_calibration_error",
+  selection_worst_category_f1_value: "worst_category_f1_value",
+  selection_loss: "loss",
+};
 const FL_ROUND_METRICS = [
   "macro_f1",
   "accuracy_top_1",
@@ -44,12 +64,10 @@ const state = {
   overviewEvalSet: "validation",
   overviewMetric: "macro_f1",
   comparisonEvalSet: "validation",
-  comparisonMetrics: ["macro_f1", "accuracy_top_1"],
+  comparisonMetric: "selection_macro_f1",
   comparisonChartType: "grouped_bar",
   comparisonMethodName: null,
   comparisonSelectionTouched: false,
-  showEpochChart: true,
-  epochMetric: "selection_macro_f1",
   classEvalSet: "validation",
   classMetric: "f1",
   selectedRunIds: [],
@@ -74,6 +92,9 @@ const state = {
   flClientRoundRunId: null,
   flClientRoundIndex: "__latest__",
   flSplitRunId: null,
+  flProjectionEvalSet: "validation",
+  flProjectionRunIds: [],
+  flProjectionSelectionTouched: false,
 };
 
 const elements = {
@@ -92,9 +113,6 @@ const elements = {
   comparisonMethodFilter: document.querySelector("#comparison-method-filter"),
   comparisonRunCheckboxes: document.querySelector("#comparison-run-checkboxes"),
   selectedRunCards: document.querySelector("#selected-run-cards"),
-  epochToggle: document.querySelector("#epoch-toggle"),
-  epochPanel: document.querySelector("#epoch-panel"),
-  epochMetricFilter: document.querySelector("#epoch-metric-filter"),
   classEvalFilter: document.querySelector("#class-eval-filter"),
   detailMethodFilter: document.querySelector("#detail-method-filter"),
   detailRunFilter: document.querySelector("#detail-run-filter"),
@@ -103,7 +121,6 @@ const elements = {
   metricCards: document.querySelector("#metric-cards"),
   comparisonChart: document.querySelector("#comparison-chart"),
   barChart: document.querySelector("#bar-chart"),
-  epochChart: document.querySelector("#epoch-chart"),
   classChart: document.querySelector("#class-chart"),
   classTable: document.querySelector("#class-table"),
   confusionMatrix: document.querySelector("#confusion-matrix"),
@@ -139,6 +156,11 @@ const elements = {
   flClientRoundTable: document.querySelector("#fl-client-round-table"),
   flSplitRunFilter: document.querySelector("#fl-split-run-filter"),
   flSplitTable: document.querySelector("#fl-split-table"),
+  flProjectionEvalFilter: document.querySelector("#fl-projection-eval-filter"),
+  flProjectionRunCheckboxes: document.querySelector(
+    "#fl-projection-run-checkboxes",
+  ),
+  flProjectionGallery: document.querySelector("#fl-projection-gallery"),
 };
 
 init();
@@ -238,11 +260,15 @@ function bindEvents() {
     state.comparisonChartType = event.target.value;
     render();
   });
-  elements.metricPicker.addEventListener("change", (event) => {
-    if (!(event.target instanceof HTMLInputElement)) {
+  elements.metricPicker.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
       return;
     }
-    state.comparisonMetrics = checkedValues(elements.metricPicker, "metric");
+    const metric = event.target.dataset.metric;
+    if (!metric) {
+      return;
+    }
+    state.comparisonMetric = metric;
     render();
   });
   elements.comparisonMethodFilter.addEventListener("change", (event) => {
@@ -279,14 +305,6 @@ function bindEvents() {
       (selectedRunId) => selectedRunId !== runId,
     );
     state.comparisonSelectionTouched = true;
-    render();
-  });
-  elements.epochToggle.addEventListener("change", (event) => {
-    state.showEpochChart = event.target.checked;
-    render();
-  });
-  elements.epochMetricFilter.addEventListener("change", (event) => {
-    state.epochMetric = event.target.value;
     render();
   });
   elements.classEvalFilter.addEventListener("change", (event) => {
@@ -442,6 +460,50 @@ function bindEvents() {
     state.flSplitRunId = event.target.value || null;
     render();
   });
+  elements.flProjectionEvalFilter.addEventListener("change", (event) => {
+    state.flProjectionEvalSet = event.target.value;
+    state.flProjectionRunIds = [];
+    state.flProjectionSelectionTouched = false;
+    render();
+  });
+  elements.flProjectionRunCheckboxes.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    const visibleRunIds = new Set(
+      Array.from(
+        elements.flProjectionRunCheckboxes.querySelectorAll(
+          "input[type='checkbox']",
+        ),
+      )
+        .map((input) => input.dataset.flProjectionRunId)
+        .filter((runId) => runId),
+    );
+    const checkedRunIds = checkedValues(
+      elements.flProjectionRunCheckboxes,
+      "flProjectionRunId",
+    );
+    state.flProjectionRunIds = uniqueValues([
+      ...state.flProjectionRunIds.filter((runId) => !visibleRunIds.has(runId)),
+      ...checkedRunIds,
+    ]);
+    state.flProjectionSelectionTouched = true;
+    render();
+  });
+  elements.flProjectionGallery.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
+      return;
+    }
+    const runId = event.target.dataset.removeFlProjectionRunId;
+    if (!runId) {
+      return;
+    }
+    state.flProjectionRunIds = state.flProjectionRunIds.filter(
+      (selectedRunId) => selectedRunId !== runId,
+    );
+    state.flProjectionSelectionTouched = true;
+    render();
+  });
 }
 
 function hydrateFilters() {
@@ -481,7 +543,6 @@ function render() {
   renderProjectionRunControls(projectionRows);
   renderComparisonChart(comparisonRows);
   renderBarChart(overviewRows);
-  renderEpochChart();
   renderClassChart();
   renderClassTable();
   renderConfusionMatrix();
@@ -611,6 +672,7 @@ function renderFlSslPanel() {
   renderFlClientValidationPanel();
   renderFlClientRoundPanel();
   renderFlSplitPanel();
+  renderFlProjectionPanel(rows);
 }
 
 function renderFlRunTable(rows) {
@@ -886,6 +948,83 @@ function renderFlSplitPanel() {
     .join("");
 }
 
+function renderFlProjectionPanel(rows) {
+  const projectionRows = flRowsWithProjection(rows);
+  fillSelect(
+    elements.flProjectionEvalFilter,
+    flProjectionEvalSets(rows),
+    state.flProjectionEvalSet,
+  );
+  renderFlProjectionRunControls(projectionRows);
+  renderFlProjectionGallery();
+}
+
+function renderFlProjectionRunControls(rows) {
+  if (rows.length === 0) {
+    elements.flProjectionRunCheckboxes.innerHTML =
+      `<p class="empty">projection 이미지가 있는 FL run이 없습니다.</p>`;
+    return;
+  }
+  const selectedRunIds = new Set(state.flProjectionRunIds);
+  elements.flProjectionRunCheckboxes.innerHTML = rows
+    .map((row) => {
+      const runId = flRunId(row);
+      return `
+        <label class="run-option">
+          <input
+            type="checkbox"
+            data-fl-projection-run-id="${runId}"
+            ${selectedRunIds.has(runId) ? "checked" : ""}
+          />
+          <span>
+            <strong>${escapeHtml(defaultFlRoundRunLabel(row))}</strong>
+            <small>${escapeHtml(flRunDescriptor(row))}</small>
+          </span>
+        </label>
+      `;
+    })
+    .join("");
+}
+
+function renderFlProjectionGallery() {
+  const selectedRunIds = new Set(state.flProjectionRunIds);
+  const runsById = new Map(flSslRows().map((run) => [flRunId(run), run]));
+  const images = flProjectionImagesForEval()
+    .filter((image) => selectedRunIds.has(image.run_id))
+    .filter((image) => runsById.has(image.run_id));
+  if (images.length === 0) {
+    elements.flProjectionGallery.innerHTML =
+      `<p class="empty">선택한 FL run/eval set의 projection image가 없습니다.</p>`;
+    return;
+  }
+  elements.flProjectionGallery.innerHTML = images
+    .map((image) => {
+      const run = runsById.get(image.run_id);
+      const dataLabel = [
+        flDataSourceLabel(run),
+        flLabelBudgetLabel(run),
+        `eval=${image.eval_set}`,
+      ].join(" · ");
+      return `
+        <figure>
+          <button
+            class="projection-remove"
+            type="button"
+            data-remove-fl-projection-run-id="${image.run_id}"
+            aria-label="${escapeHtml(defaultFlRoundRunLabel(run))} projection 제거"
+          >x</button>
+          <img src="${image.image_src}" alt="${escapeHtml(defaultFlRoundRunLabel(run))} ${image.eval_set} projection" loading="lazy" />
+          <figcaption>
+            <strong>${escapeHtml(defaultFlRoundRunLabel(run))}</strong>
+            <span>${escapeHtml(flMethodName(run))} · ${escapeHtml(dataLabel)}</span>
+            <span>${escapeHtml(image.reducer ?? "projection")}${image.fallback_reason ? ` · ${escapeHtml(image.fallback_reason)}` : ""}</span>
+          </figcaption>
+        </figure>
+      `;
+    })
+    .join("");
+}
+
 function renderFlRoundMetricTabs() {
   elements.flRoundMetricPicker.innerHTML = FL_ROUND_METRICS.map(
     (metric) => `
@@ -1023,6 +1162,7 @@ function normalizeFlSelections(rows) {
     state.flSplitRunId,
     flRunsWithRows(rows, flSplitRows()),
   );
+  normalizeFlProjectionSelection(rows);
 
   const clientRoundIndexes = uniqueValues(
     flClientRoundRows()
@@ -1047,6 +1187,29 @@ function normalizeFlRoundRunSelection(candidateRows) {
     if (!state.flRoundRunIds.includes(runId) && !visibleRunIds.has(runId)) {
       delete state.flRoundRunAliases[runId];
     }
+  }
+}
+
+function normalizeFlProjectionSelection(rows) {
+  const evalSets = flProjectionEvalSets(rows);
+  if (!evalSets.includes(state.flProjectionEvalSet)) {
+    state.flProjectionEvalSet = evalSets.includes("validation")
+      ? "validation"
+      : (evalSets[0] ?? "validation");
+    state.flProjectionRunIds = [];
+    state.flProjectionSelectionTouched = false;
+  }
+
+  const projectionRows = flRowsWithProjection(rows);
+  const visibleRunIds = new Set(projectionRows.map((row) => flRunId(row)));
+  state.flProjectionRunIds = state.flProjectionRunIds.filter((runId) =>
+    visibleRunIds.has(runId),
+  );
+  if (
+    !state.flProjectionSelectionTouched &&
+    state.flProjectionRunIds.length === 0
+  ) {
+    state.flProjectionRunIds = projectionRows.map((row) => flRunId(row));
   }
 }
 
@@ -1087,6 +1250,30 @@ function flSplitRows() {
   return Array.isArray(state.bundle.fl_ssl_client_splits)
     ? state.bundle.fl_ssl_client_splits
     : [];
+}
+
+function flProjectionImagesForEval() {
+  const flRunIds = new Set(flSslRows().map((run) => flRunId(run)));
+  return state.bundle.projection_images.filter(
+    (image) =>
+      flRunIds.has(image.run_id) && image.eval_set === state.flProjectionEvalSet,
+  );
+}
+
+function flProjectionEvalSets(rows) {
+  const runIds = new Set(rows.map((row) => flRunId(row)));
+  return uniqueValues(
+    state.bundle.projection_images
+      .filter((image) => runIds.has(image.run_id))
+      .map((image) => image.eval_set),
+  ).sort();
+}
+
+function flRowsWithProjection(rows) {
+  const projectionRunIds = new Set(
+    flProjectionImagesForEval().map((image) => image.run_id),
+  );
+  return rows.filter((row) => projectionRunIds.has(flRunId(row)));
 }
 
 function normalizeFlFilterState(rows) {
@@ -1542,7 +1729,7 @@ function drawFlRoundLines(rows, metric) {
   ).sort((a, b) => a - b);
   const width = 1160;
   const height = 520;
-  const pad = { top: 42, right: 52, bottom: 72, left: 112 };
+  const pad = { top: 22, right: 52, bottom: 72, left: 112 };
   const chartHeight = height - pad.top - pad.bottom;
   const pointInset = 44;
   const chartWidth = width - pad.left - pad.right - pointInset * 2;
@@ -1805,31 +1992,36 @@ function defaultProjectionRunIds(rows) {
 }
 
 function renderMetricPicker() {
-  const metrics = [
-    "macro_f1",
-    "accuracy_top_1",
-    "expected_calibration_error",
-    "loss",
-    "balanced_accuracy",
-    "weighted_f1",
-    "worst_category_f1_value",
-    "mean_margin_top1_top2",
-  ];
-  const selectedMetrics = new Set(state.comparisonMetrics);
+  const metrics = centralEpochMetricKeys();
+  if (!metrics.includes(state.comparisonMetric)) {
+    state.comparisonMetric = metrics[0] ?? "selection_macro_f1";
+  }
   elements.metricPicker.innerHTML = metrics
     .map(
       (metric) => `
-        <label class="check-row">
-          <input
-            type="checkbox"
-            data-metric="${metric}"
-            ${selectedMetrics.has(metric) ? "checked" : ""}
-          />
-          <span>${metricLabel(metric)}</span>
-        </label>
+        <button
+          type="button"
+          data-metric="${metric}"
+          class="${metric === state.comparisonMetric ? "active" : ""}"
+        >${metricLabel(metric)}</button>
       `,
     )
     .join("");
+}
+
+function centralEpochMetricKeys() {
+  const discovered = new Set();
+  for (const row of state.bundle?.epoch_metrics ?? []) {
+    for (const key of Object.keys(row)) {
+      if (key !== "run_id" && key !== "epoch" && numberOrNull(row[key]) !== null) {
+        discovered.add(key);
+      }
+    }
+  }
+  return uniqueValues([
+    ...CENTRAL_EPOCH_METRICS.filter((metric) => discovered.has(metric)),
+    ...Array.from(discovered).sort(),
+  ]);
 }
 
 function renderComparisonRunControls(rows) {
@@ -2029,9 +2221,9 @@ function card(label, value) {
 
 function renderComparisonChart(rows) {
   const selectedRows = rows.filter((row) => state.selectedRunIds.includes(row.run_id));
-  const metrics = state.comparisonMetrics;
-  if (metrics.length === 0) {
-    elements.comparisonChart.innerHTML = `<p class="empty">비교할 metric을 선택하세요.</p>`;
+  const metric = state.comparisonMetric;
+  if (!metric) {
+    elements.comparisonChart.innerHTML = `<p class="empty">비교할 epoch metric을 선택하세요.</p>`;
     return;
   }
   if (selectedRows.length === 0) {
@@ -2041,48 +2233,42 @@ function renderComparisonChart(rows) {
   if (state.comparisonChartType === "vertical_bar") {
     elements.comparisonChart.innerHTML = drawVerticalBarComparison(
       selectedRows,
-      metrics,
+      metric,
     );
     return;
   }
   if (state.comparisonChartType === "line") {
     elements.comparisonChart.innerHTML = drawMetricLineComparison(
       selectedRows,
-      metrics,
+      metric,
     );
     return;
   }
   elements.comparisonChart.innerHTML = drawGroupedHorizontalComparison(
     selectedRows,
-    metrics,
+    metric,
   );
 }
 
-function drawGroupedHorizontalComparison(selectedRows, metrics) {
-  const series = metrics.map((metric) => {
-    const values = selectedRows
-      .map((row) => numberOrNull(row[metric]))
-      .filter((value) => value !== null);
-    return {
-      metric,
-      max: Math.max(...values, 0.000001),
-    };
-  });
+function drawGroupedHorizontalComparison(selectedRows, metric) {
+  const values = selectedRows
+    .map((row) => centralLatestMetricValue(row.run_id, metric))
+    .filter((value) => value !== null);
+  if (values.length === 0) {
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
+  }
+  const max = Math.max(...values, 0.000001);
   return selectedRows
     .map((row) => {
-      const metricBars = series
-        .map(({ metric, max }) => {
-          const value = numberOrNull(row[metric]);
-          const width = value === null ? 0 : Math.max(2, (value / max) * 100);
-          return `
+      const value = centralLatestMetricValue(row.run_id, metric);
+      const width = value === null ? 0 : Math.max(2, (value / max) * 100);
+      const metricBars = `
             <div class="metric-bar">
               <span>${metricLabel(metric)}</span>
               <div class="bar-track"><i style="width:${width}%"></i></div>
               <strong>${formatMetric(value)}</strong>
             </div>
           `;
-        })
-        .join("");
       return `
         <div class="comparison-run">
           <div>
@@ -2096,49 +2282,53 @@ function drawGroupedHorizontalComparison(selectedRows, metrics) {
     .join("");
 }
 
-function drawVerticalBarComparison(selectedRows, metrics) {
-  const records = selectedRows.flatMap((row) =>
-    metrics.map((metric) => ({
-      run: row,
-      metric,
-      value: numberOrNull(row[metric]),
-    })),
-  );
+function drawVerticalBarComparison(selectedRows, metric) {
+  const records = selectedRows.map((row) => ({
+    run: row,
+    value: centralLatestMetricValue(row.run_id, metric),
+  }));
   const values = records
     .map((record) => record.value)
     .filter((value) => value !== null);
   if (values.length === 0) {
-    return `<p class="empty">선택한 지표 값이 없습니다.</p>`;
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
   }
-  const colors = metricColors(metrics);
-  const width = Math.max(760, selectedRows.length * metrics.length * 48 + 120);
-  const height = 340;
-  const pad = { top: 24, right: 28, bottom: 96, left: 56 };
+  const width = Math.max(760, selectedRows.length * 128 + 140);
+  const height = 360;
+  const pad = { top: 32, right: 36, bottom: 76, left: 88 };
   const chartHeight = height - pad.top - pad.bottom;
   const chartWidth = width - pad.left - pad.right;
   const maxValue = Math.max(...values, 0.000001);
+  const valueTicks = buildValueTicks(0, maxValue, 5)
+    .map((value) => {
+      const y = pad.top + chartHeight - (value / maxValue) * chartHeight;
+      return `
+        <line class="grid-line" x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />
+        <text class="axis-label" x="${pad.left - 10}" y="${y + 4}" text-anchor="end">${formatMetric(value)}</text>
+      `;
+    })
+    .join("");
   const groupWidth = chartWidth / selectedRows.length;
-  const barWidth = Math.max(8, Math.min(24, (groupWidth - 16) / metrics.length));
   const bars = records
     .filter((record) => record.value !== null)
     .map((record) => {
       const groupIndex = selectedRows.findIndex(
         (row) => row.run_id === record.run.run_id,
       );
-      const metricIndex = metrics.indexOf(record.metric);
-      const x = pad.left + groupIndex * groupWidth + 8 + metricIndex * barWidth;
+      const barWidth = Math.max(18, Math.min(52, groupWidth * 0.48));
+      const x = pad.left + groupIndex * groupWidth + (groupWidth - barWidth) / 2;
       const barHeight = (record.value / maxValue) * chartHeight;
       const y = pad.top + chartHeight - barHeight;
       return `
         <rect
           x="${x}"
           y="${y}"
-          width="${Math.max(6, barWidth - 3)}"
+          width="${barWidth}"
           height="${barHeight}"
           rx="4"
-          fill="${colors.get(record.metric)}"
+          fill="var(--teal)"
         >
-          <title>${shortRun(record.run.run_id)} ${metricLabel(record.metric)} ${formatMetric(record.value)}</title>
+          <title>${escapeHtml(centralRunAxisLabel(record.run))} ${metricLabel(metric)} ${formatMetric(record.value)}</title>
         </rect>
       `;
     })
@@ -2146,20 +2336,24 @@ function drawVerticalBarComparison(selectedRows, metrics) {
   const labels = selectedRows
     .map((row, index) => {
       const x = pad.left + index * groupWidth + groupWidth / 2;
+      const [methodLabel, runLabel] = centralRunAxisLabel(row).split(" · ");
       return `
-        <text class="axis-label" x="${x}" y="${height - 48}" transform="rotate(35 ${x} ${height - 48})">
-          ${shortRun(row.run_id)}
+        <text class="axis-label" x="${x}" y="${height - 46}" text-anchor="middle">
+          ${escapeHtml(methodLabel)}
+        </text>
+        <text class="axis-label" x="${x}" y="${height - 26}" text-anchor="middle">
+          ${escapeHtml(runLabel ?? shortRun(row.run_id))}
         </text>
       `;
     })
     .join("");
   return `
-    ${renderMetricLegend(metrics, colors)}
+    <div class="chart-legend"><span><i style="background:var(--teal)"></i>${metricLabel(metric)}</span></div>
     <div class="chart-scroll">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
         <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + chartHeight}" />
-        <text class="axis-label" x="${pad.left}" y="18">${formatMetric(maxValue)}</text>
+        ${valueTicks}
         ${bars}
         ${labels}
       </svg>
@@ -2167,51 +2361,61 @@ function drawVerticalBarComparison(selectedRows, metrics) {
   `;
 }
 
-function drawMetricLineComparison(selectedRows, metrics) {
-  const pointsByMetric = metrics.map((metric) => ({
-    metric,
-    points: selectedRows
-      .map((row, index) => ({
-        index,
-        runId: row.run_id,
-        value: numberOrNull(row[metric]),
-      }))
-      .filter((point) => point.value !== null),
-  }));
-  const values = pointsByMetric.flatMap((series) =>
-    series.points.map((point) => point.value),
-  );
+function drawMetricLineComparison(selectedRows, metric) {
+  const series = selectedRows
+    .map((row) => ({
+      label: centralRunAxisLabel(row),
+      runId: row.run_id,
+      points: centralLinePoints(row, metric),
+    }))
+    .filter((item) => item.points.length > 0);
+  const values = series.flatMap((item) => item.points.map((point) => point.value));
   if (values.length === 0) {
-    return `<p class="empty">선택한 지표 값이 없습니다.</p>`;
+    return `<p class="empty">선택한 run에 ${metricLabel(metric)} epoch history가 없습니다.</p>`;
   }
-  const colors = metricColors(metrics);
-  const width = Math.max(760, selectedRows.length * 92 + 120);
-  const height = 340;
-  const pad = { top: 24, right: 28, bottom: 96, left: 56 };
+  return drawCentralEpochLineChart(series, metric);
+}
+
+function drawCentralEpochLineChart(series, metric) {
+  const allPoints = series.flatMap((item) => item.points);
+  const epochIndexes = uniqueValues(
+    allPoints.map((point) => point.epoch),
+  ).sort((a, b) => a - b);
+  const width = 1040;
+  const height = 460;
+  const pad = { top: 42, right: 48, bottom: 72, left: 104 };
   const chartHeight = height - pad.top - pad.bottom;
-  const chartWidth = width - pad.left - pad.right;
-  const maxValue = Math.max(...values);
-  const minValue = Math.min(...values);
-  const valueRange = Math.max(maxValue - minValue, 0.000001);
-  const xForIndex = (index) =>
-    pad.left +
-    (selectedRows.length <= 1
-      ? chartWidth / 2
-      : (index / (selectedRows.length - 1)) * chartWidth);
+  const pointInset = 36;
+  const chartWidth = width - pad.left - pad.right - pointInset * 2;
+  const minEpoch = Math.min(...allPoints.map((point) => point.epoch));
+  const maxEpoch = Math.max(...allPoints.map((point) => point.epoch));
+  const epochRange = Math.max(maxEpoch - minEpoch, 1);
+  const minValue = Math.min(...allPoints.map((point) => point.value));
+  const maxValue = Math.max(...allPoints.map((point) => point.value));
+  const valuePadding = Math.max((maxValue - minValue) * 0.08, 0.02);
+  let axisMin = minValue - valuePadding;
+  let axisMax = maxValue + valuePadding;
+  if (minValue >= 0 && maxValue <= 1) {
+    axisMin = Math.max(0, axisMin);
+    axisMax = Math.min(1, axisMax);
+  }
+  const valueRange = Math.max(axisMax - axisMin, 0.000001);
+  const colors = seriesColors(series);
+  const xForPoint = (point) =>
+    pad.left + pointInset + ((point.epoch - minEpoch) / epochRange) * chartWidth;
   const yForValue = (value) =>
-    pad.top + chartHeight - ((value - minValue) / valueRange) * chartHeight;
-  const lines = pointsByMetric
-    .filter((series) => series.points.length > 0)
-    .map((series) => {
-      const color = colors.get(series.metric);
-      const path = series.points
-        .map((point) => `${xForIndex(point.index)},${yForValue(point.value)}`)
+    pad.top + chartHeight - ((value - axisMin) / valueRange) * chartHeight;
+  const lines = series
+    .map((item) => {
+      const color = colors.get(item.label);
+      const path = item.points
+        .map((point) => `${xForPoint(point)},${yForValue(point.value)}`)
         .join(" ");
-      const dots = series.points
+      const dots = item.points
         .map(
           (point) => `
-            <circle cx="${xForIndex(point.index)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}">
-              <title>${shortRun(point.runId)} ${metricLabel(series.metric)} ${formatMetric(point.value)}</title>
+            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}">
+              <title>${escapeHtml(item.label)} · epoch ${point.epoch} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
@@ -2219,29 +2423,111 @@ function drawMetricLineComparison(selectedRows, metrics) {
       return `<polyline points="${path}" fill="none" style="--series-color:${color}" />${dots}`;
     })
     .join("");
-  const labels = selectedRows
-    .map((row, index) => {
-      const x = xForIndex(index);
+  const labels = epochIndexes
+    .filter(
+      (_epoch, index) =>
+        index === 0 ||
+        index === epochIndexes.length - 1 ||
+        epochIndexes.length <= 12 ||
+        index % Math.ceil(epochIndexes.length / 10) === 0,
+    )
+    .map((epoch) => {
+      const x = xForPoint({ epoch });
       return `
-        <text class="axis-label" x="${x}" y="${height - 48}" transform="rotate(35 ${x} ${height - 48})">
-          ${shortRun(row.run_id)}
+        <text class="axis-label" x="${x}" y="${height - 24}" text-anchor="middle">
+          ${epoch}
         </text>
       `;
     })
     .join("");
+  const valueTicks = buildValueTicks(axisMin, axisMax, 5)
+    .map((value) => {
+      const y = yForValue(value);
+      return `
+        <line class="grid-line" x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />
+        <text class="axis-label" x="${pad.left - 10}" y="${y + 4}" text-anchor="end">${formatMetric(value)}</text>
+      `;
+    })
+    .join("");
   return `
-    ${renderMetricLegend(metrics, colors)}
-    <div class="chart-scroll line-chart">
+    <p class="chart-subtitle">${metricLabel(metric)} · x-axis: epoch${seriesHasEpochZero(series) ? " · epoch 0=initial eval" : ""}</p>
+    ${renderSeriesLegend(series, colors)}
+    <div class="chart-scroll line-chart central-epoch-line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
         <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + chartHeight}" />
-        <text class="axis-label" x="${pad.left}" y="18">${formatMetric(maxValue)}</text>
-        <text class="axis-label" x="${pad.left}" y="${height - 8}">${formatMetric(minValue)}</text>
+        ${valueTicks}
         ${lines}
         ${labels}
       </svg>
     </div>
   `;
+}
+
+function centralEpochPoints(runId, metric) {
+  return (state.bundle.epoch_metrics ?? [])
+    .filter((row) => row.run_id === runId)
+    .map((row) => ({
+      epoch: numberOrNull(row.epoch),
+      value: numberOrNull(row[metric]),
+    }))
+    .filter((point) => point.epoch !== null && point.value !== null)
+    .sort((left, right) => left.epoch - right.epoch);
+}
+
+function centralLinePoints(row, metric) {
+  const points = centralEpochPoints(row.run_id, metric);
+  const initialPoint = centralInitialEpochPoint(row, metric);
+  if (!initialPoint || points.some((point) => point.epoch === 0)) {
+    return points;
+  }
+  return [initialPoint, ...points].sort((left, right) => left.epoch - right.epoch);
+}
+
+function centralInitialEpochPoint(row, metric) {
+  const value = centralInitialMetricValue(row, metric, state.comparisonEvalSet);
+  if (value === null) {
+    return null;
+  }
+  return { epoch: 0, value };
+}
+
+function centralInitialMetricValue(row, metric, evalSet) {
+  const evalMetricKey = CENTRAL_INITIAL_METRIC_MAP[metric];
+  if (!evalMetricKey) {
+    return null;
+  }
+  const initialRun = centralInitialRunFor(row);
+  if (!initialRun) {
+    return null;
+  }
+  const initialMetric = state.bundle.eval_metrics.find(
+    (metricRow) =>
+      metricRow.run_id === initialRun.run_id && metricRow.eval_set === evalSet,
+  );
+  return initialMetric ? numberOrNull(initialMetric[evalMetricKey]) : null;
+}
+
+function centralInitialRunFor(row) {
+  return state.bundle.runs.find(
+    (candidate) =>
+      candidate.track === CENTRAL_INITIAL_EVAL_TRACK &&
+      candidate.selection_slug === row.selection_slug &&
+      candidate.seed === row.seed,
+  );
+}
+
+function seriesHasEpochZero(series) {
+  return series.some((item) => item.points.some((point) => point.epoch === 0));
+}
+
+function centralLatestMetricValue(runId, metric) {
+  const points = centralEpochPoints(runId, metric);
+  return points.length > 0 ? points[points.length - 1].value : null;
+}
+
+function centralRunAxisLabel(row) {
+  return `${row.method_name} · ${shortRun(row.run_id)}`;
 }
 
 function renderBarChart(rows) {
@@ -2262,33 +2548,6 @@ function renderBarChart(rows) {
       `;
     })
     .join("");
-}
-
-function renderEpochChart() {
-  elements.epochToggle.checked = state.showEpochChart;
-  elements.epochPanel.hidden = !state.showEpochChart;
-  if (!state.showEpochChart) {
-    elements.epochChart.innerHTML = "";
-    return;
-  }
-  const selectedRunIds = state.selectedRunIds.slice(0, 6);
-  const series = selectedRunIds
-    .map((runId) => {
-      const points = state.bundle.epoch_metrics
-        .filter((row) => row.run_id === runId)
-        .map((row) => ({
-          epoch: row.epoch,
-          value: numberOrNull(row[state.epochMetric]),
-        }))
-        .filter((point) => point.value !== null);
-      return { runId, points };
-    })
-    .filter((item) => item.points.length > 0);
-  if (series.length === 0) {
-    elements.epochChart.innerHTML = `<p class="empty">선택한 run에 ${state.epochMetric} history가 없습니다.</p>`;
-    return;
-  }
-  elements.epochChart.innerHTML = drawMultiLine(series);
 }
 
 function renderClassChart() {
@@ -2472,67 +2731,6 @@ function renderRunTable(rows) {
   });
 }
 
-function drawMultiLine(series) {
-  const width = 680;
-  const height = 260;
-  const pad = 28;
-  const allPoints = series.flatMap((item) => item.points);
-  const minValue = Math.min(...allPoints.map((point) => point.value));
-  const maxValue = Math.max(...allPoints.map((point) => point.value));
-  const valueRange = Math.max(maxValue - minValue, 0.000001);
-  const epochMin = Math.min(...allPoints.map((point) => point.epoch));
-  const epochMax = Math.max(...allPoints.map((point) => point.epoch));
-  const epochRange = Math.max(epochMax - epochMin, 1);
-  const colors = ["#23766f", "#d97732", "#527a45", "#8f5b3d", "#6c7a89", "#a94f1f"];
-  const lines = series
-    .map((item, index) => {
-      const color = colors[index % colors.length];
-      const path = item.points
-        .map((point) => {
-          const x = pad + ((point.epoch - epochMin) / epochRange) * (width - pad * 2);
-          const y =
-            height -
-            pad -
-            ((point.value - minValue) / valueRange) * (height - pad * 2);
-          return `${x},${y}`;
-        })
-        .join(" ");
-      const dots = item.points
-        .map((point) => {
-          const x = pad + ((point.epoch - epochMin) / epochRange) * (width - pad * 2);
-          const y =
-            height -
-            pad -
-            ((point.value - minValue) / valueRange) * (height - pad * 2);
-          return `<circle cx="${x}" cy="${y}" r="4" style="--series-color:${color}"><title>${shortRun(item.runId)} epoch ${point.epoch}: ${formatMetric(point.value)}</title></circle>`;
-        })
-        .join("");
-      return `<polyline points="${path}" fill="none" style="--series-color:${color}" />${dots}`;
-    })
-    .join("");
-  const legend = series
-    .map((item, index) => {
-      const color = colors[index % colors.length];
-      return `<span><i style="background:${color}"></i>${shortRun(item.runId)}</span>`;
-    })
-    .join("");
-  return `
-    <div class="chart-legend">${legend}</div>
-    <svg viewBox="0 0 ${width} ${height}" role="img">
-      ${lines}
-      <text x="${pad}" y="20">${formatMetric(maxValue)}</text>
-      <text x="${pad}" y="${height - 6}">${formatMetric(minValue)}</text>
-    </svg>
-  `;
-}
-
-function metricColors(metrics) {
-  const palette = ["#23766f", "#d97732", "#527a45", "#8f5b3d", "#6c7a89", "#a94f1f"];
-  return new Map(
-    metrics.map((metric, index) => [metric, palette[index % palette.length]]),
-  );
-}
-
 function seriesColors(series) {
   const palette = [
     "#23766f",
@@ -2547,19 +2745,6 @@ function seriesColors(series) {
   return new Map(
     series.map((item, index) => [item.label, palette[index % palette.length]]),
   );
-}
-
-function renderMetricLegend(metrics, colors) {
-  return `
-    <div class="chart-legend">
-      ${metrics
-        .map(
-          (metric) =>
-            `<span><i style="background:${colors.get(metric)}"></i>${metricLabel(metric)}</span>`,
-        )
-        .join("")}
-    </div>
-  `;
 }
 
 function renderSeriesLegend(series, colors) {
@@ -2734,6 +2919,16 @@ function escapeHtml(value) {
 function metricLabel(metric) {
   const labels = {
     expected_calibration_error: "ece",
+    selection_macro_f1: "selection macro-F1",
+    selection_accuracy_top_1: "selection accuracy",
+    selection_expected_calibration_error: "selection ece",
+    selection_worst_category_f1_value: "selection worst F1",
+    selection_worst_category_f1: "selection worst F1",
+    selection_loss: "selection loss",
+    train_loss: "train loss",
+    train_sup_loss: "supervised loss",
+    train_unsup_loss: "unsupervised loss",
+    train_util_ratio: "util ratio",
     update_count: "updates",
     total_payload_bytes: "payload bytes",
     round_time_seconds: "round seconds",

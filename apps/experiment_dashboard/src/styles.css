@@ -615,6 +615,13 @@ code {
   background: var(--teal);
 }
 
+.chart-subtitle {
+  margin: 0;
+  color: var(--muted);
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
 .check-row,
 .run-option {
   display: flex;
@@ -784,6 +791,15 @@ code {
   margin-bottom: 18px;
 }
 
+.projection-controls.fl-projection-controls {
+  grid-template-columns: minmax(160px, 220px) minmax(420px, 1fr);
+  align-items: start;
+}
+
+.fl-projection-run-picker .run-checkbox-list.compact {
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+}
+
 .projection-controls select {
   width: 100%;
   color: var(--ink);
@@ -902,6 +918,11 @@ code {
   height: auto;
 }
 
+.comparison-chart .central-epoch-line-chart svg {
+  min-width: 0;
+  height: 460px;
+}
+
 .axis-line {
   stroke: rgba(109, 117, 107, 0.36);
   stroke-width: 1;
@@ -945,6 +966,10 @@ code {
   flex-wrap: wrap;
   gap: 10px;
   margin-bottom: 8px;
+}
+
+.editable-legend {
+  margin-bottom: 0;
 }
 
 .chart-legend span {

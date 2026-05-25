@@ -122,7 +122,7 @@
               <div class="card-header">
                 <div>
                   <p class="eyebrow">Graph Compare</p>
-                  <h3>선택한 run과 지표를 그래프로 비교</h3>
+                  <h3>선택한 run의 epoch 지표를 그래프로 비교</h3>
                 </div>
               </div>
               <div class="compare-controls">
@@ -138,19 +138,15 @@
                     <option value="line">Line</option>
                   </select>
                 </label>
-                <label class="checkbox-field">
-                  <input id="epoch-toggle" type="checkbox" checked />
-                  <span>Epoch Progress 보기</span>
-                </label>
               </div>
               <p class="filter-hint dark">
-                방법론끼리 비교하거나, 같은 방법론 안의 lr/split/seed 조합을
-                체크해서 비교한다.
+                Line은 가로축을 epoch로 두고 학습 history를 비교한다. Bar 계열은
+                선택 metric의 마지막 epoch 값을 run별로 비교한다.
               </p>
               <div class="comparison-picker-grid">
                 <section>
-                  <h4>Metrics</h4>
-                  <div id="metric-picker" class="metric-picker"></div>
+                  <h4>Epoch Metric</h4>
+                  <div id="metric-picker" class="metric-tabs"></div>
                 </section>
                 <section>
                   <h4>Run Selection</h4>
@@ -171,28 +167,6 @@
               </div>
               <div id="selected-run-cards" class="selected-run-cards"></div>
               <div id="comparison-chart" class="comparison-chart"></div>
-            </section>
-
-            <section class="grid two">
-              <article class="card" id="epoch-panel">
-                <div class="card-header">
-                  <div>
-                    <p class="eyebrow">Training Curve</p>
-                    <h3>Epoch Progress</h3>
-                  </div>
-                  <select id="epoch-metric-filter">
-                    <option value="selection_macro_f1">selection_macro_f1</option>
-                    <option value="selection_accuracy_top_1">
-                      selection_accuracy_top_1
-                    </option>
-                    <option value="selection_expected_calibration_error">
-                      selection_ece
-                    </option>
-                    <option value="train_loss">train_loss</option>
-                  </select>
-                </div>
-                <div id="epoch-chart" class="line-chart"></div>
-              </article>
             </section>
           </section>
 
@@ -313,6 +287,7 @@
             <button type="button" data-fl-tab="rounds">Rounds</button>
             <button type="button" data-fl-tab="clients">Clients</button>
             <button type="button" data-fl-tab="splits">Splits</button>
+            <button type="button" data-fl-tab="projection">Projection</button>
           </nav>
 
           <div class="legacy-hidden-controls" aria-hidden="true">
@@ -556,10 +531,40 @@
               </div>
             </article>
           </section>
+
+          <section class="tab-panel" data-fl-panel="projection">
+            <article class="card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Final Global State</p>
+                  <h3>FL UMAP / Projection Image</h3>
+                </div>
+              </div>
+              <p class="fl-tab-note">
+                선택한 FL run의 최종 global LoRA representation projection artifact를
+                보여준다. 왼쪽 FL run filter로 method/data/round 조건을 좁힌 뒤 eval
+                set과 run을 선택한다.
+              </p>
+              <div class="projection-controls fl-projection-controls">
+                <section>
+                  <h4>Eval Set</h4>
+                  <select id="fl-projection-eval-filter"></select>
+                </section>
+                <section class="fl-projection-run-picker">
+                  <h4>Filtered Runs</h4>
+                  <div
+                    id="fl-projection-run-checkboxes"
+                    class="run-checkbox-list compact"
+                  ></div>
+                </section>
+              </div>
+              <div id="fl-projection-gallery" class="projection-gallery"></div>
+            </article>
+          </section>
         </section>
       </main>
     </div>
 
-    <script src="./src/app.js?v=20260525-fl-filter-drawer" type="module"></script>
+    <script src="./src/app.js?v=20260525-central-epoch-compare" type="module"></script>
   </body>
 </html>
