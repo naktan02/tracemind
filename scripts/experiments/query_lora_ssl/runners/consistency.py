@@ -9,20 +9,14 @@ from typing import Any
 from methods.adaptation.lora_classifier.training.loops import (
     train_query_ssl_classifier as train_query_ssl_lora_classifier,
 )
-from methods.adaptation.query_classifier_adaptation.data import (
-    build_multiview_dataloader as build_query_lora_multiview_dataloader,
-)
-from methods.adaptation.query_classifier_adaptation.data import (
-    build_weak_dataloader as build_query_lora_weak_dataloader,
+from methods.adaptation.query_classifier_adaptation.query_ssl_views import (
+    build_query_ssl_unlabeled_dataloader,
 )
 from methods.ssl.base import QuerySslAlgorithmDescriptor
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
 from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
 from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
-    PreparedQuerySslUnlabeledRows,
     build_query_ssl_augmenter_manifest,
-    prepare_usb_multiview_unlabeled_rows,
-    prepare_usb_weak_unlabeled_rows,
 )
 from scripts.experiments.query_lora_ssl.query_ssl.common import (
     QuerySslRunContext,
@@ -30,6 +24,9 @@ from scripts.experiments.query_lora_ssl.query_ssl.common import (
     build_query_ssl_method_parameters,
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
+)
+from scripts.experiments.query_lora_ssl.query_ssl.view_preparation import (
+    prepare_query_ssl_unlabeled_rows,
 )
 from scripts.experiments.query_lora_ssl.runtime_metrics import (
     run_with_training_runtime_metrics,
@@ -87,7 +84,7 @@ def run_consistency_query_ssl_lora_baseline(
         raw_unlabeled_rows = load_labeled_query_rows(Path(str(cfg.unlabeled_jsonl)))
     else:
         raw_unlabeled_rows = list(unlabeled_rows)
-    prepared_unlabeled_rows = _prepare_unlabeled_rows(
+    prepared_unlabeled_rows = prepare_query_ssl_unlabeled_rows(
         cfg=cfg,
         descriptor=descriptor,
         rows=raw_unlabeled_rows,
@@ -229,59 +226,21 @@ def _estimate_query_ssl_training_example_count(
     return int(max_train_steps) * (labeled_batch_size + unlabeled_batch_size)
 
 
-def _prepare_unlabeled_rows(
-    *,
-    cfg,
-    descriptor: QuerySslAlgorithmDescriptor,
-    rows: list[LabeledQueryRow],
-    source_jsonl: str | Path | None,
-) -> PreparedQuerySslUnlabeledRows:
-    if descriptor.required_views.view_builder_name == "usb_multiview":
-        return prepare_usb_multiview_unlabeled_rows(
-            cfg,
-            rows=rows,
-            source_jsonl=source_jsonl,
-            algorithm_name=descriptor.display_name,
-        )
-    if descriptor.required_views.view_builder_name == "usb_weak":
-        return prepare_usb_weak_unlabeled_rows(
-            rows=rows,
-            algorithm_name=descriptor.display_name,
-        )
-    raise ValueError(
-        "Unsupported Query SSL view builder: "
-        f"{descriptor.required_views.view_builder_name}."
-    )
-
-
 def _build_unlabeled_loader(
     *,
     cfg,
     descriptor: QuerySslAlgorithmDescriptor,
     context: QuerySslRunContext,
 ):
-    if descriptor.required_views.view_builder_name == "usb_multiview":
-        return build_query_lora_multiview_dataloader(
-            rows=context.effective_unlabeled_rows,
-            tokenizer=context.tokenizer,
-            batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
-            max_length=int(cfg.paper_backbone.max_length),
-            task_prefix=str(cfg.paper_backbone.task_prefix),
-            shuffle=True,
-            strong_view_policy=_resolve_strong_view_policy(cfg),
-        )
-    if descriptor.required_views.view_builder_name == "usb_weak":
-        return build_query_lora_weak_dataloader(
-            rows=context.effective_unlabeled_rows,
-            tokenizer=context.tokenizer,
-            batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
-            max_length=int(cfg.paper_backbone.max_length),
-            task_prefix=str(cfg.paper_backbone.task_prefix),
-            shuffle=True,
-        )
-    raise ValueError(
-        "Unsupported Query SSL view builder: "
-        f"{descriptor.required_views.view_builder_name}."
+    return build_query_ssl_unlabeled_dataloader(
+        rows=context.effective_unlabeled_rows,
+        tokenizer=context.tokenizer,
+        batch_size=int(cfg.query_ssl_method.unlabeled_batch_size),
+        max_length=int(cfg.paper_backbone.max_length),
+        task_prefix=str(cfg.paper_backbone.task_prefix),
+        shuffle=True,
+        view_builder_name=descriptor.required_views.view_builder_name,
+        strong_view_policy=_resolve_strong_view_policy(cfg),
     )
 
 

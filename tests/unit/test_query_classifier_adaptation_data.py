@@ -8,6 +8,9 @@ from methods.adaptation.query_classifier_adaptation.data import (
     build_multiview_dataloader,
     build_weak_dataloader,
 )
+from methods.adaptation.query_classifier_adaptation.query_ssl_views import (
+    build_query_ssl_unlabeled_dataloader,
+)
 from methods.adaptation.query_classifier_adaptation.tokenization import (
     TextTokenizationCache,
 )
@@ -135,6 +138,62 @@ def test_multiview_dataloader_emits_stable_row_indices() -> None:
     assert batch["row_indices"].tolist() == [0, 1]
 
 
+def test_query_ssl_unlabeled_loader_dispatches_multiview_surface() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    row = _row("q1", "base")
+    row["aug_0"] = "first strong"
+    row["aug_1"] = "second strong"
+
+    loader = build_query_ssl_unlabeled_dataloader(
+        rows=[row],
+        tokenizer=_Tokenizer(),
+        batch_size=1,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        view_builder_name="usb_multiview",
+        strong_view_policy="second_aug",
+    )
+    batch = next(iter(loader))
+
+    assert batch["query_ids"] == ["q1"]
+    assert "strong_input_ids" in batch
+
+
+def test_query_ssl_unlabeled_loader_dispatches_weak_surface() -> None:
+    class _Tokenizer:
+        def __call__(self, texts, **_kwargs):
+            import torch
+
+            return {
+                "input_ids": torch.ones((len(texts), 2), dtype=torch.long),
+                "attention_mask": torch.ones((len(texts), 2), dtype=torch.long),
+            }
+
+    loader = build_query_ssl_unlabeled_dataloader(
+        rows=[_row("q1", "base")],
+        tokenizer=_Tokenizer(),
+        batch_size=1,
+        max_length=8,
+        task_prefix="",
+        shuffle=False,
+        view_builder_name="usb_weak",
+    )
+    batch = next(iter(loader))
+
+    assert batch["query_ids"] == ["q1"]
+    assert "weak_input_ids" in batch
+    assert "strong_input_ids" not in batch
+
+
 def test_text_tokenization_cache_reuses_selected_texts() -> None:
     class _Tokenizer:
         pad_token_id = 0
@@ -181,6 +240,7 @@ def test_text_tokenization_cache_reuses_selected_texts() -> None:
     second_batch = next(iter(second_loader))
 
     assert tokenizer.calls == ["same text"]
-    assert first_batch["weak_input_ids"].tolist() == second_batch[
-        "weak_input_ids"
-    ].tolist()
+    assert (
+        first_batch["weak_input_ids"].tolist()
+        == second_batch["weak_input_ids"].tolist()
+    )

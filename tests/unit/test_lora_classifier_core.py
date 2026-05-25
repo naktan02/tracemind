@@ -21,6 +21,9 @@ from methods.adaptation.lora_classifier.training.loops import (
     train_query_ssl_classifier,
 )
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
+from methods.adaptation.lora_classifier.training.pseudo_label_diagnostics import (
+    resolve_fixed_pseudo_label_diagnostic_threshold,
+)
 
 
 class _TinyBackbone(nn.Module):
@@ -52,6 +55,21 @@ def _build_loader() -> DataLoader[dict[str, torch.Tensor]]:
         },
     ]
     return DataLoader(rows, batch_size=2)
+
+
+def test_pseudo_label_diagnostic_threshold_marks_fixed_threshold_only() -> None:
+    fixed = resolve_fixed_pseudo_label_diagnostic_threshold({"p_cutoff": 0.95})
+    adaptive_without_fixed_cutoff = resolve_fixed_pseudo_label_diagnostic_threshold({})
+
+    assert fixed.threshold == 0.95
+    assert fixed.to_client_metrics() == {
+        "query_ssl_diagnostic_uses_fixed_threshold": 1.0,
+        "query_ssl_diagnostic_acceptance_threshold": 0.95,
+    }
+    assert adaptive_without_fixed_cutoff.threshold is None
+    assert adaptive_without_fixed_cutoff.to_client_metrics() == {
+        "query_ssl_diagnostic_uses_fixed_threshold": 0.0
+    }
 
 
 def test_lora_text_classifier_train_step_and_evaluation() -> None:
@@ -91,9 +109,7 @@ def test_lora_text_classifier_train_step_and_evaluation() -> None:
 
 
 def test_lora_classifier_config_accepts_fedprox_mu() -> None:
-    config = LoraClassifierTrainingBackendConfig.from_mapping(
-        {"proximal_mu": 0.01}
-    )
+    config = LoraClassifierTrainingBackendConfig.from_mapping({"proximal_mu": 0.01})
 
     assert config.proximal_mu == 0.01
 
@@ -236,8 +252,7 @@ def test_query_ssl_training_records_fedprox_proximal_loss() -> None:
     )
 
     proximal_losses = [
-        float(record.get("train_fedprox_proximal_loss", 0.0))
-        for record in history
+        float(record.get("train_fedprox_proximal_loss", 0.0)) for record in history
     ]
     assert proximal_losses[0] == 0.0
     assert max(proximal_losses[1:]) > 0.0

@@ -23,20 +23,19 @@ from methods.adaptation.lora_classifier.update.query_ssl_update import (
 )
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader,
-    build_multiview_dataloader,
-    build_weak_dataloader,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     QuerySslLocalStepPlan,
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.query_classifier_adaptation.query_ssl_views import (
+    build_query_ssl_unlabeled_dataloader,
 )
 from methods.adaptation.query_classifier_adaptation.tokenization import (
     TextTokenizationCache,
     resolve_text_tokenization_cache,
 )
 from methods.adaptation.query_classifier_adaptation.view_rows import (
-    USB_MULTIVIEW_BUILDER_NAME,
-    USB_WEAK_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
@@ -64,6 +63,7 @@ from .loops import set_seed, train_query_ssl_classifier
 from .modeling import LoraTextClassifier, build_lora_text_classifier_from_config
 from .pseudo_label_diagnostics import (
     build_final_snapshot_pseudo_label_quality,
+    resolve_fixed_pseudo_label_diagnostic_threshold,
     tokenization_cache_namespace,
 )
 
@@ -264,6 +264,9 @@ def run_query_ssl_lora_classifier_training_core(
             log_every_steps=0,
             algorithm=algorithm,
         )
+    diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
+        query_ssl_config.parameters
+    )
     with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
         pseudo_label_quality = build_final_snapshot_pseudo_label_quality(
             model=model,
@@ -275,7 +278,7 @@ def run_query_ssl_lora_classifier_training_core(
             ),
             labels=effective_labels,
             lora_config=lora_config,
-            acceptance_threshold=_resolve_fixed_threshold(query_ssl_config.parameters),
+            acceptance_threshold=diagnostic_threshold.threshold,
             trainer_runtime_config=trainer_runtime_config,
             unlabeled_batch_size=query_ssl_config.unlabeled_batch_size or 1,
             tokenization_cache=tokenization_cache,
@@ -324,7 +327,10 @@ def run_query_ssl_lora_classifier_training_core(
             include_inline_deltas=delta_materialization.include_inline_deltas,
         )
     update_payload = update_build_result.update_payload
-    client_metrics = update_build_result.client_metrics
+    client_metrics = {
+        **dict(update_build_result.client_metrics),
+        **diagnostic_threshold.to_client_metrics(),
+    }
     update_envelope = make_training_update_envelope(
         update_id=update_id,
         round_id=training_task.round_id,
@@ -383,39 +389,18 @@ def _build_unlabeled_loader(
     tokenization_cache: TextTokenizationCache | None,
     tokenization_cache_namespace: str,
 ) -> Any:
-    if view_builder_name == USB_MULTIVIEW_BUILDER_NAME:
-        return build_multiview_dataloader(
-            rows=rows,
-            tokenizer=tokenizer,
-            batch_size=batch_size,
-            max_length=max_length,
-            task_prefix=task_prefix,
-            shuffle=True,
-            strong_view_policy=strong_view_policy,
-            tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
-        )
-    if view_builder_name == USB_WEAK_BUILDER_NAME:
-        return build_weak_dataloader(
-            rows=rows,
-            tokenizer=tokenizer,
-            batch_size=batch_size,
-            max_length=max_length,
-            task_prefix=task_prefix,
-            shuffle=True,
-            tokenization_cache=tokenization_cache,
-            tokenization_cache_namespace=tokenization_cache_namespace,
-        )
-    raise ValueError(f"Unsupported Query SSL view builder: {view_builder_name}.")
-
-
-def _resolve_fixed_threshold(parameters: Mapping[str, object]) -> float | None:
-    """고정 confidence threshold가 있는 Query SSL method만 acceptance를 계산한다."""
-
-    raw_value = parameters.get("p_cutoff")
-    if raw_value is None:
-        return None
-    return float(raw_value)
+    return build_query_ssl_unlabeled_dataloader(
+        rows=rows,
+        tokenizer=tokenizer,
+        batch_size=batch_size,
+        max_length=max_length,
+        task_prefix=task_prefix,
+        shuffle=True,
+        view_builder_name=view_builder_name,
+        strong_view_policy=strong_view_policy,
+        tokenization_cache=tokenization_cache,
+        tokenization_cache_namespace=tokenization_cache_namespace,
+    )
 
 
 def _validate_labeled_rows_have_known_labels(

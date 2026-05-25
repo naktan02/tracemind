@@ -27,7 +27,8 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
 - `config/`
   - Hydra initial checkpoint와 pseudo-label algorithm preset 해석.
 - `query_ssl/`
-  - Query SSL method 공통 모델과 augmentation preparation.
+  - Query SSL method 공통 모델, augmentation preparation, 중앙 unlabeled view
+    preparation resolver.
 
 ## 실행 경계
 

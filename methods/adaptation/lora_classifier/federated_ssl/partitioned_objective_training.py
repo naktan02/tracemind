@@ -35,7 +35,9 @@ from methods.adaptation.lora_classifier.training.modeling import (
     build_lora_text_classifier_from_config,
 )
 from methods.adaptation.lora_classifier.training.pseudo_label_diagnostics import (
+    PseudoLabelDiagnosticThreshold,
     build_final_snapshot_pseudo_label_quality,
+    resolve_fixed_pseudo_label_diagnostic_threshold,
     tokenization_cache_namespace,
 )
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
@@ -277,6 +279,11 @@ def run_method_owned_lora_classifier_training_core(
             ),
         )
     history_record = training_result.metrics
+    diagnostic_threshold = _resolve_partitioned_diagnostic_threshold(
+        local_ssl_policy_name=local_ssl_policy_name,
+        fedmatch_parameters=parameters,
+        query_ssl_config=query_ssl_config,
+    )
     with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
         pseudo_label_quality = build_final_snapshot_pseudo_label_quality(
             model=model,
@@ -288,11 +295,7 @@ def run_method_owned_lora_classifier_training_core(
             ),
             labels=effective_labels,
             lora_config=lora_config,
-            acceptance_threshold=_resolve_snapshot_acceptance_threshold(
-                local_ssl_policy_name=local_ssl_policy_name,
-                fedmatch_parameters=parameters,
-                query_ssl_config=query_ssl_config,
-            ),
+            acceptance_threshold=diagnostic_threshold.threshold,
             trainer_runtime_config=trainer_runtime_config,
             unlabeled_batch_size=resolved_unlabeled_batch_size,
             tokenization_cache=tokenization_cache,
@@ -374,6 +377,7 @@ def run_method_owned_lora_classifier_training_core(
         "fedmatch_budget_unlabeled_batch_size": float(resolved_unlabeled_batch_size),
         "fedmatch_budget_steps_per_epoch": float(step_plan.full_epoch_steps),
         "fedmatch_budget_total_steps": float(step_plan.total_steps),
+        **diagnostic_threshold.to_client_metrics(),
     }
     update_envelope = make_training_update_envelope(
         update_id=update_id,
@@ -510,20 +514,24 @@ def _resolve_fedmatch_local_supervision_regime(
     raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}.")
 
 
-def _resolve_snapshot_acceptance_threshold(
+def _resolve_partitioned_diagnostic_threshold(
     *,
     local_ssl_policy_name: str,
     fedmatch_parameters: FedMatchLocalObjectiveParameters,
     query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
-) -> float:
+) -> PseudoLabelDiagnosticThreshold:
     if (
         local_ssl_policy_name.strip().lower().replace("-", "_")
         == LOCAL_SSL_POLICY_FIXMATCH
     ):
         if query_ssl_config is None:
             raise ValueError("local_ssl_policy=fixmatch requires query_ssl_config.")
-        return float(query_ssl_config.parameters["p_cutoff"])
-    return fedmatch_parameters.confidence_threshold
+        return resolve_fixed_pseudo_label_diagnostic_threshold(
+            dict(query_ssl_config.parameters)
+        )
+    return resolve_fixed_pseudo_label_diagnostic_threshold(
+        {"p_cutoff": fedmatch_parameters.confidence_threshold}
+    )
 
 
 def _history_float(

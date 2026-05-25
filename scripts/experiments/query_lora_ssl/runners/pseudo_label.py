@@ -56,6 +56,11 @@ class PreparedPseudoLabelSelfTrainingRun:
     @property
     def manifest_overrides(self) -> dict[str, Any]:
         manifest = {
+            "ssl_input_mode": "pseudo_label_replay",
+            "pseudo_label_replay": {
+                "training_mode": "supervised_replay",
+                "label_source": "offline_pseudo_label_artifact",
+            },
             "pseudo_label_jsonl": str(self.pseudo_label_artifacts.jsonl_path),
             "pseudo_label_manifest": str(self.pseudo_label_artifacts.manifest_path),
             "pseudo_label_summary": str(self.pseudo_label_artifacts.summary_path),

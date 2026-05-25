@@ -16,28 +16,37 @@ def test_train_lora_supervised_classifier_entrypoint_imports_direct_runner() -> 
     )
 
 
-def test_train_lora_ssl_classifier_entrypoint_imports_consistency_runner() -> None:
+def test_train_lora_ssl_classifier_entrypoint_imports_mode_router() -> None:
     entrypoint = importlib.import_module(
         "scripts.experiments.central_ssl_control.train_lora_ssl_classifier"
+    )
+    router = importlib.import_module(
+        "scripts.experiments.central_ssl_control.ssl_mode_router"
+    )
+
+    assert entrypoint.run_central_ssl_mode is router.run_central_ssl_mode
+
+
+def test_central_ssl_mode_router_imports_consistency_runner() -> None:
+    router = importlib.import_module(
+        "scripts.experiments.central_ssl_control.ssl_mode_router"
     )
     runner = importlib.import_module(
         "scripts.experiments.query_lora_ssl.runners.consistency"
     )
 
-    assert entrypoint.run_query_ssl_lora_baseline is runner.run_query_ssl_lora_baseline
+    assert router.run_query_ssl_lora_baseline is runner.run_query_ssl_lora_baseline
 
 
-def test_train_lora_ssl_classifier_entrypoint_imports_pseudo_label_runner() -> None:
-    entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.train_lora_ssl_classifier"
+def test_central_ssl_mode_router_imports_pseudo_label_runner() -> None:
+    router = importlib.import_module(
+        "scripts.experiments.central_ssl_control.ssl_mode_router"
     )
     runner = importlib.import_module(
         "scripts.experiments.query_lora_ssl.runners.pseudo_label"
     )
-
     assert (
-        entrypoint.run_pseudo_label_self_training
-        is runner.run_pseudo_label_self_training
+        router.run_pseudo_label_self_training is runner.run_pseudo_label_self_training
     )
 
 

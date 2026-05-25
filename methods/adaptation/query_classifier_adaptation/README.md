@@ -8,6 +8,8 @@ glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를
 
 - `data.py`: labeled row와 weak/strong row를 tokenizer batch로 바꾸는 입력 glue
 - `view_rows.py`: weak/original/strong view row 해석과 validation helper
+- `query_ssl_views.py`: 중앙 SSL과 FL client-local SSL이 공유하는 unlabeled
+  view surface별 DataLoader builder
 
 범위 밖:
 

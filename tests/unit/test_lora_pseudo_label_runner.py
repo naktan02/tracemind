@@ -207,6 +207,11 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
     assert len(train_rows) == 1
     assert train_rows[0]["raw_label_scheme"] == "pseudo_label"
     assert extra_manifest["pseudo_label_row_count"] == 1
+    assert extra_manifest["ssl_input_mode"] == "pseudo_label_replay"
+    assert extra_manifest["pseudo_label_replay"] == {
+        "training_mode": "supervised_replay",
+        "label_source": "offline_pseudo_label_artifact",
+    }
     assert extra_manifest["seed_train_row_count"] == 0
     assert extra_manifest["include_seed_train_rows"] is False
     assert extra_manifest["combined_train_row_count"] == 1

@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
+from dataclasses import dataclass
 from typing import Any, Protocol
 
 import torch
@@ -30,6 +31,45 @@ class LoraClassifierDiagnosticsRuntimeConfig(Protocol):
     """pseudo-label diagnostics가 필요한 runtime surface."""
 
     device: str
+
+
+@dataclass(frozen=True, slots=True)
+class PseudoLabelDiagnosticThreshold:
+    """최종 snapshot pseudo-label 진단에 쓰는 fixed threshold metadata."""
+
+    threshold: float | None
+
+    @property
+    def uses_fixed_threshold(self) -> bool:
+        return self.threshold is not None
+
+    def to_client_metrics(self) -> dict[str, float]:
+        """client metric에는 숫자형 fixed-threshold 진단 여부만 남긴다."""
+
+        metrics = {
+            "query_ssl_diagnostic_uses_fixed_threshold": float(
+                self.uses_fixed_threshold
+            )
+        }
+        if self.threshold is not None:
+            metrics["query_ssl_diagnostic_acceptance_threshold"] = float(self.threshold)
+        return metrics
+
+
+def resolve_fixed_pseudo_label_diagnostic_threshold(
+    parameters: Mapping[str, object],
+) -> PseudoLabelDiagnosticThreshold:
+    """학습 후 pseudo-label 품질 진단용 fixed threshold를 해석한다.
+
+    adaptive/classwise threshold method에서는 이 값이 실제 학습 mask와 다를 수 있다.
+    그래서 여기서는 `p_cutoff`가 있는 경우에만 fixed-threshold snapshot diagnostic으로
+    기록한다.
+    """
+
+    raw_value = parameters.get("p_cutoff")
+    if raw_value is None:
+        return PseudoLabelDiagnosticThreshold(threshold=None)
+    return PseudoLabelDiagnosticThreshold(threshold=float(raw_value))
 
 
 def build_final_snapshot_pseudo_label_quality(
