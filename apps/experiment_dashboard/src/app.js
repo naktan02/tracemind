@@ -20,6 +20,10 @@ const CENTRAL_INITIAL_METRIC_MAP = {
   selection_worst_category_f1_value: "worst_category_f1_value",
   selection_loss: "loss",
 };
+const SERIES_COLOR_STORAGE_KEYS = {
+  central_compare: "tracemind_dashboard.central_compare_run_colors.v1",
+  fl_round: "tracemind_dashboard.fl_round_run_colors.v1",
+};
 const FL_ROUND_METRICS = [
   "macro_f1",
   "accuracy_top_1",
@@ -68,6 +72,7 @@ const state = {
   comparisonChartType: "grouped_bar",
   comparisonMethodName: null,
   comparisonSelectionTouched: false,
+  comparisonRunColors: loadStoredSeriesColors("central_compare"),
   classEvalSet: "validation",
   classMetric: "f1",
   selectedRunIds: [],
@@ -87,6 +92,7 @@ const state = {
   flRoundRunIds: [],
   flRoundSelectionTouched: false,
   flRoundRunAliases: {},
+  flRoundRunColors: loadStoredSeriesColors("fl_round"),
   flRoundMetric: "macro_f1",
   flClientValidationRunId: null,
   flClientRoundRunId: null,
@@ -307,6 +313,7 @@ function bindEvents() {
     state.comparisonSelectionTouched = true;
     render();
   });
+  bindSeriesColorEvents(elements.comparisonChart);
   elements.classEvalFilter.addEventListener("change", (event) => {
     state.classEvalSet = event.target.value;
     state.detailMethodName = null;
@@ -443,6 +450,7 @@ function bindEvents() {
     state.flRoundMetric = event.target.dataset.flRoundMetric ?? state.flRoundMetric;
     render();
   });
+  bindSeriesColorEvents(elements.flRoundChart);
   elements.flClientValidationRunFilter.addEventListener("change", (event) => {
     state.flClientValidationRunId = event.target.value || null;
     render();
@@ -1091,7 +1099,7 @@ function renderFlRoundSelectedRunCards() {
         flRunDescriptor(row),
       ].join(" · ");
       return `
-        <article class="selected-run-card alias-run-card" title="${escapeHtml(detail)}">
+        <article class="selected-run-card alias-run-card">
           <strong>${escapeHtml(defaultFlRoundRunLabel(row))}</strong>
           <input
             type="text"
@@ -1702,6 +1710,7 @@ function drawFlRoundLines(rows, metric) {
           runId,
           run: runMetadata,
           metric,
+          colorKey: runId,
           label: flRoundSeriesLabel(
             runId,
             runMetadata,
@@ -1746,7 +1755,7 @@ function drawFlRoundLines(rows, metric) {
     axisMax = Math.min(1, axisMax);
   }
   const valueRange = Math.max(axisMax - axisMin, 0.000001);
-  const colors = seriesColors(series);
+  const colors = seriesColors(series, "fl_round");
   const xForPoint = (point) =>
     pad.left +
     pointInset +
@@ -1762,13 +1771,13 @@ function drawFlRoundLines(rows, metric) {
       const dots = item.points
         .map(
           (point) => `
-            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}">
+            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}">
               <title>${escapeHtml(item.label)} · ${escapeHtml(point.roundId)} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
         .join("");
-      return `<polyline points="${path}" fill="none" style="--series-color:${color}" />${dots}`;
+      return `<polyline points="${path}" fill="none" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}" />${dots}`;
     })
     .join("");
   const labels = roundIndexes
@@ -1799,7 +1808,7 @@ function drawFlRoundLines(rows, metric) {
     })
     .join("");
   return `
-    ${renderSeriesLegend(series, colors)}
+    ${renderSeriesLegend(series, colors, "fl_round")}
     <div class="line-chart fl-round-line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
@@ -2078,7 +2087,7 @@ function renderSelectedRunCards(rows) {
         `unlabeled=${row.unlabeled_dataset_name ?? "-"}`,
       ].join(" · ");
       return `
-        <article class="selected-run-card" title="${escapeHtml(detail)}">
+        <article class="selected-run-card">
           <strong>${shortRun(row.run_id)}</strong>
           <button
             type="button"
@@ -2366,6 +2375,7 @@ function drawMetricLineComparison(selectedRows, metric) {
     .map((row) => ({
       label: centralRunAxisLabel(row),
       runId: row.run_id,
+      colorKey: row.run_id,
       points: centralLinePoints(row, metric),
     }))
     .filter((item) => item.points.length > 0);
@@ -2400,7 +2410,7 @@ function drawCentralEpochLineChart(series, metric) {
     axisMax = Math.min(1, axisMax);
   }
   const valueRange = Math.max(axisMax - axisMin, 0.000001);
-  const colors = seriesColors(series);
+  const colors = seriesColors(series, "central_compare");
   const xForPoint = (point) =>
     pad.left + pointInset + ((point.epoch - minEpoch) / epochRange) * chartWidth;
   const yForValue = (value) =>
@@ -2414,13 +2424,13 @@ function drawCentralEpochLineChart(series, metric) {
       const dots = item.points
         .map(
           (point) => `
-            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}">
+            <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}">
               <title>${escapeHtml(item.label)} · epoch ${point.epoch} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
         .join("");
-      return `<polyline points="${path}" fill="none" style="--series-color:${color}" />${dots}`;
+      return `<polyline points="${path}" fill="none" style="--series-color:${color}" data-series-color-key="${escapeHtml(item.colorKey ?? item.label)}" />${dots}`;
     })
     .join("");
   const labels = epochIndexes
@@ -2451,7 +2461,7 @@ function drawCentralEpochLineChart(series, metric) {
     .join("");
   return `
     <p class="chart-subtitle">${metricLabel(metric)} · x-axis: epoch${seriesHasEpochZero(series) ? " · epoch 0=initial eval" : ""}</p>
-    ${renderSeriesLegend(series, colors)}
+    ${renderSeriesLegend(series, colors, "central_compare")}
     <div class="chart-scroll line-chart central-epoch-line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
@@ -2731,7 +2741,7 @@ function renderRunTable(rows) {
   });
 }
 
-function seriesColors(series) {
+function seriesColors(series, scope = null) {
   const palette = [
     "#23766f",
     "#d97732",
@@ -2742,22 +2752,145 @@ function seriesColors(series) {
     "#5a6fb0",
     "#b55a7a",
   ];
+  const overrides = seriesColorOverrides(scope);
   return new Map(
-    series.map((item, index) => [item.label, palette[index % palette.length]]),
+    series.map((item, index) => {
+      const colorKey = item.colorKey ?? item.label;
+      return [
+        item.label,
+        overrides[colorKey] ?? palette[index % palette.length],
+      ];
+    }),
   );
 }
 
-function renderSeriesLegend(series, colors) {
+function renderSeriesLegend(series, colors, scope = null) {
   return `
     <div class="chart-legend editable-legend">
       ${series
-        .map(
-          (item) =>
-            `<span><i style="background:${colors.get(item.label)}"></i>${escapeHtml(item.label)}</span>`,
-        )
+        .map((item) => {
+          const colorKey = item.colorKey ?? item.label;
+          const color = colors.get(item.label);
+          return `
+            <span>
+              <input
+                class="legend-color-input"
+                type="color"
+                value="${escapeHtml(color)}"
+                data-series-color-scope="${escapeHtml(scope ?? "")}"
+                data-series-color-key="${escapeHtml(colorKey)}"
+                aria-label="${escapeHtml(item.label)} 색상 변경"
+              />
+              ${escapeHtml(item.label)}
+            </span>
+          `;
+        })
         .join("")}
     </div>
   `;
+}
+
+function bindSeriesColorEvents(container) {
+  for (const eventName of ["input", "change"]) {
+    container.addEventListener(eventName, (event) => {
+      if (!(event.target instanceof HTMLInputElement)) {
+        return;
+      }
+      updateSeriesColor(event.target);
+    });
+  }
+}
+
+function updateSeriesColor(input) {
+  if (input.type !== "color") {
+    return;
+  }
+  const scope = input.dataset.seriesColorScope;
+  const colorKey = input.dataset.seriesColorKey;
+  if (!scope || !colorKey) {
+    return;
+  }
+  const overrides = seriesColorOverrides(scope);
+  overrides[colorKey] = input.value;
+  storeSeriesColors(scope, overrides);
+  applySeriesColorToCurrentChart(scope, colorKey, input.value);
+}
+
+function seriesColorOverrides(scope) {
+  if (scope === "fl_round") {
+    return state.flRoundRunColors;
+  }
+  if (scope === "central_compare") {
+    return state.comparisonRunColors;
+  }
+  return {};
+}
+
+function applySeriesColorToCurrentChart(scope, colorKey, color) {
+  const containers =
+    scope === "fl_round"
+      ? [elements.flRoundChart]
+      : scope === "central_compare"
+        ? [elements.comparisonChart]
+        : [];
+  for (const container of containers) {
+    container
+      .querySelectorAll(`[data-series-color-key="${cssEscape(colorKey)}"]`)
+      .forEach((item) => {
+        item.style.setProperty("--series-color", color);
+      });
+    container
+      .querySelectorAll(
+        `.legend-color-input[data-series-color-key="${cssEscape(colorKey)}"]`,
+      )
+      .forEach((item) => {
+        item.value = color;
+      });
+  }
+}
+
+function loadStoredSeriesColors(scope) {
+  const storageKey = SERIES_COLOR_STORAGE_KEYS[scope];
+  if (!storageKey) {
+    return {};
+  }
+  try {
+    const rawValue = window.localStorage.getItem(storageKey);
+    const parsed = rawValue ? JSON.parse(rawValue) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed).filter(([_key, value]) =>
+        isHexColor(String(value)),
+      ),
+    );
+  } catch (_error) {
+    return {};
+  }
+}
+
+function storeSeriesColors(scope, colors) {
+  const storageKey = SERIES_COLOR_STORAGE_KEYS[scope];
+  if (!storageKey) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(colors));
+  } catch (_error) {
+    // localStorage가 막힌 환경에서는 현재 화면 상태만 유지한다.
+  }
+}
+
+function isHexColor(value) {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function cssEscape(value) {
+  if (window.CSS?.escape) {
+    return window.CSS.escape(value);
+  }
+  return String(value).replace(/["\\]/g, "\\$&");
 }
 
 function flRoundSeriesLabel(runId, row, metric, runCount, metricCount) {
