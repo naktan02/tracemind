@@ -6,6 +6,8 @@ import json
 import sqlite3
 from pathlib import Path
 
+import pytest
+
 from scripts.experiments.result_index.dashboard_export import write_dashboard_bundle
 from scripts.experiments.result_index.ingest import ingest_reports
 from scripts.experiments.result_index.report_loader import (
@@ -305,11 +307,17 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert [row["round_index"] for row in bundle["fl_ssl_rounds"]] == [0, 1, 2]
     assert bundle["fl_ssl_rounds"][1]["round_id"] == "round_0001"
     assert bundle["fl_ssl_rounds"][1]["update_count"] == 10
+    assert bundle["fl_ssl_rounds"][1]["accepted_ratio"] == pytest.approx(7 / 12)
+    assert bundle["fl_ssl_rounds"][1]["round_update_delta_l2_mean"] == pytest.approx(
+        1.1
+    )
+    assert bundle["fl_ssl_rounds"][1]["round_update_delta_l2_max"] == pytest.approx(1.1)
     assert bundle["fl_ssl_rounds"][2]["macro_f1_delta_from_initial"] == 0.08
     assert len(bundle["fl_ssl_client_rounds"]) == 2
     assert bundle["fl_ssl_client_rounds"][0]["client_id"] == "agent_01"
     assert bundle["fl_ssl_client_rounds"][0]["accepted_count"] == 7
     assert bundle["fl_ssl_client_rounds"][1]["delta_l2_norm"] == 1.25
+    assert bundle["fl_ssl_client_rounds"][1]["per_client_delta_l2_norm"] == 1.25
     assert bundle["fl_ssl_client_validations"][0]["client_id"] == "agent_01"
     assert bundle["fl_ssl_client_validations"][0]["client_validation_macro_f1"] == 0.41
     assert bundle["fl_ssl_client_splits"][0]["source"] == "client_validation"
@@ -318,6 +326,10 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
         "anxiety": 8,
         "normal": 12,
     }
+    assert bundle["projection_images"][0]["run_id"] == (
+        "fixmatch_lora_alpha03_10c_50round_20260518__20260517T150549Z"
+    )
+    assert bundle["projection_images"][0]["eval_set"] == "validation"
 
 
 def _write_report(tmp_path: Path) -> Path:
@@ -359,8 +371,13 @@ def _write_fl_ssl_report(tmp_path: Path) -> Path:
         / "fl_ssl_main_comparison.report.json"
     )
     report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    (projection_dir / "projection_manifest.json").write_text("{}\n", encoding="utf-8")
+    (projection_dir / "validation.projection.jsonl").write_text("", encoding="utf-8")
+    (projection_dir / "validation.projection.png").write_bytes(b"png")
     report_path.write_text(
-        json.dumps(_sample_fl_ssl_report(), indent=2) + "\n",
+        json.dumps(_sample_fl_ssl_report(projection_dir), indent=2) + "\n",
         encoding="utf-8",
     )
     return report_path
@@ -594,7 +611,7 @@ def _sample_report(projection_dir: Path) -> dict:
     }
 
 
-def _sample_fl_ssl_report() -> dict:
+def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
     validation_report = {
         "rows_total": 4,
         "loss": 0.5,
@@ -664,7 +681,7 @@ def _sample_fl_ssl_report() -> dict:
         **validation_report,
         "accepted_ratio": 0.5,
     }
-    return {
+    payload = {
         "schema_version": "federated_simulation_report.v1",
         "track": "fl_ssl_main_comparison",
         "table_role": "paper_main",
@@ -935,3 +952,22 @@ def _sample_fl_ssl_report() -> dict:
             },
         },
     }
+    if projection_dir is not None:
+        payload["diagnostics"] = {
+            "final_projection_artifacts": {
+                "enabled": True,
+                "manifest_path": str(projection_dir / "projection_manifest.json"),
+                "datasets": {
+                    "validation": {
+                        "reducer": "umap",
+                        "fallback_reason": None,
+                        "row_count": 4,
+                        "points_jsonl": str(
+                            projection_dir / "validation.projection.jsonl"
+                        ),
+                        "figure_png": str(projection_dir / "validation.projection.png"),
+                    }
+                },
+            }
+        }
+    return payload

@@ -134,6 +134,13 @@ def _build_fl_ssl_rounds(
         }
         metrics = _as_mapping(report_payload.get("metrics"))
         round_progression = _as_mapping(metrics.get("round_progression"))
+        diagnostics = _as_mapping(report_payload.get("diagnostics"))
+        aggregation_rounds = _round_payloads_by_id(
+            _as_mapping(diagnostics.get("aggregation")).get("rounds")
+        )
+        pseudo_label_rounds = _round_payloads_by_id(
+            _as_mapping(diagnostics.get("pseudo_label_quality")).get("rounds")
+        )
         validation_curve = [
             point
             for point in _as_sequence(round_progression.get("validation_curve"))
@@ -162,6 +169,13 @@ def _build_fl_ssl_rounds(
             delta_from_previous = _as_mapping(
                 round_record.get("delta_from_previous_round")
             )
+            aggregation_diagnostics = aggregation_rounds.get(round_id, {})
+            pseudo_label_diagnostics = pseudo_label_rounds.get(round_id, {})
+            client_delta_l2_norms = [
+                client.get("delta_l2_norm")
+                for client in _as_sequence(round_record.get("clients"))
+                if isinstance(client, dict)
+            ]
             rows.append(
                 {
                     "run_id": run_id,
@@ -189,6 +203,8 @@ def _build_fl_ssl_rounds(
                         validation.get("expected_calibration_error"),
                     ),
                     "accepted_ratio": _first_present(
+                        pseudo_label_diagnostics.get("accepted_ratio"),
+                        _pseudo_label_accepted_ratio(round_record),
                         point.get("accepted_ratio"),
                         validation.get("accepted_ratio"),
                     ),
@@ -196,6 +212,42 @@ def _build_fl_ssl_rounds(
                     "total_payload_bytes": round_record.get("total_payload_bytes"),
                     "round_time_seconds": round_record.get("round_time_seconds"),
                     "gpu_memory_peak_mb": round_record.get("gpu_memory_peak_mb"),
+                    "round_update_delta_l2_mean": _first_present(
+                        aggregation_diagnostics.get("mean_delta_l2_norm"),
+                        _mean_number(client_delta_l2_norms),
+                    ),
+                    "round_update_delta_l2_max": _first_present(
+                        aggregation_diagnostics.get("max_delta_l2_norm"),
+                        _max_number(client_delta_l2_norms),
+                    ),
+                    "round_update_delta_to_mean_l2_mean": _first_present(
+                        aggregation_diagnostics.get(
+                            "mean_delta_to_mean_l2_norm"
+                        ),
+                        aggregation_diagnostics.get(
+                            "round_update_delta_to_mean_l2_mean"
+                        ),
+                    ),
+                    "round_update_delta_to_mean_l2_max": _first_present(
+                        aggregation_diagnostics.get(
+                            "max_delta_to_mean_l2_norm"
+                        ),
+                        aggregation_diagnostics.get(
+                            "round_update_delta_to_mean_l2_max"
+                        ),
+                    ),
+                    "round_update_cosine_to_mean_mean": _first_present(
+                        aggregation_diagnostics.get("mean_cosine_to_mean"),
+                        aggregation_diagnostics.get(
+                            "round_update_cosine_to_mean_mean"
+                        ),
+                    ),
+                    "round_update_cosine_to_mean_min": _first_present(
+                        aggregation_diagnostics.get("min_cosine_to_mean"),
+                        aggregation_diagnostics.get(
+                            "round_update_cosine_to_mean_min"
+                        ),
+                    ),
                     "loss_delta_from_initial": delta_from_initial.get("loss_delta"),
                     "macro_f1_delta_from_initial": delta_from_initial.get(
                         "macro_f1_delta"
@@ -264,6 +316,12 @@ def _build_fl_ssl_client_rounds(
                             "aggregation_example_count"
                         ),
                         "delta_l2_norm": client.get("delta_l2_norm"),
+                        "per_client_delta_l2_norm": client.get("delta_l2_norm"),
+                        "per_client_delta_cosine_to_mean": _first_present(
+                            client.get("delta_cosine_to_mean"),
+                            client.get("cosine_to_mean"),
+                            client.get("per_client_delta_cosine_to_mean"),
+                        ),
                         "client_payload_bytes": client.get("client_payload_bytes"),
                         "client_train_time_seconds": client.get(
                             "client_train_time_seconds"
@@ -369,6 +427,55 @@ def _build_fl_ssl_client_validations(
                 }
             )
     return rows
+
+
+def _round_payloads_by_id(value: Any) -> dict[str, dict[str, Any]]:
+    rows: dict[str, dict[str, Any]] = {}
+    for item in _as_sequence(value):
+        payload = _as_mapping(item)
+        round_id = payload.get("round_id")
+        if round_id is not None:
+            rows[str(round_id)] = payload
+    return rows
+
+
+def _pseudo_label_accepted_ratio(round_record: dict[str, Any]) -> float | None:
+    clients = [
+        _as_mapping(client)
+        for client in _as_sequence(round_record.get("clients"))
+        if isinstance(client, dict)
+    ]
+    candidate_count = sum(
+        int(client.get("candidate_count") or 0) for client in clients
+    )
+    accepted_count = sum(int(client.get("accepted_count") or 0) for client in clients)
+    if candidate_count <= 0:
+        return None
+    return accepted_count / candidate_count
+
+
+def _mean_number(values: list[Any]) -> float | None:
+    numbers = [float(value) for value in values if _is_number(value)]
+    if not numbers:
+        return None
+    return sum(numbers) / len(numbers)
+
+
+def _max_number(values: list[Any]) -> float | None:
+    numbers = [float(value) for value in values if _is_number(value)]
+    if not numbers:
+        return None
+    return max(numbers)
+
+
+def _is_number(value: Any) -> bool:
+    if value is None:
+        return False
+    try:
+        float(value)
+    except (TypeError, ValueError):
+        return False
+    return True
 
 
 def _build_fl_ssl_client_splits(

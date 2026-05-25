@@ -6,6 +6,22 @@ const FL_ROUND_METRICS = [
   "expected_calibration_error",
   "loss",
   "accepted_ratio",
+  "update_count",
+  "total_payload_bytes",
+  "round_time_seconds",
+  "gpu_memory_peak_mb",
+  "macro_f1_delta_from_initial",
+  "macro_f1_delta_from_previous",
+  "loss_delta_from_initial",
+  "loss_delta_from_previous",
+  "ece_delta_from_initial",
+  "accepted_ratio_delta_from_initial",
+  "round_update_delta_l2_mean",
+  "round_update_delta_l2_max",
+  "round_update_delta_to_mean_l2_mean",
+  "round_update_delta_to_mean_l2_max",
+  "round_update_cosine_to_mean_mean",
+  "round_update_cosine_to_mean_min",
 ];
 const DEFAULT_FL_FILTER_AXIS_IDS = ["round_count", "method"];
 const FL_FILTER_AXIS_IDS = [
@@ -744,7 +760,7 @@ function renderFlRoundPanel() {
   if (rows.length === 0) {
     elements.flRoundChart.innerHTML =
       `<p class="empty">선택한 run들의 round curve가 없습니다.</p>`;
-    elements.flRoundTable.innerHTML = emptyTableRow(9, "round row 없음");
+    elements.flRoundTable.innerHTML = emptyTableRow(13, "round row 없음");
     return;
   }
   elements.flRoundChart.innerHTML = drawFlRoundLines(rows, state.flRoundMetric);
@@ -761,6 +777,10 @@ function renderFlRoundPanel() {
           <td>${formatCount(row.update_count)}</td>
           <td>${formatCount(row.total_payload_bytes)}</td>
           <td>${formatSeconds(row.round_time_seconds)}</td>
+          <td>${formatMegabytes(row.gpu_memory_peak_mb)}</td>
+          <td>${formatMetric(row.round_update_delta_l2_mean)}</td>
+          <td>${formatMetric(row.round_update_delta_l2_max)}</td>
+          <td>${formatMetric(row.round_update_cosine_to_mean_mean)}</td>
         </tr>
       `,
     )
@@ -814,7 +834,7 @@ function renderFlClientRoundPanel() {
   );
   if (selectedRows.length === 0) {
     elements.flClientRoundTable.innerHTML = emptyTableRow(
-      9,
+      10,
       "선택한 run/round의 client update row가 없습니다.",
     );
     return;
@@ -828,7 +848,8 @@ function renderFlClientRoundPanel() {
           <td>${formatCount(row.accepted_count)}</td>
           <td>${formatMetric(row.accepted_ratio)}</td>
           <td>${boolLabel(row.update_generated)}</td>
-          <td>${formatMetric(row.delta_l2_norm)}</td>
+          <td>${formatMetric(row.per_client_delta_l2_norm ?? row.delta_l2_norm)}</td>
+          <td>${formatMetric(row.per_client_delta_cosine_to_mean)}</td>
           <td>${formatCount(row.client_payload_bytes)}</td>
           <td>${formatSeconds(row.client_train_time_seconds)}</td>
           <td>${formatMetric(row.pseudo_label_accuracy)}</td>
@@ -2666,6 +2687,14 @@ function formatBytes(value) {
   return `${formatMetric(signed)} ${units[unitIndex]}`;
 }
 
+function formatMegabytes(value) {
+  const number = numberOrNull(value);
+  if (number === null) {
+    return "-";
+  }
+  return `${formatMetric(number)} MB`;
+}
+
 function formatSeconds(value) {
   const number = numberOrNull(value);
   if (number === null) {
@@ -2703,10 +2732,26 @@ function escapeHtml(value) {
 }
 
 function metricLabel(metric) {
-  if (metric === "expected_calibration_error") {
-    return "ece";
-  }
-  return metric;
+  const labels = {
+    expected_calibration_error: "ece",
+    update_count: "updates",
+    total_payload_bytes: "payload bytes",
+    round_time_seconds: "round seconds",
+    gpu_memory_peak_mb: "gpu peak MB",
+    macro_f1_delta_from_initial: "F1 Δ init",
+    macro_f1_delta_from_previous: "F1 Δ prev",
+    loss_delta_from_initial: "loss Δ init",
+    loss_delta_from_previous: "loss Δ prev",
+    ece_delta_from_initial: "ece Δ init",
+    accepted_ratio_delta_from_initial: "accepted Δ init",
+    round_update_delta_l2_mean: "update L2 mean",
+    round_update_delta_l2_max: "update L2 max",
+    round_update_delta_to_mean_l2_mean: "to-mean L2 mean",
+    round_update_delta_to_mean_l2_max: "to-mean L2 max",
+    round_update_cosine_to_mean_mean: "cos-to-mean mean",
+    round_update_cosine_to_mean_min: "cos-to-mean min",
+  };
+  return labels[metric] ?? metric;
 }
 
 function shortSplit(selectionSlug) {

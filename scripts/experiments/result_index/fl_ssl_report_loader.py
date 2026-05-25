@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +15,7 @@ from scripts.experiments.result_index.record_builders import (
     build_confusion_matrix_cells,
     build_eval_metric,
     build_per_class_metrics,
+    build_projection_artifacts,
 )
 from scripts.experiments.result_index.report_parsing import (
     as_mapping,
@@ -180,6 +182,15 @@ def load_fl_ssl_result_index_records(
                 fallback_reason=None,
             )
         )
+    artifacts.extend(
+        build_projection_artifacts(
+            run_id=run_id,
+            projection_artifacts=_load_fl_ssl_projection_artifacts(
+                report_path=report_path,
+                payload=payload,
+            ),
+        )
+    )
 
     return ResultIndexRecords(
         run=run,
@@ -190,6 +201,46 @@ def load_fl_ssl_result_index_records(
         epoch_per_class_metrics=(),
         artifacts=tuple(artifacts),
     )
+
+
+def _load_fl_ssl_projection_artifacts(
+    *,
+    report_path: Path,
+    payload: dict[str, Any],
+) -> dict[str, Any]:
+    diagnostics = as_mapping(payload.get("diagnostics"))
+    projection_artifacts = as_mapping(diagnostics.get("final_projection_artifacts"))
+    if projection_artifacts and _projection_artifacts_have_existing_figures(
+        projection_artifacts
+    ):
+        return projection_artifacts
+
+    manifest_path = (
+        report_path.parent.parent / "projections" / "projection_manifest.json"
+    )
+    if not manifest_path.exists():
+        return {}
+    try:
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+    return {
+        "enabled": True,
+        "manifest_path": str(manifest_path),
+        "datasets": as_mapping(manifest.get("datasets")),
+    }
+
+
+def _projection_artifacts_have_existing_figures(
+    projection_artifacts: dict[str, Any],
+) -> bool:
+    datasets = as_mapping(projection_artifacts.get("datasets"))
+    figure_paths = [
+        entry.get("figure_png")
+        for entry in datasets.values()
+        if isinstance(entry, dict) and entry.get("figure_png")
+    ]
+    return bool(figure_paths) and all(Path(str(path)).exists() for path in figure_paths)
 
 
 def infer_fl_method_family(
