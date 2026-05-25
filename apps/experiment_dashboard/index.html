@@ -100,6 +100,7 @@
                       <tr>
                         <th>run</th>
                         <th>method</th>
+                        <th>adapter</th>
                         <th>split</th>
                         <th>lr</th>
                         <th>clf lr</th>
@@ -137,6 +138,10 @@
                     <option value="vertical_bar">Vertical Bar</option>
                     <option value="line">Line</option>
                   </select>
+                </label>
+                <label class="checkbox-field">
+                  <input id="comparison-include-initial" type="checkbox" checked />
+                  <span>Init 포함</span>
                 </label>
               </div>
               <p class="filter-hint dark">
@@ -391,6 +396,10 @@
                 curve다. 클라이언트별 local update 통계는 Clients 탭에서 본다.
               </p>
               <p id="fl-round-flat-note" class="notice warning" hidden></p>
+              <label class="checkbox-field">
+                <input id="fl-round-include-initial" type="checkbox" checked />
+                <span>Init 포함</span>
+              </label>
               <div
                 id="fl-round-metric-picker"
                 class="metric-tabs"
@@ -565,6 +574,6 @@
       </main>
     </div>
 
-    <script src="./src/app.js?v=20260526-editable-series-colors" type="module"></script>
+    <script src="./src/app.js?v=20260526-init-toggle-lora-display" type="module"></script>
   </body>
 </html>

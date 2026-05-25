@@ -149,6 +149,7 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
     runtime_metrics = as_mapping(manifest.get("runtime_metrics"))
     initial_checkpoint = as_mapping(manifest.get("query_adaptation_initial_checkpoint"))
     run_control = as_mapping(manifest.get("run_control"))
+    lora_config = as_mapping(as_mapping(manifest.get("backbone")).get("lora"))
 
     run = ExperimentRunRecord(
         run_id=trainer_version,
@@ -193,6 +194,16 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         trainable_param_ratio=optional_float(
             runtime_metrics.get("trainable_param_ratio")
         ),
+        peft_adapter_name=optional_str(
+            lora_config.get("adapter_name") or lora_config.get("peft_adapter_name")
+        ),
+        lora_rank=optional_int(lora_config.get("rank")),
+        lora_alpha=optional_int(lora_config.get("alpha")),
+        lora_dropout=optional_float(lora_config.get("dropout")),
+        lora_bias=optional_str(lora_config.get("bias")),
+        lora_target_modules=optional_str(lora_config.get("target_modules")),
+        lora_use_rslora=_optional_bool(lora_config.get("use_rslora")),
+        lora_use_dora=_optional_bool(lora_config.get("use_dora")),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_root")),
         client_count=None,
@@ -332,6 +343,21 @@ def _parse_selection_slug(selection_slug: str | None) -> dict[str, str | None]:
         }
     )
     return names
+
+
+def _optional_bool(value: object) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    return None
 
 
 def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:

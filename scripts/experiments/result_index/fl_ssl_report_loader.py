@@ -111,6 +111,18 @@ def load_fl_ssl_result_index_records(
         training_example_count=None,
         examples_per_second=None,
         trainable_param_ratio=None,
+        peft_adapter_name=optional_str(
+            objective.get("lora_classifier.peft_adapter_name")
+        ),
+        lora_rank=optional_int(objective.get("lora_classifier.rank")),
+        lora_alpha=optional_int(objective.get("lora_classifier.alpha")),
+        lora_dropout=optional_float(objective.get("lora_classifier.dropout")),
+        lora_bias=optional_str(objective.get("lora_classifier.bias")),
+        lora_target_modules=optional_str(
+            objective.get("lora_classifier.target_modules")
+        ),
+        lora_use_rslora=_optional_bool(objective.get("lora_classifier.use_rslora")),
+        lora_use_dora=_optional_bool(objective.get("lora_classifier.use_dora")),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_dir")),
         client_count=optional_int(protocol.get("client_count")),
@@ -259,6 +271,21 @@ def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | Non
     if proximal_mu is not None and proximal_mu > 0:
         return "fedprox", proximal_mu
     return "none", None
+
+
+def _optional_bool(value: object) -> bool | None:
+    if value is None:
+        return None
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, int | float):
+        return bool(value)
+    text = str(value).strip().lower()
+    if text in {"true", "1", "yes", "y"}:
+        return True
+    if text in {"false", "0", "no", "n"}:
+        return False
+    return None
 
 
 def infer_fl_ssl_run_id(report_path: Path) -> str:

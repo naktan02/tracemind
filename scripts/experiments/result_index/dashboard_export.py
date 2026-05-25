@@ -173,6 +173,11 @@ def _build_filters(
         "classifier_learning_rates": _unique(
             row.get("classifier_learning_rate") for row in runs
         ),
+        "peft_adapter_names": _unique(row.get("peft_adapter_name") for row in runs),
+        "lora_ranks": _unique(row.get("lora_rank") for row in runs),
+        "lora_alphas": _unique(row.get("lora_alpha") for row in runs),
+        "lora_use_rslora_values": _unique(row.get("lora_use_rslora") for row in runs),
+        "lora_use_dora_values": _unique(row.get("lora_use_dora") for row in runs),
         "run_control_budget_names": _unique(
             row.get("run_control_budget_name") for row in runs
         ),

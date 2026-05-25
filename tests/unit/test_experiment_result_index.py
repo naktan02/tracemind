@@ -36,6 +36,13 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.run.test_dataset_name == "ourafla_reddit"
     assert records.run.run_control_budget_name == "main"
     assert records.run.run_control_output_dir == "runs"
+    assert records.run.peft_adapter_name == "lora"
+    assert records.run.lora_rank == 8
+    assert records.run.lora_alpha == 16
+    assert records.run.lora_dropout == 0.1
+    assert records.run.lora_bias == "none"
+    assert records.run.lora_target_modules == "all-linear"
+    assert records.run.lora_use_rslora is False
     assert records.eval_metrics[0].macro_f1 == 0.78
     assert records.per_class_metrics[0].category == "anxiety"
     assert records.confusion_matrix_cells[0].actual_category == "anxiety"
@@ -118,6 +125,8 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "run_control_output_dir" in columns
     assert "labeled_row_exposure_count" in columns
     assert "unique_labeled_row_count" in columns
+    assert "lora_rank" in columns
+    assert "lora_use_dora" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -161,6 +170,12 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.fl_execution_role == "manual_baseline"
     assert records.run.fl_descriptor_name is None
     assert records.run.update_delta_format == "server_uploaded_artifact_ref"
+    assert records.run.peft_adapter_name == "lora"
+    assert records.run.lora_rank == 8
+    assert records.run.lora_alpha == 16
+    assert records.run.lora_dropout == 0.1
+    assert records.run.lora_target_modules == "all-linear"
+    assert records.run.lora_use_rslora is False
     assert records.run.embedding_backend == "transformers_mxbai"
     assert records.run.embedding_device == "cuda"
     assert records.eval_metrics[1].eval_set == "final_validation"
@@ -288,6 +303,10 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["filters"]["round_budgets"] == [50]
     assert bundle["filters"]["shard_alphas"] == [0.3]
     assert bundle["filters"]["adapter_families"] == ["lora_classifier"]
+    assert bundle["filters"]["peft_adapter_names"] == ["lora"]
+    assert bundle["filters"]["lora_ranks"] == [8]
+    assert bundle["filters"]["lora_alphas"] == [16]
+    assert bundle["filters"]["lora_use_rslora_values"] == [False]
     assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
     assert bundle["filters"]["update_delta_formats"] == ["server_uploaded_artifact_ref"]
     assert bundle["filters"]["embedding_backends"] == ["transformers_mxbai"]
@@ -495,6 +514,17 @@ def _sample_report(projection_dir: Path) -> dict:
             "learning_rate": 0.0002,
             "classifier_learning_rate": 0.0002,
             "categories": ["anxiety", "normal"],
+            "backbone": {
+                "lora": {
+                    "adapter_name": "lora",
+                    "rank": 8,
+                    "alpha": 16,
+                    "dropout": 0.1,
+                    "bias": "none",
+                    "target_modules": "all-linear",
+                    "use_rslora": False,
+                }
+            },
             "history": [
                 {
                     "epoch": 1,
@@ -753,6 +783,13 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             "objective": {
                 "query_ssl.method_name": "fixmatch_usb_v1",
                 "query_ssl.algorithm_name": "fixmatch",
+                "lora_classifier.peft_adapter_name": "lora",
+                "lora_classifier.rank": 8,
+                "lora_classifier.alpha": 16,
+                "lora_classifier.dropout": 0.1,
+                "lora_classifier.bias": "none",
+                "lora_classifier.target_modules": "all-linear",
+                "lora_classifier.use_rslora": False,
                 "lora_classifier.delta_format": "server_uploaded_artifact_ref",
             },
             "embedding_adapter": {

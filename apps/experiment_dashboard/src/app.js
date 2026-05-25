@@ -51,6 +51,8 @@ const DEFAULT_FL_FILTER_AXIS_IDS = ["round_count", "method"];
 const FL_FILTER_AXIS_IDS = [
   "method",
   "local_regularizer",
+  "peft_adapter",
+  "lora_rank",
   "data_pair",
   "label_budget",
   "round_count",
@@ -73,6 +75,7 @@ const state = {
   comparisonMethodName: null,
   comparisonSelectionTouched: false,
   comparisonRunColors: loadStoredSeriesColors("central_compare"),
+  comparisonIncludeInitial: true,
   classEvalSet: "validation",
   classMetric: "f1",
   selectedRunIds: [],
@@ -93,6 +96,7 @@ const state = {
   flRoundSelectionTouched: false,
   flRoundRunAliases: {},
   flRoundRunColors: loadStoredSeriesColors("fl_round"),
+  flRoundIncludeInitial: true,
   flRoundMetric: "macro_f1",
   flClientValidationRunId: null,
   flClientRoundRunId: null,
@@ -115,6 +119,7 @@ const elements = {
   overviewMetricFilter: document.querySelector("#overview-metric-filter"),
   comparisonEvalFilter: document.querySelector("#comparison-eval-filter"),
   comparisonChartType: document.querySelector("#comparison-chart-type"),
+  comparisonIncludeInitial: document.querySelector("#comparison-include-initial"),
   metricPicker: document.querySelector("#metric-picker"),
   comparisonMethodFilter: document.querySelector("#comparison-method-filter"),
   comparisonRunCheckboxes: document.querySelector("#comparison-run-checkboxes"),
@@ -149,6 +154,7 @@ const elements = {
   flRoundSelectedRunCards: document.querySelector(
     "#fl-round-selected-run-cards",
   ),
+  flRoundIncludeInitial: document.querySelector("#fl-round-include-initial"),
   flRoundMetricPicker: document.querySelector("#fl-round-metric-picker"),
   flRoundFlatNote: document.querySelector("#fl-round-flat-note"),
   flRoundChart: document.querySelector("#fl-round-chart"),
@@ -264,6 +270,10 @@ function bindEvents() {
   });
   elements.comparisonChartType.addEventListener("change", (event) => {
     state.comparisonChartType = event.target.value;
+    render();
+  });
+  elements.comparisonIncludeInitial.addEventListener("change", (event) => {
+    state.comparisonIncludeInitial = event.target.checked;
     render();
   });
   elements.metricPicker.addEventListener("click", (event) => {
@@ -448,6 +458,10 @@ function bindEvents() {
       return;
     }
     state.flRoundMetric = event.target.dataset.flRoundMetric ?? state.flRoundMetric;
+    render();
+  });
+  elements.flRoundIncludeInitial.addEventListener("change", (event) => {
+    state.flRoundIncludeInitial = event.target.checked;
     render();
   });
   bindSeriesColorEvents(elements.flRoundChart);
@@ -826,6 +840,7 @@ function renderFlRunSelectors(rows) {
 
 function renderFlRoundPanel() {
   const rows = flRoundRowsForSelectedRuns();
+  elements.flRoundIncludeInitial.checked = state.flRoundIncludeInitial;
   renderFlRoundFlatNote(rows);
   if (rows.length === 0) {
     elements.flRoundChart.innerHTML =
@@ -1319,6 +1334,8 @@ function flFilterAxis(axisId) {
   const labels = {
     method: "Method",
     local_regularizer: "Regularizer",
+    peft_adapter: "PEFT Adapter",
+    lora_rank: "LoRA Rank",
     data_pair: "Labeled / Unlabeled",
     label_budget: "Label Budget",
     round_count: "Round Count",
@@ -1350,6 +1367,8 @@ function flFilterOptions(rows, axisId) {
 function flFilterValue(row, axisId) {
   if (axisId === "method") return flMethodName(row);
   if (axisId === "local_regularizer") return flLocalRegularizerLabel(row);
+  if (axisId === "peft_adapter") return loraVariantLabel(row);
+  if (axisId === "lora_rank") return String(row.lora_rank ?? "-");
   if (axisId === "data_pair") return flDataSourceLabel(row);
   if (axisId === "label_budget") return flLabelBudgetLabel(row);
   if (axisId === "round_count") return String(flRoundCountForRun(row) ?? "-");
@@ -1368,6 +1387,7 @@ function flFilterLabel(row, axisId) {
   if (axisId === "client_count") return `${row.client_count ?? "-"} clients`;
   if (axisId === "seed") return `seed ${row.seed ?? "-"}`;
   if (axisId === "shard_alpha") return `alpha ${formatMetric(row.shard_alpha)}`;
+  if (axisId === "lora_rank") return `rank ${row.lora_rank ?? "-"}`;
   return flFilterValue(row, axisId);
 }
 
@@ -1436,6 +1456,10 @@ function flRoundRowsForSelectedRuns() {
   const selectedRunIds = new Set(state.flRoundRunIds);
   return flRoundRows()
     .filter((row) => selectedRunIds.has(row.run_id))
+    .filter(
+      (row) =>
+        state.flRoundIncludeInitial || numberOrNull(row.round_index) !== 0,
+    )
     .sort(compareFlRoundRows);
 }
 
@@ -1496,6 +1520,7 @@ function flRunDescriptor(row) {
     flDataSourceLabel(row),
     flLabelBudgetLabel(row),
     `adapter=${row.adapter_family_name ?? roundRuntime.adapter_family_name ?? "-"}`,
+    loraConfigLabel(row),
     `agg=${row.aggregation_backend_name ?? roundRuntime.aggregation_backend_name ?? "-"}`,
     `regularizer=${flLocalRegularizerLabel(row)}`,
     `clients=${row.client_count ?? protocol.client_count ?? "-"}`,
@@ -2197,10 +2222,35 @@ function rowsWithProjection(rows) {
 
 function runDescriptor(row) {
   return [
+    loraConfigLabel(row),
     `lr=${formatMetric(row.learning_rate)}`,
     `clf=${formatMetric(row.classifier_learning_rate)}`,
     shortSplit(row.selection_slug),
   ].join(" · ");
+}
+
+function loraConfigLabel(row) {
+  const rank = row.lora_rank ?? "-";
+  const alpha = row.lora_alpha ?? "-";
+  const dropout = row.lora_dropout ?? "-";
+  return [
+    `peft=${loraVariantLabel(row)}`,
+    `r=${rank}`,
+    `alpha=${alpha}`,
+    `dropout=${dropout}`,
+  ].join(" · ");
+}
+
+function loraVariantLabel(row) {
+  const adapterName = row.peft_adapter_name ?? "-";
+  const modifiers = [];
+  if (row.lora_use_rslora) {
+    modifiers.push("rs");
+  }
+  if (row.lora_use_dora) {
+    modifiers.push("dora");
+  }
+  return modifiers.length > 0 ? `${adapterName}+${modifiers.join("+")}` : adapterName;
 }
 
 function compareMetric(a, b, metric) {
@@ -2231,6 +2281,7 @@ function card(label, value) {
 function renderComparisonChart(rows) {
   const selectedRows = rows.filter((row) => state.selectedRunIds.includes(row.run_id));
   const metric = state.comparisonMetric;
+  elements.comparisonIncludeInitial.checked = state.comparisonIncludeInitial;
   if (!metric) {
     elements.comparisonChart.innerHTML = `<p class="empty">비교할 epoch metric을 선택하세요.</p>`;
     return;
@@ -2487,6 +2538,9 @@ function centralEpochPoints(runId, metric) {
 
 function centralLinePoints(row, metric) {
   const points = centralEpochPoints(row.run_id, metric);
+  if (!state.comparisonIncludeInitial) {
+    return points;
+  }
   const initialPoint = centralInitialEpochPoint(row, metric);
   if (!initialPoint || points.some((point) => point.epoch === 0)) {
     return points;
@@ -2522,9 +2576,25 @@ function centralInitialRunFor(row) {
   return state.bundle.runs.find(
     (candidate) =>
       candidate.track === CENTRAL_INITIAL_EVAL_TRACK &&
-      candidate.selection_slug === row.selection_slug &&
-      candidate.seed === row.seed,
+      candidate.seed === row.seed &&
+      candidate.validation_dataset_name === row.validation_dataset_name &&
+      candidate.test_dataset_name === row.test_dataset_name &&
+      sameLoraConfig(candidate, row),
   );
+}
+
+function sameLoraConfig(left, right) {
+  const keys = [
+    "peft_adapter_name",
+    "lora_rank",
+    "lora_alpha",
+    "lora_dropout",
+    "lora_bias",
+    "lora_target_modules",
+    "lora_use_rslora",
+    "lora_use_dora",
+  ];
+  return keys.every((key) => String(left[key] ?? "") === String(right[key] ?? ""));
 }
 
 function seriesHasEpochZero(series) {
@@ -2709,6 +2779,7 @@ function renderRunTable(rows) {
       <tr class="${state.selectedRunIds.includes(row.run_id) ? "selected" : ""}">
         <td><button type="button" data-run-id="${row.run_id}">${shortRun(row.run_id)}</button></td>
         <td>${row.method_name}</td>
+        <td>${loraConfigLabel(row)}</td>
         <td>${shortSplit(row.selection_slug)}</td>
         <td>${formatMetric(row.learning_rate)}</td>
         <td>${formatMetric(row.classifier_learning_rate)}</td>

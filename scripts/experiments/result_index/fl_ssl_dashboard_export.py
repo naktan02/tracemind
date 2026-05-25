@@ -221,32 +221,24 @@ def _build_fl_ssl_rounds(
                         _max_number(client_delta_l2_norms),
                     ),
                     "round_update_delta_to_mean_l2_mean": _first_present(
-                        aggregation_diagnostics.get(
-                            "mean_delta_to_mean_l2_norm"
-                        ),
+                        aggregation_diagnostics.get("mean_delta_to_mean_l2_norm"),
                         aggregation_diagnostics.get(
                             "round_update_delta_to_mean_l2_mean"
                         ),
                     ),
                     "round_update_delta_to_mean_l2_max": _first_present(
-                        aggregation_diagnostics.get(
-                            "max_delta_to_mean_l2_norm"
-                        ),
+                        aggregation_diagnostics.get("max_delta_to_mean_l2_norm"),
                         aggregation_diagnostics.get(
                             "round_update_delta_to_mean_l2_max"
                         ),
                     ),
                     "round_update_cosine_to_mean_mean": _first_present(
                         aggregation_diagnostics.get("mean_cosine_to_mean"),
-                        aggregation_diagnostics.get(
-                            "round_update_cosine_to_mean_mean"
-                        ),
+                        aggregation_diagnostics.get("round_update_cosine_to_mean_mean"),
                     ),
                     "round_update_cosine_to_mean_min": _first_present(
                         aggregation_diagnostics.get("min_cosine_to_mean"),
-                        aggregation_diagnostics.get(
-                            "round_update_cosine_to_mean_min"
-                        ),
+                        aggregation_diagnostics.get("round_update_cosine_to_mean_min"),
                     ),
                     "loss_delta_from_initial": delta_from_initial.get("loss_delta"),
                     "macro_f1_delta_from_initial": delta_from_initial.get(
@@ -445,9 +437,7 @@ def _pseudo_label_accepted_ratio(round_record: dict[str, Any]) -> float | None:
         for client in _as_sequence(round_record.get("clients"))
         if isinstance(client, dict)
     ]
-    candidate_count = sum(
-        int(client.get("candidate_count") or 0) for client in clients
-    )
+    candidate_count = sum(int(client.get("candidate_count") or 0) for client in clients)
     accepted_count = sum(int(client.get("accepted_count") or 0) for client in clients)
     if candidate_count <= 0:
         return None
