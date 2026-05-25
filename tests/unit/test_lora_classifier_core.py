@@ -8,6 +8,13 @@ import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    compute_fedprox_proximal_loss,
+    snapshot_trainable_parameters,
+)
+from methods.adaptation.lora_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
 from methods.adaptation.lora_classifier.training.loops import (
     evaluate_classifier,
     train_classifier,
@@ -81,6 +88,14 @@ def test_lora_text_classifier_train_step_and_evaluation() -> None:
     assert selection_report["rows_total"] == 2
     assert evaluation["rows_total"] == 2
     assert set(evaluation["per_category"]) == {"anxiety", "normal"}
+
+
+def test_lora_classifier_config_accepts_fedprox_mu() -> None:
+    config = LoraClassifierTrainingBackendConfig.from_mapping(
+        {"proximal_mu": 0.01}
+    )
+
+    assert config.proximal_mu == 0.01
 
 
 class _CountingQuerySslAlgorithm:
@@ -165,6 +180,67 @@ def test_query_ssl_training_stops_at_max_train_steps() -> None:
     assert algorithm.num_train_iter == 3
     assert algorithm.steps == 3
     assert len(history) == 3
+
+
+def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:
+    torch.manual_seed(7)
+    model = LoraTextClassifier(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    trainable_parameters = tuple(model.classifier.parameters())
+    snapshot = snapshot_trainable_parameters(trainable_parameters)
+
+    initial_loss = compute_fedprox_proximal_loss(
+        trainable_parameters=trainable_parameters,
+        reference_snapshot=snapshot,
+    )
+    with torch.no_grad():
+        model.classifier.bias.add_(1.0)
+    drifted_loss = compute_fedprox_proximal_loss(
+        trainable_parameters=trainable_parameters,
+        reference_snapshot=snapshot,
+    )
+
+    assert initial_loss.item() == 0.0
+    assert drifted_loss.item() > 0.0
+
+
+def test_query_ssl_training_records_fedprox_proximal_loss() -> None:
+    torch.manual_seed(7)
+    model = LoraTextClassifier(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+
+    _, history, _ = train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=3,
+        max_train_steps=3,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=_CountingQuerySslAlgorithm(),
+        proximal_mu=0.1,
+    )
+
+    proximal_losses = [
+        float(record.get("train_fedprox_proximal_loss", 0.0))
+        for record in history
+    ]
+    assert proximal_losses[0] == 0.0
+    assert max(proximal_losses[1:]) > 0.0
 
 
 def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(

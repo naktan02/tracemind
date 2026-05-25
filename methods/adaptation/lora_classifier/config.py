@@ -7,6 +7,7 @@ from dataclasses import dataclass
 
 from methods.common.config_reading import (
     read_bool,
+    read_float,
     read_positive_int,
     read_str,
     read_str_tuple,
@@ -41,6 +42,7 @@ _STRING_CONFIG_KEYS = (
 _ALLOW_EMPTY_STRING_CONFIG_KEYS = ("task_prefix",)
 _POSITIVE_INT_CONFIG_KEYS = ("max_length", "rank", "alpha")
 _FLOAT_CONFIG_KEYS = ("dropout",)
+_NON_NEGATIVE_FLOAT_CONFIG_KEYS = ("proximal_mu",)
 _BOOL_CONFIG_KEYS = ("use_rslora",)
 _STRING_TUPLE_CONFIG_KEYS = ("text_metadata_keys", "label_schema")
 _CONFIG_EXTRA_KEYS = frozenset(
@@ -49,6 +51,7 @@ _CONFIG_EXTRA_KEYS = frozenset(
         *_ALLOW_EMPTY_STRING_CONFIG_KEYS,
         *_POSITIVE_INT_CONFIG_KEYS,
         *_FLOAT_CONFIG_KEYS,
+        *_NON_NEGATIVE_FLOAT_CONFIG_KEYS,
         *_BOOL_CONFIG_KEYS,
         *_STRING_TUPLE_CONFIG_KEYS,
     }
@@ -70,6 +73,7 @@ class LoraClassifierTrainingBackendConfig:
     rank: int = 8
     alpha: int = 16
     dropout: float = 0.1
+    proximal_mu: float = 0.0
     bias: str = "none"
     target_modules: str = "all-linear"
     use_rslora: bool = False
@@ -105,6 +109,8 @@ class LoraClassifierTrainingBackendConfig:
             raise ValueError("alpha must be positive.")
         if not 0.0 <= self.dropout <= 1.0:
             raise ValueError("dropout must be between 0 and 1.")
+        if self.proximal_mu < 0.0:
+            raise ValueError("proximal_mu must be non-negative.")
         set_normalized_str(self, "bias", self.bias)
         set_normalized_str(self, "target_modules", self.target_modules)
         set_normalized_str(self, "delta_format", self.delta_format)
@@ -156,6 +162,8 @@ class LoraClassifierTrainingBackendConfig:
             values[key] = read_positive_int(source, key, getattr(defaults, key))
         for key in _FLOAT_CONFIG_KEYS:
             values[key] = read_unit_interval_float(source, key, getattr(defaults, key))
+        for key in _NON_NEGATIVE_FLOAT_CONFIG_KEYS:
+            values[key] = read_float(source, key, getattr(defaults, key))
         for key in _BOOL_CONFIG_KEYS:
             values[key] = read_bool(source, key, getattr(defaults, key))
         for key in _STRING_TUPLE_CONFIG_KEYS:

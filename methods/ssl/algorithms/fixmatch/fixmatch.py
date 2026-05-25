@@ -16,10 +16,10 @@ from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
 )
+from ...hooks.supervised import compute_labeled_cross_entropy_loss
 from ...registry import register_query_ssl_algorithm
 from ..usb_consistency import (
     USB_MULTIVIEW_REQUIRED_VIEWS,
-    compute_labeled_cross_entropy_loss,
     compute_unlabeled_weak_strong_logits,
     validate_usb_consistency_loaders,
 )

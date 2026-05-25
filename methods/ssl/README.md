@@ -20,3 +20,23 @@ mutable hook dict와 문자열 lookup 대신 `SslObjectiveHooks` typed bundle로
 pseudo-labeling, masking, consistency loss role을 명시한다. Algorithm-local hook은
 처음에는 해당 `algorithms/<method>/`에 두고, 두 개 이상 algorithm에서 안정적으로
 공유될 때만 `methods/ssl/hooks/`로 승격한다.
+
+새 SSL 방법론을 추가할 때는 먼저 기존 축 조합으로 표현되는지 확인한다.
+
+- view requirement
+- supervised branch
+- pseudo-label generator
+- confidence selector 또는 weighting
+- consistency loss
+- distribution alignment
+- teacher 또는 memory state
+- mix strategy
+- adversarial perturbation
+
+기존 축 조합이면 `methods/ssl/algorithms/<method>/`와 Hydra leaf, 테스트만 추가한다.
+새 primitive가 필요하면 method-local helper에 숨기지 말고 `methods/ssl/hooks/` 등
+가장 가까운 공통 owner에 축 구현을 함께 추가한다. FedProx처럼 SSL method가 아니라
+local training loss에 붙는 regularizer는 `methods/adaptation/local_objective_regularizers/`
+가 소유한다. SCAFFOLD/FedDyn처럼 FL round/server/client state를 요구하는 방법론은
+`methods/ssl` 내부 hook으로 처리하지 않고 `methods/federated_ssl/` capability 분리를
+함께 진행한다.

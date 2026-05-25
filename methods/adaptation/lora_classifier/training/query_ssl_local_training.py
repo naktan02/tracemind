@@ -255,6 +255,7 @@ def run_query_ssl_lora_classifier_training_core(
             learning_rate=float(training_task.learning_rate),
             classifier_learning_rate=float(training_task.learning_rate),
             weight_decay=0.0,
+            proximal_mu=float(lora_config.proximal_mu),
             max_grad_norm=(
                 0.0
                 if training_task.gradient_clip_norm is None

@@ -11,6 +11,7 @@
 - shared adapter scoring과 privacy guard 계산 방식
 - federated aggregation의 순수 계산 core
 - FL-SSL composition에서 재사용되는 method 조립 규칙
+- FedProx 같은 adapter-family 중립 local objective regularizer 계산
 - FL SSL method별 local objective, server policy, round policy 의미
 - prototype scoring/evidence 같은 local inference/training 공통 mechanism
 - prototype 기반 학습 input view 계산
@@ -47,6 +48,11 @@ core interface로 변환하는 adapter만 소유한다.
 aggregation 변형을 묶는다. 반대로 두 개 이상 방법론에서 재사용되는 SSL hook,
 aggregation backend, adapter projection, prototype builder는 축별 패키지로 승격한다.
 이 기준은 method 응집도와 교체 가능한 core 재사용성을 동시에 지키기 위한 것이다.
+새 방법론이 기존 algorithm file 하나로 표현되지 않고 view, pseudo-label 생성,
+confidence/weighting, consistency loss, distribution alignment, local regularizer,
+teacher/memory, mix/adversarial, FL round-state 같은 새 변화 축을 요구하면 해당
+방법론 추가 작업에 축 분리를 함께 포함한다. 기존 training loop나 runtime adapter에
+method-specific 분기를 누적하지 않는다.
 adapter family가 method-owned objective를 실행해야 할 때도
 `methods/adaptation/<family>/federated_ssl/<method>_*.py`를 기본값으로 만들지
 않는다. family 폴더는 `partitioned_training_loop.py` 같은 실행 primitive를 소유하고,
@@ -64,6 +70,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   selection hook
 - `methods/adaptation/peft/`: PEFT adapter builder seam
 - `methods/adaptation/lora/`: LoRA/RSLoRA builder core
+- `methods/adaptation/local_objective_regularizers/`: FedProx처럼 adapter family와
+  분리된 client-local objective regularizer
 - `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +
   classifier head scaffold, 학습/평가 loop, family별 aggregation adapter
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과

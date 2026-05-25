@@ -7,10 +7,10 @@ from torch import nn
 
 from methods.ssl.algorithms.freematch.freematch import (
     FreeMatchAlgorithm,
-    FreeMatchThresholdingHook,
     build_freematch_pseudo_label,
     compute_freematch_step,
 )
+from methods.ssl.hooks.adaptive_thresholding import FreeMatchThresholdingHook
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
     resolve_query_ssl_algorithm_descriptor,

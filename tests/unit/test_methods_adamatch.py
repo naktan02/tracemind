@@ -7,10 +7,10 @@ from torch import nn
 
 from methods.ssl.algorithms.adamatch.adamatch import (
     AdaMatchAlgorithm,
-    AdaMatchDistAlignHook,
-    AdaMatchThresholdingHook,
     compute_adamatch_step,
 )
+from methods.ssl.hooks.adaptive_thresholding import RelativeConfidenceThresholdingHook
+from methods.ssl.hooks.distribution_alignment import AdaMatchDistAlignHook
 from methods.ssl.registry import (
     build_query_ssl_algorithm,
     resolve_query_ssl_algorithm_descriptor,
@@ -100,7 +100,7 @@ def test_adamatch_dist_align_hook_matches_usb_model_target_ema_update() -> None:
 
 
 def test_adamatch_thresholding_hook_matches_usb_relative_threshold() -> None:
-    hook = AdaMatchThresholdingHook()
+    hook = RelativeConfidenceThresholdingHook()
     algorithm = AdaMatchAlgorithm(
         temperature=0.5,
         p_cutoff=0.8,

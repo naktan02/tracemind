@@ -6,7 +6,6 @@ from typing import Any
 
 import torch
 from torch import Tensor
-from torch.nn import functional as F
 
 from methods.ssl.base import QuerySslRequiredViews, TextBatchClassifier
 
@@ -32,22 +31,6 @@ def validate_usb_consistency_loaders(
             f"{algorithm_name} labeled train_loader must not be empty when "
             "supervised_loss_weight > 0."
         )
-
-
-def compute_labeled_cross_entropy_loss(
-    *,
-    model: TextBatchClassifier,
-    labeled_batch: dict[str, Tensor] | None,
-) -> Tensor | None:
-    """labeled batch가 있으면 USB supervised CE loss를 계산한다."""
-
-    if labeled_batch is None:
-        return None
-    logits_x_lb = model(
-        input_ids=labeled_batch["input_ids"],
-        attention_mask=labeled_batch["attention_mask"],
-    )
-    return F.cross_entropy(logits_x_lb, labeled_batch["labels"], reduction="mean")
 
 
 def compute_unlabeled_weak_strong_logits(

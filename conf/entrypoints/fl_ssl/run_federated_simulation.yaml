@@ -189,6 +189,8 @@ training_task:
       bias: ${round_runtime.lora_classifier.bias}
       target_modules: ${round_runtime.lora_classifier.target_modules}
       use_rslora: ${round_runtime.lora_classifier.use_rslora}
+      # FedProx proximal coefficient. 0.0이면 기존 FedAvg local objective와 동일하다.
+      proximal_mu: 0.0
       delta_format: server_uploaded_artifact_ref
       artifact_ref_prefix: agent-local://lora_classifier
       text_metadata_keys: strong_text,training_text,raw_text,text,weak_text

@@ -6,7 +6,6 @@ from collections.abc import Mapping
 from typing import Any
 
 from torch import Tensor
-from torch.nn import functional as F
 
 from ...base import QuerySslRequiredViews, QuerySslStepResult, TextBatchClassifier
 from ...common import compute_prob
@@ -17,6 +16,7 @@ from ...hooks.pseudo_labeling import (
     HardOrSoftPseudoLabelingHook,
     PseudoLabelingConfig,
 )
+from ...hooks.supervised import compute_labeled_cross_entropy_loss
 from ...registry import register_query_ssl_algorithm
 from ...state import (
     build_query_ssl_algorithm_state,
@@ -147,17 +147,10 @@ def compute_pseudolabel_step(
     if iteration < 0:
         raise ValueError("iteration must not be negative.")
 
-    if labeled_batch is not None:
-        logits_x_lb = model(
-            input_ids=labeled_batch["input_ids"],
-            attention_mask=labeled_batch["attention_mask"],
-        )
-        sup_loss = F.cross_entropy(
-            logits_x_lb, labeled_batch["labels"], reduction="mean"
-        )
-        del logits_x_lb
-    else:
-        sup_loss = None
+    sup_loss = compute_labeled_cross_entropy_loss(
+        model=model,
+        labeled_batch=labeled_batch,
+    )
 
     logits_x_ulb = model(
         input_ids=unlabeled_batch["weak_input_ids"],

@@ -20,6 +20,11 @@ from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
 )
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    compute_scaled_fedprox_loss,
+    snapshot_trainable_parameters,
+    validate_proximal_mu,
+)
 from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
@@ -155,6 +160,7 @@ def train_classifier(
     max_grad_norm: float,
     log_every_steps: int,
     max_train_steps: int | None = None,
+    proximal_mu: float = 0.0,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """Supervised LoRA + classifier scaffold를 학습한다."""
 
@@ -165,6 +171,12 @@ def train_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
+    proximal_mu = validate_proximal_mu(proximal_mu)
+    fedprox_global_parameters = (
+        snapshot_trainable_parameters(trainable_parameters)
+        if proximal_mu > 0.0
+        else None
+    )
     criterion = nn.CrossEntropyLoss()
     full_epoch_steps = len(train_loader)
     if max_train_steps is not None and max_train_steps <= 0:
@@ -202,6 +214,13 @@ def train_classifier(
             optimizer.zero_grad(set_to_none=True)
             logits = model(input_ids=input_ids, attention_mask=attention_mask)
             loss = criterion(logits, labels)
+            if proximal_mu > 0.0:
+                assert fedprox_global_parameters is not None
+                loss = loss + compute_scaled_fedprox_loss(
+                    trainable_parameters=trainable_parameters,
+                    reference_snapshot=fedprox_global_parameters,
+                    proximal_mu=proximal_mu,
+                )
             loss.backward()
             if max_grad_norm > 0:
                 torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
@@ -341,6 +360,7 @@ def train_query_ssl_classifier(
     resume_checkpoint_path: str | Path | None = None,
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
+    proximal_mu: float = 0.0,
 ) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
@@ -385,6 +405,12 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
+    proximal_mu = validate_proximal_mu(proximal_mu)
+    fedprox_global_parameters = (
+        snapshot_trainable_parameters(trainable_parameters)
+        if proximal_mu > 0.0
+        else None
+    )
 
     resume_state = load_query_ssl_training_checkpoint(
         path=resume_checkpoint_path,
@@ -456,14 +482,27 @@ def train_query_ssl_classifier(
                 labeled_batch=labeled_batch,
                 unlabeled_batch=unlabeled_batch,
             )
-            step_output.total_loss.backward()
+            total_loss = step_output.total_loss
+            if proximal_mu > 0.0:
+                assert fedprox_global_parameters is not None
+                fedprox_loss = compute_scaled_fedprox_loss(
+                    trainable_parameters=trainable_parameters,
+                    reference_snapshot=fedprox_global_parameters,
+                    proximal_mu=proximal_mu,
+                )
+                total_loss = total_loss + fedprox_loss
+                step_component_sums["fedprox_proximal_loss"] = (
+                    step_component_sums.get("fedprox_proximal_loss", 0.0)
+                    + float(fedprox_loss.detach().item())
+                )
+            total_loss.backward()
             if max_grad_norm > 0:
                 torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
             optimizer.step()
 
             step_count += 1
             completed_steps += 1
-            step_total_loss_sum += float(step_output.total_loss.detach().item())
+            step_total_loss_sum += float(total_loss.detach().item())
             _accumulate_scalar_tensors(
                 sums=step_component_sums,
                 values=step_output.loss_components,
