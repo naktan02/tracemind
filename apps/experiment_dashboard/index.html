@@ -61,12 +61,12 @@
           </nav>
 
           <section class="tab-panel active" data-panel="overview">
-            <section class="grid two">
+            <section class="grid single">
               <article class="card">
                 <div class="card-header">
                   <div>
-                    <p class="eyebrow">Ranking</p>
-                    <h3>Run Metric Bar</h3>
+                    <p class="eyebrow">Overview Table</p>
+                    <h3>선택한 run x metrics</h3>
                   </div>
                   <div class="card-controls">
                     <label>
@@ -74,43 +74,33 @@
                       <select id="overview-eval-filter"></select>
                     </label>
                     <label>
-                      Metric
-                      <select id="overview-metric-filter">
-                        <option value="macro_f1">macro_f1</option>
-                        <option value="accuracy_top_1">accuracy_top_1</option>
-                        <option value="expected_calibration_error">ece</option>
-                        <option value="loss">loss</option>
-                      </select>
+                      Method
+                      <select id="overview-method-filter"></select>
                     </label>
                   </div>
                 </div>
-                <div id="bar-chart" class="bar-chart"></div>
-              </article>
-
-              <article class="card">
-                <div class="card-header">
-                  <div>
-                    <p class="eyebrow">Paper Table Seed</p>
-                    <h3>Filtered Runs</h3>
-                  </div>
+                <p class="filter-hint dark">
+                  중앙 SSL 현재 artifact는 validation accuracy 기준 best checkpoint를
+                  export한다. 표의 metric은 해당 checkpoint를 eval set별로 평가한 값이다.
+                </p>
+                <div class="overview-picker-grid">
+                  <section>
+                    <h4>Metrics</h4>
+                    <div id="overview-metric-picker" class="filter-value-list"></div>
+                  </section>
+                  <section>
+                    <h4>Runs</h4>
+                    <div id="overview-run-checkboxes" class="run-checkbox-list table-run-picker"></div>
+                  </section>
                 </div>
+                <div
+                  id="overview-selected-run-cards"
+                  class="selected-run-cards alias-run-cards"
+                ></div>
+                <p id="overview-selection-summary" class="detail-summary"></p>
                 <div class="table-wrap">
                   <table>
-                    <thead>
-                      <tr>
-                        <th>run</th>
-                        <th>method</th>
-                        <th>adapter</th>
-                        <th>split</th>
-                        <th>lr</th>
-                        <th>clf lr</th>
-                        <th>macro_f1</th>
-                        <th>accuracy</th>
-                        <th>ece</th>
-                        <th>rows</th>
-                        <th>worst</th>
-                      </tr>
-                    </thead>
+                    <thead id="run-table-head"></thead>
                     <tbody id="run-table"></tbody>
                   </table>
                 </div>
@@ -342,30 +332,31 @@
               <div class="card-header">
                 <div>
                   <p class="eyebrow">Main Comparison</p>
-                  <h3>FL SSL Runs</h3>
+                  <h3>선택한 FL run x metrics</h3>
                 </div>
               </div>
+              <p class="filter-hint dark">
+                FL main report의 run-level metric은 final round 기준이다. best round는
+                Rounds 탭의 round progression에서 확인한다.
+              </p>
+              <div class="overview-picker-grid">
+                <section>
+                  <h4>Metrics</h4>
+                  <div id="fl-run-metric-picker" class="filter-value-list"></div>
+                </section>
+                <section>
+                  <h4>Filtered Runs</h4>
+                  <div id="fl-run-checkboxes" class="run-checkbox-list table-run-picker"></div>
+                </section>
+              </div>
+              <div
+                id="fl-run-selected-run-cards"
+                class="selected-run-cards alias-run-cards"
+              ></div>
+              <p id="fl-run-selection-summary" class="detail-summary"></p>
               <div class="table-wrap">
                 <table>
-                  <thead>
-                    <tr>
-                      <th>run</th>
-                      <th>method</th>
-                      <th>regularizer</th>
-                      <th>split</th>
-                      <th>clients</th>
-                      <th>rounds</th>
-                      <th>labeled exp</th>
-                      <th>unique labeled</th>
-                      <th>macro_f1</th>
-                      <th>worst client</th>
-                      <th>ece</th>
-                      <th>client std</th>
-                      <th>updates</th>
-                      <th>C2S</th>
-                      <th>S2C est.</th>
-                    </tr>
-                  </thead>
+                  <thead id="fl-run-table-head"></thead>
                   <tbody id="fl-run-table"></tbody>
                 </table>
               </div>
@@ -574,6 +565,6 @@
       </main>
     </div>
 
-    <script src="./src/app.js?v=20260526-init-toggle-lora-display" type="module"></script>
+    <script src="./src/app.js?v=20260526-method-alias-table" type="module"></script>
   </body>
 </html>

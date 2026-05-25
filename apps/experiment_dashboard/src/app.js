@@ -20,9 +20,80 @@ const CENTRAL_INITIAL_METRIC_MAP = {
   selection_worst_category_f1_value: "worst_category_f1_value",
   selection_loss: "loss",
 };
+const CENTRAL_OVERVIEW_METRICS = [
+  "macro_f1",
+  "accuracy_top_1",
+  "loss",
+  "expected_calibration_error",
+  "weighted_f1",
+  "balanced_accuracy",
+  "worst_category_f1_value",
+  "max_calibration_error",
+  "rows_total",
+];
+const DEFAULT_CENTRAL_OVERVIEW_METRICS = [
+  "macro_f1",
+  "accuracy_top_1",
+  "loss",
+  "expected_calibration_error",
+];
+const FL_RUN_METRICS = [
+  "macro_f1",
+  "final_macro_f1",
+  "accuracy_top_1",
+  "final_accuracy_top_1",
+  "loss",
+  "final_loss",
+  "expected_calibration_error",
+  "final_expected_calibration_error",
+  "worst_client_macro_f1",
+  "best_client_macro_f1",
+  "weighted_f1",
+  "balanced_accuracy",
+  "worst_category_f1_value",
+  "max_calibration_error",
+  "macro_f1_std",
+  "loss_std",
+  "fairness_gap",
+  "per_client_macro_f1_variance",
+  "communication_cost",
+  "c2s_total_bytes",
+  "s2c_total_bytes_estimated",
+  "labeled_row_exposure_count",
+  "unlabeled_row_exposure_count",
+  "total_row_exposure_count",
+  "unique_labeled_row_count",
+  "unique_unlabeled_row_count",
+  "unique_total_row_count",
+  "unlabeled_row_count",
+  "evaluated_client_count",
+  "client_count",
+  "completed_rounds",
+  "round_budget",
+  "epochs",
+  "max_train_steps",
+  "train_batch_size",
+  "learning_rate",
+  "shard_alpha",
+  "initial_macro_f1",
+  "initial_loss",
+  "initial_expected_calibration_error",
+];
+const DEFAULT_FL_RUN_METRICS = [
+  "macro_f1",
+  "worst_client_macro_f1",
+  "expected_calibration_error",
+  "macro_f1_std",
+  "communication_cost",
+];
 const SERIES_COLOR_STORAGE_KEYS = {
   central_compare: "tracemind_dashboard.central_compare_run_colors.v1",
   fl_round: "tracemind_dashboard.fl_round_run_colors.v1",
+};
+const RUN_ALIAS_STORAGE_KEYS = {
+  central_overview: "tracemind_dashboard.central_overview_run_aliases.v1",
+  fl_runs: "tracemind_dashboard.fl_run_aliases.v1",
+  fl_round: "tracemind_dashboard.fl_round_run_aliases.v1",
 };
 const FL_ROUND_METRICS = [
   "macro_f1",
@@ -68,7 +139,11 @@ const state = {
   bundle: null,
   activeTrack: "central_ssl",
   overviewEvalSet: "validation",
-  overviewMetric: "macro_f1",
+  overviewMethodName: "__all__",
+  overviewMetricIds: [...DEFAULT_CENTRAL_OVERVIEW_METRICS],
+  overviewRunIds: [],
+  overviewSelectionTouched: false,
+  overviewRunAliases: loadStoredRunAliases("central_overview"),
   comparisonEvalSet: "validation",
   comparisonMetric: "selection_macro_f1",
   comparisonChartType: "grouped_bar",
@@ -87,6 +162,10 @@ const state = {
   projectionSelectionTouched: false,
   activeTab: "overview",
   activeFlTab: "runs",
+  flRunMetricIds: [...DEFAULT_FL_RUN_METRICS],
+  flRunIds: [],
+  flRunSelectionTouched: false,
+  flRunAliases: loadStoredRunAliases("fl_runs"),
   flFilterPanelOpen: false,
   flFilterAxisIds: [...DEFAULT_FL_FILTER_AXIS_IDS],
   flFilterValues: {},
@@ -94,7 +173,7 @@ const state = {
   flRoundMethodName: null,
   flRoundRunIds: [],
   flRoundSelectionTouched: false,
-  flRoundRunAliases: {},
+  flRoundRunAliases: loadStoredRunAliases("fl_round"),
   flRoundRunColors: loadStoredSeriesColors("fl_round"),
   flRoundIncludeInitial: true,
   flRoundMetric: "macro_f1",
@@ -116,7 +195,11 @@ const elements = {
   flTabButtons: document.querySelectorAll("[data-fl-tab]"),
   flTabPanels: document.querySelectorAll("[data-fl-panel]"),
   overviewEvalFilter: document.querySelector("#overview-eval-filter"),
-  overviewMetricFilter: document.querySelector("#overview-metric-filter"),
+  overviewMethodFilter: document.querySelector("#overview-method-filter"),
+  overviewMetricPicker: document.querySelector("#overview-metric-picker"),
+  overviewRunCheckboxes: document.querySelector("#overview-run-checkboxes"),
+  overviewSelectedRunCards: document.querySelector("#overview-selected-run-cards"),
+  overviewSelectionSummary: document.querySelector("#overview-selection-summary"),
   comparisonEvalFilter: document.querySelector("#comparison-eval-filter"),
   comparisonChartType: document.querySelector("#comparison-chart-type"),
   comparisonIncludeInitial: document.querySelector("#comparison-include-initial"),
@@ -131,7 +214,6 @@ const elements = {
   classMetricFilter: document.querySelector("#class-metric-filter"),
   metricCards: document.querySelector("#metric-cards"),
   comparisonChart: document.querySelector("#comparison-chart"),
-  barChart: document.querySelector("#bar-chart"),
   classChart: document.querySelector("#class-chart"),
   classTable: document.querySelector("#class-table"),
   confusionMatrix: document.querySelector("#confusion-matrix"),
@@ -139,6 +221,7 @@ const elements = {
   projectionMethodFilter: document.querySelector("#projection-method-filter"),
   projectionRunCheckboxes: document.querySelector("#projection-run-checkboxes"),
   projectionGallery: document.querySelector("#projection-gallery"),
+  runTableHead: document.querySelector("#run-table-head"),
   runTable: document.querySelector("#run-table"),
   flMetricCards: document.querySelector("#fl-metric-cards"),
   flFilterToggle: document.querySelector("#fl-filter-toggle"),
@@ -147,6 +230,11 @@ const elements = {
   flActiveFilters: document.querySelector("#fl-active-filters"),
   flFilterSummary: document.querySelector("#fl-filter-summary"),
   flFilterReset: document.querySelector("#fl-filter-reset"),
+  flRunMetricPicker: document.querySelector("#fl-run-metric-picker"),
+  flRunCheckboxes: document.querySelector("#fl-run-checkboxes"),
+  flRunSelectedRunCards: document.querySelector("#fl-run-selected-run-cards"),
+  flRunSelectionSummary: document.querySelector("#fl-run-selection-summary"),
+  flRunTableHead: document.querySelector("#fl-run-table-head"),
   flRunTable: document.querySelector("#fl-run-table"),
   flRoundCountFilter: document.querySelector("#fl-round-count-filter"),
   flRoundMethodFilter: document.querySelector("#fl-round-method-filter"),
@@ -234,6 +322,7 @@ function bindEvents() {
         delete state.flFilterValues[axisId];
       }
     }
+    state.flRunSelectionTouched = false;
     preserveFlRoundSelectionAfterFilterChange();
     render();
   });
@@ -246,22 +335,117 @@ function bindEvents() {
       return;
     }
     state.flFilterValues[axisId] = checkedFlFilterValues(axisId);
+    state.flRunSelectionTouched = false;
     preserveFlRoundSelectionAfterFilterChange();
     render();
   });
   elements.flFilterReset.addEventListener("click", () => {
     state.flFilterAxisIds = [...DEFAULT_FL_FILTER_AXIS_IDS];
     state.flFilterValues = {};
+    state.flRunSelectionTouched = false;
     preserveFlRoundSelectionAfterFilterChange();
     render();
   });
-  elements.overviewEvalFilter.addEventListener("change", (event) => {
-    state.overviewEvalSet = event.target.value;
+  elements.flRunMetricPicker.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    state.flRunMetricIds = checkedValues(
+      elements.flRunMetricPicker,
+      "flRunMetric",
+    );
     render();
   });
-  elements.overviewMetricFilter.addEventListener("change", (event) => {
-    state.overviewMetric = event.target.value;
+  elements.flRunCheckboxes.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    state.flRunIds = checkedValues(elements.flRunCheckboxes, "flRunId");
+    state.flRunSelectionTouched = true;
     render();
+  });
+  elements.flRunSelectedRunCards.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
+      return;
+    }
+    const runId = event.target.dataset.removeFlRunId;
+    if (!runId) {
+      return;
+    }
+    state.flRunIds = state.flRunIds.filter(
+      (selectedRunId) => selectedRunId !== runId,
+    );
+    state.flRunSelectionTouched = true;
+    render();
+  });
+  elements.flRunSelectedRunCards.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateFlRunAlias(event.target);
+  });
+  elements.flRunSelectedRunCards.addEventListener("input", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateFlRunAlias(event.target);
+  });
+  elements.overviewEvalFilter.addEventListener("change", (event) => {
+    state.overviewEvalSet = event.target.value;
+    state.overviewSelectionTouched = false;
+    render();
+  });
+  elements.overviewMethodFilter.addEventListener("change", (event) => {
+    state.overviewMethodName = event.target.value || "__all__";
+    state.overviewSelectionTouched = false;
+    render();
+  });
+  elements.overviewMetricPicker.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    state.overviewMetricIds = checkedValues(
+      elements.overviewMetricPicker,
+      "overviewMetric",
+    );
+    render();
+  });
+  elements.overviewRunCheckboxes.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    state.overviewRunIds = checkedValues(
+      elements.overviewRunCheckboxes,
+      "overviewRunId",
+    );
+    state.overviewSelectionTouched = true;
+    render();
+  });
+  elements.overviewSelectedRunCards.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
+      return;
+    }
+    const runId = event.target.dataset.removeOverviewRunId;
+    if (!runId) {
+      return;
+    }
+    state.overviewRunIds = state.overviewRunIds.filter(
+      (selectedRunId) => selectedRunId !== runId,
+    );
+    state.overviewSelectionTouched = true;
+    render();
+  });
+  elements.overviewSelectedRunCards.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateOverviewRunAlias(event.target);
+  });
+  elements.overviewSelectedRunCards.addEventListener("input", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateOverviewRunAlias(event.target);
   });
   elements.comparisonEvalFilter.addEventListener("change", (event) => {
     state.comparisonEvalSet = event.target.value;
@@ -544,10 +728,12 @@ function render() {
   }
   renderTrackPanels();
   renderTabs();
-  const overviewRows = selectedMetricRows(
+  const overviewBaseRows = selectedMetricRows(
     state.overviewEvalSet,
-    state.overviewMetric,
+    state.overviewMetricIds[0] ?? "macro_f1",
   );
+  normalizeOverviewMethodSelection(overviewBaseRows);
+  const overviewRows = centralOverviewRowsForMethod(overviewBaseRows);
   const comparisonRows = selectedMetricRows(state.comparisonEvalSet);
   const classRows = selectedMetricRows(state.classEvalSet);
   const projectionBaseRows = selectedMetricRows(state.projectionEvalSet);
@@ -555,8 +741,11 @@ function render() {
   normalizeDetailSelection(classRows);
   normalizeProjectionSelection(projectionBaseRows);
   const projectionRows = rowsWithProjection(projectionBaseRows);
+  normalizeOverviewSelection(overviewRows);
 
   renderEvalFilters();
+  renderOverviewMethodFilter(overviewBaseRows);
+  renderOverviewControls(overviewRows);
   renderMetricCards(overviewRows);
   renderMetricPicker();
   renderComparisonRunControls(comparisonRows);
@@ -564,7 +753,6 @@ function render() {
   renderDetailRunFilter(classRows);
   renderProjectionRunControls(projectionRows);
   renderComparisonChart(comparisonRows);
-  renderBarChart(overviewRows);
   renderClassChart();
   renderClassTable();
   renderConfusionMatrix();
@@ -630,7 +818,6 @@ function ensureEvalDefaults(evalSets) {
 function renderEvalFilters() {
   const evalSets = centralEvalSets();
   fillSelect(elements.overviewEvalFilter, evalSets, state.overviewEvalSet);
-  elements.overviewMetricFilter.value = state.overviewMetric;
   fillSelect(elements.comparisonEvalFilter, evalSets, state.comparisonEvalSet);
   fillSelect(elements.classEvalFilter, evalSets, state.classEvalSet);
   fillSelect(elements.projectionEvalFilter, evalSets, state.projectionEvalSet);
@@ -663,9 +850,11 @@ function renderFlSslPanel() {
   normalizeFlFilterState(allRows);
   const rows = applyFlFilters(allRows);
   normalizeFlSelections(rows);
+  normalizeFlRunSelection(rows);
   renderFlTabs();
   renderFlFilterControls(allRows, rows);
   renderFlFilterPanelVisibility();
+  renderFlRunControls(rows);
 
   const methods = new Set(rows.map((row) => flMethodName(row))).size;
   const macroF1Values = rows
@@ -698,37 +887,163 @@ function renderFlSslPanel() {
 }
 
 function renderFlRunTable(rows) {
+  const selectedRows = rows.filter((row) => state.flRunIds.includes(flRunId(row)));
+  const metricIds = state.flRunMetricIds;
+  const columnCount = 7 + metricIds.length;
+  elements.flRunTableHead.innerHTML = `
+    <tr>
+      <th>run</th>
+      <th>method</th>
+      <th>regularizer</th>
+      <th>rank</th>
+      <th>split</th>
+      <th>clients</th>
+      <th>rounds</th>
+      ${metricIds.map((metric) => `<th>${escapeHtml(metricLabel(metric))}</th>`).join("")}
+    </tr>
+  `;
   if (rows.length === 0) {
     elements.flRunTable.innerHTML = emptyTableRow(
-      15,
+      columnCount,
       "아직 dashboard bundle에 FL SSL run이 없습니다.",
     );
     return;
   }
+  if (selectedRows.length === 0) {
+    elements.flRunTable.innerHTML = emptyTableRow(
+      columnCount,
+      "선택한 FL SSL run이 없습니다.",
+    );
+    return;
+  }
 
-  elements.flRunTable.innerHTML = rows
+  elements.flRunTable.innerHTML = selectedRows
     .map(
       (row) => `
         <tr>
-          <td>${escapeHtml(shortRun(flRunId(row)))}</td>
+          <td title="${escapeHtml(flRunDescriptor(row))}">${escapeHtml(flRunDisplayLabel(row))}</td>
           <td>${escapeHtml(flMethodName(row))}</td>
           <td>${escapeHtml(flLocalRegularizerLabel(row))}</td>
-          <td>${escapeHtml(shortSplit(row.selection_slug))}</td>
+          <td>${formatCount(row.lora_rank)}</td>
+          <td title="${escapeHtml(shortSplit(row.selection_slug))}">${escapeHtml(flDataSourceLabel(row))} · ${escapeHtml(flLabelBudgetLabel(row))}</td>
           <td>${formatCount(row.client_count)}</td>
           <td>${formatCount(row.completed_rounds)} / ${formatCount(row.round_budget)}</td>
-          <td>${formatCount(row.labeled_row_exposure_count)}</td>
-          <td>${formatCount(row.unique_labeled_row_count)}</td>
-          <td>${formatMetric(flMetric(row, "macro_f1"))}</td>
-          <td>${formatMetric(flMetric(row, "worst_client_macro_f1"))}</td>
-          <td>${formatMetric(flMetric(row, "expected_calibration_error"))}</td>
-          <td>${formatMetric(row.macro_f1_std)}</td>
-          <td>${formatCount(flCostValue(row))}</td>
-          <td>${formatBytes(flPosthocCommunicationBytes(row, "c2s_total_bytes"))}</td>
-          <td>${formatBytes(flPosthocCommunicationBytes(row, "s2c_total_bytes_estimated"))}</td>
+          ${metricIds
+            .map((metric) => `<td>${formatFlRunMetric(row, metric)}</td>`)
+            .join("")}
         </tr>
       `,
     )
     .join("");
+}
+
+function normalizeFlRunSelection(rows) {
+  const availableMetrics = flRunMetricKeys(rows);
+  state.flRunMetricIds = state.flRunMetricIds.filter((metric) =>
+    availableMetrics.includes(metric),
+  );
+  if (state.flRunMetricIds.length === 0) {
+    state.flRunMetricIds = DEFAULT_FL_RUN_METRICS.filter((metric) =>
+      availableMetrics.includes(metric),
+    );
+  }
+  if (state.flRunMetricIds.length === 0 && availableMetrics.length > 0) {
+    state.flRunMetricIds = [availableMetrics[0]];
+  }
+
+  const visibleRunIds = new Set(rows.map((row) => flRunId(row)));
+  state.flRunIds = state.flRunIds.filter((runId) => visibleRunIds.has(runId));
+  if (!state.flRunSelectionTouched && state.flRunIds.length === 0) {
+    state.flRunIds = rows.slice(0, 8).map((row) => flRunId(row));
+  }
+}
+
+function renderFlRunControls(rows) {
+  const availableMetrics = flRunMetricKeys(rows);
+  renderCheckboxList(
+    elements.flRunMetricPicker,
+    availableMetrics,
+    new Set(state.flRunMetricIds),
+    "flRunMetric",
+    (metric) => metricLabel(metric),
+  );
+  const selectedRunIds = new Set(state.flRunIds);
+  if (rows.length === 0) {
+    elements.flRunCheckboxes.innerHTML =
+      `<p class="empty">선택 가능한 FL SSL run이 없습니다.</p>`;
+  } else {
+    elements.flRunCheckboxes.innerHTML = rows
+      .map((row) => {
+        const runId = flRunId(row);
+        const detail = flRunDescriptor(row);
+        return `
+          <label class="run-option" title="${escapeHtml(detail)}">
+            <input
+              type="checkbox"
+              data-fl-run-id="${runId}"
+              ${selectedRunIds.has(runId) ? "checked" : ""}
+            />
+            <span>
+              <strong>${escapeHtml(flRunDisplayLabel(row))}</strong>
+              <small>${escapeHtml(compactFlRunSubLabel(row))}</small>
+            </span>
+          </label>
+        `;
+      })
+      .join("");
+  }
+  renderFlRunSelectedRunCards(rows);
+  elements.flRunSelectionSummary.textContent = [
+    `selected runs=${state.flRunIds.length}/${rows.length}`,
+    `metrics=${state.flRunMetricIds.length}`,
+    `basis=final_round`,
+  ].join(" · ");
+}
+
+function renderFlRunSelectedRunCards(rows) {
+  const rowsById = new Map(rows.map((row) => [flRunId(row), row]));
+  const selectedRows = state.flRunIds.map((runId) => rowsById.get(runId)).filter(Boolean);
+  if (selectedRows.length === 0) {
+    elements.flRunSelectedRunCards.innerHTML =
+      `<p class="empty">선택된 FL run이 없습니다.</p>`;
+    return;
+  }
+  elements.flRunSelectedRunCards.innerHTML = selectedRows
+    .map((row) => {
+      const runId = flRunId(row);
+      const label = flRunDisplayLabel(row);
+      return `
+        <article class="selected-run-card alias-run-card">
+          <strong>${escapeHtml(label)}</strong>
+          <input
+            type="text"
+            data-fl-run-alias-run-id="${runId}"
+            value="${escapeHtml(state.flRunAliases[runId] ?? "")}"
+            placeholder="run alias"
+            aria-label="${escapeHtml(compactFlRunLabel(row))} 표시명 alias"
+          />
+          <button
+            type="button"
+            data-remove-fl-run-id="${runId}"
+            aria-label="${escapeHtml(label)} 제거"
+          >x</button>
+          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(flRunDescriptor(row))}</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function flRunMetricKeys(rows) {
+  const discovered = new Set();
+  for (const row of rows) {
+    for (const metric of FL_RUN_METRICS) {
+      if (flRunMetricValue(row, metric) !== null) {
+        discovered.add(metric);
+      }
+    }
+  }
+  return FL_RUN_METRICS.filter((metric) => discovered.has(metric));
 }
 
 function renderFlFilterControls(allRows, filteredRows) {
@@ -1146,7 +1461,52 @@ function updateFlRoundRunAlias(input) {
   } else {
     delete state.flRoundRunAliases[runId];
   }
+  storeRunAliases("fl_round", state.flRoundRunAliases);
   renderFlRoundPanel();
+}
+
+function updateOverviewRunAlias(input) {
+  const runId = input.dataset.overviewAliasRunId;
+  if (!runId) {
+    return;
+  }
+  updateRunAlias(state.overviewRunAliases, "central_overview", runId, input.value);
+  const rows = centralOverviewRowsForMethod(
+    selectedMetricRows(state.overviewEvalSet, state.overviewMetricIds[0] ?? "macro_f1"),
+  );
+  const row = rows.find((candidate) => candidate.run_id === runId);
+  updateSelectedRunCardLabel(input, row ? centralOverviewDisplayLabel(row) : input.value);
+  renderRunTable(rows);
+}
+
+function updateFlRunAlias(input) {
+  const runId = input.dataset.flRunAliasRunId;
+  if (!runId) {
+    return;
+  }
+  updateRunAlias(state.flRunAliases, "fl_runs", runId, input.value);
+  const rows = applyFlFilters(sortedFlRows(flSslRows()));
+  const row = rows.find((candidate) => flRunId(candidate) === runId);
+  updateSelectedRunCardLabel(input, row ? flRunDisplayLabel(row) : input.value);
+  renderFlRunTable(rows);
+}
+
+function updateRunAlias(aliasMap, scope, runId, rawAlias) {
+  const alias = rawAlias.trim();
+  if (alias) {
+    aliasMap[runId] = alias;
+  } else {
+    delete aliasMap[runId];
+  }
+  storeRunAliases(scope, aliasMap);
+}
+
+function updateSelectedRunCardLabel(input, label) {
+  const cardElement = input.closest(".selected-run-card");
+  const labelElement = cardElement?.querySelector("strong");
+  if (labelElement) {
+    labelElement.textContent = label;
+  }
 }
 
 function renderFlRoundFlatNote(rows) {
@@ -1511,6 +1871,41 @@ function flMetric(row, metric) {
   return null;
 }
 
+function flRunMetricValue(row, metric) {
+  if (metric === "accuracy_top_1") {
+    return row.final_accuracy_top_1 ?? flMetric(row, metric);
+  }
+  if (metric === "communication_cost") {
+    return flCostValue(row);
+  }
+  if (metric === "c2s_total_bytes") {
+    return flPosthocCommunicationBytes(row, "c2s_total_bytes");
+  }
+  if (metric === "s2c_total_bytes_estimated") {
+    return flPosthocCommunicationBytes(row, "s2c_total_bytes_estimated");
+  }
+  return flMetric(row, metric);
+}
+
+function formatFlRunMetric(row, metric) {
+  const value = flRunMetricValue(row, metric);
+  if (
+    metric === "c2s_total_bytes" ||
+    metric === "s2c_total_bytes_estimated"
+  ) {
+    return formatBytes(value);
+  }
+  if (
+    metric === "communication_cost" ||
+    metric.endsWith("_count") ||
+    metric.endsWith("_bytes") ||
+    metric.includes("labeled_row")
+  ) {
+    return formatCount(value);
+  }
+  return formatMetric(value);
+}
+
 function flRunDescriptor(row) {
   const protocol = row.protocol ?? {};
   const roundRuntime = protocol.round_runtime ?? {};
@@ -1620,6 +2015,29 @@ function flRunDetailLabel(row) {
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,
     `seed=${row.seed ?? "-"}`,
+    flRunSuffix(row),
+  ].join(" · ");
+}
+
+function compactFlRunLabel(row) {
+  return [
+    flMethodName(row),
+    flLocalRegularizerLabel(row),
+    `r${row.completed_rounds ?? "?"}`,
+    `seed${row.seed ?? "?"}`,
+  ].join(" · ");
+}
+
+function flRunDisplayLabel(row) {
+  const alias = state.flRunAliases[flRunId(row)];
+  return alias || compactFlRunLabel(row);
+}
+
+function compactFlRunSubLabel(row) {
+  return [
+    flLabelBudgetLabel(row),
+    `clients=${row.client_count ?? "-"}`,
+    `rank=${row.lora_rank ?? "-"}`,
     flRunSuffix(row),
   ].join(" · ");
 }
@@ -2200,7 +2618,39 @@ function groupedRowsByMethod(rows) {
 }
 
 function uniqueMethodNames(rows) {
-  return Array.from(new Set(rows.map((row) => row.method_name)));
+  return Array.from(
+    new Set(rows.map((row) => row.method_name).filter((methodName) => methodName)),
+  );
+}
+
+function normalizeOverviewMethodSelection(rows) {
+  const methodNames = new Set(uniqueMethodNames(rows));
+  if (
+    state.overviewMethodName !== "__all__" &&
+    !methodNames.has(state.overviewMethodName)
+  ) {
+    state.overviewMethodName = "__all__";
+  }
+}
+
+function centralOverviewRowsForMethod(rows) {
+  if (state.overviewMethodName === "__all__") {
+    return rows;
+  }
+  return rows.filter((row) => row.method_name === state.overviewMethodName);
+}
+
+function renderOverviewMethodFilter(rows) {
+  const methodNames = uniqueMethodNames(rows).sort();
+  const allSelected = state.overviewMethodName === "__all__" ? "selected" : "";
+  elements.overviewMethodFilter.innerHTML = [
+    `<option value="__all__" ${allSelected}>All methods (${rows.length})</option>`,
+    ...methodNames.map((methodName) => {
+      const selected = methodName === state.overviewMethodName ? "selected" : "";
+      const runCount = rows.filter((row) => row.method_name === methodName).length;
+      return `<option value="${escapeHtml(methodName)}" ${selected}>${escapeHtml(methodName)} (${runCount})</option>`;
+    }),
+  ].join("");
 }
 
 function rowsForMethods(rows, methodNames) {
@@ -2262,15 +2712,157 @@ function compareMetric(a, b, metric) {
   return metric.includes("error") || metric === "loss" ? left - right : right - left;
 }
 
+function normalizeOverviewSelection(rows) {
+  const availableMetrics = centralOverviewMetricKeys(rows);
+  state.overviewMetricIds = state.overviewMetricIds.filter((metric) =>
+    availableMetrics.includes(metric),
+  );
+  if (state.overviewMetricIds.length === 0) {
+    state.overviewMetricIds = DEFAULT_CENTRAL_OVERVIEW_METRICS.filter((metric) =>
+      availableMetrics.includes(metric),
+    );
+  }
+  if (state.overviewMetricIds.length === 0 && availableMetrics.length > 0) {
+    state.overviewMetricIds = [availableMetrics[0]];
+  }
+
+  const visibleRunIds = new Set(rows.map((row) => row.run_id));
+  state.overviewRunIds = state.overviewRunIds.filter((runId) =>
+    visibleRunIds.has(runId),
+  );
+  if (!state.overviewSelectionTouched && state.overviewRunIds.length === 0) {
+    state.overviewRunIds = rows.slice(0, 8).map((row) => row.run_id);
+  }
+}
+
+function centralOverviewMetricKeys(rows) {
+  const discovered = new Set();
+  for (const row of rows) {
+    for (const [key, value] of Object.entries(row)) {
+      if (typeof value !== "boolean" && numberOrNull(value) !== null) {
+        discovered.add(key);
+      }
+    }
+  }
+  return uniqueValues([
+    ...CENTRAL_OVERVIEW_METRICS.filter((metric) => discovered.has(metric)),
+    ...Array.from(discovered)
+      .filter((metric) => isDisplayMetricKey(metric))
+      .sort(),
+  ]);
+}
+
+function isDisplayMetricKey(metric) {
+  return ![
+    "seed",
+    "learning_rate",
+    "classifier_learning_rate",
+    "epochs",
+    "max_train_steps",
+    "train_batch_size",
+    "eval_batch_size",
+    "lora_rank",
+    "lora_alpha",
+    "lora_dropout",
+    "lora_use_dora",
+    "lora_use_rslora",
+    "created_at",
+  ].includes(metric);
+}
+
+function renderOverviewControls(rows) {
+  const availableMetrics = centralOverviewMetricKeys(rows);
+  renderCheckboxList(
+    elements.overviewMetricPicker,
+    availableMetrics,
+    new Set(state.overviewMetricIds),
+    "overviewMetric",
+    (metric) => metricLabel(metric),
+  );
+  const selectedRunIds = new Set(state.overviewRunIds);
+  if (rows.length === 0) {
+    elements.overviewRunCheckboxes.innerHTML =
+      `<p class="empty">선택 가능한 중앙 SSL run이 없습니다.</p>`;
+  } else {
+    elements.overviewRunCheckboxes.innerHTML = rows
+      .map(
+        (row) => {
+          const detail = centralRunDetail(row);
+          return `
+          <label class="run-option" title="${escapeHtml(detail)}">
+            <input
+              type="checkbox"
+              data-overview-run-id="${row.run_id}"
+              ${selectedRunIds.has(row.run_id) ? "checked" : ""}
+            />
+            <span>
+              <strong>${escapeHtml(centralOverviewDisplayLabel(row))}</strong>
+              <small>${escapeHtml(centralOverviewRunSubLabel(row))}</small>
+            </span>
+          </label>
+        `;
+        },
+      )
+      .join("");
+  }
+  renderOverviewSelectedRunCards(rows);
+  elements.overviewSelectionSummary.textContent = [
+    `selected runs=${state.overviewRunIds.length}/${rows.length}`,
+    `metrics=${state.overviewMetricIds.length}`,
+    `basis=best_validation_accuracy`,
+  ].join(" · ");
+}
+
+function renderOverviewSelectedRunCards(rows) {
+  const rowsById = new Map(rows.map((row) => [row.run_id, row]));
+  const selectedRows = state.overviewRunIds
+    .map((runId) => rowsById.get(runId))
+    .filter(Boolean);
+  if (selectedRows.length === 0) {
+    elements.overviewSelectedRunCards.innerHTML =
+      `<p class="empty">선택된 중앙 SSL run이 없습니다.</p>`;
+    return;
+  }
+  elements.overviewSelectedRunCards.innerHTML = selectedRows
+    .map(
+      (row) => {
+        const label = centralOverviewDisplayLabel(row);
+        return `
+        <article class="selected-run-card alias-run-card">
+          <strong>${escapeHtml(label)}</strong>
+          <input
+            type="text"
+            data-overview-alias-run-id="${row.run_id}"
+            value="${escapeHtml(state.overviewRunAliases[row.run_id] ?? "")}"
+            placeholder="run alias"
+            aria-label="${escapeHtml(centralOverviewRunLabel(row))} 표시명 alias"
+          />
+          <button
+            type="button"
+            data-remove-overview-run-id="${row.run_id}"
+            aria-label="${escapeHtml(label)} 제거"
+          >x</button>
+          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(centralRunDetail(row))}</span>
+        </article>
+      `;
+      },
+    )
+    .join("");
+}
+
 function renderMetricCards(rows) {
-  const best = rows[0];
+  const selectedRows = rows.filter((row) =>
+    state.overviewRunIds.includes(row.run_id),
+  );
+  const primaryMetric = state.overviewMetricIds[0] ?? "macro_f1";
+  const best = selectedRows.slice().sort((a, b) => compareMetric(a, b, primaryMetric))[0];
   const runCount = rows.length;
   const methodCount = new Set(rows.map((row) => row.method_name)).size;
   elements.metricCards.innerHTML = [
     card("runs", runCount),
     card("methods", methodCount),
-    card("best metric", best ? formatMetric(best[state.overviewMetric]) : "-"),
-    card("selected runs", state.selectedRunIds.length),
+    card(`best ${metricLabel(primaryMetric)}`, best ? formatMetric(best[primaryMetric]) : "-"),
+    card("selected runs", state.overviewRunIds.length),
   ].join("");
 }
 
@@ -2610,24 +3202,53 @@ function centralRunAxisLabel(row) {
   return `${row.method_name} · ${shortRun(row.run_id)}`;
 }
 
-function renderBarChart(rows) {
-  const values = rows.slice(0, 16).map((row) => ({
-    label: `${row.method_name} · ${shortRun(row.run_id)}`,
-    value: numberOrNull(row[state.overviewMetric]),
-  }));
-  const max = Math.max(...values.map((item) => item.value ?? 0), 0.000001);
-  elements.barChart.innerHTML = values
-    .map((item) => {
-      const width = item.value === null ? 0 : Math.max(2, (item.value / max) * 100);
-      return `
-        <div class="bar-row">
-          <span>${item.label}</span>
-          <div class="bar-track"><i style="width:${width}%"></i></div>
-          <strong>${formatMetric(item.value)}</strong>
-        </div>
-      `;
-    })
-    .join("");
+function centralOverviewRunLabel(row) {
+  return [
+    row.method_name ?? "-",
+    `rank${row.lora_rank ?? "?"}`,
+    centralRunSuffix(row.run_id),
+  ].join(" · ");
+}
+
+function centralOverviewDisplayLabel(row) {
+  const alias = state.overviewRunAliases[row.run_id];
+  return alias || centralOverviewRunLabel(row);
+}
+
+function centralOverviewRunSubLabel(row) {
+  return [
+    row.labeled_dataset_name ?? "?",
+    "->",
+    row.unlabeled_dataset_name ?? "?",
+    `seed${row.seed ?? "?"}`,
+  ].join(" ");
+}
+
+function centralRunDetail(row) {
+  return [
+    row.method_name,
+    shortRun(row.run_id),
+    runDescriptor(row),
+    `labeled=${row.labeled_dataset_name ?? "-"}`,
+    `unlabeled=${row.unlabeled_dataset_name ?? "-"}`,
+    `validation=${row.validation_dataset_name ?? "-"}`,
+    `test=${row.test_dataset_name ?? "-"}`,
+    `run_id=${row.run_id}`,
+  ].join(" · ");
+}
+
+function centralDataLabel(row) {
+  const labeled = row.labeled_dataset_name ?? "?";
+  const unlabeled = row.unlabeled_dataset_name ?? "?";
+  return `${labeled} -> ${unlabeled}`;
+}
+
+function centralRunSuffix(runId) {
+  const match = String(runId ?? "").match(/(\d{4}_\d{2}_\d{2}_\d{6})$/);
+  if (match) {
+    return match[1].replace(/^2026_/, "");
+  }
+  return shortRun(runId);
 }
 
 function renderClassChart() {
@@ -2773,21 +3394,42 @@ function renderProjectionGallery() {
 }
 
 function renderRunTable(rows) {
-  elements.runTable.innerHTML = rows
+  const selectedRows = rows.filter((row) =>
+    state.overviewRunIds.includes(row.run_id),
+  );
+  const metricIds = state.overviewMetricIds;
+  const columnCount = 6 + metricIds.length;
+  elements.runTableHead.innerHTML = `
+    <tr>
+      <th>eval</th>
+      <th>run</th>
+      <th>method</th>
+      <th>rank</th>
+      <th>split</th>
+      <th>basis</th>
+      ${metricIds.map((metric) => `<th>${escapeHtml(metricLabel(metric))}</th>`).join("")}
+    </tr>
+  `;
+  if (selectedRows.length === 0) {
+    elements.runTable.innerHTML = emptyTableRow(
+      columnCount,
+      "선택한 중앙 SSL run이 없습니다.",
+    );
+    return;
+  }
+  elements.runTable.innerHTML = selectedRows
     .map(
       (row) => `
-      <tr class="${state.selectedRunIds.includes(row.run_id) ? "selected" : ""}">
-        <td><button type="button" data-run-id="${row.run_id}">${shortRun(row.run_id)}</button></td>
-        <td>${row.method_name}</td>
-        <td>${loraConfigLabel(row)}</td>
-        <td>${shortSplit(row.selection_slug)}</td>
-        <td>${formatMetric(row.learning_rate)}</td>
-        <td>${formatMetric(row.classifier_learning_rate)}</td>
-        <td>${formatMetric(row.macro_f1)}</td>
-        <td>${formatMetric(row.accuracy_top_1)}</td>
-        <td>${formatMetric(row.expected_calibration_error)}</td>
-        <td>${row.rows_total ?? "-"}</td>
-        <td>${row.worst_category_f1 ?? "-"}</td>
+      <tr>
+        <td>${escapeHtml(row.eval_set ?? state.overviewEvalSet)}</td>
+        <td title="${escapeHtml(centralRunDetail(row))}"><button type="button" data-run-id="${row.run_id}">${escapeHtml(centralOverviewDisplayLabel(row))}</button></td>
+        <td>${escapeHtml(row.method_name)}</td>
+        <td>${formatCount(row.lora_rank)}</td>
+        <td title="${escapeHtml(shortSplit(row.selection_slug))}">${escapeHtml(centralDataLabel(row))}</td>
+        <td>best_acc</td>
+        ${metricIds
+          .map((metric) => `<td>${formatOverviewMetric(row, metric)}</td>`)
+          .join("")}
       </tr>
     `,
     )
@@ -2799,17 +3441,18 @@ function renderRunTable(rows) {
       state.comparisonSelectionTouched = true;
       state.detailMethodName = row?.method_name ?? null;
       state.detailRunId = runId;
-      if (state.selectedRunIds.includes(runId)) {
-        state.selectedRunIds =
-          state.selectedRunIds.length > 1
-            ? state.selectedRunIds.filter((selectedRunId) => selectedRunId !== runId)
-            : state.selectedRunIds;
-      } else {
-        state.selectedRunIds = [...state.selectedRunIds, runId];
-      }
+      state.selectedRunIds = uniqueValues([...state.selectedRunIds, runId]);
+      state.activeTab = "class";
       render();
     });
   });
+}
+
+function formatOverviewMetric(row, metric) {
+  if (metric === "rows_total") {
+    return formatCount(row[metric]);
+  }
+  return formatMetric(row[metric]);
 }
 
 function seriesColors(series, scope = null) {
@@ -2941,6 +3584,39 @@ function loadStoredSeriesColors(scope) {
   }
 }
 
+function loadStoredRunAliases(scope) {
+  const storageKey = RUN_ALIAS_STORAGE_KEYS[scope];
+  if (!storageKey) {
+    return {};
+  }
+  try {
+    const rawValue = window.localStorage.getItem(storageKey);
+    const parsed = rawValue ? JSON.parse(rawValue) : {};
+    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+      return {};
+    }
+    return Object.fromEntries(
+      Object.entries(parsed)
+        .map(([key, value]) => [key, String(value).trim()])
+        .filter(([_key, value]) => value.length > 0),
+    );
+  } catch (_error) {
+    return {};
+  }
+}
+
+function storeRunAliases(scope, aliases) {
+  const storageKey = RUN_ALIAS_STORAGE_KEYS[scope];
+  if (!storageKey) {
+    return;
+  }
+  try {
+    window.localStorage.setItem(storageKey, JSON.stringify(aliases));
+  } catch (_error) {
+    // localStorage가 막힌 환경에서는 현재 화면 상태만 유지한다.
+  }
+}
+
 function storeSeriesColors(scope, colors) {
   const storageKey = SERIES_COLOR_STORAGE_KEYS[scope];
   if (!storageKey) {
@@ -3015,6 +3691,28 @@ function fillRunSelect(select, rows, selectedRunId) {
     })
     .join("");
   select.innerHTML = `<option value="">세부 run 선택</option>${options}`;
+}
+
+function renderCheckboxList(container, values, selectedValues, dataKey, labelForValue) {
+  if (values.length === 0) {
+    container.innerHTML = `<p class="empty">선택 가능한 값이 없습니다.</p>`;
+    return;
+  }
+  const dataAttribute = dataKey.replace(/[A-Z]/g, (letter) => `-${letter.toLowerCase()}`);
+  container.innerHTML = values
+    .map(
+      (value) => `
+        <label class="check-row compact">
+          <input
+            type="checkbox"
+            data-${dataAttribute}="${escapeHtml(value)}"
+            ${selectedValues.has(value) ? "checked" : ""}
+          />
+          <span>${escapeHtml(labelForValue(value))}</span>
+        </label>
+      `,
+    )
+    .join("");
 }
 
 function checkedValues(container, dataKey) {
@@ -3123,6 +3821,46 @@ function escapeHtml(value) {
 function metricLabel(metric) {
   const labels = {
     expected_calibration_error: "ece",
+    accuracy_top_1: "accuracy",
+    macro_f1: "macro-F1",
+    weighted_f1: "weighted-F1",
+    balanced_accuracy: "balanced acc",
+    loss: "loss",
+    rows_total: "rows",
+    max_calibration_error: "max ece",
+    worst_category_f1_value: "worst category F1",
+    worst_client_macro_f1: "worst client F1",
+    best_client_macro_f1: "best client F1",
+    macro_f1_std: "client F1 std",
+    loss_std: "client loss std",
+    fairness_gap: "client F1 gap",
+    per_client_macro_f1_variance: "client F1 variance",
+    final_macro_f1: "final macro-F1",
+    final_accuracy_top_1: "final accuracy",
+    final_loss: "final loss",
+    final_expected_calibration_error: "final ece",
+    initial_macro_f1: "initial macro-F1",
+    initial_loss: "initial loss",
+    initial_expected_calibration_error: "initial ece",
+    communication_cost: "updates",
+    c2s_total_bytes: "C2S",
+    s2c_total_bytes_estimated: "S2C est.",
+    labeled_row_exposure_count: "labeled exp",
+    unique_labeled_row_count: "unique labeled",
+    unlabeled_row_exposure_count: "unlabeled exp",
+    total_row_exposure_count: "total exp",
+    unique_unlabeled_row_count: "unique unlabeled",
+    unique_total_row_count: "unique total",
+    unlabeled_row_count: "unlabeled rows",
+    evaluated_client_count: "eval clients",
+    client_count: "clients",
+    completed_rounds: "completed rounds",
+    round_budget: "round budget",
+    epochs: "epochs",
+    max_train_steps: "max steps",
+    train_batch_size: "batch",
+    learning_rate: "lr",
+    shard_alpha: "shard alpha",
     selection_macro_f1: "selection macro-F1",
     selection_accuracy_top_1: "selection accuracy",
     selection_expected_calibration_error: "selection ece",
