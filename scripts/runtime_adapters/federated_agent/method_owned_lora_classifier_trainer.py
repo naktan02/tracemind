@@ -19,15 +19,11 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     run_method_owned_lora_classifier_training_core,
 )
-from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
-    build_lora_classifier_helper_probability_provider,
-)
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     QuerySslLoraClientTrainingResult,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -39,6 +35,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
+)
+from scripts.runtime_adapters.federated_agent.local_ssl_helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     SimulationQuerySslLoraDeltaMaterializer,
@@ -109,34 +108,18 @@ def run_method_owned_lora_classifier_local_training(
         or build_lora_classifier_training_backend_config(training_task.objective_config)
     )
     labels = tuple(str(label) for label in active_adapter_state.label_schema)
-    helper_weak_probability_provider = None
-    if (
-        local_ssl_policy_name.strip().lower().replace("-", "_")
-        == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
-    ):
-        if timing_recorder is None:
-            helper_weak_probability_provider = (
-                build_lora_classifier_helper_probability_provider(
-                    peer_context=peer_context,
-                    peer_snapshots=peer_snapshots,
-                    labels=labels,
-                    lora_config=effective_lora_config,
-                    trainer_runtime_config=trainer_runtime_config,
-                    runtime_resource_cache=runtime_resource_cache,
-                )
-            )
-        else:
-            with timing_recorder.measure("adapter_helper_provider_prepare_seconds"):
-                helper_weak_probability_provider = (
-                    build_lora_classifier_helper_probability_provider(
-                        peer_context=peer_context,
-                        peer_snapshots=peer_snapshots,
-                        labels=labels,
-                        lora_config=effective_lora_config,
-                        trainer_runtime_config=trainer_runtime_config,
-                        runtime_resource_cache=runtime_resource_cache,
-                    )
-                )
+    helper_weak_probability_provider = (
+        build_lora_classifier_helper_provider_for_local_ssl_policy(
+            local_ssl_policy_name=local_ssl_policy_name,
+            peer_context=peer_context,
+            peer_snapshots=peer_snapshots,
+            labels=labels,
+            lora_config=effective_lora_config,
+            trainer_runtime_config=trainer_runtime_config,
+            runtime_resource_cache=runtime_resource_cache,
+            timing_recorder=timing_recorder,
+        )
+    )
     result = run_method_owned_lora_classifier_training_core(
         client_id=client_id,
         seed=seed,
@@ -177,6 +160,6 @@ def run_method_owned_lora_classifier_local_training(
             with timing_recorder.measure("agent_repository_save_seconds"):
                 repository.save_shared_adapter_update(
                     result.update_envelope.update_id,
-                result.update_payload,
-            )
+                    result.update_payload,
+                )
     return result

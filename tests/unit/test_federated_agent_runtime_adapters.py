@@ -33,7 +33,12 @@ from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact impor
     PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
     parse_partitioned_delta_tensor_artifact,
 )
+from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    LOCAL_SSL_POLICY_FIXMATCH,
+)
 from methods.federated_ssl.runtime_fallbacks import (
     RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
@@ -52,6 +57,9 @@ from scripts.runtime_adapters.federated_agent import (
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
+)
+from scripts.runtime_adapters.federated_agent.local_ssl_helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
     prepare_delta_materialization,
@@ -197,6 +205,71 @@ def test_lora_classifier_base_parameters_use_round_cache(
     assert calls["count"] == 1
     assert cache.miss_count == 1
     assert cache.hit_count == 1
+
+
+def test_local_ssl_helper_provider_resolver_skips_non_helper_policy(
+    monkeypatch,
+) -> None:
+    calls = {"count": 0}
+
+    def _fake_builder(**_kwargs):
+        calls["count"] += 1
+        return object()
+
+    monkeypatch.setattr(
+        "scripts.runtime_adapters.federated_agent.local_ssl_helper_provider."
+        "build_lora_classifier_helper_probability_provider",
+        _fake_builder,
+    )
+
+    provider = build_lora_classifier_helper_provider_for_local_ssl_policy(
+        local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
+        peer_context=None,
+        peer_snapshots=None,
+        labels=("anxiety", "normal"),
+        lora_config=LoraClassifierTrainingBackendConfig(),
+        trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(device="cpu"),
+        runtime_resource_cache=None,
+        timing_recorder=None,
+    )
+
+    assert provider is None
+    assert calls["count"] == 0
+
+
+def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
+    monkeypatch,
+) -> None:
+    provider = object()
+    captured: dict[str, object] = {}
+
+    def _fake_builder(**kwargs):
+        captured.update(kwargs)
+        return provider
+
+    monkeypatch.setattr(
+        "scripts.runtime_adapters.federated_agent.local_ssl_helper_provider."
+        "build_lora_classifier_helper_probability_provider",
+        _fake_builder,
+    )
+    timing = TimingRecorder()
+    runtime_cache = object()
+
+    resolved = build_lora_classifier_helper_provider_for_local_ssl_policy(
+        local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+        peer_context=None,
+        peer_snapshots={},
+        labels=("anxiety", "normal"),
+        lora_config=LoraClassifierTrainingBackendConfig(),
+        trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(device="cpu"),
+        runtime_resource_cache=runtime_cache,
+        timing_recorder=timing,
+    )
+
+    assert resolved is provider
+    assert captured["labels"] == ("anxiety", "normal")
+    assert captured["runtime_resource_cache"] is runtime_cache
+    assert "adapter_helper_provider_prepare_seconds" in timing.to_mapping()
 
 
 @pytest.mark.parametrize(
