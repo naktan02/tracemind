@@ -98,6 +98,32 @@ class FederatedArtifactPersistenceConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class FederatedResumeConfig:
+    """round 단위 simulation 재개 정책."""
+
+    checkpoint_enabled: bool = True
+    enabled: bool = False
+    run_dir: str | None = None
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedResumeConfig":
+        if source is None:
+            return cls()
+        return cls(
+            checkpoint_enabled=bool(source.get("checkpoint_enabled", True)),
+            enabled=bool(source.get("enabled", False)),
+            run_dir=_optional_str(source.get("run_dir")),
+        )
+
+    def __post_init__(self) -> None:
+        if self.enabled and self.run_dir is None:
+            raise ValueError("resume.run_dir is required when resume.enabled=true.")
+
+
+@dataclass(frozen=True, slots=True)
 class FederatedDiagnosticViewConfig:
     """client-local pseudo-label diagnostics에 쓸 unlabeled subset 설정."""
 
@@ -475,6 +501,7 @@ class SimulationRunRequest:
     artifact_persistence_config: FederatedArtifactPersistenceConfig = field(
         default_factory=FederatedArtifactPersistenceConfig
     )
+    resume_config: FederatedResumeConfig = field(default_factory=FederatedResumeConfig)
     run_budget_name: str | None = None
     run_output_dir: str | None = None
     ssl_method_config: FederatedSslMethodConfig | None = None

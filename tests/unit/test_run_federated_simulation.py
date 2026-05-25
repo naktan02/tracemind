@@ -62,6 +62,10 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
 )
+from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
+    load_resume_checkpoint,
+    resume_checkpoint_path,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
@@ -71,6 +75,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedLoraClassifierRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
+    FederatedResumeConfig,
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
     FederatedValidationConfig,
@@ -508,6 +513,7 @@ def _default_simulation_request(
     execution_plan=None,
     query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
+    resume_config: FederatedResumeConfig | None = None,
 ) -> SimulationRunRequest:
     """테스트가 FL simulation 전체 조립 세부사항을 반복하지 않게 한다."""
 
@@ -538,6 +544,7 @@ def _default_simulation_request(
             margin_threshold=0.0,
         ),
         diagnostics_config=_default_diagnostics_config(),
+        resume_config=resume_config or FederatedResumeConfig(),
         ssl_method_config=ssl_method_config,
         client_pool_split_config=(
             client_pool_split_config or _default_client_pool_split_config()
@@ -2084,6 +2091,98 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         delta=second_head_artifact["applied_classifier_head_bias_deltas"],
         after=second_head_artifact["classifier_head_biases"],
     )
+
+
+def test_run_simulation_request_resumes_from_completed_round_checkpoint(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_lora_trainer(monkeypatch)
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("a3", "panic panic", "anxiety"),
+        _row("d1", "sad sad", "depression"),
+        _row("d2", "sad sad", "depression"),
+        _row("d3", "sad sad", "depression"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+        _row("n3", "calm calm", "normal"),
+        _row("s1", "die die", "suicidal"),
+        _row("s2", "die die", "suicidal"),
+        _row("s3", "die die", "suicidal"),
+    ]
+    validation_rows = [
+        _row("va", "panic panic", "anxiety"),
+        _row("vd", "sad sad", "depression"),
+        _row("vn", "calm calm", "normal"),
+        _row("vs", "die die", "suicidal"),
+    ]
+    output_dir = tmp_path / "resume_round"
+    base_request = _default_simulation_request(
+        tmp_path,
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        output_dir=output_dir,
+        client_count=4,
+        rounds=1,
+        bootstrap_ratio=1 / 3,
+        model_id="mxbai-lora-classifier",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="lora_classifier",
+            lora_classifier=_lora_runtime_config(),
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="lora_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_lora_objective_extras(),
+        ),
+        validation_config=_default_lora_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+    )
+
+    first_result = run_simulation_request(base_request)
+
+    assert first_result.rounds[-1].model_revision == "sim_rev_0001"
+    assert resume_checkpoint_path(output_dir).exists()
+    assert load_resume_checkpoint(output_dir).completed_round_count == 1
+
+    resumed_result = run_simulation_request(
+        _default_simulation_request(
+            tmp_path,
+            train_rows=train_rows,
+            validation_rows=validation_rows,
+            output_dir=output_dir,
+            client_count=4,
+            rounds=2,
+            bootstrap_ratio=1 / 3,
+            model_id="mxbai-lora-classifier",
+            round_runtime_config=_default_round_runtime_config(
+                adapter_family_name="lora_classifier",
+                lora_classifier=_lora_runtime_config(),
+            ),
+            training_task_config=base_request.training_task_config,
+            validation_config=base_request.validation_config,
+            resume_config=FederatedResumeConfig(
+                checkpoint_enabled=True,
+                enabled=True,
+                run_dir=str(output_dir),
+            ),
+        )
+    )
+
+    resumed_revisions = [
+        round_summary.model_revision for round_summary in resumed_result.rounds
+    ]
+    assert resumed_revisions == ["sim_rev_0001", "sim_rev_0002"]
+    assert load_resume_checkpoint(output_dir).completed_round_count == 2
 
 
 def test_run_simulation_request_rejects_local_round_family_mismatch(

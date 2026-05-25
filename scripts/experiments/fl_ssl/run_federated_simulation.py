@@ -73,13 +73,18 @@ def main(cfg: DictConfig) -> None:
         cfg,
         run_kind="single_simulation",
     )
-    created_at = datetime.now(timezone.utc)
-    run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
-    output_dir = build_fl_ssl_run_dir(
-        cfg.federated_run_budget.output_dir,
-        cfg=cfg,
-        run_id=run_id,
-    )
+    if bool(cfg.resume.enabled):
+        if cfg.resume.run_dir is None:
+            raise ValueError("resume.run_dir is required when resume.enabled=true.")
+        output_dir = Path(str(cfg.resume.run_dir))
+    else:
+        created_at = datetime.now(timezone.utc)
+        run_id = created_at.strftime("%Y%m%dT%H%M%SZ")
+        output_dir = build_fl_ssl_run_dir(
+            cfg.federated_run_budget.output_dir,
+            cfg=cfg,
+            run_id=run_id,
+        )
     (output_dir / "logs").mkdir(parents=True, exist_ok=True)
     result = run_simulation_request(
         build_simulation_request_from_config(

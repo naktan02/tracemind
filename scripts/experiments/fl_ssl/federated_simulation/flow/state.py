@@ -57,6 +57,10 @@ class BootstrappedSimulation:
     initial_model_revision: str
     initial_validation: SimulationEvaluation
     active: ActiveSimulationState
+    completed_rounds: tuple[SimulationRoundSummary, ...] = ()
+    peer_context_state: PeerContextSimulationState = field(
+        default_factory=PeerContextSimulationState
+    )
     peer_probe_rows: tuple[LabeledQueryRow, ...] = ()
     peer_probe_manifest: FederatedPeerProbeManifest | None = None
     runtime_resource_cache: RuntimeResourceCache | None = None

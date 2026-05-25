@@ -89,6 +89,13 @@ artifact_persistence:
   # agent-local update 사본은 디버그용이므로 기본 저장하지 않는다.
   persist_agent_local_updates: false
 
+resume:
+  # 완료 round summary만 작은 JSON checkpoint로 저장한다. model/update artifact는
+  # 기존 server-owned 산출물을 재사용하므로 학습 시간 대비 overhead는 작다.
+  checkpoint_enabled: true
+  enabled: false
+  run_dir: null
+
 diagnostic_view:
   # 성능 평가는 validation set으로 수행한다. 이 view는 client-local pseudo-label
   # diagnostics만 위한 작은 deterministic subset이다.

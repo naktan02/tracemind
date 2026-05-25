@@ -38,7 +38,10 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     run_one_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
-    PeerContextSimulationState,
+    BootstrappedSimulation,
+)
+from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
+    write_resume_checkpoint,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedQuerySslObjectiveConfig,
@@ -79,10 +82,16 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
         ssl_method_descriptor=ssl_method_runtime.descriptor,
     )
     active = bootstrapped.active
-    peer_context_state = PeerContextSimulationState()
-    round_summaries: list[SimulationRoundSummary] = []
+    peer_context_state = bootstrapped.peer_context_state
+    round_summaries: list[SimulationRoundSummary] = list(bootstrapped.completed_rounds)
+    if request.resume_config.checkpoint_enabled:
+        _write_round_resume_checkpoint(
+            request=request,
+            bootstrapped=bootstrapped,
+            round_summaries=round_summaries,
+        )
 
-    for round_index in range(1, request.rounds + 1):
+    for round_index in range(len(round_summaries) + 1, request.rounds + 1):
         round_execution = run_one_round(
             request=request,
             bootstrapped=bootstrapped,
@@ -96,12 +105,32 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
         active = round_execution.active
         peer_context_state = round_execution.peer_context_state
         round_summaries.append(round_execution.summary)
+        if request.resume_config.checkpoint_enabled:
+            _write_round_resume_checkpoint(
+                request=request,
+                bootstrapped=bootstrapped,
+                round_summaries=round_summaries,
+            )
 
     return build_simulation_result(
         request=request,
         bootstrapped=bootstrapped,
         active=active,
         round_summaries=round_summaries,
+    )
+
+
+def _write_round_resume_checkpoint(
+    *,
+    request: SimulationRunRequest,
+    bootstrapped: BootstrappedSimulation,
+    round_summaries: list[SimulationRoundSummary],
+) -> None:
+    write_resume_checkpoint(
+        output_dir=request.output_dir,
+        initial_model_revision=bootstrapped.initial_model_revision,
+        initial_validation=bootstrapped.initial_validation,
+        rounds=tuple(round_summaries),
     )
 
 
