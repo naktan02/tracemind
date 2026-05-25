@@ -58,6 +58,51 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
     )
 
 
+def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
+    cfg = OmegaConf.create(
+        {
+            "seed": 42,
+            "federated_run_budget": {"client_count": 10, "rounds": 30},
+            "query_data_selection": {
+                "labeled": "szegeelim_general4",
+                "unlabeled": "ourafla_reddit",
+            },
+            "labeled_exposure_policy": {"name": "shared_client_seed"},
+            "query_ssl_method": {"name": "flexmatch_usb_v1"},
+            "round_runtime": {
+                "adapter_family_name": "lora_classifier",
+                "aggregation_backend_name": "fedavg",
+            },
+            "training_task": {
+                "objective": {
+                    "lora_classifier": {
+                        "proximal_mu": 0.01,
+                    }
+                }
+            },
+            "fl_method": {"composition_mode": "manual"},
+        }
+    )
+
+    output_dir = build_fl_ssl_run_dir(
+        "runs/fl_ssl",
+        cfg=cfg,
+        run_id="20260518T010203Z",
+    )
+
+    assert resolve_fl_ssl_run_condition_slug(cfg) == (
+        "clients10_rounds30_fedprox_mu0.01"
+    )
+    assert str(output_dir) == (
+        "runs/fl_ssl/manual_baselines/"
+        "flexmatch_usb_v1__lora_classifier__fedavg/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "shared_client_seed42/"
+        "clients10_rounds30_fedprox_mu0.01/"
+        "20260518T010203Z"
+    )
+
+
 def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
     cfg = OmegaConf.create(
         {

@@ -37,6 +37,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientPoolSplitConfig,
     FederatedDiagnosticsConfig,
     FederatedDiagnosticViewConfig,
+    FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedLoraClassifierRuntimeConfig,
     FederatedPeerProbeConfig,
@@ -114,6 +115,7 @@ def build_simulation_request_from_config(
     return SimulationRunRequest(
         train_rows=fl_data_source.train_rows,
         validation_rows=fl_data_source.validation_rows,
+        test_rows=fl_data_source.test_rows,
         output_dir=output_dir,
         client_count=int(cfg.federated_run_budget.client_count),
         rounds=int(cfg.federated_run_budget.rounds),
@@ -153,6 +155,9 @@ def build_simulation_request_from_config(
         ),
         diagnostic_view_config=FederatedDiagnosticViewConfig.from_mapping(
             optional_plain_dict(cfg, "diagnostic_view")
+        ),
+        final_projection_config=FederatedFinalProjectionConfig.from_mapping(
+            optional_plain_dict(cfg, "final_projection")
         ),
         peer_probe_config=FederatedPeerProbeConfig.from_mapping(
             optional_plain_dict(cfg, "peer_probe")

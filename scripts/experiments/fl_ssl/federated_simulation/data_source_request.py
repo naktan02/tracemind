@@ -39,6 +39,7 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 class ResolvedFlDataSource:
     train_rows: list[LabeledQueryRow]
     validation_rows: list[LabeledQueryRow]
+    test_rows: list[LabeledQueryRow]
     materialized_dataset_split: FederatedDatasetSplit | None
     data_source_config: FederatedDataSourceConfig
 
@@ -81,6 +82,7 @@ def resolve_fl_data_source(
                 *[row for shard in dataset_split.client_shards for row in shard.rows],
             ],
             validation_rows=load_jsonl_rows(Path(str(cfg.validation_jsonl))),
+            test_rows=_load_optional_test_rows(cfg),
             materialized_dataset_split=dataset_split,
             data_source_config=FederatedDataSourceConfig(
                 source_mode=source_mode,
@@ -115,6 +117,7 @@ def resolve_fl_data_source(
     return ResolvedFlDataSource(
         train_rows=loaded_split.train_rows,
         validation_rows=loaded_split.validation_rows,
+        test_rows=loaded_split.test_rows,
         materialized_dataset_split=loaded_split.dataset_split,
         data_source_config=FederatedDataSourceConfig(
             source_mode=source_mode,
@@ -129,6 +132,13 @@ def resolve_fl_data_source(
             test_jsonl=manifest.test_jsonl,
         ),
     )
+
+
+def _load_optional_test_rows(cfg: DictConfig) -> list[LabeledQueryRow]:
+    raw_test_jsonl = cfg.get("test_jsonl")
+    if raw_test_jsonl is None:
+        return []
+    return load_jsonl_rows(Path(str(raw_test_jsonl)))
 
 
 def require_manifest_matches_config(

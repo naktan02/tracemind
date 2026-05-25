@@ -19,6 +19,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 
+from ..io.final_projection import build_final_projection_artifacts
 from ..io.simulation_report_builder import SimulationReportBuilder
 from ..io.simulation_report_writer import SimulationReportWriter
 
@@ -59,6 +60,15 @@ def build_simulation_result(
         client_evaluations=client_evaluations,
         result_timing_breakdown=result_timing,
     )
+    started_at = time.perf_counter()
+    final_projection_artifacts = build_final_projection_artifacts(
+        request=request,
+        active=active,
+        runtime_resource_cache=bootstrapped.runtime_resource_cache,
+    )
+    result_timing["result_final_projection_seconds"] = (
+        time.perf_counter() - started_at
+    )
     if request.report_config is not None:
         started_at = time.perf_counter()
         report_payload = SimulationReportBuilder().build_payload(
@@ -84,6 +94,7 @@ def build_simulation_result(
             local_trainer_runtime_config=request.local_trainer_runtime_config,
             artifact_persistence_config=request.artifact_persistence_config,
             diagnostic_view_config=request.diagnostic_view_config,
+            final_projection_artifacts=final_projection_artifacts,
             peer_probe_manifest=bootstrapped.peer_probe_manifest,
         )
         result_timing["result_report_build_seconds"] = time.perf_counter() - started_at

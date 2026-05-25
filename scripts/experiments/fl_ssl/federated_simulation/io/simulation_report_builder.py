@@ -73,6 +73,7 @@ class SimulationReportBuilder:
         local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
         artifact_persistence_config: FederatedArtifactPersistenceConfig | None = None,
         diagnostic_view_config: FederatedDiagnosticViewConfig | None = None,
+        final_projection_artifacts: Mapping[str, object] | None = None,
         peer_probe_manifest: FederatedPeerProbeManifest | None = None,
     ) -> dict[str, object]:
         client_metric_summary = build_client_metric_summary(
@@ -149,6 +150,11 @@ class SimulationReportBuilder:
                 ),
                 "pseudo_label_quality": build_pseudo_label_quality_diagnostics(result),
                 "communication_cost": communication_cost,
+                "final_projection_artifacts": (
+                    None
+                    if final_projection_artifacts is None
+                    else dict(final_projection_artifacts)
+                ),
                 "result_timing_breakdown": dict(result.result_timing_breakdown),
             },
             "metrics": {

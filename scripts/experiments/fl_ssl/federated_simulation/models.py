@@ -158,6 +158,46 @@ class FederatedDiagnosticViewConfig:
             raise ValueError("diagnostic_view.max_rows must be positive.")
 
 
+@dataclass(frozen=True, slots=True)
+class FederatedFinalProjectionConfig:
+    """최종 global LoRA representation projection artifact 설정."""
+
+    enabled: bool = True
+    dataset_names: tuple[str, ...] = ("validation", "test")
+    fail_on_error: bool = False
+
+    @classmethod
+    def from_mapping(
+        cls,
+        source: Mapping[str, object] | None,
+    ) -> "FederatedFinalProjectionConfig":
+        if source is None:
+            return cls()
+        raw_dataset_names = source.get("dataset_names", ("validation", "test"))
+        if isinstance(raw_dataset_names, str):
+            dataset_names = tuple(
+                name.strip() for name in raw_dataset_names.split(",") if name.strip()
+            )
+        else:
+            dataset_names = tuple(
+                str(name).strip() for name in raw_dataset_names if str(name).strip()
+            )
+        return cls(
+            enabled=bool(source.get("enabled", True)),
+            dataset_names=dataset_names or ("validation", "test"),
+            fail_on_error=bool(source.get("fail_on_error", False)),
+        )
+
+    def __post_init__(self) -> None:
+        allowed_names = {"validation", "test"}
+        unsupported_names = sorted(set(self.dataset_names) - allowed_names)
+        if unsupported_names:
+            raise ValueError(
+                "final_projection.dataset_names only supports validation/test: "
+                f"{unsupported_names}"
+            )
+
+
 @dataclass(slots=True)
 class FederatedReportConfig:
     """paper 비교용 report schema 설정."""
@@ -498,6 +538,7 @@ class SimulationRunRequest:
     training_task_config: FederatedTrainingTaskConfig
     validation_config: FederatedValidationConfig
     diagnostics_config: FederatedDiagnosticsConfig
+    test_rows: list[LabeledQueryRow] = field(default_factory=list)
     artifact_persistence_config: FederatedArtifactPersistenceConfig = field(
         default_factory=FederatedArtifactPersistenceConfig
     )
@@ -520,6 +561,9 @@ class SimulationRunRequest:
     )
     diagnostic_view_config: FederatedDiagnosticViewConfig = field(
         default_factory=FederatedDiagnosticViewConfig
+    )
+    final_projection_config: FederatedFinalProjectionConfig = field(
+        default_factory=FederatedFinalProjectionConfig
     )
     peer_probe_config: FederatedPeerProbeConfig = field(
         default_factory=FederatedPeerProbeConfig

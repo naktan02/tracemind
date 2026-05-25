@@ -142,11 +142,15 @@ def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
 
 
 def resolve_fl_ssl_run_condition_slug(cfg: DictConfig) -> str:
-    """client 수와 round budget을 leaf 조건 slug로 표현한다."""
+    """client 수, round budget, local objective 조건을 leaf slug로 표현한다."""
 
     client_count = int(_select(cfg, "federated_run_budget.client_count", default=0))
     round_budget = int(_select(cfg, "federated_run_budget.rounds", default=0))
-    return f"clients{client_count}_rounds{round_budget}"
+    parts = [f"clients{client_count}", f"rounds{round_budget}"]
+    local_regularizer = _resolve_local_regularizer_slug(cfg)
+    if local_regularizer is not None:
+        parts.append(local_regularizer)
+    return "_".join(_slugify(part) for part in parts)
 
 
 def _select(cfg: DictConfig, key: str, *, default: object) -> object:
@@ -207,6 +211,20 @@ def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
         if match:
             return f"labels_pc{match.group(1)}"
     return None
+
+
+def _resolve_local_regularizer_slug(cfg: DictConfig) -> str | None:
+    proximal_mu = _select(
+        cfg,
+        "training_task.objective.lora_classifier.proximal_mu",
+        default=None,
+    )
+    if proximal_mu is None:
+        return None
+    normalized_mu = float(proximal_mu)
+    if normalized_mu <= 0.0:
+        return None
+    return f"fedprox_mu{normalized_mu:g}"
 
 
 def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:

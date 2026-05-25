@@ -29,6 +29,7 @@ defaults:
 
 train_jsonl: ${dataset.train_jsonl}
 validation_jsonl: ${dataset.validation_jsonl}
+test_jsonl: ${dataset.test_jsonl}
 published_model_id: tracemind-embed-sim
 seed: 42
 
@@ -111,6 +112,14 @@ peer_probe:
   selection_policy: label_balanced
   max_rows: 128
   seed_offset: 907
+
+final_projection:
+  # 학습/집계/최종 metric 이후에만 실행되는 진단 artifact다.
+  enabled: true
+  dataset_names:
+    - validation
+    - test
+  fail_on_error: false
 
 client_pool_split:
   labeled_ratio: 0.1
