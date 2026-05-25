@@ -202,6 +202,8 @@ def load_result_index_records(report_path: Path) -> ResultIndexRecords:
         fl_execution_role=None,
         fl_descriptor_name=None,
         update_delta_format=None,
+        local_regularizer_name=None,
+        local_regularizer_mu=None,
         embedding_backend=None,
         embedding_model_id=None,
         embedding_device=None,

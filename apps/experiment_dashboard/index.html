@@ -315,6 +315,48 @@
             <button type="button" data-fl-tab="splits">Splits</button>
           </nav>
 
+          <div class="legacy-hidden-controls" aria-hidden="true">
+            <select id="fl-round-count-filter"></select>
+            <select id="fl-round-method-filter"></select>
+          </div>
+
+          <section class="fl-filter-shell">
+            <button
+              id="fl-filter-toggle"
+              class="fl-filter-toggle"
+              type="button"
+              aria-expanded="false"
+            >
+              Filters
+            </button>
+            <article id="fl-filter-card" class="card fl-filter-card">
+              <div class="card-header">
+                <div>
+                  <p class="eyebrow">Run Filters</p>
+                  <h3>필터 축 선택</h3>
+                </div>
+                <button id="fl-filter-reset" class="text-button" type="button">
+                  Reset
+                </button>
+              </div>
+              <p class="filter-hint dark">
+                먼저 사용할 필터 축을 고른 뒤, 선택된 축에서만 세부 값을 좁힌다.
+                label budget은 별도 축으로 노출하지 않는다.
+              </p>
+              <div class="fl-filter-layout">
+                <section>
+                  <h4>Filter Axes</h4>
+                  <div id="fl-filter-axis-picker" class="filter-axis-picker"></div>
+                </section>
+                <section>
+                  <h4>Active Filters</h4>
+                  <div id="fl-active-filters" class="active-filter-grid"></div>
+                </section>
+              </div>
+              <p id="fl-filter-summary" class="detail-summary"></p>
+            </article>
+          </section>
+
           <section class="tab-panel active" data-fl-panel="runs">
             <article class="card">
               <div class="card-header">
@@ -329,6 +371,7 @@
                     <tr>
                       <th>run</th>
                       <th>method</th>
+                      <th>regularizer</th>
                       <th>split</th>
                       <th>clients</th>
                       <th>rounds</th>
@@ -352,26 +395,18 @@
           <section class="tab-panel" data-fl-panel="rounds">
             <article class="card">
               <div class="card-header">
-                <div class="fl-round-count-control">
-                  <label>
-                    Round Count
-                    <select id="fl-round-count-filter"></select>
-                  </label>
-                </div>
-                <div class="card-controls fl-round-controls">
-                  <label>
-                    Method
-                    <select id="fl-round-method-filter"></select>
-                  </label>
-                  <section>
-                    <p class="control-label">Runs</p>
-                    <div
-                      id="fl-round-run-checkboxes"
-                      class="run-checkbox-list compact"
-                    ></div>
-                  </section>
+                <div>
+                  <p class="eyebrow">Round Curves</p>
+                  <h3>선택한 run의 라운드 곡선</h3>
                 </div>
               </div>
+              <section class="fl-round-run-picker">
+                <p class="control-label">Filtered Runs</p>
+                <div
+                  id="fl-round-run-checkboxes"
+                  class="run-checkbox-list compact"
+                ></div>
+              </section>
               <div
                 id="fl-round-selected-run-cards"
                 class="selected-run-cards alias-run-cards"
@@ -520,6 +555,6 @@
       </main>
     </div>
 
-    <script src="./src/app.js" type="module"></script>
+    <script src="./src/app.js?v=20260525-fl-filter-drawer" type="module"></script>
   </body>
 </html>

@@ -192,6 +192,12 @@ def _build_filters(
         "fl_execution_roles": _unique(row.get("fl_execution_role") for row in runs),
         "fl_descriptors": _unique(row.get("fl_descriptor_name") for row in runs),
         "update_delta_formats": _unique(row.get("update_delta_format") for row in runs),
+        "local_regularizers": _unique(
+            row.get("local_regularizer_name") for row in runs
+        ),
+        "local_regularizer_mus": _unique(
+            row.get("local_regularizer_mu") for row in runs
+        ),
         "embedding_backends": _unique(row.get("embedding_backend") for row in runs),
         "embedding_model_ids": _unique(row.get("embedding_model_id") for row in runs),
         "embedding_devices": _unique(row.get("embedding_device") for row in runs),

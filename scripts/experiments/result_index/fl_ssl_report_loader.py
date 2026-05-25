@@ -62,6 +62,7 @@ def load_fl_ssl_result_index_records(
     descriptor_name = optional_str(fl_method.get("descriptor_name")) or optional_str(
         ssl_method.get("name")
     )
+    local_regularizer_name, local_regularizer_mu = infer_local_regularizer(objective)
     run = ExperimentRunRecord(
         run_id=run_id,
         track=optional_str(payload.get("track")) or "fl_ssl_main_comparison",
@@ -123,6 +124,8 @@ def load_fl_ssl_result_index_records(
         fl_execution_role=optional_str(fl_method.get("execution_role")),
         fl_descriptor_name=descriptor_name,
         update_delta_format=optional_str(objective.get("lora_classifier.delta_format")),
+        local_regularizer_name=local_regularizer_name,
+        local_regularizer_mu=local_regularizer_mu,
         embedding_backend=optional_str(embedding_adapter.get("backend")),
         embedding_model_id=optional_str(embedding_adapter.get("model_id")),
         embedding_device=optional_str(embedding_adapter.get("device")),
@@ -198,6 +201,13 @@ def infer_fl_method_family(
     if str(composition_mode or "").strip().lower() == "manual":
         return "manual_baselines"
     return descriptor_name or adapter_family or "unknown"
+
+
+def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | None]:
+    proximal_mu = optional_float(objective.get("lora_classifier.proximal_mu"))
+    if proximal_mu is not None and proximal_mu > 0:
+        return "fedprox", proximal_mu
+    return "none", None
 
 
 def infer_fl_ssl_run_id(report_path: Path) -> str:

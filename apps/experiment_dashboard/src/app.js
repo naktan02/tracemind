@@ -7,6 +7,20 @@ const FL_ROUND_METRICS = [
   "loss",
   "accepted_ratio",
 ];
+const DEFAULT_FL_FILTER_AXIS_IDS = ["round_count", "method"];
+const FL_FILTER_AXIS_IDS = [
+  "method",
+  "local_regularizer",
+  "data_pair",
+  "label_budget",
+  "round_count",
+  "local_epochs",
+  "client_count",
+  "adapter",
+  "aggregation",
+  "seed",
+  "shard_alpha",
+];
 
 const state = {
   bundle: null,
@@ -31,6 +45,9 @@ const state = {
   projectionSelectionTouched: false,
   activeTab: "overview",
   activeFlTab: "runs",
+  flFilterPanelOpen: false,
+  flFilterAxisIds: [...DEFAULT_FL_FILTER_AXIS_IDS],
+  flFilterValues: {},
   flRoundCount: "__all__",
   flRoundMethodName: null,
   flRoundRunIds: [],
@@ -80,6 +97,12 @@ const elements = {
   projectionGallery: document.querySelector("#projection-gallery"),
   runTable: document.querySelector("#run-table"),
   flMetricCards: document.querySelector("#fl-metric-cards"),
+  flFilterToggle: document.querySelector("#fl-filter-toggle"),
+  flFilterCard: document.querySelector("#fl-filter-card"),
+  flFilterAxisPicker: document.querySelector("#fl-filter-axis-picker"),
+  flActiveFilters: document.querySelector("#fl-active-filters"),
+  flFilterSummary: document.querySelector("#fl-filter-summary"),
+  flFilterReset: document.querySelector("#fl-filter-reset"),
   flRunTable: document.querySelector("#fl-run-table"),
   flRoundCountFilter: document.querySelector("#fl-round-count-filter"),
   flRoundMethodFilter: document.querySelector("#fl-round-method-filter"),
@@ -143,6 +166,44 @@ function bindEvents() {
       state.activeFlTab = button.dataset.flTab;
       renderFlTabs();
     });
+  });
+  elements.flFilterToggle.addEventListener("click", () => {
+    state.flFilterPanelOpen = !state.flFilterPanelOpen;
+    renderFlFilterPanelVisibility();
+  });
+  elements.flFilterAxisPicker.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    state.flFilterAxisIds = checkedValues(
+      elements.flFilterAxisPicker,
+      "flFilterAxis",
+    );
+    for (const axisId of Object.keys(state.flFilterValues)) {
+      if (!state.flFilterAxisIds.includes(axisId)) {
+        delete state.flFilterValues[axisId];
+      }
+    }
+    preserveFlRoundSelectionAfterFilterChange();
+    render();
+  });
+  elements.flActiveFilters.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    const axisId = event.target.dataset.flFilterValueAxis;
+    if (!axisId) {
+      return;
+    }
+    state.flFilterValues[axisId] = checkedFlFilterValues(axisId);
+    preserveFlRoundSelectionAfterFilterChange();
+    render();
+  });
+  elements.flFilterReset.addEventListener("click", () => {
+    state.flFilterAxisIds = [...DEFAULT_FL_FILTER_AXIS_IDS];
+    state.flFilterValues = {};
+    preserveFlRoundSelectionAfterFilterChange();
+    render();
   });
   elements.overviewEvalFilter.addEventListener("change", (event) => {
     state.overviewEvalSet = event.target.value;
@@ -279,26 +340,39 @@ function bindEvents() {
     state.projectionSelectionTouched = true;
     render();
   });
-  elements.flRoundCountFilter.addEventListener("change", (event) => {
-    state.flRoundCount = event.target.value || "__all__";
-    state.flRoundRunIds = [];
-    state.flRoundSelectionTouched = false;
-    render();
-  });
-  elements.flRoundMethodFilter.addEventListener("change", (event) => {
-    state.flRoundMethodName = event.target.value || null;
-    state.flRoundRunIds = [];
-    state.flRoundSelectionTouched = false;
-    render();
-  });
+  if (elements.flRoundCountFilter) {
+    elements.flRoundCountFilter.addEventListener("change", (event) => {
+      state.flRoundCount = event.target.value || "__all__";
+      resetFlRoundSelection();
+      render();
+    });
+  }
+  if (elements.flRoundMethodFilter) {
+    elements.flRoundMethodFilter.addEventListener("change", (event) => {
+      state.flRoundMethodName = event.target.value || null;
+      resetFlRoundSelection();
+      render();
+    });
+  }
   elements.flRoundRunCheckboxes.addEventListener("change", (event) => {
     if (!(event.target instanceof HTMLInputElement)) {
       return;
     }
-    state.flRoundRunIds = checkedValues(
+    const visibleRunIds = new Set(
+      Array.from(
+        elements.flRoundRunCheckboxes.querySelectorAll("input[type='checkbox']"),
+      )
+        .map((input) => input.dataset.flRoundRunId)
+        .filter((runId) => runId),
+    );
+    const checkedRunIds = checkedValues(
       elements.flRoundRunCheckboxes,
       "flRoundRunId",
     );
+    state.flRoundRunIds = uniqueValues([
+      ...state.flRoundRunIds.filter((runId) => !visibleRunIds.has(runId)),
+      ...checkedRunIds,
+    ]);
     state.flRoundSelectionTouched = true;
     render();
   });
@@ -486,9 +560,13 @@ function centralEvalSets() {
 }
 
 function renderFlSslPanel() {
-  const rows = sortedFlRows(flSslRows());
+  const allRows = sortedFlRows(flSslRows());
+  normalizeFlFilterState(allRows);
+  const rows = applyFlFilters(allRows);
   normalizeFlSelections(rows);
   renderFlTabs();
+  renderFlFilterControls(allRows, rows);
+  renderFlFilterPanelVisibility();
 
   const methods = new Set(rows.map((row) => flMethodName(row))).size;
   const macroF1Values = rows
@@ -522,7 +600,7 @@ function renderFlSslPanel() {
 function renderFlRunTable(rows) {
   if (rows.length === 0) {
     elements.flRunTable.innerHTML = emptyTableRow(
-      14,
+      15,
       "아직 dashboard bundle에 FL SSL run이 없습니다.",
     );
     return;
@@ -534,6 +612,7 @@ function renderFlRunTable(rows) {
         <tr>
           <td>${escapeHtml(shortRun(flRunId(row)))}</td>
           <td>${escapeHtml(flMethodName(row))}</td>
+          <td>${escapeHtml(flLocalRegularizerLabel(row))}</td>
           <td>${escapeHtml(shortSplit(row.selection_slug))}</td>
           <td>${formatCount(row.client_count)}</td>
           <td>${formatCount(row.completed_rounds)} / ${formatCount(row.round_budget)}</td>
@@ -552,16 +631,95 @@ function renderFlRunTable(rows) {
     .join("");
 }
 
+function renderFlFilterControls(allRows, filteredRows) {
+  const selectedAxes = new Set(state.flFilterAxisIds);
+  elements.flFilterAxisPicker.innerHTML = FL_FILTER_AXIS_IDS.map((axisId) => {
+    const axis = flFilterAxis(axisId);
+    const valueCount = flFilterOptions(allRows, axisId).length;
+    return `
+      <label class="check-row compact">
+        <input
+          type="checkbox"
+          data-fl-filter-axis="${axisId}"
+          ${selectedAxes.has(axisId) ? "checked" : ""}
+        />
+        <span>${escapeHtml(axis.label)} (${valueCount})</span>
+      </label>
+    `;
+  }).join("");
+
+  if (state.flFilterAxisIds.length === 0) {
+    elements.flActiveFilters.innerHTML =
+      `<p class="empty">왼쪽에서 사용할 필터 축을 선택하세요.</p>`;
+  } else {
+    elements.flActiveFilters.innerHTML = state.flFilterAxisIds
+      .map((axisId) => renderFlActiveFilterGroup(allRows, axisId))
+      .join("");
+  }
+
+  elements.flFilterSummary.textContent = [
+    `filtered runs=${filteredRows.length}/${allRows.length}`,
+    `axes=${state.flFilterAxisIds.length}`,
+  ].join(" · ");
+}
+
+function renderFlFilterPanelVisibility() {
+  elements.flFilterCard.classList.toggle("open", state.flFilterPanelOpen);
+  elements.flFilterToggle.classList.toggle("active", state.flFilterPanelOpen);
+  elements.flFilterToggle.setAttribute(
+    "aria-expanded",
+    String(state.flFilterPanelOpen),
+  );
+}
+
+function renderFlActiveFilterGroup(rows, axisId) {
+  const axis = flFilterAxis(axisId);
+  const selectedValues = new Set(state.flFilterValues[axisId] ?? []);
+  const options = flFilterOptions(rows, axisId);
+  if (options.length === 0) {
+    return `
+      <section class="filter-group">
+        <p class="filter-group-title">${escapeHtml(axis.label)}</p>
+        <p class="empty">선택 가능한 값 없음</p>
+      </section>
+    `;
+  }
+  const valueRows = options
+    .map(
+      (option) => `
+        <label class="check-row compact">
+          <input
+            type="checkbox"
+            data-fl-filter-value-axis="${axisId}"
+            data-fl-filter-value="${escapeHtml(option.value)}"
+            ${selectedValues.has(option.value) ? "checked" : ""}
+          />
+          <span>${escapeHtml(option.label)} (${option.count})</span>
+        </label>
+      `,
+    )
+    .join("");
+  return `
+    <section class="filter-group">
+      <p class="filter-group-title">${escapeHtml(axis.label)}</p>
+      <div class="filter-value-list">${valueRows}</div>
+    </section>
+  `;
+}
+
 function renderFlRunSelectors(rows) {
   const roundRuns = flRunsWithRows(rows, flRoundRows());
-  fillFlRoundCountSelect(elements.flRoundCountFilter, roundRuns);
-  const roundCountRuns = flRoundRunsForSelectedRoundCount(roundRuns);
-  fillFlMethodSelect(
-    elements.flRoundMethodFilter,
-    roundCountRuns,
-    state.flRoundMethodName,
-  );
-  renderFlRoundRunControls(roundCountRuns);
+  if (elements.flRoundCountFilter) {
+    fillFlRoundCountSelect(elements.flRoundCountFilter, roundRuns);
+  }
+  if (elements.flRoundMethodFilter) {
+    fillFlMethodSelect(
+      elements.flRoundMethodFilter,
+      roundRuns,
+      state.flRoundMethodName,
+    );
+  }
+  renderFlRoundRunControls(roundRuns);
   renderFlRoundMetricTabs();
   fillFlRunSelect(
     elements.flClientValidationRunFilter,
@@ -724,7 +882,7 @@ function renderFlRoundRunControls(rows) {
   if (candidateRows.length === 0) {
     elements.flRoundRunCheckboxes.innerHTML =
       `<p class="empty">선택 가능한 run이 없습니다.</p>`;
-    renderFlRoundSelectedRunCards(rows);
+    renderFlRoundSelectedRunCards();
     return;
   }
   const selectedRunIds = new Set(state.flRoundRunIds);
@@ -746,11 +904,16 @@ function renderFlRoundRunControls(rows) {
       `;
     })
     .join("");
-  renderFlRoundSelectedRunCards(rows);
+  renderFlRoundSelectedRunCards();
 }
 
-function renderFlRoundSelectedRunCards(rows) {
-  const rowsById = new Map(rows.map((row) => [flRunId(row), row]));
+function renderFlRoundSelectedRunCards() {
+  const rowsById = new Map(
+    flRunsWithRows(sortedFlRows(flSslRows()), flRoundRows()).map((row) => [
+      flRunId(row),
+      row,
+    ]),
+  );
   const selectedRows = state.flRoundRunIds
     .map((runId) => rowsById.get(runId))
     .filter((row) => row);
@@ -826,27 +989,7 @@ function normalizeFlSelections(rows) {
     state.flRoundMetric = "macro_f1";
   }
   const roundRuns = flRunsWithRows(rows, flRoundRows());
-  const roundCounts = flRoundCountOptions(roundRuns).map((option) => option.count);
-  if (
-    state.flRoundCount !== "__all__" &&
-    !roundCounts.includes(Number(state.flRoundCount))
-  ) {
-    state.flRoundCount = "__all__";
-  }
-  const roundCountRuns = flRoundRunsForSelectedRoundCount(roundRuns);
-  const methodNames = uniqueValues(roundCountRuns.map((row) => flMethodName(row)));
-  if (
-    state.flRoundMethodName &&
-    !methodNames.includes(state.flRoundMethodName)
-  ) {
-    state.flRoundMethodName = null;
-  }
-  if (!state.flRoundMethodName && methodNames.length > 0) {
-    state.flRoundMethodName = methodNames[0];
-  }
-  normalizeFlRoundRunSelection(
-    flRoundCandidateRuns(roundCountRuns),
-  );
+  normalizeFlRoundRunSelection(roundRuns);
   state.flClientValidationRunId = normalizeFlRunId(
     state.flClientValidationRunId,
     flRunsWithRows(rows, flClientValidationRows()),
@@ -876,16 +1019,13 @@ function normalizeFlSelections(rows) {
 
 function normalizeFlRoundRunSelection(candidateRows) {
   const visibleRunIds = new Set(candidateRows.map((row) => flRunId(row)));
-  state.flRoundRunIds = state.flRoundRunIds.filter((runId) =>
-    visibleRunIds.has(runId),
-  );
-  for (const runId of Object.keys(state.flRoundRunAliases)) {
-    if (!visibleRunIds.has(runId)) {
-      delete state.flRoundRunAliases[runId];
-    }
-  }
   if (!state.flRoundSelectionTouched && state.flRoundRunIds.length === 0) {
     state.flRoundRunIds = defaultFlRoundRunIds(candidateRows);
+  }
+  for (const runId of Object.keys(state.flRoundRunAliases)) {
+    if (!state.flRoundRunIds.includes(runId) && !visibleRunIds.has(runId)) {
+      delete state.flRoundRunAliases[runId];
+    }
   }
 }
 
@@ -926,6 +1066,103 @@ function flSplitRows() {
   return Array.isArray(state.bundle.fl_ssl_client_splits)
     ? state.bundle.fl_ssl_client_splits
     : [];
+}
+
+function normalizeFlFilterState(rows) {
+  const validAxisIds = new Set(FL_FILTER_AXIS_IDS);
+  state.flFilterAxisIds = state.flFilterAxisIds.filter((axisId) =>
+    validAxisIds.has(axisId),
+  );
+  for (const axisId of Object.keys(state.flFilterValues)) {
+    if (!state.flFilterAxisIds.includes(axisId)) {
+      delete state.flFilterValues[axisId];
+      continue;
+    }
+    const optionValues = new Set(
+      flFilterOptions(rows, axisId).map((option) => option.value),
+    );
+    state.flFilterValues[axisId] = (state.flFilterValues[axisId] ?? []).filter(
+      (value) => optionValues.has(value),
+    );
+  }
+}
+
+function applyFlFilters(rows) {
+  return rows.filter((row) =>
+    state.flFilterAxisIds.every((axisId) => {
+      const selectedValues = state.flFilterValues[axisId] ?? [];
+      if (selectedValues.length === 0) {
+        return true;
+      }
+      return selectedValues.includes(flFilterValue(row, axisId));
+    }),
+  );
+}
+
+function flFilterAxis(axisId) {
+  const labels = {
+    method: "Method",
+    local_regularizer: "Regularizer",
+    data_pair: "Labeled / Unlabeled",
+    label_budget: "Label Budget",
+    round_count: "Round Count",
+    local_epochs: "Local Epochs",
+    client_count: "Client Count",
+    adapter: "Adapter",
+    aggregation: "Aggregation",
+    seed: "Seed",
+    shard_alpha: "Shard Alpha",
+  };
+  return { id: axisId, label: labels[axisId] ?? axisId };
+}
+
+function flFilterOptions(rows, axisId) {
+  const counts = new Map();
+  for (const row of rows) {
+    const value = flFilterValue(row, axisId);
+    const label = flFilterLabel(row, axisId);
+    if (!counts.has(value)) {
+      counts.set(value, { value, label, count: 0 });
+    }
+    counts.get(value).count += 1;
+  }
+  return Array.from(counts.values()).sort((a, b) =>
+    a.label.localeCompare(b.label, undefined, { numeric: true }),
+  );
+}
+
+function flFilterValue(row, axisId) {
+  if (axisId === "method") return flMethodName(row);
+  if (axisId === "local_regularizer") return flLocalRegularizerLabel(row);
+  if (axisId === "data_pair") return flDataSourceLabel(row);
+  if (axisId === "label_budget") return flLabelBudgetLabel(row);
+  if (axisId === "round_count") return String(flRoundCountForRun(row) ?? "-");
+  if (axisId === "local_epochs") return String(row.epochs ?? "-");
+  if (axisId === "client_count") return String(row.client_count ?? "-");
+  if (axisId === "adapter") return String(row.adapter_family_name ?? "-");
+  if (axisId === "aggregation") return String(row.aggregation_backend_name ?? "-");
+  if (axisId === "seed") return String(row.seed ?? "-");
+  if (axisId === "shard_alpha") return String(row.shard_alpha ?? "-");
+  return "-";
+}
+
+function flFilterLabel(row, axisId) {
+  if (axisId === "round_count") return `${flRoundCountForRun(row) ?? "-"} rounds`;
+  if (axisId === "local_epochs") return `${row.epochs ?? "-"} local epochs`;
+  if (axisId === "client_count") return `${row.client_count ?? "-"} clients`;
+  if (axisId === "seed") return `seed ${row.seed ?? "-"}`;
+  if (axisId === "shard_alpha") return `alpha ${formatMetric(row.shard_alpha)}`;
+  return flFilterValue(row, axisId);
+}
+
+function checkedFlFilterValues(axisId) {
+  return Array.from(
+    elements.flActiveFilters.querySelectorAll(
+      `input[type='checkbox'][data-fl-filter-value-axis='${axisId}']:checked`,
+    ),
+  )
+    .map((input) => input.dataset.flFilterValue)
+    .filter((value) => value);
 }
 
 function sortedFlRows(rows) {
@@ -987,10 +1224,7 @@ function flRoundRowsForSelectedRuns() {
 }
 
 function flRoundCandidateRuns(rows) {
-  if (!state.flRoundMethodName) {
-    return rows;
-  }
-  return rows.filter((row) => flMethodName(row) === state.flRoundMethodName);
+  return rows;
 }
 
 function isFlSslTrack(track) {
@@ -1039,21 +1273,38 @@ function flMetric(row, metric) {
 
 function flRunDescriptor(row) {
   const protocol = row.protocol ?? {};
-  const flMethod = protocol.fl_method ?? {};
-  const sslMethod = protocol.ssl_method ?? {};
   const roundRuntime = protocol.round_runtime ?? {};
   const cost = flMetric(row, "communication_cost");
   const costValue = typeof cost === "object" && cost !== null ? cost.value : cost;
   return [
-    `mode=${row.fl_composition_mode ?? flMethod.composition_mode ?? "-"}`,
-    `descriptor=${row.fl_descriptor_name ?? flMethod.descriptor_name ?? sslMethod.name ?? "-"}`,
+    flDataSourceLabel(row),
+    flLabelBudgetLabel(row),
     `adapter=${row.adapter_family_name ?? roundRuntime.adapter_family_name ?? "-"}`,
     `agg=${row.aggregation_backend_name ?? roundRuntime.aggregation_backend_name ?? "-"}`,
+    `regularizer=${flLocalRegularizerLabel(row)}`,
     `clients=${row.client_count ?? protocol.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? protocol.completed_rounds ?? "-"}/${row.round_budget ?? protocol.round_budget ?? "-"}`,
     `updates=${costValue ?? "-"}`,
     `seed=${row.seed ?? protocol.seed ?? "-"}`,
   ].join(" · ");
+}
+
+function flLocalRegularizerLabel(row) {
+  const name = row.local_regularizer_name ?? inferRegularizerFromRunId(flRunId(row));
+  if (!name || name === "none") {
+    return "none";
+  }
+  const mu = row.local_regularizer_mu ?? inferFedProxMuFromRunId(flRunId(row));
+  return mu === null || mu === undefined ? name : `${name}_mu${mu}`;
+}
+
+function inferRegularizerFromRunId(runId) {
+  return String(runId ?? "").includes("fedprox") ? "fedprox" : "none";
+}
+
+function inferFedProxMuFromRunId(runId) {
+  const match = String(runId ?? "").match(/fedprox_mu([0-9.]+)/);
+  return match ? match[1].replace(/\.$/, "") : null;
 }
 
 function flCostValue(row) {
@@ -1122,6 +1373,8 @@ function fillFlRunSelect(select, rows, selectedValue) {
 
 function flRunDetailLabel(row) {
   return [
+    flMethodName(row),
+    flLocalRegularizerLabel(row),
     `clients=${row.client_count ?? "-"}`,
     `rounds=${row.completed_rounds ?? "-"}/${row.round_budget ?? "-"}`,
     `alpha=${formatMetric(row.shard_alpha)}`,
@@ -1140,8 +1393,8 @@ function defaultFlRoundRunLabel(row) {
   }
   return [
     flMethodName(row),
+    flLocalRegularizerLabel(row),
     flDataSourceLabel(row),
-    flLabelBudgetLabel(row),
     `seed${row.seed ?? "?"}`,
     flRunSuffix(row),
   ].join(" · ");
@@ -1266,9 +1519,9 @@ function drawFlRoundLines(rows, metric) {
   const roundIndexes = uniqueValues(
     allPoints.map((point) => point.roundIndex),
   ).sort((a, b) => a - b);
-  const width = Math.max(760, roundIndexes.length * 82 + 160);
-  const height = 320;
-  const pad = { top: 28, right: 42, bottom: 56, left: 108 };
+  const width = 1160;
+  const height = 520;
+  const pad = { top: 42, right: 52, bottom: 72, left: 112 };
   const chartHeight = height - pad.top - pad.bottom;
   const pointInset = 44;
   const chartWidth = width - pad.left - pad.right - pointInset * 2;
@@ -1339,7 +1592,7 @@ function drawFlRoundLines(rows, metric) {
     .join("");
   return `
     ${renderSeriesLegend(series, colors)}
-    <div class="chart-scroll line-chart">
+    <div class="line-chart fl-round-line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
         <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + chartHeight}" />
@@ -1442,6 +1695,15 @@ function resetComparisonSelection() {
   state.selectedRunIds = [];
   state.comparisonMethodName = null;
   state.comparisonSelectionTouched = false;
+}
+
+function resetFlRoundSelection() {
+  state.flRoundRunIds = [];
+  state.flRoundSelectionTouched = false;
+}
+
+function preserveFlRoundSelectionAfterFilterChange() {
+  state.flRoundSelectionTouched = true;
 }
 
 function normalizeComparisonSelection(rows) {

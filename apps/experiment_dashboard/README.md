@@ -40,6 +40,10 @@ index는 report의 `run_control.budget_name`과 output root도 보존하므로, 
 export는 `projection_artifacts`의 UMAP/PCA PNG를
 `apps/experiment_dashboard/data/artifacts/` 아래로 복사한다. 이 디렉터리와
 `experiment_dashboard.json`은 재생성 가능한 cache라서 git에 올리지 않는다.
+중앙 LoRA projection writer는 eval set별로 UMAP을 먼저 시도하고 실패하면 PCA로
+fallback하는 단일 2D projection 이미지를 만든다. UMAP과 PCA 이미지를 동시에
+만드는 구조가 아니며, 실제 reducer는 manifest와 dashboard 이미지 label의
+`reducer` 값으로 확인한다.
 
 왼쪽 track navigation은 `Central SSL`과 `FL SSL`을 분리한다. 현재 기존 화면은
 `Central SSL` track이며 method, split, eval set을 고른 뒤 여러 run과 여러 metric을
@@ -49,6 +53,11 @@ projection image는 첫 번째 선택 run을 상세 대상으로 사용한다.
 `FL SSL` track은 중앙 SSL ranking과 섞지 않는 별도 표면이다. result index export는
 FL report를 dashboard 전용 view-model로 평탄화한다.
 
+- FL 상단의 `Run Filters`는 먼저 사용할 필터 축을 고르고, 선택한 축에서만 세부 값을
+  좁힌다. 왼쪽 `Filters` 버튼으로 필터 영역을 열고, 선택된 필터 그룹은 오른쪽으로
+  누적된다. 기본 축은 round count와 method이며, regularizer, labeled/unlabeled,
+  label budget, local epochs, client count, adapter, aggregation, seed 등을
+  추가할 수 있다.
 - `fl_ssl_runs`: run-level `macro_f1`, worst-client macro-F1, ECE,
   communication cost, per-client variance, labeled exposure/unique labeled counts.
 - `fl_ssl_rounds`: post-aggregation global validation curve와 round runtime/cost.

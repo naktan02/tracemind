@@ -49,6 +49,8 @@ class ExperimentRunRecord:
     fl_execution_role: str | None
     fl_descriptor_name: str | None
     update_delta_format: str | None
+    local_regularizer_name: str | None
+    local_regularizer_mu: float | None
     embedding_backend: str | None
     embedding_model_id: str | None
     embedding_device: str | None
