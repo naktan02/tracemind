@@ -322,6 +322,23 @@ code {
   background: #fff;
 }
 
+.fl-round-count-control {
+  min-width: 180px;
+}
+
+.fl-round-count-control label {
+  display: grid;
+  gap: 8px;
+  color: var(--muted);
+}
+
+.fl-round-count-control select {
+  width: 100%;
+  color: var(--ink);
+  border-color: var(--line);
+  background: #fffaf0;
+}
+
 .card-controls {
   display: grid;
   grid-template-columns: repeat(2, minmax(160px, 1fr));
@@ -334,9 +351,8 @@ code {
 
 .card-controls.fl-round-controls {
   grid-template-columns:
-    minmax(170px, 0.7fr)
-    minmax(260px, 1.2fr)
-    minmax(260px, 1.1fr);
+    minmax(170px, 0.42fr)
+    minmax(320px, 1fr);
 }
 
 .card-controls label {
@@ -446,6 +462,35 @@ code {
   overflow: auto;
 }
 
+.run-checkbox-list.compact {
+  max-height: 156px;
+}
+
+.metric-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 4px 0 12px;
+}
+
+.metric-tabs button {
+  border: 1px solid rgba(35, 118, 111, 0.22);
+  border-radius: 999px;
+  padding: 8px 12px;
+  color: var(--muted);
+  background: rgba(255, 250, 240, 0.72);
+  cursor: pointer;
+  font-size: 0.78rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+}
+
+.metric-tabs button.active {
+  color: #fffaf0;
+  border-color: var(--teal);
+  background: var(--teal);
+}
+
 .check-row,
 .run-option {
   display: flex;
@@ -506,6 +551,27 @@ code {
   border-radius: 999px;
   padding: 5px 7px 5px 10px;
   background: linear-gradient(135deg, rgba(255, 250, 240, 0.95), rgba(231, 240, 233, 0.72));
+}
+
+.alias-run-cards {
+  margin-top: -4px;
+}
+
+.selected-run-card.alias-run-card {
+  max-width: 320px;
+  border-radius: 18px;
+}
+
+.alias-run-card input {
+  width: 120px;
+  min-width: 80px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  padding: 4px 8px;
+  color: var(--ink);
+  background: #fffaf0;
+  font: inherit;
+  font-size: 0.76rem;
 }
 
 .selected-run-card button {
@@ -714,6 +780,11 @@ code {
 
 .axis-line {
   stroke: rgba(109, 117, 107, 0.36);
+  stroke-width: 1;
+}
+
+.grid-line {
+  stroke: rgba(109, 117, 107, 0.16);
   stroke-width: 1;
 }
 

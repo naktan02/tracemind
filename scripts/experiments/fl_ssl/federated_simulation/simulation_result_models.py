@@ -116,4 +116,5 @@ class SimulationResult:
     final_validation: SimulationEvaluation
     rounds: tuple[SimulationRoundSummary, ...]
     client_evaluations: tuple[ClientEvaluationSummary, ...] = ()
+    result_timing_breakdown: dict[str, float] = field(default_factory=dict)
     report_path: str | None = None

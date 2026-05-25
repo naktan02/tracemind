@@ -5,7 +5,7 @@ from __future__ import annotations
 import hashlib
 import json
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any
 
 import torch
@@ -38,16 +38,46 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 LORA_CLASSIFIER_PEER_SNAPSHOT_KIND = "lora_classifier_materialized_state.v1"
 
 
-@dataclass(frozen=True, slots=True)
+@dataclass(slots=True)
 class LoraClassifierHelperWeakProbabilityProvider:
     """선택된 helper LoRA-classifier snapshot으로 weak-view 확률을 계산한다."""
 
-    helper_models: tuple[LoraTextClassifier, ...]
+    helper_snapshots: tuple[FederatedSslPeerClientSnapshot, ...]
+    labels: tuple[str, ...]
+    lora_config: LoraClassifierTrainingBackendConfig
+    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig
     device: str
+    runtime_resource_cache: RuntimeResourceCache | None = None
+    _helper_models: tuple[LoraTextClassifier, ...] | None = field(
+        default=None,
+        init=False,
+        repr=False,
+    )
 
     @property
     def helper_count(self) -> int:
-        return len(self.helper_models)
+        return len(self.helper_snapshots)
+
+    @property
+    def materialized_helper_count(self) -> int:
+        return 0 if self._helper_models is None else len(self._helper_models)
+
+    @property
+    def helper_models(self) -> tuple[LoraTextClassifier, ...]:
+        """호출 시점에만 helper model을 GPU에 materialize한다."""
+
+        if self._helper_models is None:
+            self._helper_models = tuple(
+                _materialize_helper_model(
+                    snapshot=snapshot,
+                    labels=self.labels,
+                    lora_config=self.lora_config,
+                    trainer_runtime_config=self.trainer_runtime_config,
+                    runtime_resource_cache=self.runtime_resource_cache,
+                )
+                for snapshot in self.helper_snapshots
+            )
+        return self._helper_models
 
     def __call__(
         self,
@@ -200,7 +230,7 @@ def build_lora_classifier_helper_probability_provider(
 
     if peer_context is None or peer_context.helper_count == 0 or not peer_snapshots:
         return None
-    helper_models: list[LoraTextClassifier] = []
+    helper_snapshots: list[FederatedSslPeerClientSnapshot] = []
     for helper_client_id in peer_context.helper_client_ids:
         snapshot = peer_snapshots.get(helper_client_id)
         if snapshot is None:
@@ -212,19 +242,15 @@ def build_lora_classifier_helper_probability_provider(
                 "LoRA-classifier helper snapshot payload must be "
                 "LoraClassifierMaterializedState."
             )
-        model = _materialize_helper_model(
-            snapshot=snapshot,
-            labels=tuple(str(label) for label in labels),
-            lora_config=lora_config,
-            trainer_runtime_config=trainer_runtime_config,
-            runtime_resource_cache=runtime_resource_cache,
-        )
-        model.eval()
-        helper_models.append(model)
-    if not helper_models:
+        helper_snapshots.append(snapshot)
+    if not helper_snapshots:
         return None
     return LoraClassifierHelperWeakProbabilityProvider(
-        helper_models=tuple(helper_models),
+        helper_snapshots=tuple(helper_snapshots),
+        labels=tuple(str(label) for label in labels),
+        lora_config=lora_config,
+        trainer_runtime_config=trainer_runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
         device=trainer_runtime_config.device,
     )
 

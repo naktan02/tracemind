@@ -24,6 +24,7 @@ from methods.adaptation.lora_classifier.training.modeling import (
     build_lora_text_classifier_from_config,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
 )
@@ -47,6 +48,7 @@ def evaluate_lora_classifier_state(
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, Any]:
     """materialized global LoRA/head state로 labeled rows를 평가한다."""
 
@@ -61,6 +63,7 @@ def evaluate_lora_classifier_state(
         labels=effective_labels,
         lora_config=lora_config,
         runtime_config=runtime_config,
+        runtime_resource_cache=runtime_resource_cache,
     )
     load_lora_classifier_base_parameters_into_model(
         model=model,
@@ -95,6 +98,7 @@ def evaluate_lora_classifier_state_payload(
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
     """LoRA-classifier global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -106,6 +110,7 @@ def evaluate_lora_classifier_state_payload(
         runtime_config=runtime_config,
         batch_size=batch_size,
         seed=seed,
+        runtime_resource_cache=runtime_resource_cache,
     )
     row_count = len(rows)
     return build_classification_evaluation_payload(
@@ -129,6 +134,7 @@ def evaluate_lora_classifier_validation_payload(
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
     """FL validation runtime이 넘긴 LoRA state를 method-owned evaluator로 평가한다."""
 
@@ -145,6 +151,7 @@ def evaluate_lora_classifier_validation_payload(
         runtime_config=runtime_config,
         batch_size=batch_size,
         seed=seed,
+        runtime_resource_cache=runtime_resource_cache,
     )
 
 

@@ -149,6 +149,7 @@ class SimulationReportBuilder:
                 ),
                 "pseudo_label_quality": build_pseudo_label_quality_diagnostics(result),
                 "communication_cost": communication_cost,
+                "result_timing_breakdown": dict(result.result_timing_breakdown),
             },
             "metrics": {
                 "primary": primary_metrics,

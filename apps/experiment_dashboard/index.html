@@ -338,7 +338,9 @@
                       <th>worst client</th>
                       <th>ece</th>
                       <th>client std</th>
-                      <th>comm cost</th>
+                      <th>updates</th>
+                      <th>C2S</th>
+                      <th>S2C est.</th>
                     </tr>
                   </thead>
                   <tbody id="fl-run-table"></tbody>
@@ -350,33 +352,40 @@
           <section class="tab-panel" data-fl-panel="rounds">
             <article class="card">
               <div class="card-header">
-                <div>
-                  <p class="eyebrow">Round Curve</p>
-                  <h3>Post-Aggregation Global Validation</h3>
+                <div class="fl-round-count-control">
+                  <label>
+                    Round Count
+                    <select id="fl-round-count-filter"></select>
+                  </label>
                 </div>
                 <div class="card-controls fl-round-controls">
                   <label>
                     Method
                     <select id="fl-round-method-filter"></select>
                   </label>
-                  <label>
-                    Run
-                    <select id="fl-round-run-filter"></select>
-                  </label>
                   <section>
-                    <p class="control-label">Metrics</p>
+                    <p class="control-label">Runs</p>
                     <div
-                      id="fl-round-metric-picker"
-                      class="metric-picker inline"
+                      id="fl-round-run-checkboxes"
+                      class="run-checkbox-list compact"
                     ></div>
                   </section>
                 </div>
               </div>
+              <div
+                id="fl-round-selected-run-cards"
+                class="selected-run-cards alias-run-cards"
+              ></div>
               <p class="fl-tab-note">
                 각 round aggregation 이후 global parameter를 기준으로 기록된 validation
                 curve다. 클라이언트별 local update 통계는 Clients 탭에서 본다.
               </p>
               <p id="fl-round-flat-note" class="notice warning" hidden></p>
+              <div
+                id="fl-round-metric-picker"
+                class="metric-tabs"
+                aria-label="FL round metric tabs"
+              ></div>
               <div id="fl-round-chart" class="line-chart"></div>
               <div class="table-wrap compact">
                 <table>

@@ -67,3 +67,15 @@ class InMemoryRuntimeResourceCache:
 
     def set_resource(self, key: str, value: object) -> None:
         self._resources[key] = value
+
+    def clear_resources(self, *, key_prefix: str | None = None) -> int:
+        """key_prefix에 맞는 run-scoped resource를 폐기하고 개수를 반환한다."""
+
+        if key_prefix is None:
+            removed = len(self._resources)
+            self._resources.clear()
+            return removed
+        keys = [key for key in self._resources if key.startswith(key_prefix)]
+        for key in keys:
+            del self._resources[key]
+        return len(keys)

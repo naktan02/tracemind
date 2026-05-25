@@ -5,6 +5,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from types import SimpleNamespace
 
+import torch
 from torch import nn
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
@@ -233,7 +234,20 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
         runtime_resource_cache=cache,
     )
 
-    assert calls == {"build": 1, "load": 1}
+    assert calls == {"build": 0, "load": 0}
     assert provider_a is not None
     assert provider_b is not None
+    assert provider_a.helper_count == 1
+    assert provider_a.materialized_helper_count == 0
+
+    batch = {
+        "weak_input_ids": torch.ones(1, 2),
+        "weak_attention_mask": torch.ones(1, 2),
+    }
+    assert provider_a(unlabeled_batch=batch) is not None
+    assert calls == {"build": 1, "load": 1}
+    assert provider_a.materialized_helper_count == 1
+
+    assert provider_b(unlabeled_batch=batch) is not None
+    assert calls == {"build": 1, "load": 1}
     assert provider_a.helper_models[0] is provider_b.helper_models[0]

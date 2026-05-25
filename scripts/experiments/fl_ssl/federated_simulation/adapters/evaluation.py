@@ -7,6 +7,7 @@ from methods.adaptation.lora_classifier.evaluation import (
     evaluate_lora_classifier_validation_payload,
     require_lora_classifier_state,
 )
+from methods.common.runtime_resources import RuntimeResourceCache
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )
@@ -27,6 +28,7 @@ def evaluate_simulation_validation(
     active: ActiveSimulationState,
     rows: list[LabeledQueryRow],
     objective_config: TrainingObjectiveConfig | None,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> SimulationEvaluation:
     """LoRA-classifier state 기준 validation row를 평가한다."""
 
@@ -49,5 +51,6 @@ def evaluate_simulation_validation(
         runtime_config=request.local_trainer_runtime_config,
         batch_size=request.training_task_config.batch_size,
         seed=request.seed,
+        runtime_resource_cache=runtime_resource_cache,
     )
     return SimulationEvaluation(**payload)

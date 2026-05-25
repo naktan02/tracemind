@@ -176,6 +176,7 @@ def run_one_round(
         active=next_active,
         rows=request.validation_rows,
         objective_config=training_task.objective_config,
+        runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
     round_timing["round_validation_seconds"] = time.perf_counter() - started_at
     round_elapsed = time.perf_counter() - round_started_at

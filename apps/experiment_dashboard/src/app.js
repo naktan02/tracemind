@@ -31,9 +31,12 @@ const state = {
   projectionSelectionTouched: false,
   activeTab: "overview",
   activeFlTab: "runs",
+  flRoundCount: "__all__",
   flRoundMethodName: null,
-  flRoundRunId: null,
-  flRoundMetrics: ["macro_f1", "accuracy_top_1"],
+  flRoundRunIds: [],
+  flRoundSelectionTouched: false,
+  flRoundRunAliases: {},
+  flRoundMetric: "macro_f1",
   flClientValidationRunId: null,
   flClientRoundRunId: null,
   flClientRoundIndex: "__latest__",
@@ -78,8 +81,12 @@ const elements = {
   runTable: document.querySelector("#run-table"),
   flMetricCards: document.querySelector("#fl-metric-cards"),
   flRunTable: document.querySelector("#fl-run-table"),
+  flRoundCountFilter: document.querySelector("#fl-round-count-filter"),
   flRoundMethodFilter: document.querySelector("#fl-round-method-filter"),
-  flRoundRunFilter: document.querySelector("#fl-round-run-filter"),
+  flRoundRunCheckboxes: document.querySelector("#fl-round-run-checkboxes"),
+  flRoundSelectedRunCards: document.querySelector(
+    "#fl-round-selected-run-cards",
+  ),
   flRoundMetricPicker: document.querySelector("#fl-round-metric-picker"),
   flRoundFlatNote: document.querySelector("#fl-round-flat-note"),
   flRoundChart: document.querySelector("#fl-round-chart"),
@@ -272,23 +279,60 @@ function bindEvents() {
     state.projectionSelectionTouched = true;
     render();
   });
+  elements.flRoundCountFilter.addEventListener("change", (event) => {
+    state.flRoundCount = event.target.value || "__all__";
+    state.flRoundRunIds = [];
+    state.flRoundSelectionTouched = false;
+    render();
+  });
   elements.flRoundMethodFilter.addEventListener("change", (event) => {
     state.flRoundMethodName = event.target.value || null;
-    state.flRoundRunId = null;
+    state.flRoundRunIds = [];
+    state.flRoundSelectionTouched = false;
     render();
   });
-  elements.flRoundRunFilter.addEventListener("change", (event) => {
-    state.flRoundRunId = event.target.value || null;
-    render();
-  });
-  elements.flRoundMetricPicker.addEventListener("change", (event) => {
+  elements.flRoundRunCheckboxes.addEventListener("change", (event) => {
     if (!(event.target instanceof HTMLInputElement)) {
       return;
     }
-    state.flRoundMetrics = checkedValues(
-      elements.flRoundMetricPicker,
-      "flRoundMetric",
+    state.flRoundRunIds = checkedValues(
+      elements.flRoundRunCheckboxes,
+      "flRoundRunId",
     );
+    state.flRoundSelectionTouched = true;
+    render();
+  });
+  elements.flRoundSelectedRunCards.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
+      return;
+    }
+    const runId = event.target.dataset.removeFlRoundRunId;
+    if (!runId) {
+      return;
+    }
+    state.flRoundRunIds = state.flRoundRunIds.filter(
+      (selectedRunId) => selectedRunId !== runId,
+    );
+    state.flRoundSelectionTouched = true;
+    render();
+  });
+  elements.flRoundSelectedRunCards.addEventListener("change", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateFlRoundRunAlias(event.target);
+  });
+  elements.flRoundSelectedRunCards.addEventListener("input", (event) => {
+    if (!(event.target instanceof HTMLInputElement)) {
+      return;
+    }
+    updateFlRoundRunAlias(event.target);
+  });
+  elements.flRoundMetricPicker.addEventListener("click", (event) => {
+    if (!(event.target instanceof HTMLButtonElement)) {
+      return;
+    }
+    state.flRoundMetric = event.target.dataset.flRoundMetric ?? state.flRoundMetric;
     render();
   });
   elements.flClientValidationRunFilter.addEventListener("change", (event) => {
@@ -478,7 +522,7 @@ function renderFlSslPanel() {
 function renderFlRunTable(rows) {
   if (rows.length === 0) {
     elements.flRunTable.innerHTML = emptyTableRow(
-      12,
+      14,
       "아직 dashboard bundle에 FL SSL run이 없습니다.",
     );
     return;
@@ -500,6 +544,8 @@ function renderFlRunTable(rows) {
           <td>${formatMetric(flMetric(row, "expected_calibration_error"))}</td>
           <td>${formatMetric(row.macro_f1_std)}</td>
           <td>${formatCount(flCostValue(row))}</td>
+          <td>${formatBytes(flPosthocCommunicationBytes(row, "c2s_total_bytes"))}</td>
+          <td>${formatBytes(flPosthocCommunicationBytes(row, "s2c_total_bytes_estimated"))}</td>
         </tr>
       `,
     )
@@ -508,17 +554,15 @@ function renderFlRunTable(rows) {
 
 function renderFlRunSelectors(rows) {
   const roundRuns = flRunsWithRows(rows, flRoundRows());
+  fillFlRoundCountSelect(elements.flRoundCountFilter, roundRuns);
+  const roundCountRuns = flRoundRunsForSelectedRoundCount(roundRuns);
   fillFlMethodSelect(
     elements.flRoundMethodFilter,
-    roundRuns,
+    roundCountRuns,
     state.flRoundMethodName,
   );
-  fillFlRunSelect(
-    elements.flRoundRunFilter,
-    flRoundCandidateRuns(roundRuns),
-    state.flRoundRunId,
-  );
-  renderFlRoundMetricPicker();
+  renderFlRoundRunControls(roundCountRuns);
+  renderFlRoundMetricTabs();
   fillFlRunSelect(
     elements.flClientValidationRunFilter,
     flRunsWithRows(rows, flClientValidationRows()),
@@ -537,20 +581,20 @@ function renderFlRunSelectors(rows) {
 }
 
 function renderFlRoundPanel() {
-  const rows = flRoundRowsForRun(state.flRoundRunId);
+  const rows = flRoundRowsForSelectedRuns();
   renderFlRoundFlatNote(rows);
   if (rows.length === 0) {
     elements.flRoundChart.innerHTML =
-      `<p class="empty">선택한 run의 round curve가 없습니다.</p>`;
+      `<p class="empty">선택한 run들의 round curve가 없습니다.</p>`;
     elements.flRoundTable.innerHTML = emptyTableRow(9, "round row 없음");
     return;
   }
-  elements.flRoundChart.innerHTML = drawFlRoundLines(rows, state.flRoundMetrics);
+  elements.flRoundChart.innerHTML = drawFlRoundLines(rows, state.flRoundMetric);
   elements.flRoundTable.innerHTML = rows
     .map(
       (row) => `
         <tr>
-          <td>${escapeHtml(row.round_id ?? roundLabel(row.round_index))}</td>
+          <td>${escapeHtml(flRoundTableRoundLabel(row))}</td>
           <td>${formatMetric(row.macro_f1)}</td>
           <td>${formatMetric(row.accuracy_top_1)}</td>
           <td>${formatMetric(row.loss)}</td>
@@ -663,52 +707,134 @@ function renderFlSplitPanel() {
     .join("");
 }
 
-function renderFlRoundMetricPicker() {
-  const selectedMetrics = new Set(state.flRoundMetrics);
+function renderFlRoundMetricTabs() {
   elements.flRoundMetricPicker.innerHTML = FL_ROUND_METRICS.map(
     (metric) => `
-      <label class="check-row compact">
-        <input
-          type="checkbox"
-          data-fl-round-metric="${metric}"
-          ${selectedMetrics.has(metric) ? "checked" : ""}
-        />
-        <span>${metricLabel(metric)}</span>
-      </label>
+      <button
+        type="button"
+        data-fl-round-metric="${metric}"
+        class="${metric === state.flRoundMetric ? "active" : ""}"
+      >${metricLabel(metric)}</button>
     `,
   ).join("");
 }
 
+function renderFlRoundRunControls(rows) {
+  const candidateRows = flRoundCandidateRuns(rows);
+  if (candidateRows.length === 0) {
+    elements.flRoundRunCheckboxes.innerHTML =
+      `<p class="empty">선택 가능한 run이 없습니다.</p>`;
+    renderFlRoundSelectedRunCards(rows);
+    return;
+  }
+  const selectedRunIds = new Set(state.flRoundRunIds);
+  elements.flRoundRunCheckboxes.innerHTML = candidateRows
+    .map((row) => {
+      const runId = flRunId(row);
+      return `
+        <label class="run-option">
+          <input
+            type="checkbox"
+            data-fl-round-run-id="${runId}"
+            ${selectedRunIds.has(runId) ? "checked" : ""}
+          />
+          <span>
+            <strong>${escapeHtml(defaultFlRoundRunLabel(row))}</strong>
+            <small>${escapeHtml(flRunDescriptor(row))}</small>
+          </span>
+        </label>
+      `;
+    })
+    .join("");
+  renderFlRoundSelectedRunCards(rows);
+}
+
+function renderFlRoundSelectedRunCards(rows) {
+  const rowsById = new Map(rows.map((row) => [flRunId(row), row]));
+  const selectedRows = state.flRoundRunIds
+    .map((runId) => rowsById.get(runId))
+    .filter((row) => row);
+  if (selectedRows.length === 0) {
+    elements.flRoundSelectedRunCards.innerHTML =
+      `<p class="empty">선택된 FL round run이 없습니다.</p>`;
+    return;
+  }
+  elements.flRoundSelectedRunCards.innerHTML = selectedRows
+    .map((row) => {
+      const runId = flRunId(row);
+      const detail = [
+        defaultFlRoundRunLabel(row),
+        flMethodName(row),
+        flRunDescriptor(row),
+      ].join(" · ");
+      return `
+        <article class="selected-run-card alias-run-card" title="${escapeHtml(detail)}">
+          <strong>${escapeHtml(defaultFlRoundRunLabel(row))}</strong>
+          <input
+            type="text"
+            data-fl-round-alias-run-id="${runId}"
+            value="${escapeHtml(state.flRoundRunAliases[runId] ?? "")}"
+            placeholder="legend alias"
+            aria-label="${escapeHtml(defaultFlRoundRunLabel(row))} 범례 alias"
+          />
+          <button
+            type="button"
+            data-remove-fl-round-run-id="${runId}"
+            aria-label="${escapeHtml(defaultFlRoundRunLabel(row))} 제거"
+          >x</button>
+          <span class="selected-run-detail" aria-hidden="true">${escapeHtml(detail)}</span>
+        </article>
+      `;
+    })
+    .join("");
+}
+
+function updateFlRoundRunAlias(input) {
+  const runId = input.dataset.flRoundAliasRunId;
+  if (!runId) {
+    return;
+  }
+  const alias = input.value.trim();
+  if (alias) {
+    state.flRoundRunAliases[runId] = alias;
+  } else {
+    delete state.flRoundRunAliases[runId];
+  }
+  renderFlRoundPanel();
+}
+
 function renderFlRoundFlatNote(rows) {
-  const flatMetrics = state.flRoundMetrics.filter((metric) => {
-    const uniqueValuesForMetric = uniqueValues(
-      rows
-        .map((row) => numberOrNull(row[metric]))
-        .filter((value) => value !== null),
-    );
-    return uniqueValuesForMetric.length === 1;
-  });
-  if (rows.length === 0 || flatMetrics.length === 0) {
+  const uniqueValuesForMetric = uniqueValues(
+    rows
+      .map((row) => numberOrNull(row[state.flRoundMetric]))
+      .filter((value) => value !== null),
+  );
+  if (rows.length === 0 || uniqueValuesForMetric.length !== 1) {
     elements.flRoundFlatNote.hidden = true;
     elements.flRoundFlatNote.textContent = "";
     return;
   }
   elements.flRoundFlatNote.hidden = false;
   elements.flRoundFlatNote.textContent = [
-    `선택한 run에서 ${flatMetrics.map(metricLabel).join(", ")} 값이 전 라운드 동일합니다.`,
+    `선택한 run에서 ${metricLabel(state.flRoundMetric)} 값이 전 라운드 동일합니다.`,
     "현재 기존 FL LoRA-classifier runs는 validation scorer가 prototype_similarity라 shared LoRA/classifier state를 직접 읽지 않아 aggregate 효과가 global validation curve에 반영되지 않습니다.",
   ].join(" ");
 }
 
 function normalizeFlSelections(rows) {
-  state.flRoundMetrics = state.flRoundMetrics.filter((metric) =>
-    FL_ROUND_METRICS.includes(metric),
-  );
-  if (state.flRoundMetrics.length === 0) {
-    state.flRoundMetrics = ["macro_f1"];
+  if (!FL_ROUND_METRICS.includes(state.flRoundMetric)) {
+    state.flRoundMetric = "macro_f1";
   }
   const roundRuns = flRunsWithRows(rows, flRoundRows());
-  const methodNames = uniqueValues(roundRuns.map((row) => flMethodName(row)));
+  const roundCounts = flRoundCountOptions(roundRuns).map((option) => option.count);
+  if (
+    state.flRoundCount !== "__all__" &&
+    !roundCounts.includes(Number(state.flRoundCount))
+  ) {
+    state.flRoundCount = "__all__";
+  }
+  const roundCountRuns = flRoundRunsForSelectedRoundCount(roundRuns);
+  const methodNames = uniqueValues(roundCountRuns.map((row) => flMethodName(row)));
   if (
     state.flRoundMethodName &&
     !methodNames.includes(state.flRoundMethodName)
@@ -718,9 +844,8 @@ function normalizeFlSelections(rows) {
   if (!state.flRoundMethodName && methodNames.length > 0) {
     state.flRoundMethodName = methodNames[0];
   }
-  state.flRoundRunId = normalizeFlRunId(
-    state.flRoundRunId,
-    flRoundCandidateRuns(roundRuns),
+  normalizeFlRoundRunSelection(
+    flRoundCandidateRuns(roundCountRuns),
   );
   state.flClientValidationRunId = normalizeFlRunId(
     state.flClientValidationRunId,
@@ -746,6 +871,21 @@ function normalizeFlSelections(rows) {
     !clientRoundIndexes.includes(state.flClientRoundIndex)
   ) {
     state.flClientRoundIndex = "__latest__";
+  }
+}
+
+function normalizeFlRoundRunSelection(candidateRows) {
+  const visibleRunIds = new Set(candidateRows.map((row) => flRunId(row)));
+  state.flRoundRunIds = state.flRoundRunIds.filter((runId) =>
+    visibleRunIds.has(runId),
+  );
+  for (const runId of Object.keys(state.flRoundRunAliases)) {
+    if (!visibleRunIds.has(runId)) {
+      delete state.flRoundRunAliases[runId];
+    }
+  }
+  if (!state.flRoundSelectionTouched && state.flRoundRunIds.length === 0) {
+    state.flRoundRunIds = defaultFlRoundRunIds(candidateRows);
   }
 }
 
@@ -797,10 +937,53 @@ function flRunsWithRows(runs, dataRows) {
   return runs.filter((row) => runIds.has(flRunId(row)));
 }
 
+function flRoundRunsForSelectedRoundCount(rows) {
+  if (state.flRoundCount === "__all__") {
+    return rows;
+  }
+  const selectedCount = Number(state.flRoundCount);
+  return rows.filter((row) => flRoundCountForRun(row) === selectedCount);
+}
+
+function flRoundCountOptions(rows) {
+  const countByRoundCount = new Map();
+  for (const row of rows) {
+    const roundCount = flRoundCountForRun(row);
+    if (roundCount === null) {
+      continue;
+    }
+    countByRoundCount.set(
+      roundCount,
+      (countByRoundCount.get(roundCount) ?? 0) + 1,
+    );
+  }
+  return Array.from(countByRoundCount.entries())
+    .map(([count, runCount]) => ({ count, runCount }))
+    .sort((a, b) => b.count - a.count);
+}
+
+function flRoundCountForRun(row) {
+  const completedRounds = numberOrNull(row.completed_rounds);
+  if (completedRounds !== null) {
+    return completedRounds;
+  }
+  const roundIndexes = flRoundRowsForRun(flRunId(row))
+    .map((roundRow) => numberOrNull(roundRow.round_index))
+    .filter((roundIndex) => roundIndex !== null);
+  return roundIndexes.length > 0 ? Math.max(...roundIndexes) : null;
+}
+
 function flRoundRowsForRun(runId) {
   return flRoundRows()
     .filter((row) => row.run_id === runId)
     .sort(compareRoundRows);
+}
+
+function flRoundRowsForSelectedRuns() {
+  const selectedRunIds = new Set(state.flRoundRunIds);
+  return flRoundRows()
+    .filter((row) => selectedRunIds.has(row.run_id))
+    .sort(compareFlRoundRows);
 }
 
 function flRoundCandidateRuns(rows) {
@@ -819,6 +1002,13 @@ function flRunId(row) {
 }
 
 function flMethodName(row) {
+  if (
+    row.fl_composition_mode === "method_owned" ||
+    row.fl_execution_role === "method_owned" ||
+    row.method_family === "fedmatch"
+  ) {
+    return row.fl_descriptor_name ?? row.method_family ?? row.method_name ?? "-";
+  }
   return (
     row.method_name ??
     row.ssl_method_name ??
@@ -871,6 +1061,34 @@ function flCostValue(row) {
   return typeof cost === "object" && cost !== null ? cost.value : cost;
 }
 
+function flPosthocCommunicationBytes(row, key) {
+  const cost = flMetric(row, "communication_cost");
+  if (typeof cost !== "object" || cost === null) {
+    return null;
+  }
+  const estimates = cost.posthoc_byte_estimates;
+  if (typeof estimates !== "object" || estimates === null) {
+    return null;
+  }
+  return estimates[key] ?? null;
+}
+
+function fillFlRoundCountSelect(select, rows) {
+  const options = flRoundCountOptions(rows);
+  if (options.length === 0) {
+    select.innerHTML = `<option value="__all__">round 없음</option>`;
+    return;
+  }
+  const totalRunCount = rows.length;
+  select.innerHTML = [
+    `<option value="__all__" ${state.flRoundCount === "__all__" ? "selected" : ""}>All rounds (${totalRunCount})</option>`,
+    ...options.map(({ count, runCount }) => {
+      const selected = String(count) === String(state.flRoundCount) ? "selected" : "";
+      return `<option value="${count}" ${selected}>${count} rounds (${runCount})</option>`;
+    }),
+  ].join("");
+}
+
 function fillFlMethodSelect(select, rows, selectedValue) {
   const methodNames = uniqueValues(rows.map((row) => flMethodName(row))).sort();
   if (methodNames.length === 0) {
@@ -912,6 +1130,37 @@ function flRunDetailLabel(row) {
   ].join(" · ");
 }
 
+function defaultFlRoundRunIds(rows) {
+  return rows.slice(0, 4).map((row) => flRunId(row));
+}
+
+function defaultFlRoundRunLabel(row) {
+  if (!row) {
+    return "run";
+  }
+  return [
+    flMethodName(row),
+    flDataSourceLabel(row),
+    flLabelBudgetLabel(row),
+    `seed${row.seed ?? "?"}`,
+    flRunSuffix(row),
+  ].join(" · ");
+}
+
+function flLabelBudgetLabel(row) {
+  const slug = String(row.selection_slug ?? flRunId(row));
+  const match = slug.match(/labels_pc(\d+)/);
+  if (match) {
+    return `pc${match[1]}`;
+  }
+  return "pc?";
+}
+
+function flRoundLegendLabel(runId, row) {
+  const metadata = flRunMetadata(runId) ?? row;
+  return state.flRoundRunAliases[runId] || defaultFlRoundRunLabel(metadata);
+}
+
 function flRunSuffix(row) {
   const runId = flRunId(row);
   const timestampMatch = runId.match(/(\d{8}T\d{6}Z)$/);
@@ -920,6 +1169,23 @@ function flRunSuffix(row) {
   }
   const parts = runId.split("__").filter((part) => part);
   return parts.length > 0 ? parts[parts.length - 1] : shortRun(runId);
+}
+
+function flRunMetadata(runId) {
+  return flSslRows().find((row) => flRunId(row) === runId) ?? null;
+}
+
+function flDataSourceLabel(row) {
+  const labeled = row.labeled_dataset_name ?? _extractRunIdPart(row, "labeled");
+  const unlabeled = row.unlabeled_dataset_name ?? _extractRunIdPart(row, "unlabeled");
+  return `L:${labeled ?? "?"} U:${unlabeled ?? "?"}`;
+}
+
+function _extractRunIdPart(row, prefix) {
+  const source = String(row.selection_slug ?? flRunId(row));
+  const next = prefix === "labeled" ? "unlabeled" : "labels_pc";
+  const match = source.match(new RegExp(`${prefix}-(.+?)_${next}`));
+  return match ? match[1] : null;
 }
 
 function fillRoundSelect(select, rows, selectedValue) {
@@ -954,42 +1220,81 @@ function selectedClientRoundIndex(rows) {
   return roundIndexes.length > 0 ? Math.max(...roundIndexes) : null;
 }
 
-function drawFlRoundLines(rows, metrics) {
-  const series = metrics
-    .map((metric) => ({
-      metric,
-      points: rows
-        .map((row) => ({
-          roundIndex: numberOrNull(row.round_index),
-          roundId: row.round_id ?? roundLabel(row.round_index),
-          value: numberOrNull(row[metric]),
-        }))
-        .filter((point) => point.roundIndex !== null && point.value !== null),
-    }))
+function drawFlRoundLines(rows, metric) {
+  const runRowsById = new Map();
+  for (const row of rows) {
+    if (!runRowsById.has(row.run_id)) {
+      runRowsById.set(row.run_id, []);
+    }
+    runRowsById.get(row.run_id).push(row);
+  }
+  const runMetadataById = new Map(flSslRows().map((row) => [flRunId(row), row]));
+  const selectedRunIds = state.flRoundRunIds.filter((runId) =>
+    runRowsById.has(runId),
+  );
+  const series = selectedRunIds
+    .flatMap((runId) => {
+      const runRows = runRowsById.get(runId).slice().sort(compareRoundRows);
+      const runMetadata = runMetadataById.get(runId);
+      return [
+        {
+          runId,
+          run: runMetadata,
+          metric,
+          label: flRoundSeriesLabel(
+            runId,
+            runMetadata,
+            metric,
+            selectedRunIds.length,
+            1,
+          ),
+          points: runRows
+            .map((row) => ({
+              roundIndex: numberOrNull(row.round_index),
+              roundId: row.round_id ?? roundLabel(row.round_index),
+              value: numberOrNull(row[metric]),
+            }))
+            .filter((point) => point.roundIndex !== null && point.value !== null),
+        },
+      ];
+    })
     .filter((item) => item.points.length > 0);
   const allPoints = series.flatMap((item) => item.points);
   if (series.length === 0 || allPoints.length === 0) {
     return `<p class="empty">선택한 지표 값이 없습니다.</p>`;
   }
-  const width = Math.max(760, rows.length * 44 + 120);
+  const roundIndexes = uniqueValues(
+    allPoints.map((point) => point.roundIndex),
+  ).sort((a, b) => a - b);
+  const width = Math.max(760, roundIndexes.length * 82 + 160);
   const height = 320;
-  const pad = { top: 24, right: 28, bottom: 64, left: 56 };
+  const pad = { top: 28, right: 42, bottom: 56, left: 108 };
   const chartHeight = height - pad.top - pad.bottom;
-  const chartWidth = width - pad.left - pad.right;
+  const pointInset = 44;
+  const chartWidth = width - pad.left - pad.right - pointInset * 2;
   const minRound = Math.min(...allPoints.map((point) => point.roundIndex));
   const maxRound = Math.max(...allPoints.map((point) => point.roundIndex));
   const roundRange = Math.max(maxRound - minRound, 1);
   const minValue = Math.min(...allPoints.map((point) => point.value));
   const maxValue = Math.max(...allPoints.map((point) => point.value));
-  const valueRange = Math.max(maxValue - minValue, 0.000001);
-  const colors = metricColors(metrics);
+  const valuePadding = Math.max((maxValue - minValue) * 0.08, 0.02);
+  let axisMin = minValue - valuePadding;
+  let axisMax = maxValue + valuePadding;
+  if (minValue >= 0 && maxValue <= 1) {
+    axisMin = Math.max(0, axisMin);
+    axisMax = Math.min(1, axisMax);
+  }
+  const valueRange = Math.max(axisMax - axisMin, 0.000001);
+  const colors = seriesColors(series);
   const xForPoint = (point) =>
-    pad.left + ((point.roundIndex - minRound) / roundRange) * chartWidth;
+    pad.left +
+    pointInset +
+    ((point.roundIndex - minRound) / roundRange) * chartWidth;
   const yForValue = (value) =>
-    pad.top + chartHeight - ((value - minValue) / valueRange) * chartHeight;
+    pad.top + chartHeight - ((value - axisMin) / valueRange) * chartHeight;
   const lines = series
     .map((item) => {
-      const color = colors.get(item.metric);
+      const color = colors.get(item.label);
       const path = item.points
         .map((point) => `${xForPoint(point)},${yForValue(point.value)}`)
         .join(" ");
@@ -997,7 +1302,7 @@ function drawFlRoundLines(rows, metrics) {
         .map(
           (point) => `
             <circle cx="${xForPoint(point)}" cy="${yForValue(point.value)}" r="4" style="--series-color:${color}">
-              <title>${escapeHtml(point.roundId)} ${metricLabel(item.metric)} ${formatMetric(point.value)}</title>
+              <title>${escapeHtml(item.label)} · ${escapeHtml(point.roundId)} · ${formatMetric(point.value)}</title>
             </circle>
           `,
         )
@@ -1005,9 +1310,6 @@ function drawFlRoundLines(rows, metrics) {
       return `<polyline points="${path}" fill="none" style="--series-color:${color}" />${dots}`;
     })
     .join("");
-  const roundIndexes = uniqueValues(
-    allPoints.map((point) => point.roundIndex),
-  ).sort((a, b) => a - b);
   const labels = roundIndexes
     .filter(
       (_roundIndex, index) =>
@@ -1020,20 +1322,28 @@ function drawFlRoundLines(rows, metrics) {
       const point = { roundIndex };
       const x = xForPoint(point);
       return `
-        <text class="axis-label" x="${x}" y="${height - 28}" transform="rotate(35 ${x} ${height - 28})">
-          ${roundLabel(roundIndex)}
+        <text class="axis-label" x="${x}" y="${height - 24}" text-anchor="middle">
+          ${compactRoundLabel(roundIndex)}
         </text>
       `;
     })
     .join("");
+  const valueTicks = buildValueTicks(axisMin, axisMax, 5)
+    .map((value) => {
+      const y = yForValue(value);
+      return `
+        <line class="grid-line" x1="${pad.left}" y1="${y}" x2="${width - pad.right}" y2="${y}" />
+        <text class="axis-label" x="${pad.left - 10}" y="${y + 4}" text-anchor="end">${formatMetric(value)}</text>
+      `;
+    })
+    .join("");
   return `
-    ${renderMetricLegend(metrics, colors)}
+    ${renderSeriesLegend(series, colors)}
     <div class="chart-scroll line-chart">
       <svg viewBox="0 0 ${width} ${height}" role="img">
         <line class="axis-line" x1="${pad.left}" y1="${pad.top + chartHeight}" x2="${width - pad.right}" y2="${pad.top + chartHeight}" />
         <line class="axis-line" x1="${pad.left}" y1="${pad.top}" x2="${pad.left}" y2="${pad.top + chartHeight}" />
-        <text class="axis-label" x="${pad.left}" y="18">${formatMetric(maxValue)}</text>
-        <text class="axis-label" x="${pad.left}" y="${height - 8}">${formatMetric(minValue)}</text>
+        ${valueTicks}
         ${lines}
         ${labels}
       </svg>
@@ -1067,6 +1377,14 @@ function compareRoundRows(a, b) {
   return compareNullableNumbers(a.round_index, b.round_index);
 }
 
+function compareFlRoundRows(a, b) {
+  const runCompare = String(a.run_id ?? "").localeCompare(String(b.run_id ?? ""));
+  if (runCompare !== 0) {
+    return runCompare;
+  }
+  return compareRoundRows(a, b);
+}
+
 function compareClientRoundRows(a, b) {
   const roundCompare = compareRoundRows(a, b);
   if (roundCompare !== 0) {
@@ -1081,6 +1399,22 @@ function roundLabel(roundIndex) {
     return "round ?";
   }
   return number === 0 ? "initial" : `round ${number}`;
+}
+
+function compactRoundLabel(roundIndex) {
+  const number = numberOrNull(roundIndex);
+  if (number === null) {
+    return "?";
+  }
+  return number === 0 ? "init" : `r${number}`;
+}
+
+function flRoundTableRoundLabel(row) {
+  const base = row.round_id ?? roundLabel(row.round_index);
+  if (state.flRoundRunIds.length <= 1) {
+    return base;
+  }
+  return `${flRoundLegendLabel(row.run_id, row)} · ${base}`;
 }
 
 function emptyTableRow(columnCount, message) {
@@ -1916,6 +2250,22 @@ function metricColors(metrics) {
   );
 }
 
+function seriesColors(series) {
+  const palette = [
+    "#23766f",
+    "#d97732",
+    "#527a45",
+    "#8f5b3d",
+    "#6c7a89",
+    "#a94f1f",
+    "#5a6fb0",
+    "#b55a7a",
+  ];
+  return new Map(
+    series.map((item, index) => [item.label, palette[index % palette.length]]),
+  );
+}
+
 function renderMetricLegend(metrics, colors) {
   return `
     <div class="chart-legend">
@@ -1927,6 +2277,39 @@ function renderMetricLegend(metrics, colors) {
         .join("")}
     </div>
   `;
+}
+
+function renderSeriesLegend(series, colors) {
+  return `
+    <div class="chart-legend editable-legend">
+      ${series
+        .map(
+          (item) =>
+            `<span><i style="background:${colors.get(item.label)}"></i>${escapeHtml(item.label)}</span>`,
+        )
+        .join("")}
+    </div>
+  `;
+}
+
+function flRoundSeriesLabel(runId, row, metric, runCount, metricCount) {
+  const runLabel = flRoundLegendLabel(runId, row);
+  const hasAlias = Boolean(state.flRoundRunAliases[runId]);
+  if (runCount <= 1 && !hasAlias) {
+    return metricLabel(metric);
+  }
+  if (metricCount <= 1) {
+    return runLabel;
+  }
+  return `${runLabel} · ${metricLabel(metric)}`;
+}
+
+function buildValueTicks(minValue, maxValue, tickCount) {
+  if (tickCount <= 1) {
+    return [minValue];
+  }
+  const step = (maxValue - minValue) / (tickCount - 1);
+  return Array.from({ length: tickCount }, (_item, index) => minValue + step * index);
 }
 
 function fillSelect(select, values, selectedValue) {
@@ -2003,6 +2386,22 @@ function formatCount(value) {
   return new Intl.NumberFormat("en-US", {
     maximumFractionDigits: 0,
   }).format(number);
+}
+
+function formatBytes(value) {
+  const number = numberOrNull(value);
+  if (number === null) {
+    return "-";
+  }
+  const units = ["B", "KB", "MB", "GB", "TB"];
+  let scaled = Math.abs(number);
+  let unitIndex = 0;
+  while (scaled >= 1024 && unitIndex < units.length - 1) {
+    scaled /= 1024;
+    unitIndex += 1;
+  }
+  const signed = number < 0 ? -scaled : scaled;
+  return `${formatMetric(signed)} ${units[unitIndex]}`;
 }
 
 function formatSeconds(value) {

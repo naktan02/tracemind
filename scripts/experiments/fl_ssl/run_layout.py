@@ -10,6 +10,8 @@ from omegaconf import DictConfig, OmegaConf
 from methods.federated.client_split import (
     LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT,
     LABELED_EXPOSURE_POLICY_NAMES,
+    LABELED_EXPOSURE_SERVER_ONLY_SEED,
+    LABELED_EXPOSURE_SHARED_CLIENT_SEED,
 )
 
 
@@ -73,8 +75,7 @@ def build_fl_ssl_seed_sweep_member_dir(
 def resolve_fl_ssl_method_family_slug(cfg: DictConfig) -> str:
     """상위 method family archive 축을 만든다."""
 
-    composition_mode = _select(cfg, "fl_method.composition_mode", default=None)
-    if str(composition_mode or "").strip().lower() == "manual":
+    if _is_manual_fl_composition(cfg):
         return "manual_baselines"
     method_name = _select(cfg, "ssl_method.name", default=None)
     return _slugify(method_name or "method_owned")
@@ -82,6 +83,22 @@ def resolve_fl_ssl_method_family_slug(cfg: DictConfig) -> str:
 
 def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
     """output path에서 method/runtime composition 축을 표현하는 slug를 만든다."""
+
+    if not _is_manual_fl_composition(cfg):
+        method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
+        adapter_family = (
+            _select(cfg, "round_runtime.adapter_family_name", default=None)
+            or "unknown_family"
+        )
+        server_update_policy = (
+            _select(cfg, "server_update_policy.name", default=None)
+            or _select(cfg, "round_runtime.aggregation_backend_name", default=None)
+            or "unknown_server_update"
+        )
+        return "__".join(
+            _slugify(part)
+            for part in (method_name, adapter_family, server_update_policy)
+        )
 
     query_ssl_method = (
         _select(cfg, "query_ssl_method.name", default=None)
@@ -107,15 +124,15 @@ def resolve_fl_ssl_split_slug(cfg: DictConfig) -> str:
     """output path에서 data split 축을 표현하는 slug를 만든다."""
 
     seed = _select(cfg, "seed", default=None)
-    shard_policy = _select(cfg, "shard_policy.name", default=None)
-    shard_alpha = _select(cfg, "shard_policy.alpha", default=None)
     parts: list[str] = []
-    if shard_alpha is not None:
-        parts.append(_alpha_slug(float(shard_alpha)))
-    elif shard_policy:
-        parts.append(str(shard_policy))
+    data_source = _resolve_data_source_slug(cfg)
+    if data_source is not None:
+        parts.append(data_source)
     else:
         parts.append("split")
+    label_budget = _resolve_label_budget_slug(cfg)
+    if label_budget is not None:
+        parts.append(label_budget)
     labeled_exposure = _resolve_labeled_exposure_slug(cfg)
     if labeled_exposure is not None:
         parts.append(labeled_exposure)
@@ -136,30 +153,92 @@ def _select(cfg: DictConfig, key: str, *, default: object) -> object:
     return OmegaConf.select(cfg, key, default=default)
 
 
+def _is_manual_fl_composition(cfg: DictConfig) -> bool:
+    composition_mode = _select(cfg, "fl_method.composition_mode", default=None)
+    return str(composition_mode or "").strip().lower() == "manual"
+
+
 def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
     configured = _select(cfg, "labeled_exposure_policy.name", default=None)
     if configured is not None:
         normalized = str(configured).strip()
-        if normalized and normalized != LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
-            return normalized
+        if normalized:
+            return _compact_labeled_exposure_slug(normalized)
     manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
     for policy_name in sorted(LABELED_EXPOSURE_POLICY_NAMES):
-        if (
-            policy_name != LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT
-            and policy_name in manifest
-        ):
-            return policy_name
+        if policy_name in manifest:
+            return _compact_labeled_exposure_slug(policy_name)
     return None
 
 
-def _alpha_slug(value: float) -> str:
-    if 0 < value < 1:
-        return "alpha0" + f"{value:g}".split(".", 1)[1]
-    return "alpha" + _float_slug(value)
+def _resolve_data_source_slug(cfg: DictConfig) -> str | None:
+    labeled = _select(cfg, "query_data_selection.labeled", default=None)
+    unlabeled = _select(cfg, "query_data_selection.unlabeled", default=None)
+    if labeled is None or unlabeled is None:
+        manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+        labeled = labeled or _extract_manifest_component(manifest, prefix="labeled")
+        unlabeled = unlabeled or _extract_manifest_component(
+            manifest,
+            prefix="unlabeled",
+        )
+    if labeled is None and unlabeled is None:
+        return None
+    return "_".join(
+        _slugify(part)
+        for part in (
+            f"labeled-{labeled or 'unknown'}",
+            f"unlabeled-{unlabeled or 'unknown'}",
+        )
+    )
 
 
-def _float_slug(value: float) -> str:
-    return f"{value:g}".replace("-", "m").replace(".", "p")
+def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
+    count_per_class = _select(
+        cfg,
+        "fl_client_split_materialization.labeled_policy.count_per_class",
+        default=None,
+    )
+    if count_per_class is not None:
+        return f"labels_pc{int(count_per_class)}"
+    materialized_split_name = _select(cfg, "materialized_split.name", default=None)
+    manifest = str(_select(cfg, "fl_data.split_manifest", default="") or "")
+    for source in (materialized_split_name, manifest):
+        match = re.search(r"(?:^|_)labels_pc(\d+)(?:_|$)", str(source or ""))
+        if match:
+            return f"labels_pc{match.group(1)}"
+    return None
+
+
+def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:
+    if not manifest:
+        return None
+    next_component = {
+        "labeled": "unlabeled",
+        "unlabeled": "validation",
+        "validation": "test",
+    }.get(prefix)
+    if next_component is not None:
+        match = re.search(
+            rf"(?:^|[/_]){re.escape(prefix)}-(.+?)_"
+            rf"{re.escape(next_component)}-",
+            manifest,
+        )
+        if match:
+            return match.group(1)
+    match = re.search(rf"(?:^|[/_]){re.escape(prefix)}-([^/]+)", manifest)
+    if match:
+        return match.group(1).split("_", 1)[0]
+    return None
+
+
+def _compact_labeled_exposure_slug(policy_name: str) -> str:
+    if policy_name == LABELED_EXPOSURE_SHARED_CLIENT_SEED:
+        return "shared_client"
+    if policy_name == LABELED_EXPOSURE_SERVER_ONLY_SEED:
+        return "server_only"
+    if policy_name == LABELED_EXPOSURE_CLIENT_LOCAL_SPLIT:
+        return "client_local"
+    return policy_name
 
 
 def _slugify(value: object) -> str:

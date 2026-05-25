@@ -258,6 +258,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 validation=_evaluation(macro_f1=0.5, loss=0.7),
             ),
         ),
+        result_timing_breakdown={
+            "result_client_evaluation_seconds": 0.12,
+        },
     )
 
     payload = simulation_report_builder.SimulationReportBuilder().build_payload(
@@ -408,9 +411,12 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "round_validation_seconds"
     ]["mean"] == pytest.approx(0.25)
     assert communication_cost["client_train_time_seconds"]["max"] == pytest.approx(0.3)
-    assert communication_cost["timing_breakdown_summary"][
-        "core_training_loop_seconds"
-    ]["max"] == pytest.approx(0.12)
+    assert communication_cost["timing_breakdown_summary"]["core_training_loop_seconds"][
+        "max"
+    ] == pytest.approx(0.12)
+    assert payload["diagnostics"]["result_timing_breakdown"][
+        "result_client_evaluation_seconds"
+    ] == pytest.approx(0.12)
 
     client_validation = payload["metrics"]["client_validation"]
     agent_001_summary = client_validation["clients"][0]

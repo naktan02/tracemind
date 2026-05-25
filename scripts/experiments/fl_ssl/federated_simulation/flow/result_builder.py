@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+import gc
+import time
+
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -29,23 +32,35 @@ def build_simulation_result(
 ) -> SimulationResult:
     """round loop 종료 후 final validation, client validation, report를 조립한다."""
 
+    result_timing: dict[str, float] = {}
+    result_started_at = time.perf_counter()
     final_validation = (
         round_summaries[-1].validation
         if round_summaries
         else bootstrapped.initial_validation
     )
+    started_at = time.perf_counter()
+    _release_helper_model_cache_before_final_evaluation(bootstrapped)
+    result_timing["result_helper_cache_release_seconds"] = (
+        time.perf_counter() - started_at
+    )
+    started_at = time.perf_counter()
+    client_evaluations = _build_client_evaluations(
+        request=request,
+        bootstrapped=bootstrapped,
+        active=active,
+    )
+    result_timing["result_client_evaluation_seconds"] = time.perf_counter() - started_at
     result = SimulationResult(
         initial_model_revision=bootstrapped.initial_model_revision,
         initial_validation=bootstrapped.initial_validation,
         final_validation=final_validation,
         rounds=tuple(round_summaries),
-        client_evaluations=_build_client_evaluations(
-            request=request,
-            bootstrapped=bootstrapped,
-            active=active,
-        ),
+        client_evaluations=client_evaluations,
+        result_timing_breakdown=result_timing,
     )
     if request.report_config is not None:
+        started_at = time.perf_counter()
         report_payload = SimulationReportBuilder().build_payload(
             result=result,
             report_config=request.report_config,
@@ -71,13 +86,29 @@ def build_simulation_result(
             diagnostic_view_config=request.diagnostic_view_config,
             peer_probe_manifest=bootstrapped.peer_probe_manifest,
         )
-        result.report_path = str(
-            SimulationReportWriter().write(
+        result_timing["result_report_build_seconds"] = time.perf_counter() - started_at
+        diagnostics = report_payload.get("diagnostics")
+        if isinstance(diagnostics, dict):
+            diagnostics["result_timing_breakdown"] = dict(result_timing)
+        writer = SimulationReportWriter()
+        started_at = time.perf_counter()
+        report_path = writer.write(
+            output_dir=request.output_dir,
+            report_config=request.report_config,
+            payload=report_payload,
+        )
+        result_timing["result_report_write_seconds"] = time.perf_counter() - started_at
+        result_timing["result_total_seconds"] = time.perf_counter() - result_started_at
+        if isinstance(diagnostics, dict):
+            diagnostics["result_timing_breakdown"] = dict(result_timing)
+            writer.write(
                 output_dir=request.output_dir,
                 report_config=request.report_config,
                 payload=report_payload,
             )
-        )
+        result.report_path = str(report_path)
+    else:
+        result_timing["result_total_seconds"] = time.perf_counter() - result_started_at
     return result
 
 
@@ -95,7 +126,26 @@ def _build_client_evaluations(
                 active=active,
                 rows=shard.rows,
                 objective_config=request.training_task_config.objective_config,
+                runtime_resource_cache=bootstrapped.runtime_resource_cache,
             ),
         )
         for shard in bootstrapped.validation_client_shards
     )
+
+
+def _release_helper_model_cache_before_final_evaluation(
+    bootstrapped: BootstrappedSimulation,
+) -> None:
+    """최종 평가 전에 FedMatch helper model 참조를 내려 GPU 압박을 줄인다."""
+
+    cache = bootstrapped.runtime_resource_cache
+    clear_resources = getattr(cache, "clear_resources", None)
+    if callable(clear_resources):
+        clear_resources(key_prefix="lora_classifier:helper_model:")
+    gc.collect()
+    try:
+        import torch
+    except ImportError:  # pragma: no cover - optional dependency guard
+        return
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()

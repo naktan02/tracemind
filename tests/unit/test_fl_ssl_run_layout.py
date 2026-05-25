@@ -20,6 +20,11 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
             "seed": 42,
             "federated_run_budget": {"client_count": 10, "rounds": 50},
             "fl_data": {"source_mode": "runtime_split_from_train"},
+            "query_data_selection": {
+                "labeled": "ourafla_reddit",
+                "unlabeled": "ourafla_reddit",
+            },
+            "labeled_exposure_policy": {"name": "client_local_split"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
             "round_runtime": {
@@ -37,7 +42,9 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
     )
 
     assert resolve_fl_ssl_method_family_slug(cfg) == "manual_baselines"
-    assert resolve_fl_ssl_split_slug(cfg) == "alpha03_seed42"
+    assert resolve_fl_ssl_split_slug(cfg) == (
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42"
+    )
     assert resolve_fl_ssl_method_composition_slug(cfg) == (
         "fixmatch_usb_v1__lora_classifier__fedavg"
     )
@@ -45,7 +52,7 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
         "fixmatch_usb_v1__lora_classifier__fedavg/"
-        "alpha03_seed42/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds50/"
         "20260518T010203Z"
     )
@@ -59,17 +66,22 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
                 "split_manifest": (
                     "data/datasets/fl_client_splits/"
                     "client_local_labeled/"
-                    "ourafla_dirichlet_alpha03_seed42_clients10/manifest.json"
+                    "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+                    "validation-ourafla_reddit_test-ourafla_reddit_"
+                    "client_local_split_dirichlet_label_skew_dominantNone_"
+                    "alpha0.3_clients10_seed42/manifest.json"
                 ),
             },
             "seed": 42,
             "federated_run_budget": {"client_count": 10, "rounds": 1},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "ssl_method": {"name": "fedmatch"},
+            "server_update_policy": {"name": "fedmatch_partitioned"},
             "round_runtime": {
                 "adapter_family_name": "lora_classifier",
                 "aggregation_backend_name": "fedavg",
             },
+            "fl_method": {"composition_mode": "method_owned"},
         }
     )
 
@@ -81,8 +93,8 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
 
     assert str(output_dir) == (
         "runs/fl_ssl/fedmatch/"
-        "fedmatch__lora_classifier__fedavg/"
-        "alpha03_seed42/"
+        "fedmatch__lora_classifier__fedmatch_partitioned/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds1/"
         "20260518T010203Z"
     )
@@ -96,7 +108,10 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
                 "split_manifest": (
                     "data/datasets/fl_client_splits/"
                     "shared_client_labeled/"
-                    "ourafla_shared_client_seed_dirichlet_alpha03_clients10/"
+                    "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+                    "validation-ourafla_reddit_test-ourafla_reddit_"
+                    "labels_pc100_shared_client_seed_dirichlet_label_skew_"
+                    "dominantNone_alpha0.3_clients10_seed42/"
                     "manifest.json"
                 ),
             },
@@ -118,14 +133,69 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
         run_id="20260518T010203Z",
     )
 
-    assert resolve_fl_ssl_split_slug(cfg) == "alpha03_shared_client_seed_seed42"
+    assert resolve_fl_ssl_split_slug(cfg) == (
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "labels_pc100_shared_client_seed42"
+    )
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
         "flexmatch_usb_v1__lora_classifier__fedavg/"
-        "alpha03_shared_client_seed_seed42/"
+        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+        "labels_pc100_shared_client_seed42/"
         "clients10_rounds1/"
         "20260518T010203Z"
     )
+
+
+def test_fl_ssl_split_slug_compacts_server_only_exposure_name() -> None:
+    cfg = OmegaConf.create(
+        {
+            "fl_data": {
+                "source_mode": "materialized_client_split",
+                "split_manifest": (
+                    "data/datasets/fl_client_splits/"
+                    "server_only_labeled/"
+                    "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
+                    "validation-ourafla_reddit_test-ourafla_reddit_"
+                    "server_only_seed_dirichlet_label_skew_dominantNone_"
+                    "alpha0.3_clients10_seed42/manifest.json"
+                ),
+            },
+            "seed": 42,
+            "labeled_exposure_policy": {"name": "server_only_seed"},
+        }
+    )
+
+    assert resolve_fl_ssl_split_slug(cfg) == (
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_server_only_seed42"
+    )
+
+
+def test_fl_ssl_split_slug_records_materialized_label_budget() -> None:
+    for budget in (25, 100, 400, 1024):
+        cfg = OmegaConf.create(
+            {
+                "fl_data": {
+                    "source_mode": "materialized_client_split",
+                    "split_manifest": (
+                        "data/datasets/fl_client_splits/"
+                        "shared_client_labeled/"
+                        "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+                        "validation-ourafla_reddit_test-ourafla_reddit_"
+                        f"labels_pc{budget}_shared_client_seed_"
+                        "dirichlet_label_skew_dominantNone_alpha0.3_"
+                        "clients10_seed42/manifest.json"
+                    ),
+                },
+                "seed": 42,
+                "labeled_exposure_policy": {"name": "shared_client_seed"},
+            }
+        )
+
+        assert resolve_fl_ssl_split_slug(cfg) == (
+            "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
+            f"labels_pc{budget}_shared_client_seed42"
+        )
 
 
 def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> None:
@@ -133,6 +203,11 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
         {
             "seed": 42,
             "federated_run_budget": {"rounds": 1},
+            "query_data_selection": {
+                "labeled": "ourafla_reddit",
+                "unlabeled": "ourafla_reddit",
+            },
+            "labeled_exposure_policy": {"name": "shared_client_seed"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
             "round_runtime": {
@@ -153,7 +228,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
     assert str(sweep_dir) == (
         "runs/fl_ssl/manual_baselines/"
         "fixmatch_usb_v1__lora_classifier__fedavg/"
-        "alpha03_seed42/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/"
         "sweeps/client_count_rounds1/"
         "20260518T010203Z"
     )
@@ -162,7 +237,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
     ) == (
         "runs/fl_ssl/manual_baselines/"
         "fixmatch_usb_v1__lora_classifier__fedavg/"
-        "alpha03_seed42/"
+        "labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/"
         "sweeps/client_count_rounds1/"
         "20260518T010203Z/clients_10"
     )
