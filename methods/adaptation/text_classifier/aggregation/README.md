@@ -13,6 +13,13 @@ projection 계층이다.
 
 - `feature_head_fedavg_projection.py`: 이전 경로 호환 shim. source of truth는
   `methods/adaptation/classification/aggregation/feature_head_fedavg_projection.py`
+- `peft_encoder_fedavg_projection.py`: LoRA/PEFT encoder update payload를 generic
+  FedAvg strategy 입력으로 바꾸고 next state artifact를 materialize
+- `peft_encoder_partitioned_projection.py`: partitioned client delta를 병합/평균하고
+  partitioned next state artifact를 materialize
+- `peft_encoder_state_projection.py`: base global snapshot과 aggregated delta를 다음
+  state/artifact payload로 투영
+- `peft_encoder_partitioned_state.py`: partition별 delta merge와 residual split helper
 
 ## 금지
 

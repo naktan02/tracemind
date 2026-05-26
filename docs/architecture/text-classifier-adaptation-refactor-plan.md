@@ -251,6 +251,15 @@ named-symbol compatibility shim으로만 남겼다. `scoring_registry.py`는 깊
 - 관련 테스트 이름도 `fedavg` 구현 테스트가 아니라 projection/materialization 테스트로
   바꾼다.
 
+상태: 완료. PEFT encoder aggregation source of truth는
+`text_classifier/aggregation/peft_encoder_fedavg_projection.py`,
+`peft_encoder_partitioned_projection.py`, `peft_encoder_state_projection.py`,
+`peft_encoder_partitioned_state.py`로 이동했다.
+`lora_classifier/aggregation/fedavg.py`, `partitioned_delta_average.py`,
+`state_projection.py`, `partitioned_state.py`, `base_state_snapshot.py`는 direct
+compatibility shim으로만 남겼다. Generic weighted-average 산술은 계속
+`methods/federated/aggregation/fedavg/`가 소유한다.
+
 ### 7단계: legacy import 제거와 contract v2 검토
 
 - internal import가 모두 새 경로를 쓰면 shim allowlist를 줄인다.

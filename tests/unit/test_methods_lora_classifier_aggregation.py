@@ -7,28 +7,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
-    PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
-    PARTITIONED_LORA_STATE_PARAMETERS_KEY,
-    LoraClassifierMaterializedState,
-    materialize_base_lora_classifier_partitioned_state,
-    materialize_base_lora_classifier_state,
-    materialize_lora_classifier_partitioned_update,
-    materialize_lora_classifier_update,
-)
-from methods.adaptation.lora_classifier.aggregation.partitioned_delta_average import (
-    LoraClassifierPartitionedDeltaAverageUpdate,
-    compute_lora_classifier_partitioned_delta_average,
-)
-from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
-    apply_lora_classifier_partition_delta_to_state,
-    merge_partitioned_lora_classifier_deltas,
-    split_lora_classifier_state_by_residual_factor,
-)
-from methods.adaptation.lora_classifier.aggregation.state_projection import (
-    build_lora_classifier_state_projection,
-)
 from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
     build_classifier_head_delta_tensor_artifact,
     build_lora_delta_tensor_artifact,
@@ -45,6 +23,25 @@ from methods.adaptation.lora_classifier.update.partitioned_payload_builder impor
 from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
     build_partitioned_delta_tensor_artifact,
     parse_partitioned_delta_tensor_artifact,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_partitioned_projection as peft_part_projection,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_partitioned_state as peft_part_state,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_state_projection as peft_state_projection,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
+    PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+    PARTITIONED_LORA_STATE_PARAMETERS_KEY,
+    LoraClassifierMaterializedState,
+    materialize_base_lora_classifier_partitioned_state,
+    materialize_base_lora_classifier_state,
+    materialize_lora_classifier_partitioned_update,
+    materialize_lora_classifier_update,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.factories import (
@@ -282,7 +279,7 @@ def test_materialize_base_lora_classifier_state_reads_global_snapshot_artifacts(
 
 
 def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> None:
-    projection = build_lora_classifier_state_projection(
+    projection = peft_state_projection.build_lora_classifier_state_projection(
         base_state=_lora_state(),
         base_parameters=LoraClassifierMaterializedState(
             lora_parameters={
@@ -331,7 +328,7 @@ def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> No
 
 def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> None:
     with pytest.raises(ValueError, match="delta dimension mismatch"):
-        build_lora_classifier_state_projection(
+        peft_state_projection.build_lora_classifier_state_projection(
             base_state=_lora_state(),
             base_parameters=LoraClassifierMaterializedState(
                 lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},
@@ -373,7 +370,7 @@ def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> No
         )
     )
 
-    merged = merge_partitioned_lora_classifier_deltas(partitions)
+    merged = peft_part_state.merge_partitioned_lora_classifier_deltas(partitions)
 
     assert merged.partition_name == "merged"
     assert merged.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
@@ -399,7 +396,7 @@ def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None
         classifier_head_bias_deltas={"anxiety": -0.1, "normal": 0.2},
     )
 
-    state = apply_lora_classifier_partition_delta_to_state(
+    state = peft_part_state.apply_lora_classifier_partition_delta_to_state(
         base_parameters=base,
         delta=delta,
     )
@@ -419,7 +416,7 @@ def test_lora_classifier_state_splits_published_state_by_residual_factor() -> No
         classifier_head_biases={"anxiety": 6.0},
     )
 
-    partitions = split_lora_classifier_state_by_residual_factor(
+    partitions = peft_part_state.split_lora_classifier_state_by_residual_factor(
         published_parameters=published,
         base_partition_name="sigma",
         residual_partition_name="psi",
@@ -456,7 +453,7 @@ def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> N
     )
 
     with pytest.raises(ValueError, match="dimension mismatch"):
-        apply_lora_classifier_partition_delta_to_state(
+        peft_part_state.apply_lora_classifier_partition_delta_to_state(
             base_parameters=base,
             delta=delta,
         )
@@ -701,10 +698,10 @@ def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_re
 def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client() -> (
     None
 ):
-    result = compute_lora_classifier_partitioned_delta_average(
+    result = peft_part_projection.compute_lora_classifier_partitioned_delta_average(
         label_schema=("anxiety", "normal"),
         updates=(
-            LoraClassifierPartitionedDeltaAverageUpdate(
+            peft_part_projection.LoraClassifierPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",
@@ -729,7 +726,7 @@ def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client(
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            LoraClassifierPartitionedDeltaAverageUpdate(
+            peft_part_projection.LoraClassifierPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",

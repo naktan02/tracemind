@@ -9,16 +9,6 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-    compact_lora_classifier_materialized_state,
-)
-from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
-    apply_lora_classifier_partition_delta_to_state,
-    apply_lora_classifier_partition_deltas_to_partitioned_state,
-    merge_partitioned_lora_classifier_deltas,
-    split_lora_classifier_state_by_residual_factor,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -85,6 +75,13 @@ from methods.adaptation.query_classifier_adaptation.tokenization import (
 from methods.adaptation.query_classifier_adaptation.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_partitioned_state as ps,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
+    compact_lora_classifier_materialized_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
@@ -335,7 +332,7 @@ def run_method_owned_lora_classifier_training_core(
                 ssl_method_config.effective_parameters
             )
             effective_base_partition_parameters = (
-                split_lora_classifier_state_by_residual_factor(
+                ps.split_lora_classifier_state_by_residual_factor(
                     published_parameters=base_parameters,
                     base_partition_name=FEDMATCH_SIGMA_PARTITION,
                     residual_partition_name=FEDMATCH_PSI_PARTITION,
@@ -397,7 +394,7 @@ def run_method_owned_lora_classifier_training_core(
                     partition_deltas=training_result.partition_deltas,
                 )
             client_partition_parameters = (
-                apply_lora_classifier_partition_deltas_to_partitioned_state(
+                ps.apply_lora_classifier_partition_deltas_to_partitioned_state(
                     base_parameters=base_parameters,
                     base_partition_parameters=effective_base_partition_parameters,
                     partition_deltas=training_result.partition_deltas,
@@ -424,10 +421,10 @@ def run_method_owned_lora_classifier_training_core(
                     c2s_projection.client_partition_parameters.items()
                 )
             }
-            merged_partition_delta = merge_partitioned_lora_classifier_deltas(
+            merged_partition_delta = ps.merge_partitioned_lora_classifier_deltas(
                 training_result.partition_deltas
             )
-            merged_parameters = apply_lora_classifier_partition_delta_to_state(
+            merged_parameters = ps.apply_lora_classifier_partition_delta_to_state(
                 base_parameters=base_parameters,
                 delta=merged_partition_delta,
             )

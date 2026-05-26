@@ -5,8 +5,8 @@ from __future__ import annotations
 from methods.adaptation.federated_ssl_server_update import (
     register_federated_ssl_server_update_backend_resolver,
 )
-from methods.adaptation.lora_classifier.aggregation.partitioned_delta_average import (
-    PARTITIONED_DELTA_AVERAGE_BACKEND_NAME,
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_partitioned_projection as peft_part_projection,
 )
 from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
@@ -32,6 +32,6 @@ def resolve_lora_classifier_federated_ssl_server_update_backend(
         raise ValueError(
             "server_update_policy=fedmatch_partitioned currently maps from "
             "round_runtime.aggregation_backend_name=fedavg to "
-            f"{PARTITIONED_DELTA_AVERAGE_BACKEND_NAME}."
+            f"{peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME}."
         )
-    return PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
+    return peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME

@@ -892,6 +892,45 @@ def test_migrated_lora_classifier_core_files_are_direct_shims() -> None:
     )
 
 
+def test_legacy_lora_classifier_aggregation_files_are_direct_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "aggregation"
+    shim_paths = (
+        package_root / "base_state_snapshot.py",
+        package_root / "fedavg.py",
+        package_root / "partitioned_delta_average.py",
+        package_root / "partitioned_state.py",
+        package_root / "state_projection.py",
+    )
+    allowed_prefixes = (
+        "methods.adaptation.text_classifier.aggregation",
+        "methods.adaptation.text_classifier.peft_encoder.update.base_state_snapshot",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                allowed_prefixes
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "legacy lora_classifier aggregation 파일은 새 text_classifier aggregation/"
+        "peft_encoder update 경로의 named symbol만 가져오는 compatibility shim으로 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
 def test_legacy_peft_adapter_files_are_direct_shims() -> None:
     shim_paths = (
         METHODS_SRC / "adaptation" / "peft" / "base.py",

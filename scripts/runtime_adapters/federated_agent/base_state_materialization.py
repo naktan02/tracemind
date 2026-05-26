@@ -8,11 +8,11 @@ from pathlib import Path
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
 )
-from methods.adaptation.lora_classifier.aggregation.base_state_snapshot import (
+from methods.adaptation.text_classifier.peft_encoder.update.base_state_snapshot import (
     LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME,
     lora_classifier_base_state_artifact_refs,
 )
-from methods.adaptation.lora_classifier.aggregation.materialization import (
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
     materialize_base_lora_classifier_partitioned_state,
     materialize_base_lora_classifier_state,

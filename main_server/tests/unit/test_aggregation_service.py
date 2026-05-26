@@ -113,7 +113,8 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     )
     assert (
         entries["lora_classifier.fedavg"].implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.fedavg"
+        == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_fedavg_projection"
     )
     assert (
         entries["lora_classifier.fedavg"].metadata[
@@ -123,7 +124,8 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     )
     assert (
         entries["lora_classifier.partitioned_delta_average"].implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.partitioned_delta_average"
+        == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_partitioned_projection"
     )
     assert (
         entries["lora_classifier.partitioned_delta_average"].metadata[

@@ -5,18 +5,17 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from methods.adaptation.lora_classifier.aggregation.fedavg import (
-    CLASSIFIER_HEAD_ARTIFACT_SLOT,
-    LORA_ADAPTER_ARTIFACT_SLOT,
-)
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    materialize_base_lora_classifier_state,
-)
-from methods.adaptation.lora_classifier.aggregation.state_projection import (
-    build_lora_classifier_state_projection,
-)
 from methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step import (
     run_lora_classifier_supervised_seed_step_core,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_fedavg_projection as peft_fedavg_projection,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_state_projection as peft_state_projection,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    materialize_base_lora_classifier_state,
 )
 from methods.federated_ssl.capability_plan import (
     SERVER_STEP_NONE,
@@ -152,20 +151,20 @@ def _run_lora_classifier_supervised_seed_step(
         adapter_family_name=LORA_CLASSIFIER_ADAPTER_KIND,
         next_model_revision=next_model_revision,
         artifact_names=(
-            LORA_ADAPTER_ARTIFACT_SLOT,
-            CLASSIFIER_HEAD_ARTIFACT_SLOT,
+            peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT,
+            peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT,
         ),
     )
-    projection = build_lora_classifier_state_projection(
+    projection = peft_state_projection.build_lora_classifier_state_projection(
         base_state=active.adapter_state,
         base_parameters=base_parameters,
         next_model_revision=next_model_revision,
         updated_at=now,
         lora_adapter_artifact_ref=artifact_refs.refs_by_name[
-            LORA_ADAPTER_ARTIFACT_SLOT
+            peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT
         ],
         classifier_head_artifact_ref=artifact_refs.refs_by_name[
-            CLASSIFIER_HEAD_ARTIFACT_SLOT
+            peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT
         ],
         artifact_format=artifact_refs.artifact_format,
         lora_parameter_deltas=seed_result.lora_parameter_deltas,

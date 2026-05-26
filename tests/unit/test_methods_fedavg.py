@@ -11,9 +11,8 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
 )
-from methods.adaptation.lora_classifier.aggregation.fedavg import (
-    LoraClassifierFedAvgUpdate,
-    compute_lora_classifier_fedavg,
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
 from methods.federated.aggregation import registry as aggregation_registry
 from methods.federated.aggregation.fedavg.update_metrics import (
@@ -235,10 +234,10 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
 
 
 def test_lora_classifier_fedavg_averages_lora_and_head_deltas() -> None:
-    result = compute_lora_classifier_fedavg(
+    result = peft_fedavg_projection.compute_lora_classifier_fedavg(
         label_schema=("anxiety", "normal"),
         updates=[
-            LoraClassifierFedAvgUpdate(
+            peft_fedavg_projection.LoraClassifierFedAvgUpdate(
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.2, 0.4],
                     "encoder.q_proj.lora_B": [0.1, -0.1],
@@ -253,7 +252,7 @@ def test_lora_classifier_fedavg_averages_lora_and_head_deltas() -> None:
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            LoraClassifierFedAvgUpdate(
+            peft_fedavg_projection.LoraClassifierFedAvgUpdate(
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.0, 0.1],
                     "encoder.q_proj.lora_B": [0.2, 0.2],
@@ -315,8 +314,8 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
 
     assert spec.method_name == "fedavg"
     assert (
-        spec.implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.fedavg"
+        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_fedavg_projection"
     )
     assert spec.core_function_name == "compute_lora_classifier_fedavg"
 
@@ -331,8 +330,8 @@ def test_federated_aggregation_method_registry_points_to_partitioned_lora_core()
 
     assert spec.method_name == "partitioned_delta_average"
     assert (
-        spec.implementation_module
-        == "methods.adaptation.lora_classifier.aggregation.partitioned_delta_average"
+        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_partitioned_projection"
     )
     assert (
         spec.core_function_name == "compute_lora_classifier_partitioned_delta_average"
