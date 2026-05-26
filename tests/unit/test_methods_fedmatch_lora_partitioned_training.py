@@ -194,7 +194,7 @@ def test_lora_classifier_peer_snapshot_extracts_current_trainable_state() -> Non
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
 
-    snapshot = peer_predictions.extract_lora_classifier_materialized_state(
+    snapshot = peer_predictions.extract_peft_encoder_materialized_state(
         model=model,  # type: ignore[arg-type]
         labels=labels,
     )

@@ -718,7 +718,7 @@ def _build_timed_peer_client_snapshot(
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot:
     with _measure(timing_recorder, "core_peer_snapshot_build_seconds"):
-        return peer_predictions.build_lora_classifier_peer_client_snapshot(
+        return peer_predictions.build_peft_encoder_peer_client_snapshot(
             client_id=client_id,
             model=model,
             tokenizer=tokenizer,

@@ -1,4 +1,4 @@
-"""LoRA-classifier family의 FL SSL peer prediction primitive."""
+"""PEFT encoder classifier FL SSL peer prediction primitive."""
 
 from __future__ import annotations
 
@@ -41,12 +41,13 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
 
-LORA_CLASSIFIER_PEER_SNAPSHOT_KIND = "lora_classifier_materialized_state.v1"
+PEFT_ENCODER_PEER_SNAPSHOT_KIND = "lora_classifier_materialized_state.v1"
+LORA_CLASSIFIER_PEER_SNAPSHOT_KIND = PEFT_ENCODER_PEER_SNAPSHOT_KIND
 
 
 @dataclass(slots=True)
-class LoraClassifierHelperWeakProbabilityProvider:
-    """선택된 helper LoRA-classifier snapshot으로 weak-view 확률을 계산한다."""
+class PeftEncoderHelperWeakProbabilityProvider:
+    """선택된 helper PEFT encoder snapshot으로 weak-view 확률을 계산한다."""
 
     helper_snapshots: tuple[FederatedSslPeerClientSnapshot, ...]
     labels: tuple[str, ...]
@@ -103,7 +104,7 @@ class LoraClassifierHelperWeakProbabilityProvider:
         return torch.stack(probabilities, dim=0)
 
 
-def build_lora_classifier_peer_client_snapshot(
+def build_peft_encoder_peer_client_snapshot(
     *,
     client_id: str,
     model: LoraTextClassifier,
@@ -116,7 +117,7 @@ def build_lora_classifier_peer_client_snapshot(
 ) -> FederatedSslPeerClientSnapshot | None:
     """final local model에서 helper selection vector와 reloadable state를 만든다."""
 
-    selection_vector = compute_lora_classifier_probe_vector(
+    selection_vector = compute_peft_encoder_probe_vector(
         model=model,
         tokenizer=tokenizer,
         probe_rows=probe_rows,
@@ -129,8 +130,8 @@ def build_lora_classifier_peer_client_snapshot(
     return FederatedSslPeerClientSnapshot(
         client_id=client_id,
         selection_vector=selection_vector,
-        payload_kind=LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
-        payload=extract_lora_classifier_materialized_state(
+        payload_kind=PEFT_ENCODER_PEER_SNAPSHOT_KIND,
+        payload=extract_peft_encoder_materialized_state(
             model=model,
             labels=labels,
         ),
@@ -142,7 +143,7 @@ def build_lora_classifier_peer_client_snapshot(
     )
 
 
-def compute_lora_classifier_probe_vector(
+def compute_peft_encoder_probe_vector(
     *,
     model: LoraTextClassifier,
     tokenizer: Any,
@@ -188,12 +189,12 @@ def compute_lora_classifier_probe_vector(
     return tuple(float(value) for value in mean_probability.reshape(-1).tolist())
 
 
-def extract_lora_classifier_materialized_state(
+def extract_peft_encoder_materialized_state(
     *,
     model: LoraTextClassifier,
     labels: Sequence[str],
 ) -> LoraClassifierMaterializedState:
-    """현재 LoRA-classifier trainable parameter를 materialized state로 만든다."""
+    """현재 PEFT encoder classifier trainable state를 materialize한다."""
 
     lora_parameters: dict[str, list[float]] = {}
     for name, parameter in model.named_parameters():
@@ -203,7 +204,7 @@ def extract_lora_classifier_materialized_state(
             float(value) for value in parameter.detach().cpu().reshape(-1).tolist()
         ]
     if not lora_parameters:
-        raise ValueError("LoRA peer snapshot requires trainable LoRA parameters.")
+        raise ValueError("PEFT peer snapshot requires trainable adapter parameters.")
 
     weight = model.classifier.weight.detach().cpu()
     bias = model.classifier.bias.detach().cpu()
@@ -225,7 +226,7 @@ def extract_lora_classifier_materialized_state(
     )
 
 
-def build_lora_classifier_helper_probability_provider(
+def build_peft_encoder_helper_probability_provider(
     *,
     peer_context: FederatedSslPeerContext | None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
@@ -233,7 +234,7 @@ def build_lora_classifier_helper_probability_provider(
     lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
-) -> LoraClassifierHelperWeakProbabilityProvider | None:
+) -> PeftEncoderHelperWeakProbabilityProvider | None:
     """선택된 helper snapshot을 weak probability provider로 materialize한다."""
 
     if peer_context is None or peer_context.helper_count == 0 or not peer_snapshots:
@@ -243,17 +244,17 @@ def build_lora_classifier_helper_probability_provider(
         snapshot = peer_snapshots.get(helper_client_id)
         if snapshot is None:
             continue
-        if snapshot.payload_kind != LORA_CLASSIFIER_PEER_SNAPSHOT_KIND:
+        if snapshot.payload_kind != PEFT_ENCODER_PEER_SNAPSHOT_KIND:
             continue
         if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
             raise TypeError(
-                "LoRA-classifier helper snapshot payload must be "
+                "PEFT-classifier helper snapshot payload must be "
                 "LoraClassifierMaterializedState."
             )
         helper_snapshots.append(snapshot)
     if not helper_snapshots:
         return None
-    return LoraClassifierHelperWeakProbabilityProvider(
+    return PeftEncoderHelperWeakProbabilityProvider(
         helper_snapshots=tuple(helper_snapshots),
         labels=tuple(str(label) for label in labels),
         lora_config=lora_config,
@@ -343,3 +344,12 @@ def _sorted_numeric_mapping(
     value: Mapping[str, Sequence[float]],
 ) -> dict[str, list[float]]:
     return {key: list(items) for key, items in sorted(value.items())}
+
+
+LoraClassifierHelperWeakProbabilityProvider = PeftEncoderHelperWeakProbabilityProvider
+build_lora_classifier_peer_client_snapshot = build_peft_encoder_peer_client_snapshot
+compute_lora_classifier_probe_vector = compute_peft_encoder_probe_vector
+extract_lora_classifier_materialized_state = extract_peft_encoder_materialized_state
+build_lora_classifier_helper_probability_provider = (
+    build_peft_encoder_helper_probability_provider
+)

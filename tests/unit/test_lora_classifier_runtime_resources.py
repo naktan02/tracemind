@@ -305,7 +305,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
         refreshed=True,
     )
 
-    provider_a = peer_predictions.build_lora_classifier_helper_probability_provider(
+    provider_a = peer_predictions.build_peft_encoder_helper_probability_provider(
         peer_context=context,
         peer_snapshots={"agent_02": snapshot},
         labels=("anxiety", "normal"),
@@ -313,7 +313,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
         trainer_runtime_config=_RuntimeConfig(),
         runtime_resource_cache=cache,
     )
-    provider_b = peer_predictions.build_lora_classifier_helper_probability_provider(
+    provider_b = peer_predictions.build_peft_encoder_helper_probability_provider(
         peer_context=context,
         peer_snapshots={"agent_02": snapshot},
         labels=("anxiety", "normal"),
@@ -369,7 +369,7 @@ def test_lora_classifier_helper_provider_counts_only_materializable_snapshots() 
         refreshed=True,
     )
 
-    provider = peer_predictions.build_lora_classifier_helper_probability_provider(
+    provider = peer_predictions.build_peft_encoder_helper_probability_provider(
         peer_context=context,
         peer_snapshots={
             "agent_02": valid_snapshot,

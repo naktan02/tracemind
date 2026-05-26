@@ -25,10 +25,10 @@ from methods.federated_ssl.peer_context import (
 
 LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
 build_lora_classifier_helper_probability_provider = (
-    peer_predictions.build_lora_classifier_helper_probability_provider
+    peer_predictions.build_peft_encoder_helper_probability_provider
 )
 build_peft_encoder_helper_probability_provider = (
-    peer_predictions.build_lora_classifier_helper_probability_provider
+    peer_predictions.build_peft_encoder_helper_probability_provider
 )
 
 
