@@ -22,6 +22,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
 )
+from scripts.experiments.result_index.report_parsing import as_mapping as _as_mapping
 from shared.src.contracts.adapter_contract_families.io import (
     load_shared_adapter_state_payload,
 )
@@ -303,10 +304,6 @@ def _load_json_object(path: Path) -> dict[str, Any]:
     if not isinstance(payload, dict):
         raise ValueError(f"JSON payload must be an object: {path}")
     return payload
-
-
-def _as_mapping(value: Any) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
 
 
 def _optional_int(value: object) -> int | None:

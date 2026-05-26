@@ -6,6 +6,11 @@ import json
 from pathlib import Path
 from typing import Any
 
+from scripts.experiments.result_index.report_parsing import (
+    as_mapping as _as_mapping,
+    as_sequence as _as_sequence,
+)
+
 
 def build_fl_ssl_dashboard_views(
     *,
@@ -584,14 +589,6 @@ def _read_json_object(path: Path | None) -> dict[str, Any]:
     except (OSError, json.JSONDecodeError):
         return {}
     return _as_mapping(payload)
-
-
-def _as_mapping(value: Any) -> dict[str, Any]:
-    return value if isinstance(value, dict) else {}
-
-
-def _as_sequence(value: Any) -> list[Any]:
-    return value if isinstance(value, list) else []
 
 
 def _first_present(*values: Any) -> Any:
