@@ -241,6 +241,27 @@ override 조합을 verifier로 고정한다. 최소 검증 축은
 `expected_posthoc_communication_schema_version`과
 `expect_partitioned_sparse_s2c_estimates`로 sparse S2C 추정 필드도 고정한다.
 
+실행 뒤에는 먼저 posthoc 통신량을 병합하고, 같은 report를 verifier로 다시 고정한다.
+
+```bash
+uv run python -m scripts.experiments.fl_ssl.backfill_communication_costs \
+  --report <run-dir>/reports/fl_ssl_main_comparison.report.json \
+  --write
+
+uv run python -m scripts.experiments.fl_ssl.verify_federated_report_artifacts \
+  --report <run-dir>/reports/fl_ssl_main_comparison.report.json \
+  --expected-federated-ssl-method fedmatch \
+  --expected-server-update-policy fedmatch_partitioned \
+  --expected-update-partition-policy partitioned \
+  --expected-aggregation-weight-policy uniform \
+  --expected-peer-context-policy fixed_probe_output_knn \
+  --expected-local-ssl-policy fedmatch_agreement \
+  --expect-partitioned-update-artifact-refs \
+  --expect-no-agent-local-update-refs \
+  --expected-posthoc-communication-schema-version fl_ssl_posthoc_communication_cost.v1 \
+  --expect-partitioned-sparse-s2c-estimates
+```
+
 ## Sweep
 
 Seed sweep:
