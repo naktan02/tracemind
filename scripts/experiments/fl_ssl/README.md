@@ -232,6 +232,13 @@ materialized split manifest를 source of truth로 본다.
 각 run의 canonical report는
 `reports/fl_ssl_main_comparison.report.json`이다.
 
+FedMatch physical partition smoke/reduced report는 preset을 새로 만들지 않고 leaf
+override 조합을 verifier로 고정한다. 최소 검증 축은
+`ssl_method=fedmatch`, `server_update_policy=fedmatch_partitioned`,
+`update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
+`peer_context_policy=fixed_probe_output_knn`, `local_ssl_policy=fedmatch_agreement`,
+`partitioned_deltas_artifact_ref`다.
+
 ## Sweep
 
 Seed sweep:

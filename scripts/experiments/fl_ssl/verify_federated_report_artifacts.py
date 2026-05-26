@@ -36,6 +36,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_ssl_method=args.expected_ssl_method,
         expected_adapter_family=args.expected_adapter_family,
         expected_aggregation=args.expected_aggregation,
+        expected_server_update_policy=args.expected_server_update_policy,
+        expected_update_partition_policy=args.expected_update_partition_policy,
+        expected_aggregation_weight_policy=args.expected_aggregation_weight_policy,
+        expected_peer_context_policy=args.expected_peer_context_policy,
+        expected_local_ssl_policy=args.expected_local_ssl_policy,
         expected_delta_format=args.expected_delta_format,
         expected_round_record_count=args.expected_round_record_count,
         expected_round_update_count=args.expected_round_update_count,
@@ -48,6 +53,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         ),
         expect_server_owned_update_artifacts=(
             args.expect_server_owned_update_artifacts
+        ),
+        expect_partitioned_update_artifact_refs=(
+            args.expect_partitioned_update_artifact_refs
         ),
         expect_no_agent_local_update_refs=args.expect_no_agent_local_update_refs,
         expect_lora_classifier_aggregate_snapshot=(
@@ -149,6 +157,11 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-ssl-method")
     parser.add_argument("--expected-adapter-family")
     parser.add_argument("--expected-aggregation")
+    parser.add_argument("--expected-server-update-policy")
+    parser.add_argument("--expected-update-partition-policy")
+    parser.add_argument("--expected-aggregation-weight-policy")
+    parser.add_argument("--expected-peer-context-policy")
+    parser.add_argument("--expected-local-ssl-policy")
     parser.add_argument("--expected-delta-format")
     parser.add_argument("--expected-round-record-count", type=int)
     parser.add_argument("--expected-round-update-count", type=int)
@@ -163,6 +176,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--expect-server-owned-update-artifacts",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--expect-partitioned-update-artifact-refs",
         action="store_true",
     )
     parser.add_argument(

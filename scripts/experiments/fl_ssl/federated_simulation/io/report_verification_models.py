@@ -25,6 +25,11 @@ class FederatedReportExpectation:
     expected_ssl_method: str | None = None
     expected_adapter_family: str | None = None
     expected_aggregation: str | None = None
+    expected_server_update_policy: str | None = None
+    expected_update_partition_policy: str | None = None
+    expected_aggregation_weight_policy: str | None = None
+    expected_peer_context_policy: str | None = None
+    expected_local_ssl_policy: str | None = None
     expected_delta_format: str | None = None
     expected_round_record_count: int | None = None
     expected_round_update_count: int | None = None
@@ -32,6 +37,7 @@ class FederatedReportExpectation:
     expected_shared_update_count: int | None = None
     expected_shared_update_count_matches_round_updates: bool = False
     expect_server_owned_update_artifacts: bool = False
+    expect_partitioned_update_artifact_refs: bool = False
     expect_no_agent_local_update_refs: bool = False
     expect_lora_classifier_aggregate_snapshot: bool = False
     expected_embedding_metadata_status: str | None = None

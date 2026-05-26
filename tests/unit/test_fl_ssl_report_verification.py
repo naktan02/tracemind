@@ -35,6 +35,11 @@ def _report_payload(
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
     aggregation: str = "fedavg",
+    server_update_policy: str = "fedavg_merged_delta",
+    update_partition_policy: str = "unified",
+    aggregation_weight_policy: str = "example_count",
+    peer_context_policy: str = "none",
+    local_ssl_policy: str = "query_ssl_method",
     delta_format: str = "server_uploaded_artifact_ref",
     embedding_backend: str = "transformers_mxbai",
     embedding_model_id: str = "mixedbread-ai/mxbai-embed-large-v1",
@@ -78,6 +83,14 @@ def _report_payload(
             "round_runtime": {
                 "adapter_family_name": adapter_family,
                 "aggregation_backend_name": aggregation,
+            },
+            "fl_capabilities": {
+                "metadata_status": "recorded",
+                "server_update_policy": {"name": server_update_policy},
+                "update_partition_policy": {"name": update_partition_policy},
+                "aggregation_weight_policy": {"name": aggregation_weight_policy},
+                "peer_context_policy": {"name": peer_context_policy},
+                "local_ssl_policy": {"name": local_ssl_policy},
             },
             "embedding_adapter": {
                 "metadata_status": "recorded",
@@ -125,6 +138,11 @@ def _expectation(
         expected_ssl_method="fixmatch_usb_v1",
         expected_adapter_family="lora_classifier",
         expected_aggregation="fedavg",
+        expected_server_update_policy="fedavg_merged_delta",
+        expected_update_partition_policy="unified",
+        expected_aggregation_weight_policy="example_count",
+        expected_peer_context_policy="none",
+        expected_local_ssl_policy="query_ssl_method",
         expected_delta_format="server_uploaded_artifact_ref",
     )
 
@@ -452,6 +470,115 @@ def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
     )
 
     assert result.passed
+
+
+def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_ref(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            federated_ssl_method="fedmatch",
+            server_update_policy="fedmatch_partitioned",
+            update_partition_policy="partitioned",
+            aggregation_weight_policy="uniform",
+            peer_context_policy="fixed_probe_output_knn",
+            local_ssl_policy="fedmatch_agreement",
+        ),
+        partitioned_only=True,
+    )
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_server_update_policy="fedmatch_partitioned",
+            expected_update_partition_policy="partitioned",
+            expected_aggregation_weight_policy="uniform",
+            expected_peer_context_policy="fixed_probe_output_knn",
+            expected_local_ssl_policy="fedmatch_agreement",
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_partitioned_update_artifact_refs=True,
+            expect_no_agent_local_update_refs=True,
+        ),
+    )
+
+    assert result.passed
+
+
+def test_verify_fedmatch_partitioned_report_rejects_primary_only_update_refs(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(
+            client_count=1,
+            completed_rounds=1,
+            round_budget=1,
+            federated_ssl_method="fedmatch",
+            server_update_policy="fedmatch_partitioned",
+            update_partition_policy="partitioned",
+            aggregation_weight_policy="uniform",
+            peer_context_policy="fixed_probe_output_knn",
+            local_ssl_policy="fedmatch_agreement",
+        ),
+        partitioned_only=False,
+    )
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_server_update_policy="fedmatch_partitioned",
+            expected_update_partition_policy="partitioned",
+            expected_aggregation_weight_policy="uniform",
+            expected_peer_context_policy="fixed_probe_output_knn",
+            expected_local_ssl_policy="fedmatch_agreement",
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_partitioned_update_artifact_refs=True,
+        ),
+    )
+
+    assert not result.passed
+    assert any(
+        ".partitioned_deltas_artifact_ref is required for partitioned update "
+        "verification." in error
+        for error in result.errors
+    )
+
+
+def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            federated_ssl_method="fedmatch",
+            server_update_policy="fedavg_merged_delta",
+            update_partition_policy="unified",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_server_update_policy="fedmatch_partitioned",
+            expected_update_partition_policy="partitioned",
+        ),
+    )
+
+    assert not result.passed
+    assert (
+        "protocol.fl_capabilities.server_update_policy.name expected "
+        "'fedmatch_partitioned', got 'fedavg_merged_delta'." in result.errors
+    )
+    assert (
+        "protocol.fl_capabilities.update_partition_policy.name expected "
+        "'partitioned', got 'unified'." in result.errors
+    )
 
 
 def test_verify_federated_report_flags_agent_local_update_artifact_drift(

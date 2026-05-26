@@ -71,6 +71,7 @@ def verify_federated_simulation_report_payload(
     round_runtime = _object_mapping(
         protocol.get("round_runtime") or payload.get("round_runtime")
     )
+    fl_capabilities = _object_mapping(protocol.get("fl_capabilities"))
     embedding_adapter = _object_mapping(
         protocol.get("embedding_adapter") or payload.get("embedding_adapter")
     )
@@ -182,6 +183,36 @@ def verify_federated_simulation_report_payload(
         round_runtime.get("aggregation_backend_name"),
         expectation.expected_aggregation,
     )
+    _expect_capability_policy(
+        errors,
+        fl_capabilities,
+        "server_update_policy",
+        expectation.expected_server_update_policy,
+    )
+    _expect_capability_policy(
+        errors,
+        fl_capabilities,
+        "update_partition_policy",
+        expectation.expected_update_partition_policy,
+    )
+    _expect_capability_policy(
+        errors,
+        fl_capabilities,
+        "aggregation_weight_policy",
+        expectation.expected_aggregation_weight_policy,
+    )
+    _expect_capability_policy(
+        errors,
+        fl_capabilities,
+        "peer_context_policy",
+        expectation.expected_peer_context_policy,
+    )
+    _expect_capability_policy(
+        errors,
+        fl_capabilities,
+        "local_ssl_policy",
+        expectation.expected_local_ssl_policy,
+    )
     _expect_equal(
         errors,
         "objective.lora_classifier.delta_format",
@@ -249,6 +280,21 @@ def verify_federated_simulation_report_payload(
         expectation=expectation,
     )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
+
+
+def _expect_capability_policy(
+    errors: list[str],
+    fl_capabilities: Mapping[str, object],
+    policy_key: str,
+    expected_name: str | None,
+) -> None:
+    policy = _object_mapping(fl_capabilities.get(policy_key))
+    _expect_equal(
+        errors,
+        f"protocol.fl_capabilities.{policy_key}.name",
+        policy.get("name"),
+        expected_name,
+    )
 
 
 def verify_client_count_sweep_summary_path(
@@ -367,6 +413,7 @@ def _requires_shared_update_artifact_check(
             expectation.expected_shared_update_count is not None,
             expectation.expected_shared_update_count_matches_round_updates,
             expectation.expect_server_owned_update_artifacts,
+            expectation.expect_partitioned_update_artifact_refs,
             expectation.expect_no_agent_local_update_refs,
             expectation.expect_lora_classifier_aggregate_snapshot,
         )
@@ -421,6 +468,14 @@ def _verify_shared_update_payload(
         "agent-local://" in json.dumps(update_payload, sort_keys=True)
     ):
         errors.append(f"{update_label} must not contain agent-local artifact refs.")
+    if expectation.expect_partitioned_update_artifact_refs:
+        _verify_partitioned_update_ref(
+            errors=errors,
+            run_dir=run_dir,
+            update_label=update_label,
+            update_payload=update_payload,
+        )
+        return
     if not expectation.expect_server_owned_update_artifacts:
         return
     _verify_server_owned_update_refs(
@@ -428,6 +483,29 @@ def _verify_shared_update_payload(
         run_dir=run_dir,
         update_label=update_label,
         update_payload=update_payload,
+    )
+
+
+def _verify_partitioned_update_ref(
+    *,
+    errors: list[str],
+    run_dir: Path,
+    update_label: str,
+    update_payload: Mapping[str, object],
+) -> None:
+    partitioned_ref = update_payload.get("partitioned_deltas_artifact_ref")
+    if partitioned_ref is None:
+        errors.append(
+            f"{update_label}.partitioned_deltas_artifact_ref is required for "
+            "partitioned update verification."
+        )
+        return
+    _verify_server_owned_artifact_ref(
+        errors=errors,
+        run_dir=run_dir,
+        update_label=update_label,
+        field_name="partitioned_deltas_artifact_ref",
+        artifact_ref=partitioned_ref,
     )
 
 

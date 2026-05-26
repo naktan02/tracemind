@@ -44,7 +44,10 @@ source of truth로 본다.
   runtime metadata 도입 뒤 생성된 report는 같은 verifier로 GPU/mxbai metadata까지
   기대값으로 고정할 수 있다. LoRA-classifier artifact-ref run은 shared update 수,
   `aggregation_artifact::` ref, `agent-local://` ref 미노출, 최종 LoRA/head aggregate
-  snapshot 존재까지 같은 verifier로 확인한다.
+  snapshot 존재까지 같은 verifier로 확인한다. FedMatch physical-partition run은
+  `fedmatch_partitioned`, `partitioned`, `uniform`, `fixed_probe_output_knn`,
+  `fedmatch_agreement`, `partitioned_deltas_artifact_ref`를 verifier expectation으로
+  고정한다.
 - [x] 실제 FL report 산출물 shape를 result index 샘플로 고정하고 dashboard/index
   소비 필드를 확정했다. `result_index`는 `fl_ssl_main_comparison.report.json`에서
   track, method/algorithm, split/source, seed, client/round budget, shard alpha,
