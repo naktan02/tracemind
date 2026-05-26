@@ -28,6 +28,8 @@ class ClientRoundSummary:
     fedmatch_helper_count: float | None = None
     fedmatch_peer_context_helper_count: float | None = None
     fedmatch_peer_context_refreshed: float | None = None
+    fedmatch_c2s_sparse_upload_value_count: float | None = None
+    fedmatch_s2c_sparse_download_value_count: float | None = None
     timing_breakdown: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -51,6 +53,22 @@ class ClientRoundSummary:
             self.fedmatch_peer_context_refreshed = float(
                 self.fedmatch_peer_context_refreshed
             )
+        if self.fedmatch_c2s_sparse_upload_value_count is not None:
+            self.fedmatch_c2s_sparse_upload_value_count = float(
+                self.fedmatch_c2s_sparse_upload_value_count
+            )
+            if self.fedmatch_c2s_sparse_upload_value_count < 0.0:
+                raise ValueError(
+                    "fedmatch_c2s_sparse_upload_value_count must be non-negative."
+                )
+        if self.fedmatch_s2c_sparse_download_value_count is not None:
+            self.fedmatch_s2c_sparse_download_value_count = float(
+                self.fedmatch_s2c_sparse_download_value_count
+            )
+            if self.fedmatch_s2c_sparse_download_value_count < 0.0:
+                raise ValueError(
+                    "fedmatch_s2c_sparse_download_value_count must be non-negative."
+                )
         self.timing_breakdown = {
             str(key): float(value)
             for key, value in self.timing_breakdown.items()

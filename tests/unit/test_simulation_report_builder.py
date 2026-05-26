@@ -173,6 +173,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         fedmatch_helper_count=0.0,
                         fedmatch_peer_context_helper_count=0.0,
                         fedmatch_peer_context_refreshed=0.0,
+                        fedmatch_c2s_sparse_upload_value_count=3.0,
+                        fedmatch_s2c_sparse_download_value_count=0.0,
                         timing_breakdown={
                             "core_training_loop_seconds": 0.04,
                             "core_pseudo_label_diagnostics_seconds": 0.01,
@@ -230,6 +232,8 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         fedmatch_helper_count=1.0,
                         fedmatch_peer_context_helper_count=1.0,
                         fedmatch_peer_context_refreshed=1.0,
+                        fedmatch_c2s_sparse_upload_value_count=5.0,
+                        fedmatch_s2c_sparse_download_value_count=2.0,
                         timing_breakdown={
                             "core_training_loop_seconds": 0.08,
                             "core_pseudo_label_diagnostics_seconds": 0.03,
@@ -385,6 +389,12 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert payload["rounds"][1]["clients"][0][
         "fedmatch_peer_context_refreshed"
     ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_c2s_sparse_upload_value_count"
+    ] == pytest.approx(5.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_s2c_sparse_download_value_count"
+    ] == pytest.approx(2.0)
     assert payload["rounds"][1]["aggregation_metrics"][
         "partitioned_global_state_count"
     ] == pytest.approx(2.0)
@@ -404,6 +414,12 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "max"
     ] == pytest.approx(1.0)
     assert second_round_aggregation["fedmatch_peer_context_refreshed_count"] == 1
+    assert second_round_aggregation["fedmatch_c2s_sparse_upload_value_count_summary"][
+        "max"
+    ] == pytest.approx(5.0)
+    assert second_round_aggregation["fedmatch_s2c_sparse_download_value_count_summary"][
+        "max"
+    ] == pytest.approx(2.0)
     assert second_round_aggregation["total_aggregation_examples"] == 10
     assert second_round_aggregation["aggregation_example_basis"] == (
         "update_envelope.example_count"

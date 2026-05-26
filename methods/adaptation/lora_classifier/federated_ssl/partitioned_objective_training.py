@@ -22,6 +22,8 @@ from methods.adaptation.lora_classifier.config import (
 )
 from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
     PartitionSparseSyncParameters,
+    apply_partitioned_s2c_sparse_download,
+    count_partition_delta_nonzero_values,
     project_partitioned_c2s_sparse_upload,
     project_partitioned_s2c_sparse_download,
 )
@@ -294,7 +296,16 @@ def run_method_owned_lora_classifier_training_core(
             and bool(previous_client_partition_parameters)
         )
         effective_base_partition_parameters = server_partition_parameters
+        s2c_sparse_download_value_count = 0
         if uses_s2c_sparse_download:
+            s2c_sparse_download_deltas = apply_partitioned_s2c_sparse_download(
+                server_partition_parameters=server_partition_parameters,
+                client_partition_parameters=previous_client_partition_parameters,
+                parameters=sparse_sync_parameters,
+            )
+            s2c_sparse_download_value_count = count_partition_delta_nonzero_values(
+                s2c_sparse_download_deltas
+            )
             effective_base_partition_parameters = (
                 project_partitioned_s2c_sparse_download(
                     server_partition_parameters=server_partition_parameters,
@@ -356,6 +367,9 @@ def run_method_owned_lora_classifier_training_core(
                 client_partition_parameters=client_partition_parameters,
                 parameters=sparse_sync_parameters,
             )
+            c2s_sparse_upload_value_count = count_partition_delta_nonzero_values(
+                c2s_projection.upload_partition_deltas
+            )
             training_result = replace_partitioned_training_deltas(
                 training_result=training_result,
                 partition_deltas=c2s_projection.upload_partition_deltas,
@@ -376,6 +390,7 @@ def run_method_owned_lora_classifier_training_core(
             )
         else:
             client_partition_parameters = {}
+            c2s_sparse_upload_value_count = 0
             training_result = train_partitioned_lora_classifier(
                 model=model,
                 train_loader=train_loader,
@@ -483,6 +498,10 @@ def run_method_owned_lora_classifier_training_core(
         "fedmatch_physical_partition_runtime": float(uses_physical_partition_runtime),
         "fedmatch_c2s_sparse_upload": float(uses_physical_partition_runtime),
         "fedmatch_s2c_sparse_download": float(uses_s2c_sparse_download),
+        "fedmatch_c2s_sparse_upload_value_count": float(c2s_sparse_upload_value_count),
+        "fedmatch_s2c_sparse_download_value_count": float(
+            s2c_sparse_download_value_count
+        ),
         "fedmatch_local_ssl_policy_is_fixmatch": float(
             local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
         ),

@@ -51,6 +51,16 @@ class PartitionSparseUploadProjection:
     client_partition_parameters: dict[str, LoraClassifierMaterializedState]
 
 
+def count_partition_delta_nonzero_values(
+    partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
+) -> int:
+    """partition delta payload 안에서 실제 transport되는 non-zero scalar 수를 센다."""
+
+    return sum(
+        _partition_delta_nonzero_count(delta) for delta in partition_deltas.values()
+    )
+
+
 def apply_partitioned_c2s_sparse_upload(
     *,
     base_parameters: LoraClassifierMaterializedState,
@@ -208,6 +218,25 @@ def _apply_sparse_upload_to_partition(
             parameters=parameters,
         ),
     )
+
+
+def _partition_delta_nonzero_count(delta: LoraClassifierPartitionDelta) -> int:
+    return (
+        _nested_nonzero_float_count(delta.lora_parameter_deltas)
+        + _nested_nonzero_float_count(delta.classifier_head_weight_deltas)
+        + _nested_nonzero_float_count(delta.classifier_head_bias_deltas)
+    )
+
+
+def _nested_nonzero_float_count(value: object) -> int:
+    if isinstance(value, Mapping):
+        return sum(_nested_nonzero_float_count(child) for child in value.values())
+    if isinstance(value, Sequence) and not isinstance(value, str | bytes):
+        return sum(_nested_nonzero_float_count(child) for child in value)
+    try:
+        return int(float(value) != 0.0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _build_sparse_upload_partition_delta_from_states(

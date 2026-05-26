@@ -90,6 +90,16 @@ def _round_aggregation_diagnostics(
         for client in round_summary.clients
         if client.fedmatch_peer_context_helper_count is not None
     ]
+    fedmatch_c2s_sparse_upload_value_counts = [
+        client.fedmatch_c2s_sparse_upload_value_count
+        for client in round_summary.clients
+        if client.fedmatch_c2s_sparse_upload_value_count is not None
+    ]
+    fedmatch_s2c_sparse_download_value_counts = [
+        client.fedmatch_s2c_sparse_download_value_count
+        for client in round_summary.clients
+        if client.fedmatch_s2c_sparse_download_value_count is not None
+    ]
     zero_update_client_count = sum(
         1 for client in round_summary.clients if not client.update_generated
     )
@@ -123,6 +133,12 @@ def _round_aggregation_diagnostics(
             1
             for client in round_summary.clients
             if client.fedmatch_peer_context_refreshed
+        ),
+        "fedmatch_c2s_sparse_upload_value_count_summary": numeric_summary(
+            fedmatch_c2s_sparse_upload_value_counts
+        ),
+        "fedmatch_s2c_sparse_download_value_count_summary": numeric_summary(
+            fedmatch_s2c_sparse_download_value_counts
         ),
         "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_example_count_summary": numeric_summary(

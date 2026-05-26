@@ -23,6 +23,7 @@ from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync impo
     PartitionSparseSyncParameters,
     apply_partitioned_c2s_sparse_upload,
     apply_partitioned_s2c_sparse_download,
+    count_partition_delta_nonzero_values,
     project_partitioned_c2s_sparse_upload,
     project_partitioned_s2c_sparse_download,
 )
@@ -1133,6 +1134,25 @@ def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() ->
     assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_bias_deltas[
         "anxiety"
     ] == pytest.approx(0.0)
+
+
+def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
+    deltas = {
+        FEDMATCH_SIGMA_PARTITION: LoraClassifierPartitionDelta(
+            partition_name=FEDMATCH_SIGMA_PARTITION,
+            lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.04, -0.06]},
+            classifier_head_weight_deltas={"anxiety": [0.0, 0.07]},
+            classifier_head_bias_deltas={"anxiety": 0.03},
+        ),
+        FEDMATCH_PSI_PARTITION: LoraClassifierPartitionDelta(
+            partition_name=FEDMATCH_PSI_PARTITION,
+            lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.0, 0.10]},
+            classifier_head_weight_deltas={"anxiety": [0.0, 0.0]},
+            classifier_head_bias_deltas={"anxiety": 0.0},
+        ),
+    }
+
+    assert count_partition_delta_nonzero_values(deltas) == 5
 
 
 def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() -> None:

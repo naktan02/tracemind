@@ -147,6 +147,12 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
             client.fedmatch_peer_context_helper_count
         ),
         "fedmatch_peer_context_refreshed": client.fedmatch_peer_context_refreshed,
+        "fedmatch_c2s_sparse_upload_value_count": (
+            client.fedmatch_c2s_sparse_upload_value_count
+        ),
+        "fedmatch_s2c_sparse_download_value_count": (
+            client.fedmatch_s2c_sparse_download_value_count
+        ),
         "timing_breakdown": dict(client.timing_breakdown),
     }
 

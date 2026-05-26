@@ -235,6 +235,16 @@ def _run_method_owned_lora_client_round(
             fedmatch_peer_context_refreshed=_optional_float_metric(
                 local_result.client_metrics.get("fedmatch_peer_context_refreshed")
             ),
+            fedmatch_c2s_sparse_upload_value_count=_optional_float_metric(
+                local_result.client_metrics.get(
+                    "fedmatch_c2s_sparse_upload_value_count"
+                )
+            ),
+            fedmatch_s2c_sparse_download_value_count=_optional_float_metric(
+                local_result.client_metrics.get(
+                    "fedmatch_s2c_sparse_download_value_count"
+                )
+            ),
             timing_breakdown=timing.to_mapping(),
         ),
         update_submitted=update_submitted,
