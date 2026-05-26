@@ -1,4 +1,4 @@
-"""LoRA-classifier global state 평가 core."""
+"""PEFT-backed classifier global state 평가 core."""
 
 from __future__ import annotations
 
@@ -7,10 +7,9 @@ from typing import Any
 
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.config import (
-    PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-    PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
+    build_peft_classifier_training_backend_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
@@ -256,9 +255,5 @@ def _build_evaluation_training_backend_config(
     objective_config: TrainingObjectiveConfig | None,
 ) -> LoraClassifierTrainingBackendConfig:
     if isinstance(adapter_state, PeftClassifierState):
-        return build_lora_classifier_training_backend_config(
-            objective_config,
-            family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-            training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
-        )
+        return build_peft_classifier_training_backend_config(objective_config)
     return build_lora_classifier_training_backend_config(objective_config)

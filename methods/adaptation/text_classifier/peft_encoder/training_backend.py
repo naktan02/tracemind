@@ -1,9 +1,9 @@
-"""LoRA-classifier local training backend facade."""
+"""PEFT-backed classifier local training backend facade."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field, replace
+from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
@@ -48,12 +48,10 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-    PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-    PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-    PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
+    build_peft_classifier_training_backend_config,
 )
 from .training.query_ssl_local_training import (
     LoraClassifierTrainerRuntimeConfig,
@@ -204,12 +202,16 @@ class LoraClassifierTrainingBackend:
         objective_config: TrainingObjectiveConfig | None,
     ) -> bool:
         if self.adapter_kind == PEFT_CLASSIFIER_ADAPTER_KIND:
-            return self.config == _build_peft_classifier_training_backend_config(
+            return self.config == build_peft_classifier_training_backend_config(
                 objective_config
             )
         return self.config == build_lora_classifier_training_backend_config(
             objective_config
         )
+
+
+PeftClassifierTrainingBackend = LoraClassifierTrainingBackend
+PeftEncoderTrainingBackend = LoraClassifierTrainingBackend
 
 
 def build_lora_classifier_client_metrics(
@@ -256,22 +258,5 @@ def build_peft_classifier_training_backend(
         backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
         payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
-        config=_build_peft_classifier_training_backend_config(objective_config),
-    )
-
-
-def _build_peft_classifier_training_backend_config(
-    objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackendConfig:
-    config = build_lora_classifier_training_backend_config(
-        objective_config,
-        family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-        training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
-    )
-    return replace(
-        config,
-        payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-        artifact_ref_prefix="agent-local://peft_classifier"
-        if config.artifact_ref_prefix == "agent-local://lora_classifier"
-        else config.artifact_ref_prefix,
+        config=build_peft_classifier_training_backend_config(objective_config),
     )

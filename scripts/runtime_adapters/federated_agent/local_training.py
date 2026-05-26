@@ -30,7 +30,7 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.training_backend import (
-    LoraClassifierTrainingBackend,
+    PeftEncoderTrainingBackend,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
@@ -233,7 +233,7 @@ def run_query_ssl_peft_encoder_local_training(
         repository=TrainingArtifactRepository(
             state_root=output_dir / "agents" / client_id
         ),
-        backend=LoraClassifierTrainingBackend(
+        backend=PeftEncoderTrainingBackend(
             config=lora_config,
         )
         if lora_config is not None

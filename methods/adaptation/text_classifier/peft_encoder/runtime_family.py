@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 from collections.abc import Sequence
-from dataclasses import replace
 from datetime import datetime
 from typing import Protocol
 
@@ -20,19 +19,17 @@ from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 from .config import (
-    PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-    PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-    PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
+    build_peft_classifier_training_backend_config,
 )
 from .initial_state import (
     LoraClassifierInitialStateConfig,
     build_initial_lora_classifier_state,
     build_initial_peft_classifier_state,
 )
-from .training_backend import LoraClassifierTrainingBackend
+from .training_backend import PeftEncoderTrainingBackend
 
 PeftEncoderState = LoraClassifierState | PeftClassifierState
 PEFT_ENCODER_ADAPTER_KINDS = (
@@ -128,18 +125,7 @@ def build_training_backend_config_for_peft_encoder_state(
     """active state family에 맞는 local trainer config를 만든다."""
 
     if isinstance(active_adapter_state, PeftClassifierState):
-        config = build_lora_classifier_training_backend_config(
-            objective_config,
-            family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-            training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
-        )
-        return replace(
-            config,
-            payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
-            artifact_ref_prefix="agent-local://peft_classifier"
-            if config.artifact_ref_prefix == "agent-local://lora_classifier"
-            else config.artifact_ref_prefix,
-        )
+        return build_peft_classifier_training_backend_config(objective_config)
     return build_lora_classifier_training_backend_config(objective_config)
 
 
@@ -147,7 +133,7 @@ def build_training_backend_for_peft_encoder_state(
     *,
     active_adapter_state: PeftEncoderState,
     objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackend:
+) -> PeftEncoderTrainingBackend:
     """active state family에 맞는 Query SSL local backend를 만든다."""
 
     config = build_training_backend_config_for_peft_encoder_state(
@@ -155,13 +141,13 @@ def build_training_backend_for_peft_encoder_state(
         objective_config=objective_config,
     )
     if isinstance(active_adapter_state, PeftClassifierState):
-        return LoraClassifierTrainingBackend(
+        return PeftEncoderTrainingBackend(
             backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
             payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
             adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
             config=config,
         )
-    return LoraClassifierTrainingBackend(config=config)
+    return PeftEncoderTrainingBackend(config=config)
 
 
 def _normalize_adapter_family_name(adapter_family_name: object) -> str:

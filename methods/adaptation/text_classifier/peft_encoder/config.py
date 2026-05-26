@@ -1,9 +1,12 @@
-"""LoRA-classifier training backend config parsing."""
+"""PEFT-backed classifier training backend config parsing.
+
+`lora_classifier` 이름은 v1 payload/config compatibility surface로 유지한다.
+"""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 
 from methods.common.config_reading import (
     read_bool,
@@ -219,6 +222,10 @@ class LoraClassifierTrainingBackendConfig:
         }
 
 
+PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig
+PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig
+
+
 def build_lora_classifier_training_backend_config(
     objective_config: TrainingObjectiveConfig | None,
     *,
@@ -235,3 +242,27 @@ def build_lora_classifier_training_backend_config(
         **objective_config.get_component_extras(training_backend_extra_scope),
     }
     return LoraClassifierTrainingBackendConfig.from_mapping(extras)
+
+
+def build_peft_classifier_training_backend_config(
+    objective_config: TrainingObjectiveConfig | None,
+) -> PeftClassifierTrainingBackendConfig:
+    """objective config에서 PEFT-classifier v2 trainer 설정을 읽는다."""
+
+    config = build_lora_classifier_training_backend_config(
+        objective_config,
+        family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+        training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
+    )
+    return replace(
+        config,
+        payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+        artifact_ref_prefix="agent-local://peft_classifier"
+        if config.artifact_ref_prefix == "agent-local://lora_classifier"
+        else config.artifact_ref_prefix,
+    )
+
+
+build_peft_encoder_training_backend_config = (
+    build_peft_classifier_training_backend_config
+)
