@@ -108,7 +108,7 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     )
     assert (
         entries["classifier_head.fedavg"].implementation_module
-        == "methods.adaptation.text_classifier.aggregation."
+        == "methods.adaptation.classification.aggregation."
         "feature_head_fedavg_projection"
     )
     assert (

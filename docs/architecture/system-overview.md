@@ -168,13 +168,13 @@ Raw Event / Local Signal
 | round lifecycle | `main_server/src/services/federation/rounds/round_lifecycle_service.py` |
 | round manager | `main_server/src/services/federation/rounds/round_manager_service.py` |
 | diagonal-scale local update core | `methods/adaptation/diagonal_scale/*` |
-| shared adapter scoring core | `methods/adaptation/<family>/scoring.py` |
+| shared adapter scoring core | `methods/prototype/scoring/*`, `methods/adaptation/classification/feature_head/scoring.py` |
 | shared adapter privacy guard core | `methods/adaptation/privacy_guards/*` |
 | prototype training input core | `methods/prototype/training_inputs/*` |
 | FL shard policy core | `methods/federated/shard_policy/*` |
 | aggregation backend adapter | `main_server/src/services/federation/rounds/aggregation/*` |
 | FedAvg generic core | `methods/federated/aggregation/fedavg/*` |
-| adapter-family FedAvg core/materialization | `methods/adaptation/<family>/aggregation/fedavg.py`, 필요 시 `server_preflight.py` |
+| adapter-family FedAvg projection/materialization | `methods/adaptation/<family>/aggregation/*`, 필요 시 `server_preflight.py` |
 | FL SSL method descriptor/recipe metadata/policy | `methods/federated_ssl/*` |
 | method-only aggregation variant | `methods/federated_ssl/<method>/aggregation.py` |
 | FL simulation runtime adapter | `scripts/experiments/fl_ssl/federated_simulation/adapters/method_runtime.py` |

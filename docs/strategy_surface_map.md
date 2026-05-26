@@ -58,7 +58,7 @@ central fixed embedding + classifier seed
 | Training backend | `diagonal_scale_heuristic`, `lora_classifier_trainer` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | 활성 runtime / FL simulation scaffold |
 | Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*` core + agent runtime adapter | 활성 runtime |
 | Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*` core + agent runtime adapter | 활성 runtime |
-| Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*` core + agent runtime adapter | 활성 runtime |
+| Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, `methods/adaptation/classification/feature_head/scoring.py` core + agent runtime adapter | 활성 runtime |
 | Score policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` | `methods/prototype/scoring/policy_registry.py` + `score_policies/*` | 활성 runtime |
 | Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `methods/ssl/hooks/selection.py` + agent compatibility metadata | 활성 runtime |
 | Privacy guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `methods/adaptation/privacy_guards/*` core + agent executor | 활성 runtime |

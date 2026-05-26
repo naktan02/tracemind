@@ -84,10 +84,13 @@ def _import_adaptation_scoring_modules() -> None:
     if package_paths is None:
         return
 
-    for module_info in pkgutil.iter_modules(package_paths):
-        if not module_info.ispkg:
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{_ADAPTATION_PACKAGE}.",
+    ):
+        if module_info.ispkg or not module_info.name.endswith(".scoring"):
             continue
-        module_name = f"{_ADAPTATION_PACKAGE}.{module_info.name}.scoring"
+        module_name = module_info.name
         try:
             importlib.import_module(module_name)
         except ModuleNotFoundError as error:

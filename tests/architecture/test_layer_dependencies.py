@@ -52,6 +52,7 @@ PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 TEXT_CLASSIFIER_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "text_classifier"
 TEXT_CLASSIFIER_AGGREGATION_SRC = TEXT_CLASSIFIER_ADAPTATION_SRC / "aggregation"
+CLASSIFICATION_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "classification"
 PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
 LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
     AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
@@ -799,6 +800,24 @@ def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() 
     )
 
 
+def test_classification_adaptation_is_modality_independent() -> None:
+    violations = _find_forbidden_imports(
+        root=CLASSIFICATION_ADAPTATION_SRC,
+        forbidden_prefixes=(
+            "methods.adaptation.classifier_head",
+            "methods.adaptation.lora_classifier",
+            "methods.adaptation.text_classifier",
+        ),
+    )
+
+    assert not violations, (
+        "methods/adaptation/classification/**는 modality-independent classification "
+        "primitive를 소유한다. text-specific PEFT encoder나 legacy classifier_head "
+        "경로를 import하지 않는다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
 def test_text_classifier_peft_encoder_uses_peft_adapters_axis() -> None:
     violations = _find_forbidden_imports(
         root=TEXT_CLASSIFIER_ADAPTATION_SRC / "peft_encoder",
@@ -912,8 +931,8 @@ def test_legacy_classifier_head_files_are_direct_shims() -> None:
         package_root / "aggregation" / "fedavg.py",
     )
     allowed_prefixes = (
-        "methods.adaptation.text_classifier.feature_head",
-        "methods.adaptation.text_classifier.aggregation.feature_head_fedavg_projection",
+        "methods.adaptation.classification.feature_head",
+        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection",
     )
     violations: list[str] = []
     for path in shim_paths:
@@ -934,16 +953,57 @@ def test_legacy_classifier_head_files_are_direct_shims() -> None:
             violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
 
     assert not violations, (
-        "legacy classifier_head 파일은 새 text_classifier feature-head/projection "
+        "legacy classifier_head 파일은 새 classification feature-head/projection "
         "경로의 named symbol만 가져오는 compatibility shim으로 남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
 
 
-def test_text_classifier_aggregation_files_stay_projection_only() -> None:
+def test_legacy_text_classifier_feature_head_files_are_direct_shims() -> None:
+    shim_paths = (
+        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head" / "bootstrap.py",
+        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head" / "scoring.py",
+        TEXT_CLASSIFIER_AGGREGATION_SRC / "feature_head_fedavg_projection.py",
+    )
+    allowed_prefixes = (
+        "methods.adaptation.classification.feature_head",
+        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                allowed_prefixes
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "legacy text_classifier feature-head 파일은 새 classification 경로의 named "
+        "symbol만 가져오는 compatibility shim으로 남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
+def test_adaptation_aggregation_files_stay_projection_only() -> None:
     violations: list[Path] = []
-    if TEXT_CLASSIFIER_AGGREGATION_SRC.is_dir():
-        for path in _iter_python_files(TEXT_CLASSIFIER_AGGREGATION_SRC):
+    aggregation_roots = (
+        TEXT_CLASSIFIER_AGGREGATION_SRC,
+        CLASSIFICATION_ADAPTATION_SRC / "aggregation",
+    )
+    for aggregation_root in aggregation_roots:
+        if not aggregation_root.is_dir():
+            continue
+        for path in _iter_python_files(aggregation_root):
             source = path.read_text(encoding="utf-8")
             if path.stem.endswith("_projection"):
                 continue
@@ -951,9 +1011,10 @@ def test_text_classifier_aggregation_files_stay_projection_only() -> None:
                 violations.append(_relative_repo_path(path))
 
     assert not violations, (
-        "methods/adaptation/text_classifier/aggregation/**는 family state를 generic "
-        "aggregation input/output으로 바꾸는 projection만 소유한다. weighted average "
-        "policy와 FedAvg algorithm은 methods/federated/aggregation/에 둔다.\n"
+        "classification/text_classifier aggregation 계층은 family state를 generic "
+        "aggregation input/output으로 바꾸는 projection만 소유한다. "
+        "weighted average policy와 FedAvg algorithm은 methods/federated/aggregation/에 "
+        "둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

@@ -76,10 +76,10 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   classifier head scaffold, 학습/평가 loop, family별 aggregation adapter
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
   family별 aggregation adapter
-- `methods/adaptation/text_classifier/feature_head/`: 고정 feature 위 classifier-head
-  adaptation variant의 bootstrap/scoring core
-- `methods/adaptation/text_classifier/aggregation/`: text classifier family별
-  aggregation input/output projection
+- `methods/adaptation/classification/`: modality-independent classification
+  adapter primitive와 classifier-head projection
+- `methods/adaptation/text_classifier/`: PEFT text encoder + classifier head
+  adaptation variant와 text-specific training/update core
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
 - `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper

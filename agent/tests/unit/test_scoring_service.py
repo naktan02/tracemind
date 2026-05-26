@@ -18,6 +18,7 @@ from agent.src.services.inference.scoring_backends.prototype_similarity import (
     PrototypeSimilarityScoringBackend,
 )
 from agent.src.services.inference.scoring_backends.registry import (
+    list_scoring_backend_catalog_entries,
     register_scoring_backend,
 )
 from agent.src.services.inference.scoring_service import ScoringService
@@ -213,3 +214,14 @@ def test_score_service_uses_methods_owned_classifier_head_logits_backend() -> No
     assert service.confidence_kind == "classifier_head_logit_top1"
     assert scores["anxiety"] == pytest.approx(1.1)
     assert scores["normal"] == pytest.approx(0.9)
+
+
+def test_classifier_head_logits_catalog_points_to_classification_core() -> None:
+    entries = {
+        entry.item_name: entry for entry in list_scoring_backend_catalog_entries()
+    }
+
+    assert (
+        entries["classifier_head_logits"].implementation_module
+        == "methods.adaptation.classification.feature_head.scoring"
+    )

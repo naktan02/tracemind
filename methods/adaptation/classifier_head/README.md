@@ -1,8 +1,8 @@
 # Classifier Head Adaptation
 
 `methods/adaptation/classifier_head/`는 기존 direct import 호환성만 유지하는
-legacy 경로다. 새 source of truth는 `methods/adaptation/text_classifier/feature_head/`
-와 `methods/adaptation/text_classifier/aggregation/`이다.
+legacy 경로다. 새 source of truth는 `methods/adaptation/classification/feature_head/`
+와 `methods/adaptation/classification/aggregation/`이다.
 
 ## 책임
 

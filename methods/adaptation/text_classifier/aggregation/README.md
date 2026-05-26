@@ -6,14 +6,13 @@ projection 계층이다.
 
 ## 책임
 
-- feature-head state projection
 - PEFT encoder + classifier head state projection
 - partitioned state projection과 materialization
 
 ## 파일
 
-- `feature_head_fedavg_projection.py`: classifier-head update payload를 generic
-  FedAvg core 입력으로 바꾸고 next state를 materialize
+- `feature_head_fedavg_projection.py`: 이전 경로 호환 shim. source of truth는
+  `methods/adaptation/classification/aggregation/feature_head_fedavg_projection.py`
 
 ## 금지
 

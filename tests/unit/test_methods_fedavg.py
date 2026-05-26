@@ -4,6 +4,9 @@ from __future__ import annotations
 
 import pytest
 
+from methods.adaptation.classification.aggregation import (
+    feature_head_fedavg_projection as feature_head_projection,
+)
 from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
@@ -11,9 +14,6 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
 from methods.adaptation.lora_classifier.aggregation.fedavg import (
     LoraClassifierFedAvgUpdate,
     compute_lora_classifier_fedavg,
-)
-from methods.adaptation.text_classifier.aggregation import (
-    feature_head_fedavg_projection as feature_head_projection,
 )
 from methods.federated.aggregation import registry as aggregation_registry
 from methods.federated.aggregation.fedavg.update_metrics import (
