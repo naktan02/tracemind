@@ -81,11 +81,11 @@ def build_lora_classifier_state_projection(
     }
     if partitioned_parameters:
         lora_artifact[PARTITIONED_LORA_STATE_PARAMETERS_KEY] = {
-            partition_name: partition.lora_parameters
+            partition_name: _json_vector_mapping(partition.lora_parameters)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
         classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY] = {
-            partition_name: partition.classifier_head_weights
+            partition_name: _json_vector_mapping(partition.classifier_head_weights)
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
         classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY] = {
@@ -117,6 +117,15 @@ def build_lora_classifier_state_projection(
             },
         },
     )
+
+
+def _json_vector_mapping(
+    values: Mapping[str, Sequence[float]],
+) -> dict[str, list[float]]:
+    return {
+        str(key): [float(value) for value in vector]
+        for key, vector in sorted(values.items())
+    }
 
 
 def _apply_vector_deltas(

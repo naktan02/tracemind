@@ -11,6 +11,7 @@ from uuid import uuid4
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
+    compact_lora_classifier_materialized_state,
 )
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     apply_lora_classifier_partition_delta_to_state,
@@ -374,7 +375,14 @@ def run_method_owned_lora_classifier_training_core(
                 training_result=training_result,
                 partition_deltas=c2s_projection.upload_partition_deltas,
             )
-            client_partition_parameters = c2s_projection.client_partition_parameters
+            client_partition_parameters = {
+                partition_name: compact_lora_classifier_materialized_state(
+                    partition_state
+                )
+                for partition_name, partition_state in (
+                    c2s_projection.client_partition_parameters.items()
+                )
+            }
             merged_partition_delta = merge_partitioned_lora_classifier_deltas(
                 training_result.partition_deltas
             )

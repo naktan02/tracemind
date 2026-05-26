@@ -13,6 +13,7 @@ from torch import Tensor
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
+    compact_lora_classifier_materialized_state,
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
@@ -210,10 +211,12 @@ def extract_lora_classifier_materialized_state(
         ]
         classifier_head_biases[key] = float(bias[label_index].item())
 
-    return LoraClassifierMaterializedState(
-        lora_parameters=lora_parameters,
-        classifier_head_weights=classifier_head_weights,
-        classifier_head_biases=classifier_head_biases,
+    return compact_lora_classifier_materialized_state(
+        LoraClassifierMaterializedState(
+            lora_parameters=lora_parameters,
+            classifier_head_weights=classifier_head_weights,
+            classifier_head_biases=classifier_head_biases,
+        )
     )
 
 

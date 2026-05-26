@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import math
+from array import array
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol, cast
@@ -50,6 +51,33 @@ class LoraClassifierMaterializedState:
     lora_parameters: dict[str, list[float]]
     classifier_head_weights: dict[str, list[float]]
     classifier_head_biases: dict[str, float]
+
+
+def compact_lora_classifier_materialized_state(
+    state: LoraClassifierMaterializedState,
+) -> LoraClassifierMaterializedState:
+    """simulation memory 보존용으로 vector payload를 float32 array로 압축한다."""
+
+    return LoraClassifierMaterializedState(
+        lora_parameters=cast(
+            dict[str, list[float]],
+            {
+                str(key): array("f", (float(value) for value in values))
+                for key, values in state.lora_parameters.items()
+            },
+        ),
+        classifier_head_weights=cast(
+            dict[str, list[float]],
+            {
+                str(key): array("f", (float(value) for value in values))
+                for key, values in state.classifier_head_weights.items()
+            },
+        ),
+        classifier_head_biases={
+            str(key): float(value)
+            for key, value in state.classifier_head_biases.items()
+        },
+    )
 
 
 class _AggregationTensorArtifactLoader(Protocol):
