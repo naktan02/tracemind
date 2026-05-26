@@ -11,7 +11,7 @@
     "expected_shared_update_count_matches_round_updates": true,
     "expect_server_owned_update_artifacts": true,
     "expect_no_agent_local_update_refs": true,
-    "expect_lora_classifier_aggregate_snapshot": true
+    "expect_peft_classifier_aggregate_snapshot": true
   },
   "artifacts": [
     {

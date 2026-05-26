@@ -47,6 +47,7 @@ class FederatedReportExpectation:
     expect_partitioned_update_artifact_refs: bool = False
     expect_no_agent_local_update_refs: bool = False
     expect_classifier_aggregate_snapshot: bool = False
+    expect_peft_classifier_aggregate_snapshot: bool = False
     expect_lora_classifier_aggregate_snapshot: bool = False
     expected_posthoc_communication_schema_version: str | None = None
     expect_partitioned_sparse_s2c_estimates: bool = False
@@ -58,6 +59,16 @@ class FederatedReportExpectation:
     expected_local_trainer_metadata_status: str | None = None
     expected_local_trainer_device: str | None = None
     expected_local_trainer_local_files_only: bool | None = None
+
+    def __post_init__(self) -> None:
+        if self.expect_lora_classifier_aggregate_snapshot and (
+            not self.expect_peft_classifier_aggregate_snapshot
+        ):
+            object.__setattr__(
+                self,
+                "expect_peft_classifier_aggregate_snapshot",
+                True,
+            )
 
 
 @dataclass(frozen=True, slots=True)

@@ -453,6 +453,7 @@ def _verify_shared_update_artifacts(
         )
     if (
         expectation.expect_classifier_aggregate_snapshot
+        or expectation.expect_peft_classifier_aggregate_snapshot
         or expectation.expect_lora_classifier_aggregate_snapshot
     ):
         _verify_classifier_aggregate_snapshot(
@@ -552,6 +553,7 @@ def _requires_shared_update_artifact_check(
             expectation.expect_partitioned_update_artifact_refs,
             expectation.expect_no_agent_local_update_refs,
             expectation.expect_classifier_aggregate_snapshot,
+            expectation.expect_peft_classifier_aggregate_snapshot,
             expectation.expect_lora_classifier_aggregate_snapshot,
         )
     )

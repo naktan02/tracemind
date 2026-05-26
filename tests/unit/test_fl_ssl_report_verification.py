@@ -508,7 +508,7 @@ def test_verify_federated_report_checks_server_owned_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_lora_classifier_aggregate_snapshot=True,
+            expect_peft_classifier_aggregate_snapshot=True,
         ),
     )
 
@@ -538,11 +538,19 @@ def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_lora_classifier_aggregate_snapshot=True,
+            expect_peft_classifier_aggregate_snapshot=True,
         ),
     )
 
     assert result.passed
+
+
+def test_lora_classifier_snapshot_expectation_is_legacy_alias() -> None:
+    expectation = FederatedReportExpectation(
+        expect_lora_classifier_aggregate_snapshot=True,
+    )
+
+    assert expectation.expect_peft_classifier_aggregate_snapshot is True
 
 
 def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
@@ -561,7 +569,7 @@ def test_verify_federated_report_accepts_partitioned_only_update_artifacts(
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
             expect_no_agent_local_update_refs=True,
-            expect_lora_classifier_aggregate_snapshot=True,
+            expect_peft_classifier_aggregate_snapshot=True,
         ),
     )
 
@@ -1099,6 +1107,59 @@ def test_verify_artifact_manifest_checks_multiple_artifacts(
     assert "PASS sweep_summary:" in output
 
 
+def test_verify_artifact_manifest_applies_peft_snapshot_default(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(
+            client_count=1,
+            completed_rounds=1,
+            round_budget=1,
+            adapter_family="peft_classifier",
+            objective_adapter_family="peft_classifier",
+        ),
+        peft_classifier_v2=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "defaults": {
+                    "expected_adapter_family": "peft_classifier",
+                    "expected_delta_format": "server_uploaded_artifact_ref",
+                    "expected_shared_update_count_matches_round_updates": True,
+                    "expect_server_owned_update_artifacts": True,
+                    "expect_no_agent_local_update_refs": True,
+                    "expect_peft_classifier_aggregate_snapshot": True,
+                },
+                "artifacts": [
+                    {
+                        "name": "peft_report",
+                        "report": str(report_path.relative_to(tmp_path)),
+                        "expectation": {
+                            "expected_completed_rounds": 1,
+                            "expected_round_budget": 1,
+                            "expected_client_count": 1,
+                            "expected_round_record_count": 1,
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        ["--manifest", str(manifest_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "PASS peft_report:" in output
+
+
 def test_verify_artifact_cli_accepts_labeled_exposure_and_run_control_options(
     tmp_path: Path,
     capsys,
@@ -1242,7 +1303,7 @@ def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
                     "expected_shared_update_count_matches_round_updates": True,
                     "expect_server_owned_update_artifacts": True,
                     "expect_no_agent_local_update_refs": True,
-                    "expect_lora_classifier_aggregate_snapshot": True,
+                    "expect_peft_classifier_aggregate_snapshot": True,
                 },
                 "artifacts": [
                     {

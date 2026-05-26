@@ -74,6 +74,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         expect_classifier_aggregate_snapshot=(
             args.expect_classifier_aggregate_snapshot
         ),
+        expect_peft_classifier_aggregate_snapshot=(
+            args.expect_peft_classifier_aggregate_snapshot
+        ),
         expect_lora_classifier_aggregate_snapshot=(
             args.expect_lora_classifier_aggregate_snapshot
         ),
@@ -220,8 +223,13 @@ def _build_parser() -> argparse.ArgumentParser:
         action="store_true",
     )
     parser.add_argument(
+        "--expect-peft-classifier-aggregate-snapshot",
+        action="store_true",
+    )
+    parser.add_argument(
         "--expect-lora-classifier-aggregate-snapshot",
         action="store_true",
+        help="Legacy alias for --expect-peft-classifier-aggregate-snapshot.",
     )
     parser.add_argument("--expected-posthoc-communication-schema-version")
     parser.add_argument(
@@ -346,12 +354,14 @@ def _expectation_from_manifest_entry(
     raw_expectation = entry.get("expectation", {})
     if not isinstance(raw_expectation, Mapping):
         raise ValueError("Verifier manifest expectation must be a JSON object.")
+    normalized_entry = _normalize_expectation_mapping(raw_expectation)
     entry_expectation = _expectation_from_mapping(raw_expectation)
     return FederatedReportExpectation(
         **{
-            field.name: _first_non_none(
-                getattr(entry_expectation, field.name),
-                getattr(default_expectation, field.name),
+            field.name: (
+                getattr(entry_expectation, field.name)
+                if field.name in normalized_entry
+                else getattr(default_expectation, field.name)
             )
             for field in fields(FederatedReportExpectation)
         }
@@ -362,14 +372,24 @@ def _expectation_from_mapping(
     raw_expectation: Mapping[str, object],
 ) -> FederatedReportExpectation:
     allowed_fields = {field.name for field in fields(FederatedReportExpectation)}
-    unknown_fields = sorted(set(raw_expectation) - allowed_fields)
+    normalized_expectation = _normalize_expectation_mapping(raw_expectation)
+    unknown_fields = sorted(set(normalized_expectation) - allowed_fields)
     if unknown_fields:
         raise ValueError(f"Unknown verifier expectation fields: {unknown_fields}.")
-    return FederatedReportExpectation(**dict(raw_expectation))
+    return FederatedReportExpectation(**normalized_expectation)
 
 
-def _first_non_none(value: object, fallback: object) -> object:
-    return fallback if value is None else value
+def _normalize_expectation_mapping(
+    raw_expectation: Mapping[str, object],
+) -> dict[str, object]:
+    expectation = dict(raw_expectation)
+    legacy_snapshot = expectation.get("expect_lora_classifier_aggregate_snapshot")
+    if (
+        "expect_peft_classifier_aggregate_snapshot" not in expectation
+        and legacy_snapshot is not None
+    ):
+        expectation["expect_peft_classifier_aggregate_snapshot"] = legacy_snapshot
+    return expectation
 
 
 def _optional_manifest_path(manifest_path: Path, raw_path: object) -> Path | None:
