@@ -19,7 +19,7 @@ from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction i
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
-    build_lora_text_classifier_from_config,
+    build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     materialize_base_peft_encoder_state,
@@ -76,7 +76,7 @@ def _build_final_projection_artifacts(
         objective_config=request.training_task_config.objective_config,
     )
     set_seed(request.seed)
-    model, tokenizer = build_lora_text_classifier_from_config(
+    model, tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=labels,
         lora_config=lora_config,
         runtime_config=request.local_trainer_runtime_config,

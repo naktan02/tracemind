@@ -316,6 +316,10 @@ text-classifier training core는 `get_peft_model` 직접 호출 대신 builder s
 통해 backbone adapter를 구성한다.
 model 생성 caller는 `build_peft_encoder_text_classifier_from_config`를 사용하고,
 `build_lora_text_classifier_from_config`는 기존 import 호환 alias로 남긴다.
+evaluation/final projection caller도 `evaluate_peft_encoder_*`,
+`require_peft_encoder_*`, `build_peft_encoder_text_classifier_from_config`를
+canonical surface로 사용한다. `evaluate_lora_classifier_*`와
+`require_lora_classifier_*`는 legacy evaluator/import 호환 alias다.
 
 ## 호환성 정책
 

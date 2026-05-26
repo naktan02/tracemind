@@ -50,7 +50,7 @@ PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
 PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
 
-def evaluate_lora_classifier_state(
+def evaluate_peft_encoder_state(
     *,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
@@ -100,7 +100,7 @@ def evaluate_lora_classifier_state(
     )
 
 
-def evaluate_lora_classifier_state_payload(
+def evaluate_peft_encoder_state_payload(
     *,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
@@ -116,7 +116,7 @@ def evaluate_lora_classifier_state_payload(
 ) -> dict[str, object]:
     """LoRA-classifier global state 평가 결과를 canonical payload로 반환한다."""
 
-    report = evaluate_lora_classifier_state(
+    report = evaluate_peft_encoder_state(
         rows=rows,
         labels=labels,
         base_parameters=base_parameters,
@@ -139,7 +139,7 @@ def evaluate_lora_classifier_state_payload(
     )
 
 
-def evaluate_lora_classifier_validation_payload(
+def evaluate_peft_encoder_validation_payload(
     *,
     rows: Sequence[LabeledQueryRow],
     adapter_state: object,
@@ -150,7 +150,7 @@ def evaluate_lora_classifier_validation_payload(
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, object]:
-    """FL validation runtime이 넘긴 LoRA state를 method-owned evaluator로 평가한다."""
+    """FL validation runtime이 넘긴 PEFT-backed classifier state를 평가한다."""
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
@@ -158,7 +158,7 @@ def evaluate_lora_classifier_validation_payload(
             f"got {type(adapter_state).__name__}."
         )
     is_peft_classifier = isinstance(adapter_state, PeftClassifierState)
-    return evaluate_lora_classifier_state_payload(
+    return evaluate_peft_encoder_state_payload(
         rows=rows,
         labels=adapter_state.label_schema,
         base_parameters=base_parameters,
@@ -188,32 +188,7 @@ def evaluate_lora_classifier_validation_payload(
     )
 
 
-def evaluate_peft_encoder_validation_payload(
-    *,
-    rows: Sequence[LabeledQueryRow],
-    adapter_state: object,
-    base_parameters: LoraClassifierMaterializedState,
-    objective_config: TrainingObjectiveConfig | None,
-    runtime_config: LoraClassifierModelRuntimeConfig,
-    batch_size: int,
-    seed: int,
-    runtime_resource_cache: RuntimeResourceCache | None = None,
-) -> dict[str, object]:
-    """FL validation runtime이 넘긴 PEFT-backed classifier state를 평가한다."""
-
-    return evaluate_lora_classifier_validation_payload(
-        rows=rows,
-        adapter_state=adapter_state,
-        base_parameters=base_parameters,
-        objective_config=objective_config,
-        runtime_config=runtime_config,
-        batch_size=batch_size,
-        seed=seed,
-        runtime_resource_cache=runtime_resource_cache,
-    )
-
-
-def require_lora_classifier_validation_backend(
+def require_peft_encoder_validation_backend(
     *,
     adapter_state: object,
     scorer_backend_name: str,
@@ -233,10 +208,10 @@ def require_lora_classifier_validation_backend(
     )
 
 
-def require_lora_classifier_state(
+def require_peft_encoder_state(
     adapter_state: object,
 ) -> LoraClassifierState | PeftClassifierState:
-    """runtime adapter가 넘긴 shared state를 LoRA-classifier state로 검증한다."""
+    """runtime adapter가 넘긴 shared state를 PEFT-backed classifier state로 검증한다."""
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
@@ -246,7 +221,11 @@ def require_lora_classifier_state(
     return adapter_state
 
 
-require_peft_encoder_state = require_lora_classifier_state
+evaluate_lora_classifier_state = evaluate_peft_encoder_state
+evaluate_lora_classifier_state_payload = evaluate_peft_encoder_state_payload
+evaluate_lora_classifier_validation_payload = evaluate_peft_encoder_validation_payload
+require_lora_classifier_validation_backend = require_peft_encoder_validation_backend
+require_lora_classifier_state = require_peft_encoder_state
 
 
 def _build_evaluation_training_backend_config(
