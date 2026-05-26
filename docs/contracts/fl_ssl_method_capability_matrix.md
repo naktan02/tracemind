@@ -4,13 +4,12 @@
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
 method-owned tensor local objective core를 추가했다. 현재 LoRA-classifier logical
 partition step, physical trainable partition step, PEFT-backed partitioned model
-builder, method-owned local simulation bridge는
+builder, partitioned global state 보존, C2S sparse upload projection,
+method-owned local simulation bridge는
 `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
-소유한다. 다음 FedMatch parity 단계는 global partitioned state를 연결해 frozen
-backbone 위 trainable adapter/head partition을 round 간 보존하는 것이다. 현재 helper
-peer context simulation slice와 labels-at-server supervised seed server step은 열려
-있고, full 원본 parity에 필요한 partitioned global state와 sparse S2C/C2S sync는 다음
-구현 단계다.
+소유한다. 현재 helper peer context simulation slice와 labels-at-server supervised seed
+server step은 열려 있고, full 원본 parity에 필요한 sparse S2C sync와 client-local
+previous partition snapshot accounting은 다음 구현 단계다.
 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
@@ -65,8 +64,9 @@ policy가 된다.
   - 현재 status는 `lora_local_runtime_slice_v1`이다. 원본 설정값, confidence
     filter, agreement pseudo-label vote, KDTree 우선 helper nearest-neighbor selection,
     supervised/unsupervised FedMatch tensor loss는 method package에 고정했다.
-    다음 status는 `partitioned_trainable_state`로, LoRA concrete slice를 넘어
-    DoRA 같은 PEFT adapter 교체를 허용해야 한다.
+    현재 status는 `partitioned_trainable_state_slice_v1`로, LoRA concrete slice를 넘어
+    DoRA 같은 PEFT adapter 교체를 허용하는 partitioned trainable state primitive를
+    단계적으로 열고 있다.
   - `methods/adaptation/lora_classifier/federated_ssl/`는 method-owned objective를
     LoRA-classifier model/loaders, logical/physical partition delta, shared update
     payload로 실행하는 adapter-family slice다. FedMatch method 의미는
@@ -76,7 +76,8 @@ policy가 된다.
     `server_only_seed + supervised_seed_step` server runtime과 client-local `psi`
     upload slice로 실행된다. 현재 labels-at-client slice는 기존 LoRA-classifier
     FedAvg merged delta와 `fedmatch_partitioned`에서 쓰는 `partitioned_deltas`를
-    함께 제출한다. sparse S2C/C2S sync는 아직 실행되지 않는다.
+    함께 제출한다. C2S는 원본 `delta_threshold`/`l1_threshold` 의미를 반영해 sparse
+    upload projection을 적용한다. S2C sparse sync는 아직 실행되지 않는다.
 
 현재 구현하지 않을 것:
 
@@ -90,7 +91,7 @@ policy가 된다.
 
 | 후보 | 논문 setting과 핵심 아이디어 | 현재 TraceMind fit | 필요한 capability | 구현 난도 | 권장 순서 |
 |---|---|---|---|---|---|
-| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice, helper peer-context simulation slice, labels-at-server supervised seed server step은 열림. full 원본 parity에는 sparse S2C/C2S sync가 추가로 필요하다. | 중간 | 1순위, local/runtime slice opened |
+| FedMatch | labels-at-clients FSSL. inter-client consistency와 labeled/unlabeled parameter decomposition 중심. | `shared_client_seed` 또는 client-labeled regime에서 가장 가깝다. | descriptor, 원본 core/config snapshot, tensor local objective core는 method package에 있고, LoRA-classifier partitioned runtime slice, helper peer-context simulation slice, labels-at-server supervised seed server step, partitioned global state, C2S sparse projection은 열림. full 원본 parity에는 sparse S2C sync와 communication accounting이 추가로 필요하다. | 중간 | 1순위, partitioned trainable state slice opened |
 | FedLGMatch | local/global pseudo-label을 함께 쓰는 FSSL. global pseudo-label state를 round마다 활용할 가능성이 높다. | 현재 global model/prototype은 있으나 global pseudo-label cache/state는 별도 policy로 고정되지 않았다. | method-owned descriptor, local objective, `round_state_exchange`로 global/local pseudo-label statistics, custom server/round policy 가능성. | 높음 | 2순위 |
 | (FL)^2 | labels-at-server setting. server에 소량 labeled data, client는 unlabeled data 중심. | 현재 main split은 client에 labeled source도 분배한다. 논문 setting을 맞추려면 dataset/split policy부터 바꿔야 한다. | server-labeled seed regime, client unlabeled-only local objective, server-owned threshold/calibration state, custom round policy 가능성. | 높음 | 3순위 |
 

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from contextlib import nullcontext
+from dataclasses import replace
 from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
@@ -18,6 +19,10 @@ from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
+    PartitionSparseSyncParameters,
+    apply_partitioned_c2s_sparse_upload,
+)
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_budget import (
     normalize_partitioned_local_budget_policy,
     resolve_partitioned_local_budget,
@@ -27,6 +32,7 @@ from methods.adaptation.lora_classifier.federated_ssl.partitioned_model_builder 
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     HelperWeakProbabilityProvider,
+    PartitionedLoraTrainingResult,
     train_partitioned_lora_classifier,
     train_physical_partitioned_adapter_classifier,
 )
@@ -53,6 +59,9 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
+)
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
 )
 from methods.adaptation.lora_classifier.update.query_ssl_update import (
     build_query_ssl_lora_update_payload,
@@ -263,6 +272,9 @@ def run_method_owned_lora_classifier_training_core(
 
     with _measure(timing_recorder, "core_training_loop_seconds"):
         uses_physical_partition_runtime = psi_query_ssl_algorithm is None
+        base_partition_parameters = (
+            {} if base_partition_parameters is None else base_partition_parameters
+        )
         if uses_physical_partition_runtime:
             partitioned_build = build_partitioned_lora_text_classifier_from_config(
                 partition_names=(
@@ -302,6 +314,18 @@ def run_method_owned_lora_classifier_training_core(
                 emit_supervised_partition=(
                     FEDMATCH_SIGMA_PARTITION
                     in upload_partitions_for_scenario(scenario_name=scenario_name)
+                ),
+            )
+            training_result = replace_partitioned_training_deltas(
+                training_result=training_result,
+                partition_deltas=apply_partitioned_c2s_sparse_upload(
+                    base_parameters=base_parameters,
+                    base_partition_parameters=base_partition_parameters,
+                    partition_deltas=training_result.partition_deltas,
+                    parameters=PartitionSparseSyncParameters.from_mapping(
+                        ssl_method_config.effective_parameters,
+                        l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+                    ),
                 ),
             )
             merged_partition_delta = merge_partitioned_lora_classifier_deltas(
@@ -423,6 +447,7 @@ def run_method_owned_lora_classifier_training_core(
         **dict(update_build_result.client_metrics),
         "fedmatch_local_runtime": 1.0,
         "fedmatch_physical_partition_runtime": float(uses_physical_partition_runtime),
+        "fedmatch_c2s_sparse_upload": float(uses_physical_partition_runtime),
         "fedmatch_local_ssl_policy_is_fixmatch": float(
             local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
         ),
@@ -524,6 +549,16 @@ def _build_psi_query_ssl_algorithm(
         unlabeled_row_count=unlabeled_row_count,
     )
     return algorithm
+
+
+def replace_partitioned_training_deltas(
+    *,
+    training_result: PartitionedLoraTrainingResult,
+    partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
+) -> PartitionedLoraTrainingResult:
+    """학습 metric은 유지하고 upload 대상 partition delta만 교체한다."""
+
+    return replace(training_result, partition_deltas=partition_deltas)
 
 
 def _build_timed_peer_client_snapshot(

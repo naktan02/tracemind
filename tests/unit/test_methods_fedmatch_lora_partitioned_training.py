@@ -7,6 +7,9 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.adaptation.lora_classifier.federated_ssl import (
     partitioned_objective_training,
 )
@@ -15,6 +18,10 @@ from methods.adaptation.lora_classifier.federated_ssl import (
 )
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     resolve_method_owned_lora_classifier_training_core,
+)
+from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
+    PartitionSparseSyncParameters,
+    apply_partitioned_c2s_sparse_upload,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     run_partitioned_lora_classifier_step,
@@ -31,6 +38,9 @@ from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     diff_parameter_snapshots,
     project_adapter_classifier_delta_bundle_to_lora_partition_delta,
     snapshot_trainable_parameter_tensors,
+)
+from methods.adaptation.lora_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
@@ -1010,6 +1020,60 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
     assert result.metrics["train_sup_loss"] == 0.0
     assert result.metrics["train_fedmatch_sigma_delta_l2"] == 0.0
     assert result.metrics["train_fedmatch_psi_delta_l2"] > 0.0
+
+
+def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
+    base = LoraClassifierMaterializedState(
+        lora_parameters={"encoder_lora.weight": [0.10, 0.10, 0.10]},
+        classifier_head_weights={"anxiety": [0.10, 0.10]},
+        classifier_head_biases={"anxiety": 0.10},
+    )
+    partition_base = {
+        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+            lora_parameters={"encoder_lora.weight": [0.03, 0.10, 0.10]},
+            classifier_head_weights={"anxiety": [0.03, 0.10]},
+            classifier_head_biases={"anxiety": 0.03},
+        )
+    }
+    sparse = apply_partitioned_c2s_sparse_upload(
+        base_parameters=base,
+        base_partition_parameters=partition_base,
+        partition_deltas={
+            FEDMATCH_SIGMA_PARTITION: LoraClassifierPartitionDelta(
+                partition_name=FEDMATCH_SIGMA_PARTITION,
+                lora_parameter_deltas={"encoder_lora.weight": [0.01, 0.04, -0.06]},
+                classifier_head_weight_deltas={"anxiety": [0.02, 0.07]},
+                classifier_head_bias_deltas={"anxiety": 0.03},
+            ),
+            FEDMATCH_PSI_PARTITION: LoraClassifierPartitionDelta(
+                partition_name=FEDMATCH_PSI_PARTITION,
+                lora_parameter_deltas={"encoder_lora.weight": [0.01, -0.01, 0.08]},
+                classifier_head_weight_deltas={"anxiety": [0.01, -0.01]},
+                classifier_head_bias_deltas={"anxiety": 0.01},
+            ),
+        },
+        parameters=PartitionSparseSyncParameters(
+            l1_threshold=0.05,
+            delta_threshold=0.02,
+            l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+        ),
+    )
+
+    assert sparse[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas[
+        "encoder_lora.weight"
+    ] == pytest.approx([0.0, 0.04, -0.06])
+    assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_weight_deltas[
+        "anxiety"
+    ] == pytest.approx([0.0, 0.07])
+    assert sparse[FEDMATCH_PSI_PARTITION].lora_parameter_deltas[
+        "encoder_lora.weight"
+    ] == pytest.approx([-0.03, 0.0, 0.08])
+    assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_weight_deltas[
+        "anxiety"
+    ] == pytest.approx([-0.03, 0.0])
+    assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_bias_deltas[
+        "anxiety"
+    ] == pytest.approx(-0.03)
 
 
 def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:

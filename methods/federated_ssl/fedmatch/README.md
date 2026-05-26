@@ -64,11 +64,17 @@ FedMatch snapshot은
   adapter + classifier head의 logical sigma/psi partition으로 매핑하는 metadata
 - `server_update_policy`와 `local_ssl_policy` 축에서 FedMatch-style partitioned
   server update와 FixMatch local SSL policy 조합을 표현/검증하는 capability surface
+- PEFT-backed physical partition model builder와 partitioned global state 보존.
+  서버는 merged published state와 함께 partition별 trainable adapter/head snapshot을
+  artifact metadata에 보존하고, 다음 round client는 해당 partition state에서 시작한다.
+- C2S sparse upload projection. 원본 `cal_c2s`의 `delta_threshold` cut과 `psi`
+  `l1_threshold` sparsify 의미를 LoRA-classifier partition delta에 적용한다.
 
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper weak-view
 probability provider, `labels-at-server` client-local `psi` upload slice,
-`server_step_policy=supervised_seed_step` simulation path는 열렸지만 sparse S2C/C2S
-delta sync는 다음 단계 capability로 남긴다.
+`server_step_policy=supervised_seed_step` simulation path와 C2S sparse upload
+projection은 열렸지만 sparse S2C delta sync와 client-local previous partition snapshot
+accounting은 다음 단계 capability로 남긴다.
 현재 실행 server path는 `server_step_policy=none`에서
 `server_update_policy=fedavg_merged_delta`면 기존 LoRA-classifier FedAvg가 merged
 delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
@@ -108,8 +114,13 @@ FedMatch 원본 의미 보존은 한 번에 열지 않는다.
    L1/L2는 `psi`로 routing한다.
 3. Global partitioned state를 연다. server는 `sigma`와 `psi`를 round 간 따로 보존하고,
    다음 round client materialization도 partitioned state에서 시작한다.
-4. Composition policy를 연결한다. evaluation, pseudo-label diagnostics, UMAP은
+4. Sparse C2S upload projection을 연다. client upload는 원본 `delta_threshold`와
+   `psi` `l1_threshold`를 반영해 의미 있게 변한 partition delta만 남긴다.
+5. Composition policy를 연결한다. evaluation, pseudo-label diagnostics, UMAP은
    method가 선언한 partition 조합을 adapter-family composed forward로 실행한다.
+6. Sparse S2C sync와 communication accounting을 연다. server-to-client transport는
+   client-local previous partition snapshot 대비 changed element ratio를 기록하고,
+   helper payload까지 포함한 S2C 비용을 report에 남긴다.
 
 각 단계는 unit/integration/reduced run으로 닫은 뒤 다음 단계로 넘어간다. 특히 global
 state 단계에서 shared contract를 열더라도 `shared`에는 `sigma/psi`나 `fedmatch` 의미를
