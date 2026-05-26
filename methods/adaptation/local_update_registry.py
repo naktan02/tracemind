@@ -17,6 +17,11 @@ from .local_update_backend import (
 )
 
 _ADAPTATION_PACKAGE = "methods.adaptation"
+_TRAINING_BACKEND_MODULE_OVERRIDES = {
+    "peft_classifier_trainer": (
+        "methods.adaptation.text_classifier.peft_encoder.training_backend"
+    ),
+}
 _LOCAL_UPDATE_BACKEND_REGISTRY: dict[
     str,
     tuple[TrainingBackendFactory, RegistryCatalogEntry],
@@ -86,6 +91,10 @@ def list_shared_adapter_training_backend_catalog_entries() -> tuple[
 
 
 def _import_training_backend_module_for_name(normalized_name: str) -> None:
+    override_module = _TRAINING_BACKEND_MODULE_OVERRIDES.get(normalized_name)
+    if override_module is not None:
+        _try_import_module(override_module)
+        return
     parts = normalized_name.replace("-", "_").split("_")
     for end_index in range(len(parts), 0, -1):
         package_name = "_".join(parts[:end_index])

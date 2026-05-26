@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime
 from typing import Any
 
@@ -27,6 +27,11 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierDelta,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.registry_catalog_metadata import (
@@ -43,6 +48,10 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 
 from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+    PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+    PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+    PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
+    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
@@ -71,6 +80,25 @@ LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
         "requires_raw_text": True,
         "produces_artifact_refs": True,
         "supports_live_stored_event_runtime": False,
+    },
+)
+PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
+    item_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    display_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    implementation_module=(
+        "methods.adaptation.text_classifier.peft_encoder.training_backend"
+    ),
+    core_method_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    family_name=PEFT_CLASSIFIER_ADAPTER_KIND,
+    supported_adapter_kinds=(PEFT_CLASSIFIER_ADAPTER_KIND,),
+    accepted_payload_formats=(PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,),
+    tags=("requires_raw_text", "artifact_ref_update"),
+    metadata={
+        "payload_format": PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        "requires_raw_text": True,
+        "produces_artifact_refs": True,
+        "supports_live_stored_event_runtime": False,
+        "legacy_alias": LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     },
 )
 
@@ -108,7 +136,7 @@ class LoraClassifierTrainingBackend:
         model_manifest: ModelManifest,
         accepted_examples: tuple[AcceptedTrainingExample, ...],
         created_at: datetime,
-    ) -> LoraClassifierDelta:
+    ) -> LoraClassifierDelta | PeftClassifierDelta:
         return build_lora_classifier_delta_update(
             training_task=training_task,
             model_manifest=model_manifest,
@@ -161,9 +189,9 @@ class LoraClassifierTrainingBackend:
         )
 
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
-        if not isinstance(update, LoraClassifierDelta):
+        if not isinstance(update, LoraClassifierDelta | PeftClassifierDelta):
             raise TypeError(
-                "LoraClassifierTrainingBackend expects LoraClassifierDelta "
+                "LoraClassifierTrainingBackend expects PEFT classifier delta "
                 f"for payload conversion, got {type(update)!r}."
             )
         return update
@@ -175,6 +203,10 @@ class LoraClassifierTrainingBackend:
         self,
         objective_config: TrainingObjectiveConfig | None,
     ) -> bool:
+        if self.adapter_kind == PEFT_CLASSIFIER_ADAPTER_KIND:
+            return self.config == _build_peft_classifier_training_backend_config(
+                objective_config
+            )
         return self.config == build_lora_classifier_training_backend_config(
             objective_config
         )
@@ -183,9 +215,9 @@ class LoraClassifierTrainingBackend:
 def build_lora_classifier_client_metrics(
     update: SharedAdapterUpdate,
 ) -> dict[str, float]:
-    if not isinstance(update, LoraClassifierDelta):
+    if not isinstance(update, LoraClassifierDelta | PeftClassifierDelta):
         raise TypeError(
-            "LoraClassifierTrainingBackend expects LoraClassifierDelta "
+            "LoraClassifierTrainingBackend expects PEFT classifier delta "
             f"for metric extraction, got {type(update)!r}."
         )
     return {
@@ -194,6 +226,8 @@ def build_lora_classifier_client_metrics(
         ClientMetricKeys.DELTA_L2_NORM: update.l2_norm(),
         "lora_training_rows": float(update.example_count),
         "lora_label_schema_size": float(len(update.label_schema)),
+        "peft_classifier_training_rows": float(update.example_count),
+        "peft_classifier_label_schema_size": float(len(update.label_schema)),
     }
 
 
@@ -207,3 +241,37 @@ def build_lora_classifier_training_backend(
     """registry용 LoRA-classifier training backend factory."""
 
     return LoraClassifierTrainingBackend.from_objective_config(objective_config)
+
+
+@register_shared_adapter_training_backend(
+    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    catalog_entry=PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
+)
+def build_peft_classifier_training_backend(
+    objective_config: TrainingObjectiveConfig | None,
+) -> LoraClassifierTrainingBackend:
+    """registry용 PEFT-classifier v2 training backend factory."""
+
+    return LoraClassifierTrainingBackend(
+        backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+        payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
+        config=_build_peft_classifier_training_backend_config(objective_config),
+    )
+
+
+def _build_peft_classifier_training_backend_config(
+    objective_config: TrainingObjectiveConfig | None,
+) -> LoraClassifierTrainingBackendConfig:
+    config = build_lora_classifier_training_backend_config(
+        objective_config,
+        family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+        training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
+    )
+    return replace(
+        config,
+        payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+        artifact_ref_prefix="agent-local://peft_classifier"
+        if config.artifact_ref_prefix == "agent-local://lora_classifier"
+        else config.artifact_ref_prefix,
+    )

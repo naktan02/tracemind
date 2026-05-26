@@ -46,6 +46,10 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierDelta,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
     TrainingObjectiveConfig,
@@ -266,6 +270,41 @@ def test_lora_classifier_backend_builds_artifact_ref_update_without_text() -> No
     assert "오늘 너무 불안해요" not in update.model_dump_json()
 
 
+def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
+    backend = build_shared_adapter_training_backend(
+        "peft_classifier_trainer",
+        objective_config=TrainingObjectiveConfig(
+            training_backend_name="peft_classifier_trainer",
+            extras={
+                "peft_classifier_trainer.rank": 16,
+                "peft_classifier_trainer.alpha": 32,
+                "peft_classifier_trainer.label_schema": ("anxiety,depression,normal"),
+            },
+        ),
+    )
+
+    update = backend.build_update(
+        training_task=_build_task(),
+        model_manifest=_build_manifest(),
+        accepted_examples=(_example(),),
+        created_at=datetime(2026, 4, 21, 12, 30, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(update, PeftClassifierDelta)
+    assert update.adapter_kind == "peft_classifier"
+    assert update.schema_version == "peft_classifier_delta.v2"
+    assert update.label_schema == ["anxiety", "depression", "normal"]
+    assert update.peft_adapter_config.peft_adapter_name == "lora"
+    assert update.peft_adapter_config.parameters["rank"] == 16
+    assert update.peft_adapter_delta_artifact_ref == (
+        "agent-local://peft_classifier/round_lora_001/task_lora_001/"
+        "20260421T123000000000Z/lora_delta"
+    )
+    assert update.classifier_head_delta_artifact_ref is not None
+    assert update.mean_confidence == pytest.approx(0.92)
+    assert "오늘 너무 불안해요" not in update.model_dump_json()
+
+
 def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None:
     backend = LoraClassifierTrainingBackend()
 
@@ -328,6 +367,12 @@ def test_lora_classifier_training_backend_is_registered() -> None:
             "supports_live_stored_event_runtime"
         ]
         is False
+    )
+    assert "peft_classifier_trainer" in (
+        list_registered_shared_adapter_training_backend_names()
+    )
+    assert catalog_entries["peft_classifier_trainer"].accepted_payload_formats == (
+        PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     )
 
 

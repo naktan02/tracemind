@@ -19,10 +19,13 @@ def build_federated_local_training_service(
     from agent.src.services.training.execution.local_training_service import (
         LocalTrainingService,
     )
+    from methods.adaptation.local_update_registry import (
+        build_shared_adapter_training_backend,
+    )
     from methods.adaptation.text_classifier.peft_encoder.config import (
         LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-        build_lora_classifier_training_backend_config,
+        PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     )
     from methods.adaptation.text_classifier.peft_encoder.training_backend import (
         LoraClassifierTrainingBackend,
@@ -33,15 +36,24 @@ def build_federated_local_training_service(
 
     backend = None
     objective_config = None if training_task is None else training_task.objective_config
-    if (
-        objective_config is not None
-        and objective_config.training_backend_name
-        == LORA_CLASSIFIER_TRAINING_BACKEND_NAME
-    ):
-        lora_config = build_lora_classifier_training_backend_config(objective_config)
-        if lora_config.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
+    if objective_config is not None and objective_config.training_backend_name in {
+        LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+        PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    }:
+        candidate_backend = build_shared_adapter_training_backend(
+            objective_config.training_backend_name,
+            objective_config=objective_config,
+        )
+        if (
+            isinstance(candidate_backend, LoraClassifierTrainingBackend)
+            and candidate_backend.config.delta_format
+            == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+        ):
             backend = LoraClassifierTrainingBackend(
-                config=lora_config,
+                backend_name=candidate_backend.backend_name,
+                payload_format=candidate_backend.payload_format,
+                adapter_kind=candidate_backend.adapter_kind,
+                config=candidate_backend.config,
                 train_executor=(
                     simulation_inline_delta.SimulationInlineLoraClassifierTrainExecutor()
                 ),

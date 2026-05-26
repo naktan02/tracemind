@@ -16,6 +16,9 @@ from methods.adaptation.text_classifier.peft_encoder.update.local_update import 
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+)
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
@@ -30,7 +33,7 @@ def build_lora_classifier_delta_update(
     config: LoraClassifierTrainingBackendConfig,
     created_at: datetime,
     train_executor: LoraClassifierTrainExecutor | None = None,
-) -> LoraClassifierDelta:
+) -> LoraClassifierDelta | PeftClassifierDelta:
     rows = tuple(
         build_lora_classifier_training_row(example=example, config=config)
         for example in accepted_examples

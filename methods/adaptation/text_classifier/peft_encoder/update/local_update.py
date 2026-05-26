@@ -10,9 +10,15 @@ from typing import Protocol
 
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
+    make_peft_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierDelta,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
+    PeftClassifierDelta,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -48,12 +54,16 @@ class LoraClassifierUpdateConfig(Protocol):
     """Payload core가 필요한 LoRA-classifier config surface."""
 
     delta_format: str
+    payload_adapter_kind: str
 
     def to_backbone_payload(self) -> Mapping[str, str | int]:
         """Shared payload에 기록할 backbone/tokenizer snapshot을 반환한다."""
 
     def to_lora_config_payload(self) -> Mapping[str, str | int | float | bool]:
         """Shared payload에 기록할 LoRA config snapshot을 반환한다."""
+
+    def to_peft_adapter_config_payload(self) -> Mapping[str, object]:
+        """Shared payload에 기록할 PEFT adapter config snapshot을 반환한다."""
 
 
 class LoraClassifierTrainExecutor(Protocol):
@@ -104,7 +114,7 @@ def build_lora_classifier_delta_from_rows(
     config: LoraClassifierUpdateConfig,
     artifacts: LoraClassifierTrainArtifacts,
     created_at: datetime,
-) -> LoraClassifierDelta:
+) -> LoraClassifierDelta | PeftClassifierDelta:
     """Resolved rows와 artifact snapshot으로 shared delta payload를 만든다."""
 
     if not rows:
@@ -139,11 +149,52 @@ def build_lora_classifier_delta_payload_from_artifacts(
     mean_confidence: float | None,
     mean_margin: float | None,
     created_at: datetime,
-) -> LoraClassifierDelta:
+) -> LoraClassifierDelta | PeftClassifierDelta:
     """LoRA/head artifact snapshot을 shared delta payload로 정규화한다."""
 
     if example_count <= 0:
         raise ValueError("example_count must be positive.")
+    if config.payload_adapter_kind == PEFT_CLASSIFIER_ADAPTER_KIND:
+        return make_peft_classifier_delta_payload(
+            model_id=model_manifest.model_id,
+            base_model_revision=model_manifest.model_revision,
+            training_scope=training_task.training_scope,
+            backbone=dict(config.to_backbone_payload()),
+            peft_adapter_config=dict(config.to_peft_adapter_config_payload()),
+            label_schema=tuple(str(label) for label in label_schema),
+            example_count=example_count,
+            peft_adapter_delta_artifact_ref=artifacts.lora_delta_artifact_ref,
+            classifier_head_delta_artifact_ref=(
+                artifacts.classifier_head_delta_artifact_ref
+            ),
+            peft_parameter_deltas=_normalize_vector_mapping(
+                artifacts.lora_parameter_deltas
+            ),
+            classifier_head_weight_deltas=_normalize_vector_mapping(
+                artifacts.classifier_head_weight_deltas
+            ),
+            classifier_head_bias_deltas=_normalize_scalar_mapping(
+                artifacts.classifier_head_bias_deltas
+            ),
+            partitioned_deltas=_build_partitioned_delta_payload(
+                artifacts.partitioned_deltas,
+                peft_parameter_field_name="peft_parameter_deltas",
+            ),
+            partitioned_deltas_artifact_ref=(artifacts.partitioned_deltas_artifact_ref),
+            delta_format=delta_format,
+            mean_confidence=mean_confidence,
+            mean_margin=mean_margin,
+            label_counts={
+                str(label): int(count) for label, count in sorted(label_counts.items())
+            },
+            delta_l2_norm=artifacts.delta_l2_norm,
+            created_at=created_at,
+        )
+    if config.payload_adapter_kind != LORA_CLASSIFIER_ADAPTER_KIND:
+        raise ValueError(
+            "LoRA-classifier update builder only supports lora_classifier or "
+            f"peft_classifier payloads, got {config.payload_adapter_kind!r}."
+        )
     return make_lora_classifier_delta_payload(
         model_id=model_manifest.model_id,
         base_model_revision=model_manifest.model_revision,
@@ -156,32 +207,18 @@ def build_lora_classifier_delta_payload_from_artifacts(
         classifier_head_delta_artifact_ref=(
             artifacts.classifier_head_delta_artifact_ref
         ),
-        lora_parameter_deltas=(
-            None
-            if artifacts.lora_parameter_deltas is None
-            else {
-                key: [float(value) for value in values]
-                for key, values in artifacts.lora_parameter_deltas.items()
-            }
+        lora_parameter_deltas=_normalize_vector_mapping(
+            artifacts.lora_parameter_deltas
         ),
-        classifier_head_weight_deltas=(
-            None
-            if artifacts.classifier_head_weight_deltas is None
-            else {
-                key: [float(value) for value in values]
-                for key, values in artifacts.classifier_head_weight_deltas.items()
-            }
+        classifier_head_weight_deltas=_normalize_vector_mapping(
+            artifacts.classifier_head_weight_deltas
         ),
-        classifier_head_bias_deltas=(
-            {}
-            if artifacts.classifier_head_bias_deltas is None
-            else {
-                key: float(value)
-                for key, value in artifacts.classifier_head_bias_deltas.items()
-            }
+        classifier_head_bias_deltas=_normalize_scalar_mapping(
+            artifacts.classifier_head_bias_deltas
         ),
         partitioned_deltas=_build_partitioned_delta_payload(
-            artifacts.partitioned_deltas
+            artifacts.partitioned_deltas,
+            peft_parameter_field_name="lora_parameter_deltas",
         ),
         partitioned_deltas_artifact_ref=artifacts.partitioned_deltas_artifact_ref,
         delta_format=delta_format,
@@ -197,12 +234,14 @@ def build_lora_classifier_delta_payload_from_artifacts(
 
 def _build_partitioned_delta_payload(
     partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+    *,
+    peft_parameter_field_name: str,
 ) -> dict[str, dict[str, object]] | None:
     if partitioned_deltas is None:
         return None
     return {
         str(name): {
-            "lora_parameter_deltas": {
+            peft_parameter_field_name: {
                 key: [float(value) for value in values]
                 for key, values in delta.lora_parameter_deltas.items()
             },
@@ -217,3 +256,19 @@ def _build_partitioned_delta_payload(
         }
         for name, delta in sorted(partitioned_deltas.items())
     }
+
+
+def _normalize_vector_mapping(
+    values: Mapping[str, Sequence[float]] | None,
+) -> dict[str, list[float]] | None:
+    if values is None:
+        return None
+    return {key: [float(value) for value in vector] for key, vector in values.items()}
+
+
+def _normalize_scalar_mapping(
+    values: Mapping[str, float] | None,
+) -> dict[str, float]:
+    if values is None:
+        return {}
+    return {key: float(value) for key, value in values.items()}

@@ -21,8 +21,13 @@ from shared.src.contracts.training_contracts import (
 )
 
 LORA_CLASSIFIER_TRAINING_BACKEND_NAME = "lora_classifier_trainer"
+PEFT_CLASSIFIER_TRAINING_BACKEND_NAME = "peft_classifier_trainer"
 LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "lora_classifier_trainer"
+PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE = "peft_classifier_trainer"
 LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = "lora_classifier"
+PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE = "peft_classifier"
+LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "lora_classifier"
+PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "peft_classifier"
 LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
 LORA_CLASSIFIER_DELTA_FORMAT_INLINE = "inline_delta"
 LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED = "server_uploaded_artifact_ref"
@@ -87,6 +92,7 @@ class LoraClassifierTrainingBackendConfig:
         "weak_text",
     )
     label_schema: tuple[str, ...] = ()
+    payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND
 
     def __post_init__(self) -> None:
         set_normalized_str(self, "backbone_model_id", self.backbone_model_id)
@@ -115,6 +121,14 @@ class LoraClassifierTrainingBackendConfig:
         set_normalized_str(self, "target_modules", self.target_modules)
         set_normalized_str(self, "delta_format", self.delta_format)
         set_normalized_str(self, "artifact_ref_prefix", self.artifact_ref_prefix)
+        set_normalized_str(self, "payload_adapter_kind", self.payload_adapter_kind)
+        if self.payload_adapter_kind not in {
+            LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+            PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
+        }:
+            raise ValueError(
+                "payload_adapter_kind must be lora_classifier or peft_classifier."
+            )
         text_keys = tuple(
             str(value).strip()
             for value in self.text_metadata_keys
@@ -196,9 +210,20 @@ class LoraClassifierTrainingBackendConfig:
             "use_rslora": self.use_rslora,
         }
 
+    def to_peft_adapter_config_payload(self) -> dict[str, object]:
+        """v2 PEFT-classifier payload에 들어갈 mechanism-neutral config snapshot."""
+
+        return {
+            "peft_adapter_name": self.peft_adapter_name,
+            "parameters": self.to_lora_config_payload(),
+        }
+
 
 def build_lora_classifier_training_backend_config(
     objective_config: TrainingObjectiveConfig | None,
+    *,
+    family_extra_scope: str = LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+    training_backend_extra_scope: str = LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
 ) -> LoraClassifierTrainingBackendConfig:
     """objective config에서 LoRA-classifier trainer 설정을 읽는다."""
 
@@ -206,9 +231,7 @@ def build_lora_classifier_training_backend_config(
         return LoraClassifierTrainingBackendConfig()
 
     extras = {
-        **objective_config.get_component_extras(LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE),
-        **objective_config.get_component_extras(
-            LORA_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE
-        ),
+        **objective_config.get_component_extras(family_extra_scope),
+        **objective_config.get_component_extras(training_backend_extra_scope),
     }
     return LoraClassifierTrainingBackendConfig.from_mapping(extras)
