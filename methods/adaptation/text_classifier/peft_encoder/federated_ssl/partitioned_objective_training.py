@@ -45,7 +45,7 @@ from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction i
 from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     LoraTextClassifier,
-    build_lora_text_classifier_from_config,
+    build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -224,7 +224,7 @@ def run_partitioned_lora_classifier_training_core(
         with _measure(timing_recorder, "core_seed_seconds"):
             set_seed(int(seed))
         with _measure(timing_recorder, "core_model_build_seconds"):
-            model, tokenizer = build_lora_text_classifier_from_config(
+            model, tokenizer = build_peft_encoder_text_classifier_from_config(
                 labels=list(effective_labels),
                 lora_config=lora_config,
                 runtime_config=trainer_runtime_config,

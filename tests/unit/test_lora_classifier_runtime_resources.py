@@ -101,13 +101,13 @@ def test_lora_classifier_model_builder_reuses_runtime_resources(
     lora_config = LoraClassifierTrainingBackendConfig()
     runtime_config = _RuntimeConfig()
 
-    model_a, tokenizer_a = modeling.build_lora_text_classifier_from_config(
+    model_a, tokenizer_a = modeling.build_peft_encoder_text_classifier_from_config(
         labels=["anxiety", "normal"],
         lora_config=lora_config,
         runtime_config=runtime_config,
         runtime_resource_cache=cache,
     )
-    model_b, tokenizer_b = modeling.build_lora_text_classifier_from_config(
+    model_b, tokenizer_b = modeling.build_peft_encoder_text_classifier_from_config(
         labels=["anxiety", "normal"],
         lora_config=lora_config,
         runtime_config=runtime_config,
@@ -188,7 +188,7 @@ def test_lora_classifier_model_builder_uses_peft_adapter_builder(
         ),
     )
 
-    modeling.build_lora_text_classifier_from_config(
+    modeling.build_peft_encoder_text_classifier_from_config(
         labels=["anxiety", "normal"],
         lora_config=LoraClassifierTrainingBackendConfig(
             peft_adapter_name="fake_adapter",
@@ -274,7 +274,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
 
     monkeypatch.setattr(
         peer_predictions,
-        "build_lora_text_classifier_from_config",
+        "build_peft_encoder_text_classifier_from_config",
         _fake_build_model,
     )
     monkeypatch.setattr(

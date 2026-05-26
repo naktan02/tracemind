@@ -26,7 +26,7 @@ from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction i
 )
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     LoraTextClassifier,
-    build_lora_text_classifier_from_config,
+    build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -286,7 +286,7 @@ def _materialize_helper_model(
                 raise TypeError("Cached helper model must be LoraTextClassifier.")
             return cached
 
-    model, _tokenizer = build_lora_text_classifier_from_config(
+    model, _tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=list(labels),
         lora_config=lora_config,
         runtime_config=trainer_runtime_config,

@@ -14,7 +14,7 @@ from ...config import LoraClassifierTrainingBackendConfig
 from ...training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
-from ...training.modeling import build_lora_text_classifier_from_config
+from ...training.modeling import build_peft_encoder_text_classifier_from_config
 from ...update.materialization import LoraClassifierMaterializedState
 from . import trainable_model as ptm
 
@@ -63,7 +63,7 @@ def build_partitioned_lora_text_classifier_from_config(
     runtime_config: LoraClassifierPartitionRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     classifier_factory: LoraTextClassifierFactory = (
-        build_lora_text_classifier_from_config
+        build_peft_encoder_text_classifier_from_config
     ),
 ) -> PartitionedLoraTextClassifierBuildResult:
     """Build one full LoRA-classifier module per physical trainable partition.

@@ -314,6 +314,8 @@ local model builder는 `methods/adaptation/peft_adapters/` registry를 통해
 PEFT mechanism builder를 선택한다. 현재 built-in은 LoRA/RSLoRA지만,
 text-classifier training core는 `get_peft_model` 직접 호출 대신 builder seam을
 통해 backbone adapter를 구성한다.
+model 생성 caller는 `build_peft_encoder_text_classifier_from_config`를 사용하고,
+`build_lora_text_classifier_from_config`는 기존 import 호환 alias로 남긴다.
 
 ## 호환성 정책
 

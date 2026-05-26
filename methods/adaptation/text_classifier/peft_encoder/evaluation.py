@@ -20,7 +20,7 @@ from methods.adaptation.text_classifier.peft_encoder.training.loops import (
 )
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     LoraClassifierModelRuntimeConfig,
-    build_lora_text_classifier_from_config,
+    build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -70,7 +70,7 @@ def evaluate_lora_classifier_state(
         raise ValueError("LoRA-classifier evaluation batch_size must be positive.")
 
     set_seed(int(seed))
-    model, tokenizer = build_lora_text_classifier_from_config(
+    model, tokenizer = build_peft_encoder_text_classifier_from_config(
         labels=effective_labels,
         lora_config=lora_config,
         runtime_config=runtime_config,
