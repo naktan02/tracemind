@@ -11,6 +11,11 @@ from shared.src.contracts.adapter_contract_families.base import (
 
 ServerUpdateMaterializationValidator = Callable[[SharedAdapterUpdatePayload], None]
 _ADAPTATION_PACKAGE = "methods.adaptation"
+_ADAPTER_KIND_MATERIALIZATION_MODULE_OVERRIDES = {
+    "peft_classifier": (
+        "methods.adaptation.text_classifier.peft_encoder.server_preflight"
+    ),
+}
 _SERVER_UPDATE_MATERIALIZATION_VALIDATORS: dict[
     str,
     ServerUpdateMaterializationValidator,
@@ -60,10 +65,13 @@ def require_server_materializable_update_payload(
 def _import_materialization_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = (
-        f"{_ADAPTATION_PACKAGE}."
-        f"{normalized_adapter_kind.replace('-', '_')}."
-        "server_preflight"
+    module_name = _ADAPTER_KIND_MATERIALIZATION_MODULE_OVERRIDES.get(
+        normalized_adapter_kind,
+        (
+            f"{_ADAPTATION_PACKAGE}."
+            f"{normalized_adapter_kind.replace('-', '_')}."
+            "server_preflight"
+        ),
     )
     try:
         importlib.import_module(module_name)

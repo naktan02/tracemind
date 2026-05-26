@@ -18,6 +18,10 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
     LoraClassifierState,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+    PeftClassifierState,
+)
 
 from .merged_tensor_artifact import (
     parse_classifier_head_delta_tensor_artifact,
@@ -27,11 +31,15 @@ from .partitioned_delta import LoraClassifierPartitionDelta
 from .partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
 
 LORA_STATE_PARAMETERS_KEY = "lora_parameters"
+PEFT_STATE_PARAMETERS_KEY = "peft_parameters"
 CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
 CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
 PARTITIONED_LORA_STATE_PARAMETERS_KEY = "partitioned_lora_parameters"
+PARTITIONED_PEFT_STATE_PARAMETERS_KEY = "partitioned_peft_parameters"
 PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "partitioned_classifier_head_weights"
 PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY = "partitioned_classifier_head_biases"
+PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
+PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -91,14 +99,15 @@ class _AggregationTensorArtifactLoader(Protocol):
 
 def materialize_base_lora_classifier_state(
     *,
-    base_state: LoraClassifierState,
+    base_state: PeftEncoderStatePayload,
     context: FederatedAggregationContext,
 ) -> LoraClassifierMaterializedState:
     """base global state artifact를 읽고 없으면 zero-initialized state로 본다."""
 
     loader = None
+    peft_adapter_artifact_ref = _peft_adapter_artifact_ref(base_state)
     if (
-        base_state.lora_adapter_artifact_ref is not None
+        peft_adapter_artifact_ref is not None
         or base_state.classifier_head_artifact_ref is not None
     ):
         loader = context.require_artifact_loader(
@@ -106,11 +115,11 @@ def materialize_base_lora_classifier_state(
         )
 
     lora_parameters: dict[str, list[float]] = {}
-    if base_state.lora_adapter_artifact_ref is not None:
+    if peft_adapter_artifact_ref is not None:
         if loader is None:
             raise AssertionError("artifact loader must be resolved before load.")
         lora_parameters = _load_base_lora_parameters(
-            artifact_ref=base_state.lora_adapter_artifact_ref,
+            artifact_ref=peft_adapter_artifact_ref,
             loader=loader,
         )
 
@@ -135,7 +144,7 @@ def materialize_base_lora_classifier_state(
 
 def materialize_base_lora_classifier_partitioned_state(
     *,
-    base_state: LoraClassifierState,
+    base_state: PeftEncoderStatePayload,
     context: FederatedAggregationContext,
 ) -> dict[str, LoraClassifierMaterializedState]:
     """server-published artifact에 저장된 partition별 global state를 읽는다.
@@ -145,8 +154,9 @@ def materialize_base_lora_classifier_partitioned_state(
     보존하고, 없으면 아직 partitioned global state가 없는 것으로 본다.
     """
 
+    peft_adapter_artifact_ref = _peft_adapter_artifact_ref(base_state)
     if (
-        base_state.lora_adapter_artifact_ref is None
+        peft_adapter_artifact_ref is None
         and base_state.classifier_head_artifact_ref is None
     ):
         return {}
@@ -154,12 +164,15 @@ def materialize_base_lora_classifier_partitioned_state(
         context="LoRA-classifier partitioned base state materialization"
     )
     partitioned_lora_parameters: dict[str, dict[str, list[float]]] = {}
-    if base_state.lora_adapter_artifact_ref is not None:
+    if peft_adapter_artifact_ref is not None:
         lora_artifact = loader.load_json_artifact(
-            artifact_ref=base_state.lora_adapter_artifact_ref
+            artifact_ref=peft_adapter_artifact_ref
         )
         partitioned_lora_parameters = _normalize_partitioned_vector_mapping(
-            lora_artifact.get(PARTITIONED_LORA_STATE_PARAMETERS_KEY, {}),
+            lora_artifact.get(
+                PARTITIONED_LORA_STATE_PARAMETERS_KEY,
+                lora_artifact.get(PARTITIONED_PEFT_STATE_PARAMETERS_KEY, {}),
+            ),
             field_name=PARTITIONED_LORA_STATE_PARAMETERS_KEY,
         )
 
@@ -195,24 +208,22 @@ def materialize_base_lora_classifier_partitioned_state(
 
 def materialize_lora_classifier_update(
     *,
-    payload: LoraClassifierDelta,
+    payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext,
 ) -> LoraClassifierMaterializedUpdate:
     """inline delta 또는 server-owned artifact ref update를 delta mapping으로 읽는다."""
 
     loader = None
-    if (
-        payload.lora_parameter_deltas is None
-        or payload.classifier_head_weight_deltas is None
-    ):
+    peft_parameter_deltas = _peft_parameter_deltas(payload)
+    if peft_parameter_deltas is None or payload.classifier_head_weight_deltas is None:
         loader = context.require_artifact_loader(
             context="LoRA-classifier aggregation materialization"
         )
 
-    if payload.lora_parameter_deltas is not None:
+    if peft_parameter_deltas is not None:
         lora_parameter_deltas = _normalize_vector_mapping(
-            payload.lora_parameter_deltas,
-            field_name="lora_parameter_deltas",
+            peft_parameter_deltas,
+            field_name=_peft_parameter_deltas_field_name(payload),
         )
     else:
         if loader is None:
@@ -258,7 +269,7 @@ def materialize_lora_classifier_update(
 
 def materialize_lora_classifier_partitioned_update(
     *,
-    payload: LoraClassifierDelta,
+    payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext | None = None,
 ) -> dict[str, LoraClassifierPartitionDelta]:
     """shared payload의 partitioned delta를 methods-owned delta object로 읽는다."""
@@ -298,7 +309,10 @@ def materialize_lora_classifier_partitioned_update(
     partitions: dict[str, LoraClassifierPartitionDelta] = {}
     for partition_name, partition in partitioned_deltas.items():
         if isinstance(partition, Mapping):
-            lora_parameter_deltas = partition.get("lora_parameter_deltas", {})
+            lora_parameter_deltas = partition.get(
+                "lora_parameter_deltas",
+                partition.get("peft_parameter_deltas", {}),
+            )
             classifier_head_weight_deltas = partition.get(
                 "classifier_head_weight_deltas",
                 {},
@@ -308,7 +322,7 @@ def materialize_lora_classifier_partitioned_update(
                 {},
             )
         else:
-            lora_parameter_deltas = partition.lora_parameter_deltas
+            lora_parameter_deltas = _partition_peft_parameter_deltas(partition)
             classifier_head_weight_deltas = partition.classifier_head_weight_deltas
             classifier_head_bias_deltas = partition.classifier_head_bias_deltas
         partitions[partition_name] = LoraClassifierPartitionDelta(
@@ -358,27 +372,35 @@ def _try_load_partitioned_tensor_artifact(
 
 def _load_lora_parameter_deltas(
     *,
-    payload: LoraClassifierDelta,
+    payload: PeftEncoderDeltaPayload,
     loader: AggregationJsonArtifactLoader,
 ) -> dict[str, list[float]]:
-    if payload.lora_delta_artifact_ref is None:
+    artifact_ref = _peft_adapter_delta_artifact_ref(payload)
+    if artifact_ref is None:
         raise ValueError(
-            "LoRA-classifier artifact materialization requires lora_delta_artifact_ref."
+            "PEFT-classifier artifact materialization requires adapter delta "
+            "artifact ref."
         )
     tensor_deltas = _try_load_lora_delta_tensor_artifact(
         loader=loader,
-        artifact_ref=payload.lora_delta_artifact_ref,
+        artifact_ref=artifact_ref,
     )
     if tensor_deltas is not None:
         return tensor_deltas
-    artifact = loader.load_json_artifact(artifact_ref=payload.lora_delta_artifact_ref)
-    source = artifact.get("lora_parameter_deltas", artifact)
-    return _normalize_vector_mapping(source, field_name="lora_parameter_deltas")
+    artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
+    source = artifact.get(
+        "lora_parameter_deltas",
+        artifact.get("peft_parameter_deltas", artifact),
+    )
+    return _normalize_vector_mapping(
+        source,
+        field_name=_peft_parameter_deltas_field_name(payload),
+    )
 
 
 def _load_classifier_head_artifact(
     *,
-    payload: LoraClassifierDelta,
+    payload: PeftEncoderDeltaPayload,
     loader: AggregationJsonArtifactLoader,
 ) -> tuple[dict[str, list[float]], dict[str, float]]:
     if payload.classifier_head_delta_artifact_ref is None:
@@ -459,9 +481,48 @@ def _load_base_lora_parameters(
     artifact = loader.load_json_artifact(artifact_ref=artifact_ref)
     source = artifact.get(
         LORA_STATE_PARAMETERS_KEY,
-        artifact.get("lora_parameter_deltas", artifact),
+        artifact.get(
+            PEFT_STATE_PARAMETERS_KEY,
+            artifact.get("lora_parameter_deltas", artifact),
+        ),
     )
     return _normalize_vector_mapping(source, field_name=LORA_STATE_PARAMETERS_KEY)
+
+
+def _peft_adapter_artifact_ref(
+    state: PeftEncoderStatePayload,
+) -> str | None:
+    if isinstance(state, PeftClassifierState):
+        return state.peft_adapter_artifact_ref
+    return state.lora_adapter_artifact_ref
+
+
+def _peft_adapter_delta_artifact_ref(
+    payload: PeftEncoderDeltaPayload,
+) -> str | None:
+    if isinstance(payload, PeftClassifierDelta):
+        return payload.peft_adapter_delta_artifact_ref
+    return payload.lora_delta_artifact_ref
+
+
+def _peft_parameter_deltas(
+    payload: PeftEncoderDeltaPayload,
+) -> dict[str, list[float]] | None:
+    if isinstance(payload, PeftClassifierDelta):
+        return payload.peft_parameter_deltas
+    return payload.lora_parameter_deltas
+
+
+def _partition_peft_parameter_deltas(partition: object) -> object:
+    if hasattr(partition, "lora_parameter_deltas"):
+        return partition.lora_parameter_deltas
+    return getattr(partition, "peft_parameter_deltas")
+
+
+def _peft_parameter_deltas_field_name(payload: PeftEncoderDeltaPayload) -> str:
+    if isinstance(payload, PeftClassifierDelta):
+        return "peft_parameter_deltas"
+    return "lora_parameter_deltas"
 
 
 def _load_base_classifier_head_parameters(

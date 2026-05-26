@@ -16,25 +16,33 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
     LoraClassifierState,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
+    PeftClassifierDelta,
+    PeftClassifierState,
+)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 AGENT_LOCAL_ARTIFACT_REF_PREFIX = "agent-local://"
+PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
+PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 
 @register_server_update_compatibility_validator(LORA_CLASSIFIER_ADAPTER_KIND)
+@register_server_update_compatibility_validator(PEFT_CLASSIFIER_ADAPTER_KIND)
 def require_lora_classifier_update_matches_active_state(
     update_payload: SharedAdapterUpdatePayload,
     active_state: SharedAdapterState,
 ) -> None:
     """LoRA-classifier update가 active state/manifest와 같은 family인지 검사한다."""
 
-    if not isinstance(update_payload, LoraClassifierDelta):
+    if not isinstance(update_payload, LoraClassifierDelta | PeftClassifierDelta):
         raise ValueError(
-            "LoRA-classifier compatibility expects LoraClassifierDelta payload."
+            "PEFT-classifier compatibility expects a PEFT classifier delta payload."
         )
-    if not isinstance(active_state, LoraClassifierState):
+    if not isinstance(active_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            "LoRA-classifier compatibility expects active LoraClassifierState."
+            "PEFT-classifier compatibility expects active PEFT classifier state."
         )
 
     _require_equal("model_id", update_payload.model_id, active_state.model_id)
@@ -54,9 +62,9 @@ def require_lora_classifier_update_matches_active_state(
         active_state.backbone.model_dump(mode="json"),
     )
     _require_equal(
-        "lora_config",
-        update_payload.lora_config.model_dump(mode="json"),
-        active_state.lora_config.model_dump(mode="json"),
+        _adapter_config_field_name(update_payload),
+        _adapter_config_snapshot(update_payload),
+        _adapter_config_snapshot(active_state),
     )
     _require_equal(
         "label_schema",
@@ -66,22 +74,25 @@ def require_lora_classifier_update_matches_active_state(
 
 
 @register_server_update_materialization_validator(LORA_CLASSIFIER_ADAPTER_KIND)
+@register_server_update_materialization_validator(PEFT_CLASSIFIER_ADAPTER_KIND)
 def require_lora_classifier_update_is_server_materializable(
     update_payload: SharedAdapterUpdatePayload,
 ) -> None:
     """LoRA-classifier update가 서버에서 읽을 수 없는 local ref만 갖는지 검사한다."""
 
-    if not isinstance(update_payload, LoraClassifierDelta):
+    if not isinstance(update_payload, LoraClassifierDelta | PeftClassifierDelta):
         raise ValueError(
-            "LoRA-classifier materialization expects LoraClassifierDelta payload."
+            "PEFT-classifier materialization expects a PEFT classifier delta payload."
         )
 
-    lora_ref_required = update_payload.lora_parameter_deltas is None
+    peft_ref_required = _peft_parameter_deltas(update_payload) is None
     head_ref_required = update_payload.classifier_head_weight_deltas is None
     unsupported_refs = [
         artifact_ref
         for artifact_ref in (
-            update_payload.lora_delta_artifact_ref if lora_ref_required else None,
+            _peft_adapter_delta_artifact_ref(update_payload)
+            if peft_ref_required
+            else None,
             (
                 update_payload.classifier_head_delta_artifact_ref
                 if head_ref_required
@@ -107,3 +118,33 @@ def _require_equal(field_name: str, actual: object, expected: object) -> None:
             "LoRA-classifier update is not compatible with the active state: "
             f"{field_name} {actual!r} != {expected!r}."
         )
+
+
+def _adapter_config_snapshot(
+    payload: PeftEncoderStatePayload | PeftEncoderDeltaPayload,
+) -> dict[str, object]:
+    if isinstance(payload, PeftClassifierState | PeftClassifierDelta):
+        return payload.peft_adapter_config.model_dump(mode="json")
+    return payload.lora_config.model_dump(mode="json")
+
+
+def _adapter_config_field_name(payload: PeftEncoderDeltaPayload) -> str:
+    if isinstance(payload, PeftClassifierDelta):
+        return "peft_adapter_config"
+    return "lora_config"
+
+
+def _peft_parameter_deltas(
+    payload: PeftEncoderDeltaPayload,
+) -> dict[str, list[float]] | None:
+    if isinstance(payload, PeftClassifierDelta):
+        return payload.peft_parameter_deltas
+    return payload.lora_parameter_deltas
+
+
+def _peft_adapter_delta_artifact_ref(
+    payload: PeftEncoderDeltaPayload,
+) -> str | None:
+    if isinstance(payload, PeftClassifierDelta):
+        return payload.peft_adapter_delta_artifact_ref
+    return payload.lora_delta_artifact_ref

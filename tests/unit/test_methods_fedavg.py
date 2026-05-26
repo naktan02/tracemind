@@ -320,11 +320,43 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
     assert spec.core_function_name == "compute_lora_classifier_fedavg"
 
 
+def test_federated_aggregation_method_registry_points_to_peft_classifier_core() -> None:
+    spec = get_federated_aggregation_method_spec(
+        adapter_kind="peft_classifier",
+        method_name="fedavg",
+    )
+
+    assert spec.method_name == "fedavg"
+    assert (
+        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_fedavg_projection"
+    )
+    assert spec.core_function_name == "compute_lora_classifier_fedavg"
+
+
 def test_federated_aggregation_method_registry_points_to_partitioned_lora_core() -> (
     None
 ):
     spec = get_federated_aggregation_method_spec(
         adapter_kind="lora_classifier",
+        method_name="partitioned_delta_average",
+    )
+
+    assert spec.method_name == "partitioned_delta_average"
+    assert (
+        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        "peft_encoder_partitioned_projection"
+    )
+    assert (
+        spec.core_function_name == "compute_lora_classifier_partitioned_delta_average"
+    )
+
+
+def test_federated_aggregation_method_registry_points_to_partitioned_peft_core() -> (
+    None
+):
+    spec = get_federated_aggregation_method_spec(
+        adapter_kind="peft_classifier",
         method_name="partitioned_delta_average",
     )
 

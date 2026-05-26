@@ -35,6 +35,11 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
     LoraClassifierState,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
+    PeftClassifierDelta,
+    PeftClassifierState,
+)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
@@ -47,7 +52,10 @@ from ..peft_encoder.update.materialization import (
 from .peft_encoder_state_projection import build_lora_classifier_state_projection
 
 LORA_ADAPTER_ARTIFACT_SLOT = "lora_adapter"
+PEFT_ADAPTER_ARTIFACT_SLOT = "peft_adapter"
 CLASSIFIER_HEAD_ARTIFACT_SLOT = "classifier_head"
+PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
+PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -206,8 +214,8 @@ def aggregate_lora_classifier_fedavg(
 
     _validate_lora_classifier_fedavg_overrides(overrides)
 
-    base_state = cast(LoraClassifierState, base_state)
-    updates = [cast(LoraClassifierDelta, payload) for payload in update_payloads]
+    base_state = cast(PeftEncoderStatePayload, base_state)
+    updates = [cast(PeftEncoderDeltaPayload, payload) for payload in update_payloads]
     method_updates = [
         _to_lora_classifier_method_update(
             base_state=base_state,
@@ -226,7 +234,7 @@ def aggregate_lora_classifier_fedavg(
     )
     lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
-        artifact_name=LORA_ADAPTER_ARTIFACT_SLOT,
+        artifact_name=_adapter_artifact_slot(base_state),
     )
     classifier_head_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
@@ -257,8 +265,8 @@ def aggregate_lora_classifier_fedavg(
 
 def _to_lora_classifier_method_update(
     *,
-    base_state: LoraClassifierState,
-    payload: LoraClassifierDelta,
+    base_state: PeftEncoderStatePayload,
+    payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext,
 ) -> LoraClassifierFedAvgUpdate:
     validate_lora_classifier_update_matches_base(
@@ -282,17 +290,17 @@ def _to_lora_classifier_method_update(
 
 def validate_lora_classifier_update_matches_base(
     *,
-    base_state: LoraClassifierState,
-    payload: LoraClassifierDelta,
+    base_state: PeftEncoderStatePayload,
+    payload: PeftEncoderDeltaPayload,
 ) -> None:
     """LoRA-classifier update가 base global state와 같은 lineage인지 검증한다."""
 
+    if payload.adapter_kind != base_state.adapter_kind:
+        raise ValueError("PEFT-classifier updates must match the base adapter_kind.")
     if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
         raise ValueError("All LoRA-classifier updates must match the backbone.")
-    if _payload_snapshot(payload.lora_config) != _payload_snapshot(
-        base_state.lora_config
-    ):
-        raise ValueError("All LoRA-classifier updates must match the LoRA config.")
+    if _adapter_config_snapshot(payload) != _adapter_config_snapshot(base_state):
+        raise ValueError("All PEFT-classifier updates must match the adapter config.")
     if payload.labels != base_state.labels:
         raise ValueError(
             "LoRA-classifier updates must share the base ordered label_schema."
@@ -301,6 +309,20 @@ def validate_lora_classifier_update_matches_base(
 
 def _payload_snapshot(payload) -> dict[str, object]:
     return payload.model_dump(mode="json")
+
+
+def _adapter_config_snapshot(
+    payload: PeftEncoderStatePayload | PeftEncoderDeltaPayload,
+) -> dict[str, object]:
+    if isinstance(payload, PeftClassifierState | PeftClassifierDelta):
+        return payload.peft_adapter_config.model_dump(mode="json")
+    return payload.lora_config.model_dump(mode="json")
+
+
+def _adapter_artifact_slot(base_state: PeftEncoderStatePayload) -> str:
+    if isinstance(base_state, PeftClassifierState):
+        return PEFT_ADAPTER_ARTIFACT_SLOT
+    return LORA_ADAPTER_ARTIFACT_SLOT
 
 
 def _validate_lora_classifier_fedavg_overrides(
@@ -318,19 +340,43 @@ def _validate_lora_classifier_fedavg_overrides(
         )
 
 
-register_fedavg_adapter_strategy(
-    FedAvgAdapterStrategySpec(
-        adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
-        state_type=LoraClassifierState,
-        update_type=LoraClassifierDelta,
-        context="LoRA-classifier",
-        aliases=("lora_classifier_fedavg",),
-        implementation_module=compute_lora_classifier_fedavg.__module__,
-        core_function_name=compute_lora_classifier_fedavg.__name__,
-        metadata={
-            "adapter_kind": LORA_CLASSIFIER_ADAPTER_KIND,
-            "requires_inline_or_materialized_artifacts": True,
-        },
-        aggregate=aggregate_lora_classifier_fedavg,
+def _register_peft_encoder_fedavg_strategy(
+    *,
+    adapter_kind: str,
+    state_type: type[object],
+    update_type: type[object],
+    context: str,
+    aliases: tuple[str, ...],
+) -> None:
+    register_fedavg_adapter_strategy(
+        FedAvgAdapterStrategySpec(
+            adapter_kind=adapter_kind,
+            state_type=state_type,
+            update_type=update_type,
+            context=context,
+            aliases=aliases,
+            implementation_module=compute_lora_classifier_fedavg.__module__,
+            core_function_name=compute_lora_classifier_fedavg.__name__,
+            metadata={
+                "adapter_kind": adapter_kind,
+                "requires_inline_or_materialized_artifacts": True,
+            },
+            aggregate=aggregate_lora_classifier_fedavg,
+        )
     )
+
+
+_register_peft_encoder_fedavg_strategy(
+    adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
+    state_type=LoraClassifierState,
+    update_type=LoraClassifierDelta,
+    context="LoRA-classifier",
+    aliases=("lora_classifier_fedavg",),
+)
+_register_peft_encoder_fedavg_strategy(
+    adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
+    state_type=PeftClassifierState,
+    update_type=PeftClassifierDelta,
+    context="PEFT-classifier",
+    aliases=("peft_classifier_fedavg",),
 )

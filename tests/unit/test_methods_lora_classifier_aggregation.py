@@ -29,6 +29,8 @@ from methods.adaptation.text_classifier.peft_encoder.update.materialization impo
     PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     PARTITIONED_LORA_STATE_PARAMETERS_KEY,
+    PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
+    PEFT_STATE_PARAMETERS_KEY,
     LoraClassifierMaterializedState,
     materialize_base_lora_classifier_partitioned_state,
     materialize_base_lora_classifier_state,
@@ -43,10 +45,16 @@ from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
+    make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
     LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+    PeftClassifierState,
 )
 
 
@@ -128,6 +136,51 @@ def test_materialize_lora_classifier_update_reads_server_artifact_refs() -> None
         lora_delta_artifact_ref="aggregation_artifact://client/lora_delta",
         classifier_head_delta_artifact_ref="aggregation_artifact://client/head_delta",
         lora_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        delta_format="server_uploaded_artifact_ref",
+    )
+
+    materialized = materialize_lora_classifier_update(
+        payload=update,
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert materialized.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
+        [0.2, 0.4]
+    )
+    assert materialized.classifier_head_weight_deltas["normal"] == pytest.approx(
+        [-0.5, 0.1]
+    )
+    assert materialized.classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.2, "normal": -0.2}
+    )
+
+
+def test_materialize_peft_classifier_update_reads_v2_fields() -> None:
+    loader = InMemoryJsonArtifactLoader(
+        {
+            "aggregation_artifact://client/peft_delta": {
+                "peft_parameter_deltas": {
+                    "encoder.q_proj.lora_A": [0.2, 0.4],
+                },
+            },
+            "aggregation_artifact://client/head_delta": {
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.5, -0.1],
+                    "normal": [-0.5, 0.1],
+                },
+                "classifier_head_bias_deltas": {
+                    "anxiety": 0.2,
+                    "normal": -0.2,
+                },
+            },
+        }
+    )
+    update = _peft_update(
+        peft_adapter_delta_artifact_ref="aggregation_artifact://client/peft_delta",
+        classifier_head_delta_artifact_ref="aggregation_artifact://client/head_delta",
+        peft_parameter_deltas=None,
         classifier_head_weight_deltas=None,
         classifier_head_bias_deltas={},
         delta_format="server_uploaded_artifact_ref",
@@ -280,6 +333,44 @@ def test_materialize_base_lora_classifier_state_reads_global_snapshot_artifacts(
     )
 
 
+def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
+    loader = InMemoryJsonArtifactLoader(
+        {
+            "server-aggregate://rev_000/peft_adapter": {
+                PEFT_STATE_PARAMETERS_KEY: {
+                    "encoder.q_proj.lora_A": [1.0, 2.0],
+                },
+            },
+            "server-aggregate://rev_000/classifier_head": {
+                "classifier_head_weights": {
+                    "anxiety": [0.1, 0.2],
+                    "normal": [-0.1, -0.2],
+                },
+                "classifier_head_biases": {
+                    "anxiety": 0.3,
+                    "normal": -0.3,
+                },
+            },
+        }
+    )
+
+    materialized = materialize_base_lora_classifier_state(
+        base_state=_peft_state(
+            peft_adapter_artifact_ref="server-aggregate://rev_000/peft_adapter",
+            classifier_head_artifact_ref="server-aggregate://rev_000/classifier_head",
+        ),
+        context=_aggregation_context(loader=loader),
+    )
+
+    assert materialized.lora_parameters["encoder.q_proj.lora_A"] == pytest.approx(
+        [1.0, 2.0]
+    )
+    assert materialized.classifier_head_weights["anxiety"] == pytest.approx([0.1, 0.2])
+    assert materialized.classifier_head_biases == pytest.approx(
+        {"anxiety": 0.3, "normal": -0.3}
+    )
+
+
 def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> None:
     projection = peft_state_projection.build_lora_classifier_state_projection(
         base_state=_lora_state(),
@@ -326,6 +417,43 @@ def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> No
     assert projection.artifacts["server-aggregate://rev_001/classifier_head"][
         "classifier_head_biases"
     ] == pytest.approx({"anxiety": 0.5, "normal": -0.2})
+
+
+def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> None:
+    projection = peft_state_projection.build_lora_classifier_state_projection(
+        base_state=_peft_state(),
+        base_parameters=LoraClassifierMaterializedState(
+            lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},
+            classifier_head_weights={
+                "anxiety": [0.1, 0.2],
+                "normal": [-0.1, -0.2],
+            },
+            classifier_head_biases={"anxiety": 0.3},
+        ),
+        next_model_revision="rev_001",
+        updated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
+        lora_adapter_artifact_ref="server-aggregate://rev_001/peft_adapter",
+        classifier_head_artifact_ref="server-aggregate://rev_001/classifier_head",
+        artifact_format="server_aggregated_artifact_ref",
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, -0.4]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.5, -0.1],
+            "normal": [-0.5, 0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.2, "normal": -0.2},
+    )
+
+    assert isinstance(projection.next_state, PeftClassifierState)
+    assert projection.next_state.peft_adapter_artifact_ref == (
+        "server-aggregate://rev_001/peft_adapter"
+    )
+    assert projection.artifacts["server-aggregate://rev_001/peft_adapter"][
+        PEFT_STATE_PARAMETERS_KEY
+    ]["encoder.q_proj.lora_A"] == pytest.approx([1.2, 1.6])
+    assert (
+        "applied_peft_parameter_deltas"
+        in projection.artifacts["server-aggregate://rev_001/peft_adapter"]
+    )
 
 
 def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> None:
@@ -502,6 +630,43 @@ def test_materialize_lora_classifier_partitioned_base_state_reads_artifact_metad
     assert state["psi"].classifier_head_biases["anxiety"] == pytest.approx(-0.1)
 
 
+def test_materialize_peft_classifier_partitioned_base_state_reads_v2_metadata():
+    state = materialize_base_lora_classifier_partitioned_state(
+        base_state=_peft_state(
+            peft_adapter_artifact_ref="aggregation_artifact://state/peft",
+            classifier_head_artifact_ref="aggregation_artifact://state/head",
+        ),
+        context=_aggregation_context(
+            loader=InMemoryJsonArtifactLoader(
+                {
+                    "aggregation_artifact://state/peft": {
+                        PARTITIONED_PEFT_STATE_PARAMETERS_KEY: {
+                            "sigma": {"encoder_lora.weight": [0.1, 0.2]},
+                            "psi": {"encoder_lora.weight": [0.3, 0.4]},
+                        }
+                    },
+                    "aggregation_artifact://state/head": {
+                        PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: {
+                            "sigma": {"anxiety": [0.5, 0.6]},
+                        },
+                        PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY: {
+                            "psi": {"anxiety": -0.1},
+                        },
+                    },
+                }
+            )
+        ),
+    )
+
+    assert set(state) == {"sigma", "psi"}
+    assert state["sigma"].lora_parameters["encoder_lora.weight"] == pytest.approx(
+        [0.1, 0.2]
+    )
+    assert state["psi"].lora_parameters["encoder_lora.weight"] == pytest.approx(
+        [0.3, 0.4]
+    )
+
+
 def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
     payload = partitioned_payloads.build_partitioned_delta_payload(
         (
@@ -539,6 +704,44 @@ def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -
             },
             "psi": {
                 "lora_parameter_deltas": {"encoder.q_proj.lora_A": [0.3]},
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.2, 0.0],
+                    "normal": [-0.2, 0.0],
+                },
+                "classifier_head_bias_deltas": {"normal": -0.04},
+            },
+        },
+        delta_format="partitioned_update",
+        delta_l2_norm=None,
+    )
+
+    partitions = materialize_lora_classifier_partitioned_update(payload=update)
+
+    assert set(partitions) == {"sigma", "psi"}
+    assert partitions["sigma"].lora_parameter_deltas[
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([0.2])
+    assert partitions["psi"].classifier_head_bias_deltas == pytest.approx(
+        {"anxiety": 0.0, "normal": -0.04}
+    )
+
+
+def test_materialize_peft_classifier_partitioned_update_reads_v2_payload() -> None:
+    update = _peft_update(
+        peft_parameter_deltas=None,
+        classifier_head_weight_deltas=None,
+        classifier_head_bias_deltas={},
+        partitioned_deltas={
+            "sigma": {
+                "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.2]},
+                "classifier_head_weight_deltas": {
+                    "anxiety": [0.1, 0.0],
+                    "normal": [-0.1, 0.0],
+                },
+                "classifier_head_bias_deltas": {"anxiety": 0.05},
+            },
+            "psi": {
+                "peft_parameter_deltas": {"encoder.q_proj.lora_A": [0.3]},
                 "classifier_head_weight_deltas": {
                     "anxiety": [0.2, 0.0],
                     "normal": [-0.2, 0.0],
@@ -825,6 +1028,59 @@ def _lora_update(
     )
 
 
+def _peft_state(
+    *,
+    peft_adapter_artifact_ref: str | None = None,
+    classifier_head_artifact_ref: str | None = None,
+) -> PeftClassifierState:
+    return make_peft_classifier_state_payload(
+        model_id="tracemind-lora",
+        model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone=_lora_backbone(),
+        peft_adapter_config=_peft_config(),
+        label_schema=("anxiety", "normal"),
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
+        classifier_head_artifact_ref=classifier_head_artifact_ref,
+        updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+    )
+
+
+def _peft_update(
+    *,
+    peft_parameter_deltas: dict[str, list[float]] | None = None,
+    classifier_head_weight_deltas: dict[str, list[float]] | None = None,
+    classifier_head_bias_deltas: dict[str, float] | None = None,
+    partitioned_deltas: dict[str, dict[str, object]] | None = None,
+    partitioned_deltas_artifact_ref: str | None = None,
+    peft_adapter_delta_artifact_ref: str | None = None,
+    classifier_head_delta_artifact_ref: str | None = None,
+    delta_l2_norm: float | None = 1.0,
+    delta_format: str = "inline_delta",
+) -> PeftClassifierDelta:
+    return make_peft_classifier_delta_payload(
+        model_id="tracemind-lora",
+        base_model_revision="rev_000",
+        training_scope="adapter_only",
+        backbone=_lora_backbone(),
+        peft_adapter_config=_peft_config(),
+        label_schema=("anxiety", "normal"),
+        example_count=2,
+        peft_adapter_delta_artifact_ref=peft_adapter_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
+        peft_parameter_deltas=peft_parameter_deltas,
+        classifier_head_weight_deltas=classifier_head_weight_deltas,
+        classifier_head_bias_deltas=classifier_head_bias_deltas,
+        partitioned_deltas=partitioned_deltas,
+        partitioned_deltas_artifact_ref=partitioned_deltas_artifact_ref,
+        delta_format=delta_format,
+        mean_confidence=0.9,
+        mean_margin=0.2,
+        created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
+        delta_l2_norm=delta_l2_norm,
+    )
+
+
 def _lora_backbone() -> dict[str, str | int]:
     return {
         "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
@@ -846,4 +1102,11 @@ def _lora_config() -> dict[str, str | int | float | bool]:
         "bias": "none",
         "target_modules": "all-linear",
         "use_rslora": False,
+    }
+
+
+def _peft_config() -> dict[str, object]:
+    return {
+        "peft_adapter_name": "lora",
+        "parameters": _lora_config(),
     }
