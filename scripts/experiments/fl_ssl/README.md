@@ -329,7 +329,8 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot,
 method-owned LoRA-classifier local objective, partitioned update 제출, peer helper
 context injection, labels-at-server supervised seed step까지 simulation slice에서
-실행된다. sparse S2C/C2S는 아직 후속 runtime capability다.
+실행된다. sparse S2C/C2S는 client-local previous partition snapshot과 partitioned
+global state 기준 simulation slice로 실행되며, 통신량은 posthoc estimate로 기록한다.
 
 원본 기본값은 YAML에 복제하지 않고
 `methods/federated_ssl/fedmatch/original_spec.py`에서 report protocol로 주입된다.

@@ -4,7 +4,7 @@ schema_version: federated_ssl_method.v1
 name: fedmatch
 display_name: FedMatch
 method_role: method_owned
-implementation_status: lora_local_runtime_slice_v1
+implementation_status: partitioned_trainable_state_slice_v1
 original_source:
   repository: https://github.com/wyjeong/FedMatch.git
   commit: 4947aa255d59bd37915e25a719763aaaf5d7e067
@@ -54,4 +54,4 @@ report_tags:
   - fedmatch
 notes:
   - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and LoRA-classifier family slice. The labels-at-server supervised seed step is wired through the common server_step axis, while sparse S2C/C2S remains a future runtime capability.
+  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and LoRA-classifier family slice. The labels-at-server supervised seed step is wired through the common server_step axis. Sparse S2C/C2S is wired in the simulation slice with posthoc communication estimates, not measured network packets.

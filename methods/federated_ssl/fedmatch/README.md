@@ -23,10 +23,10 @@ loop는 `methods/adaptation/lora_classifier/federated_ssl/`가 소유한다. 이
 FedMatch의 원본 의미와 policy를 읽는 시작점이고, adapter family 구현 파일을 누적하지
 않는다.
 
-현재 상태는 `lora_local_runtime_slice_v1`이다. 이 상태는 LoRA concrete runtime으로
-FedMatch 의미를 실행하는 slice이며, 최종 목표는 adapter 종류가 LoRA/DoRA로 바뀌어도
-`sigma/psi` method 의미가 유지되는 `partitioned_trainable_state` capability다. 원본
-FedMatch snapshot은
+현재 상태는 `partitioned_trainable_state_slice_v1`이다. 이 상태는 LoRA concrete
+runtime 위에서 FedMatch 의미를 실행하지만, 최종 목표는 adapter 종류가 LoRA/DoRA로
+바뀌어도 `sigma/psi` method 의미가 유지되는 `partitioned_trainable_state`
+capability다. 원본 FedMatch snapshot은
 `https://github.com/wyjeong/FedMatch.git`
 `4947aa255d59bd37915e25a719763aaaf5d7e067`로 고정한다.
 
@@ -69,18 +69,23 @@ FedMatch snapshot은
   artifact metadata에 보존하고, 다음 round client는 해당 partition state에서 시작한다.
 - C2S sparse upload projection. 원본 `cal_c2s`의 `delta_threshold` cut과 `psi`
   `l1_threshold` sparsify 의미를 LoRA-classifier partition delta에 적용한다.
+- S2C sparse download projection. 원본 `cal_s2c`의 sparse mask는 transport 여부만
+  결정하고, 적용 값은 raw server partition value로 유지한다.
+- round 사이 client-local previous partition snapshot accounting. C2S 후 snapshot은
+  `server partition + uploaded sparse delta` 상태로 저장해 upload되지 않은 local
+  변화가 다음 round 기준으로 새지 않게 한다.
 
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper weak-view
 probability provider, `labels-at-server` client-local `psi` upload slice,
-`server_step_policy=supervised_seed_step` simulation path와 C2S sparse upload
-projection은 열렸지만 sparse S2C delta sync와 client-local previous partition snapshot
-accounting은 다음 단계 capability로 남긴다.
+`server_step_policy=supervised_seed_step` simulation path, sparse S2C/C2S projection,
+client-local previous partition snapshot accounting은 simulation slice로 열렸지만
+실제 네트워크 packet 측정은 posthoc estimate로 남긴다.
 현재 실행 server path는 `server_step_policy=none`에서
 `server_update_policy=fedavg_merged_delta`면 기존 LoRA-classifier FedAvg가 merged
 delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simulation
 runtime이 LoRA-classifier `partitioned_delta_average` backend로 `partitioned_deltas`를
-소비한다. 이 backend는 원본 FedMatch sparse S2C/C2S sync 전체가 아니라
-LoRA-classifier logical partition delta를 평균하는 simulation slice다.
+소비한다. 이 backend는 client sparse projection 이후 제출된 LoRA-classifier
+partition delta를 평균하는 simulation slice다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
 LoRA-classifier active state를 한 번 더 발행한 뒤 client round를 시작한다.
 

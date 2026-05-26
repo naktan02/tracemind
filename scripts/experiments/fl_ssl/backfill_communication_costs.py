@@ -93,9 +93,13 @@ def build_posthoc_communication_cost(
             run_dir=run_dir,
             model_revision=active_revision,
         )
-        sparse_state_bytes = _global_partitioned_sparse_transport_bytes(
-            run_dir=run_dir,
-            model_revision=active_revision,
+        sparse_state_bytes = (
+            _global_partitioned_sparse_transport_bytes(
+                run_dir=run_dir,
+                model_revision=active_revision,
+            )
+            if round_index > 1
+            else 0
         )
         manifest_task_bytes = _round_manifest_task_bytes(
             run_dir=run_dir,
@@ -104,6 +108,7 @@ def build_posthoc_communication_cost(
         round_s2c_global = state_bytes * selected_client_count
         round_s2c_sparse = sparse_state_bytes * selected_client_count
         round_s2c_manifest_task = manifest_task_bytes * selected_client_count
+        round_s2c_total = round_s2c_global + round_s2c_sparse + round_s2c_manifest_task
 
         c2s_payload_bytes += round_c2s_payload
         c2s_artifact_bytes += round_c2s_artifact
@@ -122,14 +127,14 @@ def build_posthoc_communication_cost(
                 "s2c_global_state_bytes_estimated": round_s2c_global,
                 "s2c_partitioned_sparse_transport_bytes_estimated": (round_s2c_sparse),
                 "s2c_manifest_task_bytes_estimated": round_s2c_manifest_task,
-                "s2c_total_bytes_estimated": (
-                    round_s2c_global + round_s2c_manifest_task
-                ),
+                "s2c_total_bytes_estimated": round_s2c_total,
             }
         )
 
     c2s_total = c2s_payload_bytes + c2s_artifact_bytes
-    s2c_total = s2c_global_state_bytes + s2c_manifest_task_bytes
+    s2c_total = (
+        s2c_global_state_bytes + s2c_partitioned_sparse_bytes + s2c_manifest_task_bytes
+    )
     return {
         "schema_version": POSTHOC_SCHEMA_VERSION,
         "status": "estimated_from_saved_run_artifacts",
@@ -140,8 +145,9 @@ def build_posthoc_communication_cost(
             ),
             "s2c": (
                 "active global LoRA/classifier state artifact bytes multiplied "
-                "by selected clients per round; base transformer is assumed "
-                "pre-cached and excluded"
+                "by selected clients per round, plus partitioned sparse "
+                "transport estimates when saved metadata is available; base "
+                "transformer is assumed pre-cached and excluded"
             ),
             "limitations": [
                 "runtime-only final evaluation timing cannot be recovered posthoc",
@@ -149,6 +155,8 @@ def build_posthoc_communication_cost(
                 "in-memory helper snapshot exchange is not directly measured",
                 "partitioned sparse transport uses non-zero value plus flat index "
                 "byte estimates from saved artifact metadata, not measured packets",
+                "round 1 has no previous client partition snapshot, so sparse S2C "
+                "is estimated only from round 2 onward",
             ],
         },
         "c2s_payload_bytes": c2s_payload_bytes,

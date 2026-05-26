@@ -43,6 +43,14 @@ class PartitionSparseSyncParameters:
         )
 
 
+@dataclass(frozen=True, slots=True)
+class PartitionSparseUploadProjection:
+    """C2S sparse upload payload와 upload 후 client-visible partition state."""
+
+    upload_partition_deltas: dict[str, LoraClassifierPartitionDelta]
+    client_partition_parameters: dict[str, LoraClassifierMaterializedState]
+
+
 def apply_partitioned_c2s_sparse_upload(
     *,
     base_parameters: LoraClassifierMaterializedState,
@@ -72,6 +80,41 @@ def apply_partitioned_c2s_sparse_upload(
     }
 
 
+def project_partitioned_c2s_sparse_upload(
+    *,
+    base_parameters: LoraClassifierMaterializedState,
+    server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    parameters: PartitionSparseSyncParameters,
+) -> PartitionSparseUploadProjection:
+    """client final state를 sparse C2S payload와 post-upload state로 투영한다."""
+
+    sparse_partitions = set(parameters.l1_sparse_partitions)
+    upload_deltas: dict[str, LoraClassifierPartitionDelta] = {}
+    projected_client_parameters: dict[str, LoraClassifierMaterializedState] = {}
+    for partition_name, client_partition in sorted(client_partition_parameters.items()):
+        server_partition = server_partition_parameters.get(
+            partition_name,
+            base_parameters,
+        )
+        upload_delta = _build_sparse_upload_partition_delta_from_states(
+            partition_name=partition_name,
+            server_parameters=server_partition,
+            client_parameters=client_partition,
+            l1_sparse=partition_name in sparse_partitions,
+            parameters=parameters,
+        )
+        upload_deltas[partition_name] = upload_delta
+        projected_client_parameters[partition_name] = _apply_upload_delta_to_state(
+            server_parameters=server_partition,
+            upload_delta=upload_delta,
+        )
+    return PartitionSparseUploadProjection(
+        upload_partition_deltas=upload_deltas,
+        client_partition_parameters=projected_client_parameters,
+    )
+
+
 def apply_partitioned_s2c_sparse_download(
     *,
     server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
@@ -88,6 +131,36 @@ def apply_partitioned_s2c_sparse_download(
     sparse_partitions = set(parameters.l1_sparse_partitions)
     return {
         partition_name: _build_sparse_download_partition_delta(
+            partition_name=partition_name,
+            server_parameters=server_partition,
+            client_parameters=client_partition_parameters.get(
+                partition_name,
+                LoraClassifierMaterializedState(
+                    lora_parameters={},
+                    classifier_head_weights={},
+                    classifier_head_biases={},
+                ),
+            ),
+            l1_sparse=partition_name in sparse_partitions,
+            parameters=parameters,
+        )
+        for partition_name, server_partition in sorted(
+            server_partition_parameters.items()
+        )
+    }
+
+
+def project_partitioned_s2c_sparse_download(
+    *,
+    server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    parameters: PartitionSparseSyncParameters,
+) -> dict[str, LoraClassifierMaterializedState]:
+    """S2C sparse mask로 client partition state를 raw server 값으로 부분 갱신한다."""
+
+    sparse_partitions = set(parameters.l1_sparse_partitions)
+    return {
+        partition_name: _project_sparse_download_partition_state(
             partition_name=partition_name,
             server_parameters=server_partition,
             client_parameters=client_partition_parameters.get(
@@ -137,6 +210,62 @@ def _apply_sparse_upload_to_partition(
     )
 
 
+def _build_sparse_upload_partition_delta_from_states(
+    *,
+    partition_name: str,
+    server_parameters: LoraClassifierMaterializedState,
+    client_parameters: LoraClassifierMaterializedState,
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> LoraClassifierPartitionDelta:
+    return LoraClassifierPartitionDelta(
+        partition_name=partition_name,
+        lora_parameter_deltas=_sparse_upload_vector_mapping_from_states(
+            server_values=server_parameters.lora_parameters,
+            client_values=client_parameters.lora_parameters,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        ),
+        classifier_head_weight_deltas=_sparse_upload_vector_mapping_from_states(
+            server_values=server_parameters.classifier_head_weights,
+            client_values=client_parameters.classifier_head_weights,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        ),
+        classifier_head_bias_deltas=_sparse_upload_scalar_mapping_from_states(
+            server_values=server_parameters.classifier_head_biases,
+            client_values=client_parameters.classifier_head_biases,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        ),
+    )
+
+
+def _apply_upload_delta_to_state(
+    *,
+    server_parameters: LoraClassifierMaterializedState,
+    upload_delta: LoraClassifierPartitionDelta,
+) -> LoraClassifierMaterializedState:
+    return LoraClassifierMaterializedState(
+        lora_parameters=_apply_vector_delta_mapping(
+            base_values=server_parameters.lora_parameters,
+            deltas=upload_delta.lora_parameter_deltas,
+        ),
+        classifier_head_weights=_apply_vector_delta_mapping(
+            base_values=server_parameters.classifier_head_weights,
+            deltas=upload_delta.classifier_head_weight_deltas,
+        ),
+        classifier_head_biases={
+            key: float(server_parameters.classifier_head_biases.get(key, 0.0))
+            + float(upload_delta.classifier_head_bias_deltas.get(key, 0.0))
+            for key in sorted(
+                set(server_parameters.classifier_head_biases)
+                | set(upload_delta.classifier_head_bias_deltas)
+            )
+        },
+    )
+
+
 def _build_sparse_download_partition_delta(
     *,
     partition_name: str,
@@ -168,6 +297,38 @@ def _build_sparse_download_partition_delta(
     )
 
 
+def _project_sparse_download_partition_state(
+    *,
+    partition_name: str,
+    server_parameters: LoraClassifierMaterializedState,
+    client_parameters: LoraClassifierMaterializedState,
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> LoraClassifierMaterializedState:
+    return LoraClassifierMaterializedState(
+        lora_parameters=_sparse_download_projected_vector_mapping(
+            server_values=server_parameters.lora_parameters,
+            client_values=client_parameters.lora_parameters,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+            context=partition_name,
+        ),
+        classifier_head_weights=_sparse_download_projected_vector_mapping(
+            server_values=server_parameters.classifier_head_weights,
+            client_values=client_parameters.classifier_head_weights,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+            context=partition_name,
+        ),
+        classifier_head_biases=_sparse_download_projected_scalar_mapping(
+            server_values=server_parameters.classifier_head_biases,
+            client_values=client_parameters.classifier_head_biases,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        ),
+    )
+
+
 def _sparse_vector_mapping(
     *,
     base_values: Mapping[str, Sequence[float]],
@@ -184,6 +345,25 @@ def _sparse_vector_mapping(
             key=key,
         )
         for key, values in sorted(deltas.items())
+    }
+
+
+def _sparse_upload_vector_mapping_from_states(
+    *,
+    server_values: Mapping[str, Sequence[float]],
+    client_values: Mapping[str, Sequence[float]],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> dict[str, list[float]]:
+    return {
+        key: _sparse_upload_vector_delta_from_state(
+            server_vector=[float(value) for value in server_values.get(key, [])],
+            client_vector=[float(value) for value in client_values.get(key, [])],
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+            key=key,
+        )
+        for key in sorted(set(server_values) | set(client_values))
     }
 
 
@@ -206,6 +386,44 @@ def _sparse_download_vector_mapping(
     }
 
 
+def _sparse_download_projected_vector_mapping(
+    *,
+    server_values: Mapping[str, Sequence[float]],
+    client_values: Mapping[str, Sequence[float]],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+    context: str,
+) -> dict[str, list[float]]:
+    return {
+        key: _sparse_download_projected_vector(
+            server_vector=[float(value) for value in server_values.get(key, [])],
+            client_vector=[float(value) for value in client_values.get(key, [])],
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+            key=f"{context}.{key}",
+        )
+        for key in sorted(set(server_values) | set(client_values))
+    }
+
+
+def _sparse_upload_scalar_mapping_from_states(
+    *,
+    server_values: Mapping[str, float],
+    client_values: Mapping[str, float],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> dict[str, float]:
+    return {
+        key: _sparse_upload_scalar_delta_from_state(
+            server_value=float(server_values.get(key, 0.0)),
+            client_value=float(client_values.get(key, 0.0)),
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        )
+        for key in sorted(set(server_values) | set(client_values))
+    }
+
+
 def _sparse_download_scalar_mapping(
     *,
     server_values: Mapping[str, float],
@@ -215,6 +433,24 @@ def _sparse_download_scalar_mapping(
 ) -> dict[str, float]:
     return {
         key: _sparse_download_scalar_delta(
+            server_value=float(server_values.get(key, 0.0)),
+            client_value=float(client_values.get(key, 0.0)),
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        )
+        for key in sorted(set(server_values) | set(client_values))
+    }
+
+
+def _sparse_download_projected_scalar_mapping(
+    *,
+    server_values: Mapping[str, float],
+    client_values: Mapping[str, float],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> dict[str, float]:
+    return {
+        key: _sparse_download_projected_scalar(
             server_value=float(server_values.get(key, 0.0)),
             client_value=float(client_values.get(key, 0.0)),
             l1_sparse=l1_sparse,
@@ -242,6 +478,27 @@ def _sparse_scalar_mapping(
     }
 
 
+def _apply_vector_delta_mapping(
+    *,
+    base_values: Mapping[str, Sequence[float]],
+    deltas: Mapping[str, Sequence[float]],
+) -> dict[str, list[float]]:
+    result: dict[str, list[float]] = {}
+    for key in sorted(set(base_values) | set(deltas)):
+        base_vector = [float(value) for value in base_values.get(key, [])]
+        delta_vector = [float(value) for value in deltas.get(key, [])]
+        if not base_vector:
+            base_vector = [0.0 for _value in delta_vector]
+        if not delta_vector:
+            delta_vector = [0.0 for _value in base_vector]
+        if len(base_vector) != len(delta_vector):
+            raise ValueError(f"partition sparse sync dimension mismatch for {key!r}.")
+        result[key] = [
+            base + delta for base, delta in zip(base_vector, delta_vector, strict=True)
+        ]
+    return result
+
+
 def _sparse_vector_delta(
     *,
     base_vector: Sequence[float],
@@ -262,6 +519,30 @@ def _sparse_vector_delta(
             parameters=parameters,
         )
         for base, delta in zip(base_vector, delta_vector, strict=True)
+    ]
+
+
+def _sparse_upload_vector_delta_from_state(
+    *,
+    server_vector: Sequence[float],
+    client_vector: Sequence[float],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+    key: str,
+) -> list[float]:
+    server_vector, client_vector = _align_sparse_vectors(
+        server_vector=server_vector,
+        client_vector=client_vector,
+        key=key,
+    )
+    return [
+        _sparse_upload_scalar_delta_from_state(
+            server_value=server,
+            client_value=client,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        )
+        for server, client in zip(server_vector, client_vector, strict=True)
     ]
 
 
@@ -290,6 +571,45 @@ def _sparse_download_vector_delta(
     ]
 
 
+def _sparse_download_projected_vector(
+    *,
+    server_vector: Sequence[float],
+    client_vector: Sequence[float],
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+    key: str,
+) -> list[float]:
+    server_vector, client_vector = _align_sparse_vectors(
+        server_vector=server_vector,
+        client_vector=client_vector,
+        key=key,
+    )
+    return [
+        _sparse_download_projected_scalar(
+            server_value=server,
+            client_value=client,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        )
+        for server, client in zip(server_vector, client_vector, strict=True)
+    ]
+
+
+def _align_sparse_vectors(
+    *,
+    server_vector: Sequence[float],
+    client_vector: Sequence[float],
+    key: str,
+) -> tuple[Sequence[float], Sequence[float]]:
+    if not server_vector:
+        server_vector = [0.0 for _value in client_vector]
+    if not client_vector:
+        client_vector = [0.0 for _value in server_vector]
+    if len(server_vector) != len(client_vector):
+        raise ValueError(f"partition sparse sync dimension mismatch for {key!r}.")
+    return server_vector, client_vector
+
+
 def _sparse_scalar_delta(
     *,
     base_value: float,
@@ -306,6 +626,22 @@ def _sparse_scalar_delta(
     return sparse_delta
 
 
+def _sparse_upload_scalar_delta_from_state(
+    *,
+    server_value: float,
+    client_value: float,
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> float:
+    projected_client_value = client_value
+    if l1_sparse and abs(projected_client_value) <= parameters.l1_threshold:
+        projected_client_value = 0.0
+    sparse_delta = projected_client_value - server_value
+    if abs(sparse_delta) <= parameters.delta_threshold:
+        return 0.0
+    return sparse_delta
+
+
 def _sparse_download_scalar_delta(
     *,
     server_value: float,
@@ -314,13 +650,36 @@ def _sparse_download_scalar_delta(
     parameters: PartitionSparseSyncParameters,
 ) -> float:
     if l1_sparse:
-        server_value = (
+        masked_server_value = (
             0.0 if abs(server_value) <= parameters.l1_threshold else server_value
         )
-        client_value = (
+        masked_client_value = (
             0.0 if abs(client_value) <= parameters.l1_threshold else client_value
         )
-    sparse_delta = server_value - client_value
+    else:
+        masked_server_value = server_value
+        masked_client_value = client_value
+    sparse_delta = masked_server_value - masked_client_value
     if abs(sparse_delta) <= parameters.delta_threshold:
         return 0.0
-    return sparse_delta
+    return server_value - client_value
+
+
+def _sparse_download_projected_scalar(
+    *,
+    server_value: float,
+    client_value: float,
+    l1_sparse: bool,
+    parameters: PartitionSparseSyncParameters,
+) -> float:
+    if (
+        _sparse_download_scalar_delta(
+            server_value=server_value,
+            client_value=client_value,
+            l1_sparse=l1_sparse,
+            parameters=parameters,
+        )
+        == 0.0
+    ):
+        return client_value
+    return server_value

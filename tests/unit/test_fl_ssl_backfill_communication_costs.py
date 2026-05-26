@@ -32,6 +32,21 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
             ),
         },
     )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "shared_adapter_states"
+        / "versions"
+        / "sim_rev_0001.json",
+        {
+            "lora_adapter_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0001/lora_adapter"
+            ),
+            "classifier_head_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0001/classifier_head"
+            ),
+        },
+    )
     _write_bytes(
         run_dir
         / "main_server"
@@ -57,6 +72,21 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
         {
             "active_manifest": {"model_revision": "sim_rev_0000"},
             "training_task": {"round_id": "round_0001"},
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0001"
+        / "lora_adapter.json",
+        {
+            "partitioned_lora_parameters": {
+                "sigma": {"encoder_lora.weight": [1.0, 0.0]},
+                "psi": {"encoder_lora.weight": [0.0, 2.0]},
+            }
         },
     )
     payload = {
@@ -119,6 +149,53 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
     _write_json(
         run_dir
         / "main_server"
+        / "shared_adapter_states"
+        / "versions"
+        / "sim_rev_0001.json",
+        {
+            "lora_adapter_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0001/lora_adapter"
+            ),
+            "classifier_head_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0001/classifier_head"
+            ),
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0001"
+        / "lora_adapter.json",
+        {
+            "partitioned_lora_parameters": {
+                "sigma": {"encoder_lora.weight": [1.0, 0.0]},
+                "psi": {"encoder_lora.weight": [0.0, 2.0]},
+            }
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0001"
+        / "classifier_head.json",
+        {
+            "partitioned_classifier_head_weights": {
+                "sigma": {"anxiety": [3.0, 0.0]},
+            },
+            "partitioned_classifier_head_biases": {
+                "psi": {"anxiety": -1.0},
+            },
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
         / "aggregation_artifacts"
         / "versions"
         / "lora_classifier"
@@ -155,7 +232,13 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
                 "round_index": 1,
                 "selected_client_count": 3,
                 "clients": [],
-            }
+            },
+            {
+                "round_id": "round_0002",
+                "round_index": 2,
+                "selected_client_count": 3,
+                "clients": [],
+            },
         ],
     }
 
@@ -165,9 +248,21 @@ def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
     )
 
     assert posthoc["s2c_partitioned_sparse_transport_bytes_estimated"] == 96
+    assert posthoc["s2c_total_bytes_estimated"] == (
+        posthoc["s2c_global_state_bytes_estimated"] + 96
+    )
+    assert posthoc["bidirectional_total_bytes_estimated"] == (
+        posthoc["c2s_total_bytes"] + posthoc["s2c_total_bytes_estimated"]
+    )
     assert (
-        posthoc["per_round"][0]["s2c_partitioned_sparse_transport_bytes_estimated"]
+        posthoc["per_round"][0]["s2c_partitioned_sparse_transport_bytes_estimated"] == 0
+    )
+    assert (
+        posthoc["per_round"][1]["s2c_partitioned_sparse_transport_bytes_estimated"]
         == 96
+    )
+    assert posthoc["per_round"][1]["s2c_total_bytes_estimated"] == (
+        posthoc["per_round"][1]["s2c_global_state_bytes_estimated"] + 96
     )
 
 

@@ -1385,7 +1385,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             name="fedmatch",
             display_name="FedMatch",
             method_role="method_owned",
-            implementation_status="lora_local_runtime_slice_v1",
+            implementation_status="partitioned_trainable_state_slice_v1",
             scenario="labels-at-client",
             effective_parameters=fedmatch_original_parameter_mapping(),
         ),

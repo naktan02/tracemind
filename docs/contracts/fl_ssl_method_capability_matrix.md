@@ -61,12 +61,11 @@ policy가 된다.
 - `methods/federated_ssl/fedmatch/`
   - FedMatch descriptor, 원본 설정 snapshot, local objective/server/round policy,
     recipe, sigma/psi partition metadata를 소유한다.
-  - 현재 status는 `lora_local_runtime_slice_v1`이다. 원본 설정값, confidence
-    filter, agreement pseudo-label vote, KDTree 우선 helper nearest-neighbor selection,
-    supervised/unsupervised FedMatch tensor loss는 method package에 고정했다.
-    현재 status는 `partitioned_trainable_state_slice_v1`로, LoRA concrete slice를 넘어
-    DoRA 같은 PEFT adapter 교체를 허용하는 partitioned trainable state primitive를
-    단계적으로 열고 있다.
+  - 현재 status는 `partitioned_trainable_state_slice_v1`이다. 원본 설정값,
+    confidence filter, agreement pseudo-label vote, KDTree 우선 helper
+    nearest-neighbor selection, supervised/unsupervised FedMatch tensor loss는 method
+    package에 고정했다. LoRA concrete slice를 넘어 DoRA 같은 PEFT adapter 교체를
+    허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
   - `methods/adaptation/lora_classifier/federated_ssl/`는 method-owned objective를
     LoRA-classifier model/loaders, logical/physical partition delta, shared update
     payload로 실행하는 adapter-family slice다. FedMatch method 의미는

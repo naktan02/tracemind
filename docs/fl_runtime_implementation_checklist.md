@@ -91,8 +91,9 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   `fixed_probe_output_knn` helper client context 주입 seam과 KDTree 우선
   helper index, 이전 round client-local LoRA snapshot 기반 helper weak-probability
   provider는 열렸다. labels-at-server는 `server_only_seed + supervised_seed_step`
-  server runtime과 client-local `psi` upload slice로 열렸고, sparse S2C/C2S는
-  후속 구현이다.
+  server runtime과 client-local `psi` upload slice로 열렸다. sparse S2C/C2S는
+  client-local previous partition snapshot과 partitioned global state 기준 simulation
+  slice로 열렸고, 통신량은 posthoc estimate로 기록한다.
 - [x] FedMatch method-owned smoke로 helper injection과 partitioned delta path를
   확인했다. 1-round smoke는 previous client snapshot이 없어 helper count 0이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.

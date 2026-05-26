@@ -834,7 +834,9 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     )
     assert ssl_method_config is not None
 
-    assert cfg.ssl_method.implementation_status == "lora_local_runtime_slice_v1"
+    assert (
+        cfg.ssl_method.implementation_status == "partitioned_trainable_state_slice_v1"
+    )
     assert cfg.ssl_method.local_budget_policy == "iteration_capped"
     assert cfg.training_task.max_steps == 20
     assert cfg.ssl_method.original_source.repository == FEDMATCH_ORIGINAL_REPOSITORY

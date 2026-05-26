@@ -22,8 +22,8 @@ from methods.adaptation.lora_classifier.config import (
 )
 from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
     PartitionSparseSyncParameters,
-    apply_partitioned_c2s_sparse_upload,
-    apply_partitioned_s2c_sparse_download,
+    project_partitioned_c2s_sparse_upload,
+    project_partitioned_s2c_sparse_download,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_budget import (
     normalize_partitioned_local_budget_policy,
@@ -276,7 +276,7 @@ def run_method_owned_lora_classifier_training_core(
 
     with _measure(timing_recorder, "core_training_loop_seconds"):
         uses_physical_partition_runtime = psi_query_ssl_algorithm is None
-        base_partition_parameters = (
+        server_partition_parameters = (
             {} if base_partition_parameters is None else base_partition_parameters
         )
         previous_client_partition_parameters = (
@@ -290,21 +290,16 @@ def run_method_owned_lora_classifier_training_core(
         )
         uses_s2c_sparse_download = (
             uses_physical_partition_runtime
-            and bool(base_partition_parameters)
+            and bool(server_partition_parameters)
             and bool(previous_client_partition_parameters)
         )
+        effective_base_partition_parameters = server_partition_parameters
         if uses_s2c_sparse_download:
-            base_partition_parameters = (
-                apply_lora_classifier_partition_deltas_to_partitioned_state(
-                    base_parameters=base_parameters,
-                    base_partition_parameters=previous_client_partition_parameters,
-                    partition_deltas=apply_partitioned_s2c_sparse_download(
-                        server_partition_parameters=base_partition_parameters,
-                        client_partition_parameters=(
-                            previous_client_partition_parameters
-                        ),
-                        parameters=sparse_sync_parameters,
-                    ),
+            effective_base_partition_parameters = (
+                project_partitioned_s2c_sparse_download(
+                    server_partition_parameters=server_partition_parameters,
+                    client_partition_parameters=previous_client_partition_parameters,
+                    parameters=sparse_sync_parameters,
                 )
             )
         if uses_physical_partition_runtime:
@@ -315,7 +310,7 @@ def run_method_owned_lora_classifier_training_core(
                 ),
                 labels=effective_labels,
                 base_parameters=base_parameters,
-                base_partition_parameters=base_partition_parameters,
+                base_partition_parameters=effective_base_partition_parameters,
                 lora_config=lora_config,
                 runtime_config=trainer_runtime_config,
                 runtime_resource_cache=runtime_resource_cache,
@@ -351,19 +346,21 @@ def run_method_owned_lora_classifier_training_core(
             client_partition_parameters = (
                 apply_lora_classifier_partition_deltas_to_partitioned_state(
                     base_parameters=base_parameters,
-                    base_partition_parameters=base_partition_parameters,
+                    base_partition_parameters=effective_base_partition_parameters,
                     partition_deltas=training_result.partition_deltas,
                 )
             )
+            c2s_projection = project_partitioned_c2s_sparse_upload(
+                base_parameters=base_parameters,
+                server_partition_parameters=server_partition_parameters,
+                client_partition_parameters=client_partition_parameters,
+                parameters=sparse_sync_parameters,
+            )
             training_result = replace_partitioned_training_deltas(
                 training_result=training_result,
-                partition_deltas=apply_partitioned_c2s_sparse_upload(
-                    base_parameters=base_parameters,
-                    base_partition_parameters=base_partition_parameters,
-                    partition_deltas=training_result.partition_deltas,
-                    parameters=sparse_sync_parameters,
-                ),
+                partition_deltas=c2s_projection.upload_partition_deltas,
             )
+            client_partition_parameters = c2s_projection.client_partition_parameters
             merged_partition_delta = merge_partitioned_lora_classifier_deltas(
                 training_result.partition_deltas
             )

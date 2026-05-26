@@ -283,7 +283,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
             name="fedmatch",
             display_name="FedMatch",
             method_role="method_owned",
-            implementation_status="lora_local_runtime_slice_v1",
+            implementation_status="partitioned_trainable_state_slice_v1",
             local_budget_policy="iteration_capped",
         ),
         client_pool_split_config=FederatedClientPoolSplitConfig(
