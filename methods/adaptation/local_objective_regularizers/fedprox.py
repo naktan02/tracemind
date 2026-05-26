@@ -86,9 +86,13 @@ def compute_scaled_fedprox_loss(
 ) -> torch.Tensor:
     """원 논문/구현의 mu/2 * ||w - w_global||^2 항을 계산한다."""
 
-    return 0.5 * proximal_mu * compute_fedprox_proximal_loss(
-        trainable_parameters=trainable_parameters,
-        reference_snapshot=reference_snapshot,
+    return (
+        0.5
+        * proximal_mu
+        * compute_fedprox_proximal_loss(
+            trainable_parameters=trainable_parameters,
+            reference_snapshot=reference_snapshot,
+        )
     )
 
 

@@ -31,9 +31,7 @@ class FederatedSslSupervisedSeedStepParameters:
         if self.epochs <= 0:
             raise ValueError("supervised_seed_step server epochs must be positive.")
         if self.batch_size <= 0:
-            raise ValueError(
-                "supervised_seed_step server batch size must be positive."
-            )
+            raise ValueError("supervised_seed_step server batch size must be positive.")
 
 
 def resolve_method_supervised_seed_step_parameters(
@@ -79,7 +77,6 @@ def _import_method_server_step_parameters_module(method_name: str) -> ModuleType
     except ModuleNotFoundError as exc:
         if exc.name == module_name or module_name.startswith(f"{exc.name}."):
             raise NotImplementedError(
-                "Method-owned server step parameter module is not wired: "
-                f"{method_name}"
+                f"Method-owned server step parameter module is not wired: {method_name}"
             ) from exc
         raise
