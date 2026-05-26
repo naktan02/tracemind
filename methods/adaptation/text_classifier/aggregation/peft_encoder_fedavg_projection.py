@@ -59,8 +59,8 @@ PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierFedAvgUpdate:
-    """main_server boundary와 분리된 LoRA-classifier FedAvg 입력."""
+class PeftEncoderFedAvgUpdate:
+    """main_server boundary와 분리된 PEFT encoder classifier FedAvg 입력."""
 
     lora_parameter_deltas: Mapping[str, Sequence[float]]
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
@@ -72,8 +72,8 @@ class LoraClassifierFedAvgUpdate:
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierFedAvgResult:
-    """LoRA-classifier FedAvg 계산 결과."""
+class PeftEncoderFedAvgResult:
+    """PEFT encoder classifier FedAvg 계산 결과."""
 
     lora_parameter_deltas: dict[str, list[float]]
     classifier_head_weight_deltas: dict[str, list[float]]
@@ -82,23 +82,23 @@ class LoraClassifierFedAvgResult:
     update_count: int
 
 
-PeftEncoderFedAvgUpdate = LoraClassifierFedAvgUpdate
-PeftEncoderFedAvgResult = LoraClassifierFedAvgResult
+LoraClassifierFedAvgUpdate = PeftEncoderFedAvgUpdate
+LoraClassifierFedAvgResult = PeftEncoderFedAvgResult
 
 
-def compute_lora_classifier_fedavg(
+def compute_peft_encoder_fedavg(
     *,
     label_schema: Sequence[str],
-    updates: Sequence[LoraClassifierFedAvgUpdate],
+    updates: Sequence[PeftEncoderFedAvgUpdate],
     weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
-) -> LoraClassifierFedAvgResult:
-    """LoRA parameter delta와 classifier-head delta를 policy weight로 평균한다."""
+) -> PeftEncoderFedAvgResult:
+    """PEFT encoder/head delta를 policy weight로 평균한다."""
 
     labels = _normalize_label_schema(label_schema)
     weight_policy = AggregationWeightPolicy(name=weight_policy_name)
     valid_updates = tuple(update for update in updates if update.example_count > 0)
     if not valid_updates:
-        raise ValueError("At least one non-empty LoRA-classifier update is required.")
+        raise ValueError("At least one non-empty PEFT-classifier update is required.")
 
     lora_parameter_deltas = weighted_average_vector_mappings(
         [
@@ -134,7 +134,7 @@ def compute_lora_classifier_fedavg(
         ]
     )
 
-    return LoraClassifierFedAvgResult(
+    return PeftEncoderFedAvgResult(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
@@ -144,25 +144,14 @@ def compute_lora_classifier_fedavg(
                 weight_policy.name == AGGREGATION_WEIGHT_EXAMPLE_COUNT
             ),
             "lora_parameter_count": float(len(lora_parameter_deltas)),
+            "peft_parameter_count": float(len(lora_parameter_deltas)),
             "classifier_head_label_count": float(len(classifier_head_weight_deltas)),
         },
         update_count=len(valid_updates),
     )
 
 
-def compute_peft_encoder_fedavg(
-    *,
-    label_schema: Sequence[str],
-    updates: Sequence[PeftEncoderFedAvgUpdate],
-    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
-) -> PeftEncoderFedAvgResult:
-    """PEFT encoder/head delta를 policy weight로 평균한다."""
-
-    return compute_lora_classifier_fedavg(
-        label_schema=label_schema,
-        updates=updates,
-        weight_policy_name=weight_policy_name,
-    )
+compute_lora_classifier_fedavg = compute_peft_encoder_fedavg
 
 
 def _normalize_label_schema(label_schema: Sequence[str]) -> tuple[str, ...]:
@@ -175,13 +164,13 @@ def _normalize_label_schema(label_schema: Sequence[str]) -> tuple[str, ...]:
 
 
 def _normalize_classifier_head_weight_deltas(
-    update: LoraClassifierFedAvgUpdate,
+    update: PeftEncoderFedAvgUpdate,
     *,
     labels: Sequence[str],
 ) -> dict[str, Sequence[float]]:
     if set(update.classifier_head_weight_deltas) != set(labels):
         raise ValueError(
-            "LoRA-classifier FedAvg classifier head weight delta keys must match "
+            "PEFT-classifier FedAvg classifier head weight delta keys must match "
             "label_schema."
         )
     return {
@@ -191,14 +180,14 @@ def _normalize_classifier_head_weight_deltas(
 
 
 def _normalize_classifier_head_bias_deltas(
-    update: LoraClassifierFedAvgUpdate,
+    update: PeftEncoderFedAvgUpdate,
     *,
     labels: Sequence[str],
 ) -> dict[str, float]:
     extra_labels = set(update.classifier_head_bias_deltas) - set(labels)
     if extra_labels:
         raise ValueError(
-            "LoRA-classifier FedAvg bias deltas contain unknown labels: "
+            "PEFT-classifier FedAvg bias deltas contain unknown labels: "
             f"{sorted(extra_labels)}"
         )
     return {
@@ -208,7 +197,7 @@ def _normalize_classifier_head_bias_deltas(
 
 
 def _aggregate_common_metrics(
-    updates: Sequence[LoraClassifierFedAvgUpdate],
+    updates: Sequence[PeftEncoderFedAvgUpdate],
 ) -> dict[str, float]:
     return aggregate_update_observation_metrics(
         [
@@ -223,33 +212,33 @@ def _aggregate_common_metrics(
     )
 
 
-def aggregate_lora_classifier_fedavg(
+def aggregate_peft_encoder_fedavg(
     base_state: SharedAdapterState,
     update_payloads: Sequence[SharedAdapterUpdate],
     context: FederatedAggregationContext,
     overrides: Mapping[str, AggregationConfigScalar] | None,
 ) -> FederatedAggregationResult:
-    """LoRA-classifier update payload를 FedAvg core 입력으로 변환한다."""
+    """PEFT encoder classifier update payload를 FedAvg core 입력으로 변환한다."""
 
-    _validate_lora_classifier_fedavg_overrides(overrides)
+    _validate_peft_encoder_fedavg_overrides(overrides)
 
     base_state = cast(PeftEncoderStatePayload, base_state)
     updates = [cast(PeftEncoderDeltaPayload, payload) for payload in update_payloads]
     method_updates = [
-        _to_lora_classifier_method_update(
+        _to_peft_encoder_method_update(
             base_state=base_state,
             payload=payload,
             context=context,
         )
         for payload in updates
     ]
-    method_result = compute_lora_classifier_fedavg(
+    method_result = compute_peft_encoder_fedavg(
         label_schema=base_state.label_schema,
         updates=method_updates,
         weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
-        context="LoRA-classifier FedAvg"
+        context="PEFT-classifier FedAvg"
     )
     lora_adapter_artifact_ref = artifact_ref_resolver.build_ref(
         next_model_revision=context.next_model_revision,
@@ -282,13 +271,13 @@ def aggregate_lora_classifier_fedavg(
     )
 
 
-def _to_lora_classifier_method_update(
+def _to_peft_encoder_method_update(
     *,
     base_state: PeftEncoderStatePayload,
     payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext,
-) -> LoraClassifierFedAvgUpdate:
-    validate_lora_classifier_update_matches_base(
+) -> PeftEncoderFedAvgUpdate:
+    validate_peft_encoder_update_matches_base(
         base_state=base_state,
         payload=payload,
     )
@@ -296,7 +285,7 @@ def _to_lora_classifier_method_update(
         payload=payload,
         context=context,
     )
-    return LoraClassifierFedAvgUpdate(
+    return PeftEncoderFedAvgUpdate(
         lora_parameter_deltas=materialized.lora_parameter_deltas,
         classifier_head_weight_deltas=materialized.classifier_head_weight_deltas,
         classifier_head_bias_deltas=materialized.classifier_head_bias_deltas,
@@ -307,27 +296,27 @@ def _to_lora_classifier_method_update(
     )
 
 
-def validate_lora_classifier_update_matches_base(
+def validate_peft_encoder_update_matches_base(
     *,
     base_state: PeftEncoderStatePayload,
     payload: PeftEncoderDeltaPayload,
 ) -> None:
-    """LoRA-classifier update가 base global state와 같은 lineage인지 검증한다."""
+    """PEFT encoder classifier update가 base state와 같은 lineage인지 검증한다."""
 
     if payload.adapter_kind != base_state.adapter_kind:
         raise ValueError("PEFT-classifier updates must match the base adapter_kind.")
     if _payload_snapshot(payload.backbone) != _payload_snapshot(base_state.backbone):
-        raise ValueError("All LoRA-classifier updates must match the backbone.")
+        raise ValueError("All PEFT-classifier updates must match the backbone.")
     if _adapter_config_snapshot(payload) != _adapter_config_snapshot(base_state):
         raise ValueError("All PEFT-classifier updates must match the adapter config.")
     if payload.labels != base_state.labels:
         raise ValueError(
-            "LoRA-classifier updates must share the base ordered label_schema."
+            "PEFT-classifier updates must share the base ordered label_schema."
         )
 
 
-aggregate_peft_encoder_fedavg = aggregate_lora_classifier_fedavg
-validate_peft_encoder_update_matches_base = validate_lora_classifier_update_matches_base
+aggregate_lora_classifier_fedavg = aggregate_peft_encoder_fedavg
+validate_lora_classifier_update_matches_base = validate_peft_encoder_update_matches_base
 
 
 def _payload_snapshot(payload) -> dict[str, object]:
@@ -348,7 +337,7 @@ def _adapter_artifact_slot(base_state: PeftEncoderStatePayload) -> str:
     return LORA_ADAPTER_ARTIFACT_SLOT
 
 
-def _validate_lora_classifier_fedavg_overrides(
+def _validate_peft_encoder_fedavg_overrides(
     overrides: Mapping[str, AggregationConfigScalar] | None,
 ) -> None:
     if overrides is None:
@@ -358,7 +347,7 @@ def _validate_lora_classifier_fedavg_overrides(
     )
     if unknown_keys:
         raise ValueError(
-            "Unsupported LoRA-classifier aggregate artifact config key(s): "
+            "Unsupported PEFT-classifier aggregate artifact config key(s): "
             f"{unknown_keys}."
         )
 
@@ -405,8 +394,8 @@ _register_peft_encoder_fedavg_strategy(
     update_type=LoraClassifierDelta,
     context="LoRA-classifier",
     aliases=("lora_classifier_fedavg",),
-    core_function_name=compute_lora_classifier_fedavg.__name__,
-    aggregate=aggregate_lora_classifier_fedavg,
+    core_function_name=compute_peft_encoder_fedavg.__name__,
+    aggregate=aggregate_peft_encoder_fedavg,
 )
 _register_peft_encoder_fedavg_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,

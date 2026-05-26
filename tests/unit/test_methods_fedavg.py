@@ -233,11 +233,11 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
     assert second_weight_deltas["normal"] == [-0.1, -0.2]
 
 
-def test_lora_classifier_fedavg_averages_lora_and_head_deltas() -> None:
-    result = peft_fedavg_projection.compute_lora_classifier_fedavg(
+def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
+    result = peft_fedavg_projection.compute_peft_encoder_fedavg(
         label_schema=("anxiety", "normal"),
         updates=[
-            peft_fedavg_projection.LoraClassifierFedAvgUpdate(
+            peft_fedavg_projection.PeftEncoderFedAvgUpdate(
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.2, 0.4],
                     "encoder.q_proj.lora_B": [0.1, -0.1],
@@ -252,7 +252,7 @@ def test_lora_classifier_fedavg_averages_lora_and_head_deltas() -> None:
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            peft_fedavg_projection.LoraClassifierFedAvgUpdate(
+            peft_fedavg_projection.PeftEncoderFedAvgUpdate(
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.0, 0.1],
                     "encoder.q_proj.lora_B": [0.2, 0.2],
@@ -317,7 +317,7 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
         spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
         "peft_encoder_fedavg_projection"
     )
-    assert spec.core_function_name == "compute_lora_classifier_fedavg"
+    assert spec.core_function_name == "compute_peft_encoder_fedavg"
 
 
 def test_federated_aggregation_method_registry_points_to_peft_classifier_core() -> None:
@@ -347,9 +347,7 @@ def test_federated_aggregation_method_registry_points_to_partitioned_lora_core()
         spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     )
-    assert (
-        spec.core_function_name == "compute_lora_classifier_partitioned_delta_average"
-    )
+    assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"
 
 
 def test_federated_aggregation_method_registry_points_to_partitioned_peft_core() -> (

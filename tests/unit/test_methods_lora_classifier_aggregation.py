@@ -903,7 +903,7 @@ def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_re
 def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client() -> (
     None
 ):
-    result = peft_part_projection.compute_lora_classifier_partitioned_delta_average(
+    result = peft_part_projection.compute_peft_encoder_partitioned_delta_average(
         label_schema=("anxiety", "normal"),
         updates=(
             peft_part_projection.LoraClassifierPartitionedDeltaAverageUpdate(
