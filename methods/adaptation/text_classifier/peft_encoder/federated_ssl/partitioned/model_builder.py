@@ -12,7 +12,7 @@ from methods.common.runtime_resources import RuntimeResourceCache
 
 from ...config import LoraClassifierTrainingBackendConfig
 from ...training.delta_extraction import (
-    load_lora_classifier_base_parameters_into_model,
+    load_peft_encoder_base_parameters_into_model,
 )
 from ...training.modeling import build_peft_encoder_text_classifier_from_config
 from ...update.materialization import LoraClassifierMaterializedState
@@ -86,7 +86,7 @@ def build_partitioned_lora_text_classifier_from_config(
             runtime_config=runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )
-        load_lora_classifier_base_parameters_into_model(
+        load_peft_encoder_base_parameters_into_model(
             model=partition_model,  # type: ignore[arg-type]
             labels=normalized_labels,
             base_parameters=(

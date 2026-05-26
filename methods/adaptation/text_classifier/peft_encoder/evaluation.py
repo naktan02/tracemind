@@ -12,7 +12,7 @@ from methods.adaptation.text_classifier.peft_encoder.config import (
     build_peft_classifier_training_backend_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    load_lora_classifier_base_parameters_into_model,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import (
     evaluate_classifier,
@@ -76,7 +76,7 @@ def evaluate_peft_encoder_state(
         runtime_config=runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    load_lora_classifier_base_parameters_into_model(
+    load_peft_encoder_base_parameters_into_model(
         model=model,
         labels=effective_labels,
         base_parameters=base_parameters,

@@ -279,7 +279,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
     )
     monkeypatch.setattr(
         peer_predictions,
-        "load_lora_classifier_base_parameters_into_model",
+        "load_peft_encoder_base_parameters_into_model",
         _fake_load_base_parameters,
     )
 

@@ -388,7 +388,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qcore,
-        "load_lora_classifier_base_parameters_into_model",
+        "load_peft_encoder_base_parameters_into_model",
         lambda **_kwargs: None,
     )
     monkeypatch.setattr(qcore, "build_dataloader", lambda **_kwargs: [object()])
@@ -409,7 +409,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qcore,
-        "extract_lora_classifier_parameter_deltas",
+        "extract_peft_encoder_parameter_deltas",
         lambda **_kwargs: ({}, {}, {}),
     )
     monkeypatch.setattr(

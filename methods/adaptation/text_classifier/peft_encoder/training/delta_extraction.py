@@ -1,4 +1,4 @@
-"""LoRA-classifier model parameter delta extraction helpers."""
+"""PEFT encoder classifier parameter delta extraction helpers."""
 
 from __future__ import annotations
 
@@ -8,20 +8,20 @@ from collections.abc import Mapping, Sequence
 import torch
 
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 
 from .modeling import LoraTextClassifier
 
 
-def load_lora_classifier_base_parameters_into_model(
+def load_peft_encoder_base_parameters_into_model(
     *,
     model: LoraTextClassifier,
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     device: str,
 ) -> None:
-    """materialized global LoRA/head state를 local model 파라미터에 반영한다."""
+    """materialized global PEFT/head state를 local model 파라미터에 반영한다."""
 
     if base_parameters.lora_parameters:
         name_to_parameter = {
@@ -74,18 +74,18 @@ def load_lora_classifier_base_parameters_into_model(
         model.classifier.bias.data.copy_(bias)
 
 
-load_peft_encoder_base_parameters_into_model = (
-    load_lora_classifier_base_parameters_into_model
+load_lora_classifier_base_parameters_into_model = (
+    load_peft_encoder_base_parameters_into_model
 )
 
 
-def extract_lora_classifier_parameter_deltas(
+def extract_peft_encoder_parameter_deltas(
     *,
     model: LoraTextClassifier,
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     labels: Sequence[str],
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, float]]:
-    """local model과 base global snapshot의 LoRA/head delta를 추출한다."""
+    """local model과 base global snapshot의 PEFT/head delta를 추출한다."""
 
     lora_deltas = extract_lora_parameter_deltas(
         model=model,
@@ -98,6 +98,9 @@ def extract_lora_classifier_parameter_deltas(
         base_biases=base_parameters.classifier_head_biases,
     )
     return lora_deltas, head_weight_deltas, head_bias_deltas
+
+
+extract_lora_classifier_parameter_deltas = extract_peft_encoder_parameter_deltas
 
 
 def extract_lora_parameter_deltas(
@@ -159,13 +162,13 @@ def extract_classifier_head_deltas(
     return weight_deltas, bias_deltas
 
 
-def lora_classifier_delta_l2_norm(
+def peft_encoder_delta_l2_norm(
     *,
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
 ) -> float:
-    """LoRA/head delta mapping의 L2 norm을 계산한다."""
+    """PEFT/head delta mapping의 L2 norm을 계산한다."""
 
     squared_norm = 0.0
     for mapping in (lora_parameter_deltas, classifier_head_weight_deltas):
@@ -178,6 +181,9 @@ def lora_classifier_delta_l2_norm(
         float(value) * float(value) for value in classifier_head_bias_deltas.values()
     )
     return math.sqrt(squared_norm)
+
+
+lora_classifier_delta_l2_norm = peft_encoder_delta_l2_norm
 
 
 def is_number(value: object) -> bool:

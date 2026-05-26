@@ -26,7 +26,7 @@ from ..config import (
 )
 from ..training.delta_extraction import (
     finite_float_or_none,
-    lora_classifier_delta_l2_norm,
+    peft_encoder_delta_l2_norm,
 )
 from .local_update import (
     LoraClassifierTrainArtifacts,
@@ -87,7 +87,7 @@ def build_query_ssl_peft_encoder_update_payload(
         )
     util_ratio = finite_float_or_none(history_record.get("train_util_ratio"))
     accepted_unlabeled_count = int(round((util_ratio or 0.0) * len(unlabeled_rows)))
-    delta_l2_norm = lora_classifier_delta_l2_norm(
+    delta_l2_norm = peft_encoder_delta_l2_norm(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,

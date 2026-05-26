@@ -22,7 +22,7 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    load_lora_classifier_base_parameters_into_model,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     LoraTextClassifier,
@@ -293,7 +293,7 @@ def _materialize_helper_model(
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    load_lora_classifier_base_parameters_into_model(
+    load_peft_encoder_base_parameters_into_model(
         model=model,
         labels=labels,
         base_parameters=snapshot.payload,

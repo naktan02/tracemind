@@ -39,8 +39,8 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    extract_lora_classifier_parameter_deltas,
-    load_lora_classifier_base_parameters_into_model,
+    extract_peft_encoder_parameter_deltas,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
@@ -230,7 +230,7 @@ def run_partitioned_lora_classifier_training_core(
                 runtime_resource_cache=runtime_resource_cache,
             )
         with _measure(timing_recorder, "core_base_parameter_load_seconds"):
-            load_lora_classifier_base_parameters_into_model(
+            load_peft_encoder_base_parameters_into_model(
                 model=model,
                 labels=effective_labels,
                 base_parameters=base_parameters,
@@ -426,7 +426,7 @@ def run_partitioned_lora_classifier_training_core(
                 base_parameters=base_parameters,
                 delta=merged_partition_delta,
             )
-            load_lora_classifier_base_parameters_into_model(
+            load_peft_encoder_base_parameters_into_model(
                 model=model,
                 labels=effective_labels,
                 base_parameters=merged_parameters,
@@ -490,7 +490,7 @@ def run_partitioned_lora_classifier_training_core(
 
     with _measure(timing_recorder, "core_delta_extract_seconds"):
         lora_deltas, head_weight_deltas, head_bias_deltas = (
-            extract_lora_classifier_parameter_deltas(
+            extract_peft_encoder_parameter_deltas(
                 model=model,
                 base_parameters=base_parameters,
                 labels=effective_labels,

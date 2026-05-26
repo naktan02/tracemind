@@ -13,8 +13,8 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    extract_lora_classifier_parameter_deltas,
-    load_lora_classifier_base_parameters_into_model,
+    extract_peft_encoder_parameter_deltas,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import (
     set_seed,
@@ -78,7 +78,7 @@ def run_lora_classifier_supervised_seed_step_core(
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    load_lora_classifier_base_parameters_into_model(
+    load_peft_encoder_base_parameters_into_model(
         model=model,
         labels=effective_labels,
         base_parameters=base_parameters,
@@ -108,7 +108,7 @@ def run_lora_classifier_supervised_seed_step_core(
         log_every_steps=0,
     )
     lora_deltas, head_weight_deltas, head_bias_deltas = (
-        extract_lora_classifier_parameter_deltas(
+        extract_peft_encoder_parameter_deltas(
             model=model,
             base_parameters=base_parameters,
             labels=effective_labels,

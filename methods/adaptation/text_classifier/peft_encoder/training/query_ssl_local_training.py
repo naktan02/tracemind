@@ -61,8 +61,8 @@ from shared.src.contracts.training_contracts import (
 )
 
 from .delta_extraction import (
-    extract_lora_classifier_parameter_deltas,
-    load_lora_classifier_base_parameters_into_model,
+    extract_peft_encoder_parameter_deltas,
+    load_peft_encoder_base_parameters_into_model,
 )
 from .loops import set_seed, train_query_ssl_classifier
 from .modeling import LoraTextClassifier, build_peft_encoder_text_classifier_from_config
@@ -201,7 +201,7 @@ def run_query_ssl_lora_classifier_training_core(
                 runtime_resource_cache=runtime_resource_cache,
             )
         with _measure(timing_recorder, "core_base_parameter_load_seconds"):
-            load_lora_classifier_base_parameters_into_model(
+            load_peft_encoder_base_parameters_into_model(
                 model=model,
                 labels=effective_labels,
                 base_parameters=base_parameters,
@@ -298,7 +298,7 @@ def run_query_ssl_lora_classifier_training_core(
 
     with _measure(timing_recorder, "core_delta_extract_seconds"):
         lora_deltas, head_weight_deltas, head_bias_deltas = (
-            extract_lora_classifier_parameter_deltas(
+            extract_peft_encoder_parameter_deltas(
                 model=model,
                 base_parameters=base_parameters,
                 labels=effective_labels,

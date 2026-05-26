@@ -891,7 +891,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     )
     monkeypatch.setattr(
         supervised_seed_step,
-        "load_lora_classifier_base_parameters_into_model",
+        "load_peft_encoder_base_parameters_into_model",
         lambda **_: None,
     )
     monkeypatch.setattr(
@@ -906,7 +906,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     )
     monkeypatch.setattr(
         supervised_seed_step,
-        "extract_lora_classifier_parameter_deltas",
+        "extract_peft_encoder_parameter_deltas",
         lambda **_: (
             {"lora.test": [0.5]},
             {"anxiety": [0.1, 0.0], "normal": [0.0, -0.1]},

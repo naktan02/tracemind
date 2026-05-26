@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    lora_classifier_delta_l2_norm,
+    peft_encoder_delta_l2_norm,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
     LoraClassifierTrainArtifacts,
@@ -61,7 +61,7 @@ class SimulationInlineLoraClassifierTrainExecutor:
             lora_parameter_deltas=lora_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
-            delta_l2_norm=lora_classifier_delta_l2_norm(
+            delta_l2_norm=peft_encoder_delta_l2_norm(
                 lora_parameter_deltas=lora_parameter_deltas,
                 classifier_head_weight_deltas=classifier_head_weight_deltas,
                 classifier_head_bias_deltas=classifier_head_bias_deltas,
