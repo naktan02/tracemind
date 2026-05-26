@@ -2,12 +2,14 @@
 
 이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
-method-owned tensor local objective core를 추가했다. LoRA-classifier logical partition
-step과 method-owned local simulation bridge는
+method-owned tensor local objective core를 추가했다. 현재 LoRA-classifier logical
+partition step과 method-owned local simulation bridge는
 `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
-소유한다. 현재 helper peer context simulation slice와 labels-at-server supervised
-seed server step은 열려 있고, full 원본 parity에 필요한 sparse S2C/C2S sync는 다음
-구현 단계다.
+소유한다. 다음 FedMatch parity 단계는 LoRA에 강결합된 logical partition을
+adapter-neutral `partitioned_trainable_state` capability로 낮추고, frozen backbone 위
+trainable adapter/head partition을 round 간 보존하는 것이다. 현재 helper peer context
+simulation slice와 labels-at-server supervised seed server step은 열려 있고, full 원본
+parity에 필요한 partitioned global state와 sparse S2C/C2S sync는 다음 구현 단계다.
 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.
@@ -45,12 +47,25 @@ policy가 된다.
     `server_step=none`, `server_update=fedavg_merged_delta`, `peer_context=none`,
     `update_partition=unified`, `local_ssl_policy=profile_pseudo_label`,
     `aggregation_weight=example_count`, `query_multiview_source=materialized_rows`다.
+- `partitioned_trainable_state` planned capability
+  - frozen backbone은 공유하고 trainable adapter/head state만 partition별로 보존한다.
+  - FedMatch의 `sigma/psi`는 이 capability 위에 올라가는 method-owned partition
+    scheme이며, LoRA/DoRA 같은 concrete PEFT composition은 adapter-family가 소유한다.
+  - runner와 runtime은 FedMatch 이름을 판단하지 않고 `partitioned_update`와
+    `composition_policy`를 통해 materialization/evaluation을 연결한다.
+  - 초기 구현 위치는 가까운 owner인 `methods/adaptation/lora_classifier/` 아래지만,
+    type과 primitive 이름은 `TrainableAdapterPartitionPlan`,
+    `AdapterClassifierDeltaBundle`, `PartitionedAdapterStateProjector`처럼
+    adapter-neutral하게 둔다. PEFT adapter 축이 `lora`/`dora`로 재정립되면 이
+    primitive를 상위 축으로 옮긴다.
 - `methods/federated_ssl/fedmatch/`
   - FedMatch descriptor, 원본 설정 snapshot, local objective/server/round policy,
     recipe, sigma/psi partition metadata를 소유한다.
   - 현재 status는 `lora_local_runtime_slice_v1`이다. 원본 설정값, confidence
     filter, agreement pseudo-label vote, KDTree 우선 helper nearest-neighbor selection,
     supervised/unsupervised FedMatch tensor loss는 method package에 고정했다.
+    다음 status는 `partitioned_trainable_state`로, LoRA concrete slice를 넘어
+    DoRA 같은 PEFT adapter 교체를 허용해야 한다.
   - `methods/adaptation/lora_classifier/federated_ssl/`는 method-owned objective를
     LoRA-classifier model/loaders, logical partition delta, shared update payload로
     실행하는 adapter-family slice다. FedMatch method 의미는
@@ -96,8 +111,9 @@ runtime slice다.
 - FedMatch 원본 snapshot은 `wyjeong/FedMatch`
   `4947aa255d59bd37915e25a719763aaaf5d7e067`로 고정했다.
 - 원본 full ResNet9 parameter decomposition은 TraceMind에서 frozen backbone을 제외한
-  LoRA adapter + classifier head trainable tensor의 logical `sigma/psi` partition으로
-  매핑한다.
+  trainable adapter + classifier head tensor의 `sigma/psi` partition으로 매핑한다.
+  현재 concrete adapter는 LoRA지만, 새 runtime primitive는 DoRA 같은 PEFT adapter로
+  바뀌어도 FedMatch method core와 runner를 바꾸지 않는 구조여야 한다.
 - FedLGMatch와 (FL)^2는 global pseudo-label cache 또는 labels-at-server regime 때문에
   dataset/split/report 의미까지 같이 바뀔 가능성이 크다.
 

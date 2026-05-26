@@ -21,8 +21,10 @@ from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     extract_lora_classifier_materialized_state,
 )
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
+    build_adapter_classifier_delta_bundle,
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
+    project_adapter_classifier_delta_bundle_to_lora_partition_delta,
     snapshot_trainable_parameter_tensors,
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
@@ -181,6 +183,33 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
         result.metrics["psi_confident_count"],
         torch.tensor(2.0),
     )
+
+
+def test_adapter_classifier_delta_bundle_projects_to_lora_partition_payload() -> None:
+    parameter_deltas = {
+        "encoder_lora.weight": torch.tensor([[0.1, -0.2], [0.3, 0.4]]),
+        "classifier.weight": torch.tensor([[0.5, 0.6], [-0.1, 0.2]]),
+        "classifier.bias": torch.tensor([0.05, -0.07]),
+    }
+
+    bundle = build_adapter_classifier_delta_bundle(
+        partition_name=FEDMATCH_SIGMA_PARTITION,
+        parameter_deltas=parameter_deltas,
+        labels=("anxiety", "normal"),
+    )
+    payload = project_adapter_classifier_delta_bundle_to_lora_partition_delta(
+        bundle=bundle,
+        labels=("anxiety", "normal"),
+    )
+
+    assert bundle.partition_name == FEDMATCH_SIGMA_PARTITION
+    assert set(bundle.adapter_parameter_deltas) == {"encoder_lora.weight"}
+    assert payload.partition_name == FEDMATCH_SIGMA_PARTITION
+    assert payload.lora_parameter_deltas["encoder_lora.weight"] == pytest.approx(
+        [0.1, -0.2, 0.3, 0.4]
+    )
+    assert payload.classifier_head_weight_deltas["anxiety"] == pytest.approx([0.5, 0.6])
+    assert payload.classifier_head_bias_deltas["normal"] == pytest.approx(-0.07)
 
 
 def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
