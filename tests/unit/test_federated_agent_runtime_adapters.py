@@ -30,7 +30,7 @@ from methods.adaptation.text_classifier.peft_encoder.update import (
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
-    upload_agent_local_lora_classifier_update,
+    upload_agent_local_peft_encoder_update,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -66,7 +66,7 @@ from scripts.runtime_adapters.federated_agent.base_state_materialization import 
     load_peft_encoder_base_parameters,
 )
 from scripts.runtime_adapters.federated_agent.local_training import (
-    run_query_ssl_lora_classifier_local_training,
+    run_query_ssl_peft_encoder_local_training,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (
     require_rows_supported_by_example_backend,
@@ -434,7 +434,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
         ),
     )
 
-    result = run_query_ssl_lora_classifier_local_training(
+    result = run_query_ssl_peft_encoder_local_training(
         client_id="agent_01",
         seed=42,
         output_dir=tmp_path,
@@ -741,7 +741,7 @@ def test_upload_agent_local_lora_update_materializes_server_owned_refs(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     )
 
-    uploaded = upload_agent_local_lora_classifier_update(
+    uploaded = upload_agent_local_peft_encoder_update(
         artifact_store=SimulationClientArtifactStore(output_dir=tmp_path),
         update_payload=update_payload,
     )
@@ -819,7 +819,7 @@ def test_upload_agent_local_peft_update_materializes_server_owned_refs(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     )
 
-    uploaded = upload_agent_local_lora_classifier_update(
+    uploaded = upload_agent_local_peft_encoder_update(
         artifact_store=SimulationClientArtifactStore(output_dir=tmp_path),
         update_payload=update_payload,
     )

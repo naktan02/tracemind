@@ -34,7 +34,7 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
 from scripts.runtime_adapters.federated_agent.local_training import (
-    run_query_ssl_lora_classifier_local_training,
+    run_query_ssl_peft_encoder_local_training,
 )
 from shared.src.contracts.training_contracts import ClientMetricKeys
 
@@ -104,7 +104,7 @@ def _run_query_ssl_lora_client_round(
             client_id=shard.client_id,
         )
     with timing.measure("local_training_total_seconds"):
-        local_result = run_query_ssl_lora_classifier_local_training(
+        local_result = run_query_ssl_peft_encoder_local_training(
             client_id=shard.client_id,
             seed=request.seed,
             output_dir=request.output_dir,

@@ -72,7 +72,7 @@ from shared.src.contracts.training_contracts import TrainingTask
 QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
 
 
-def run_method_owned_lora_classifier_local_training(
+def run_method_owned_peft_encoder_local_training(
     *,
     client_id: str,
     seed: int,
@@ -107,7 +107,7 @@ def run_method_owned_lora_classifier_local_training(
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
-    """simulation runtime state를 선택된 method-owned LoRA core에 연결한다."""
+    """simulation runtime state를 선택된 method-owned PEFT encoder core에 연결한다."""
 
     if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
@@ -192,7 +192,7 @@ def run_method_owned_lora_classifier_local_training(
     return result
 
 
-def run_query_ssl_lora_classifier_local_training(
+def run_query_ssl_peft_encoder_local_training(
     *,
     client_id: str,
     seed: int,
@@ -214,7 +214,7 @@ def run_query_ssl_lora_classifier_local_training(
     persist_agent_local_update: bool = True,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
-    """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
+    """simulation runtime state를 Query SSL PEFT encoder core에 연결한다."""
 
     if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
@@ -265,6 +265,12 @@ def run_query_ssl_lora_classifier_local_training(
             ),
         )
     )
+
+
+run_method_owned_lora_classifier_local_training = (
+    run_method_owned_peft_encoder_local_training
+)
+run_query_ssl_lora_classifier_local_training = run_query_ssl_peft_encoder_local_training
 
 
 def _load_base_parameters_if_needed(

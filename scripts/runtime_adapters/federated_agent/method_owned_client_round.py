@@ -134,7 +134,7 @@ def _run_method_owned_lora_client_round(
             client_id=shard.client_id,
         )
     with timing.measure("local_training_total_seconds"):
-        local_result = method_trainer.run_method_owned_lora_classifier_local_training(
+        local_result = method_trainer.run_method_owned_peft_encoder_local_training(
             client_id=shard.client_id,
             seed=request.seed,
             output_dir=request.output_dir,
