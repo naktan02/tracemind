@@ -6,6 +6,10 @@ import importlib
 from collections.abc import Callable
 from typing import Protocol
 
+from methods.adaptation.adapter_family_modules import (
+    adapter_family_module_name,
+    normalize_adapter_kind,
+)
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 
@@ -21,12 +25,6 @@ class AdapterRuntimeObjectiveCompatibilityValidator(Protocol):
         """runtime config와 training objective payload config를 비교한다."""
 
 
-_ADAPTATION_PACKAGE = "methods.adaptation"
-_RUNTIME_COMPATIBILITY_MODULE_ALIASES = {
-    "peft_classifier": (
-        "methods.adaptation.text_classifier.peft_encoder.runtime_compatibility"
-    ),
-}
 _RUNTIME_OBJECTIVE_COMPATIBILITY_VALIDATORS: dict[
     str,
     AdapterRuntimeObjectiveCompatibilityValidator,
@@ -86,16 +84,9 @@ def require_adapter_runtime_matches_objective(
 def _import_runtime_compatibility_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    aliased_module_name = _RUNTIME_COMPATIBILITY_MODULE_ALIASES.get(
-        normalized_adapter_kind
-    )
-    if aliased_module_name is not None:
-        importlib.import_module(aliased_module_name)
-        return
-    module_name = (
-        f"{_ADAPTATION_PACKAGE}."
-        f"{normalized_adapter_kind.replace('-', '_')}."
-        "runtime_compatibility"
+    module_name = adapter_family_module_name(
+        adapter_kind=normalized_adapter_kind,
+        submodule="runtime_compatibility",
     )
     try:
         importlib.import_module(module_name)
@@ -106,7 +97,4 @@ def _import_runtime_compatibility_module_for_adapter_kind(
 
 
 def _normalize_adapter_kind(adapter_kind: str) -> str:
-    normalized_adapter_kind = adapter_kind.strip().lower()
-    if not normalized_adapter_kind:
-        raise ValueError("adapter_kind must not be empty.")
-    return normalized_adapter_kind
+    return normalize_adapter_kind(adapter_kind)

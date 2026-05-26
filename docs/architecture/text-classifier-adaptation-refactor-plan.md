@@ -320,6 +320,10 @@ evaluation/final projection caller도 `evaluate_peft_encoder_*`,
 `require_peft_encoder_*`, `build_peft_encoder_text_classifier_from_config`를
 canonical surface로 사용한다. `evaluate_lora_classifier_*`와
 `require_lora_classifier_*`는 legacy evaluator/import 호환 alias다.
+adapter family dispatcher는 `peft_classifier` 패키지를 새로 만들지 않고
+`methods/adaptation/adapter_family_modules.py`에서 `peft_classifier` 구현 root를
+`text_classifier/peft_encoder`로 해석한다. 각 dispatcher는 family별 path override를
+직접 소유하지 않는다.
 
 ## 호환성 정책
 

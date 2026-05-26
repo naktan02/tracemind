@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import pytest
 
+from methods.adaptation.adapter_family_modules import adapter_family_module_name
 from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
 )
@@ -337,6 +338,16 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
     validate_federated_ssl_simulation_runtime_support(
         capability_plan=plan,
         composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+    )
+
+
+def test_peft_classifier_family_module_root_resolves_to_text_classifier_owner() -> None:
+    assert adapter_family_module_name(
+        adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
+        submodule="federated_ssl.server_update_policy",
+    ) == (
+        "methods.adaptation.text_classifier.peft_encoder."
+        "federated_ssl.server_update_policy"
     )
 
 

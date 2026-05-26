@@ -5,6 +5,10 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable
 
+from methods.adaptation.adapter_family_modules import (
+    adapter_family_module_name,
+    normalize_adapter_kind,
+)
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
@@ -13,12 +17,6 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 ServerUpdateCompatibilityValidator = Callable[
     [SharedAdapterUpdatePayload, SharedAdapterState], None
 ]
-_ADAPTATION_PACKAGE = "methods.adaptation"
-_ADAPTER_KIND_COMPATIBILITY_MODULE_OVERRIDES = {
-    "peft_classifier": (
-        "methods.adaptation.text_classifier.peft_encoder.server_preflight"
-    ),
-}
 _SERVER_UPDATE_COMPATIBILITY_VALIDATORS: dict[
     str,
     ServerUpdateCompatibilityValidator,
@@ -68,13 +66,9 @@ def require_server_compatible_update_payload(
 def _import_compatibility_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = _ADAPTER_KIND_COMPATIBILITY_MODULE_OVERRIDES.get(
-        normalized_adapter_kind,
-        (
-            f"{_ADAPTATION_PACKAGE}."
-            f"{normalized_adapter_kind.replace('-', '_')}."
-            "server_preflight"
-        ),
+    module_name = adapter_family_module_name(
+        adapter_kind=normalized_adapter_kind,
+        submodule="server_preflight",
     )
     try:
         importlib.import_module(module_name)
@@ -85,7 +79,4 @@ def _import_compatibility_module_for_adapter_kind(
 
 
 def _normalize_adapter_kind(adapter_kind: str) -> str:
-    normalized_adapter_kind = adapter_kind.strip().lower()
-    if not normalized_adapter_kind:
-        raise ValueError("adapter_kind must not be empty.")
-    return normalized_adapter_kind
+    return normalize_adapter_kind(adapter_kind)

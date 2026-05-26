@@ -1480,6 +1480,28 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
         "agent-local artifact ref 정책은 dispatcher가 아니라 해당 adapter family가 "
         "소유한다."
     )
+    assert "peft_classifier" not in source, (
+        "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
+        "패키지 경로 alias는 adapter_family_modules.py가 소유한다."
+    )
+
+
+def test_server_update_compatibility_dispatcher_stays_family_agnostic() -> None:
+    dispatcher_path = METHODS_SRC / "adaptation" / "server_update_compatibility.py"
+    imports = _collect_absolute_imports(dispatcher_path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    source = dispatcher_path.read_text(encoding="utf-8")
+
+    assert not sorted(imports & forbidden_imports), (
+        "server update compatibility dispatcher는 adapter family별 payload "
+        "contract를 직접 알지 않는다."
+    )
+    assert "lora_classifier" not in source
+    assert "peft_classifier" not in source
 
 
 def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> None:
@@ -1501,6 +1523,10 @@ def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> N
     )
     assert "lora_classifier" not in source, (
         "dispatcher는 LoRA-classifier family 이름을 하드코딩하지 않는다."
+    )
+    assert "peft_classifier" not in source, (
+        "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
+        "패키지 경로 alias는 adapter_family_modules.py가 소유한다."
     )
 
 
@@ -1544,6 +1570,10 @@ def test_federated_ssl_server_update_dispatcher_stays_family_agnostic() -> None:
     )
     assert "lora_classifier" not in source, (
         "FL SSL server update dispatcher는 LoRA-classifier family 이름을 "
+        "하드코딩하지 않는다."
+    )
+    assert "peft_classifier" not in source, (
+        "FL SSL server update dispatcher는 PEFT-classifier family 이름도 "
         "하드코딩하지 않는다."
     )
 
