@@ -15,22 +15,16 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 from methods.adaptation.lora_classifier.aggregation.state_projection import (
     build_lora_classifier_state_projection,
 )
-from methods.adaptation.lora_classifier.training.delta_extraction import (
-    extract_lora_classifier_parameter_deltas,
-    load_lora_classifier_base_parameters_into_model,
+from methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step import (
+    run_lora_classifier_supervised_seed_step_core,
 )
-from methods.adaptation.lora_classifier.training.loops import (
-    set_seed,
-    train_classifier,
-)
-from methods.adaptation.lora_classifier.training.modeling import (
-    build_lora_text_classifier_from_config,
-)
-from methods.adaptation.query_classifier_adaptation.data import build_dataloader
 from methods.federated_ssl.capability_plan import (
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
     FederatedSslCapabilityPlan,
+)
+from methods.federated_ssl.server_step import (
+    resolve_method_supervised_seed_step_parameters,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -119,25 +113,17 @@ def _run_lora_classifier_supervised_seed_step(
         raise ValueError("supervised_seed_step requires active LoraClassifierState.")
     if not bootstrapped.dataset_split.bootstrap_rows:
         raise ValueError("supervised_seed_step requires server bootstrap_rows.")
+    if request.ssl_method_config is None:
+        raise ValueError("supervised_seed_step requires ssl_method_config.")
 
     lora_config = request.round_runtime_config.lora_classifier.training_backend_config
-    device = request.local_trainer_runtime_config.device
     labels = tuple(str(label) for label in active.adapter_state.label_schema)
-    label_to_index = {label: index for index, label in enumerate(labels)}
-    effective_epochs = _server_seed_epochs(
-        request=request,
+    seed_parameters = resolve_method_supervised_seed_step_parameters(
+        method_name=request.ssl_method_config.name,
+        effective_parameters=request.ssl_method_config.effective_parameters,
+        default_epochs=request.training_task_config.local_epochs,
+        default_batch_size=request.training_task_config.batch_size,
         round_index=round_index,
-    )
-    batch_size = _server_seed_batch_size(request=request)
-    if effective_epochs <= 0:
-        raise ValueError("supervised_seed_step server epochs must be positive.")
-
-    set_seed(int(request.seed) + 7919 + int(round_index))
-    model, tokenizer = build_lora_text_classifier_from_config(
-        labels=list(labels),
-        lora_config=lora_config,
-        runtime_config=request.local_trainer_runtime_config,
-        runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
     now = datetime.now(timezone.utc)
     base_parameters = materialize_base_lora_classifier_state(
@@ -148,44 +134,18 @@ def _run_lora_classifier_supervised_seed_step(
             aggregated_at=now,
         ),
     )
-    load_lora_classifier_base_parameters_into_model(
-        model=model,
+    seed_result = run_lora_classifier_supervised_seed_step_core(
         labels=labels,
         base_parameters=base_parameters,
-        device=device,
-    )
-    train_loader = build_dataloader(
-        rows=bootstrapped.dataset_split.bootstrap_rows,
-        label_to_index=label_to_index,
-        tokenizer=tokenizer,
-        batch_size=batch_size,
-        max_length=lora_config.max_length,
-        task_prefix=lora_config.task_prefix,
-        shuffle=True,
-    )
-    train_classifier(
-        model=model,
-        train_loader=train_loader,
-        selection_loader=train_loader,
-        categories=list(labels),
-        device=device,
-        epochs=effective_epochs,
+        bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,
+        lora_config=lora_config,
+        trainer_runtime_config=request.local_trainer_runtime_config,
+        runtime_resource_cache=bootstrapped.runtime_resource_cache,
+        seed=int(request.seed) + 7919 + int(round_index),
+        epochs=seed_parameters.epochs,
+        batch_size=seed_parameters.batch_size,
         learning_rate=float(request.training_task_config.learning_rate),
-        classifier_learning_rate=float(request.training_task_config.learning_rate),
-        weight_decay=0.0,
-        max_grad_norm=(
-            0.0
-            if request.training_task_config.gradient_clip_norm is None
-            else float(request.training_task_config.gradient_clip_norm)
-        ),
-        log_every_steps=0,
-    )
-    lora_deltas, head_weight_deltas, head_bias_deltas = (
-        extract_lora_classifier_parameter_deltas(
-            model=model,
-            base_parameters=base_parameters,
-            labels=labels,
-        )
+        gradient_clip_norm=request.training_task_config.gradient_clip_norm,
     )
     next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
     artifact_refs = build_server_aggregate_artifact_refs(
@@ -208,9 +168,9 @@ def _run_lora_classifier_supervised_seed_step(
             CLASSIFIER_HEAD_ARTIFACT_SLOT
         ],
         artifact_format=artifact_refs.artifact_format,
-        lora_parameter_deltas=lora_deltas,
-        classifier_head_weight_deltas=head_weight_deltas,
-        classifier_head_bias_deltas=head_bias_deltas,
+        lora_parameter_deltas=seed_result.lora_parameter_deltas,
+        classifier_head_weight_deltas=seed_result.classifier_head_weight_deltas,
+        classifier_head_bias_deltas=seed_result.classifier_head_bias_deltas,
     )
     publication = bootstrapped.server_runtime.publish_shared_adapter_projection(
         base_manifest=active.manifest,
@@ -232,43 +192,5 @@ def _run_lora_classifier_supervised_seed_step(
             adapter_state=publication.next_state,
         ),
         model_revision=next_model_revision,
-        metrics={
-            "server_step_supervised_seed": 1.0,
-            "server_step_labeled_count": float(
-                len(bootstrapped.dataset_split.bootstrap_rows)
-            ),
-            "server_step_epochs": float(effective_epochs),
-            "server_step_batch_size": float(batch_size),
-        },
+        metrics=seed_result.metrics,
     )
-
-
-def _server_seed_epochs(
-    *,
-    request: SimulationRunRequest,
-    round_index: int,
-) -> int:
-    effective_parameters = (
-        {}
-        if request.ssl_method_config is None
-        else request.ssl_method_config.effective_parameters
-    )
-    key = "server_pretrain_epochs" if round_index == 1 else "server_epochs"
-    value = effective_parameters.get(key, request.training_task_config.local_epochs)
-    return int(value)
-
-
-def _server_seed_batch_size(*, request: SimulationRunRequest) -> int:
-    effective_parameters = (
-        {}
-        if request.ssl_method_config is None
-        else request.ssl_method_config.effective_parameters
-    )
-    value = effective_parameters.get(
-        "server_batch_size",
-        request.training_task_config.batch_size,
-    )
-    batch_size = int(value)
-    if batch_size <= 0:
-        raise ValueError("supervised_seed_step server batch size must be positive.")
-    return batch_size

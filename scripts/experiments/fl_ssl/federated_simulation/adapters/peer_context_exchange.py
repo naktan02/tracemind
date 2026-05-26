@@ -11,8 +11,8 @@ from methods.federated_ssl.capability_plan import (
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerContext,
-    NearestPeerClientIndex,
-    should_refresh_peer_context,
+    build_fixed_probe_peer_context_by_client,
+    resolve_fixed_probe_peer_context_parameters,
 )
 
 
@@ -42,9 +42,8 @@ def build_peer_context_by_client(
 ) -> dict[str, FederatedSslPeerContext]:
     """round 시작 전 client별 peer/helper context를 만든다.
 
-    `fixed_probe_output_knn`은 mechanism만 공통으로 구현한다. helper 개수와
-    refresh interval 같은 의미 있는 값은 method effective parameters에서 읽고,
-    FedMatch 원본 의미에 맞춰 KDTree 우선 nearest-neighbor index를 사용한다.
+    script adapter는 capability와 simulation input만 전달한다. helper parameter와
+    nearest-neighbor selection 의미는 `methods.federated_ssl.peer_context`가 소유한다.
     """
 
     policy_name = capability_plan.peer_context_policy_name
@@ -53,65 +52,25 @@ def build_peer_context_by_client(
     if policy_name != PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN:
         require_supported_peer_context(capability_plan)
         return {}
-    if round_index <= 0:
-        raise ValueError("round_index must be one-based and positive.")
-
-    parameters = _resolve_method_peer_context_parameters(ssl_method_config)
-    num_helpers = _required_positive_or_zero_int(parameters, "num_helpers")
-    refresh_interval = _required_positive_int(parameters, "refresh_interval")
-    round_index_zero_based = round_index - 1
-    refresh_due = should_refresh_peer_context(
-        round_index_zero_based=round_index_zero_based,
-        refresh_interval=refresh_interval,
+    round_state_exchange, effective_parameters = _method_peer_context_sources(
+        ssl_method_config
     )
-    vectors = {} if client_vectors is None else dict(client_vectors)
-    helper_index = (
-        NearestPeerClientIndex(client_vectors=vectors, prefer_kdtree=True)
-        if refresh_due and vectors
-        else None
+    parameters = resolve_fixed_probe_peer_context_parameters(
+        round_state_exchange=round_state_exchange,
+        effective_parameters=effective_parameters,
     )
-    contexts: dict[str, FederatedSslPeerContext] = {}
-    for client_id in selected_client_ids:
-        has_selection_vector = client_id in vectors
-        helper_client_ids: tuple[str, ...] = ()
-        if refresh_due and has_selection_vector and helper_index is not None:
-            helper_client_ids = helper_index.query(
-                client_id=client_id,
-                peer_count=num_helpers,
-            )
-        contexts[client_id] = FederatedSslPeerContext(
-            client_id=client_id,
-            policy_name=policy_name,
-            round_index_zero_based=round_index_zero_based,
-            helper_client_ids=helper_client_ids,
-            refreshed=refresh_due and has_selection_vector,
-            metadata={
-                "num_helpers": num_helpers,
-                "refresh_interval": refresh_interval,
-                "refresh_due": refresh_due,
-                "has_selection_vector": has_selection_vector,
-                "selection_vector_source": (
-                    "provided" if has_selection_vector else "unavailable"
-                ),
-                "selection_index_backend": (
-                    helper_index.backend_name if helper_index is not None else "none"
-                ),
-                "selection_query_size": (
-                    helper_index.query_size_including_self(
-                        peer_count=num_helpers,
-                    )
-                    if helper_index is not None
-                    else 0
-                ),
-                "parameter_source": "effective_parameters",
-            },
-        )
-    return contexts
+    return build_fixed_probe_peer_context_by_client(
+        policy_name=policy_name,
+        parameters=parameters,
+        selected_client_ids=selected_client_ids,
+        round_index=round_index,
+        client_vectors=client_vectors,
+    )
 
 
-def _resolve_method_peer_context_parameters(
+def _method_peer_context_sources(
     ssl_method_config: object | None,
-) -> Mapping[str, object]:
+) -> tuple[Mapping[str, object], Mapping[str, object]]:
     if ssl_method_config is None:
         raise ValueError(
             "fixed_probe_output_knn peer context requires ssl_method_config "
@@ -126,33 +85,4 @@ def _resolve_method_peer_context_parameters(
     effective_parameters = getattr(ssl_method_config, "effective_parameters", {})
     if not isinstance(effective_parameters, Mapping):
         effective_parameters = {}
-    resolved = dict(round_state_exchange)
-    if "num_helpers" in effective_parameters:
-        resolved["num_helpers"] = effective_parameters["num_helpers"]
-    if "helper_refresh_interval" in effective_parameters:
-        resolved["refresh_interval"] = effective_parameters["helper_refresh_interval"]
-    elif "refresh_interval" in effective_parameters:
-        resolved["refresh_interval"] = effective_parameters["refresh_interval"]
-    return resolved
-
-
-def _required_positive_or_zero_int(
-    parameters: Mapping[str, object],
-    key: str,
-) -> int:
-    if key not in parameters:
-        raise ValueError(f"peer context method parameter is missing: {key}.")
-    value = int(parameters[key])
-    if value < 0:
-        raise ValueError(f"peer context method parameter must be non-negative: {key}.")
-    return value
-
-
-def _required_positive_int(
-    parameters: Mapping[str, object],
-    key: str,
-) -> int:
-    value = _required_positive_or_zero_int(parameters, key)
-    if value <= 0:
-        raise ValueError(f"peer context method parameter must be positive: {key}.")
-    return value
+    return round_state_exchange, effective_parameters

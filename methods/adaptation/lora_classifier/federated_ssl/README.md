@@ -7,6 +7,10 @@ LoRA/classifier 학습 loop와 shared update payload로 실행하는 slice다.
   LoRA-classifier method-owned local core를 호출한다.
 - `server_update_policy.py`: FL SSL `server_update_policy`를 LoRA-classifier
   aggregation backend로 해석한다.
+- `supervised_seed_step.py`: server bootstrap rows로 LoRA-classifier supervised
+  seed delta를 계산하는 family execution primitive다.
+- `helper_provider.py`: method-local runtime requirement가 helper weak probability
+  provider를 요구할 때 LoRA-classifier helper snapshot을 provider로 materialize한다.
 - `partitioned_objective_training.py`: method-owned partitioned local objective를
   LoRA-classifier model/loaders, delta materialization, update envelope에 연결한다.
 - `partitioned_budget.py`: partitioned local trainer가 쓰는 original-method /

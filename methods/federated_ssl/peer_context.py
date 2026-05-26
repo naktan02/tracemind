@@ -89,6 +89,20 @@ class FederatedSslPeerClientSnapshot:
 FederatedSslPeerContextByClient = Mapping[str, FederatedSslPeerContext]
 
 
+@dataclass(frozen=True, slots=True)
+class FixedProbePeerContextParameters:
+    """fixed-probe nearest-neighbor helper context에 필요한 method parameter."""
+
+    num_helpers: int
+    refresh_interval: int
+
+    def __post_init__(self) -> None:
+        if self.num_helpers < 0:
+            raise ValueError("peer context num_helpers must be non-negative.")
+        if self.refresh_interval <= 0:
+            raise ValueError("peer context refresh_interval must be positive.")
+
+
 def should_refresh_peer_context(
     *,
     round_index_zero_based: int,
@@ -101,6 +115,89 @@ def should_refresh_peer_context(
     if refresh_interval <= 0:
         raise ValueError("refresh_interval must be positive.")
     return (round_index_zero_based + 1) % refresh_interval == 0
+
+
+def resolve_fixed_probe_peer_context_parameters(
+    *,
+    round_state_exchange: Mapping[str, object],
+    effective_parameters: Mapping[str, object] | None = None,
+) -> FixedProbePeerContextParameters:
+    """method descriptor/effective parameter에서 fixed-probe helper 설정을 해석한다."""
+
+    parameters = dict(round_state_exchange)
+    overrides = {} if effective_parameters is None else dict(effective_parameters)
+    if "num_helpers" in overrides:
+        parameters["num_helpers"] = overrides["num_helpers"]
+    if "helper_refresh_interval" in overrides:
+        parameters["refresh_interval"] = overrides["helper_refresh_interval"]
+    elif "refresh_interval" in overrides:
+        parameters["refresh_interval"] = overrides["refresh_interval"]
+    return FixedProbePeerContextParameters(
+        num_helpers=_required_positive_or_zero_int(parameters, "num_helpers"),
+        refresh_interval=_required_positive_int(parameters, "refresh_interval"),
+    )
+
+
+def build_fixed_probe_peer_context_by_client(
+    *,
+    policy_name: str,
+    parameters: FixedProbePeerContextParameters,
+    selected_client_ids: Sequence[str],
+    round_index: int,
+    client_vectors: Mapping[str, Sequence[float]] | None = None,
+) -> dict[str, FederatedSslPeerContext]:
+    """fixed-probe output vector 기준 client별 nearest helper context를 만든다."""
+
+    if round_index <= 0:
+        raise ValueError("round_index must be one-based and positive.")
+    round_index_zero_based = round_index - 1
+    refresh_due = should_refresh_peer_context(
+        round_index_zero_based=round_index_zero_based,
+        refresh_interval=parameters.refresh_interval,
+    )
+    vectors = {} if client_vectors is None else dict(client_vectors)
+    helper_index = (
+        NearestPeerClientIndex(client_vectors=vectors, prefer_kdtree=True)
+        if refresh_due and vectors
+        else None
+    )
+    contexts: dict[str, FederatedSslPeerContext] = {}
+    for client_id in selected_client_ids:
+        has_selection_vector = client_id in vectors
+        helper_client_ids: tuple[str, ...] = ()
+        if refresh_due and has_selection_vector and helper_index is not None:
+            helper_client_ids = helper_index.query(
+                client_id=client_id,
+                peer_count=parameters.num_helpers,
+            )
+        contexts[client_id] = FederatedSslPeerContext(
+            client_id=client_id,
+            policy_name=policy_name,
+            round_index_zero_based=round_index_zero_based,
+            helper_client_ids=helper_client_ids,
+            refreshed=refresh_due and has_selection_vector,
+            metadata={
+                "num_helpers": parameters.num_helpers,
+                "refresh_interval": parameters.refresh_interval,
+                "refresh_due": refresh_due,
+                "has_selection_vector": has_selection_vector,
+                "selection_vector_source": (
+                    "provided" if has_selection_vector else "unavailable"
+                ),
+                "selection_index_backend": (
+                    helper_index.backend_name if helper_index is not None else "none"
+                ),
+                "selection_query_size": (
+                    helper_index.query_size_including_self(
+                        peer_count=parameters.num_helpers,
+                    )
+                    if helper_index is not None
+                    else 0
+                ),
+                "parameter_source": "effective_parameters",
+            },
+        )
+    return contexts
 
 
 def select_nearest_peer_client_ids(
@@ -234,6 +331,28 @@ def _validate_vector(vector: Sequence[float], *, name: str) -> tuple[float, ...]
     if not vector:
         raise ValueError(f"peer selection vector for {name!r} must not be empty.")
     return tuple(float(value) for value in vector)
+
+
+def _required_positive_or_zero_int(
+    parameters: Mapping[str, object],
+    key: str,
+) -> int:
+    if key not in parameters:
+        raise ValueError(f"peer context method parameter is missing: {key}.")
+    value = int(parameters[key])
+    if value < 0:
+        raise ValueError(f"peer context method parameter must be non-negative: {key}.")
+    return value
+
+
+def _required_positive_int(
+    parameters: Mapping[str, object],
+    key: str,
+) -> int:
+    value = _required_positive_or_zero_int(parameters, key)
+    if value <= 0:
+        raise ValueError(f"peer context method parameter must be positive: {key}.")
+    return value
 
 
 def _build_scipy_kdtree(rows: Sequence[Sequence[float]]) -> Any | None:

@@ -21,6 +21,7 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
 )
+from methods.adaptation.lora_classifier.federated_ssl import supervised_seed_step
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
 )
@@ -802,7 +803,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
         calls["train_loader"] = kwargs["train_loader"]
 
     monkeypatch.setattr(
-        server_step_execution,
+        supervised_seed_step,
         "build_lora_text_classifier_from_config",
         _fake_build_model,
     )
@@ -812,22 +813,22 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
         _fake_materialize,
     )
     monkeypatch.setattr(
-        server_step_execution,
+        supervised_seed_step,
         "load_lora_classifier_base_parameters_into_model",
         lambda **_: None,
     )
     monkeypatch.setattr(
-        server_step_execution,
+        supervised_seed_step,
         "build_dataloader",
         _fake_build_dataloader,
     )
     monkeypatch.setattr(
-        server_step_execution,
+        supervised_seed_step,
         "train_classifier",
         _fake_train_classifier,
     )
     monkeypatch.setattr(
-        server_step_execution,
+        supervised_seed_step,
         "extract_lora_classifier_parameter_deltas",
         lambda **_: (
             {"lora.test": [0.5]},

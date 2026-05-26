@@ -20,6 +20,9 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
+from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
+)
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     run_method_owned_lora_classifier_training_core,
 )
@@ -51,9 +54,6 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_lora_classifier_base_parameters,
-)
-from scripts.runtime_adapters.federated_agent.local_ssl_helper_provider import (
-    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
@@ -113,6 +113,7 @@ def run_method_owned_lora_classifier_local_training(
     labels = tuple(str(label) for label in active_adapter_state.label_schema)
     helper_weak_probability_provider = (
         build_lora_classifier_helper_provider_for_local_ssl_policy(
+            method_name=ssl_method_config.name,
             local_ssl_policy_name=local_ssl_policy_name,
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,

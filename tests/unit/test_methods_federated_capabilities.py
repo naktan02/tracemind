@@ -41,7 +41,13 @@ from methods.federated_ssl.local_supervision import (
     require_rows_match_local_supervision_regime,
     resolve_local_supervision_regime,
 )
+from methods.federated_ssl.local_objective import (
+    requires_method_helper_probability_provider,
+)
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
+from methods.federated_ssl.server_step import (
+    resolve_method_supervised_seed_step_parameters,
+)
 
 
 class _Update:
@@ -297,6 +303,46 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
     validate_federated_ssl_simulation_runtime_support(
         capability_plan=plan,
         composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+    )
+
+
+def test_fedmatch_server_seed_parameters_resolve_by_method_convention() -> None:
+    first_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=1,
+    )
+    later_round = resolve_method_supervised_seed_step_parameters(
+        method_name="fedmatch",
+        effective_parameters={
+            "server_pretrain_epochs": 2,
+            "server_epochs": 1,
+            "server_batch_size": 3,
+        },
+        default_epochs=9,
+        default_batch_size=8,
+        round_index=2,
+    )
+
+    assert first_round.epochs == 2
+    assert later_round.epochs == 1
+    assert first_round.batch_size == 3
+
+
+def test_fedmatch_helper_provider_requirement_resolves_by_method_convention() -> None:
+    assert requires_method_helper_probability_provider(
+        method_name="fedmatch",
+        local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    )
+    assert not requires_method_helper_probability_provider(
+        method_name="fedmatch",
+        local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
     )
 
 

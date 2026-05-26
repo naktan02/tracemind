@@ -3,6 +3,8 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from importlib import import_module
+from types import ModuleType
 
 from methods.common.config_reading import normalize_non_empty_str
 from methods.federated.client_split import LABELED_EXPOSURE_SERVER_ONLY_SEED
@@ -135,14 +137,14 @@ def validate_federated_ssl_capability_compatibility(
         method_descriptor=method_descriptor,
         capability_plan=capability_plan,
     )
-    _validate_local_ssl_semantics(
-        method_descriptor=method_descriptor,
-        capability_plan=capability_plan,
-    )
     _validate_server_update_semantics(capability_plan)
     if method_descriptor is None:
         _validate_manual_capability_plan(capability_plan)
         return
+    _validate_method_owned_capability_semantics(
+        method_descriptor=method_descriptor,
+        capability_plan=capability_plan,
+    )
     required = method_descriptor.required_capabilities
     _require_supported_capability(
         actual=capability_plan.labeled_exposure_policy_name,
@@ -296,18 +298,40 @@ def _validate_server_only_semantics(
         raise ValueError("server_only_seed requires a method-owned FL SSL descriptor.")
 
 
-def _validate_local_ssl_semantics(
+def _validate_method_owned_capability_semantics(
     *,
     method_descriptor: FederatedSslMethodDescriptor | None,
     capability_plan: FederatedSslCapabilityPlan,
 ) -> None:
-    if capability_plan.local_ssl_policy_name != LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+    if method_descriptor is None:
         return
-    if method_descriptor is None or method_descriptor.name != "fedmatch":
-        raise ValueError(
-            "local_ssl_policy=fedmatch_agreement requires the FedMatch "
-            "method-owned descriptor."
-        )
+    method_module = _import_method_compatibility_module(method_descriptor.name)
+    if method_module is None:
+        return
+    validator = getattr(
+        method_module,
+        "validate_method_capability_compatibility",
+        None,
+    )
+    if validator is None:
+        return
+    validator(
+        method_descriptor=method_descriptor,
+        capability_plan=capability_plan,
+    )
+
+
+def _import_method_compatibility_module(method_name: str) -> ModuleType | None:
+    module_name = (
+        f"methods.federated_ssl.{method_name.strip().lower().replace('-', '_')}"
+        ".compatibility"
+    )
+    try:
+        return import_module(module_name)
+    except ModuleNotFoundError as exc:
+        if exc.name == module_name:
+            return None
+        raise
 
 
 def _validate_server_update_semantics(

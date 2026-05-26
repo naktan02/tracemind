@@ -24,6 +24,9 @@ from methods.adaptation.lora_classifier.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
     upload_agent_local_lora_classifier_update,
 )
+from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
+)
 from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
     HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
     LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
@@ -60,9 +63,6 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
-)
-from scripts.runtime_adapters.federated_agent.local_ssl_helper_provider import (
-    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_lora_classifier_base_parameters,
@@ -222,12 +222,13 @@ def test_local_ssl_helper_provider_resolver_skips_non_helper_policy(
         return object()
 
     monkeypatch.setattr(
-        "scripts.runtime_adapters.federated_agent.local_ssl_helper_provider."
+        "methods.adaptation.lora_classifier.federated_ssl.helper_provider."
         "build_lora_classifier_helper_probability_provider",
         _fake_builder,
     )
 
     provider = build_lora_classifier_helper_provider_for_local_ssl_policy(
+        method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
         peer_context=None,
         peer_snapshots=None,
@@ -253,7 +254,7 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
         return provider
 
     monkeypatch.setattr(
-        "scripts.runtime_adapters.federated_agent.local_ssl_helper_provider."
+        "methods.adaptation.lora_classifier.federated_ssl.helper_provider."
         "build_lora_classifier_helper_probability_provider",
         _fake_builder,
     )
@@ -261,6 +262,7 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
     runtime_cache = object()
 
     resolved = build_lora_classifier_helper_provider_for_local_ssl_policy(
+        method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
         peer_context=None,
         peer_snapshots={},
