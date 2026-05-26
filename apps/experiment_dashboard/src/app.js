@@ -1,3 +1,15 @@
+import {
+  buildValueTicks,
+  renderSeriesLegend,
+  seriesColors,
+} from "./dashboard_charting.js";
+import {
+  loadStoredRunAliases,
+  loadStoredSeriesColors,
+  storeRunAliases,
+  storeSeriesColors,
+} from "./dashboard_preferences.js";
+
 const DATA_URL = "./data/experiment_dashboard.json";
 const CENTRAL_SSL_TRACK = "central_lora_ssl";
 const CENTRAL_INITIAL_EVAL_TRACK = "central_lora_initial_eval";
@@ -86,15 +98,6 @@ const DEFAULT_FL_RUN_METRICS = [
   "macro_f1_std",
   "communication_cost",
 ];
-const SERIES_COLOR_STORAGE_KEYS = {
-  central_compare: "tracemind_dashboard.central_compare_run_colors.v1",
-  fl_round: "tracemind_dashboard.fl_round_run_colors.v1",
-};
-const RUN_ALIAS_STORAGE_KEYS = {
-  central_overview: "tracemind_dashboard.central_overview_run_aliases.v1",
-  fl_runs: "tracemind_dashboard.fl_run_aliases.v1",
-  fl_round: "tracemind_dashboard.fl_round_run_aliases.v1",
-};
 const FL_ROUND_METRICS = [
   "macro_f1",
   "accuracy_top_1",
@@ -2198,7 +2201,7 @@ function drawFlRoundLines(rows, metric) {
     axisMax = Math.min(1, axisMax);
   }
   const valueRange = Math.max(axisMax - axisMin, 0.000001);
-  const colors = seriesColors(series, "fl_round");
+  const colors = seriesColors(series, seriesColorOverrides("fl_round"));
   const xForPoint = (point) =>
     pad.left +
     pointInset +
@@ -3053,7 +3056,7 @@ function drawCentralEpochLineChart(series, metric) {
     axisMax = Math.min(1, axisMax);
   }
   const valueRange = Math.max(axisMax - axisMin, 0.000001);
-  const colors = seriesColors(series, "central_compare");
+  const colors = seriesColors(series, seriesColorOverrides("central_compare"));
   const xForPoint = (point) =>
     pad.left + pointInset + ((point.epoch - minEpoch) / epochRange) * chartWidth;
   const yForValue = (value) =>
@@ -3455,55 +3458,6 @@ function formatOverviewMetric(row, metric) {
   return formatMetric(row[metric]);
 }
 
-function seriesColors(series, scope = null) {
-  const palette = [
-    "#23766f",
-    "#d97732",
-    "#527a45",
-    "#8f5b3d",
-    "#6c7a89",
-    "#a94f1f",
-    "#5a6fb0",
-    "#b55a7a",
-  ];
-  const overrides = seriesColorOverrides(scope);
-  return new Map(
-    series.map((item, index) => {
-      const colorKey = item.colorKey ?? item.label;
-      return [
-        item.label,
-        overrides[colorKey] ?? palette[index % palette.length],
-      ];
-    }),
-  );
-}
-
-function renderSeriesLegend(series, colors, scope = null) {
-  return `
-    <div class="chart-legend editable-legend">
-      ${series
-        .map((item) => {
-          const colorKey = item.colorKey ?? item.label;
-          const color = colors.get(item.label);
-          return `
-            <span>
-              <input
-                class="legend-color-input"
-                type="color"
-                value="${escapeHtml(color)}"
-                data-series-color-scope="${escapeHtml(scope ?? "")}"
-                data-series-color-key="${escapeHtml(colorKey)}"
-                aria-label="${escapeHtml(item.label)} 색상 변경"
-              />
-              ${escapeHtml(item.label)}
-            </span>
-          `;
-        })
-        .join("")}
-    </div>
-  `;
-}
-
 function bindSeriesColorEvents(container) {
   for (const eventName of ["input", "change"]) {
     container.addEventListener(eventName, (event) => {
@@ -3563,76 +3517,6 @@ function applySeriesColorToCurrentChart(scope, colorKey, color) {
   }
 }
 
-function loadStoredSeriesColors(scope) {
-  const storageKey = SERIES_COLOR_STORAGE_KEYS[scope];
-  if (!storageKey) {
-    return {};
-  }
-  try {
-    const rawValue = window.localStorage.getItem(storageKey);
-    const parsed = rawValue ? JSON.parse(rawValue) : {};
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(parsed).filter(([_key, value]) =>
-        isHexColor(String(value)),
-      ),
-    );
-  } catch (_error) {
-    return {};
-  }
-}
-
-function loadStoredRunAliases(scope) {
-  const storageKey = RUN_ALIAS_STORAGE_KEYS[scope];
-  if (!storageKey) {
-    return {};
-  }
-  try {
-    const rawValue = window.localStorage.getItem(storageKey);
-    const parsed = rawValue ? JSON.parse(rawValue) : {};
-    if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
-      return {};
-    }
-    return Object.fromEntries(
-      Object.entries(parsed)
-        .map(([key, value]) => [key, String(value).trim()])
-        .filter(([_key, value]) => value.length > 0),
-    );
-  } catch (_error) {
-    return {};
-  }
-}
-
-function storeRunAliases(scope, aliases) {
-  const storageKey = RUN_ALIAS_STORAGE_KEYS[scope];
-  if (!storageKey) {
-    return;
-  }
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(aliases));
-  } catch (_error) {
-    // localStorage가 막힌 환경에서는 현재 화면 상태만 유지한다.
-  }
-}
-
-function storeSeriesColors(scope, colors) {
-  const storageKey = SERIES_COLOR_STORAGE_KEYS[scope];
-  if (!storageKey) {
-    return;
-  }
-  try {
-    window.localStorage.setItem(storageKey, JSON.stringify(colors));
-  } catch (_error) {
-    // localStorage가 막힌 환경에서는 현재 화면 상태만 유지한다.
-  }
-}
-
-function isHexColor(value) {
-  return /^#[0-9a-fA-F]{6}$/.test(value);
-}
-
 function cssEscape(value) {
   if (window.CSS?.escape) {
     return window.CSS.escape(value);
@@ -3650,14 +3534,6 @@ function flRoundSeriesLabel(runId, row, metric, runCount, metricCount) {
     return runLabel;
   }
   return `${runLabel} · ${metricLabel(metric)}`;
-}
-
-function buildValueTicks(minValue, maxValue, tickCount) {
-  if (tickCount <= 1) {
-    return [minValue];
-  }
-  const step = (maxValue - minValue) / (tickCount - 1);
-  return Array.from({ length: tickCount }, (_item, index) => minValue + step * index);
 }
 
 function fillSelect(select, values, selectedValue) {
