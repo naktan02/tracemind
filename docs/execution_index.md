@@ -57,7 +57,7 @@ Seed / central SSL:
 4. `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
 5. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
 6. `scripts/experiments/query_lora_ssl/*`
-7. `methods/adaptation/lora_classifier/*`
+7. `methods/adaptation/text_classifier/peft_encoder/*`
 8. `methods/evaluation/*`
 9. `methods/adaptation/query_classifier_adaptation/*`
 10. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)

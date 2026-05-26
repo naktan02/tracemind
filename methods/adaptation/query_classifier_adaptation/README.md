@@ -2,7 +2,8 @@
 
 이 패키지는 query-domain classifier adaptation method scaffold의 token-batch 입력
 glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를 얹는
-재사용 scaffold는 `methods/adaptation/lora_classifier/`가 소유한다.
+재사용 scaffold의 source of truth는
+`methods/adaptation/text_classifier/peft_encoder/`가 소유한다.
 
 범위:
 
@@ -16,8 +17,10 @@ glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를
 - Query SSL objective 자체는 `methods/ssl/`이 소유한다.
 - LoRA/RSLoRA 같은 PEFT adapter builder는
   `methods/adaptation/peft_adapters/`가 소유한다.
-- LoRA + classifier 모델/학습 scaffold는 `methods/adaptation/lora_classifier/`가
-  소유한다.
+- LoRA + classifier 모델/학습 scaffold는
+  `methods/adaptation/text_classifier/peft_encoder/`가 소유한다. 기존
+  `methods/adaptation/lora_classifier/`는 shared contract v2 전까지 유지하는
+  compatibility shim이다.
 - prototype 기반 query adaptation이 추가되면 이 패키지 아래에 넣지 않는다.
   같은 token-batch classifier scaffold를 학습하는 경우에만 이 패키지를 재사용한다.
 - agent API, local private state, query buffer repository 접근은 agent layer에

@@ -72,8 +72,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   registry
 - `methods/adaptation/local_objective_regularizers/`: FedProx처럼 adapter family와
   분리된 client-local objective regularizer
-- `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +
-  classifier head scaffold, 학습/평가 loop, family별 aggregation adapter
+- `methods/adaptation/lora_classifier/`: 기존 `adapter_kind=lora_classifier`
+  contract와 direct import 호환성을 위한 legacy shim package
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
   family별 aggregation adapter
 - `methods/adaptation/classification/`: modality-independent classification

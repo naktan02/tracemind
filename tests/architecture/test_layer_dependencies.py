@@ -1086,6 +1086,69 @@ def test_internal_code_does_not_import_legacy_lora_classifier_core_paths() -> No
     )
 
 
+def test_lora_classifier_legacy_package_only_contains_declared_shim_modules() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
+    declared_shims = {
+        package_root / "config.py",
+        package_root / "evaluation.py",
+        package_root / "initial_state.py",
+        package_root / "runtime_compatibility.py",
+        package_root / "server_preflight.py",
+        package_root / "training_backend.py",
+        package_root / "aggregation" / "base_state_snapshot.py",
+        package_root / "aggregation" / "fedavg.py",
+        package_root / "aggregation" / "materialization.py",
+        package_root / "aggregation" / "partitioned_delta_average.py",
+        package_root / "aggregation" / "partitioned_state.py",
+        package_root / "aggregation" / "state_projection.py",
+        package_root / "federated_ssl" / "helper_provider.py",
+        package_root / "federated_ssl" / "method_owned_training.py",
+        package_root / "federated_ssl" / "partition_sparse_sync.py",
+        package_root / "federated_ssl" / "partitioned_budget.py",
+        package_root / "federated_ssl" / "partitioned_model_builder.py",
+        package_root / "federated_ssl" / "partitioned_objective_training.py",
+        package_root / "federated_ssl" / "partitioned_trainable_model.py",
+        package_root / "federated_ssl" / "partitioned_training_loop.py",
+        package_root / "federated_ssl" / "peer_predictions.py",
+        package_root / "federated_ssl" / "server_update_policy.py",
+        package_root / "federated_ssl" / "supervised_seed_step.py",
+        package_root / "training" / "batching.py",
+        package_root / "training" / "delta_extraction.py",
+        package_root / "training" / "loops.py",
+        package_root / "training" / "modeling.py",
+        package_root / "training" / "optimizer_step.py",
+        package_root / "training" / "partitioned_deltas.py",
+        package_root / "training" / "pseudo_label_diagnostics.py",
+        package_root / "training" / "query_ssl_local_training.py",
+        package_root / "training" / "scalar_metrics.py",
+        package_root / "training" / "step_budget.py",
+        package_root / "update" / "delta_artifacts.py",
+        package_root / "update" / "json_delta_artifact.py",
+        package_root / "update" / "local_update.py",
+        package_root / "update" / "merged_tensor_artifact.py",
+        package_root / "update" / "partitioned_delta.py",
+        package_root / "update" / "partitioned_payload_builder.py",
+        package_root / "update" / "partitioned_tensor_artifact.py",
+        package_root / "update" / "payload_builder.py",
+        package_root / "update" / "query_ssl_update.py",
+        package_root / "update" / "simulation_inline_delta.py",
+    }
+    actual_modules = {
+        path for path in _iter_python_files(package_root) if path.name != "__init__.py"
+    }
+    undeclared_modules = sorted(actual_modules - declared_shims)
+    formatted_paths = chr(10).join(
+        f"- {_relative_repo_path(path)}" for path in undeclared_modules
+    )
+
+    assert not undeclared_modules, (
+        "methods/adaptation/lora_classifier/**는 contract v2 전까지 유지하는 legacy "
+        "shim package다. 새 구현 파일을 추가하지 말고 canonical "
+        "text_classifier/peft_encoder 또는 classification/peft_adapters 경로에 둔다.\n"
+        f"{formatted_paths}"
+    )
+
+
 def test_legacy_peft_adapter_packages_are_removed() -> None:
     legacy_paths = (
         METHODS_SRC / "adaptation" / "peft",

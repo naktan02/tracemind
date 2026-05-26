@@ -6,8 +6,9 @@ method-owned tensor local objective core를 추가했다. 현재 LoRA-classifier
 partition step, physical trainable partition step, PEFT-backed partitioned model
 builder, partitioned global state 보존, C2S sparse upload projection,
 method-owned local simulation bridge는
-`methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
-소유한다. 현재 helper peer context simulation slice, labels-at-server supervised seed
+`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`의 method-neutral 실행
+primitive가 소유한다. 기존 `methods/adaptation/lora_classifier/federated_ssl/`는
+compatibility shim이다. 현재 helper peer context simulation slice, labels-at-server supervised seed
 server step, client-local previous partition snapshot accounting, sparse S2C/C2S sync
 slice가 simulation 경로에 열려 있다.
 각 method의 source of truth는
@@ -53,7 +54,7 @@ policy가 된다.
     scheme이며, LoRA/DoRA 같은 concrete PEFT composition은 adapter-family가 소유한다.
   - runner와 runtime은 FedMatch 이름을 판단하지 않고 `partitioned_update`와
     `composition_policy`를 통해 materialization/evaluation을 연결한다.
-  - 초기 구현 위치는 가까운 owner인 `methods/adaptation/lora_classifier/` 아래지만,
+  - 초기 구현은 `methods/adaptation/text_classifier/peft_encoder/` 아래로 이동했으며,
     type과 primitive 이름은 `TrainableAdapterPartitionPlan`,
     `AdapterClassifierDeltaBundle`, `PartitionedAdapterStateProjector`처럼
     adapter-neutral하게 둔다. PEFT adapter 축이 `lora`/`dora`로 재정립되면 이
@@ -66,10 +67,10 @@ policy가 된다.
     nearest-neighbor selection, supervised/unsupervised FedMatch tensor loss는 method
     package에 고정했다. LoRA concrete slice를 넘어 DoRA 같은 PEFT adapter 교체를
     허용하는 partitioned trainable state primitive를 단계적으로 열고 있다.
-  - `methods/adaptation/lora_classifier/federated_ssl/`는 method-owned objective를
-    LoRA-classifier model/loaders, logical/physical partition delta, shared update
-    payload로 실행하는 adapter-family slice다. FedMatch method 의미는
-    `methods/federated_ssl/fedmatch/`에서 읽는다.
+  - `methods/adaptation/text_classifier/peft_encoder/federated_ssl/`는 method-owned
+    objective를 PEFT text-classifier model/loaders, logical/physical partition
+    delta, shared update payload로 실행하는 adapter-family slice다. FedMatch method
+    의미는 `methods/federated_ssl/fedmatch/`에서 읽는다.
   - helper prediction exchange는 이전 round client-local LoRA snapshot과 validation
     probe vector 기반 simulation slice로 실행된다. labels-at-server는
     `server_only_seed + supervised_seed_step` server runtime과 client-local `psi`

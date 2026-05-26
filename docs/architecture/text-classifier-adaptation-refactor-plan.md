@@ -280,14 +280,17 @@ compatibility shim으로만 남긴다. `helper_provider.py`,
 `text_classifier/peft_encoder/federated_ssl/`로 이동했고 legacy path는 shim으로만
 남겼다. `partitioned_objective_training.py`는 method-neutral runtime plan을 받아
 실행하고, FedMatch wrapper가 runtime plan을 생성해 주입한다. 다음 보정 대상은
-`peft/`, `lora/`, `classifier_head/`, `text_classifier/feature_head/` legacy shim
-폴더의 제거 조건이다.
+shared contract v2 전까지 남길 `lora_classifier` compatibility surface의 제거
+조건이다.
 FedMatch scenario, local supervision, sigma/psi partition routing, upload partition,
 objective 생성, `psi_factor` 해석은
 `methods/federated_ssl/fedmatch/partitioned_runtime_plan.py`로 분리했다.
 `peft/`, `lora/`, `classifier_head/`, `text_classifier/feature_head`,
 `text_classifier/aggregation/feature_head_fedavg_projection.py` legacy shim은 제거했고
 architecture guard는 해당 경로가 다시 생기지 않게 막는다.
+`lora_classifier` package는 `docs/contracts/legacy_contract_ledger.md`와
+code-adjacent README에 유지 이유와 제거 조건을 기록했고, architecture guard는 새
+business logic 파일 추가를 금지한다.
 
 ## 호환성 정책
 

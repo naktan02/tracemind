@@ -22,10 +22,12 @@
   training entrypoint. 현재는 PEFT text classifier runtime bridge로 위임한다.
 - `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
 
-LoRA-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned optimizer
-loop는 `methods/adaptation/lora_classifier/federated_ssl/`가 소유한다. 이 폴더는
-FedMatch의 원본 의미와 policy를 읽는 시작점이고, adapter family 구현 파일을 누적하지
-않는다.
+PEFT text-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned
+optimizer loop의 source of truth는
+`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`다. 기존
+`methods/adaptation/lora_classifier/federated_ssl/`는 shared contract v2 전까지
+유지하는 compatibility shim이며, FedMatch 원본 의미와 policy는 이 폴더가 계속
+소유한다.
 
 현재 상태는 `partitioned_trainable_state_slice_v1`이다. 이 상태는 LoRA concrete
 runtime 위에서 FedMatch 의미를 실행하지만, 최종 목표는 adapter 종류가 LoRA/DoRA로

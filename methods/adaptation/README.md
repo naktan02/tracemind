@@ -20,8 +20,8 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
 - `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.
   classifier/task payload 의미는 소유하지 않는다.
-- `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
-  재사용 scaffold
+- `lora_classifier/`: 기존 `adapter_kind=lora_classifier` contract와 direct import
+  호환성을 위한 legacy shim package
 - `text_classifier/`: text classifier task family의 장기 목표 adaptation 구조.
   `peft_encoder/`, aggregation projection 경계를 분리한다.
 - `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의

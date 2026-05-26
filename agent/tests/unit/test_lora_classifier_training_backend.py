@@ -25,12 +25,10 @@ from methods.adaptation.local_update_registry import (
     list_registered_shared_adapter_training_backend_names,
     list_shared_adapter_training_backend_catalog_entries,
 )
-from methods.adaptation.lora_classifier import (
-    config as lora_config,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
+from methods.adaptation.text_classifier.peft_encoder import config as lora_config
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
