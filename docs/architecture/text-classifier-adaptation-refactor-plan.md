@@ -293,6 +293,10 @@ code-adjacent README에 유지 이유와 제거 조건을 기록했고, architec
 business logic 파일 추가를 금지한다. 남은 `lora_classifier` runtime/config/report
 용어는 `docs/contracts/lora_classifier_v1_terminology_audit.md` 기준으로 v1 contract
 표면과 구현 owner 표면을 구분한다.
+기본 FL simulation profile, report verifier, result index/dashboard, FedMatch
+descriptor recipe는 `peft_classifier`를 canonical surface로 사용한다. 기존
+`lora_classifier` profile/runtime pair와 v1 payload reader는 old run artifact와
+legacy override compatibility 용도로만 남긴다.
 
 ## 호환성 정책
 

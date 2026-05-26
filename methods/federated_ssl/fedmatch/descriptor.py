@@ -62,13 +62,13 @@ descriptor = FederatedSslMethodDescriptor(
         training_row_source=TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE,
         runtime_entrypoint=(
             "methods.federated_ssl.fedmatch.partitioned_local_training:"
-            "run_method_owned_lora_classifier_training_core"
+            "run_method_owned_peft_classifier_training_core"
         ),
     ),
     server_step=FederatedSslServerStepSpec(
         server_aggregator_name="round_runtime_aggregation_backend",
         round_policy_name="round_active_pair_only",
-        server_aggregate_hint="fedmatch_lora_merged_delta_from_local_sigma_psi_steps",
+        server_aggregate_hint="fedmatch_peft_classifier_partitioned_delta",
     ),
     round_state_exchange=FederatedSslRoundStateExchangeSpec(
         exchange_name="peer_context",
@@ -85,8 +85,15 @@ descriptor = FederatedSslMethodDescriptor(
     ),
     recipe=FederatedSslMethodRecipe(
         method_name=FEDMATCH_METHOD_NAME,
-        supported_local_update_profile_names=("lora_pseudo_label_v1",),
+        supported_local_update_profile_names=(
+            "peft_pseudo_label_v1",
+            "lora_pseudo_label_v1",
+        ),
         supported_runtime_pairs=(
+            FederatedSslRuntimePair(
+                adapter_family_name="peft_classifier",
+                aggregation_backend_name="fedavg",
+            ),
             FederatedSslRuntimePair(
                 adapter_family_name="lora_classifier",
                 aggregation_backend_name="fedavg",

@@ -101,6 +101,25 @@ def test_federated_ssl_descriptor_registry_has_no_manual_baseline_builtin() -> N
     assert [descriptor.name for descriptor in descriptors] == ["fedmatch"]
 
 
+def test_fedmatch_descriptor_prefers_peft_classifier_recipe_surface() -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedmatch")
+
+    assert descriptor.local_step.runtime_entrypoint.endswith(
+        ":run_method_owned_peft_classifier_training_core"
+    )
+    assert descriptor.recipe is not None
+    assert descriptor.recipe.supported_local_update_profile_names == (
+        "peft_pseudo_label_v1",
+        "lora_pseudo_label_v1",
+    )
+    assert [
+        pair.normalized_key for pair in descriptor.recipe.supported_runtime_pairs
+    ] == [
+        ("peft_classifier", "fedavg"),
+        ("lora_classifier", "fedavg"),
+    ]
+
+
 def test_federated_ssl_execution_plan_defaults_to_method_owned_plaintext() -> None:
     plan = build_federated_ssl_execution_plan(
         fl_method=None,

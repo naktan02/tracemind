@@ -9,11 +9,11 @@ experiment package로 이해하면 된다.
 중요:
 
 - 이 패키지는 현재 로드맵에서 `시스템 FL 트랙`에 해당한다.
-- `central LoRA classifier` 논문 비교선을 먼저 닫은 뒤, winner를 FL로 옮길 때
+- `central PEFT-classifier` 논문 비교선을 먼저 닫은 뒤, winner를 FL로 옮길 때
   이 패키지가 직접적인 기준 entrypoint가 된다.
 
 현재 v1에서 이 패키지의 기본 비교선은
-`raw query rows -> local Query SSL LoRA-classifier -> server delta aggregation`이다.
+`raw query rows -> local Query SSL PEFT-classifier -> server delta aggregation`이다.
 기존 embedding/prototype scorer fallback은 제거했다. 나중에 prototype 기반
 방법론이 실제 비교 method로 확정되면 method-owned capability로 다시 붙인다.
 
@@ -24,7 +24,7 @@ experiment package로 이해하면 된다.
 2. `simulation.py`
    - `SimulationRunRequest` -> bootstrap -> round loop -> result 조립 흐름
 3. `flow/bootstrap.py`
-   - 초기 LoRA-classifier shared state와 manifest active pair 생성
+   - 초기 PEFT-classifier shared state와 manifest active pair 생성
 4. `flow/round_loop.py`
    - round open, client execution 호출, publication, post-aggregation validation
 5. `flow/result_builder.py`
@@ -53,7 +53,7 @@ experiment package로 이해하면 된다.
    - `methods/adaptation/runtime_objective_compatibility.py` dispatcher를 통해
      method-owned runtime/objective compatibility rule을 simulation request에 적용
 11. `adapters/evaluation.py`
-   - LoRA-classifier validation evaluator 실행 wiring
+   - PEFT-classifier validation evaluator 실행 wiring
 12. `adapters/sharding.py`
    - `methods/federated/shard_policy/`의 row adapter
 13. `io/`
@@ -134,7 +134,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     `local_ssl_policy=query_ssl_method`, `query_multiview_source=materialized_rows`다.
   - FedMatch method-owned slice는 `peer_context=fixed_probe_output_knn`와
     `server_update=fedmatch_partitioned`를 실행할 수 있다. 이때 local runtime이
-    `partitioned_deltas`를 생산하고, server runtime이 LoRA-classifier
+    `partitioned_deltas`를 생산하고, server runtime이 PEFT-classifier
     `partitioned_delta_average` backend로 소비한다.
   - `server_update_policy`는 server가 merged/partitioned update payload를 어떤
     의미로 해석할지 나타내며, server-side supervised seed step 여부인
@@ -144,7 +144,7 @@ contract가 생기면 이 패키지 안에서 공통화하지 않고 `methods/`,
     config에 복제하지 않는다.
   - `peer_context=fixed_probe_output_knn`는 method `effective_parameters`의
     helper 개수와 refresh interval을 읽어 client별 helper context를 만든다.
-    현재 slice는 이전 round client-local LoRA snapshot과 validation probe vector로
+    현재 slice는 이전 round client-local PEFT snapshot과 validation probe vector로
     KDTree 우선 nearest-neighbor helper client를 고르고, 선택된 helper snapshot의
     weak-view probability를 method-owned trainer에 주입한다.
   - `agent_generated_or_cached`는 live agent stored-event 경로가 weak/strong view를
@@ -280,12 +280,12 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_client_count_sweep \
 - 현재 기본 `fl_method.composition_mode`는 `manual`이며 lower axes는
   `query_ssl_method.algorithm_name`, `round_runtime.aggregation_backend_name`,
   `round_runtime.adapter_family_name`에서 자동 파생된다. 기본 조합은
-  `FixMatch + FedAvg + LoRA-classifier`이고 method descriptor를 참조하지 않는다.
+  `FixMatch + FedAvg + PEFT-classifier`이고 method descriptor를 참조하지 않는다.
   일회성 ablation은
   `strategy_axes/ssl/consistency_method=...`,
   `round_runtime.adapter_family_name=...`,
   `round_runtime.aggregation_backend_name=...`로 직접 고른다.
-- manual `Query SSL + LoRA-classifier` 경로의 local optimizer step 수는
+- manual `Query SSL + PEFT-classifier` 경로의 local optimizer step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`로
   계산된다. `full_epoch_steps`는 labeled/unlabeled loader step 수의 max이며,
   loader step 수는 `training_task.batch_size`와

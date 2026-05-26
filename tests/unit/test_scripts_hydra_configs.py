@@ -858,9 +858,16 @@ def test_fedmatch_method_config_injects_original_parameter_snapshot() -> None:
     assert ssl_method_config.parameter_override_status == "original"
     assert cfg.ssl_method.trace_mapping.supervised_partition == "sigma"
     assert cfg.ssl_method.trace_mapping.unsupervised_partition == "psi"
+    assert (
+        cfg.ssl_method.trace_mapping.parameter_decomposition
+        == "peft_classifier_sigma_psi"
+    )
     assert cfg.ssl_method.trace_mapping.aggregation_weight_policy == "uniform"
     assert cfg.ssl_method.trace_mapping.update_partition_policy == "partitioned"
     assert cfg.ssl_method.trace_mapping.partition_scheme == "sigma_psi"
+    assert list(cfg.ssl_method.server_step.labels_at_client.aggregated_partitions) == [
+        "merged_peft_classifier_delta"
+    ]
 
 
 def test_federated_simulation_local_ssl_policy_defaults_to_query_ssl_algorithm() -> (

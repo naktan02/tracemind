@@ -14,7 +14,7 @@ use_original_parameters: true
 local_budget_policy: iteration_capped
 parameter_overrides: {}
 trace_mapping:
-  parameter_decomposition: lora_classifier_sigma_psi
+  parameter_decomposition: peft_classifier_sigma_psi
   update_partition_policy: partitioned
   partition_scheme: sigma_psi
   original_trainable_scope: ResNet9 Conv/Dense full weights
@@ -37,7 +37,7 @@ server_step:
   labels_at_client:
     server_step_policy: none
     aggregated_partitions:
-      - merged_lora_classifier_delta
+      - merged_peft_classifier_delta
   labels_at_server:
     server_step_policy: supervised_seed_step
     server_trainable_partition: sigma
@@ -54,4 +54,4 @@ report_tags:
   - fedmatch
 notes:
   - FedMatch 원본 snapshot의 설정과 core decision semantics를 보존한다.
-  - Method-owned LoRA local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and LoRA-classifier family slice. The labels-at-server supervised seed step is wired through the common server_step axis. Sparse S2C/C2S is wired in the simulation slice with posthoc communication estimates, not measured network packets.
+  - Method-owned PEFT-classifier local runtime runs FedMatch supervised/unsupervised partition steps; helper client context selection and helper weak-view probabilities are wired through the common peer_context axis and PEFT-classifier family slice. The labels-at-server supervised seed step is wired through the common server_step axis. Sparse S2C/C2S is wired in the simulation slice with posthoc communication estimates, not measured network packets.

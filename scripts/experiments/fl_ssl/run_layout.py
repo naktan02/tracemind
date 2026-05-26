@@ -216,9 +216,15 @@ def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
 def _resolve_local_regularizer_slug(cfg: DictConfig) -> str | None:
     proximal_mu = _select(
         cfg,
-        "training_task.objective.lora_classifier.proximal_mu",
+        "training_task.objective.peft_classifier.proximal_mu",
         default=None,
     )
+    if proximal_mu is None:
+        proximal_mu = _select(
+            cfg,
+            "training_task.objective.lora_classifier.proximal_mu",
+            default=None,
+        )
     if proximal_mu is None:
         return None
     normalized_mu = float(proximal_mu)
