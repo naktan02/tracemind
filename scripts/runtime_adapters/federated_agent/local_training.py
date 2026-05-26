@@ -14,15 +14,13 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslLocalTrainingService,
     QuerySslLoraLocalTrainingRequest,
 )
-from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
-    build_lora_classifier_helper_provider_for_local_ssl_policy,
-)
-from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
-    run_method_owned_lora_classifier_training_core,
-)
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    helper_provider,
+    method_owned_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
@@ -131,7 +129,7 @@ def run_method_owned_lora_classifier_local_training(
     )
     labels = tuple(str(label) for label in active_adapter_state.label_schema)
     helper_weak_probability_provider = (
-        build_lora_classifier_helper_provider_for_local_ssl_policy(
+        helper_provider.build_lora_classifier_helper_provider_for_local_ssl_policy(
             method_name=ssl_method_config.name,
             local_ssl_policy_name=local_ssl_policy_name,
             peer_context=peer_context,
@@ -143,7 +141,7 @@ def run_method_owned_lora_classifier_local_training(
             timing_recorder=timing_recorder,
         )
     )
-    result = run_method_owned_lora_classifier_training_core(
+    result = method_owned_training.run_method_owned_lora_classifier_training_core(
         client_id=client_id,
         seed=seed,
         labeled_rows=labeled_rows,

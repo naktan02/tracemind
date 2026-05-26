@@ -8,6 +8,7 @@ adapter-family 실행 primitive를 소유한다.
 - method-owned local training bridge
 - helper provider와 peer prediction snapshot materialization
 - supervised seed step primitive
+- server update policy를 PEFT text classifier aggregation projection으로 해석
 - partitioned trainable state runtime primitive
 
 ## 금지

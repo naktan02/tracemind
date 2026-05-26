@@ -769,6 +769,75 @@ def test_lora_classifier_partitioned_files_are_direct_shims() -> None:
     )
 
 
+def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
+    shim_paths = (
+        package_root / "helper_provider.py",
+        package_root / "method_owned_training.py",
+        package_root / "peer_predictions.py",
+        package_root / "server_update_policy.py",
+        package_root / "supervised_seed_step.py",
+    )
+    allowed_prefix = "methods.adaptation.text_classifier.peft_encoder.federated_ssl"
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                allowed_prefix
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "legacy lora_classifier federated_ssl bridge 파일은 새 "
+        "text_classifier/peft_encoder/federated_ssl 경로의 named symbol만 가져오는 "
+        "compatibility shim으로 남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
+def test_internal_code_does_not_import_legacy_lora_classifier_fedssl_bridges() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
+    legacy_bridge_shims = (
+        package_root / "helper_provider.py",
+        package_root / "method_owned_training.py",
+        package_root / "peer_predictions.py",
+        package_root / "server_update_policy.py",
+        package_root / "supervised_seed_step.py",
+    )
+    violations: list[tuple[Path, str]] = []
+    for root in PYTHON_SOURCE_ROOTS:
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=(
+                    "methods.adaptation.lora_classifier.federated_ssl.helper_provider",
+                    "methods.adaptation.lora_classifier.federated_ssl.method_owned_training",
+                    "methods.adaptation.lora_classifier.federated_ssl.peer_predictions",
+                    "methods.adaptation.lora_classifier.federated_ssl.server_update_policy",
+                    "methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step",
+                ),
+                ignored_roots=legacy_bridge_shims,
+            )
+        )
+
+    assert not violations, (
+        "legacy lora_classifier federated_ssl bridge 경로는 compatibility shim으로만 "
+        "남긴다. 새 internal code는 text_classifier/peft_encoder/federated_ssl "
+        "경로를 직접 import한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
 def test_text_classifier_adaptation_does_not_import_fedmatch_method() -> None:
     violations = _find_forbidden_imports(
         root=TEXT_CLASSIFIER_ADAPTATION_SRC,

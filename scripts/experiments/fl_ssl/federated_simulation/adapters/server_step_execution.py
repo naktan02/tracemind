@@ -5,14 +5,14 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step import (
-    run_lora_classifier_supervised_seed_step_core,
-)
 from methods.adaptation.text_classifier.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
 from methods.adaptation.text_classifier.aggregation import (
     peft_encoder_state_projection as peft_state_projection,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    supervised_seed_step,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     materialize_base_lora_classifier_state,
@@ -133,7 +133,7 @@ def _run_lora_classifier_supervised_seed_step(
             aggregated_at=now,
         ),
     )
-    seed_result = run_lora_classifier_supervised_seed_step_core(
+    seed_result = supervised_seed_step.run_lora_classifier_supervised_seed_step_core(
         labels=labels,
         base_parameters=base_parameters,
         bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,

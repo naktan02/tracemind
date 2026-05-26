@@ -29,9 +29,6 @@ from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop 
     train_partitioned_lora_classifier,
     train_physical_partitioned_adapter_classifier,
 )
-from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
-    build_lora_classifier_peer_client_snapshot,
-)
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader,
     build_multiview_dataloader,
@@ -51,6 +48,9 @@ from methods.adaptation.text_classifier.aggregation import (
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    peer_predictions,
 )
 from methods.adaptation.text_classifier.peft_encoder.training import (
     pseudo_label_diagnostics as pld,
@@ -716,7 +716,7 @@ def _build_timed_peer_client_snapshot(
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot:
     with _measure(timing_recorder, "core_peer_snapshot_build_seconds"):
-        return build_lora_classifier_peer_client_snapshot(
+        return peer_predictions.build_lora_classifier_peer_client_snapshot(
             client_id=client_id,
             model=model,
             tokenizer=tokenizer,

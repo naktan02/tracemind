@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from methods.adaptation.lora_classifier.federated_ssl import supervised_seed_step
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
@@ -22,6 +21,9 @@ from methods.adaptation.text_classifier.peft_encoder.config import (
 )
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    supervised_seed_step,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,

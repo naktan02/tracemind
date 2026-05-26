@@ -1,19 +1,13 @@
 # LoRA-Classifier FL SSL Slice
 
-이 폴더는 `lora_classifier` adapter family가 FL SSL method-local objective를 실제
-PEFT-adapter/classifier 학습 loop와 shared update payload로 실행하는 slice다.
-현재 concrete PEFT 구현은 LoRA지만, 이 폴더의 partitioned execution primitive는
-DoRA 같은 다른 PEFT adapter로 교체될 수 있는 trainable-adapter mechanism으로
-유지한다.
+이 폴더는 legacy `lora_classifier` direct import compatibility 표면이다. PEFT text
+classifier FL SSL 실행 primitive의 source of truth는
+`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`다.
 
-- `method_owned_training.py`: method descriptor의 `runtime_entrypoint`를 읽어
-  LoRA-classifier method-owned local core를 호출한다.
-- `server_update_policy.py`: FL SSL `server_update_policy`를 LoRA-classifier
-  aggregation backend로 해석한다.
-- `supervised_seed_step.py`: server bootstrap rows로 LoRA-classifier supervised
-  seed delta를 계산하는 family execution primitive다.
-- `helper_provider.py`: method-local runtime requirement가 helper weak probability
-  provider를 요구할 때 LoRA-classifier helper snapshot을 provider로 materialize한다.
+- `method_owned_training.py`, `server_update_policy.py`, `supervised_seed_step.py`,
+  `helper_provider.py`, `peer_predictions.py`: 새
+  `text_classifier/peft_encoder/federated_ssl/` 경로의 named symbol만 가져오는
+  compatibility shim이다.
 - `partitioned_objective_training.py`: method-owned partitioned local objective를
   LoRA-classifier model/loaders, delta materialization, update envelope에 연결한다.
 - `partitioned_model_builder.py`: partition 이름별로 full LoRA-classifier text module을
@@ -29,9 +23,6 @@ DoRA 같은 다른 PEFT adapter로 교체될 수 있는 trainable-adapter mechan
   partition step을 함께 제공한다. physical step은 `sigma/psi` 같은 method-owned
   partition name을 직접 해석하지 않고 caller가 지정한 supervised/unsupervised
   partition에 objective를 라우팅한다.
-- `peer_predictions.py`: 이전 round client-local LoRA snapshot을 helper weak-view
-  probability provider와 peer selection vector로 materialize한다.
-
 `partition_sparse_sync.py`, `partitioned_budget.py`, `partitioned_model_builder.py`,
 `partitioned_trainable_model.py`, `partitioned_training_loop.py`는
 `methods/adaptation/text_classifier/peft_encoder/federated_ssl/partitioned/`로 이동했다.

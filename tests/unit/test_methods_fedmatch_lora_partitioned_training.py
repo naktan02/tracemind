@@ -10,14 +10,12 @@ from torch.utils.data import DataLoader
 from methods.adaptation.lora_classifier.federated_ssl import (
     partitioned_objective_training,
 )
-from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
-    resolve_method_owned_lora_classifier_training_core,
-)
-from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
-    extract_lora_classifier_materialized_state,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    method_owned_training,
+    peer_predictions,
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
     sparse_sync,
@@ -162,7 +160,9 @@ class TinyFrozenFeatureExtractor(nn.Module):
 
 
 def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> None:
-    core = resolve_method_owned_lora_classifier_training_core("fedmatch")
+    core = method_owned_training.resolve_method_owned_lora_classifier_training_core(
+        "fedmatch"
+    )
 
     assert (
         core
@@ -197,7 +197,7 @@ def test_lora_classifier_peer_snapshot_extracts_current_trainable_state() -> Non
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
 
-    snapshot = extract_lora_classifier_materialized_state(
+    snapshot = peer_predictions.extract_lora_classifier_materialized_state(
         model=model,  # type: ignore[arg-type]
         labels=labels,
     )
