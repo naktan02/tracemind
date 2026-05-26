@@ -23,9 +23,6 @@ from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     project_adapter_classifier_delta_bundle_to_lora_partition_delta,
     snapshot_trainable_parameter_tensors,
 )
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
@@ -38,6 +35,9 @@ from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned i
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FEDMATCH_PSI_L1_REGULARIZATION,

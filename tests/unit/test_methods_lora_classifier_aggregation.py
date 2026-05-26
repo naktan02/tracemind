@@ -7,23 +7,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
-    build_classifier_head_delta_tensor_artifact,
-    build_lora_delta_tensor_artifact,
-    parse_classifier_head_delta_tensor_artifact,
-    parse_lora_delta_tensor_artifact,
-)
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-    normalize_partition_deltas,
-)
-from methods.adaptation.lora_classifier.update.partitioned_payload_builder import (
-    build_partitioned_delta_payload,
-)
-from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
-    build_partitioned_delta_tensor_artifact,
-    parse_partitioned_delta_tensor_artifact,
-)
 from methods.adaptation.text_classifier.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
@@ -32,6 +15,15 @@ from methods.adaptation.text_classifier.aggregation import (
 )
 from methods.adaptation.text_classifier.aggregation import (
     peft_encoder_state_projection as peft_state_projection,
+)
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    merged_tensor_artifact as merged_artifacts,
+)
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    partitioned_payload_builder as partitioned_payloads,
+)
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    partitioned_tensor_artifact as partitioned_artifacts,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
@@ -42,6 +34,10 @@ from methods.adaptation.text_classifier.peft_encoder.update.materialization impo
     materialize_base_lora_classifier_state,
     materialize_lora_classifier_partitioned_update,
     materialize_lora_classifier_update,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+    normalize_partition_deltas,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.factories import (
@@ -154,29 +150,33 @@ def test_materialize_lora_classifier_update_reads_server_artifact_refs() -> None
 
 
 def test_merged_delta_tensor_artifacts_roundtrip() -> None:
-    lora_tensors, lora_metadata = build_lora_delta_tensor_artifact(
+    lora_tensors, lora_metadata = merged_artifacts.build_lora_delta_tensor_artifact(
         {
             "encoder.q_proj.lora_A": [0.2, -0.1],
         }
     )
-    head_tensors, head_metadata = build_classifier_head_delta_tensor_artifact(
-        classifier_head_weight_deltas={
-            "anxiety": [0.5, -0.1],
-            "normal": [-0.5, 0.1],
-        },
-        classifier_head_bias_deltas={
-            "anxiety": 0.2,
-            "normal": -0.2,
-        },
+    head_tensors, head_metadata = (
+        merged_artifacts.build_classifier_head_delta_tensor_artifact(
+            classifier_head_weight_deltas={
+                "anxiety": [0.5, -0.1],
+                "normal": [-0.5, 0.1],
+            },
+            classifier_head_bias_deltas={
+                "anxiety": 0.2,
+                "normal": -0.2,
+            },
+        )
     )
 
-    lora_deltas = parse_lora_delta_tensor_artifact(
+    lora_deltas = merged_artifacts.parse_lora_delta_tensor_artifact(
         tensors=lora_tensors,
         metadata=lora_metadata,
     )
-    head_weight_deltas, head_bias_deltas = parse_classifier_head_delta_tensor_artifact(
-        tensors=head_tensors,
-        metadata=head_metadata,
+    head_weight_deltas, head_bias_deltas = (
+        merged_artifacts.parse_classifier_head_delta_tensor_artifact(
+            tensors=head_tensors,
+            metadata=head_metadata,
+        )
     )
 
     assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.2, -0.1])
@@ -185,20 +185,22 @@ def test_merged_delta_tensor_artifacts_roundtrip() -> None:
 
 
 def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() -> None:
-    lora_tensors, lora_metadata = build_lora_delta_tensor_artifact(
+    lora_tensors, lora_metadata = merged_artifacts.build_lora_delta_tensor_artifact(
         {
             "encoder.q_proj.lora_A": [0.2, 0.4],
         }
     )
-    head_tensors, head_metadata = build_classifier_head_delta_tensor_artifact(
-        classifier_head_weight_deltas={
-            "anxiety": [0.5, -0.1],
-            "normal": [-0.5, 0.1],
-        },
-        classifier_head_bias_deltas={
-            "anxiety": 0.2,
-            "normal": -0.2,
-        },
+    head_tensors, head_metadata = (
+        merged_artifacts.build_classifier_head_delta_tensor_artifact(
+            classifier_head_weight_deltas={
+                "anxiety": [0.5, -0.1],
+                "normal": [-0.5, 0.1],
+            },
+            classifier_head_bias_deltas={
+                "anxiety": 0.2,
+                "normal": -0.2,
+            },
+        )
     )
     loader = InMemoryTensorArtifactLoader(
         artifacts={},
@@ -501,7 +503,7 @@ def test_materialize_lora_classifier_partitioned_base_state_reads_artifact_metad
 
 
 def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
-    payload = build_partitioned_delta_payload(
+    payload = partitioned_payloads.build_partitioned_delta_payload(
         (
             LoraClassifierPartitionDelta(
                 partition_name="shared",
@@ -614,7 +616,7 @@ def test_materialize_lora_classifier_partitioned_update_reads_artifact_ref() -> 
 
 
 def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
-    tensors, metadata = build_partitioned_delta_tensor_artifact(
+    tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
             "sigma": LoraClassifierPartitionDelta(
                 partition_name="sigma",
@@ -629,7 +631,7 @@ def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
         }
     )
 
-    partitions = parse_partitioned_delta_tensor_artifact(
+    partitions = partitioned_artifacts.parse_partitioned_delta_tensor_artifact(
         tensors=tensors,
         metadata=metadata,
     )
@@ -649,7 +651,7 @@ def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
 def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_ref() -> (
     None
 ):
-    tensors, metadata = build_partitioned_delta_tensor_artifact(
+    tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
             "psi": LoraClassifierPartitionDelta(
                 partition_name="psi",

@@ -19,12 +19,12 @@ from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
 )
 from methods.adaptation.lora_classifier.federated_ssl import supervised_seed_step
-from methods.adaptation.lora_classifier.update.delta_artifacts import (
-    LoraClassifierDeltaMaterializer,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+    LoraClassifierDeltaMaterializer,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,

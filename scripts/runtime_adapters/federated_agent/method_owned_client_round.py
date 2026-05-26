@@ -8,7 +8,7 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.lora_classifier.update.delta_artifacts import (
+from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     server_owned_lora_classifier_update_artifact_byte_count,
     upload_agent_local_lora_classifier_update,
 )

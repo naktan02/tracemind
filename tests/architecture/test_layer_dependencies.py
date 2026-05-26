@@ -953,6 +953,26 @@ def test_internal_code_does_not_import_legacy_lora_classifier_aggregation() -> N
     )
 
 
+def test_internal_code_does_not_import_legacy_lora_classifier_update() -> None:
+    legacy_update_root = METHODS_SRC / "adaptation" / "lora_classifier" / "update"
+    violations: list[tuple[Path, str]] = []
+    for root in PYTHON_SOURCE_ROOTS:
+        violations.extend(
+            _find_forbidden_imports(
+                root=root,
+                forbidden_prefixes=("methods.adaptation.lora_classifier.update.",),
+                ignored_roots=(legacy_update_root,),
+            )
+        )
+
+    assert not violations, (
+        "legacy lora_classifier update 경로는 compatibility shim으로만 남긴다. "
+        "새 internal code는 text_classifier/peft_encoder/update 경로를 직접 "
+        "import한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
 def test_legacy_peft_adapter_files_are_direct_shims() -> None:
     shim_paths = (
         METHODS_SRC / "adaptation" / "peft" / "base.py",

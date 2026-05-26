@@ -30,7 +30,7 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from methods.adaptation.lora_classifier.update.delta_artifacts import (
+from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (

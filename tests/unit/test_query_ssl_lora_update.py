@@ -10,11 +10,11 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.update.query_ssl_update import (
-    build_query_ssl_lora_update_payload,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
+    build_query_ssl_lora_update_payload,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

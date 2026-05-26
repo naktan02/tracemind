@@ -27,8 +27,8 @@ def build_federated_local_training_service(
     from methods.adaptation.lora_classifier.training_backend import (
         LoraClassifierTrainingBackend,
     )
-    from methods.adaptation.lora_classifier.update.simulation_inline_delta import (
-        SimulationInlineLoraClassifierTrainExecutor,
+    from methods.adaptation.text_classifier.peft_encoder.update import (
+        simulation_inline_delta,
     )
 
     backend = None
@@ -42,7 +42,9 @@ def build_federated_local_training_service(
         if lora_config.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
             backend = LoraClassifierTrainingBackend(
                 config=lora_config,
-                train_executor=SimulationInlineLoraClassifierTrainExecutor(),
+                train_executor=(
+                    simulation_inline_delta.SimulationInlineLoraClassifierTrainExecutor()
+                ),
             )
 
     return LocalTrainingService(

@@ -22,11 +22,11 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
     DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
 )
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    partitioned_tensor_artifact as partitioned_artifacts,
 )
-from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
-    build_partitioned_delta_tensor_artifact,
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
 )
 from methods.federated.aggregation.fedavg.strategy import (
     FedAvgAggregationStrategy,
@@ -566,7 +566,7 @@ def test_lora_classifier_partitioned_delta_average_reads_tensor_artifact_ref(
     partitioned_ref = artifact_store.ref_for_artifact(
         "client_updates/round_0001/agent_01/update_001/partitioned_delta"
     )
-    tensors, metadata = build_partitioned_delta_tensor_artifact(
+    tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
             "sigma": LoraClassifierPartitionDelta(
                 partition_name="sigma",

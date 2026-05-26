@@ -56,12 +56,6 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
 )
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-)
-from methods.adaptation.lora_classifier.update.query_ssl_update import (
-    build_query_ssl_lora_update_payload,
-)
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader,
     build_multiview_dataloader,
@@ -82,6 +76,12 @@ from methods.adaptation.text_classifier.aggregation import (
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
     compact_lora_classifier_materialized_state,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
+    build_query_ssl_lora_update_payload,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping

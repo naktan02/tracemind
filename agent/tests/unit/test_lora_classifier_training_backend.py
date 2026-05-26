@@ -34,12 +34,12 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
 from methods.adaptation.lora_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from methods.adaptation.lora_classifier.update.local_update import (
-    LoraClassifierTrainArtifacts,
-    LoraClassifierTrainingRow,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
+    LoraClassifierTrainArtifacts,
+    LoraClassifierTrainingRow,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,

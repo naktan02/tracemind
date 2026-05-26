@@ -19,28 +19,24 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
     build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
-from methods.adaptation.lora_classifier.update.delta_artifacts import (
-    LoraClassifierDeltaMaterializer,
-    upload_agent_local_lora_classifier_update,
-)
-from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
-    HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
-    LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
-    parse_classifier_head_delta_tensor_artifact,
-    parse_lora_delta_tensor_artifact,
-)
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-)
-from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
-    PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
-    parse_partitioned_delta_tensor_artifact,
-)
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qcore,
 )
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    merged_tensor_artifact as merged_artifacts,
+)
+from methods.adaptation.text_classifier.peft_encoder.update import (
+    partitioned_tensor_artifact as partitioned_artifacts,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+    LoraClassifierDeltaMaterializer,
+    upload_agent_local_lora_classifier_update,
+)
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
@@ -534,8 +530,10 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
     head_tensors, head_metadata = store.load_safetensors_artifact(
         artifact_ref=plan.classifier_head_delta_artifact_ref
     )
-    assert LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in lora_metadata
-    assert HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in head_metadata
+    lora_index_key = merged_artifacts.LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
+    head_index_key = merged_artifacts.HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
+    assert lora_index_key in lora_metadata
+    assert head_index_key in head_metadata
     for artifact_ref in (
         plan.lora_delta_artifact_ref,
         plan.classifier_head_delta_artifact_ref,
@@ -545,13 +543,15 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
         assert store.path_for_safetensors_artifact(artifact_id).exists()
         assert not store.path_for_artifact(artifact_id).exists()
 
-    lora_deltas = parse_lora_delta_tensor_artifact(
+    lora_deltas = merged_artifacts.parse_lora_delta_tensor_artifact(
         tensors=lora_tensors,
         metadata=lora_metadata,
     )
-    head_weight_deltas, head_bias_deltas = parse_classifier_head_delta_tensor_artifact(
-        tensors=head_tensors,
-        metadata=head_metadata,
+    head_weight_deltas, head_bias_deltas = (
+        merged_artifacts.parse_classifier_head_delta_tensor_artifact(
+            tensors=head_tensors,
+            metadata=head_metadata,
+        )
     )
     assert lora_deltas["encoder.q_proj.lora_A"] == pytest.approx([0.1, -0.2])
     assert head_weight_deltas["anxiety"] == pytest.approx([0.3, -0.1])
@@ -598,12 +598,15 @@ def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(
     tensors, metadata = store.load_safetensors_artifact(
         artifact_ref=plan.partitioned_deltas_artifact_ref
     )
-    assert PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY in metadata
+    partitioned_index_key = (
+        partitioned_artifacts.PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY
+    )
+    assert partitioned_index_key in metadata
     artifact_id = store.artifact_id_from_ref(plan.partitioned_deltas_artifact_ref)
     assert artifact_id is not None
     assert store.path_for_safetensors_artifact(artifact_id).exists()
     assert not store.path_for_artifact(artifact_id).exists()
-    partitions = parse_partitioned_delta_tensor_artifact(
+    partitions = partitioned_artifacts.parse_partitioned_delta_tensor_artifact(
         tensors=tensors,
         metadata=metadata,
     )
