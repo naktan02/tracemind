@@ -11,6 +11,9 @@ from methods.adaptation.text_classifier.peft_encoder.config import (
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
     require_lora_classifier_state,
 )
+from methods.adaptation.text_classifier.peft_encoder.projection_artifacts import (
+    write_peft_encoder_projection_artifacts,
+)
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
@@ -26,9 +29,6 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
-)
-from scripts.experiments.lora_classifier_projection import (
-    write_lora_classifier_projection_artifacts,
 )
 from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
     build_simulation_aggregation_context,
@@ -103,7 +103,7 @@ def _build_final_projection_artifacts(
     )
     if not eval_loaders:
         return {"enabled": False, "reason": "no_projection_datasets"}
-    return write_lora_classifier_projection_artifacts(
+    return write_peft_encoder_projection_artifacts(
         model=model,
         eval_loaders=eval_loaders,
         categories=labels,

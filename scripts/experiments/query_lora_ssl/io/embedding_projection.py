@@ -1,12 +1,12 @@
-"""Query LoRA final representation projection artifact writer."""
+"""Query SSL final representation projection artifact writer."""
 
 from __future__ import annotations
 
 from collections.abc import Mapping
 from typing import Any
 
-from scripts.experiments.lora_classifier_projection import (
-    write_lora_classifier_projection_artifacts,
+from methods.adaptation.text_classifier.peft_encoder.projection_artifacts import (
+    write_peft_encoder_projection_artifacts,
 )
 from scripts.experiments.query_lora_ssl.io.artifact_paths import (
     QueryLoraRunArtifactPaths,
@@ -22,9 +22,9 @@ def write_query_lora_projection_artifacts(
     paths: QueryLoraRunArtifactPaths,
     seed: int,
 ) -> dict[str, Any] | None:
-    """최종 LoRA representation을 eval set별 2D projection artifact로 저장한다."""
+    """최종 PEFT encoder representation을 2D projection artifact로 저장한다."""
 
-    return write_lora_classifier_projection_artifacts(
+    return write_peft_encoder_projection_artifacts(
         model=model,
         eval_loaders=eval_loaders,
         categories=categories,
