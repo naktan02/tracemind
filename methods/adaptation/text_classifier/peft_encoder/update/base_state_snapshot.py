@@ -11,10 +11,11 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
-LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME = "lora_classifier_base_state.v1"
+PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME = "peft_encoder_base_state.v1"
+LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME = PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME
 
 
-def lora_classifier_base_state_artifact_refs(
+def peft_encoder_base_state_artifact_refs(
     state: LoraClassifierState | PeftClassifierState,
 ) -> tuple[tuple[str, str], ...]:
     """Base state cache key에 들어갈 artifact ref fingerprint를 반환한다."""
@@ -40,6 +41,9 @@ def lora_classifier_base_state_artifact_refs(
             _ref_value(state.classifier_head_artifact_ref),
         ),
     )
+
+
+lora_classifier_base_state_artifact_refs = peft_encoder_base_state_artifact_refs
 
 
 def _ref_value(value: str | None) -> str:

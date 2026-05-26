@@ -9,13 +9,13 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AggregationArtifactStore,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.base_state_snapshot import (
-    LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME,
-    lora_classifier_base_state_artifact_refs,
+    PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME,
+    peft_encoder_base_state_artifact_refs,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
-    materialize_base_lora_classifier_partitioned_state,
-    materialize_base_lora_classifier_state,
+    materialize_base_peft_encoder_partitioned_state,
+    materialize_base_peft_encoder_state,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
@@ -107,7 +107,7 @@ def _materialize_peft_encoder_base_parameters(
     output_dir: Path,
     aggregated_at: datetime,
 ) -> LoraClassifierMaterializedState:
-    return materialize_base_lora_classifier_state(
+    return materialize_base_peft_encoder_state(
         base_state=active_adapter_state,
         context=FederatedAggregationContext(
             next_model_revision=active_adapter_state.model_revision,
@@ -125,7 +125,7 @@ def _materialize_peft_encoder_base_partition_parameters(
     output_dir: Path,
     aggregated_at: datetime,
 ) -> dict[str, LoraClassifierMaterializedState]:
-    return materialize_base_lora_classifier_partitioned_state(
+    return materialize_base_peft_encoder_partitioned_state(
         base_state=active_adapter_state,
         context=FederatedAggregationContext(
             next_model_revision=active_adapter_state.model_revision,
@@ -144,8 +144,8 @@ def _peft_encoder_cache_key(
         adapter_kind=str(active_adapter_state.adapter_kind),
         model_revision=str(active_adapter_state.model_revision),
         schema_version=str(active_adapter_state.schema_version),
-        artifact_refs=lora_classifier_base_state_artifact_refs(active_adapter_state),
-        materializer_name=LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME,
+        artifact_refs=peft_encoder_base_state_artifact_refs(active_adapter_state),
+        materializer_name=PEFT_ENCODER_BASE_STATE_MATERIALIZER_NAME,
     )
 
 
@@ -156,7 +156,7 @@ def _peft_encoder_partition_cache_key(
         adapter_kind=str(active_adapter_state.adapter_kind),
         model_revision=str(active_adapter_state.model_revision),
         schema_version=str(active_adapter_state.schema_version),
-        artifact_refs=lora_classifier_base_state_artifact_refs(active_adapter_state),
+        artifact_refs=peft_encoder_base_state_artifact_refs(active_adapter_state),
         materializer_name=PEFT_ENCODER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME,
     )
 
