@@ -142,6 +142,11 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
         "pseudo_label_evaluated_count": client.pseudo_label_evaluated_count,
         "accepted_label_distribution": client.accepted_label_distribution,
         "rejected_label_distribution": client.rejected_label_distribution,
+        "fedmatch_helper_count": client.fedmatch_helper_count,
+        "fedmatch_peer_context_helper_count": (
+            client.fedmatch_peer_context_helper_count
+        ),
+        "fedmatch_peer_context_refreshed": client.fedmatch_peer_context_refreshed,
         "timing_breakdown": dict(client.timing_breakdown),
     }
 

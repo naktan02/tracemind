@@ -170,6 +170,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_evaluated_count=5,
                         accepted_label_distribution={"anxiety": 5},
                         rejected_label_distribution={"normal": 5},
+                        fedmatch_helper_count=0.0,
+                        fedmatch_peer_context_helper_count=0.0,
+                        fedmatch_peer_context_refreshed=0.0,
                         timing_breakdown={
                             "core_training_loop_seconds": 0.04,
                             "core_pseudo_label_diagnostics_seconds": 0.01,
@@ -224,6 +227,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         pseudo_label_evaluated_count=4,
                         accepted_label_distribution={"anxiety": 4},
                         rejected_label_distribution={"normal": 6},
+                        fedmatch_helper_count=1.0,
+                        fedmatch_peer_context_helper_count=1.0,
+                        fedmatch_peer_context_refreshed=1.0,
                         timing_breakdown={
                             "core_training_loop_seconds": 0.08,
                             "core_pseudo_label_diagnostics_seconds": 0.03,
@@ -373,6 +379,12 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
     assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
     assert payload["rounds"][0]["total_payload_bytes"] == 100
+    assert payload["rounds"][1]["clients"][0]["fedmatch_helper_count"] == (
+        pytest.approx(1.0)
+    )
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_peer_context_refreshed"
+    ] == pytest.approx(1.0)
     assert payload["rounds"][1]["aggregation_metrics"][
         "partitioned_global_state_count"
     ] == pytest.approx(2.0)
@@ -388,6 +400,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert second_round_aggregation["aggregation_metrics"][
         "server_update_partitioned"
     ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_helper_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_peer_context_refreshed_count"] == 1
     assert second_round_aggregation["total_aggregation_examples"] == 10
     assert second_round_aggregation["aggregation_example_basis"] == (
         "update_envelope.example_count"

@@ -209,6 +209,13 @@ def _client_summary_from_payload(payload: dict[str, object]) -> ClientRoundSumma
                 payload.get("rejected_label_distribution", {})
             ).items()
         },
+        fedmatch_helper_count=_optional_float(payload.get("fedmatch_helper_count")),
+        fedmatch_peer_context_helper_count=_optional_float(
+            payload.get("fedmatch_peer_context_helper_count")
+        ),
+        fedmatch_peer_context_refreshed=_optional_float(
+            payload.get("fedmatch_peer_context_refreshed")
+        ),
         timing_breakdown={
             str(key): float(value)
             for key, value in dict(payload.get("timing_breakdown", {})).items()

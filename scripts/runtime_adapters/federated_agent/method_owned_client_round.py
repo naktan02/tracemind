@@ -226,6 +226,15 @@ def _run_method_owned_lora_client_round(
             rejected_label_distribution=(
                 pseudo_label_quality.rejected_label_distribution
             ),
+            fedmatch_helper_count=_optional_float_metric(
+                local_result.client_metrics.get("fedmatch_helper_count")
+            ),
+            fedmatch_peer_context_helper_count=_optional_float_metric(
+                local_result.client_metrics.get("fedmatch_peer_context_helper_count")
+            ),
+            fedmatch_peer_context_refreshed=_optional_float_metric(
+                local_result.client_metrics.get("fedmatch_peer_context_refreshed")
+            ),
             timing_breakdown=timing.to_mapping(),
         ),
         update_submitted=update_submitted,
@@ -236,3 +245,9 @@ def _run_method_owned_lora_client_round(
 
 def _round_index_from_id(round_id: str) -> int:
     return int(round_id.rsplit("_", maxsplit=1)[-1])
+
+
+def _optional_float_metric(value: object) -> float | None:
+    if value is None:
+        return None
+    return float(value)

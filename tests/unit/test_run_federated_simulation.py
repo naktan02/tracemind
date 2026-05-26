@@ -1247,6 +1247,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             "mean_margin": 0.0,
             "query_ssl_local_steps": 3.0,
             "fedmatch_local_runtime": 1.0,
+            "fedmatch_helper_count": 1.0,
+            "fedmatch_peer_context_helper_count": 1.0,
+            "fedmatch_peer_context_refreshed": 1.0,
         },
     )
     peer_snapshot = FederatedSslPeerClientSnapshot(
@@ -1462,6 +1465,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
     assert method_calls[0]["persist_agent_local_update"] is False
+    assert execution.summary.fedmatch_helper_count == pytest.approx(1.0)
+    assert execution.summary.fedmatch_peer_context_helper_count == pytest.approx(1.0)
+    assert execution.summary.fedmatch_peer_context_refreshed == pytest.approx(1.0)
     assert execution.peer_client_snapshot is returned_peer_snapshot
     assert execution.client_partition_snapshot is returned_client_partition_parameters
 

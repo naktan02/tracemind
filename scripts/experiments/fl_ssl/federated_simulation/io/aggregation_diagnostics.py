@@ -80,6 +80,16 @@ def _round_aggregation_diagnostics(
         for client in round_summary.clients
         if client.update_generated and client.delta_l2_norm is not None
     ]
+    fedmatch_helper_counts = [
+        client.fedmatch_helper_count
+        for client in round_summary.clients
+        if client.fedmatch_helper_count is not None
+    ]
+    fedmatch_peer_context_helper_counts = [
+        client.fedmatch_peer_context_helper_count
+        for client in round_summary.clients
+        if client.fedmatch_peer_context_helper_count is not None
+    ]
     zero_update_client_count = sum(
         1 for client in round_summary.clients if not client.update_generated
     )
@@ -105,6 +115,15 @@ def _round_aggregation_diagnostics(
         "aggregation_example_basis": "update_envelope.example_count",
         "aggregation_weight_basis": weight_policy.name,
         "aggregation_metrics": dict(round_summary.aggregation_metrics),
+        "fedmatch_helper_count_summary": numeric_summary(fedmatch_helper_counts),
+        "fedmatch_peer_context_helper_count_summary": numeric_summary(
+            fedmatch_peer_context_helper_counts
+        ),
+        "fedmatch_peer_context_refreshed_count": sum(
+            1
+            for client in round_summary.clients
+            if client.fedmatch_peer_context_refreshed
+        ),
         "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_example_count_summary": numeric_summary(
             aggregation_example_counts

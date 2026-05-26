@@ -25,6 +25,9 @@ class ClientRoundSummary:
     pseudo_label_evaluated_count: int = 0
     accepted_label_distribution: dict[str, int] = field(default_factory=dict)
     rejected_label_distribution: dict[str, int] = field(default_factory=dict)
+    fedmatch_helper_count: float | None = None
+    fedmatch_peer_context_helper_count: float | None = None
+    fedmatch_peer_context_refreshed: float | None = None
     timing_breakdown: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -32,6 +35,22 @@ class ClientRoundSummary:
             raise ValueError("diagnostic_candidate_count must be non-negative.")
         if self.diagnostic_candidate_count == 0 and self.candidate_count > 0:
             self.diagnostic_candidate_count = self.candidate_count
+        if self.fedmatch_helper_count is not None:
+            self.fedmatch_helper_count = float(self.fedmatch_helper_count)
+            if self.fedmatch_helper_count < 0.0:
+                raise ValueError("fedmatch_helper_count must be non-negative.")
+        if self.fedmatch_peer_context_helper_count is not None:
+            self.fedmatch_peer_context_helper_count = float(
+                self.fedmatch_peer_context_helper_count
+            )
+            if self.fedmatch_peer_context_helper_count < 0.0:
+                raise ValueError(
+                    "fedmatch_peer_context_helper_count must be non-negative."
+                )
+        if self.fedmatch_peer_context_refreshed is not None:
+            self.fedmatch_peer_context_refreshed = float(
+                self.fedmatch_peer_context_refreshed
+            )
         self.timing_breakdown = {
             str(key): float(value)
             for key, value in self.timing_breakdown.items()
