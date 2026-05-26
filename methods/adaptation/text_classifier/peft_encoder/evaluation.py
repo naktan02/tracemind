@@ -163,6 +163,31 @@ def evaluate_lora_classifier_validation_payload(
     )
 
 
+def evaluate_peft_encoder_validation_payload(
+    *,
+    rows: Sequence[LabeledQueryRow],
+    adapter_state: object,
+    base_parameters: LoraClassifierMaterializedState,
+    objective_config: TrainingObjectiveConfig | None,
+    runtime_config: LoraClassifierModelRuntimeConfig,
+    batch_size: int,
+    seed: int,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
+) -> dict[str, object]:
+    """FL validation runtime이 넘긴 PEFT-backed classifier state를 평가한다."""
+
+    return evaluate_lora_classifier_validation_payload(
+        rows=rows,
+        adapter_state=adapter_state,
+        base_parameters=base_parameters,
+        objective_config=objective_config,
+        runtime_config=runtime_config,
+        batch_size=batch_size,
+        seed=seed,
+        runtime_resource_cache=runtime_resource_cache,
+    )
+
+
 def require_lora_classifier_validation_backend(
     *,
     adapter_state: object,
@@ -194,6 +219,9 @@ def require_lora_classifier_state(
             f"got {type(adapter_state).__name__}."
         )
     return adapter_state
+
+
+require_peft_encoder_state = require_lora_classifier_state
 
 
 def _build_evaluation_training_backend_config(

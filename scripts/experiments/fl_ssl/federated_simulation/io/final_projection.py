@@ -5,24 +5,24 @@ from __future__ import annotations
 from typing import Any
 
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
-from methods.adaptation.text_classifier.peft_encoder.config import (
-    build_lora_classifier_training_backend_config,
-)
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
-    require_lora_classifier_state,
+    require_peft_encoder_state,
 )
 from methods.adaptation.text_classifier.peft_encoder.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    build_training_backend_config_for_peft_encoder_state,
+)
 from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    load_lora_classifier_base_parameters_into_model,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
 from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_lora_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    materialize_base_lora_classifier_state,
+    materialize_base_peft_encoder_state,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -41,7 +41,7 @@ def build_final_projection_artifacts(
     active: ActiveSimulationState,
     runtime_resource_cache: Any | None = None,
 ) -> dict[str, Any] | None:
-    """최종 global LoRA state의 validation/test projection artifact를 만든다."""
+    """최종 global PEFT-backed classifier state projection artifact를 만든다."""
 
     config = request.final_projection_config
     if not config.enabled:
@@ -69,10 +69,11 @@ def _build_final_projection_artifacts(
     active: ActiveSimulationState,
     runtime_resource_cache: Any | None,
 ) -> dict[str, Any]:
-    adapter_state = require_lora_classifier_state(active.adapter_state)
+    adapter_state = require_peft_encoder_state(active.adapter_state)
     labels = [str(label) for label in adapter_state.label_schema]
-    lora_config = build_lora_classifier_training_backend_config(
-        request.training_task_config.objective_config
+    lora_config = build_training_backend_config_for_peft_encoder_state(
+        active_adapter_state=adapter_state,
+        objective_config=request.training_task_config.objective_config,
     )
     set_seed(request.seed)
     model, tokenizer = build_lora_text_classifier_from_config(
@@ -81,10 +82,10 @@ def _build_final_projection_artifacts(
         runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    load_lora_classifier_base_parameters_into_model(
+    load_peft_encoder_base_parameters_into_model(
         model=model,
         labels=labels,
-        base_parameters=materialize_base_lora_classifier_state(
+        base_parameters=materialize_base_peft_encoder_state(
             base_state=adapter_state,
             context=build_simulation_aggregation_context(
                 output_dir=request.output_dir,

@@ -206,6 +206,12 @@ def materialize_base_lora_classifier_partitioned_state(
     }
 
 
+materialize_base_peft_encoder_state = materialize_base_lora_classifier_state
+materialize_base_peft_encoder_partitioned_state = (
+    materialize_base_lora_classifier_partitioned_state
+)
+
+
 def materialize_lora_classifier_update(
     *,
     payload: PeftEncoderDeltaPayload,

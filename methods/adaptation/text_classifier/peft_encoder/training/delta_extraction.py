@@ -74,6 +74,11 @@ def load_lora_classifier_base_parameters_into_model(
         model.classifier.bias.data.copy_(bias)
 
 
+load_peft_encoder_base_parameters_into_model = (
+    load_lora_classifier_base_parameters_into_model
+)
+
+
 def extract_lora_classifier_parameter_deltas(
     *,
     model: LoraTextClassifier,

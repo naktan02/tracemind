@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
-    evaluate_lora_classifier_validation_payload,
-    require_lora_classifier_state,
+    evaluate_peft_encoder_validation_payload,
+    require_peft_encoder_state,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    materialize_base_lora_classifier_state,
+    materialize_base_peft_encoder_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
@@ -33,7 +33,7 @@ def evaluate_simulation_validation(
     objective_config: TrainingObjectiveConfig | None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> SimulationEvaluation:
-    """LoRA-classifier state 기준 validation row를 평가한다."""
+    """PEFT-backed classifier state 기준 validation row를 평가한다."""
 
     if request.validation_config.scorer_backend_name != LORA_CLASSIFIER_EVALUATOR_NAME:
         raise ValueError(
@@ -42,11 +42,11 @@ def evaluate_simulation_validation(
         )
     if not rows:
         return SimulationEvaluation(row_count=0, top1_accuracy=0.0, accepted_ratio=0.0)
-    adapter_state = require_lora_classifier_state(active.adapter_state)
-    payload = evaluate_lora_classifier_validation_payload(
+    adapter_state = require_peft_encoder_state(active.adapter_state)
+    payload = evaluate_peft_encoder_validation_payload(
         rows=rows,
         adapter_state=adapter_state,
-        base_parameters=materialize_base_lora_classifier_state(
+        base_parameters=materialize_base_peft_encoder_state(
             base_state=adapter_state,
             context=build_simulation_aggregation_context(
                 output_dir=request.output_dir,

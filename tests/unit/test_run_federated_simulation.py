@@ -319,7 +319,7 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
 
     monkeypatch.setattr(
         evaluation_adapter,
-        "evaluate_lora_classifier_validation_payload",
+        "evaluate_peft_encoder_validation_payload",
         _fake_evaluator,
     )
 
