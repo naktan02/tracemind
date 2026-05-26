@@ -95,6 +95,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
+    InMemoryRuntimeResourceCache,
     RoundBaseSnapshotCache,
 )
 from scripts.experiments.fl_ssl.federated_simulation.simulation import (
@@ -1415,6 +1416,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         ),
     )
     request.capability_plan = _fedmatch_agreement_capability_plan()
+    runtime_resource_cache = InMemoryRuntimeResourceCache()
+    runtime_resource_cache.set_resource("lora_classifier:helper_model:test", object())
+    runtime_resource_cache.set_resource("lora_classifier:tokenizer:test", object())
     peer_context = FederatedSslPeerContext(
         client_id="agent_01",
         policy_name="fixed_probe_output_knn",
@@ -1439,6 +1443,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 adapter_state=active_state,
             ),
             peer_probe_rows=(labeled_row,),
+            runtime_resource_cache=runtime_resource_cache,
             round_base_snapshot_cache=round_base_snapshot_cache,
         ),
         active=ActiveSimulationState(
@@ -1473,6 +1478,14 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
     assert method_calls[0]["persist_agent_local_update"] is False
+    assert (
+        runtime_resource_cache.get_resource("lora_classifier:helper_model:test") is None
+    )
+    assert (
+        runtime_resource_cache.get_resource("lora_classifier:tokenizer:test")
+        is not None
+    )
+    assert "helper_model_cache_release_seconds" in execution.summary.timing_breakdown
     assert execution.summary.fedmatch_helper_count == pytest.approx(1.0)
     assert execution.summary.fedmatch_peer_context_helper_count == pytest.approx(1.0)
     assert execution.summary.fedmatch_helper_provider_count == pytest.approx(1.0)

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import gc
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -160,6 +161,8 @@ def _run_method_owned_lora_client_round(
                 request.artifact_persistence_config.persist_agent_local_updates
             ),
         )
+    with timing.measure("helper_model_cache_release_seconds"):
+        _release_helper_model_cache(bootstrapped.runtime_resource_cache)
     client_train_time_seconds = time.perf_counter() - training_started_at
     artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
     with timing.measure("update_upload_materialize_seconds"):
@@ -274,3 +277,20 @@ def _optional_float_metric(value: object) -> float | None:
     if value is None:
         return None
     return float(value)
+
+
+def _release_helper_model_cache(runtime_resource_cache: object | None) -> int:
+    """client 경계에서 FedMatch helper model materialization만 폐기한다."""
+
+    clear_resources = getattr(runtime_resource_cache, "clear_resources", None)
+    removed = 0
+    if callable(clear_resources):
+        removed = int(clear_resources(key_prefix="lora_classifier:helper_model:"))
+    gc.collect()
+    try:
+        import torch
+    except ImportError:  # pragma: no cover - optional dependency guard
+        return removed
+    if torch.cuda.is_available():
+        torch.cuda.empty_cache()
+    return removed
