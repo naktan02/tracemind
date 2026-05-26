@@ -515,6 +515,52 @@ def test_fl_scripts_do_not_define_paper_method_specific_runtime_modules() -> Non
     )
 
 
+def test_fl_scripts_legacy_family_names_stay_in_declared_compatibility_files() -> None:
+    roots = (
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    )
+    legacy_snippets = (
+        "lora_classifier",
+        "peft_classifier",
+        "fedmatch_helper_count",
+        "expect_lora_classifier_aggregate_snapshot",
+    )
+    allowed_paths = {
+        Path("scripts/experiments/fl_ssl/federated_simulation/adapters/evaluation.py"),
+        Path(
+            "scripts/experiments/fl_ssl/federated_simulation/adapters/"
+            "server_step_execution.py"
+        ),
+        Path("scripts/experiments/fl_ssl/federated_simulation/config_request.py"),
+        Path("scripts/experiments/fl_ssl/federated_simulation/flow/bootstrap.py"),
+        Path(
+            "scripts/experiments/fl_ssl/federated_simulation/io/report_verification.py"
+        ),
+        Path(
+            "scripts/experiments/fl_ssl/federated_simulation/io/"
+            "report_verification_models.py"
+        ),
+        Path("scripts/experiments/fl_ssl/federated_simulation/models.py"),
+        Path("scripts/runtime_adapters/federated_agent/base_state_materialization.py"),
+        Path("scripts/runtime_adapters/federated_agent/local_training.py"),
+    }
+    actual_paths: set[Path] = set()
+    for root in roots:
+        for path in _iter_python_files(root):
+            source = path.read_text(encoding="utf-8")
+            if any(snippet in source for snippet in legacy_snippets):
+                actual_paths.add(_relative_repo_path(path))
+
+    assert actual_paths <= allowed_paths, (
+        "FL scripts/runtime adapters에 adapter-family/method legacy 이름을 새 파일로 "
+        "확산하지 않는다. 남은 lora_classifier/peft_classifier/FedMatch report "
+        "문자열은 docs/contracts/legacy_contract_ledger.md에 기록한 compatibility "
+        "표면으로만 허용한다.\n"
+        f"{chr(10).join(f'- {path}' for path in sorted(actual_paths - allowed_paths))}"
+    )
+
+
 def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None:
     package_root = METHODS_SRC / "federated_ssl"
     forbidden_path_fragments = ("dummy", "test_only")
