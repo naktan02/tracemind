@@ -15,8 +15,8 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.federated_ssl.partitioned_model_builder import (
-    build_partitioned_lora_text_classifier_from_config,
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
+    model_builder,
 )
 
 
@@ -82,7 +82,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
         classifier_head_biases={"anxiety": 0.1, "normal": -0.1},
     )
 
-    result = build_partitioned_lora_text_classifier_from_config(
+    result = model_builder.build_partitioned_lora_text_classifier_from_config(
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
@@ -124,7 +124,7 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
     )
 
     with pytest.raises(ValueError, match="duplicates"):
-        build_partitioned_lora_text_classifier_from_config(
+        model_builder.build_partitioned_lora_text_classifier_from_config(
             partition_names=("sigma", "sigma"),
             labels=("anxiety", "normal"),
             base_parameters=base_parameters,
@@ -134,7 +134,7 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
         )
 
     with pytest.raises(ValueError, match="labels must not contain duplicates"):
-        build_partitioned_lora_text_classifier_from_config(
+        model_builder.build_partitioned_lora_text_classifier_from_config(
             partition_names=("sigma", "psi"),
             labels=("anxiety", "anxiety"),
             base_parameters=base_parameters,
@@ -188,7 +188,7 @@ def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
         )
     }
 
-    result = build_partitioned_lora_text_classifier_from_config(
+    result = model_builder.build_partitioned_lora_text_classifier_from_config(
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,

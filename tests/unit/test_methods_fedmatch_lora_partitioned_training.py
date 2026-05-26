@@ -13,25 +13,8 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 from methods.adaptation.lora_classifier.federated_ssl import (
     partitioned_objective_training,
 )
-from methods.adaptation.lora_classifier.federated_ssl import (
-    partitioned_trainable_model as ptm,
-)
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     resolve_method_owned_lora_classifier_training_core,
-)
-from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
-    PartitionSparseSyncParameters,
-    apply_partitioned_c2s_sparse_upload,
-    apply_partitioned_s2c_sparse_download,
-    count_partition_delta_nonzero_values,
-    project_partitioned_c2s_sparse_upload,
-    project_partitioned_s2c_sparse_download,
-)
-from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
-    run_partitioned_lora_classifier_step,
-    run_physical_partitioned_adapter_classifier_step,
-    train_partitioned_lora_classifier,
-    train_physical_partitioned_adapter_classifier,
 )
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     extract_lora_classifier_materialized_state,
@@ -48,6 +31,13 @@ from methods.adaptation.lora_classifier.update.partitioned_delta import (
 )
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
+    sparse_sync,
+    training_loop,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
+    trainable_model as ptm,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FEDMATCH_PSI_L1_REGULARIZATION,
@@ -233,7 +223,7 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_lora_classifier_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -325,7 +315,7 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         "strong_attention_mask": torch.ones(2, 3),
     }
 
-    result = run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_lora_classifier_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -385,7 +375,7 @@ def test_fedmatch_partitioned_step_forwards_strong_view_only_for_confident_rows(
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_lora_classifier_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -470,7 +460,7 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_lora_classifier_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -521,7 +511,7 @@ def test_fedmatch_lora_single_model_regularizer_does_not_shrink_full_parameters(
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_lora_classifier_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
@@ -567,7 +557,7 @@ def test_physical_fedmatch_step_updates_separate_sigma_and_psi_partitions() -> N
         FEDMATCH_PSI_PARTITION,
     )
 
-    result = run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
@@ -643,7 +633,7 @@ def test_physical_fedmatch_unsupervised_regularizer_keeps_sigma_fixed() -> None:
         FEDMATCH_PSI_PARTITION,
     )
 
-    result = run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch={
@@ -747,7 +737,7 @@ def test_physical_fedmatch_training_returns_cumulative_partitioned_delta() -> No
         max_steps=2,
     )
 
-    result = train_physical_partitioned_adapter_classifier(
+    result = training_loop.train_physical_partitioned_adapter_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -837,7 +827,7 @@ def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() ->
         max_steps=1,
     )
 
-    result = train_physical_partitioned_adapter_classifier(
+    result = training_loop.train_physical_partitioned_adapter_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -886,7 +876,7 @@ def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
         lambda_l1=0.0,
     )
 
-    result = run_physical_partitioned_adapter_classifier_step(
+    result = training_loop.run_physical_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch={
@@ -945,7 +935,7 @@ def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
     )
 
     with pytest.raises(ValueError, match="same parameter keys"):
-        run_physical_partitioned_adapter_classifier_step(
+        training_loop.run_physical_partitioned_adapter_classifier_step(
             model=model,
             labeled_batch=None,
             unlabeled_batch={
@@ -1021,7 +1011,7 @@ def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     )
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = train_partitioned_lora_classifier(
+    result = training_loop.train_partitioned_lora_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -1100,7 +1090,7 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
         max_steps=1,
     )
 
-    result = train_partitioned_lora_classifier(
+    result = training_loop.train_partitioned_lora_classifier(
         model=model,
         train_loader=None,
         unlabeled_loader=unlabeled_loader,
@@ -1138,7 +1128,7 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
             classifier_head_biases={"anxiety": 0.03},
         )
     }
-    sparse = apply_partitioned_c2s_sparse_upload(
+    sparse = sparse_sync.apply_partitioned_c2s_sparse_upload(
         base_parameters=base,
         base_partition_parameters=partition_base,
         partition_deltas={
@@ -1155,7 +1145,7 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
                 classifier_head_bias_deltas={"anxiety": 0.01},
             ),
         },
-        parameters=PartitionSparseSyncParameters(
+        parameters=sparse_sync.PartitionSparseSyncParameters(
             l1_threshold=0.05,
             delta_threshold=0.02,
             l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
@@ -1205,10 +1195,10 @@ def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() ->
         ),
     }
 
-    sparse = apply_partitioned_s2c_sparse_download(
+    sparse = sparse_sync.apply_partitioned_s2c_sparse_download(
         server_partition_parameters=server_partitions,
         client_partition_parameters=client_partitions,
-        parameters=PartitionSparseSyncParameters(
+        parameters=sparse_sync.PartitionSparseSyncParameters(
             l1_threshold=0.05,
             delta_threshold=0.02,
             l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
@@ -1251,7 +1241,7 @@ def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
         ),
     }
 
-    assert count_partition_delta_nonzero_values(deltas) == 5
+    assert sparse_sync.count_partition_delta_nonzero_values(deltas) == 5
 
 
 def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() -> None:
@@ -1270,19 +1260,19 @@ def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() 
         )
     }
 
-    projected = project_partitioned_s2c_sparse_download(
+    projected = sparse_sync.project_partitioned_s2c_sparse_download(
         server_partition_parameters=server_partitions,
         client_partition_parameters=client_partitions,
-        parameters=PartitionSparseSyncParameters(
+        parameters=sparse_sync.PartitionSparseSyncParameters(
             l1_threshold=0.05,
             delta_threshold=0.02,
             l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
         ),
     )
-    sparse_delta = apply_partitioned_s2c_sparse_download(
+    sparse_delta = sparse_sync.apply_partitioned_s2c_sparse_download(
         server_partition_parameters=server_partitions,
         client_partition_parameters=client_partitions,
-        parameters=PartitionSparseSyncParameters(
+        parameters=sparse_sync.PartitionSparseSyncParameters(
             l1_threshold=0.05,
             delta_threshold=0.02,
             l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
@@ -1329,7 +1319,7 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
         ),
     }
 
-    projection = project_partitioned_c2s_sparse_upload(
+    projection = sparse_sync.project_partitioned_c2s_sparse_upload(
         base_parameters=LoraClassifierMaterializedState(
             lora_parameters={},
             classifier_head_weights={},
@@ -1337,7 +1327,7 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
         ),
         server_partition_parameters=server_partitions,
         client_partition_parameters=client_partitions,
-        parameters=PartitionSparseSyncParameters(
+        parameters=sparse_sync.PartitionSparseSyncParameters(
             l1_threshold=0.05,
             delta_threshold=0.02,
             l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),

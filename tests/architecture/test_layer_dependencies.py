@@ -712,9 +712,11 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     path = (
         METHODS_SRC
         / "adaptation"
-        / "lora_classifier"
+        / "text_classifier"
+        / "peft_encoder"
         / "federated_ssl"
-        / "partitioned_training_loop.py"
+        / "partitioned"
+        / "training_loop.py"
     )
     imports = _collect_absolute_imports(path)
     violations = sorted(
@@ -724,9 +726,44 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     )
 
     assert not violations, (
-        "partitioned_training_loop.py는 adapter-family execution primitive다. "
+        "partitioned training loop는 adapter-family execution primitive다. "
         "FedMatch objective와 partition 이름은 methods/federated_ssl/fedmatch/의 "
         "caller가 주입해야 한다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
+def test_lora_classifier_partitioned_files_are_direct_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
+    shim_paths = (
+        package_root / "partition_sparse_sync.py",
+        package_root / "partitioned_budget.py",
+        package_root / "partitioned_model_builder.py",
+        package_root / "partitioned_trainable_model.py",
+        package_root / "partitioned_training_loop.py",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                "methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned"
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "migrated lora_classifier partitioned primitive 파일은 새 "
+        "text_classifier/peft_encoder/federated_ssl/partitioned 경로의 named "
+        "symbol만 가져오는 compatibility shim으로 남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
 

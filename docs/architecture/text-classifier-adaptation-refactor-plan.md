@@ -209,6 +209,13 @@ shim으로 남겼다.
   `budget`처럼 primitive 이름을 쓴다.
 - 기존 direct file path는 compatibility shim으로 남기고 제거 조건을 README에 적는다.
 
+상태: 완료. `partition_sparse_sync.py`, `partitioned_budget.py`,
+`partitioned_model_builder.py`, `partitioned_trainable_model.py`,
+`partitioned_training_loop.py`를 `text_classifier/peft_encoder/federated_ssl/partitioned/`
+아래의 `sparse_sync.py`, `budget.py`, `model_builder.py`, `trainable_model.py`,
+`training_loop.py`로 이동했다. 기존 `lora_classifier/federated_ssl` direct path는
+named-symbol compatibility shim으로만 남겼다.
+
 ### 5단계: feature-head variant 이동
 
 - `classifier_head/`를 `text_classifier/feature_head/`로 이동한다.

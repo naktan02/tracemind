@@ -32,6 +32,11 @@ DoRA 같은 다른 PEFT adapter로 교체될 수 있는 trainable-adapter mechan
 - `peer_predictions.py`: 이전 round client-local LoRA snapshot을 helper weak-view
   probability provider와 peer selection vector로 materialize한다.
 
+`partition_sparse_sync.py`, `partitioned_budget.py`, `partitioned_model_builder.py`,
+`partitioned_trainable_model.py`, `partitioned_training_loop.py`는
+`methods/adaptation/text_classifier/peft_encoder/federated_ssl/partitioned/`로 이동했다.
+이 경로에는 legacy import compatibility shim만 남긴다.
+
 FedMatch의 원본 의미, hyperparameter snapshot, agreement loss, helper policy,
 server/round policy는 `methods/federated_ssl/fedmatch/`가 소유한다. `labels-at-server`
 같은 labeled exposure/local supervision regime은 `methods/federated_ssl/`의 공통

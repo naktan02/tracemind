@@ -10,6 +10,14 @@
 - partitioned trainable model wrapper
 - partitioned training loop와 budget helper
 
+## 파일
+
+- `budget.py`: partitioned local trainer의 labeled/unlabeled step budget 해석
+- `model_builder.py`: partition 이름별 PEFT text classifier module build
+- `sparse_sync.py`: partitioned C2S/S2C sparse sync projection
+- `trainable_model.py`: physical trainable partition wrapper와 composed forward
+- `training_loop.py`: supervised/unsupervised partition objective routing
+
 ## 금지
 
 - `sigma`, `psi` 같은 FedMatch partition 이름의 source of truth 소유
