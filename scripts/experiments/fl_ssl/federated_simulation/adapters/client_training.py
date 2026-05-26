@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
@@ -42,7 +42,7 @@ def run_client_round(
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
     previous_client_partition_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
+        Mapping[str, PeftEncoderMaterializedState] | None
     ) = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:

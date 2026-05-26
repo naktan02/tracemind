@@ -1,4 +1,7 @@
-"""LoRA-classifier delta artifact materialization rules."""
+"""PEFT-encoder classifier delta artifact materialization rules.
+
+`lora_classifier` names remain only as v1 payload compatibility aliases.
+"""
 
 from __future__ import annotations
 
@@ -33,8 +36,8 @@ from .partitioned_delta import LoraClassifierPartitionDelta
 from .partitioned_tensor_artifact import build_partitioned_delta_tensor_artifact
 
 
-class LoraClassifierDeltaArtifactStore(Protocol):
-    """LoRA delta materializer가 필요한 runtime artifact store surface."""
+class PeftEncoderDeltaArtifactStore(Protocol):
+    """PEFT encoder delta materializer가 필요한 runtime artifact store surface."""
 
     def ref_for_agent_artifact(
         self,
@@ -89,10 +92,10 @@ class LoraClassifierDeltaArtifactStore(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierDeltaMaterializer:
-    """LoRA/classifier delta를 runtime store에 맞게 materialize한다."""
+class PeftEncoderDeltaMaterializer:
+    """PEFT encoder/classifier delta를 runtime store에 맞게 materialize한다."""
 
-    artifact_store: LoraClassifierDeltaArtifactStore
+    artifact_store: PeftEncoderDeltaArtifactStore
 
     def prepare(
         self,
@@ -108,7 +111,7 @@ class LoraClassifierDeltaMaterializer:
         partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
         materialize_primary_deltas: bool = True,
     ) -> QuerySslLoraDeltaMaterialization:
-        """delta_format에 맞게 LoRA/classifier delta artifact ref를 준비한다."""
+        """delta_format에 맞게 PEFT encoder/classifier delta artifact ref를 준비한다."""
 
         normalized_delta_format = str(delta_format).strip()
         if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
@@ -140,7 +143,8 @@ class LoraClassifierDeltaMaterializer:
             )
         if normalized_delta_format != LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED:
             raise ValueError(
-                f"Unsupported Query SSL LoRA delta_format: {normalized_delta_format!r}."
+                "Unsupported Query SSL PEFT encoder delta_format: "
+                f"{normalized_delta_format!r}."
             )
         if not materialize_primary_deltas and partitioned_deltas is None:
             raise ValueError(
@@ -313,7 +317,7 @@ class LoraClassifierDeltaMaterializer:
 
 def upload_agent_local_peft_encoder_update(
     *,
-    artifact_store: LoraClassifierDeltaArtifactStore,
+    artifact_store: PeftEncoderDeltaArtifactStore,
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
 ) -> LoraClassifierDelta | PeftClassifierDelta:
     """agent-local delta artifact ref를 server-owned ref로 materialize한다."""
@@ -361,7 +365,7 @@ def upload_agent_local_peft_encoder_update(
 
 def server_owned_peft_encoder_update_artifact_byte_count(
     *,
-    artifact_store: LoraClassifierDeltaArtifactStore,
+    artifact_store: PeftEncoderDeltaArtifactStore,
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
 ) -> int:
     """server-owned update artifact ref들의 파일 크기를 합산한다."""
@@ -379,6 +383,8 @@ upload_agent_local_lora_classifier_update = upload_agent_local_peft_encoder_upda
 server_owned_lora_classifier_update_artifact_byte_count = (
     server_owned_peft_encoder_update_artifact_byte_count
 )
+LoraClassifierDeltaArtifactStore = PeftEncoderDeltaArtifactStore
+LoraClassifierDeltaMaterializer = PeftEncoderDeltaMaterializer
 
 
 def _adapter_delta_artifact_ref(

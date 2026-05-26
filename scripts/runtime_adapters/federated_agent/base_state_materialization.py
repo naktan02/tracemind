@@ -13,7 +13,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.base_state_snapshot 
     peft_encoder_base_state_artifact_refs,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
     materialize_base_peft_encoder_partitioned_state,
     materialize_base_peft_encoder_state,
 )
@@ -45,7 +45,7 @@ def load_peft_encoder_base_parameters(
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     """server-published PEFT-backed classifier base state를 materialize한다."""
 
     if round_base_snapshot_cache is None:
@@ -62,9 +62,9 @@ def load_peft_encoder_base_parameters(
             aggregated_at=aggregated_at,
         ),
     )
-    if not isinstance(snapshot, LoraClassifierMaterializedState):
+    if not isinstance(snapshot, PeftEncoderMaterializedState):
         raise TypeError(
-            "Round base snapshot cache returned unexpected LoRA-classifier state: "
+            "Round base snapshot cache returned unexpected PEFT encoder state: "
             f"{type(snapshot)!r}."
         )
     return snapshot
@@ -76,7 +76,7 @@ def load_peft_encoder_base_partition_parameters(
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     """server-published PEFT encoder partitioned base state를 materialize한다."""
 
     if round_base_snapshot_cache is None:
@@ -95,7 +95,7 @@ def load_peft_encoder_base_partition_parameters(
     )
     if not isinstance(snapshot, dict):
         raise TypeError(
-            "Round base snapshot cache returned unexpected LoRA-classifier "
+            "Round base snapshot cache returned unexpected PEFT encoder "
             f"partition state: {type(snapshot)!r}."
         )
     return snapshot
@@ -106,7 +106,7 @@ def _materialize_peft_encoder_base_parameters(
     active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     return materialize_base_peft_encoder_state(
         base_state=active_adapter_state,
         context=FederatedAggregationContext(
@@ -124,7 +124,7 @@ def _materialize_peft_encoder_base_partition_parameters(
     active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     return materialize_base_peft_encoder_partitioned_state(
         base_state=active_adapter_state,
         context=FederatedAggregationContext(

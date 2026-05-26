@@ -33,10 +33,10 @@ from methods.adaptation.text_classifier.peft_encoder.training_backend import (
     PeftEncoderTrainingBackend,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
-    LoraClassifierDeltaMaterializer,
+    PeftEncoderDeltaMaterializer,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
@@ -96,12 +96,12 @@ def run_method_owned_peft_encoder_local_training(
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
-    base_parameters: LoraClassifierMaterializedState | None = None,
+    base_parameters: PeftEncoderMaterializedState | None = None,
     base_partition_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
+        Mapping[str, PeftEncoderMaterializedState] | None
     ) = None,
     previous_client_partition_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
+        Mapping[str, PeftEncoderMaterializedState] | None
     ) = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     timing_recorder: TimingRecorder | None = None,
@@ -173,7 +173,7 @@ def run_method_owned_peft_encoder_local_training(
         lora_config=effective_lora_config,
         trainer_runtime_config=trainer_runtime_config,
         created_at=effective_created_at,
-        delta_materializer=LoraClassifierDeltaMaterializer(
+        delta_materializer=PeftEncoderDeltaMaterializer(
             artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
         ),
         helper_weak_probability_provider=helper_weak_probability_provider,
@@ -207,7 +207,7 @@ def run_query_ssl_peft_encoder_local_training(
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
-    base_parameters: LoraClassifierMaterializedState | None = None,
+    base_parameters: PeftEncoderMaterializedState | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
     timing_recorder: TimingRecorder | None = None,
@@ -260,7 +260,7 @@ def run_query_ssl_peft_encoder_local_training(
             timing_recorder=timing_recorder,
             persist_update_artifact=persist_agent_local_update,
             initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
-            delta_materializer=LoraClassifierDeltaMaterializer(
+            delta_materializer=PeftEncoderDeltaMaterializer(
                 artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
             ),
         )
@@ -279,9 +279,9 @@ def _load_base_parameters_if_needed(
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None,
-    base_parameters: LoraClassifierMaterializedState | None,
+    base_parameters: PeftEncoderMaterializedState | None,
     timing_recorder: TimingRecorder | None,
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     if base_parameters is not None:
         return base_parameters
     if timing_recorder is None:
@@ -307,7 +307,7 @@ def _load_base_partition_parameters_if_needed(
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None,
     timing_recorder: TimingRecorder | None,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     if timing_recorder is None:
         return load_peft_encoder_base_partition_parameters(
             active_adapter_state=active_adapter_state,

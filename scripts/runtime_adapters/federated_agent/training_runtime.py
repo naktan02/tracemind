@@ -55,7 +55,7 @@ def build_federated_local_training_service(
                 adapter_kind=candidate_backend.adapter_kind,
                 config=candidate_backend.config,
                 train_executor=(
-                    simulation_inline_delta.SimulationInlineLoraClassifierTrainExecutor()
+                    simulation_inline_delta.SimulationInlinePeftEncoderTrainExecutor()
                 ),
             )
 

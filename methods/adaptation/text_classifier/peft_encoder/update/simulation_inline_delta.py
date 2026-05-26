@@ -1,4 +1,4 @@
-"""LoRA-classifier deterministic inline delta executor for simulation smoke."""
+"""PEFT-encoder deterministic inline delta executor for simulation smoke."""
 
 from __future__ import annotations
 
@@ -20,8 +20,8 @@ from shared.src.contracts.training_contracts import TrainingTask
 
 
 @dataclass(frozen=True, slots=True)
-class SimulationInlineLoraClassifierTrainExecutor:
-    """서버 집계 가능한 deterministic LoRA/classifier inline delta를 만든다."""
+class SimulationInlinePeftEncoderTrainExecutor:
+    """서버 집계 가능한 deterministic PEFT encoder/classifier inline delta를 만든다."""
 
     lora_delta_scale: float = 0.05
     classifier_delta_scale: float = 1.0
@@ -38,7 +38,7 @@ class SimulationInlineLoraClassifierTrainExecutor:
     ) -> LoraClassifierTrainArtifacts:
         del model_manifest, created_at
         if not rows:
-            raise ValueError("LoRA-classifier simulation inline delta requires rows.")
+            raise ValueError("PEFT encoder simulation inline delta requires rows.")
 
         lora_parameter_deltas = _build_lora_parameter_deltas(
             rows=rows,
@@ -159,3 +159,6 @@ def _build_classifier_head_bias_deltas(
 
 def _effective_step_scale(*, learning_rate: float, scale: float) -> float:
     return max(1e-4, abs(float(learning_rate))) * float(scale)
+
+
+SimulationInlineLoraClassifierTrainExecutor = SimulationInlinePeftEncoderTrainExecutor

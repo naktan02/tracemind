@@ -86,7 +86,7 @@ def build_simulation_request_from_config(
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
-        lora_classifier=_build_lora_classifier_runtime_config(cfg.round_runtime),
+        lora_classifier=_build_legacy_lora_classifier_runtime_config(cfg.round_runtime),
         peft_classifier=_build_peft_classifier_runtime_config(cfg.round_runtime),
     )
     actual_seed = int(cfg.seed if seed is None else seed)
@@ -228,13 +228,14 @@ def _build_training_task_config(
     )
 
 
-def _build_lora_classifier_runtime_config(
+def _build_legacy_lora_classifier_runtime_config(
     cfg: DictConfig,
 ) -> FederatedPeftEncoderRuntimeConfig | None:
     if "lora_classifier" not in cfg or cfg.lora_classifier is None:
         return None
     return FederatedPeftEncoderRuntimeConfig.from_mapping(
-        to_plain_dict(cfg.lora_classifier)
+        to_plain_dict(cfg.lora_classifier),
+        default_artifact_format="simulation_lora_classifier_state_ref",
     )
 
 

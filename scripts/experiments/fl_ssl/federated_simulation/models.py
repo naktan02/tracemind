@@ -295,7 +295,7 @@ class FederatedPeftEncoderRuntimeConfig:
     """PEFT-backed classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
 
     training_backend_config: LoraClassifierTrainingBackendConfig
-    artifact_format: str = "simulation_lora_classifier_state_ref"
+    artifact_format: str = "simulation_peft_classifier_state_ref"
     lora_adapter_artifact_ref: str | None = None
     peft_adapter_artifact_ref: str | None = None
     classifier_head_artifact_ref: str | None = None
@@ -305,7 +305,7 @@ class FederatedPeftEncoderRuntimeConfig:
         cls,
         source: Mapping[str, object],
         *,
-        default_artifact_format: str = "simulation_lora_classifier_state_ref",
+        default_artifact_format: str = "simulation_peft_classifier_state_ref",
     ) -> "FederatedPeftEncoderRuntimeConfig":
         """Hydra round_runtime classifier mapping을 typed config로 해석한다."""
 
@@ -341,7 +341,7 @@ class FederatedPeftEncoderRuntimeConfig:
         return self.training_backend_config.to_backbone_payload()
 
     def lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """legacy lora_classifier state에 넣을 LoRA config snapshot."""
+        """legacy lora_classifier state에 넣을 LoRA mechanism config snapshot."""
 
         return self.training_backend_config.to_lora_config_payload()
 

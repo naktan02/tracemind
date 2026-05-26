@@ -51,9 +51,9 @@ def run_query_ssl_client_round_if_supported(
 ) -> ClientRoundExecution | None:
     """Query SSL raw-row client training이 가능한 조합이면 해당 경로로 실행한다."""
 
-    if not _supports_query_ssl_lora_client_training(request):
+    if not _supports_query_ssl_peft_encoder_client_training(request):
         return None
-    return _run_query_ssl_lora_client_round(
+    return _run_query_ssl_peft_encoder_client_round(
         request=request,
         bootstrapped=bootstrapped,
         active=active,
@@ -64,7 +64,7 @@ def run_query_ssl_client_round_if_supported(
     )
 
 
-def _supports_query_ssl_lora_client_training(
+def _supports_query_ssl_peft_encoder_client_training(
     request: SimulationRunRequest,
 ) -> bool:
     return (
@@ -78,7 +78,7 @@ def _supports_query_ssl_lora_client_training(
     )
 
 
-def _run_query_ssl_lora_client_round(
+def _run_query_ssl_peft_encoder_client_round(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,

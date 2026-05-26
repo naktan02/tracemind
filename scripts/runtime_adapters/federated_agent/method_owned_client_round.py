@@ -19,7 +19,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts impo
     upload_agent_local_peft_encoder_update,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
@@ -65,15 +65,15 @@ def run_method_owned_client_round_if_supported(
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
     previous_client_partition_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
+        Mapping[str, PeftEncoderMaterializedState] | None
     ) = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
-    """method-owned LoRA raw-row training이 가능한 조합이면 실행한다."""
+    """method-owned PEFT encoder raw-row training이 가능한 조합이면 실행한다."""
 
-    if not _supports_method_owned_lora_client_training(request):
+    if not _supports_method_owned_peft_encoder_client_training(request):
         return None
-    return _run_method_owned_lora_client_round(
+    return _run_method_owned_peft_encoder_client_round(
         request=request,
         bootstrapped=bootstrapped,
         active=active,
@@ -88,7 +88,7 @@ def run_method_owned_client_round_if_supported(
     )
 
 
-def _supports_method_owned_lora_client_training(
+def _supports_method_owned_peft_encoder_client_training(
     request: SimulationRunRequest,
 ) -> bool:
     return (
@@ -101,7 +101,7 @@ def _supports_method_owned_lora_client_training(
     )
 
 
-def _run_method_owned_lora_client_round(
+def _run_method_owned_peft_encoder_client_round(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
@@ -113,7 +113,7 @@ def _run_method_owned_lora_client_round(
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
     previous_client_partition_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
+        Mapping[str, PeftEncoderMaterializedState] | None
     ) = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:

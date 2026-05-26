@@ -29,11 +29,11 @@ from methods.adaptation.text_classifier.peft_encoder.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
-    LoraClassifierDeltaMaterializer,
+    PeftEncoderDeltaMaterializer,
     upload_agent_local_peft_encoder_update,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -89,7 +89,7 @@ build_peft_encoder_helper_provider_for_local_ssl_policy = (
 
 
 def prepare_delta_materialization(*, output_dir, **kwargs):
-    return LoraClassifierDeltaMaterializer(
+    return PeftEncoderDeltaMaterializer(
         artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
     ).prepare(**kwargs)
 
@@ -174,7 +174,7 @@ def test_lora_classifier_base_parameters_use_round_cache(
         lora_adapter_artifact_ref="server-aggregate://sim_rev_0003/lora_adapter",
         classifier_head_artifact_ref="server-aggregate://sim_rev_0003/head",
     )
-    materialized = LoraClassifierMaterializedState(
+    materialized = PeftEncoderMaterializedState(
         lora_parameters={"lora.test": [0.1]},
         classifier_head_weights={
             "anxiety": [0.2, 0.0],
