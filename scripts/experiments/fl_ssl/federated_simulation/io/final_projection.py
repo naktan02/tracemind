@@ -4,9 +4,6 @@ from __future__ import annotations
 
 from typing import Any
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    materialize_base_lora_classifier_state,
-)
 from methods.adaptation.lora_classifier.config import (
     build_lora_classifier_training_backend_config,
 )
@@ -19,6 +16,9 @@ from methods.adaptation.lora_classifier.training.modeling import (
     build_lora_text_classifier_from_config,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    materialize_base_lora_classifier_state,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
 )

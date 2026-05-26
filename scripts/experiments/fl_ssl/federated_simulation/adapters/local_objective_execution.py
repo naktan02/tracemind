@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
 )
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan

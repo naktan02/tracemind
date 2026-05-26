@@ -8,12 +8,12 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
     server_owned_lora_classifier_update_artifact_byte_count,
     upload_agent_local_lora_classifier_update,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan

@@ -14,14 +14,14 @@ from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
     LoraClassifierTrainerRuntimeConfig,
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder

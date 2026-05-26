@@ -11,10 +11,6 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-    compact_lora_classifier_materialized_state,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -29,6 +25,10 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     LoraClassifierTrainerRuntimeConfig,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_weak_dataloader
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
+    compact_lora_classifier_materialized_state,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,

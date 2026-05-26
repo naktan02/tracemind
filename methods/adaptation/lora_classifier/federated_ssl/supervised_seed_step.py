@@ -5,9 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -26,6 +23,9 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     LoraClassifierTrainerRuntimeConfig,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -79,9 +79,7 @@ def run_lora_classifier_supervised_seed_step_core(
         base_parameters=base_parameters,
         device=trainer_runtime_config.device,
     )
-    label_to_index = {
-        label: index for index, label in enumerate(effective_labels)
-    }
+    label_to_index = {label: index for index, label in enumerate(effective_labels)}
     train_loader = build_dataloader(
         rows=bootstrap_rows,
         label_to_index=label_to_index,

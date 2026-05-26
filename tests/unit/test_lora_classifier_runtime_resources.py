@@ -8,9 +8,6 @@ from types import SimpleNamespace
 import torch
 from torch import nn
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -19,6 +16,9 @@ from methods.adaptation.lora_classifier.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
 from methods.adaptation.text_classifier.peft_encoder.training import modeling
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,

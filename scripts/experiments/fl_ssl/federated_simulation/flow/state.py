@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

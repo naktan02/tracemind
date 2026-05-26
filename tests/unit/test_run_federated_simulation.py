@@ -9,9 +9,6 @@ from pathlib import Path
 
 import pytest
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -28,6 +25,9 @@ from methods.adaptation.lora_classifier.update.delta_artifacts import (
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,

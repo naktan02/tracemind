@@ -14,9 +14,6 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslLocalTrainingService,
     QuerySslLoraLocalTrainingRequest,
 )
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
@@ -35,6 +32,9 @@ from methods.adaptation.lora_classifier.training_backend import (
 )
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder

@@ -9,14 +9,14 @@ import pytest
 import torch
 from torch import Tensor, nn
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
     model_builder,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 
 

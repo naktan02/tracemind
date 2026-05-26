@@ -7,9 +7,6 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.federated_ssl import (
     partitioned_objective_training,
 )
@@ -38,6 +35,9 @@ from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned i
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
     trainable_model as ptm,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FEDMATCH_PSI_L1_REGULARIZATION,

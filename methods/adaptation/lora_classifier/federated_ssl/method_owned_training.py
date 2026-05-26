@@ -7,9 +7,6 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -18,6 +15,9 @@ from methods.adaptation.lora_classifier.training.query_ssl_local_training import
     QuerySslLoraClientTrainingResult,
     QuerySslLoraDeltaMaterializer,
     QuerySslLoraObjectiveRuntimeConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder

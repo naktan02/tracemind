@@ -10,9 +10,6 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
 )
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    LoraClassifierMaterializedState,
-)
 from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -41,6 +38,9 @@ from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact impor
 )
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qcore,
+)
+from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+    LoraClassifierMaterializedState,
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
