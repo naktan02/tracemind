@@ -1,4 +1,4 @@
-"""LoRA-classifier server-side update preflight rules."""
+"""PEFT-backed classifier server-side update preflight rules."""
 
 from __future__ import annotations
 
@@ -30,11 +30,11 @@ PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 @register_server_update_compatibility_validator(LORA_CLASSIFIER_ADAPTER_KIND)
 @register_server_update_compatibility_validator(PEFT_CLASSIFIER_ADAPTER_KIND)
-def require_lora_classifier_update_matches_active_state(
+def require_peft_encoder_update_matches_active_state(
     update_payload: SharedAdapterUpdatePayload,
     active_state: SharedAdapterState,
 ) -> None:
-    """LoRA-classifier update가 active state/manifest와 같은 family인지 검사한다."""
+    """PEFT-backed classifier update가 active state/manifest와 맞는지 검사한다."""
 
     if not isinstance(update_payload, LoraClassifierDelta | PeftClassifierDelta):
         raise ValueError(
@@ -75,10 +75,10 @@ def require_lora_classifier_update_matches_active_state(
 
 @register_server_update_materialization_validator(LORA_CLASSIFIER_ADAPTER_KIND)
 @register_server_update_materialization_validator(PEFT_CLASSIFIER_ADAPTER_KIND)
-def require_lora_classifier_update_is_server_materializable(
+def require_peft_encoder_update_is_server_materializable(
     update_payload: SharedAdapterUpdatePayload,
 ) -> None:
-    """LoRA-classifier update가 서버에서 읽을 수 없는 local ref만 갖는지 검사한다."""
+    """PEFT-backed classifier update가 서버 local ref만 갖는지 검사한다."""
 
     if not isinstance(update_payload, LoraClassifierDelta | PeftClassifierDelta):
         raise ValueError(
@@ -105,7 +105,7 @@ def require_lora_classifier_update_is_server_materializable(
     ]
     if unsupported_refs:
         raise ValueError(
-            "LoRA-classifier update uses agent-local artifact ref(s) that the "
+            "PEFT-backed classifier update uses agent-local artifact ref(s) that the "
             "server cannot materialize yet: "
             f"{unsupported_refs}. Upload/materialize them as server-owned refs "
             "or send inline deltas."
@@ -115,7 +115,7 @@ def require_lora_classifier_update_is_server_materializable(
 def _require_equal(field_name: str, actual: object, expected: object) -> None:
     if actual != expected:
         raise ValueError(
-            "LoRA-classifier update is not compatible with the active state: "
+            "PEFT-backed classifier update is not compatible with the active state: "
             f"{field_name} {actual!r} != {expected!r}."
         )
 
@@ -148,3 +148,11 @@ def _peft_adapter_delta_artifact_ref(
     if isinstance(payload, PeftClassifierDelta):
         return payload.peft_adapter_delta_artifact_ref
     return payload.lora_delta_artifact_ref
+
+
+require_lora_classifier_update_matches_active_state = (
+    require_peft_encoder_update_matches_active_state
+)
+require_lora_classifier_update_is_server_materializable = (
+    require_peft_encoder_update_is_server_materializable
+)

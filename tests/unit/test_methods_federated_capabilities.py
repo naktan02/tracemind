@@ -4,6 +4,12 @@ from __future__ import annotations
 
 import pytest
 
+from methods.adaptation.federated_ssl_server_update import (
+    resolve_federated_ssl_server_update_backend_name,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    peft_encoder_partitioned_projection as peft_part_projection,
+)
 from methods.federated.aggregation_weighting import (
     AggregationWeightPolicy,
     normalized_aggregation_weights,
@@ -47,6 +53,12 @@ from methods.federated_ssl.local_supervision import (
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.federated_ssl.server_step import (
     resolve_method_supervised_seed_step_parameters,
+)
+from shared.src.contracts.adapter_contract_families.lora_classifier import (
+    LORA_CLASSIFIER_ADAPTER_KIND,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
 )
 
 
@@ -325,6 +337,24 @@ def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:
     validate_federated_ssl_simulation_runtime_support(
         capability_plan=plan,
         composition_mode=COMPOSITION_MODE_METHOD_OWNED,
+    )
+
+
+@pytest.mark.parametrize(
+    "adapter_kind",
+    (PEFT_CLASSIFIER_ADAPTER_KIND, LORA_CLASSIFIER_ADAPTER_KIND),
+)
+def test_fedmatch_partitioned_server_update_resolves_for_peft_classifier_family(
+    adapter_kind: str,
+) -> None:
+    resolved_backend = resolve_federated_ssl_server_update_backend_name(
+        adapter_family_name=adapter_kind,
+        server_update_policy_name=SERVER_UPDATE_FEDMATCH_PARTITIONED,
+        aggregation_backend_name="fedavg",
+    )
+
+    assert (
+        resolved_backend == peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
     )
 
 

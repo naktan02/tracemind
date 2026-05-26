@@ -22,6 +22,12 @@ class FederatedSslServerUpdateBackendResolver(Protocol):
 
 
 _ADAPTATION_PACKAGE = "methods.adaptation"
+_SERVER_UPDATE_MODULE_BY_ADAPTER_KIND = {
+    "peft_classifier": (
+        "methods.adaptation.text_classifier.peft_encoder."
+        "federated_ssl.server_update_policy"
+    ),
+}
 _SERVER_UPDATE_BACKEND_RESOLVERS: dict[
     str,
     FederatedSslServerUpdateBackendResolver,
@@ -87,10 +93,13 @@ def resolve_federated_ssl_server_update_backend_name(
 def _import_federated_ssl_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
-    module_name = (
-        f"{_ADAPTATION_PACKAGE}."
-        f"{normalized_adapter_kind.replace('-', '_')}."
-        "federated_ssl.server_update_policy"
+    module_name = _SERVER_UPDATE_MODULE_BY_ADAPTER_KIND.get(
+        normalized_adapter_kind,
+        (
+            f"{_ADAPTATION_PACKAGE}."
+            f"{normalized_adapter_kind.replace('-', '_')}."
+            "federated_ssl.server_update_policy"
+        ),
     )
     try:
         importlib.import_module(module_name)

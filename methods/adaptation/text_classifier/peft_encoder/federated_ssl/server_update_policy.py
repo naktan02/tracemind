@@ -1,4 +1,4 @@
-"""LoRA-classifier family의 FL SSL server update policy 해석."""
+"""PEFT-backed classifier family의 FL SSL server update policy 해석."""
 
 from __future__ import annotations
 
@@ -12,19 +12,23 @@ from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITI
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_ADAPTER_KIND,
+)
 
 
 @register_federated_ssl_server_update_backend_resolver(LORA_CLASSIFIER_ADAPTER_KIND)
-def resolve_lora_classifier_federated_ssl_server_update_backend(
+@register_federated_ssl_server_update_backend_resolver(PEFT_CLASSIFIER_ADAPTER_KIND)
+def resolve_peft_encoder_federated_ssl_server_update_backend(
     *,
     server_update_policy_name: str,
     aggregation_backend_name: str,
 ) -> str:
-    """LoRA-classifier server update policy를 aggregation backend로 해석한다."""
+    """PEFT-backed classifier server update policy를 aggregation backend로 해석한다."""
 
     if server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
         raise ValueError(
-            "Unsupported LoRA-classifier FL SSL server_update_policy: "
+            "Unsupported PEFT-backed classifier FL SSL server_update_policy: "
             f"{server_update_policy_name}."
         )
     normalized_backend = aggregation_backend_name.strip().lower()
@@ -35,3 +39,8 @@ def resolve_lora_classifier_federated_ssl_server_update_backend(
             f"{peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME}."
         )
     return peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
+
+
+resolve_lora_classifier_federated_ssl_server_update_backend = (
+    resolve_peft_encoder_federated_ssl_server_update_backend
+)
