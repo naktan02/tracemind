@@ -6,7 +6,6 @@ from types import SimpleNamespace
 
 import pytest
 
-import methods.adaptation.lora_classifier.training.query_ssl_local_training as qcore
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
@@ -39,6 +38,9 @@ from methods.adaptation.lora_classifier.update.partitioned_delta import (
 from methods.adaptation.lora_classifier.update.partitioned_tensor_artifact import (
     PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
     parse_partitioned_delta_tensor_artifact,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qcore,
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary

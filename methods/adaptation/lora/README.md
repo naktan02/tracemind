@@ -1,6 +1,11 @@
 # LoRA Adaptation
 
-`methods/adaptation/lora/`는 LoRA 계열 PEFT adapter builder 구현을 소유한다.
+`methods/adaptation/lora/`는 legacy compatibility surface다. LoRA 계열 PEFT
+adapter builder 구현의 source of truth는
+`methods/adaptation/peft_adapters/lora/`로 이동했다.
+
+`lora_adapter.py`는 새 경로의 named symbol만 가져오는 shim이다. 새 내부 코드는
+`methods/adaptation/peft_adapters/lora/builder.py`를 direct-file import한다.
 
 제공 builder는 `lora`와 `rslora`다. rank, alpha, dropout, target_modules,
 bias, use_rslora 같은 값은 `conf/strategy_axes/adaptation/peft_adapter/`

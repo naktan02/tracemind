@@ -1,7 +1,17 @@
 # LoRA Classifier Adaptation
 
-`methods/adaptation/lora_classifier/`는 frozen text backbone 위에 LoRA/PEFT
-adapter와 classifier head를 얹는 재사용 가능한 scaffold를 소유한다.
+`methods/adaptation/lora_classifier/`는 기존 shared contract와 runtime import 경로를
+보존하는 legacy compatibility surface다. PEFT encoder + classifier head core의
+source of truth는 `methods/adaptation/text_classifier/peft_encoder/`로 이동했다.
+
+`config.py`, `evaluation.py`, `initial_state.py`, `runtime_compatibility.py`,
+`server_preflight.py`, `training_backend.py`, `training/*`, `update/*`,
+`aggregation/materialization.py`는 새 경로의 named symbol만 import하는 shim이다.
+새 내부 코드는 `text_classifier/peft_encoder/`를 direct-file import로 참조한다.
+기존 `adapter_kind=lora_classifier`와 payload format 이름은 shared contract v2
+migration 전까지 유지한다.
+
+기존 구현 범위는 다음과 같았다.
 
 범위:
 

@@ -1,40 +1,7 @@
-"""LoRA-classifier partitioned payload builder helpers."""
+"""Compatibility shim for legacy lora_classifier partitioned payload imports."""
 
-from __future__ import annotations
+# ruff: noqa: F401,E501,I001
 
-from collections.abc import Mapping
-
-from methods.adaptation.lora_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-    normalize_partition_deltas,
+from methods.adaptation.text_classifier.peft_encoder.update.partitioned_payload_builder import (
+    build_partitioned_delta_payload,
 )
-
-
-def build_partitioned_delta_payload(
-    deltas: tuple[LoraClassifierPartitionDelta, ...],
-) -> dict[str, object]:
-    """partitioned delta를 artifact/diagnostics가 쓰기 쉬운 JSON shape로 바꾼다."""
-
-    normalized = normalize_partition_deltas(deltas)
-    return {
-        "partitions": {
-            name: _partition_to_payload(delta)
-            for name, delta in sorted(normalized.items())
-        }
-    }
-
-
-def _partition_to_payload(delta: LoraClassifierPartitionDelta) -> Mapping[str, object]:
-    return {
-        "lora_parameter_deltas": {
-            key: list(values)
-            for key, values in sorted(delta.lora_parameter_deltas.items())
-        },
-        "classifier_head_weight_deltas": {
-            key: list(values)
-            for key, values in sorted(delta.classifier_head_weight_deltas.items())
-        },
-        "classifier_head_bias_deltas": dict(
-            sorted(delta.classifier_head_bias_deltas.items())
-        ),
-    }

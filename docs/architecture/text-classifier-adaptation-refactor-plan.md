@@ -70,6 +70,7 @@ methods/adaptation/
       update/
         delta_artifacts.py
         local_update.py
+        materialization.py
         merged_tensor_artifact.py
         partitioned_delta.py
         partitioned_payload_builder.py
@@ -190,6 +191,15 @@ parameter routing, helper policy, local objective, server policy를 소유한다
   테스트한다.
 - `initial_query_ssl_algorithm_state` 입력과 `query_ssl_algorithm_state` 결과 필드는
   새 경로에서도 유지한다.
+
+상태: 완료. `config.py`, `evaluation.py`, `initial_state.py`,
+`runtime_compatibility.py`, `server_preflight.py`, `training_backend.py`,
+`training/*`, `update/*`, `aggregation/materialization.py`를
+`text_classifier/peft_encoder/`로 이동했다. 기존 `lora_classifier` 경로는
+direct-file compatibility shim으로 남겼고, 새 내부 코드는 legacy
+`methods.adaptation.lora_classifier`를 import하지 않는다. PEFT mechanism protocol,
+registry, LoRA builder도 `peft_adapters/`로 이동했고 기존 `peft/`, `lora/` 경로는
+shim으로 남겼다.
 
 ### 4단계: 중립화된 partitioned primitive 이동
 

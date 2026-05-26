@@ -15,10 +15,10 @@ from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.lora_classifier.federated_ssl import peer_predictions
-from methods.adaptation.lora_classifier.training import modeling
 from methods.adaptation.lora_classifier.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
+from methods.adaptation.text_classifier.peft_encoder.training import modeling
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,

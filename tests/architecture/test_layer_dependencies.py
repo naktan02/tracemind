@@ -759,6 +759,111 @@ def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() 
     )
 
 
+def test_text_classifier_peft_encoder_uses_peft_adapters_axis() -> None:
+    violations = _find_forbidden_imports(
+        root=TEXT_CLASSIFIER_ADAPTATION_SRC / "peft_encoder",
+        forbidden_prefixes=(
+            "methods.adaptation.lora.",
+            "methods.adaptation.peft.",
+        ),
+    )
+
+    assert not violations, (
+        "PEFT encoder text classifier는 LoRA/DoRA mechanism을 "
+        "methods/adaptation/peft_adapters/** 축으로만 참조한다. legacy "
+        "methods/adaptation/lora 또는 methods/adaptation/peft 경로에 묶지 않는다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_migrated_lora_classifier_core_files_are_direct_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
+    shim_paths = (
+        package_root / "config.py",
+        package_root / "evaluation.py",
+        package_root / "initial_state.py",
+        package_root / "runtime_compatibility.py",
+        package_root / "server_preflight.py",
+        package_root / "training_backend.py",
+        package_root / "aggregation" / "materialization.py",
+        package_root / "training" / "batching.py",
+        package_root / "training" / "delta_extraction.py",
+        package_root / "training" / "loops.py",
+        package_root / "training" / "modeling.py",
+        package_root / "training" / "optimizer_step.py",
+        package_root / "training" / "partitioned_deltas.py",
+        package_root / "training" / "pseudo_label_diagnostics.py",
+        package_root / "training" / "query_ssl_local_training.py",
+        package_root / "training" / "scalar_metrics.py",
+        package_root / "training" / "step_budget.py",
+        package_root / "update" / "delta_artifacts.py",
+        package_root / "update" / "json_delta_artifact.py",
+        package_root / "update" / "local_update.py",
+        package_root / "update" / "merged_tensor_artifact.py",
+        package_root / "update" / "partitioned_delta.py",
+        package_root / "update" / "partitioned_payload_builder.py",
+        package_root / "update" / "partitioned_tensor_artifact.py",
+        package_root / "update" / "payload_builder.py",
+        package_root / "update" / "query_ssl_update.py",
+        package_root / "update" / "simulation_inline_delta.py",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                "methods.adaptation.text_classifier.peft_encoder"
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "migrated lora_classifier core 파일은 새 text_classifier/peft_encoder 경로의 "
+        "named symbol을 가져오는 compatibility shim으로만 남긴다. business rule, "
+        "source-of-truth 상수, wildcard re-export를 넣지 않는다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
+def test_legacy_peft_adapter_files_are_direct_shims() -> None:
+    shim_paths = (
+        METHODS_SRC / "adaptation" / "peft" / "base.py",
+        METHODS_SRC / "adaptation" / "peft" / "registry.py",
+        METHODS_SRC / "adaptation" / "lora" / "lora_adapter.py",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                "methods.adaptation.peft_adapters"
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "legacy peft/lora 파일은 새 peft_adapters 경로의 named symbol만 가져오는 "
+        "compatibility shim으로 남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
 def test_text_classifier_aggregation_files_stay_projection_only() -> None:
     violations: list[Path] = []
     if TEXT_CLASSIFIER_AGGREGATION_SRC.is_dir():
