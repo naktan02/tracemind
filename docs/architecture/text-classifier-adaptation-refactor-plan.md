@@ -280,6 +280,9 @@ compatibility shim으로만 남긴다. `helper_provider.py`,
 legacy path는 shim으로만 남겼다. 다음 보정 대상은 FedMatch 의미가 남아 있는
 `lora_classifier/federated_ssl/partitioned_objective_training.py`와 `peft/`, `lora/`,
 `classifier_head/`, `text_classifier/feature_head/` legacy shim 폴더의 제거 조건이다.
+FedMatch scenario, local supervision, sigma/psi partition routing, upload partition,
+objective 생성, `psi_factor` 해석은
+`methods/federated_ssl/fedmatch/partitioned_runtime_plan.py`로 분리했다.
 
 ## 호환성 정책
 

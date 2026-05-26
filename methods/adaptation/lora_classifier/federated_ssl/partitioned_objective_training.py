@@ -83,27 +83,12 @@ from methods.federated_ssl.capability_axes import (
     LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
     LOCAL_SSL_POLICY_FIXMATCH,
 )
-from methods.federated_ssl.capability_plan import (
-    LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED,
-    LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY,
-)
-from methods.federated_ssl.fedmatch.local_objective import (
-    FedMatchLocalObjectiveParameters,
-    build_fedmatch_partitioned_tensor_objective,
-)
-from methods.federated_ssl.fedmatch.original_spec import (
-    FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
-    FEDMATCH_SCENARIO_LABELS_AT_SERVER,
-)
-from methods.federated_ssl.fedmatch.parameter_routing import (
-    FEDMATCH_PSI_PARTITION,
-    FEDMATCH_SIGMA_PARTITION,
-    upload_partitions_for_scenario,
+from methods.federated_ssl.fedmatch.partitioned_runtime_plan import (
+    FedMatchPartitionedRuntimePlan,
+    build_fedmatch_partitioned_runtime_plan,
 )
 from methods.federated_ssl.local_supervision import (
-    FederatedSslLocalSupervisionRegime,
     require_rows_match_local_supervision_regime,
-    resolve_local_supervision_regime,
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -185,16 +170,18 @@ def run_method_owned_lora_classifier_training_core(
 ) -> QuerySslLoraClientTrainingResult:
     """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
-    scenario_name = _normalize_fedmatch_scenario_name(ssl_method_config.scenario)
-    local_supervision_regime = _resolve_fedmatch_local_supervision_regime(scenario_name)
+    fedmatch_plan = build_fedmatch_partitioned_runtime_plan(
+        scenario_name=ssl_method_config.scenario,
+        effective_parameters=ssl_method_config.effective_parameters,
+    )
 
     effective_labeled_rows = list(labeled_rows)
     effective_unlabeled_rows = list(unlabeled_rows)
     require_rows_match_local_supervision_regime(
-        regime=local_supervision_regime,
+        regime=fedmatch_plan.local_supervision_regime,
         labeled_rows=effective_labeled_rows,
         unlabeled_rows=effective_unlabeled_rows,
-        context=f"FedMatch {scenario_name} local runtime",
+        context=f"FedMatch {fedmatch_plan.scenario_name} local runtime",
     )
 
     validate_query_ssl_unlabeled_views(
@@ -205,20 +192,12 @@ def run_method_owned_lora_classifier_training_core(
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
         raise ValueError("FedMatch LoRA classifier label schema must not be empty.")
-    if local_supervision_regime.uses_client_labeled_rows:
+    if fedmatch_plan.local_supervision_regime.uses_client_labeled_rows:
         _validate_labeled_rows_have_known_labels(
             rows=effective_labeled_rows,
             labels=effective_labels,
         )
 
-    parameters = FedMatchLocalObjectiveParameters.from_mapping(
-        ssl_method_config.effective_parameters
-    )
-    physical_objective = build_fedmatch_partitioned_tensor_objective(parameters)
-    sequential_objective = build_fedmatch_partitioned_tensor_objective(
-        parameters,
-        omit_regularization_for_single_trainable_model=True,
-    )
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
     tokenization_cache_namespace_value = tokenization_cache_namespace(lora_config)
     with _measure(timing_recorder, "core_model_prepare_seconds"):
@@ -253,7 +232,7 @@ def run_method_owned_lora_classifier_training_core(
                 configured_unlabeled_batch_size=unlabeled_batch_size,
                 effective_parameters=ssl_method_config.effective_parameters,
                 uses_labeled_batches=(
-                    local_supervision_regime.uses_client_labeled_rows
+                    fedmatch_plan.local_supervision_regime.uses_client_labeled_rows
                 ),
             )
         )
@@ -269,7 +248,7 @@ def run_method_owned_lora_classifier_training_core(
                 tokenization_cache=tokenization_cache,
                 tokenization_cache_namespace=tokenization_cache_namespace_value,
             )
-            if local_supervision_regime.uses_client_labeled_rows
+            if fedmatch_plan.local_supervision_regime.uses_client_labeled_rows
             else None
         )
         unlabeled_loader = build_multiview_dataloader(
@@ -306,7 +285,7 @@ def run_method_owned_lora_classifier_training_core(
         )
         sparse_sync_parameters = PartitionSparseSyncParameters.from_mapping(
             ssl_method_config.effective_parameters,
-            l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+            l1_sparse_partitions=fedmatch_plan.l1_sparse_partitions,
         )
         uses_s2c_sparse_download = (
             uses_physical_partition_runtime
@@ -335,27 +314,21 @@ def run_method_owned_lora_classifier_training_core(
         elif (
             uses_physical_partition_runtime and not effective_base_partition_parameters
         ):
-            psi_factor = _resolve_fedmatch_psi_factor(
-                ssl_method_config.effective_parameters
-            )
             effective_base_partition_parameters = (
                 ps.split_lora_classifier_state_by_residual_factor(
                     published_parameters=base_parameters,
-                    base_partition_name=FEDMATCH_SIGMA_PARTITION,
-                    residual_partition_name=FEDMATCH_PSI_PARTITION,
-                    residual_factor=psi_factor,
+                    base_partition_name=fedmatch_plan.supervised_partition,
+                    residual_partition_name=fedmatch_plan.unsupervised_partition,
+                    residual_factor=fedmatch_plan.psi_factor,
                 )
             )
             partition_initialization_metrics = {
                 "fedmatch_initial_partition_from_published_state": 1.0,
-                "fedmatch_initial_partition_psi_factor": psi_factor,
+                "fedmatch_initial_partition_psi_factor": fedmatch_plan.psi_factor,
             }
         if uses_physical_partition_runtime:
             partitioned_build = build_partitioned_lora_text_classifier_from_config(
-                partition_names=(
-                    FEDMATCH_SIGMA_PARTITION,
-                    FEDMATCH_PSI_PARTITION,
-                ),
+                partition_names=fedmatch_plan.partition_names,
                 labels=effective_labels,
                 base_parameters=base_parameters,
                 base_partition_parameters=effective_base_partition_parameters,
@@ -368,7 +341,7 @@ def run_method_owned_lora_classifier_training_core(
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
                 labels=effective_labels,
-                objective=physical_objective,
+                objective=fedmatch_plan.physical_objective,
                 step_plan=step_plan,
                 device=trainer_runtime_config.device,
                 learning_rate=float(training_task.learning_rate),
@@ -379,18 +352,17 @@ def run_method_owned_lora_classifier_training_core(
                     if training_task.gradient_clip_norm is None
                     else float(training_task.gradient_clip_norm)
                 ),
-                supervised_partition=FEDMATCH_SIGMA_PARTITION,
-                unsupervised_partition=FEDMATCH_PSI_PARTITION,
+                supervised_partition=fedmatch_plan.supervised_partition,
+                unsupervised_partition=fedmatch_plan.unsupervised_partition,
                 helper_weak_probability_provider=helper_weak_probability_provider,
                 enable_inter_client_consistency=(
                     helper_weak_probability_provider is not None
                 ),
-                use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
-                emit_supervised_partition=(
-                    FEDMATCH_SIGMA_PARTITION
-                    in upload_partitions_for_scenario(scenario_name=scenario_name)
+                use_supervised_steps=(
+                    fedmatch_plan.local_supervision_regime.uses_client_labeled_rows
                 ),
-                metric_prefix="fedmatch",
+                emit_supervised_partition=fedmatch_plan.emit_supervised_partition,
+                metric_prefix=fedmatch_plan.metric_prefix,
             )
             if partition_initialization_metrics:
                 training_result = PartitionedLoraTrainingResult(
@@ -449,7 +421,7 @@ def run_method_owned_lora_classifier_training_core(
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
                 labels=effective_labels,
-                objective=sequential_objective,
+                objective=fedmatch_plan.sequential_objective,
                 step_plan=step_plan,
                 device=trainer_runtime_config.device,
                 learning_rate=float(training_task.learning_rate),
@@ -465,19 +437,18 @@ def run_method_owned_lora_classifier_training_core(
                 enable_inter_client_consistency=(
                     helper_weak_probability_provider is not None
                 ),
-                use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
-                supervised_partition=FEDMATCH_SIGMA_PARTITION,
-                unsupervised_partition=FEDMATCH_PSI_PARTITION,
-                emit_sigma_partition=(
-                    FEDMATCH_SIGMA_PARTITION
-                    in upload_partitions_for_scenario(scenario_name=scenario_name)
+                use_supervised_steps=(
+                    fedmatch_plan.local_supervision_regime.uses_client_labeled_rows
                 ),
-                metric_prefix="fedmatch",
+                supervised_partition=fedmatch_plan.supervised_partition,
+                unsupervised_partition=fedmatch_plan.unsupervised_partition,
+                emit_sigma_partition=fedmatch_plan.emit_supervised_partition,
+                metric_prefix=fedmatch_plan.metric_prefix,
             )
     history_record = training_result.metrics
     diagnostic_threshold = _resolve_partitioned_diagnostic_threshold(
         local_ssl_policy_name=local_ssl_policy_name,
-        fedmatch_parameters=parameters,
+        fedmatch_plan=fedmatch_plan,
         query_ssl_config=query_ssl_config,
     )
     with _measure(timing_recorder, "core_pseudo_label_diagnostics_seconds"):
@@ -734,35 +705,10 @@ def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     return timing_recorder.measure(key)
 
 
-def _normalize_fedmatch_scenario_name(scenario_name: str | None) -> str:
-    normalized = (scenario_name or FEDMATCH_SCENARIO_LABELS_AT_CLIENT).replace(
-        "_",
-        "-",
-    )
-    if normalized not in {
-        FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
-        FEDMATCH_SCENARIO_LABELS_AT_SERVER,
-    }:
-        raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}.")
-    return normalized
-
-
-def _resolve_fedmatch_local_supervision_regime(
-    scenario_name: str,
-) -> FederatedSslLocalSupervisionRegime:
-    if scenario_name == FEDMATCH_SCENARIO_LABELS_AT_CLIENT:
-        return resolve_local_supervision_regime(
-            LOCAL_SUPERVISION_CLIENT_LABELED_AND_UNLABELED
-        )
-    if scenario_name == FEDMATCH_SCENARIO_LABELS_AT_SERVER:
-        return resolve_local_supervision_regime(LOCAL_SUPERVISION_CLIENT_UNLABELED_ONLY)
-    raise ValueError(f"Unsupported FedMatch scenario: {scenario_name!r}.")
-
-
 def _resolve_partitioned_diagnostic_threshold(
     *,
     local_ssl_policy_name: str,
-    fedmatch_parameters: FedMatchLocalObjectiveParameters,
+    fedmatch_plan: FedMatchPartitionedRuntimePlan,
     query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
 ) -> PseudoLabelDiagnosticThreshold:
     if (
@@ -775,16 +721,8 @@ def _resolve_partitioned_diagnostic_threshold(
             dict(query_ssl_config.parameters)
         )
     return resolve_fixed_pseudo_label_diagnostic_threshold(
-        {"p_cutoff": fedmatch_parameters.confidence_threshold}
+        {"p_cutoff": fedmatch_plan.parameters.confidence_threshold}
     )
-
-
-def _resolve_fedmatch_psi_factor(parameters: Mapping[str, object]) -> float:
-    value = parameters.get("psi_factor", 0.2)
-    factor = float(value)
-    if factor < 0.0:
-        raise ValueError("FedMatch psi_factor must not be negative.")
-    return factor
 
 
 def _history_float(

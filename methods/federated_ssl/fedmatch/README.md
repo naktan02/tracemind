@@ -16,6 +16,8 @@
   vector nearest-neighbor로 보존한 core
 - `parameter_routing.py`: 원본 full parameter sigma/psi를 frozen-backbone 위
   trainable adapter/head partition scope로 매핑하는 metadata
+- `partitioned_runtime_plan.py`: scenario, local supervision, sigma/psi routing,
+  upload partition, objective, `psi_factor`를 adapter-family runtime plan으로 정규화
 - `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
 
 LoRA-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned optimizer

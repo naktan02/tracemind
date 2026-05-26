@@ -40,6 +40,11 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     trace_parameter_mapping,
     upload_partitions_for_scenario,
 )
+from methods.federated_ssl.fedmatch.partitioned_runtime_plan import (
+    build_fedmatch_partitioned_runtime_plan,
+    normalize_fedmatch_scenario_name,
+    resolve_fedmatch_psi_factor,
+)
 from methods.federated_ssl.method_parameters import (
     build_federated_ssl_method_parameter_snapshot,
 )
@@ -432,6 +437,59 @@ def test_fedmatch_lora_classifier_partition_mapping_is_explicit() -> None:
     assert upload_partitions_for_scenario(
         scenario_name=FEDMATCH_SCENARIO_LABELS_AT_SERVER,
     ) == (FEDMATCH_PSI_PARTITION,)
+
+
+def test_fedmatch_partitioned_runtime_plan_owns_sigma_psi_routing() -> None:
+    parameters = fedmatch_original_parameter_mapping()
+
+    plan = build_fedmatch_partitioned_runtime_plan(
+        scenario_name=FEDMATCH_SCENARIO_LABELS_AT_SERVER,
+        effective_parameters=parameters,
+    )
+
+    assert plan.scenario_name == FEDMATCH_SCENARIO_LABELS_AT_SERVER
+    assert plan.partition_names == (FEDMATCH_SIGMA_PARTITION, FEDMATCH_PSI_PARTITION)
+    assert plan.supervised_partition == FEDMATCH_SIGMA_PARTITION
+    assert plan.unsupervised_partition == FEDMATCH_PSI_PARTITION
+    assert plan.upload_partitions == (FEDMATCH_PSI_PARTITION,)
+    assert not plan.emit_supervised_partition
+    assert plan.l1_sparse_partitions == (FEDMATCH_PSI_PARTITION,)
+    assert plan.psi_factor == pytest.approx(0.2)
+    assert plan.parameters.confidence_threshold == pytest.approx(0.75)
+    assert plan.physical_objective.parameters == plan.parameters
+    assert plan.sequential_objective.omit_regularization_for_single_trainable_model
+    assert not plan.local_supervision_regime.uses_client_labeled_rows
+
+
+def test_fedmatch_partitioned_runtime_plan_normalizes_scenario_and_psi_factor() -> None:
+    parameters = {
+        **fedmatch_original_parameter_mapping(),
+        "psi_factor": 0.35,
+    }
+
+    plan = build_fedmatch_partitioned_runtime_plan(
+        scenario_name="labels_at_client",
+        effective_parameters=parameters,
+    )
+
+    assert normalize_fedmatch_scenario_name(None) == FEDMATCH_SCENARIO_LABELS_AT_CLIENT
+    assert plan.scenario_name == FEDMATCH_SCENARIO_LABELS_AT_CLIENT
+    assert plan.emit_supervised_partition
+    assert plan.local_supervision_regime.uses_client_labeled_rows
+    assert resolve_fedmatch_psi_factor(parameters) == pytest.approx(0.35)
+
+
+def test_fedmatch_partitioned_runtime_plan_rejects_invalid_psi_factor() -> None:
+    parameters = {
+        **fedmatch_original_parameter_mapping(),
+        "psi_factor": -0.1,
+    }
+
+    with pytest.raises(ValueError, match="psi_factor"):
+        build_fedmatch_partitioned_runtime_plan(
+            scenario_name=FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
+            effective_parameters=parameters,
+        )
 
 
 def test_fedmatch_generic_parameter_snapshot_applies_overrides() -> None:
