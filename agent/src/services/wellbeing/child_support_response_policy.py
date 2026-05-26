@@ -88,12 +88,16 @@ class ChildSupportResponsePlan:
 
     @property
     def forbidden_terms(self) -> tuple[str, ...]:
-        """기존 호출부 호환용 alias."""
+        """기존 호출부 호환용 alias.
+
+        새 호출부는 canonical 필드인 `blocked_terms`를 사용한다. 유지 이유와
+        제거 조건은 `docs/contracts/legacy_contract_ledger.md`에 기록한다.
+        """
 
         return self.blocked_terms
 
 
-# 이전 이름을 쓰는 호출부가 생겨도 같은 plan 타입을 보게 둔다.
+# 기존 외부 호출부가 이전 이름을 import해도 같은 plan 타입을 보게 둔다.
 ChildSupportResponseStrategy = ChildSupportResponsePlan
 
 
@@ -171,8 +175,8 @@ class ChildSupportResponsePolicy:
         *,
         message: str,
         assessment: ChildSupportSafetyAssessment,
-    ) -> ChildSupportResponseStrategy:
-        """기존 호출부 호환용 alias."""
+    ) -> ChildSupportResponsePlan:
+        """기존 호출부 호환용 method alias."""
 
         return self.build_plan(message=message, assessment=assessment)
 

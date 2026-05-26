@@ -42,6 +42,7 @@ active_entrypoints:
   - docs/architecture/pattern-integrity-refactor-backlog.md
   - docs/architecture/method-owned-runtime-refactor-plan.md
   - docs/contracts/query_buffer_v1.md
+  - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/central_lora_classifier_trainer_contract.md
   - docs/contracts/fl_ssl_method_capability_matrix.md
   - docs/fl_runtime_implementation_checklist.md
