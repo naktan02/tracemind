@@ -35,6 +35,20 @@ from .report_verification_models import (
     VerificationResult,
 )
 
+_CLASSIFIER_OBJECTIVE_NAMES = ("peft_classifier", "lora_classifier")
+_PEFT_CLASSIFIER_PRIMARY_REF_FIELDS = (
+    "peft_adapter_delta_artifact_ref",
+    "classifier_head_delta_artifact_ref",
+)
+_LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
+    "lora_delta_artifact_ref",
+    "classifier_head_delta_artifact_ref",
+)
+_CLASSIFIER_SNAPSHOT_SPECS = (
+    ("peft_classifier", "peft_adapter.json"),
+    ("lora_classifier", "lora_adapter.json"),
+)
+
 
 def verify_federated_simulation_report_path(
     report_path: Path,
@@ -258,8 +272,8 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
-        "objective.lora_classifier.delta_format",
-        _nested_or_flat_value(objective, "lora_classifier", "delta_format"),
+        "objective.peft_classifier.delta_format",
+        _classifier_objective_value(objective, "delta_format"),
         expectation.expected_delta_format,
     )
     _expect_equal(
@@ -646,10 +660,6 @@ def _verify_server_owned_update_refs(
     """merged-delta와 partitioned-only update artifact ref를 함께 검증한다."""
 
     partitioned_ref = update_payload.get("partitioned_deltas_artifact_ref")
-    primary_refs = (
-        update_payload.get("lora_delta_artifact_ref"),
-        update_payload.get("classifier_head_delta_artifact_ref"),
-    )
     if partitioned_ref is not None:
         _verify_server_owned_artifact_ref(
             errors=errors,
@@ -659,9 +669,10 @@ def _verify_server_owned_update_refs(
             artifact_ref=partitioned_ref,
         )
         return
+    primary_ref_fields = _primary_ref_fields_for_update_payload(update_payload)
     for field_name, artifact_ref in zip(
-        ("lora_delta_artifact_ref", "classifier_head_delta_artifact_ref"),
-        primary_refs,
+        primary_ref_fields,
+        (update_payload.get(field_name) for field_name in primary_ref_fields),
         strict=True,
     ):
         _verify_server_owned_artifact_ref(
@@ -671,6 +682,25 @@ def _verify_server_owned_update_refs(
             field_name=field_name,
             artifact_ref=artifact_ref,
         )
+
+
+def _classifier_objective_value(
+    objective: Mapping[str, object],
+    key: str,
+) -> object:
+    for objective_name in _CLASSIFIER_OBJECTIVE_NAMES:
+        value = _nested_or_flat_value(objective, objective_name, key)
+        if value is not None:
+            return value
+    return None
+
+
+def _primary_ref_fields_for_update_payload(
+    update_payload: Mapping[str, object],
+) -> tuple[str, str]:
+    if update_payload.get("peft_adapter_delta_artifact_ref") is not None:
+        return _PEFT_CLASSIFIER_PRIMARY_REF_FIELDS
+    return _LORA_CLASSIFIER_PRIMARY_REF_FIELDS
 
 
 def _verify_server_owned_artifact_ref(
@@ -721,7 +751,7 @@ def _verify_lora_classifier_aggregate_snapshot(
 ) -> None:
     if not rounds:
         errors.append(
-            "rounds must not be empty when lora_classifier aggregate snapshot "
+            "rounds must not be empty when peft classifier aggregate snapshot "
             "is expected."
         )
         return
@@ -729,22 +759,24 @@ def _verify_lora_classifier_aggregate_snapshot(
     model_revision = final_round.get("model_revision")
     if not isinstance(model_revision, str) or not model_revision:
         errors.append(
-            "rounds[-1].model_revision is required when lora_classifier aggregate "
+            "rounds[-1].model_revision is required when peft classifier aggregate "
             "snapshot is expected."
         )
         return
-    snapshot_dir = (
-        run_dir
-        / "main_server"
-        / "aggregation_artifacts"
-        / "versions"
-        / "lora_classifier"
-        / model_revision
-    )
-    for artifact_name in ("lora_adapter.json", "classifier_head.json"):
-        artifact_path = snapshot_dir / artifact_name
-        if not artifact_path.exists():
-            errors.append(
-                "lora_classifier aggregate snapshot artifact does not exist: "
-                f"{artifact_path}."
-            )
+    artifact_root = run_dir / "main_server" / "aggregation_artifacts" / "versions"
+    candidate_paths = [
+        (
+            artifact_root / family_name / model_revision / adapter_artifact_name,
+            artifact_root / family_name / model_revision / "classifier_head.json",
+        )
+        for family_name, adapter_artifact_name in _CLASSIFIER_SNAPSHOT_SPECS
+    ]
+    if any(all(path.exists() for path in candidate) for candidate in candidate_paths):
+        return
+    for candidate in candidate_paths:
+        for artifact_path in candidate:
+            if not artifact_path.exists():
+                errors.append(
+                    "peft classifier aggregate snapshot artifact does not exist: "
+                    f"{artifact_path}."
+                )

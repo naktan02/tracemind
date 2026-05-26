@@ -51,6 +51,7 @@ def _report_payload(
     peer_context_policy: str = "none",
     local_ssl_policy: str = "query_ssl_method",
     delta_format: str = "server_uploaded_artifact_ref",
+    objective_adapter_family: str = "lora_classifier",
     embedding_backend: str = "transformers_mxbai",
     embedding_model_id: str = "mixedbread-ai/mxbai-embed-large-v1",
     embedding_device: str = "cuda",
@@ -101,7 +102,7 @@ def _report_payload(
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
                 "query_ssl.method_name": ssl_method,
-                "lora_classifier.delta_format": delta_format,
+                f"{objective_adapter_family}.delta_format": delta_format,
             },
             "round_runtime": {
                 "adapter_family_name": adapter_family,
@@ -226,6 +227,7 @@ def _write_report_run_with_server_update_artifacts(
     *,
     payload: dict[str, object],
     partitioned_only: bool = False,
+    peft_classifier_v2: bool = False,
 ) -> Path:
     run_dir = tmp_path / "run"
     report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
@@ -243,7 +245,15 @@ def _write_report_run_with_server_update_artifacts(
             client_id = f"agent_{client_index:02d}"
             update_id = f"update_{round_id}_{client_id}"
             ref_prefix = f"client_updates/{round_id}/{client_id}/{update_id}"
-            lora_ref = f"aggregation_artifact::{ref_prefix}/lora_delta"
+            adapter_delta_name = (
+                "peft_adapter_delta" if peft_classifier_v2 else "lora_delta"
+            )
+            adapter_ref_field = (
+                "peft_adapter_delta_artifact_ref"
+                if peft_classifier_v2
+                else "lora_delta_artifact_ref"
+            )
+            adapter_ref = f"aggregation_artifact::{ref_prefix}/{adapter_delta_name}"
             head_ref = f"aggregation_artifact::{ref_prefix}/classifier_head_delta"
             partitioned_ref = f"aggregation_artifact::{ref_prefix}/partitioned_delta"
             (artifact_root / ref_prefix).mkdir(parents=True)
@@ -253,7 +263,7 @@ def _write_report_run_with_server_update_artifacts(
                 )
                 partitioned_path.write_text("fake-safetensors", encoding="utf-8")
             else:
-                (artifact_root / f"{ref_prefix}/lora_delta.json").write_text(
+                (artifact_root / f"{ref_prefix}/{adapter_delta_name}.json").write_text(
                     json.dumps({"lora_parameters": {"a": [1.0]}}),
                     encoding="utf-8",
                 )
@@ -268,7 +278,7 @@ def _write_report_run_with_server_update_artifacts(
             if partitioned_only:
                 update_payload["partitioned_deltas_artifact_ref"] = partitioned_ref
             else:
-                update_payload["lora_delta_artifact_ref"] = lora_ref
+                update_payload[adapter_ref_field] = adapter_ref
                 update_payload["classifier_head_delta_artifact_ref"] = head_ref
             (update_dir / f"{update_id}.json").write_text(
                 json.dumps(update_payload),
@@ -276,11 +286,13 @@ def _write_report_run_with_server_update_artifacts(
             )
 
     final_round = dict(payload["rounds"][-1])  # type: ignore[index,arg-type]
-    snapshot_dir = (
-        artifact_root / "lora_classifier" / str(final_round["model_revision"])
+    snapshot_family = "peft_classifier" if peft_classifier_v2 else "lora_classifier"
+    adapter_snapshot_name = (
+        "peft_adapter.json" if peft_classifier_v2 else "lora_adapter.json"
     )
+    snapshot_dir = artifact_root / snapshot_family / str(final_round["model_revision"])
     snapshot_dir.mkdir(parents=True)
-    (snapshot_dir / "lora_adapter.json").write_text(
+    (snapshot_dir / adapter_snapshot_name).write_text(
         json.dumps({"lora_parameters": {"a": [1.0]}}),
         encoding="utf-8",
     )
@@ -492,6 +504,36 @@ def test_verify_federated_report_checks_server_owned_update_artifacts(
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_server_owned_update_artifacts=True,
+            expect_no_agent_local_update_refs=True,
+            expect_lora_classifier_aggregate_snapshot=True,
+        ),
+    )
+
+    assert result.passed
+
+
+def test_verify_federated_report_accepts_peft_classifier_v2_update_artifacts(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=2,
+            round_budget=2,
+            adapter_family="peft_classifier",
+            objective_adapter_family="peft_classifier",
+        ),
+        peft_classifier_v2=True,
+    )
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_adapter_family="peft_classifier",
             expected_delta_format="server_uploaded_artifact_ref",
             expected_shared_update_count_matches_round_updates=True,
             expect_server_owned_update_artifacts=True,
@@ -810,6 +852,58 @@ def test_verify_federated_report_flags_agent_local_update_artifact_drift(
     )
     assert any(
         ".lora_delta_artifact_ref must start with 'aggregation_artifact::'" in error
+        for error in result.errors
+    )
+
+
+def test_verify_federated_report_flags_peft_classifier_v2_artifact_ref_drift(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_report_payload(
+            client_count=1,
+            completed_rounds=1,
+            round_budget=1,
+            adapter_family="peft_classifier",
+            objective_adapter_family="peft_classifier",
+        ),
+        peft_classifier_v2=True,
+    )
+    update_path = next(
+        (
+            report_path.parent.parent
+            / "main_server"
+            / "shared_adapter_updates"
+            / "versions"
+        ).glob("*.json")
+    )
+    update_payload = json.loads(update_path.read_text(encoding="utf-8"))
+    update_payload["peft_adapter_delta_artifact_ref"] = (
+        "agent-local://agent_01/peft_adapter_delta"
+    )
+    update_path.write_text(json.dumps(update_payload), encoding="utf-8")
+
+    result = verify_federated_simulation_report_path(
+        report_path,
+        FederatedReportExpectation(
+            expected_adapter_family="peft_classifier",
+            expected_delta_format="server_uploaded_artifact_ref",
+            expected_shared_update_count_matches_round_updates=True,
+            expect_server_owned_update_artifacts=True,
+            expect_no_agent_local_update_refs=True,
+            expect_lora_classifier_aggregate_snapshot=True,
+        ),
+    )
+
+    assert not result.passed
+    assert any(
+        error.endswith("must not contain agent-local artifact refs.")
+        for error in result.errors
+    )
+    assert any(
+        ".peft_adapter_delta_artifact_ref must start with 'aggregation_artifact::'"
+        in error
         for error in result.errors
     )
 
