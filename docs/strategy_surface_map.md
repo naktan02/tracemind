@@ -148,8 +148,9 @@ central fixed embedding + classifier seed
   LoRA-classifier `partitioned_delta_average` simulation backend다. 이 backend는
   원본 sparse sigma/psi sync 전체가 아니라 logical partition delta 평균 slice다.
   이전 round client-local LoRA snapshot 기반 helper weak-probability provider와
-  labels-at-server supervised seed server step은 simulation에서 활성화했다.
-  sparse S2C/C2S는 후속 capability로 남긴다.
+  labels-at-server supervised seed server step은 simulation에서 활성화했다. sparse
+  S2C/C2S는 client-local previous partition snapshot과 partitioned global state 기준
+  simulation slice로 활성화했다.
   method-only 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 aggregation, adapter projection, SSL hook은 축별 methods
   패키지로 승격한다.

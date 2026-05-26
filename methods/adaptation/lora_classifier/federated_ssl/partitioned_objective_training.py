@@ -14,6 +14,7 @@ from methods.adaptation.lora_classifier.aggregation.materialization import (
 )
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     apply_lora_classifier_partition_delta_to_state,
+    apply_lora_classifier_partition_deltas_to_partitioned_state,
     merge_partitioned_lora_classifier_deltas,
 )
 from methods.adaptation.lora_classifier.config import (
@@ -22,6 +23,7 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
     PartitionSparseSyncParameters,
     apply_partitioned_c2s_sparse_upload,
+    apply_partitioned_s2c_sparse_download,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_budget import (
     normalize_partitioned_local_budget_policy,
@@ -147,6 +149,8 @@ def run_method_owned_lora_classifier_training_core(
     labels: Sequence[str],
     base_parameters: LoraClassifierMaterializedState,
     base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    | None = None,
+    previous_client_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
     | None = None,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -275,6 +279,34 @@ def run_method_owned_lora_classifier_training_core(
         base_partition_parameters = (
             {} if base_partition_parameters is None else base_partition_parameters
         )
+        previous_client_partition_parameters = (
+            {}
+            if previous_client_partition_parameters is None
+            else previous_client_partition_parameters
+        )
+        sparse_sync_parameters = PartitionSparseSyncParameters.from_mapping(
+            ssl_method_config.effective_parameters,
+            l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+        )
+        uses_s2c_sparse_download = (
+            uses_physical_partition_runtime
+            and bool(base_partition_parameters)
+            and bool(previous_client_partition_parameters)
+        )
+        if uses_s2c_sparse_download:
+            base_partition_parameters = (
+                apply_lora_classifier_partition_deltas_to_partitioned_state(
+                    base_parameters=base_parameters,
+                    base_partition_parameters=previous_client_partition_parameters,
+                    partition_deltas=apply_partitioned_s2c_sparse_download(
+                        server_partition_parameters=base_partition_parameters,
+                        client_partition_parameters=(
+                            previous_client_partition_parameters
+                        ),
+                        parameters=sparse_sync_parameters,
+                    ),
+                )
+            )
         if uses_physical_partition_runtime:
             partitioned_build = build_partitioned_lora_text_classifier_from_config(
                 partition_names=(
@@ -316,16 +348,20 @@ def run_method_owned_lora_classifier_training_core(
                     in upload_partitions_for_scenario(scenario_name=scenario_name)
                 ),
             )
+            client_partition_parameters = (
+                apply_lora_classifier_partition_deltas_to_partitioned_state(
+                    base_parameters=base_parameters,
+                    base_partition_parameters=base_partition_parameters,
+                    partition_deltas=training_result.partition_deltas,
+                )
+            )
             training_result = replace_partitioned_training_deltas(
                 training_result=training_result,
                 partition_deltas=apply_partitioned_c2s_sparse_upload(
                     base_parameters=base_parameters,
                     base_partition_parameters=base_partition_parameters,
                     partition_deltas=training_result.partition_deltas,
-                    parameters=PartitionSparseSyncParameters.from_mapping(
-                        ssl_method_config.effective_parameters,
-                        l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
-                    ),
+                    parameters=sparse_sync_parameters,
                 ),
             )
             merged_partition_delta = merge_partitioned_lora_classifier_deltas(
@@ -342,6 +378,7 @@ def run_method_owned_lora_classifier_training_core(
                 device=trainer_runtime_config.device,
             )
         else:
+            client_partition_parameters = {}
             training_result = train_partitioned_lora_classifier(
                 model=model,
                 train_loader=train_loader,
@@ -448,6 +485,7 @@ def run_method_owned_lora_classifier_training_core(
         "fedmatch_local_runtime": 1.0,
         "fedmatch_physical_partition_runtime": float(uses_physical_partition_runtime),
         "fedmatch_c2s_sparse_upload": float(uses_physical_partition_runtime),
+        "fedmatch_s2c_sparse_download": float(uses_s2c_sparse_download),
         "fedmatch_local_ssl_policy_is_fixmatch": float(
             local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
         ),
@@ -504,6 +542,7 @@ def run_method_owned_lora_classifier_training_core(
             trainer_runtime_config=trainer_runtime_config,
             probe_batch_size=resolved_unlabeled_batch_size,
         ),
+        client_partition_parameters=client_partition_parameters,
         timing_breakdown=timing_mapping(timing_recorder),
     )
 

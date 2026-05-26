@@ -132,6 +132,9 @@ class QuerySslLoraClientTrainingResult:
         default_factory=PseudoLabelQualitySummary.empty
     )
     peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
+    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState] = field(
+        default_factory=dict
+    )
     timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 

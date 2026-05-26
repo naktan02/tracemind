@@ -22,6 +22,7 @@ from methods.adaptation.lora_classifier.federated_ssl.method_owned_training impo
 from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
     PartitionSparseSyncParameters,
     apply_partitioned_c2s_sparse_upload,
+    apply_partitioned_s2c_sparse_download,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     run_partitioned_lora_classifier_step,
@@ -1074,6 +1075,62 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
     assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_bias_deltas[
         "anxiety"
     ] == pytest.approx(-0.03)
+
+
+def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() -> None:
+    server_partitions = {
+        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+            lora_parameters={"encoder_lora.weight": [0.10, 0.14, 0.04]},
+            classifier_head_weights={"anxiety": [0.10, 0.17]},
+            classifier_head_biases={"anxiety": 0.12},
+        ),
+        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+            lora_parameters={"encoder_lora.weight": [0.04, 0.10, 0.21]},
+            classifier_head_weights={"anxiety": [0.04, 0.10]},
+            classifier_head_biases={"anxiety": 0.04},
+        ),
+    }
+    client_partitions = {
+        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+            lora_parameters={"encoder_lora.weight": [0.09, 0.10, 0.10]},
+            classifier_head_weights={"anxiety": [0.085, 0.10]},
+            classifier_head_biases={"anxiety": 0.09},
+        ),
+        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+            lora_parameters={"encoder_lora.weight": [0.03, 0.085, 0.11]},
+            classifier_head_weights={"anxiety": [0.03, 0.085]},
+            classifier_head_biases={"anxiety": 0.03},
+        ),
+    }
+
+    sparse = apply_partitioned_s2c_sparse_download(
+        server_partition_parameters=server_partitions,
+        client_partition_parameters=client_partitions,
+        parameters=PartitionSparseSyncParameters(
+            l1_threshold=0.05,
+            delta_threshold=0.02,
+            l1_sparse_partitions=(FEDMATCH_PSI_PARTITION,),
+        ),
+    )
+
+    assert sparse[FEDMATCH_SIGMA_PARTITION].lora_parameter_deltas[
+        "encoder_lora.weight"
+    ] == pytest.approx([0.0, 0.04, -0.06])
+    assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_weight_deltas[
+        "anxiety"
+    ] == pytest.approx([0.0, 0.07])
+    assert sparse[FEDMATCH_SIGMA_PARTITION].classifier_head_bias_deltas[
+        "anxiety"
+    ] == pytest.approx(0.03)
+    assert sparse[FEDMATCH_PSI_PARTITION].lora_parameter_deltas[
+        "encoder_lora.weight"
+    ] == pytest.approx([0.0, 0.0, 0.10])
+    assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_weight_deltas[
+        "anxiety"
+    ] == pytest.approx([0.0, 0.0])
+    assert sparse[FEDMATCH_PSI_PARTITION].classifier_head_bias_deltas[
+        "anxiety"
+    ] == pytest.approx(0.0)
 
 
 def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:

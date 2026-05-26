@@ -62,15 +62,21 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
     split_rows_for_federation,
     split_rows_into_client_shards,
 )
+from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
+    _build_next_client_partition_sync_state,
+)
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
+    ClientPartitionSyncSimulationState,
+    ClientRoundExecution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
     load_resume_checkpoint,
     resume_checkpoint_path,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
+    ClientRoundSummary,
     FederatedClientPoolSplitConfig,
     FederatedClientShard,
     FederatedDatasetSplit,
@@ -1269,6 +1275,26 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             classifier_head_biases={"anxiety": 0.03, "normal": -0.03},
         ),
     )
+    previous_client_partition_parameters = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.05]},
+            classifier_head_weights={
+                "anxiety": [0.05, 0.0],
+                "normal": [0.0, -0.05],
+            },
+            classifier_head_biases={"anxiety": 0.005, "normal": -0.005},
+        )
+    }
+    returned_client_partition_parameters = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.15]},
+            classifier_head_weights={
+                "anxiety": [0.15, 0.0],
+                "normal": [0.0, -0.15],
+            },
+            classifier_head_biases={"anxiety": 0.015, "normal": -0.015},
+        )
+    }
     method_calls: list[dict[str, object]] = []
 
     def _fake_method_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
@@ -1295,6 +1321,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
                 rejected_label_distribution={},
             ),
             peer_client_snapshot=returned_peer_snapshot,
+            client_partition_parameters=returned_client_partition_parameters,
         )
 
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
@@ -1414,6 +1441,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         capability_plan=request.capability_plan,
         peer_context=peer_context,
         peer_snapshots={"agent_02": peer_snapshot},
+        previous_client_partition_parameters=previous_client_partition_parameters,
     )
 
     assert execution.update_submitted is True
@@ -1425,12 +1453,75 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["unlabeled_rows"] == [unlabeled_row]
     assert method_calls[0]["peer_context"] is peer_context
     assert method_calls[0]["peer_snapshots"] == {"agent_02": peer_snapshot}
+    assert (
+        method_calls[0]["previous_client_partition_parameters"]
+        is previous_client_partition_parameters
+    )
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
     assert method_calls[0]["strong_view_policy"] == "second_aug"
     assert method_calls[0]["unlabeled_batch_size"] == 2
     assert method_calls[0]["persist_agent_local_update"] is False
     assert execution.peer_client_snapshot is returned_peer_snapshot
+    assert execution.client_partition_snapshot is returned_client_partition_parameters
+
+
+def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> None:
+    old_agent_01_partition = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.1]},
+            classifier_head_weights={"anxiety": [0.1]},
+            classifier_head_biases={"anxiety": 0.01},
+        )
+    }
+    old_agent_02_partition = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.2]},
+            classifier_head_weights={"anxiety": [0.2]},
+            classifier_head_biases={"anxiety": 0.02},
+        )
+    }
+    new_agent_01_partition = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.3]},
+            classifier_head_weights={"anxiety": [0.3]},
+            classifier_head_biases={"anxiety": 0.03},
+        )
+    }
+
+    next_state = _build_next_client_partition_sync_state(
+        previous=ClientPartitionSyncSimulationState(
+            client_partition_snapshots={
+                "agent_01": old_agent_01_partition,
+                "agent_02": old_agent_02_partition,
+            }
+        ),
+        client_executions=(
+            ClientRoundExecution(
+                summary=ClientRoundSummary(
+                    client_id="agent_01",
+                    candidate_count=1,
+                    accepted_count=1,
+                    update_generated=True,
+                ),
+                update_submitted=True,
+                client_partition_snapshot=new_agent_01_partition,
+            ),
+            ClientRoundExecution(
+                summary=ClientRoundSummary(
+                    client_id="agent_03",
+                    candidate_count=1,
+                    accepted_count=0,
+                    update_generated=False,
+                ),
+                update_submitted=False,
+            ),
+        ),
+    )
+
+    assert next_state.snapshot_for_client("agent_01") is new_agent_01_partition
+    assert next_state.snapshot_for_client("agent_02") is old_agent_02_partition
+    assert next_state.snapshot_for_client("agent_03") == {}
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:

@@ -89,6 +89,12 @@ def run_method_owned_lora_classifier_local_training(
     lora_config: LoraClassifierTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     base_parameters: LoraClassifierMaterializedState | None = None,
+    base_partition_parameters: (
+        Mapping[str, LoraClassifierMaterializedState] | None
+    ) = None,
+    previous_client_partition_parameters: (
+        Mapping[str, LoraClassifierMaterializedState] | None
+    ) = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
@@ -107,13 +113,14 @@ def run_method_owned_lora_classifier_local_training(
         base_parameters=base_parameters,
         timing_recorder=timing_recorder,
     )
-    base_partition_parameters = _load_base_partition_parameters_if_needed(
-        active_adapter_state=active_adapter_state,
-        output_dir=output_dir,
-        aggregated_at=effective_created_at,
-        round_base_snapshot_cache=round_base_snapshot_cache,
-        timing_recorder=timing_recorder,
-    )
+    if base_partition_parameters is None:
+        base_partition_parameters = _load_base_partition_parameters_if_needed(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=effective_created_at,
+            round_base_snapshot_cache=round_base_snapshot_cache,
+            timing_recorder=timing_recorder,
+        )
     effective_lora_config = (
         lora_config
         or build_lora_classifier_training_backend_config(training_task.objective_config)
@@ -141,6 +148,7 @@ def run_method_owned_lora_classifier_local_training(
         labels=labels,
         base_parameters=base_parameters,
         base_partition_parameters=base_partition_parameters,
+        previous_client_partition_parameters=previous_client_partition_parameters,
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,

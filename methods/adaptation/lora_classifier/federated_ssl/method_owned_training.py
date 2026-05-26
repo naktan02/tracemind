@@ -99,6 +99,8 @@ def run_method_owned_lora_classifier_training_core(
     base_parameters: LoraClassifierMaterializedState,
     base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
     | None = None,
+    previous_client_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    | None = None,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: FederatedSslMethodLocalTrainingConfig,
@@ -128,6 +130,7 @@ def run_method_owned_lora_classifier_training_core(
         labels=labels,
         base_parameters=base_parameters,
         base_partition_parameters=base_partition_parameters,
+        previous_client_partition_parameters=previous_client_partition_parameters,
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,

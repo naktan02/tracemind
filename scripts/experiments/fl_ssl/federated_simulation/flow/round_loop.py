@@ -22,6 +22,7 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime imp
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
+    ClientPartitionSyncSimulationState,
     ClientRoundExecution,
     PeerContextSimulationState,
     RoundExecution,
@@ -42,6 +43,7 @@ def run_one_round(
     ssl_method_runtime: FederatedSslSimulationRuntime,
     round_index: int,
     peer_context_state: PeerContextSimulationState,
+    client_partition_sync_state: ClientPartitionSyncSimulationState,
 ) -> RoundExecution:
     """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
 
@@ -128,6 +130,9 @@ def run_one_round(
             capability_plan=capability_plan,
             peer_context=peer_context_by_client.get(shard.client_id),
             peer_snapshots=peer_context_state.client_snapshots,
+            previous_client_partition_parameters=(
+                client_partition_sync_state.snapshot_for_client(shard.client_id)
+            ),
         )
         for shard in selected_shards
     )
@@ -139,11 +144,16 @@ def run_one_round(
         return RoundExecution(
             active=active,
             peer_context_state=peer_context_state,
+            client_partition_sync_state=client_partition_sync_state,
             summary=None,
         )
     started_at = time.perf_counter()
     next_peer_context_state = _build_next_peer_context_state(
         previous=peer_context_state,
+        client_executions=client_executions,
+    )
+    next_client_partition_sync_state = _build_next_client_partition_sync_state(
+        previous=client_partition_sync_state,
         client_executions=client_executions,
     )
     round_timing["round_peer_state_build_seconds"] = time.perf_counter() - started_at
@@ -182,6 +192,7 @@ def run_one_round(
     return RoundExecution(
         active=next_active,
         peer_context_state=next_peer_context_state,
+        client_partition_sync_state=next_client_partition_sync_state,
         summary=SimulationRoundSummary(
             round_id=round_id,
             model_revision=next_model_revision,
@@ -215,6 +226,19 @@ def _build_next_peer_context_state(
             execution.peer_client_snapshot
         )
     return PeerContextSimulationState(client_snapshots=snapshots)
+
+
+def _build_next_client_partition_sync_state(
+    *,
+    previous: ClientPartitionSyncSimulationState,
+    client_executions: tuple[ClientRoundExecution, ...],
+) -> ClientPartitionSyncSimulationState:
+    snapshots = dict(previous.client_partition_snapshots)
+    for execution in client_executions:
+        if not execution.client_partition_snapshot:
+            continue
+        snapshots[execution.summary.client_id] = execution.client_partition_snapshot
+    return ClientPartitionSyncSimulationState(client_partition_snapshots=snapshots)
 
 
 def _finalize_round_publication(

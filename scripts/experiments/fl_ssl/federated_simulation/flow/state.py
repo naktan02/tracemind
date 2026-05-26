@@ -5,6 +5,9 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -48,6 +51,22 @@ class PeerContextSimulationState:
 
 
 @dataclass(frozen=True, slots=True)
+class ClientPartitionSyncSimulationState:
+    """round 사이에 유지하는 client-local partitioned trainable snapshot."""
+
+    client_partition_snapshots: Mapping[
+        str,
+        Mapping[str, LoraClassifierMaterializedState],
+    ] = field(default_factory=dict)
+
+    def snapshot_for_client(
+        self,
+        client_id: str,
+    ) -> Mapping[str, LoraClassifierMaterializedState]:
+        return self.client_partition_snapshots.get(client_id, {})
+
+
+@dataclass(frozen=True, slots=True)
 class BootstrappedSimulation:
     """bootstrap 이후 FL simulation loop에 필요한 context."""
 
@@ -60,6 +79,9 @@ class BootstrappedSimulation:
     completed_rounds: tuple[SimulationRoundSummary, ...] = ()
     peer_context_state: PeerContextSimulationState = field(
         default_factory=PeerContextSimulationState
+    )
+    client_partition_sync_state: ClientPartitionSyncSimulationState = field(
+        default_factory=ClientPartitionSyncSimulationState
     )
     peer_probe_rows: tuple[LabeledQueryRow, ...] = ()
     peer_probe_manifest: FederatedPeerProbeManifest | None = None
@@ -74,6 +96,9 @@ class ClientRoundExecution:
     summary: ClientRoundSummary
     update_submitted: bool
     peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
+    client_partition_snapshot: Mapping[str, LoraClassifierMaterializedState] = field(
+        default_factory=dict
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -82,4 +107,5 @@ class RoundExecution:
 
     active: ActiveSimulationState
     peer_context_state: PeerContextSimulationState
+    client_partition_sync_state: ClientPartitionSyncSimulationState
     summary: SimulationRoundSummary | None

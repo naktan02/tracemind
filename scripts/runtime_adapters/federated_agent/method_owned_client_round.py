@@ -6,6 +6,9 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    LoraClassifierMaterializedState,
+)
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
     server_owned_lora_classifier_update_artifact_byte_count,
     upload_agent_local_lora_classifier_update,
@@ -53,6 +56,9 @@ def run_method_owned_client_round_if_supported(
     capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
+    previous_client_partition_parameters: (
+        Mapping[str, LoraClassifierMaterializedState] | None
+    ) = None,
 ) -> ClientRoundExecution | None:
     """method-owned LoRA raw-row training이 가능한 조합이면 실행한다."""
 
@@ -68,6 +74,7 @@ def run_method_owned_client_round_if_supported(
         capability_plan=capability_plan,
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
+        previous_client_partition_parameters=previous_client_partition_parameters,
     )
 
 
@@ -93,6 +100,9 @@ def _run_method_owned_lora_client_round(
     capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
+    previous_client_partition_parameters: (
+        Mapping[str, LoraClassifierMaterializedState] | None
+    ) = None,
 ) -> ClientRoundExecution:
     if request.ssl_method_config is None:
         raise ValueError("ssl_method_config is required.")
@@ -126,6 +136,7 @@ def _run_method_owned_lora_client_round(
             query_ssl_config=request.query_ssl_objective_config,
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
+            previous_client_partition_parameters=previous_client_partition_parameters,
             runtime_resource_cache=bootstrapped.runtime_resource_cache,
             round_base_snapshot_cache=bootstrapped.round_base_snapshot_cache,
             peer_probe_rows=(
@@ -219,6 +230,7 @@ def _run_method_owned_lora_client_round(
         ),
         update_submitted=update_submitted,
         peer_client_snapshot=local_result.peer_client_snapshot,
+        client_partition_snapshot=local_result.client_partition_parameters,
     )
 
 
