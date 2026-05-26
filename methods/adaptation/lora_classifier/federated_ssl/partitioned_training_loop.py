@@ -441,7 +441,7 @@ def _apply_fedmatch_unsupervised_step(
                 },
                 psi=named_trainable_parameter_tensors(_as_torch_module(model)),
             ),
-            parameters=parameters,
+            parameters=_single_model_fedmatch_parameters(parameters),
             enable_inter_client_consistency=enable_inter_client_consistency,
         )
         return result.total_loss
@@ -454,6 +454,28 @@ def _apply_fedmatch_unsupervised_step(
     )
     assert result is not None
     return result
+
+
+def _single_model_fedmatch_parameters(
+    parameters: FedMatchLocalObjectiveParameters,
+) -> FedMatchLocalObjectiveParameters:
+    """LoRA slice는 sigma/psi 별도 변수 없이 단일 tensor를 순차 업데이트한다.
+
+    원본 FedMatch의 L1/L2는 별도 psi 변수에 거는 regularizer다. 여기서 같은
+    trainable tensor 전체를 psi로 보면 confident sample이 0개인 round에서도
+    classifier head와 LoRA parameter가 0으로 수축한다.
+    """
+
+    if parameters.lambda_l1 == 0.0 and parameters.lambda_l2 == 0.0:
+        return parameters
+    return FedMatchLocalObjectiveParameters(
+        confidence_threshold=parameters.confidence_threshold,
+        lambda_s=parameters.lambda_s,
+        lambda_i=parameters.lambda_i,
+        lambda_a=parameters.lambda_a,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
 
 
 def _compute_selected_helper_probabilities(

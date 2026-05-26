@@ -382,6 +382,50 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
     )
 
 
+def test_fedmatch_lora_single_model_regularizer_does_not_shrink_full_parameters() -> (
+    None
+):
+    model = TinyLoraClassifier()
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.99,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=10.0,
+        lambda_l1=1.0,
+    )
+    psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
+    unlabeled_batch = {
+        "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+        "weak_attention_mask": torch.ones(2, 3),
+        "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1], [0.1, 0.4, 1.0]]),
+        "strong_attention_mask": torch.ones(2, 3),
+    }
+    before = snapshot_trainable_parameter_tensors(model)
+
+    result = run_partitioned_lora_classifier_step(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch=unlabeled_batch,
+        parameters=parameters,
+        sigma_optimizer=torch.optim.SGD(model.parameters(), lr=0.2),
+        psi_optimizer=psi_optimizer,
+        apply_supervised_step=False,
+    )
+
+    after = snapshot_trainable_parameter_tensors(model)
+    for name, before_tensor in before.items():
+        torch.testing.assert_close(after[name], before_tensor)
+        torch.testing.assert_close(
+            result.psi_parameter_deltas[name],
+            torch.zeros_like(before_tensor),
+        )
+    torch.testing.assert_close(
+        result.unsupervised.metrics["confident_count"],
+        torch.tensor(0.0),
+    )
+
+
 def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
