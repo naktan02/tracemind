@@ -16,6 +16,9 @@ DoRA 같은 다른 PEFT adapter로 교체될 수 있는 trainable-adapter mechan
   provider를 요구할 때 LoRA-classifier helper snapshot을 provider로 materialize한다.
 - `partitioned_objective_training.py`: method-owned partitioned local objective를
   LoRA-classifier model/loaders, delta materialization, update envelope에 연결한다.
+- `partitioned_model_builder.py`: partition 이름별로 full LoRA-classifier text module을
+  만들고 같은 global base state를 로드해 PEFT-backed physical partition model을
+  구성한다.
 - `partitioned_budget.py`: partitioned local trainer가 쓰는 original-method /
   max-step budget을 labeled/unlabeled exposure와 분리해 해석한다.
 - `partitioned_trainable_model.py`: frozen feature extractor 위에서 physical
