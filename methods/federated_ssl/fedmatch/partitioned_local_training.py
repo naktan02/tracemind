@@ -6,11 +6,11 @@ from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Any
 
-from methods.adaptation.lora_classifier.federated_ssl import (
-    partitioned_objective_training,
-)
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+    partitioned_objective_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
     training_loop,
@@ -23,6 +23,9 @@ from methods.adaptation.text_classifier.peft_encoder.update.materialization impo
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
+from methods.federated_ssl.fedmatch.partitioned_runtime_plan import (
+    build_fedmatch_partitioned_runtime_plan,
+)
 from methods.federated_ssl.peer_context import FederatedSslPeerContext
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -72,10 +75,11 @@ def run_method_owned_lora_classifier_training_core(
 ) -> QuerySslLoraClientTrainingResult:
     """FedMatch descriptor가 호출하는 PEFT text classifier partitioned runtime."""
 
-    run_partitioned_training = (
-        partitioned_objective_training.run_method_owned_lora_classifier_training_core
+    partitioned_runtime_plan = build_fedmatch_partitioned_runtime_plan(
+        scenario_name=ssl_method_config.scenario,
+        effective_parameters=ssl_method_config.effective_parameters,
     )
-    return run_partitioned_training(
+    return partitioned_objective_training.run_partitioned_lora_classifier_training_core(
         client_id=client_id,
         seed=seed,
         labeled_rows=labeled_rows,
@@ -88,6 +92,7 @@ def run_method_owned_lora_classifier_training_core(
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
+        partitioned_runtime_plan=partitioned_runtime_plan,
         local_ssl_policy_name=local_ssl_policy_name,
         query_ssl_config=query_ssl_config,
         strong_view_policy=strong_view_policy,

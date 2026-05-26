@@ -5,11 +5,9 @@ classifier FL SSL 실행 primitive의 source of truth는
 `methods/adaptation/text_classifier/peft_encoder/federated_ssl/`다.
 
 - `method_owned_training.py`, `server_update_policy.py`, `supervised_seed_step.py`,
-  `helper_provider.py`, `peer_predictions.py`: 새
+  `helper_provider.py`, `peer_predictions.py`, `partitioned_objective_training.py`: 새
   `text_classifier/peft_encoder/federated_ssl/` 경로의 named symbol만 가져오는
   compatibility shim이다.
-- `partitioned_objective_training.py`: method-owned partitioned local objective를
-  LoRA-classifier model/loaders, delta materialization, update envelope에 연결한다.
 - `partitioned_model_builder.py`: partition 이름별로 full LoRA-classifier text module을
   만들고 같은 global base state를 로드해 PEFT-backed physical partition model을
   구성한다.
@@ -26,7 +24,9 @@ classifier FL SSL 실행 primitive의 source of truth는
 `partition_sparse_sync.py`, `partitioned_budget.py`, `partitioned_model_builder.py`,
 `partitioned_trainable_model.py`, `partitioned_training_loop.py`는
 `methods/adaptation/text_classifier/peft_encoder/federated_ssl/partitioned/`로 이동했다.
-이 경로에는 legacy import compatibility shim만 남긴다.
+`partitioned_objective_training.py`는
+`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`로 이동했다. 이 경로에는
+legacy import compatibility shim만 남긴다.
 
 FedMatch의 원본 의미, hyperparameter snapshot, agreement loss, helper policy,
 server/round policy는 `methods/federated_ssl/fedmatch/`가 소유한다. `labels-at-server`

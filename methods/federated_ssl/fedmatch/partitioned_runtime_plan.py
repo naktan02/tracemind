@@ -51,6 +51,10 @@ class FedMatchPartitionedRuntimePlan:
     def emit_supervised_partition(self) -> bool:
         return self.supervised_partition in self.upload_partitions
 
+    @property
+    def diagnostic_acceptance_threshold(self) -> float:
+        return self.parameters.confidence_threshold
+
 
 def build_fedmatch_partitioned_runtime_plan(
     *,

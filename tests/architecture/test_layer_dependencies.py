@@ -775,10 +775,14 @@ def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() ->
         package_root / "helper_provider.py",
         package_root / "method_owned_training.py",
         package_root / "peer_predictions.py",
+        package_root / "partitioned_objective_training.py",
         package_root / "server_update_policy.py",
         package_root / "supervised_seed_step.py",
     )
-    allowed_prefix = "methods.adaptation.text_classifier.peft_encoder.federated_ssl"
+    allowed_prefixes = (
+        "methods.adaptation.text_classifier.peft_encoder.federated_ssl",
+        "methods.federated_ssl.fedmatch.partitioned_local_training",
+    )
     violations: list[str] = []
     for path in shim_paths:
         tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
@@ -790,7 +794,7 @@ def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() ->
             ):
                 continue
             if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                allowed_prefix
+                allowed_prefixes
             ):
                 if any(alias.name == "*" for alias in node.names):
                     violations.append(f"{_relative_repo_path(path)}: wildcard import")
@@ -811,6 +815,7 @@ def test_internal_code_does_not_import_legacy_lora_classifier_fedssl_bridges() -
         package_root / "helper_provider.py",
         package_root / "method_owned_training.py",
         package_root / "peer_predictions.py",
+        package_root / "partitioned_objective_training.py",
         package_root / "server_update_policy.py",
         package_root / "supervised_seed_step.py",
     )
@@ -823,6 +828,7 @@ def test_internal_code_does_not_import_legacy_lora_classifier_fedssl_bridges() -
                     "methods.adaptation.lora_classifier.federated_ssl.helper_provider",
                     "methods.adaptation.lora_classifier.federated_ssl.method_owned_training",
                     "methods.adaptation.lora_classifier.federated_ssl.peer_predictions",
+                    "methods.adaptation.lora_classifier.federated_ssl.partitioned_objective_training",
                     "methods.adaptation.lora_classifier.federated_ssl.server_update_policy",
                     "methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step",
                 ),

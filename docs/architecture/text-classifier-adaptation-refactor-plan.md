@@ -276,10 +276,12 @@ compatibility shim으로만 남겼다. Generic weighted-average 산술은 계속
 `lora_classifier/evaluation.py` 경로를 직접 import하지 않는다. 해당 경로들은
 compatibility shim으로만 남긴다. `helper_provider.py`,
 `method_owned_training.py`, `peer_predictions.py`, `server_update_policy.py`,
-`supervised_seed_step.py`도 `text_classifier/peft_encoder/federated_ssl/`로 이동했고
-legacy path는 shim으로만 남겼다. 다음 보정 대상은 FedMatch 의미가 남아 있는
-`lora_classifier/federated_ssl/partitioned_objective_training.py`와 `peft/`, `lora/`,
-`classifier_head/`, `text_classifier/feature_head/` legacy shim 폴더의 제거 조건이다.
+`supervised_seed_step.py`, `partitioned_objective_training.py`도
+`text_classifier/peft_encoder/federated_ssl/`로 이동했고 legacy path는 shim으로만
+남겼다. `partitioned_objective_training.py`는 method-neutral runtime plan을 받아
+실행하고, FedMatch wrapper가 runtime plan을 생성해 주입한다. 다음 보정 대상은
+`peft/`, `lora/`, `classifier_head/`, `text_classifier/feature_head/` legacy shim
+폴더의 제거 조건이다.
 FedMatch scenario, local supervision, sigma/psi partition routing, upload partition,
 objective 생성, `psi_factor` 해석은
 `methods/federated_ssl/fedmatch/partitioned_runtime_plan.py`로 분리했다.
