@@ -8,6 +8,8 @@ from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
 
+from .materialization import LoraClassifierMaterializedState
+
 
 def merge_partitioned_lora_classifier_deltas(
     partitions: Mapping[str, LoraClassifierPartitionDelta],
@@ -34,6 +36,57 @@ def merge_partitioned_lora_classifier_deltas(
         classifier_head_weight_deltas=merged_weights,
         classifier_head_bias_deltas=merged_biases,
     )
+
+
+def apply_lora_classifier_partition_delta_to_state(
+    *,
+    base_parameters: LoraClassifierMaterializedState,
+    delta: LoraClassifierPartitionDelta,
+) -> LoraClassifierMaterializedState:
+    """base state에 merged partition delta를 적용한 materialized state를 만든다."""
+
+    return LoraClassifierMaterializedState(
+        lora_parameters=_apply_vector_mapping(
+            base_parameters.lora_parameters,
+            delta.lora_parameter_deltas,
+        ),
+        classifier_head_weights=_apply_vector_mapping(
+            base_parameters.classifier_head_weights,
+            delta.classifier_head_weight_deltas,
+        ),
+        classifier_head_biases={
+            key: float(base_parameters.classifier_head_biases.get(key, 0.0))
+            + float(delta.classifier_head_bias_deltas.get(key, 0.0))
+            for key in sorted(
+                set(base_parameters.classifier_head_biases)
+                | set(delta.classifier_head_bias_deltas)
+            )
+        },
+    )
+
+
+def _apply_vector_mapping(
+    base_values: Mapping[str, Sequence[float]],
+    deltas: Mapping[str, Sequence[float]],
+) -> dict[str, list[float]]:
+    result: dict[str, list[float]] = {}
+    for key in sorted(set(base_values) | set(deltas)):
+        base_vector = [float(value) for value in base_values.get(key, [])]
+        delta_vector = [float(value) for value in deltas.get(key, [])]
+        if base_vector and delta_vector and len(base_vector) != len(delta_vector):
+            raise ValueError(
+                f"Partitioned LoRA-classifier delta dimension mismatch for {key!r}."
+            )
+        if not base_vector:
+            result[key] = delta_vector
+            continue
+        if not delta_vector:
+            result[key] = base_vector
+            continue
+        result[key] = [
+            left + right for left, right in zip(base_vector, delta_vector, strict=True)
+        ]
+    return result
 
 
 def _merge_vector_mapping(

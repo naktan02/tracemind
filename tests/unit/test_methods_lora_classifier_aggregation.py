@@ -18,6 +18,7 @@ from methods.adaptation.lora_classifier.aggregation.partitioned_delta_average im
     compute_lora_classifier_partitioned_delta_average,
 )
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
+    apply_lora_classifier_partition_delta_to_state,
     merge_partitioned_lora_classifier_deltas,
 )
 from methods.adaptation.lora_classifier.aggregation.state_projection import (
@@ -375,6 +376,55 @@ def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> No
     )
     assert merged.classifier_head_weight_deltas["anxiety"] == pytest.approx([0.3, 0.2])
     assert merged.classifier_head_bias_deltas["anxiety"] == pytest.approx(0.2)
+
+
+def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None:
+    base = LoraClassifierMaterializedState(
+        lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
+        classifier_head_weights={"anxiety": [0.3, 0.4]},
+        classifier_head_biases={"anxiety": 0.5},
+    )
+    delta = LoraClassifierPartitionDelta(
+        partition_name="merged",
+        lora_parameter_deltas={"encoder_lora.weight": [0.2, -0.1]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.1, 0.1],
+            "normal": [-0.2, 0.2],
+        },
+        classifier_head_bias_deltas={"anxiety": -0.1, "normal": 0.2},
+    )
+
+    state = apply_lora_classifier_partition_delta_to_state(
+        base_parameters=base,
+        delta=delta,
+    )
+
+    assert state.lora_parameters["encoder_lora.weight"] == pytest.approx([0.3, 0.1])
+    assert state.classifier_head_weights["anxiety"] == pytest.approx([0.4, 0.5])
+    assert state.classifier_head_weights["normal"] == pytest.approx([-0.2, 0.2])
+    assert state.classifier_head_biases == pytest.approx(
+        {"anxiety": 0.4, "normal": 0.2}
+    )
+
+
+def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> None:
+    base = LoraClassifierMaterializedState(
+        lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
+        classifier_head_weights={},
+        classifier_head_biases={},
+    )
+    delta = LoraClassifierPartitionDelta(
+        partition_name="merged",
+        lora_parameter_deltas={"encoder_lora.weight": [0.2]},
+        classifier_head_weight_deltas={},
+        classifier_head_bias_deltas={},
+    )
+
+    with pytest.raises(ValueError, match="dimension mismatch"):
+        apply_lora_classifier_partition_delta_to_state(
+            base_parameters=base,
+            delta=delta,
+        )
 
 
 def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:

@@ -3,13 +3,14 @@
 이 문서는 FedMatch/FedLGMatch/(FL)^2의 FL SSL capability 차이를 정리한다.
 FedMatch는 첫 method로 선택되어 capability surface와 원본 core/config snapshot,
 method-owned tensor local objective core를 추가했다. 현재 LoRA-classifier logical
-partition step, physical trainable partition step, method-owned local simulation
-bridge는 `methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행
-primitive가 소유한다. 다음 FedMatch parity 단계는 PEFT-backed partitioned model
-builder와 global partitioned state를 연결해 frozen backbone 위 trainable adapter/head
-partition을 round 간 보존하는 것이다. 현재 helper peer context
-simulation slice와 labels-at-server supervised seed server step은 열려 있고, full 원본
-parity에 필요한 partitioned global state와 sparse S2C/C2S sync는 다음 구현 단계다.
+partition step, physical trainable partition step, PEFT-backed partitioned model
+builder, method-owned local simulation bridge는
+`methods/adaptation/lora_classifier/federated_ssl/`의 method-neutral 실행 primitive가
+소유한다. 다음 FedMatch parity 단계는 global partitioned state를 연결해 frozen
+backbone 위 trainable adapter/head partition을 round 간 보존하는 것이다. 현재 helper
+peer context simulation slice와 labels-at-server supervised seed server step은 열려
+있고, full 원본 parity에 필요한 partitioned global state와 sparse S2C/C2S sync는 다음
+구현 단계다.
 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.

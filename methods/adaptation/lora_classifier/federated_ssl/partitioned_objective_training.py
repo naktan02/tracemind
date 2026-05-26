@@ -11,6 +11,10 @@ from uuid import uuid4
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
 )
+from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
+    apply_lora_classifier_partition_delta_to_state,
+    merge_partitioned_lora_classifier_deltas,
+)
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
@@ -18,9 +22,13 @@ from methods.adaptation.lora_classifier.federated_ssl.partitioned_budget import 
     normalize_partitioned_local_budget_policy,
     resolve_partitioned_local_budget,
 )
+from methods.adaptation.lora_classifier.federated_ssl.partitioned_model_builder import (
+    build_partitioned_lora_text_classifier_from_config,
+)
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     HelperWeakProbabilityProvider,
     train_partitioned_lora_classifier,
+    train_physical_partitioned_adapter_classifier,
 )
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     build_lora_classifier_peer_client_snapshot,
@@ -81,6 +89,7 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_SERVER,
 )
 from methods.federated_ssl.fedmatch.parameter_routing import (
+    FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
     upload_partitions_for_scenario,
 )
@@ -251,33 +260,88 @@ def run_method_owned_lora_classifier_training_core(
         )
 
     with _measure(timing_recorder, "core_training_loop_seconds"):
-        training_result = train_partitioned_lora_classifier(
-            model=model,
-            train_loader=train_loader,
-            unlabeled_loader=unlabeled_loader,
-            labels=effective_labels,
-            parameters=parameters,
-            step_plan=step_plan,
-            device=trainer_runtime_config.device,
-            learning_rate=float(training_task.learning_rate),
-            classifier_learning_rate=float(training_task.learning_rate),
-            weight_decay=0.0,
-            max_grad_norm=(
-                0.0
-                if training_task.gradient_clip_norm is None
-                else float(training_task.gradient_clip_norm)
-            ),
-            helper_weak_probability_provider=helper_weak_probability_provider,
-            psi_query_ssl_algorithm=psi_query_ssl_algorithm,
-            enable_inter_client_consistency=(
-                helper_weak_probability_provider is not None
-            ),
-            use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
-            emit_sigma_partition=(
-                FEDMATCH_SIGMA_PARTITION
-                in upload_partitions_for_scenario(scenario_name=scenario_name)
-            ),
-        )
+        uses_physical_partition_runtime = psi_query_ssl_algorithm is None
+        if uses_physical_partition_runtime:
+            partitioned_build = build_partitioned_lora_text_classifier_from_config(
+                partition_names=(
+                    FEDMATCH_SIGMA_PARTITION,
+                    FEDMATCH_PSI_PARTITION,
+                ),
+                labels=effective_labels,
+                base_parameters=base_parameters,
+                lora_config=lora_config,
+                runtime_config=trainer_runtime_config,
+                runtime_resource_cache=runtime_resource_cache,
+            )
+            training_result = train_physical_partitioned_adapter_classifier(
+                model=partitioned_build.model,
+                train_loader=train_loader,
+                unlabeled_loader=unlabeled_loader,
+                labels=effective_labels,
+                parameters=parameters,
+                step_plan=step_plan,
+                device=trainer_runtime_config.device,
+                learning_rate=float(training_task.learning_rate),
+                classifier_learning_rate=float(training_task.learning_rate),
+                weight_decay=0.0,
+                max_grad_norm=(
+                    0.0
+                    if training_task.gradient_clip_norm is None
+                    else float(training_task.gradient_clip_norm)
+                ),
+                supervised_partition=FEDMATCH_SIGMA_PARTITION,
+                unsupervised_partition=FEDMATCH_PSI_PARTITION,
+                helper_weak_probability_provider=helper_weak_probability_provider,
+                enable_inter_client_consistency=(
+                    helper_weak_probability_provider is not None
+                ),
+                use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
+                emit_supervised_partition=(
+                    FEDMATCH_SIGMA_PARTITION
+                    in upload_partitions_for_scenario(scenario_name=scenario_name)
+                ),
+            )
+            merged_partition_delta = merge_partitioned_lora_classifier_deltas(
+                training_result.partition_deltas
+            )
+            merged_parameters = apply_lora_classifier_partition_delta_to_state(
+                base_parameters=base_parameters,
+                delta=merged_partition_delta,
+            )
+            load_lora_classifier_base_parameters_into_model(
+                model=model,
+                labels=effective_labels,
+                base_parameters=merged_parameters,
+                device=trainer_runtime_config.device,
+            )
+        else:
+            training_result = train_partitioned_lora_classifier(
+                model=model,
+                train_loader=train_loader,
+                unlabeled_loader=unlabeled_loader,
+                labels=effective_labels,
+                parameters=parameters,
+                step_plan=step_plan,
+                device=trainer_runtime_config.device,
+                learning_rate=float(training_task.learning_rate),
+                classifier_learning_rate=float(training_task.learning_rate),
+                weight_decay=0.0,
+                max_grad_norm=(
+                    0.0
+                    if training_task.gradient_clip_norm is None
+                    else float(training_task.gradient_clip_norm)
+                ),
+                helper_weak_probability_provider=helper_weak_probability_provider,
+                psi_query_ssl_algorithm=psi_query_ssl_algorithm,
+                enable_inter_client_consistency=(
+                    helper_weak_probability_provider is not None
+                ),
+                use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
+                emit_sigma_partition=(
+                    FEDMATCH_SIGMA_PARTITION
+                    in upload_partitions_for_scenario(scenario_name=scenario_name)
+                ),
+            )
     history_record = training_result.metrics
     diagnostic_threshold = _resolve_partitioned_diagnostic_threshold(
         local_ssl_policy_name=local_ssl_policy_name,
@@ -355,6 +419,7 @@ def run_method_owned_lora_classifier_training_core(
     client_metrics = {
         **dict(update_build_result.client_metrics),
         "fedmatch_local_runtime": 1.0,
+        "fedmatch_physical_partition_runtime": float(uses_physical_partition_runtime),
         "fedmatch_local_ssl_policy_is_fixmatch": float(
             local_ssl_policy_name == LOCAL_SSL_POLICY_FIXMATCH
         ),
