@@ -111,6 +111,25 @@ class TinyMismatchedPartitionClassifier(nn.Module):
         return self.classifier(self.other_adapter(input_ids.float()))
 
 
+class TinyLinearLogitClassifier(nn.Module):
+    """composed sigma+psi confidence path를 분리해서 검증하는 test model."""
+
+    def __init__(self, weight: Tensor) -> None:
+        super().__init__()
+        self.logits = nn.Linear(3, 2, bias=False)
+        with torch.no_grad():
+            self.logits.weight.copy_(weight)
+
+    def forward(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        del attention_mask
+        return self.logits(input_ids.float())
+
+
 class TinyFrozenFeatureExtractor(nn.Module):
     """물리 partition 테스트용 frozen backbone."""
 
@@ -827,6 +846,66 @@ def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() ->
     assert set(psi.lora_parameter_deltas) == {"encoder_lora.weight"}
     assert set(sigma.classifier_head_weight_deltas) == set(labels)
     assert set(psi.classifier_head_bias_deltas) == set(labels)
+
+
+def test_physical_fedmatch_confidence_uses_sigma_plus_psi_forward() -> None:
+    model = ptm.PartitionedTrainableTextClassifierModules(
+        partitions=(
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_SIGMA_PARTITION,
+                module=TinyLinearLogitClassifier(
+                    torch.tensor([[5.0, 0.0, 0.0], [-5.0, 0.0, 0.0]])
+                ),
+            ),
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_PSI_PARTITION,
+                module=TinyLinearLogitClassifier(torch.zeros(2, 3)),
+            ),
+        )
+    )
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.9,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+
+    result = run_physical_partitioned_adapter_classifier_step(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor([[1.0, 0.0, 0.0]]),
+            "weak_attention_mask": torch.ones(1, 3),
+            "strong_input_ids": torch.tensor([[1.0, 0.0, 0.0]]),
+            "strong_attention_mask": torch.ones(1, 3),
+        },
+        parameters=parameters,
+        supervised_partition=FEDMATCH_SIGMA_PARTITION,
+        unsupervised_partition=FEDMATCH_PSI_PARTITION,
+        sigma_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
+            lr=0.2,
+        ),
+        psi_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_PSI_PARTITION),
+            lr=0.2,
+        ),
+        apply_supervised_step=False,
+    )
+
+    torch.testing.assert_close(
+        result.unsupervised.metrics["confident_count"],
+        torch.tensor(1.0),
+    )
+    assert (
+        ptm.snapshot_partition_parameter_tensors(
+            model,
+            FEDMATCH_PSI_PARTITION,
+        )["logits.weight"][0, 0]
+        > 0.0
+    )
 
 
 def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:

@@ -89,6 +89,38 @@ def apply_lora_classifier_partition_deltas_to_partitioned_state(
     }
 
 
+def split_lora_classifier_state_by_residual_factor(
+    *,
+    published_parameters: LoraClassifierMaterializedState,
+    base_partition_name: str,
+    residual_partition_name: str,
+    residual_factor: float,
+) -> dict[str, LoraClassifierMaterializedState]:
+    """`published = base + residual`, `residual = base * factor`로 초기 분해한다."""
+
+    if residual_factor < 0.0:
+        raise ValueError("residual_factor must not be negative.")
+    base_partition_name = str(base_partition_name).strip()
+    residual_partition_name = str(residual_partition_name).strip()
+    if not base_partition_name or not residual_partition_name:
+        raise ValueError("partition names must not be empty.")
+    if base_partition_name == residual_partition_name:
+        raise ValueError("partition names must be different.")
+
+    base_scale = 1.0 / (1.0 + residual_factor)
+    residual_scale = residual_factor / (1.0 + residual_factor)
+    return {
+        base_partition_name: _scale_lora_classifier_state(
+            published_parameters,
+            scale=base_scale,
+        ),
+        residual_partition_name: _scale_lora_classifier_state(
+            published_parameters,
+            scale=residual_scale,
+        ),
+    }
+
+
 def _apply_vector_mapping(
     base_values: Mapping[str, Sequence[float]],
     deltas: Mapping[str, Sequence[float]],
@@ -111,6 +143,27 @@ def _apply_vector_mapping(
             left + right for left, right in zip(base_vector, delta_vector, strict=True)
         ]
     return result
+
+
+def _scale_lora_classifier_state(
+    state: LoraClassifierMaterializedState,
+    *,
+    scale: float,
+) -> LoraClassifierMaterializedState:
+    return LoraClassifierMaterializedState(
+        lora_parameters={
+            key: [float(value) * scale for value in values]
+            for key, values in state.lora_parameters.items()
+        },
+        classifier_head_weights={
+            key: [float(value) * scale for value in values]
+            for key, values in state.classifier_head_weights.items()
+        },
+        classifier_head_biases={
+            key: float(value) * scale
+            for key, value in state.classifier_head_biases.items()
+        },
+    )
 
 
 def _merge_vector_mapping(

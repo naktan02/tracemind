@@ -24,6 +24,7 @@ from methods.adaptation.lora_classifier.aggregation.partitioned_delta_average im
 from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     apply_lora_classifier_partition_delta_to_state,
     merge_partitioned_lora_classifier_deltas,
+    split_lora_classifier_state_by_residual_factor,
 )
 from methods.adaptation.lora_classifier.aggregation.state_projection import (
     build_lora_classifier_state_projection,
@@ -409,6 +410,36 @@ def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None
     assert state.classifier_head_biases == pytest.approx(
         {"anxiety": 0.4, "normal": 0.2}
     )
+
+
+def test_lora_classifier_state_splits_published_state_by_residual_factor() -> None:
+    published = LoraClassifierMaterializedState(
+        lora_parameters={"encoder_lora.weight": [1.2, -2.4]},
+        classifier_head_weights={"anxiety": [3.6, -4.8]},
+        classifier_head_biases={"anxiety": 6.0},
+    )
+
+    partitions = split_lora_classifier_state_by_residual_factor(
+        published_parameters=published,
+        base_partition_name="sigma",
+        residual_partition_name="psi",
+        residual_factor=0.2,
+    )
+
+    assert partitions["sigma"].lora_parameters["encoder_lora.weight"] == (
+        pytest.approx([1.0, -2.0])
+    )
+    assert partitions["psi"].lora_parameters["encoder_lora.weight"] == pytest.approx(
+        [0.2, -0.4]
+    )
+    assert partitions["sigma"].classifier_head_weights["anxiety"] == pytest.approx(
+        [3.0, -4.0]
+    )
+    assert partitions["psi"].classifier_head_weights["anxiety"] == pytest.approx(
+        [0.6, -0.8]
+    )
+    assert partitions["sigma"].classifier_head_biases["anxiety"] == pytest.approx(5.0)
+    assert partitions["psi"].classifier_head_biases["anxiety"] == pytest.approx(1.0)
 
 
 def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> None:

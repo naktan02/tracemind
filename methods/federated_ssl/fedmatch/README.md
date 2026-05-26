@@ -110,6 +110,14 @@ FedMatch에서 보존해야 하는 의미는 특정 LoRA 구현이 아니라 par
 - `lambda_l2`는 같은 trainable adapter/head scope의 `sigma`와 `psi` 차이에 적용한다.
 - `sigma/psi`는 한 local step 안의 delta label만이 아니라 round를 넘어 보존되는 global
   partitioned state가 되어야 한다.
+- physical partition forward는 `psi` 단독 logits가 아니라 trainable parameter를
+  `sigma + psi`로 합성한 effective state를 기준으로 weak/strong confidence,
+  pseudo-label, helper agreement를 계산한다. optimizer 대상만 supervised는 `sigma`,
+  unsupervised는 `psi`로 제한한다.
+- partition별 server state가 아직 없는 첫 physical round에서 published state가
+  `sigma + psi`라고 해석되면 원본 `psi_factor`에 따라
+  `sigma = published / (1 + psi_factor)`,
+  `psi = published * psi_factor / (1 + psi_factor)`로 초기 분해한다.
 
 TraceMind에서 이 의미는 frozen backbone + partitioned trainable adapter/head state로
 해석한다. FedMatch package는 partition 이름, loss routing, 원본 parameter snapshot,

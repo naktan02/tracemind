@@ -174,6 +174,28 @@ def test_composed_forward_sums_partition_logits() -> None:
     torch.testing.assert_close(composed_logits, sigma_logits + psi_logits)
 
 
+def test_parameter_composed_forward_uses_effective_partition_state() -> None:
+    model = _build_partitioned_model()
+    batch = {
+        "input_ids": torch.tensor([[0.2, 0.4, 1.0]]),
+        "attention_mask": torch.ones(1, 3),
+    }
+
+    sigma_logits = model.forward_partition("sigma", **batch)
+    psi_logits = model.forward_partition("psi", **batch)
+    effective_logits = model.forward_composed_partitions(
+        **batch,
+        partition_names=("sigma", "psi"),
+        trainable_partition_name="psi",
+    )
+    loss = effective_logits.sum()
+    loss.backward()
+
+    assert not torch.equal(effective_logits, sigma_logits + psi_logits)
+    assert model.require_partition("sigma").adapter.weight.grad is None
+    assert model.require_partition("psi").adapter.weight.grad is not None
+
+
 def _build_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:
     return ptm.PartitionedTrainableAdapterClassifier(
         feature_extractor=TinyFrozenFeatureExtractor(),

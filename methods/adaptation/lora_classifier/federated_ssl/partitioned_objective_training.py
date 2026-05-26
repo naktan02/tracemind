@@ -17,6 +17,7 @@ from methods.adaptation.lora_classifier.aggregation.partitioned_state import (
     apply_lora_classifier_partition_delta_to_state,
     apply_lora_classifier_partition_deltas_to_partitioned_state,
     merge_partitioned_lora_classifier_deltas,
+    split_lora_classifier_state_by_residual_factor,
 )
 from methods.adaptation.lora_classifier.config import (
     LoraClassifierTrainingBackendConfig,
@@ -297,6 +298,7 @@ def run_method_owned_lora_classifier_training_core(
             and bool(previous_client_partition_parameters)
         )
         effective_base_partition_parameters = server_partition_parameters
+        partition_initialization_metrics: dict[str, float] = {}
         s2c_sparse_download_value_count = 0
         if uses_s2c_sparse_download:
             s2c_sparse_download_deltas = apply_partitioned_s2c_sparse_download(
@@ -314,6 +316,24 @@ def run_method_owned_lora_classifier_training_core(
                     parameters=sparse_sync_parameters,
                 )
             )
+        elif (
+            uses_physical_partition_runtime and not effective_base_partition_parameters
+        ):
+            psi_factor = _resolve_fedmatch_psi_factor(
+                ssl_method_config.effective_parameters
+            )
+            effective_base_partition_parameters = (
+                split_lora_classifier_state_by_residual_factor(
+                    published_parameters=base_parameters,
+                    base_partition_name=FEDMATCH_SIGMA_PARTITION,
+                    residual_partition_name=FEDMATCH_PSI_PARTITION,
+                    residual_factor=psi_factor,
+                )
+            )
+            partition_initialization_metrics = {
+                "fedmatch_initial_partition_from_published_state": 1.0,
+                "fedmatch_initial_partition_psi_factor": psi_factor,
+            }
         if uses_physical_partition_runtime:
             partitioned_build = build_partitioned_lora_text_classifier_from_config(
                 partition_names=(
@@ -355,6 +375,14 @@ def run_method_owned_lora_classifier_training_core(
                     in upload_partitions_for_scenario(scenario_name=scenario_name)
                 ),
             )
+            if partition_initialization_metrics:
+                training_result = PartitionedLoraTrainingResult(
+                    metrics={
+                        **training_result.metrics,
+                        **partition_initialization_metrics,
+                    },
+                    partition_deltas=training_result.partition_deltas,
+                )
             client_partition_parameters = (
                 apply_lora_classifier_partition_deltas_to_partitioned_state(
                     base_parameters=base_parameters,
@@ -713,6 +741,14 @@ def _resolve_partitioned_diagnostic_threshold(
     return resolve_fixed_pseudo_label_diagnostic_threshold(
         {"p_cutoff": fedmatch_parameters.confidence_threshold}
     )
+
+
+def _resolve_fedmatch_psi_factor(parameters: Mapping[str, object]) -> float:
+    value = parameters.get("psi_factor", 0.2)
+    factor = float(value)
+    if factor < 0.0:
+        raise ValueError("FedMatch psi_factor must not be negative.")
+    return factor
 
 
 def _history_float(

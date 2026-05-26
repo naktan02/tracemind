@@ -8,6 +8,7 @@ from typing import Protocol
 
 import torch
 from torch import Tensor, nn
+from torch.func import functional_call
 
 PARTITION_COMPOSITION_SUM_LOGITS = "sum_logits"
 
@@ -35,6 +36,16 @@ class PartitionedTrainableTextClassifier(Protocol):
         attention_mask: Tensor,
     ) -> Tensor:
         """Return logits from one trainable partition."""
+
+    def forward_composed_partitions(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+        partition_names: Sequence[str],
+        trainable_partition_name: str | None = None,
+    ) -> Tensor:
+        """Return logits from an effective parameter sum over partitions."""
 
     def partition_parameters(self, partition_name: str) -> tuple[nn.Parameter, ...]:
         """Return optimizer parameters for one partition."""
@@ -171,6 +182,42 @@ class PartitionedTrainableTextClassifierModules(nn.Module):
             return result
         raise ValueError(f"Unsupported composition policy: {self.composition_policy}")
 
+    def forward_composed_partitions(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+        partition_names: Sequence[str],
+        trainable_partition_name: str | None = None,
+    ) -> Tensor:
+        """Forward with trainable parameters composed before model execution.
+
+        FedMatch decomposed layers evaluate with `sigma + psi` parameters, not by
+        adding separate model logits. Frozen/base parameters stay owned by the
+        reference partition and are not duplicated in the sum.
+        """
+
+        names = _normalize_partition_names(partition_names)
+        normalized_trainable = (
+            None
+            if trainable_partition_name is None
+            else _normalize_partition_name(trainable_partition_name)
+        )
+        reference_name = normalized_trainable or names[0]
+        reference_partition = self.require_partition(reference_name)
+        composed_parameters = _compose_trainable_parameter_state(
+            partitions={name: self.require_partition(name) for name in names},
+            trainable_partition_name=normalized_trainable,
+        )
+        return functional_call(
+            reference_partition,
+            composed_parameters,
+            kwargs={
+                "input_ids": input_ids,
+                "attention_mask": attention_mask,
+            },
+        )
+
     def require_partition(self, partition_name: str) -> nn.Module:
         normalized = _normalize_partition_name(partition_name)
         try:
@@ -282,6 +329,38 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
             return result
         raise ValueError(f"Unsupported composition policy: {self.composition_policy}")
 
+    def forward_composed_partitions(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+        partition_names: Sequence[str],
+        trainable_partition_name: str | None = None,
+    ) -> Tensor:
+        """Forward with partition parameters summed in adapter/head space."""
+
+        names = _normalize_partition_names(partition_names)
+        normalized_trainable = (
+            None
+            if trainable_partition_name is None
+            else _normalize_partition_name(trainable_partition_name)
+        )
+        reference_name = normalized_trainable or names[0]
+        reference_partition = self.require_partition(reference_name)
+        composed_parameters = _compose_trainable_parameter_state(
+            partitions={name: self.require_partition(name) for name in names},
+            trainable_partition_name=normalized_trainable,
+        )
+        features = self.extract_frozen_features(
+            input_ids=input_ids,
+            attention_mask=attention_mask,
+        )
+        return functional_call(
+            reference_partition,
+            composed_parameters,
+            args=(features,),
+        )
+
     def extract_frozen_features(
         self,
         *,
@@ -375,6 +454,15 @@ def _freeze_module_parameters(module: nn.Module) -> None:
         parameter.requires_grad_(False)
 
 
+def _normalize_partition_names(partition_names: Sequence[str]) -> tuple[str, ...]:
+    normalized = tuple(_normalize_partition_name(name) for name in partition_names)
+    if not normalized:
+        raise ValueError("partition_names must not be empty.")
+    if len(set(normalized)) != len(normalized):
+        raise ValueError("partition_names must not contain duplicates.")
+    return normalized
+
+
 def _normalize_partition_name(value: str) -> str:
     normalized = str(value).strip()
     if not normalized:
@@ -387,3 +475,66 @@ def _normalize_composition_policy(value: str) -> str:
     if normalized != PARTITION_COMPOSITION_SUM_LOGITS:
         raise ValueError(f"Unsupported composition policy: {normalized}")
     return normalized
+
+
+def _compose_trainable_parameter_state(
+    *,
+    partitions: Mapping[str, nn.Module],
+    trainable_partition_name: str | None,
+) -> dict[str, Tensor]:
+    if not partitions:
+        raise ValueError("partitions must not be empty.")
+    if (
+        trainable_partition_name is not None
+        and trainable_partition_name not in partitions
+    ):
+        raise ValueError(
+            f"trainable_partition_name must be one of {sorted(partitions)}."
+        )
+    partition_parameters = {
+        name: _trainable_parameter_mapping(module)
+        for name, module in partitions.items()
+    }
+    first_name = next(iter(partition_parameters))
+    expected_keys = set(partition_parameters[first_name])
+    for partition_name, parameters in partition_parameters.items():
+        if set(parameters) != expected_keys:
+            missing = sorted(expected_keys - set(parameters))
+            extra = sorted(set(parameters) - expected_keys)
+            raise ValueError(
+                "composed partition forward requires the same parameter keys: "
+                f"partition={partition_name!r}, missing={missing}, extra={extra}"
+            )
+
+    composed: dict[str, Tensor] = {}
+    for key in sorted(expected_keys):
+        value: Tensor | None = None
+        expected_shape: torch.Size | None = None
+        for partition_name, parameters in partition_parameters.items():
+            parameter = parameters[key]
+            if expected_shape is None:
+                expected_shape = parameter.shape
+            elif parameter.shape != expected_shape:
+                raise ValueError(
+                    "composed partition forward requires matching tensor shapes for "
+                    f"{key!r}."
+                )
+            contribution = (
+                parameter
+                if trainable_partition_name is None
+                or partition_name == trainable_partition_name
+                else parameter.detach()
+            )
+            value = contribution if value is None else value + contribution
+        if value is None:  # pragma: no cover - expected_keys came from mappings.
+            raise AssertionError("composed parameter value was not built.")
+        composed[key] = value
+    return composed
+
+
+def _trainable_parameter_mapping(module: nn.Module) -> dict[str, nn.Parameter]:
+    return {
+        name: parameter
+        for name, parameter in module.named_parameters()
+        if parameter.requires_grad
+    }

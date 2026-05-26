@@ -558,6 +558,7 @@ def run_physical_partitioned_adapter_classifier_step(
         supervised = _apply_physical_fedmatch_supervised_step(
             model=model,
             partition_name=supervised_partition,
+            composed_partition_names=(supervised_partition, unsupervised_partition),
             labeled_batch=labeled_batch,
             parameters=parameters,
             optimizer=sigma_optimizer,
@@ -583,6 +584,7 @@ def run_physical_partitioned_adapter_classifier_step(
     unsupervised = _apply_physical_fedmatch_unsupervised_step(
         model=model,
         sigma_partition_snapshot=after_sigma,
+        supervised_partition=supervised_partition,
         unsupervised_partition=unsupervised_partition,
         unlabeled_batch=unlabeled_batch,
         parameters=parameters,
@@ -650,6 +652,7 @@ def _apply_physical_fedmatch_supervised_step(
     *,
     model: ptm.PartitionedTrainableTextClassifier,
     partition_name: str,
+    composed_partition_names: Sequence[str],
     labeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
     optimizer: torch.optim.Optimizer,
@@ -660,10 +663,11 @@ def _apply_physical_fedmatch_supervised_step(
     def compute_loss() -> Tensor:
         nonlocal result
 
-        logits = model.forward_partition(
-            partition_name,
+        logits = model.forward_composed_partitions(
             input_ids=labeled_batch["input_ids"],
             attention_mask=labeled_batch["attention_mask"],
+            partition_names=composed_partition_names,
+            trainable_partition_name=partition_name,
         )
         result = compute_fedmatch_supervised_loss(
             labeled_logits=logits,
@@ -766,6 +770,7 @@ def _apply_physical_fedmatch_unsupervised_step(
     *,
     model: ptm.PartitionedTrainableTextClassifier,
     sigma_partition_snapshot: Mapping[str, Tensor],
+    supervised_partition: str,
     unsupervised_partition: str,
     unlabeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
@@ -779,10 +784,12 @@ def _apply_physical_fedmatch_unsupervised_step(
     def compute_loss() -> Tensor:
         nonlocal result
 
-        weak_logits = model.forward_partition(
-            unsupervised_partition,
+        composed_partition_names = (supervised_partition, unsupervised_partition)
+        weak_logits = model.forward_composed_partitions(
             input_ids=unlabeled_batch["weak_input_ids"],
             attention_mask=unlabeled_batch["weak_attention_mask"],
+            partition_names=composed_partition_names,
+            trainable_partition_name=unsupervised_partition,
         )
         confidence_mask = _fedmatch_confidence_mask(
             weak_logits=weak_logits,
@@ -790,7 +797,8 @@ def _apply_physical_fedmatch_unsupervised_step(
         )
         selected_strong_logits = _forward_selected_physical_strong_view(
             model=model,
-            partition_name=unsupervised_partition,
+            partition_names=composed_partition_names,
+            trainable_partition_name=unsupervised_partition,
             unlabeled_batch=unlabeled_batch,
             confidence_mask=confidence_mask,
             reference_logits=weak_logits,
@@ -913,7 +921,8 @@ def _forward_selected_strong_view(
 def _forward_selected_physical_strong_view(
     *,
     model: ptm.PartitionedTrainableTextClassifier,
-    partition_name: str,
+    partition_names: Sequence[str],
+    trainable_partition_name: str,
     unlabeled_batch: Mapping[str, Tensor],
     confidence_mask: Tensor,
     reference_logits: Tensor,
@@ -921,10 +930,11 @@ def _forward_selected_physical_strong_view(
     selected_count = int(confidence_mask.sum().item())
     if selected_count == 0:
         return reference_logits.new_empty((0, int(reference_logits.shape[1])))
-    return model.forward_partition(
-        partition_name,
+    return model.forward_composed_partitions(
         input_ids=unlabeled_batch["strong_input_ids"][confidence_mask],
         attention_mask=unlabeled_batch["strong_attention_mask"][confidence_mask],
+        partition_names=partition_names,
+        trainable_partition_name=trainable_partition_name,
     )
 
 
