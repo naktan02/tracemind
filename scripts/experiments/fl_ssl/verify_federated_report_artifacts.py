@@ -71,6 +71,9 @@ def main(argv: Sequence[str] | None = None) -> int:
             args.expect_partitioned_update_artifact_refs
         ),
         expect_no_agent_local_update_refs=args.expect_no_agent_local_update_refs,
+        expect_classifier_aggregate_snapshot=(
+            args.expect_classifier_aggregate_snapshot
+        ),
         expect_lora_classifier_aggregate_snapshot=(
             args.expect_lora_classifier_aggregate_snapshot
         ),
@@ -210,6 +213,10 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--expect-no-agent-local-update-refs",
+        action="store_true",
+    )
+    parser.add_argument(
+        "--expect-classifier-aggregate-snapshot",
         action="store_true",
     )
     parser.add_argument(

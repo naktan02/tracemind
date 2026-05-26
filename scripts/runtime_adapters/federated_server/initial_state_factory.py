@@ -5,8 +5,8 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.initial_state import (
-    build_initial_lora_classifier_state,
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    build_initial_peft_encoder_state,
 )
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
@@ -15,9 +15,6 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DIAGONAL_SCALE_ADAPTER_KIND,
     VectorAdapterState,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
@@ -43,21 +40,16 @@ def build_initial_shared_state(
             training_scope=training_scope,
             updated_at=updated_at,
         )
-    if adapter_family_name == LORA_CLASSIFIER_ADAPTER_KIND:
-        lora_config = getattr(round_runtime_config, "lora_classifier", None)
-        if lora_config is None:
-            raise ValueError(
-                "lora_classifier round runtime requires lora_classifier "
-                "bootstrap config."
-            )
-        return build_initial_lora_classifier_state(
-            config=lora_config,
-            model_id=model_id,
-            model_revision=model_revision,
-            training_scope=training_scope,
-            labels=labels,
-            updated_at=updated_at,
-        )
+    peft_encoder_state = build_initial_peft_encoder_state(
+        round_runtime_config=round_runtime_config,
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        labels=labels,
+        updated_at=updated_at,
+    )
+    if peft_encoder_state is not None:
+        return peft_encoder_state
     if adapter_family_name == DIAGONAL_SCALE_ADAPTER_KIND:
         return VectorAdapterState.identity(
             model_id=model_id,

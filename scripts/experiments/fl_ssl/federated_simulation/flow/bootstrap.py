@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    is_peft_encoder_adapter_family,
+)
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import PEER_CONTEXT_NONE
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
@@ -34,9 +37,6 @@ from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
 from scripts.runtime_adapters.federated_server.runtime import SimulationServerRuntime
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import ModelManifest
 
@@ -216,13 +216,14 @@ def _category_labels(request: SimulationRunRequest) -> tuple[str, ...]:
 
 
 def _require_classifier_simulation_runtime(request: SimulationRunRequest) -> None:
-    """현재 FL SSL simulation은 LoRA-classifier 경로만 지원한다."""
+    """현재 FL SSL simulation은 PEFT-backed classifier 경로만 지원한다."""
 
     adapter_family_name = request.round_runtime_config.adapter_family_name
-    if adapter_family_name.strip().lower() != LORA_CLASSIFIER_ADAPTER_KIND:
+    if not is_peft_encoder_adapter_family(adapter_family_name):
         raise ValueError(
             "FL SSL simulation no longer wires embedding/prototype scoring. "
-            "Use round_runtime.adapter_family_name=lora_classifier."
+            "Use round_runtime.adapter_family_name=peft_classifier or "
+            "lora_classifier."
         )
     if request.validation_config.scorer_backend_name != "lora_classifier_eval":
         raise ValueError(

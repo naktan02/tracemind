@@ -12,6 +12,9 @@ from methods.adaptation.query_classifier_adaptation.local_training_budget import
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import ClientMetricKeys, TrainingTask
@@ -36,7 +39,7 @@ from .partitioned_delta import LoraClassifierPartitionDelta
 class QuerySslLoraUpdateBuildResult:
     """FL adapter가 envelope과 summary에 쓰는 Query SSL local update 결과."""
 
-    update_payload: LoraClassifierDelta
+    update_payload: LoraClassifierDelta | PeftClassifierDelta
     client_metrics: Mapping[str, float]
     accepted_unlabeled_count: int
 
@@ -134,7 +137,7 @@ def build_query_ssl_lora_update_payload(
 
 def build_query_ssl_lora_client_metrics(
     *,
-    update_payload: LoraClassifierDelta,
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
     step_plan: QuerySslLocalStepPlan,
     history_record: Mapping[str, object],
     labeled_count: int,

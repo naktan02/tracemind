@@ -129,10 +129,15 @@ from scripts.runtime_adapters.federated_server.runtime import (
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
+    make_peft_classifier_delta_payload,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierState,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.model_contracts import make_embedding_manifest
@@ -326,23 +331,44 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
         client_id = str(kwargs["client_id"])
         scale = 1.0 + (sum(ord(char) for char in client_id) % 7) / 10.0
         labels = list(active_state.label_schema)
-        update_payload = make_lora_classifier_delta_payload(
-            model_id=training_task.model_id,
-            base_model_revision=training_task.model_revision,
-            training_scope=training_task.training_scope,
-            backbone=_lora_runtime_config().backbone_payload(),
-            lora_config=_lora_runtime_config().lora_config_payload(),
-            label_schema=labels,
-            example_count=2,
-            lora_parameter_deltas={"lora.test": [0.01 * scale]},
-            classifier_head_weight_deltas={
-                label: [0.01 * scale, 0.0] for label in labels
-            },
-            classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-            mean_confidence=0.8,
-            delta_l2_norm=0.1 * scale,
-        )
+        if isinstance(active_state, PeftClassifierState):
+            update_payload = make_peft_classifier_delta_payload(
+                model_id=training_task.model_id,
+                base_model_revision=training_task.model_revision,
+                training_scope=training_task.training_scope,
+                backbone=_lora_runtime_config().backbone_payload(),
+                peft_adapter_config=_lora_runtime_config().peft_adapter_config_payload(),
+                label_schema=labels,
+                example_count=2,
+                peft_parameter_deltas={"lora.test": [0.01 * scale]},
+                classifier_head_weight_deltas={
+                    label: [0.01 * scale, 0.0] for label in labels
+                },
+                classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+                mean_confidence=0.8,
+                delta_l2_norm=0.1 * scale,
+            )
+            payload_format = PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+        else:
+            update_payload = make_lora_classifier_delta_payload(
+                model_id=training_task.model_id,
+                base_model_revision=training_task.model_revision,
+                training_scope=training_task.training_scope,
+                backbone=_lora_runtime_config().backbone_payload(),
+                lora_config=_lora_runtime_config().lora_config_payload(),
+                label_schema=labels,
+                example_count=2,
+                lora_parameter_deltas={"lora.test": [0.01 * scale]},
+                classifier_head_weight_deltas={
+                    label: [0.01 * scale, 0.0] for label in labels
+                },
+                classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
+                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+                mean_confidence=0.8,
+                delta_l2_norm=0.1 * scale,
+            )
+            payload_format = LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
         update_envelope = make_training_update_envelope(
             update_id=f"update_{client_id}_{training_task.round_id}",
             round_id=training_task.round_id,
@@ -351,7 +377,7 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
             base_model_revision=training_task.model_revision,
             training_scope=training_task.training_scope,
             payload_ref=f"client-submission::{client_id}",
-            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            payload_format=payload_format,
             example_count=2,
             client_metrics={
                 "delta_l2_norm": 0.1 * scale,
@@ -439,6 +465,7 @@ def _default_round_runtime_config(
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None,
+    peft_classifier: FederatedLoraClassifierRuntimeConfig | None = None,
 ) -> FederatedRoundRuntimeConfig:
     return FederatedRoundRuntimeConfig(
         adapter_family_name=adapter_family_name,
@@ -450,6 +477,15 @@ def _default_round_runtime_config(
             else (
                 _lora_runtime_config()
                 if adapter_family_name == "lora_classifier"
+                else None
+            )
+        ),
+        peft_classifier=(
+            peft_classifier
+            if peft_classifier is not None
+            else (
+                _lora_runtime_config()
+                if adapter_family_name == "peft_classifier"
                 else None
             )
         ),
@@ -636,6 +672,18 @@ def _lora_objective_extras(
             "strong_text,training_text,raw_text,text,weak_text"
         ),
         "lora_classifier.label_schema": "anxiety,depression,normal,suicidal",
+    }
+
+
+def _peft_objective_extras(
+    *,
+    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+) -> dict[str, str | int | float | bool]:
+    return {
+        key.replace("lora_classifier.", "peft_classifier."): value
+        for key, value in _lora_objective_extras(delta_format=delta_format).items()
+    } | {
+        "peft_classifier.artifact_ref_prefix": "agent-local://peft_classifier",
     }
 
 
@@ -2099,6 +2147,28 @@ def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
     assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
 
 
+def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
+    state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="peft_classifier",
+            peft_classifier=_lora_runtime_config(),
+        ),
+        model_id="mxbai-peft-classifier",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=2,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(state, PeftClassifierState)
+    assert state.adapter_kind == "peft_classifier"
+    assert state.schema_version == "peft_classifier_state.v2"
+    assert state.label_schema == ["anxiety", "normal"]
+    assert state.peft_adapter_config.peft_adapter_name == "lora"
+    assert state.peft_adapter_config.parameters["rank"] == 8
+
+
 def test_build_initial_shared_state_rejects_unknown_family() -> None:
     with pytest.raises(ValueError, match="Unsupported simulation adapter family"):
         build_initial_shared_state(
@@ -2419,6 +2489,90 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         delta=second_head_artifact["applied_classifier_head_bias_deltas"],
         after=second_head_artifact["classifier_head_biases"],
     )
+
+
+def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
+    tmp_path,
+    monkeypatch,
+) -> None:
+    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_lora_trainer(monkeypatch)
+    train_rows = [
+        _row("a1", "panic panic", "anxiety"),
+        _row("a2", "panic panic", "anxiety"),
+        _row("n1", "calm calm", "normal"),
+        _row("n2", "calm calm", "normal"),
+    ]
+    validation_rows = [
+        _row("va", "panic panic", "anxiety"),
+        _row("vn", "calm calm", "normal"),
+    ]
+    output_dir = tmp_path / "peft_inline_round"
+    request = _default_simulation_request(
+        tmp_path,
+        output_name="peft_inline_round",
+        train_rows=train_rows,
+        validation_rows=validation_rows,
+        output_dir=output_dir,
+        client_count=2,
+        rounds=1,
+        bootstrap_ratio=0.5,
+        model_id="mxbai-peft-classifier",
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="peft_classifier",
+            peft_classifier=_lora_runtime_config(),
+        ),
+        training_task_config=_default_training_task_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+            max_examples=4,
+            gradient_clip_norm=1.0,
+            training_backend_name="peft_classifier_trainer",
+            privacy_guard_name="noop",
+            objective_extras=_peft_objective_extras(),
+        ),
+        validation_config=_default_lora_validation_config(
+            confidence_threshold=0.0,
+            margin_threshold=0.0,
+        ),
+    )
+
+    result = run_simulation_request(request)
+
+    assert result.rounds
+    assert result.rounds[0].update_count > 0
+    update_paths = sorted(
+        (output_dir / "main_server" / "shared_adapter_updates" / "versions").glob(
+            "*.json"
+        )
+    )
+    assert update_paths
+    update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
+    assert update_payload["adapter_kind"] == "peft_classifier"
+    assert update_payload["schema_version"] == "peft_classifier_delta.v2"
+    assert update_payload["delta_format"] == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+    assert update_payload["peft_parameter_deltas"]
+    assert "lora_parameter_deltas" not in update_payload
+    peft_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "peft_classifier"
+        / "sim_rev_0001"
+        / "peft_adapter.json"
+    )
+    head_aggregate_path = (
+        output_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "peft_classifier"
+        / "sim_rev_0001"
+        / "classifier_head.json"
+    )
+    assert peft_aggregate_path.exists()
+    assert head_aggregate_path.exists()
 
 
 def test_run_simulation_request_resumes_from_completed_round_checkpoint(

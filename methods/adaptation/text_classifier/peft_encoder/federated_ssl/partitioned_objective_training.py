@@ -83,6 +83,11 @@ from methods.ssl.state import (
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    LoraClassifierDelta,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierDelta,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -593,11 +598,12 @@ def run_partitioned_lora_classifier_training_core(
         base_model_revision=model_manifest.model_revision,
         training_scope=training_task.training_scope,
         payload_ref=f"client-submission::{update_id}",
-        payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        payload_format=_payload_format_for_update(update_build_result.update_payload),
         example_count=update_build_result.update_payload.example_count,
         client_metrics=client_metrics,
         created_at=created_at,
     )
+
     return QuerySslLoraClientTrainingResult(
         update_envelope=update_envelope,
         update_payload=update_build_result.update_payload,
@@ -625,6 +631,14 @@ def run_partitioned_lora_classifier_training_core(
         ),
         timing_breakdown=timing_mapping(timing_recorder),
     )
+
+
+def _payload_format_for_update(
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+) -> str:
+    if isinstance(update_payload, PeftClassifierDelta):
+        return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+    return LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
 
 
 def _build_psi_query_ssl_algorithm(

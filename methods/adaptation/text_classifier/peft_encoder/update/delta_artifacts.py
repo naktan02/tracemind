@@ -14,6 +14,9 @@ from methods.adaptation.text_classifier.peft_encoder.config import (
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
+)
 from shared.src.contracts.training_contracts import TrainingTask
 
 from ..training.query_ssl_local_training import QuerySslLoraDeltaMaterialization
@@ -311,17 +314,19 @@ class LoraClassifierDeltaMaterializer:
 def upload_agent_local_lora_classifier_update(
     *,
     artifact_store: LoraClassifierDeltaArtifactStore,
-    update_payload: LoraClassifierDelta,
-) -> LoraClassifierDelta:
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+) -> LoraClassifierDelta | PeftClassifierDelta:
     """agent-local delta artifact ref를 server-owned ref로 materialize한다."""
 
     update_fields: dict[str, object] = {}
-    if artifact_store.is_agent_local_ref(update_payload.lora_delta_artifact_ref):
-        if update_payload.lora_delta_artifact_ref is None:
-            raise AssertionError("lora_delta_artifact_ref unexpectedly missing.")
-        update_fields["lora_delta_artifact_ref"] = (
+    adapter_delta_field = _adapter_delta_artifact_ref_field(update_payload)
+    adapter_delta_ref = _adapter_delta_artifact_ref(update_payload)
+    if artifact_store.is_agent_local_ref(adapter_delta_ref):
+        if adapter_delta_ref is None:
+            raise AssertionError(f"{adapter_delta_field} unexpectedly missing.")
+        update_fields[adapter_delta_field] = (
             artifact_store.upload_agent_local_json_artifact(
-                agent_local_ref=update_payload.lora_delta_artifact_ref,
+                agent_local_ref=adapter_delta_ref,
             )
         )
     if artifact_store.is_agent_local_ref(
@@ -357,14 +362,30 @@ def upload_agent_local_lora_classifier_update(
 def server_owned_lora_classifier_update_artifact_byte_count(
     *,
     artifact_store: LoraClassifierDeltaArtifactStore,
-    update_payload: LoraClassifierDelta,
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
 ) -> int:
     """server-owned update artifact ref들의 파일 크기를 합산한다."""
 
     return artifact_store.server_artifact_refs_byte_count(
         artifact_refs=(
-            update_payload.lora_delta_artifact_ref,
+            _adapter_delta_artifact_ref(update_payload),
             update_payload.classifier_head_delta_artifact_ref,
             update_payload.partitioned_deltas_artifact_ref,
         ),
     )
+
+
+def _adapter_delta_artifact_ref(
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+) -> str | None:
+    if isinstance(update_payload, PeftClassifierDelta):
+        return update_payload.peft_adapter_delta_artifact_ref
+    return update_payload.lora_delta_artifact_ref
+
+
+def _adapter_delta_artifact_ref_field(
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+) -> str:
+    if isinstance(update_payload, PeftClassifierDelta):
+        return "peft_adapter_delta_artifact_ref"
+    return "lora_delta_artifact_ref"

@@ -25,6 +25,11 @@ from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
+)
+
+PeftEncoderState = LoraClassifierState | PeftClassifierState
 
 LORA_CLASSIFIER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME = (
     "lora_classifier_base_partitioned_state_v1"
@@ -33,7 +38,7 @@ LORA_CLASSIFIER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME = (
 
 def load_lora_classifier_base_parameters(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
@@ -64,7 +69,7 @@ def load_lora_classifier_base_parameters(
 
 def load_lora_classifier_base_partition_parameters(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
@@ -95,7 +100,7 @@ def load_lora_classifier_base_partition_parameters(
 
 def _materialize_lora_classifier_base_parameters(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
 ) -> LoraClassifierMaterializedState:
@@ -113,7 +118,7 @@ def _materialize_lora_classifier_base_parameters(
 
 def _materialize_lora_classifier_base_partition_parameters(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
 ) -> dict[str, LoraClassifierMaterializedState]:
@@ -130,7 +135,7 @@ def _materialize_lora_classifier_base_partition_parameters(
 
 
 def _lora_classifier_cache_key(
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
 ) -> RoundBaseSnapshotCacheKey:
     return RoundBaseSnapshotCacheKey(
         adapter_kind=str(active_adapter_state.adapter_kind),
@@ -142,7 +147,7 @@ def _lora_classifier_cache_key(
 
 
 def _lora_classifier_partition_cache_key(
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
 ) -> RoundBaseSnapshotCacheKey:
     return RoundBaseSnapshotCacheKey(
         adapter_kind=str(active_adapter_state.adapter_kind),

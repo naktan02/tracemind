@@ -9,6 +9,9 @@ from pathlib import Path
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    peft_encoder_runtime_payload,
+)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
@@ -294,20 +297,23 @@ class FederatedLoraClassifierRuntimeConfig:
     training_backend_config: LoraClassifierTrainingBackendConfig
     artifact_format: str = "simulation_lora_classifier_state_ref"
     lora_adapter_artifact_ref: str | None = None
+    peft_adapter_artifact_ref: str | None = None
     classifier_head_artifact_ref: str | None = None
 
     @classmethod
     def from_mapping(
         cls,
         source: Mapping[str, object],
+        *,
+        default_artifact_format: str = "simulation_lora_classifier_state_ref",
     ) -> "FederatedLoraClassifierRuntimeConfig":
-        """Hydra round_runtime.lora_classifier mapping을 typed config로 해석한다."""
+        """Hydra round_runtime classifier mapping을 typed config로 해석한다."""
 
         artifact_format = str(
-            source.get("artifact_format", "simulation_lora_classifier_state_ref")
+            source.get("artifact_format", default_artifact_format)
         ).strip()
         if not artifact_format:
-            raise ValueError("round_runtime.lora_classifier.artifact_format invalid.")
+            raise ValueError("round_runtime classifier artifact_format invalid.")
         return cls(
             training_backend_config=LoraClassifierTrainingBackendConfig.from_mapping(
                 {
@@ -319,6 +325,10 @@ class FederatedLoraClassifierRuntimeConfig:
             artifact_format=artifact_format,
             lora_adapter_artifact_ref=_optional_str(
                 source.get("lora_adapter_artifact_ref")
+            ),
+            peft_adapter_artifact_ref=(
+                _optional_str(source.get("peft_adapter_artifact_ref"))
+                or _optional_str(source.get("lora_adapter_artifact_ref"))
             ),
             classifier_head_artifact_ref=_optional_str(
                 source.get("classifier_head_artifact_ref")
@@ -335,11 +345,17 @@ class FederatedLoraClassifierRuntimeConfig:
 
         return self.training_backend_config.to_lora_config_payload()
 
+    def peft_adapter_config_payload(self) -> dict[str, object]:
+        """shared peft_classifier state에 넣을 PEFT mechanism config snapshot."""
+
+        return self.training_backend_config.to_peft_adapter_config_payload()
+
 
 _LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS = frozenset(
     {
         "artifact_format",
         "lora_adapter_artifact_ref",
+        "peft_adapter_artifact_ref",
         "classifier_head_artifact_ref",
     }
 )
@@ -360,6 +376,7 @@ class FederatedRoundRuntimeConfig:
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
+    peft_classifier: FederatedLoraClassifierRuntimeConfig | None = None
 
     def runtime_payload_for_adapter_family(self) -> object | None:
         """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""
@@ -367,7 +384,11 @@ class FederatedRoundRuntimeConfig:
         runtime_field_name = self.adapter_family_name.strip().lower().replace("-", "_")
         if not runtime_field_name:
             raise ValueError("round_runtime.adapter_family_name must not be empty.")
-        return getattr(self, runtime_field_name, None)
+        return peft_encoder_runtime_payload(self) or getattr(
+            self,
+            runtime_field_name,
+            None,
+        )
 
 
 @dataclass(frozen=True, slots=True)

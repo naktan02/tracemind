@@ -48,6 +48,10 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+    PeftClassifierDelta,
+)
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -124,7 +128,7 @@ class QuerySslLoraClientTrainingResult:
     """FL round loop가 서버 제출과 client summary에 쓰는 local training 결과."""
 
     update_envelope: TrainingUpdateEnvelope
-    update_payload: LoraClassifierDelta
+    update_payload: LoraClassifierDelta | PeftClassifierDelta
     candidate_count: int
     accepted_count: int
     local_step_plan: QuerySslLocalStepPlan
@@ -346,7 +350,7 @@ def run_query_ssl_lora_classifier_training_core(
         base_model_revision=model_manifest.model_revision,
         training_scope=training_task.training_scope,
         payload_ref=f"client-submission::{update_id}",
-        payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        payload_format=_payload_format_for_update(update_payload),
         example_count=update_payload.example_count,
         client_metrics=dict(client_metrics),
         created_at=created_at,
@@ -383,6 +387,14 @@ def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     if timing_recorder is None:
         return nullcontext()
     return timing_recorder.measure(key)
+
+
+def _payload_format_for_update(
+    update_payload: LoraClassifierDelta | PeftClassifierDelta,
+) -> str:
+    if isinstance(update_payload, PeftClassifierDelta):
+        return PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+    return LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
 
 
 def _build_unlabeled_loader(

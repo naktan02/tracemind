@@ -7,6 +7,8 @@ from typing import Any
 
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.config import (
+    PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+    PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
 )
@@ -30,6 +32,9 @@ from methods.evaluation.classification_payload import (
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -138,16 +143,19 @@ def evaluate_lora_classifier_validation_payload(
 ) -> dict[str, object]:
     """FL validation runtime이 넘긴 LoRA state를 method-owned evaluator로 평가한다."""
 
-    if not isinstance(adapter_state, LoraClassifierState):
+    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires LoraClassifierState; "
+            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return evaluate_lora_classifier_state_payload(
         rows=rows,
         labels=adapter_state.label_schema,
         base_parameters=base_parameters,
-        lora_config=build_lora_classifier_training_backend_config(objective_config),
+        lora_config=_build_evaluation_training_backend_config(
+            adapter_state=adapter_state,
+            objective_config=objective_config,
+        ),
         runtime_config=runtime_config,
         batch_size=batch_size,
         seed=seed,
@@ -163,7 +171,7 @@ def require_lora_classifier_validation_backend(
 ) -> None:
     """LoRA-classifier state에 prototype scorer validation이 붙는 drift를 막는다."""
 
-    if not isinstance(adapter_state, LoraClassifierState):
+    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         return
     if scorer_backend_name == LORA_CLASSIFIER_EVALUATOR_NAME:
         return
@@ -175,12 +183,28 @@ def require_lora_classifier_validation_backend(
     )
 
 
-def require_lora_classifier_state(adapter_state: object) -> LoraClassifierState:
+def require_lora_classifier_state(
+    adapter_state: object,
+) -> LoraClassifierState | PeftClassifierState:
     """runtime adapter가 넘긴 shared state를 LoRA-classifier state로 검증한다."""
 
-    if not isinstance(adapter_state, LoraClassifierState):
+    if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires LoraClassifierState; "
+            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return adapter_state
+
+
+def _build_evaluation_training_backend_config(
+    *,
+    adapter_state: LoraClassifierState | PeftClassifierState,
+    objective_config: TrainingObjectiveConfig | None,
+) -> LoraClassifierTrainingBackendConfig:
+    if isinstance(adapter_state, PeftClassifierState):
+        return build_lora_classifier_training_backend_config(
+            objective_config,
+            family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
+            training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
+        )
+    return build_lora_classifier_training_backend_config(objective_config)

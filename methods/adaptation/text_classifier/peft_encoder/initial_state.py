@@ -9,6 +9,9 @@ from typing import Protocol
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
+)
 
 
 class LoraClassifierInitialStateConfig(Protocol):
@@ -23,6 +26,9 @@ class LoraClassifierInitialStateConfig(Protocol):
 
     def lora_config_payload(self) -> Mapping[str, str | int | float | bool]:
         """State payload에 기록할 LoRA config snapshot."""
+
+    def peft_adapter_config_payload(self) -> Mapping[str, object]:
+        """State payload에 기록할 PEFT adapter config snapshot."""
 
 
 def build_initial_lora_classifier_state(
@@ -45,6 +51,34 @@ def build_initial_lora_classifier_state(
         lora_config=dict(config.lora_config_payload()),
         label_schema=[str(label) for label in labels],
         lora_adapter_artifact_ref=config.lora_adapter_artifact_ref,
+        classifier_head_artifact_ref=config.classifier_head_artifact_ref,
+        artifact_format=config.artifact_format,
+    )
+
+
+def build_initial_peft_classifier_state(
+    *,
+    config: LoraClassifierInitialStateConfig,
+    model_id: str,
+    model_revision: str,
+    training_scope: str,
+    labels: Sequence[str],
+    updated_at: datetime,
+) -> PeftClassifierState:
+    """simulation/runtime bootstrap용 PEFT-classifier initial state를 만든다."""
+
+    peft_adapter_artifact_ref = getattr(config, "peft_adapter_artifact_ref", None)
+    if peft_adapter_artifact_ref is None:
+        peft_adapter_artifact_ref = config.lora_adapter_artifact_ref
+    return PeftClassifierState(
+        model_id=model_id,
+        model_revision=model_revision,
+        training_scope=training_scope,
+        updated_at=updated_at,
+        backbone=dict(config.backbone_payload()),
+        peft_adapter_config=dict(config.peft_adapter_config_payload()),
+        label_schema=[str(label) for label in labels],
+        peft_adapter_artifact_ref=peft_adapter_artifact_ref,
         classifier_head_artifact_ref=config.classifier_head_artifact_ref,
         artifact_format=config.artifact_format,
     )

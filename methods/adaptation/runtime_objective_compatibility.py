@@ -22,6 +22,11 @@ class AdapterRuntimeObjectiveCompatibilityValidator(Protocol):
 
 
 _ADAPTATION_PACKAGE = "methods.adaptation"
+_RUNTIME_COMPATIBILITY_MODULE_ALIASES = {
+    "peft_classifier": (
+        "methods.adaptation.text_classifier.peft_encoder.runtime_compatibility"
+    ),
+}
 _RUNTIME_OBJECTIVE_COMPATIBILITY_VALIDATORS: dict[
     str,
     AdapterRuntimeObjectiveCompatibilityValidator,
@@ -81,6 +86,12 @@ def require_adapter_runtime_matches_objective(
 def _import_runtime_compatibility_module_for_adapter_kind(
     normalized_adapter_kind: str,
 ) -> None:
+    aliased_module_name = _RUNTIME_COMPATIBILITY_MODULE_ALIASES.get(
+        normalized_adapter_kind
+    )
+    if aliased_module_name is not None:
+        importlib.import_module(aliased_module_name)
+        return
     module_name = (
         f"{_ADAPTATION_PACKAGE}."
         f"{normalized_adapter_kind.replace('-', '_')}."

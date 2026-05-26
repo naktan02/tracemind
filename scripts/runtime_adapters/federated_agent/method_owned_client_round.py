@@ -8,6 +8,9 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    is_peft_encoder_adapter_family,
+)
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
     server_owned_lora_classifier_update_artifact_byte_count,
     upload_agent_local_lora_classifier_update,
@@ -40,9 +43,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.runtime_adapters.federated_agent import local_training as method_trainer
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.training_contracts import ClientMetricKeys
 
@@ -87,9 +87,11 @@ def _supports_method_owned_lora_client_training(
 ) -> bool:
     return (
         request.ssl_method_config is not None
-        and str(request.round_runtime_config.adapter_family_name).strip().lower()
-        == LORA_CLASSIFIER_ADAPTER_KIND
-        and request.round_runtime_config.lora_classifier is not None
+        and is_peft_encoder_adapter_family(
+            request.round_runtime_config.adapter_family_name
+        )
+        and request.round_runtime_config.runtime_payload_for_adapter_family()
+        is not None
     )
 
 
@@ -111,8 +113,8 @@ def _run_method_owned_lora_client_round(
 ) -> ClientRoundExecution:
     if request.ssl_method_config is None:
         raise ValueError("ssl_method_config is required.")
-    if request.round_runtime_config.lora_classifier is None:
-        raise ValueError("LoRA-classifier runtime config is required.")
+    if request.round_runtime_config.runtime_payload_for_adapter_family() is None:
+        raise ValueError("PEFT classifier runtime config is required.")
 
     query_ssl_config = request.query_ssl_objective_config
     timing = TimingRecorder()

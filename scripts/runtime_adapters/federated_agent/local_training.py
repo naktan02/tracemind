@@ -16,11 +16,15 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
-    build_lora_classifier_training_backend_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
     helper_provider,
     method_owned_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    PeftEncoderState,
+    build_training_backend_config_for_peft_encoder_state,
+    build_training_backend_for_peft_encoder_state,
 )
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
@@ -57,6 +61,9 @@ from scripts.runtime_adapters.federated_agent.base_state_materialization import 
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
@@ -102,9 +109,10 @@ def run_method_owned_lora_classifier_local_training(
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 선택된 method-owned LoRA core에 연결한다."""
 
-    if not isinstance(active_adapter_state, LoraClassifierState):
+    if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            "Method-owned LoRA local training requires active LoraClassifierState."
+            "Method-owned PEFT classifier local training requires active classifier "
+            "state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
     base_parameters = _load_base_parameters_if_needed(
@@ -125,7 +133,10 @@ def run_method_owned_lora_classifier_local_training(
         )
     effective_lora_config = (
         lora_config
-        or build_lora_classifier_training_backend_config(training_task.objective_config)
+        or build_training_backend_config_for_peft_encoder_state(
+            active_adapter_state=active_adapter_state,
+            objective_config=training_task.objective_config,
+        )
     )
     labels = tuple(str(label) for label in active_adapter_state.label_schema)
     helper_weak_probability_provider = (
@@ -205,9 +216,9 @@ def run_query_ssl_lora_classifier_local_training(
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
 
-    if not isinstance(active_adapter_state, LoraClassifierState):
+    if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            "Query SSL LoRA local training requires active LoraClassifierState."
+            "Query SSL PEFT classifier local training requires active classifier state."
         )
     effective_created_at = created_at or datetime.now(tz=timezone.utc)
     base_parameters = _load_base_parameters_if_needed(
@@ -223,10 +234,12 @@ def run_query_ssl_lora_classifier_local_training(
             state_root=output_dir / "agents" / client_id
         ),
         backend=LoraClassifierTrainingBackend(
-            config=lora_config
-            or build_lora_classifier_training_backend_config(
-                training_task.objective_config
-            )
+            config=lora_config,
+        )
+        if lora_config is not None
+        else build_training_backend_for_peft_encoder_state(
+            active_adapter_state=active_adapter_state,
+            objective_config=training_task.objective_config,
         ),
     )
     return service.run_lora(
@@ -256,7 +269,7 @@ def run_query_ssl_lora_classifier_local_training(
 
 def _load_base_parameters_if_needed(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None,
@@ -283,7 +296,7 @@ def _load_base_parameters_if_needed(
 
 def _load_base_partition_parameters_if_needed(
     *,
-    active_adapter_state: LoraClassifierState,
+    active_adapter_state: PeftEncoderState,
     output_dir: Path,
     aggregated_at: datetime,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None,

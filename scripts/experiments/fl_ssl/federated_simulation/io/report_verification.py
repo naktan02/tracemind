@@ -6,6 +6,12 @@ import json
 from pathlib import Path
 from typing import Mapping
 
+from methods.adaptation.text_classifier.peft_encoder.report_artifacts import (
+    classifier_aggregate_snapshot_candidates,
+    classifier_objective_value,
+    classifier_primary_update_ref_fields,
+)
+
 from .report_verification_helpers import (
     expect_contains as _expect_contains,
 )
@@ -33,20 +39,6 @@ from .report_verification_helpers import (
 from .report_verification_models import (
     FederatedReportExpectation,
     VerificationResult,
-)
-
-_CLASSIFIER_OBJECTIVE_NAMES = ("peft_classifier", "lora_classifier")
-_PEFT_CLASSIFIER_PRIMARY_REF_FIELDS = (
-    "peft_adapter_delta_artifact_ref",
-    "classifier_head_delta_artifact_ref",
-)
-_LORA_CLASSIFIER_PRIMARY_REF_FIELDS = (
-    "lora_delta_artifact_ref",
-    "classifier_head_delta_artifact_ref",
-)
-_CLASSIFIER_SNAPSHOT_SPECS = (
-    ("peft_classifier", "peft_adapter.json"),
-    ("lora_classifier", "lora_adapter.json"),
 )
 
 
@@ -272,8 +264,8 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
-        "objective.peft_classifier.delta_format",
-        _classifier_objective_value(objective, "delta_format"),
+        "objective.classifier.delta_format",
+        classifier_objective_value(objective, "delta_format"),
         expectation.expected_delta_format,
     )
     _expect_equal(
@@ -459,8 +451,11 @@ def _verify_shared_update_artifacts(
             update_payload=update_payload,
             expectation=expectation,
         )
-    if expectation.expect_lora_classifier_aggregate_snapshot:
-        _verify_lora_classifier_aggregate_snapshot(
+    if (
+        expectation.expect_classifier_aggregate_snapshot
+        or expectation.expect_lora_classifier_aggregate_snapshot
+    ):
+        _verify_classifier_aggregate_snapshot(
             errors=errors,
             run_dir=run_dir,
             rounds=rounds,
@@ -556,6 +551,7 @@ def _requires_shared_update_artifact_check(
             expectation.expect_server_owned_update_artifacts,
             expectation.expect_partitioned_update_artifact_refs,
             expectation.expect_no_agent_local_update_refs,
+            expectation.expect_classifier_aggregate_snapshot,
             expectation.expect_lora_classifier_aggregate_snapshot,
         )
     )
@@ -669,7 +665,7 @@ def _verify_server_owned_update_refs(
             artifact_ref=partitioned_ref,
         )
         return
-    primary_ref_fields = _primary_ref_fields_for_update_payload(update_payload)
+    primary_ref_fields = classifier_primary_update_ref_fields(update_payload)
     for field_name, artifact_ref in zip(
         primary_ref_fields,
         (update_payload.get(field_name) for field_name in primary_ref_fields),
@@ -682,25 +678,6 @@ def _verify_server_owned_update_refs(
             field_name=field_name,
             artifact_ref=artifact_ref,
         )
-
-
-def _classifier_objective_value(
-    objective: Mapping[str, object],
-    key: str,
-) -> object:
-    for objective_name in _CLASSIFIER_OBJECTIVE_NAMES:
-        value = _nested_or_flat_value(objective, objective_name, key)
-        if value is not None:
-            return value
-    return None
-
-
-def _primary_ref_fields_for_update_payload(
-    update_payload: Mapping[str, object],
-) -> tuple[str, str]:
-    if update_payload.get("peft_adapter_delta_artifact_ref") is not None:
-        return _PEFT_CLASSIFIER_PRIMARY_REF_FIELDS
-    return _LORA_CLASSIFIER_PRIMARY_REF_FIELDS
 
 
 def _verify_server_owned_artifact_ref(
@@ -743,7 +720,7 @@ def _aggregation_artifact_path(run_dir: Path, artifact_ref: str) -> Path:
     return json_path
 
 
-def _verify_lora_classifier_aggregate_snapshot(
+def _verify_classifier_aggregate_snapshot(
     *,
     errors: list[str],
     run_dir: Path,
@@ -764,13 +741,10 @@ def _verify_lora_classifier_aggregate_snapshot(
         )
         return
     artifact_root = run_dir / "main_server" / "aggregation_artifacts" / "versions"
-    candidate_paths = [
-        (
-            artifact_root / family_name / model_revision / adapter_artifact_name,
-            artifact_root / family_name / model_revision / "classifier_head.json",
-        )
-        for family_name, adapter_artifact_name in _CLASSIFIER_SNAPSHOT_SPECS
-    ]
+    candidate_paths = classifier_aggregate_snapshot_candidates(
+        artifact_root=artifact_root,
+        model_revision=model_revision,
+    )
     if any(all(path.exists() for path in candidate) for candidate in candidate_paths):
         return
     for candidate in candidate_paths:

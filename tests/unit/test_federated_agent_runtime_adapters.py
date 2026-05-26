@@ -74,6 +74,7 @@ from scripts.runtime_adapters.federated_agent.row_validator import (
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
+    make_peft_classifier_delta_payload,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.training_contracts import (
@@ -768,3 +769,67 @@ def test_upload_agent_local_lora_update_materializes_server_owned_refs(
         "anxiety": 0.05,
         "normal": -0.05,
     }
+
+
+def test_upload_agent_local_peft_update_materializes_server_owned_refs(
+    tmp_path,
+) -> None:
+    plan = prepare_delta_materialization(
+        output_dir=tmp_path,
+        update_id="update_round_0001_agent_01_test",
+        training_task=SimpleNamespace(round_id="round_0001"),
+        client_id="agent_01",
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        artifact_ref_prefix="agent-local://peft_classifier",
+        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+        classifier_head_weight_deltas={
+            "anxiety": [0.3, -0.1],
+            "normal": [-0.3, 0.1],
+        },
+        classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
+    )
+    update_payload = make_peft_classifier_delta_payload(
+        model_id="mxbai-peft-classifier",
+        base_model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        backbone={
+            "backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "backbone_revision": "main",
+            "tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+            "tokenizer_revision": "main",
+            "pooling": "mean",
+            "max_length": 256,
+            "task_prefix": "",
+        },
+        peft_adapter_config={
+            "peft_adapter_name": "lora",
+            "parameters": {
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            },
+        },
+        label_schema=["anxiety", "normal"],
+        example_count=2,
+        peft_adapter_delta_artifact_ref=plan.lora_delta_artifact_ref,
+        classifier_head_delta_artifact_ref=plan.classifier_head_delta_artifact_ref,
+        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+    )
+
+    uploaded = upload_agent_local_lora_classifier_update(
+        artifact_store=SimulationClientArtifactStore(output_dir=tmp_path),
+        update_payload=update_payload,
+    )
+
+    assert uploaded.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert uploaded.peft_adapter_delta_artifact_ref is not None
+    assert uploaded.classifier_head_delta_artifact_ref is not None
+    assert uploaded.peft_adapter_delta_artifact_ref.startswith(
+        AGGREGATION_ARTIFACT_REF_PREFIX
+    )
+    assert uploaded.classifier_head_delta_artifact_ref.startswith(
+        AGGREGATION_ARTIFACT_REF_PREFIX
+    )
