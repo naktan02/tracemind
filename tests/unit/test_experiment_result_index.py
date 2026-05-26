@@ -186,6 +186,25 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.artifacts[1].artifact_kind == "fl_client_split_manifest"
 
 
+def test_load_result_index_records_reads_peft_classifier_objective(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_peft_fl_ssl_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.method_family == "manual_baselines"
+    assert records.run.adapter_family_name == "peft_classifier"
+    assert records.run.peft_adapter_name == "lora"
+    assert records.run.lora_rank == 8
+    assert records.run.lora_alpha == 16
+    assert records.run.lora_dropout == 0.1
+    assert records.run.lora_bias == "none"
+    assert records.run.lora_target_modules == "all-linear"
+    assert records.run.lora_use_rslora is False
+    assert records.run.update_delta_format == "server_uploaded_artifact_ref"
+
+
 def test_result_index_discovers_fl_ssl_report_artifacts(tmp_path: Path) -> None:
     central_report = _write_report(tmp_path)
     fl_report = _write_fl_ssl_report(tmp_path)
@@ -397,6 +416,46 @@ def _write_fl_ssl_report(tmp_path: Path) -> Path:
     (projection_dir / "validation.projection.png").write_bytes(b"png")
     report_path.write_text(
         json.dumps(_sample_fl_ssl_report(projection_dir), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "fl_ssl"
+        / "manual_baselines"
+        / "fixmatch_usb_v1__peft_classifier__fedavg"
+        / "alpha03_seed42"
+        / "clients10_rounds50"
+        / "20260527T120000Z"
+        / "reports"
+        / "fl_ssl_main_comparison.report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    payload = _sample_fl_ssl_report()
+    protocol = payload["protocol"]
+    protocol["round_runtime"] = {
+        "adapter_family_name": "peft_classifier",
+        "aggregation_backend_name": "fedavg",
+    }
+    protocol["fl_method"]["manual_axes"]["update_family"] = "peft_classifier"
+    protocol["objective"] = {
+        "query_ssl.method_name": "fixmatch_usb_v1",
+        "query_ssl.algorithm_name": "fixmatch",
+        "peft_classifier.peft_adapter_name": "lora",
+        "peft_classifier.rank": 8,
+        "peft_classifier.alpha": 16,
+        "peft_classifier.dropout": 0.1,
+        "peft_classifier.bias": "none",
+        "peft_classifier.target_modules": "all-linear",
+        "peft_classifier.use_rslora": False,
+        "peft_classifier.delta_format": "server_uploaded_artifact_ref",
+    }
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
         encoding="utf-8",
     )
     return report_path

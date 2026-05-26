@@ -112,17 +112,21 @@ def load_fl_ssl_result_index_records(
         examples_per_second=None,
         trainable_param_ratio=None,
         peft_adapter_name=optional_str(
-            objective.get("lora_classifier.peft_adapter_name")
+            _classifier_objective_value(objective, "peft_adapter_name")
         ),
-        lora_rank=optional_int(objective.get("lora_classifier.rank")),
-        lora_alpha=optional_int(objective.get("lora_classifier.alpha")),
-        lora_dropout=optional_float(objective.get("lora_classifier.dropout")),
-        lora_bias=optional_str(objective.get("lora_classifier.bias")),
+        lora_rank=optional_int(_classifier_objective_value(objective, "rank")),
+        lora_alpha=optional_int(_classifier_objective_value(objective, "alpha")),
+        lora_dropout=optional_float(_classifier_objective_value(objective, "dropout")),
+        lora_bias=optional_str(_classifier_objective_value(objective, "bias")),
         lora_target_modules=optional_str(
-            objective.get("lora_classifier.target_modules")
+            _classifier_objective_value(objective, "target_modules")
         ),
-        lora_use_rslora=_optional_bool(objective.get("lora_classifier.use_rslora")),
-        lora_use_dora=_optional_bool(objective.get("lora_classifier.use_dora")),
+        lora_use_rslora=_optional_bool(
+            _classifier_objective_value(objective, "use_rslora")
+        ),
+        lora_use_dora=_optional_bool(
+            _classifier_objective_value(objective, "use_dora")
+        ),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_dir")),
         client_count=optional_int(protocol.get("client_count")),
@@ -137,7 +141,9 @@ def load_fl_ssl_result_index_records(
         fl_composition_mode=composition_mode,
         fl_execution_role=optional_str(fl_method.get("execution_role")),
         fl_descriptor_name=descriptor_name,
-        update_delta_format=optional_str(objective.get("lora_classifier.delta_format")),
+        update_delta_format=optional_str(
+            _classifier_objective_value(objective, "delta_format")
+        ),
         local_regularizer_name=local_regularizer_name,
         local_regularizer_mu=local_regularizer_mu,
         embedding_backend=optional_str(embedding_adapter.get("backend")),
@@ -267,10 +273,23 @@ def infer_fl_method_family(
 
 
 def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | None]:
-    proximal_mu = optional_float(objective.get("lora_classifier.proximal_mu"))
+    proximal_mu = optional_float(_classifier_objective_value(objective, "proximal_mu"))
     if proximal_mu is not None and proximal_mu > 0:
         return "fedprox", proximal_mu
     return "none", None
+
+
+def _classifier_objective_value(objective: dict[str, Any], key: str) -> object:
+    """PEFT-classifier objective key를 먼저 읽고 legacy LoRA key로 fallback한다."""
+
+    for family_name in ("peft_classifier", "lora_classifier"):
+        value = objective.get(f"{family_name}.{key}")
+        if value is not None:
+            return value
+        nested = objective.get(family_name)
+        if isinstance(nested, dict) and nested.get(key) is not None:
+            return nested.get(key)
+    return None
 
 
 def _optional_bool(value: object) -> bool | None:
