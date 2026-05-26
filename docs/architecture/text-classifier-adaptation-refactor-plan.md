@@ -290,7 +290,9 @@ objective 생성, `psi_factor` 해석은
 architecture guard는 해당 경로가 다시 생기지 않게 막는다.
 `lora_classifier` package는 `docs/contracts/legacy_contract_ledger.md`와
 code-adjacent README에 유지 이유와 제거 조건을 기록했고, architecture guard는 새
-business logic 파일 추가를 금지한다.
+business logic 파일 추가를 금지한다. 남은 `lora_classifier` runtime/config/report
+용어는 `docs/contracts/lora_classifier_v1_terminology_audit.md` 기준으로 v1 contract
+표면과 구현 owner 표면을 구분한다.
 
 ## 호환성 정책
 

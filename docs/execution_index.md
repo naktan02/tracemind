@@ -24,6 +24,7 @@ central fixed embedding + classifier seed
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
+| `docs/contracts/lora_classifier_v1_terminology_audit.md` | `lora_classifier` v1 contract 용어와 구현 owner 경로 분류 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
 | `docs/operations/fl_ssl_runtime_performance_audit.md` | FL SSL runtime 최적화 전후 수치 기록 |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
