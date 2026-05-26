@@ -24,6 +24,28 @@ class TextFeatureExtractor(Protocol):
         """Return pooled features for adapter/head partitions."""
 
 
+class PartitionedTrainableTextClassifier(Protocol):
+    """Partition별 trainable classifier forward/update surface."""
+
+    def forward_partition(
+        self,
+        partition_name: str,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        """Return logits from one trainable partition."""
+
+    def partition_parameters(self, partition_name: str) -> tuple[nn.Parameter, ...]:
+        """Return optimizer parameters for one partition."""
+
+    def partition_parameter_tensors(
+        self,
+        partition_name: str,
+    ) -> dict[str, nn.Parameter]:
+        """Return trainable tensors with keys local to one partition."""
+
+
 @dataclass(frozen=True, slots=True)
 class TrainableAdapterPartitionPlan:
     """Method-owned partition names interpreted by adapter-family execution."""

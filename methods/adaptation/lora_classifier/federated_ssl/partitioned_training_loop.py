@@ -260,6 +260,182 @@ def train_partitioned_lora_classifier(
     )
 
 
+def train_physical_partitioned_adapter_classifier(
+    *,
+    model: ptm.PartitionedTrainableTextClassifier,
+    train_loader: DataLoader[dict[str, Any]] | None,
+    unlabeled_loader: DataLoader[dict[str, Any]],
+    labels: Sequence[str],
+    parameters: FedMatchLocalObjectiveParameters,
+    step_plan: QuerySslLocalStepPlan,
+    device: str,
+    learning_rate: float,
+    classifier_learning_rate: float,
+    weight_decay: float,
+    max_grad_norm: float,
+    supervised_partition: str,
+    unsupervised_partition: str,
+    helper_weak_probability_provider: (HelperWeakProbabilityProvider | None) = None,
+    enable_inter_client_consistency: bool = True,
+    use_supervised_steps: bool = True,
+    emit_supervised_partition: bool = True,
+) -> PartitionedLoraTrainingResult:
+    """physical trainable partition loop를 budget만큼 실행한다.
+
+    이 함수는 FedMatch 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
+    caller가 지정한 supervised/unsupervised partition에 objective를 라우팅하고,
+    현재 `lora_classifier` shared payload로 projection 가능한 partition delta를
+    반환한다.
+    """
+
+    if use_supervised_steps and train_loader is None:
+        raise ValueError("physical partition supervised steps require train_loader.")
+    sigma_optimizer = _build_partition_optimizer(
+        model=model,
+        partition_name=supervised_partition,
+        learning_rate=learning_rate,
+        classifier_learning_rate=classifier_learning_rate,
+        weight_decay=weight_decay,
+    )
+    psi_optimizer = _build_partition_optimizer(
+        model=model,
+        partition_name=unsupervised_partition,
+        learning_rate=learning_rate,
+        classifier_learning_rate=classifier_learning_rate,
+        weight_decay=weight_decay,
+    )
+    total_steps = int(step_plan.total_steps)
+    if total_steps <= 0:
+        raise ValueError("physical partition step_plan.total_steps must be positive.")
+    step_budget = resolve_epoch_distributed_step_budget(
+        epochs=int(step_plan.local_epochs),
+        full_epoch_steps=int(step_plan.full_epoch_steps),
+        max_train_steps=total_steps,
+        invalid_max_steps_message=(
+            "physical partition step_plan.total_steps must be positive."
+        ),
+    )
+    completed_steps = 0
+    scalar_metrics = ScalarMetricAccumulator()
+    supervised_parameter_delta_sums: dict[str, Tensor] = {}
+    unsupervised_parameter_delta_sums: dict[str, Tensor] = {}
+
+    for _epoch in range(1, step_budget.effective_epochs + 1):
+        _train_if_module(model)
+        labeled_iterator = iter(train_loader) if use_supervised_steps else None
+        unlabeled_iterator = iter(unlabeled_loader)
+        epoch_steps = step_budget.remaining_epoch_steps(completed_steps)
+        for _step_index in range(1, epoch_steps + 1):
+            labeled_batch = None
+            if use_supervised_steps:
+                if train_loader is None or labeled_iterator is None:
+                    raise ValueError(
+                        "physical partition supervised steps require train_loader."
+                    )
+                labeled_batch, labeled_iterator = next_cycling_batch(
+                    loader=train_loader,
+                    iterator=labeled_iterator,
+                )
+            unlabeled_batch, unlabeled_iterator = next_cycling_batch(
+                loader=unlabeled_loader,
+                iterator=unlabeled_iterator,
+            )
+            step_result = run_physical_partitioned_adapter_classifier_step(
+                model=model,
+                labeled_batch=(
+                    None
+                    if labeled_batch is None
+                    else move_tensor_batch_to_device(
+                        batch=labeled_batch,
+                        device=device,
+                    )
+                ),
+                unlabeled_batch=move_tensor_batch_to_device(
+                    batch=unlabeled_batch,
+                    device=device,
+                ),
+                parameters=parameters,
+                supervised_partition=supervised_partition,
+                unsupervised_partition=unsupervised_partition,
+                sigma_optimizer=sigma_optimizer,
+                psi_optimizer=psi_optimizer,
+                helper_weak_probability_provider=helper_weak_probability_provider,
+                enable_inter_client_consistency=(
+                    enable_inter_client_consistency
+                    and helper_weak_probability_provider is not None
+                ),
+                apply_supervised_step=use_supervised_steps,
+                max_grad_norm=max_grad_norm,
+            )
+            completed_steps += 1
+            scalar_metrics.add_tensor("sup_loss", step_result.supervised.total_loss)
+            scalar_metrics.add_tensor("unsup_loss", step_result.unsupervised.total_loss)
+            scalar_metrics.add_tensor(
+                "total_loss",
+                step_result.supervised.total_loss + step_result.unsupervised.total_loss,
+            )
+            scalar_metrics.add_tensor(
+                "util_ratio",
+                step_result.unsupervised.metrics["util_ratio"],
+            )
+            scalar_metrics.add_tensor_mapping(
+                step_result.supervised.metrics,
+                prefix="fedmatch_sigma_",
+            )
+            scalar_metrics.add_tensor_mapping(
+                step_result.unsupervised.metrics,
+                prefix="fedmatch_psi_",
+            )
+            scalar_metrics.add_float(
+                "fedmatch_sigma_delta_l2",
+                tensor_mapping_l2(step_result.sigma_parameter_deltas),
+            )
+            scalar_metrics.add_float(
+                "fedmatch_psi_delta_l2",
+                tensor_mapping_l2(step_result.psi_parameter_deltas),
+            )
+            if emit_supervised_partition:
+                _accumulate_parameter_deltas(
+                    supervised_parameter_delta_sums,
+                    step_result.sigma_parameter_deltas,
+                )
+            _accumulate_parameter_deltas(
+                unsupervised_parameter_delta_sums,
+                step_result.psi_parameter_deltas,
+            )
+        if completed_steps >= total_steps:
+            break
+
+    return PartitionedLoraTrainingResult(
+        metrics=scalar_metrics.average_record(
+            denominator=completed_steps,
+            key_prefix="train_",
+        ),
+        partition_deltas={
+            **(
+                {
+                    supervised_partition: (
+                        build_lora_classifier_partition_delta_from_parameter_deltas(
+                            partition_name=supervised_partition,
+                            parameter_deltas=supervised_parameter_delta_sums,
+                            labels=labels,
+                        )
+                    )
+                }
+                if emit_supervised_partition
+                else {}
+            ),
+            unsupervised_partition: (
+                build_lora_classifier_partition_delta_from_parameter_deltas(
+                    partition_name=unsupervised_partition,
+                    parameter_deltas=unsupervised_parameter_delta_sums,
+                    labels=labels,
+                )
+            ),
+        },
+    )
+
+
 def run_partitioned_lora_classifier_step(
     *,
     model: TextBatchClassifier,
@@ -345,9 +521,9 @@ def run_partitioned_lora_classifier_step(
     )
 
 
-def run_physical_partitioned_lora_classifier_step(
+def run_physical_partitioned_adapter_classifier_step(
     *,
-    model: ptm.PartitionedTrainableAdapterClassifier,
+    model: ptm.PartitionedTrainableTextClassifier,
     labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
@@ -472,7 +648,7 @@ def _apply_fedmatch_supervised_step(
 
 def _apply_physical_fedmatch_supervised_step(
     *,
-    model: ptm.PartitionedTrainableAdapterClassifier,
+    model: ptm.PartitionedTrainableTextClassifier,
     partition_name: str,
     labeled_batch: Mapping[str, Tensor],
     parameters: FedMatchLocalObjectiveParameters,
@@ -588,7 +764,7 @@ def _apply_fedmatch_unsupervised_step(
 
 def _apply_physical_fedmatch_unsupervised_step(
     *,
-    model: ptm.PartitionedTrainableAdapterClassifier,
+    model: ptm.PartitionedTrainableTextClassifier,
     sigma_partition_snapshot: Mapping[str, Tensor],
     unsupervised_partition: str,
     unlabeled_batch: Mapping[str, Tensor],
@@ -736,7 +912,7 @@ def _forward_selected_strong_view(
 
 def _forward_selected_physical_strong_view(
     *,
-    model: ptm.PartitionedTrainableAdapterClassifier,
+    model: ptm.PartitionedTrainableTextClassifier,
     partition_name: str,
     unlabeled_batch: Mapping[str, Tensor],
     confidence_mask: Tensor,
@@ -796,6 +972,48 @@ def _query_ssl_step_result_as_partition_result(
 
 def _as_torch_module(model: TextBatchClassifier) -> nn.Module:
     return model  # type: ignore[return-value]
+
+
+def _train_if_module(model: ptm.PartitionedTrainableTextClassifier) -> None:
+    if isinstance(model, nn.Module):
+        model.train()
+
+
+def _build_partition_optimizer(
+    *,
+    model: ptm.PartitionedTrainableTextClassifier,
+    partition_name: str,
+    learning_rate: float,
+    classifier_learning_rate: float,
+    weight_decay: float,
+) -> torch.optim.Optimizer:
+    adapter_params: list[nn.Parameter] = []
+    classifier_params: list[nn.Parameter] = []
+    for name, parameter in model.partition_parameter_tensors(partition_name).items():
+        if not parameter.requires_grad:
+            continue
+        if name.startswith("classifier."):
+            classifier_params.append(parameter)
+            continue
+        adapter_params.append(parameter)
+    if not adapter_params and not classifier_params:
+        raise ValueError(
+            f"physical partition {partition_name!r} has no trainable parameters."
+        )
+    return torch.optim.AdamW(
+        [
+            {
+                "params": adapter_params,
+                "lr": learning_rate,
+                "weight_decay": weight_decay,
+            },
+            {
+                "params": classifier_params,
+                "lr": classifier_learning_rate,
+                "weight_decay": weight_decay,
+            },
+        ]
+    )
 
 
 def _accumulate_parameter_deltas(

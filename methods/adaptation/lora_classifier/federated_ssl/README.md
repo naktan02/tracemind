@@ -73,9 +73,12 @@ LoRA 전용이 아니라 나중에 `lora`, `dora` 같은 PEFT adapter 축으로 
 - `TrainableAdapterPartitionPlan`: partition 이름, 학습 대상 parameter scope,
   optimizer routing, upload policy를 표현한다. `sigma/psi`라는 이름은 FedMatch가
   주입하고, 이 plan type은 이름의 논문 의미를 해석하지 않는다.
-- `PartitionedTrainableAdapterClassifier`와
-  `run_physical_partitioned_lora_classifier_step`: frozen backbone 위에서 partition별
-  adapter/head parameter를 학습시키는 execution primitive다.
+- `PartitionedTrainableTextClassifier` protocol,
+  `PartitionedTrainableAdapterClassifier` test primitive,
+  `run_physical_partitioned_adapter_classifier_step`: frozen backbone 위에서
+  partition별 adapter/head parameter를 학습시키는 execution primitive다. 현재
+  concrete primitive는 feature-space adapter partition이므로 실제 PEFT LoRA/DoRA
+  partition runtime에 바로 연결하지 않는다.
 - `AdapterClassifierDeltaBundle`: 현재 payload의 `lora_parameter_deltas`와
   `classifier_head_*_deltas`를 감싸는 adapter-neutral 내부 표현이다. shared payload가
   아직 `lora_classifier` contract를 쓰더라도 내부 계산은 이 bundle을 거쳐 projection한다.
