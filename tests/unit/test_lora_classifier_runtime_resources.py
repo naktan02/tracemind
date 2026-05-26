@@ -251,3 +251,49 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
     assert provider_b(unlabeled_batch=batch) is not None
     assert calls == {"build": 1, "load": 1}
     assert provider_a.helper_models[0] is provider_b.helper_models[0]
+
+
+def test_lora_classifier_helper_provider_counts_only_materializable_snapshots() -> None:
+    valid_snapshot = FederatedSslPeerClientSnapshot(
+        client_id="agent_02",
+        selection_vector=(0.2, 0.8),
+        payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
+        payload=LoraClassifierMaterializedState(
+            lora_parameters={"lora.test": [0.1]},
+            classifier_head_weights={
+                "anxiety": [0.1, 0.0],
+                "normal": [0.0, -0.1],
+            },
+            classifier_head_biases={"anxiety": 0.01, "normal": -0.01},
+        ),
+    )
+    ignored_snapshot = FederatedSslPeerClientSnapshot(
+        client_id="agent_03",
+        selection_vector=(0.8, 0.2),
+        payload_kind="other_snapshot.v1",
+        payload=object(),
+    )
+    context = FederatedSslPeerContext(
+        client_id="agent_01",
+        policy_name="fixed_probe_output_knn",
+        round_index_zero_based=1,
+        helper_client_ids=("agent_02", "agent_03", "agent_04"),
+        refreshed=True,
+    )
+
+    provider = peer_predictions.build_lora_classifier_helper_probability_provider(
+        peer_context=context,
+        peer_snapshots={
+            "agent_02": valid_snapshot,
+            "agent_03": ignored_snapshot,
+        },
+        labels=("anxiety", "normal"),
+        lora_config=LoraClassifierTrainingBackendConfig(),
+        trainer_runtime_config=_RuntimeConfig(),
+        runtime_resource_cache=None,
+    )
+
+    assert context.helper_count == 3
+    assert provider is not None
+    assert provider.helper_count == 1
+    assert provider.materialized_helper_count == 0

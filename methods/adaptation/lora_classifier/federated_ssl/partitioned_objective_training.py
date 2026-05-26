@@ -492,6 +492,18 @@ def run_method_owned_lora_classifier_training_core(
     peer_context_helper_count = (
         0.0 if peer_context is None else float(peer_context.helper_count)
     )
+    helper_provider_count = _optional_helper_provider_metric(
+        helper_weak_probability_provider,
+        "helper_count",
+    )
+    materialized_helper_model_count = _optional_helper_provider_metric(
+        helper_weak_probability_provider,
+        "materialized_helper_count",
+    )
+    missing_helper_snapshot_count = max(
+        0.0,
+        peer_context_helper_count - helper_provider_count,
+    )
     client_metrics = {
         **dict(update_build_result.client_metrics),
         "fedmatch_local_runtime": 1.0,
@@ -510,6 +522,9 @@ def run_method_owned_lora_classifier_training_core(
             "train_fedmatch_psi_helper_count",
         ),
         "fedmatch_peer_context_helper_count": peer_context_helper_count,
+        "fedmatch_helper_provider_count": helper_provider_count,
+        "fedmatch_missing_helper_snapshot_count": missing_helper_snapshot_count,
+        "fedmatch_materialized_helper_model_count": materialized_helper_model_count,
         "fedmatch_peer_context_refreshed": (
             0.0 if peer_context is None else float(peer_context.refreshed)
         ),
@@ -700,6 +715,16 @@ def _history_float(
     if value is None:
         return 0.0
     return float(value)
+
+
+def _optional_helper_provider_metric(provider: object | None, key: str) -> float:
+    if provider is None:
+        return 0.0
+    value = getattr(provider, key, 0.0)
+    try:
+        return max(0.0, float(value))
+    except (TypeError, ValueError):
+        return 0.0
 
 
 def _validate_labeled_rows_have_known_labels(

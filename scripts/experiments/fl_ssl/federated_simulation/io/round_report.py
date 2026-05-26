@@ -146,6 +146,13 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
         "fedmatch_peer_context_helper_count": (
             client.fedmatch_peer_context_helper_count
         ),
+        "fedmatch_helper_provider_count": client.fedmatch_helper_provider_count,
+        "fedmatch_missing_helper_snapshot_count": (
+            client.fedmatch_missing_helper_snapshot_count
+        ),
+        "fedmatch_materialized_helper_model_count": (
+            client.fedmatch_materialized_helper_model_count
+        ),
         "fedmatch_peer_context_refreshed": client.fedmatch_peer_context_refreshed,
         "fedmatch_c2s_sparse_upload_value_count": (
             client.fedmatch_c2s_sparse_upload_value_count

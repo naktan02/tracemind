@@ -74,6 +74,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
 from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
     load_resume_checkpoint,
     resume_checkpoint_path,
+    write_resume_checkpoint,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
@@ -89,6 +90,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedRoundRuntimeConfig,
     FederatedSslMethodConfig,
     FederatedValidationConfig,
+    SimulationEvaluation,
+    SimulationRoundSummary,
     SimulationRunRequest,
 )
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
@@ -1249,6 +1252,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             "fedmatch_local_runtime": 1.0,
             "fedmatch_helper_count": 1.0,
             "fedmatch_peer_context_helper_count": 1.0,
+            "fedmatch_helper_provider_count": 1.0,
+            "fedmatch_missing_helper_snapshot_count": 0.0,
+            "fedmatch_materialized_helper_model_count": 1.0,
             "fedmatch_peer_context_refreshed": 1.0,
             "fedmatch_c2s_sparse_upload_value_count": 4.0,
             "fedmatch_s2c_sparse_download_value_count": 2.0,
@@ -1469,6 +1475,13 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["persist_agent_local_update"] is False
     assert execution.summary.fedmatch_helper_count == pytest.approx(1.0)
     assert execution.summary.fedmatch_peer_context_helper_count == pytest.approx(1.0)
+    assert execution.summary.fedmatch_helper_provider_count == pytest.approx(1.0)
+    assert execution.summary.fedmatch_missing_helper_snapshot_count == pytest.approx(
+        0.0
+    )
+    assert execution.summary.fedmatch_materialized_helper_model_count == pytest.approx(
+        1.0
+    )
     assert execution.summary.fedmatch_peer_context_refreshed == pytest.approx(1.0)
     assert execution.summary.fedmatch_c2s_sparse_upload_value_count == pytest.approx(
         4.0
@@ -1536,6 +1549,50 @@ def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> No
     assert next_state.snapshot_for_client("agent_01") is new_agent_01_partition
     assert next_state.snapshot_for_client("agent_02") is old_agent_02_partition
     assert next_state.snapshot_for_client("agent_03") == {}
+
+
+def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(
+    tmp_path,
+) -> None:
+    validation = SimulationEvaluation(
+        row_count=1,
+        top1_accuracy=1.0,
+        accepted_ratio=1.0,
+    )
+    write_resume_checkpoint(
+        output_dir=tmp_path,
+        initial_model_revision="sim_rev_0000",
+        initial_validation=validation,
+        rounds=(
+            SimulationRoundSummary(
+                round_id="round_0001",
+                model_revision="sim_rev_0001",
+                update_count=1,
+                validation=validation,
+                clients=(
+                    ClientRoundSummary(
+                        client_id="agent_01",
+                        candidate_count=2,
+                        accepted_count=1,
+                        update_generated=True,
+                        fedmatch_helper_count=1.0,
+                        fedmatch_peer_context_helper_count=2.0,
+                        fedmatch_helper_provider_count=1.0,
+                        fedmatch_missing_helper_snapshot_count=1.0,
+                        fedmatch_materialized_helper_model_count=1.0,
+                    ),
+                ),
+            ),
+        ),
+    )
+
+    loaded_client = load_resume_checkpoint(tmp_path).rounds[0].clients[0]
+
+    assert loaded_client.fedmatch_helper_count == pytest.approx(1.0)
+    assert loaded_client.fedmatch_peer_context_helper_count == pytest.approx(2.0)
+    assert loaded_client.fedmatch_helper_provider_count == pytest.approx(1.0)
+    assert loaded_client.fedmatch_missing_helper_snapshot_count == pytest.approx(1.0)
+    assert loaded_client.fedmatch_materialized_helper_model_count == pytest.approx(1.0)
 
 
 def test_split_rows_for_federation_keeps_bootstrap_and_client_data_separate() -> None:

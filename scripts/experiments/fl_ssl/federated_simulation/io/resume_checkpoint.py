@@ -213,6 +213,15 @@ def _client_summary_from_payload(payload: dict[str, object]) -> ClientRoundSumma
         fedmatch_peer_context_helper_count=_optional_float(
             payload.get("fedmatch_peer_context_helper_count")
         ),
+        fedmatch_helper_provider_count=_optional_float(
+            payload.get("fedmatch_helper_provider_count")
+        ),
+        fedmatch_missing_helper_snapshot_count=_optional_float(
+            payload.get("fedmatch_missing_helper_snapshot_count")
+        ),
+        fedmatch_materialized_helper_model_count=_optional_float(
+            payload.get("fedmatch_materialized_helper_model_count")
+        ),
         fedmatch_peer_context_refreshed=_optional_float(
             payload.get("fedmatch_peer_context_refreshed")
         ),

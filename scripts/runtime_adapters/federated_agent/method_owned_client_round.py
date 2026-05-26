@@ -232,6 +232,19 @@ def _run_method_owned_lora_client_round(
             fedmatch_peer_context_helper_count=_optional_float_metric(
                 local_result.client_metrics.get("fedmatch_peer_context_helper_count")
             ),
+            fedmatch_helper_provider_count=_optional_float_metric(
+                local_result.client_metrics.get("fedmatch_helper_provider_count")
+            ),
+            fedmatch_missing_helper_snapshot_count=_optional_float_metric(
+                local_result.client_metrics.get(
+                    "fedmatch_missing_helper_snapshot_count"
+                )
+            ),
+            fedmatch_materialized_helper_model_count=_optional_float_metric(
+                local_result.client_metrics.get(
+                    "fedmatch_materialized_helper_model_count"
+                )
+            ),
             fedmatch_peer_context_refreshed=_optional_float_metric(
                 local_result.client_metrics.get("fedmatch_peer_context_refreshed")
             ),

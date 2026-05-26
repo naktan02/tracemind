@@ -172,6 +172,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         rejected_label_distribution={"normal": 5},
                         fedmatch_helper_count=0.0,
                         fedmatch_peer_context_helper_count=0.0,
+                        fedmatch_helper_provider_count=0.0,
+                        fedmatch_missing_helper_snapshot_count=0.0,
+                        fedmatch_materialized_helper_model_count=0.0,
                         fedmatch_peer_context_refreshed=0.0,
                         fedmatch_c2s_sparse_upload_value_count=3.0,
                         fedmatch_s2c_sparse_download_value_count=0.0,
@@ -231,6 +234,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                         rejected_label_distribution={"normal": 6},
                         fedmatch_helper_count=1.0,
                         fedmatch_peer_context_helper_count=1.0,
+                        fedmatch_helper_provider_count=1.0,
+                        fedmatch_missing_helper_snapshot_count=0.0,
+                        fedmatch_materialized_helper_model_count=1.0,
                         fedmatch_peer_context_refreshed=1.0,
                         fedmatch_c2s_sparse_upload_value_count=5.0,
                         fedmatch_s2c_sparse_download_value_count=2.0,
@@ -390,6 +396,15 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "fedmatch_peer_context_refreshed"
     ] == pytest.approx(1.0)
     assert payload["rounds"][1]["clients"][0][
+        "fedmatch_helper_provider_count"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_missing_helper_snapshot_count"
+    ] == pytest.approx(0.0)
+    assert payload["rounds"][1]["clients"][0][
+        "fedmatch_materialized_helper_model_count"
+    ] == pytest.approx(1.0)
+    assert payload["rounds"][1]["clients"][0][
         "fedmatch_c2s_sparse_upload_value_count"
     ] == pytest.approx(5.0)
     assert payload["rounds"][1]["clients"][0][
@@ -414,6 +429,15 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         "max"
     ] == pytest.approx(1.0)
     assert second_round_aggregation["fedmatch_peer_context_refreshed_count"] == 1
+    assert second_round_aggregation["fedmatch_helper_provider_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
+    assert second_round_aggregation["fedmatch_missing_helper_snapshot_count_summary"][
+        "max"
+    ] == pytest.approx(0.0)
+    assert second_round_aggregation["fedmatch_materialized_helper_model_count_summary"][
+        "max"
+    ] == pytest.approx(1.0)
     assert second_round_aggregation["fedmatch_c2s_sparse_upload_value_count_summary"][
         "max"
     ] == pytest.approx(5.0)

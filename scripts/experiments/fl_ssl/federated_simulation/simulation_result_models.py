@@ -27,6 +27,9 @@ class ClientRoundSummary:
     rejected_label_distribution: dict[str, int] = field(default_factory=dict)
     fedmatch_helper_count: float | None = None
     fedmatch_peer_context_helper_count: float | None = None
+    fedmatch_helper_provider_count: float | None = None
+    fedmatch_missing_helper_snapshot_count: float | None = None
+    fedmatch_materialized_helper_model_count: float | None = None
     fedmatch_peer_context_refreshed: float | None = None
     fedmatch_c2s_sparse_upload_value_count: float | None = None
     fedmatch_s2c_sparse_download_value_count: float | None = None
@@ -48,6 +51,28 @@ class ClientRoundSummary:
             if self.fedmatch_peer_context_helper_count < 0.0:
                 raise ValueError(
                     "fedmatch_peer_context_helper_count must be non-negative."
+                )
+        if self.fedmatch_helper_provider_count is not None:
+            self.fedmatch_helper_provider_count = float(
+                self.fedmatch_helper_provider_count
+            )
+            if self.fedmatch_helper_provider_count < 0.0:
+                raise ValueError("fedmatch_helper_provider_count must be non-negative.")
+        if self.fedmatch_missing_helper_snapshot_count is not None:
+            self.fedmatch_missing_helper_snapshot_count = float(
+                self.fedmatch_missing_helper_snapshot_count
+            )
+            if self.fedmatch_missing_helper_snapshot_count < 0.0:
+                raise ValueError(
+                    "fedmatch_missing_helper_snapshot_count must be non-negative."
+                )
+        if self.fedmatch_materialized_helper_model_count is not None:
+            self.fedmatch_materialized_helper_model_count = float(
+                self.fedmatch_materialized_helper_model_count
+            )
+            if self.fedmatch_materialized_helper_model_count < 0.0:
+                raise ValueError(
+                    "fedmatch_materialized_helper_model_count must be non-negative."
                 )
         if self.fedmatch_peer_context_refreshed is not None:
             self.fedmatch_peer_context_refreshed = float(

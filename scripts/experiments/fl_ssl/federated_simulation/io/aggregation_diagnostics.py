@@ -90,6 +90,21 @@ def _round_aggregation_diagnostics(
         for client in round_summary.clients
         if client.fedmatch_peer_context_helper_count is not None
     ]
+    fedmatch_helper_provider_counts = [
+        client.fedmatch_helper_provider_count
+        for client in round_summary.clients
+        if client.fedmatch_helper_provider_count is not None
+    ]
+    fedmatch_missing_helper_snapshot_counts = [
+        client.fedmatch_missing_helper_snapshot_count
+        for client in round_summary.clients
+        if client.fedmatch_missing_helper_snapshot_count is not None
+    ]
+    fedmatch_materialized_helper_model_counts = [
+        client.fedmatch_materialized_helper_model_count
+        for client in round_summary.clients
+        if client.fedmatch_materialized_helper_model_count is not None
+    ]
     fedmatch_c2s_sparse_upload_value_counts = [
         client.fedmatch_c2s_sparse_upload_value_count
         for client in round_summary.clients
@@ -128,6 +143,15 @@ def _round_aggregation_diagnostics(
         "fedmatch_helper_count_summary": numeric_summary(fedmatch_helper_counts),
         "fedmatch_peer_context_helper_count_summary": numeric_summary(
             fedmatch_peer_context_helper_counts
+        ),
+        "fedmatch_helper_provider_count_summary": numeric_summary(
+            fedmatch_helper_provider_counts
+        ),
+        "fedmatch_missing_helper_snapshot_count_summary": numeric_summary(
+            fedmatch_missing_helper_snapshot_counts
+        ),
+        "fedmatch_materialized_helper_model_count_summary": numeric_summary(
+            fedmatch_materialized_helper_model_counts
         ),
         "fedmatch_peer_context_refreshed_count": sum(
             1

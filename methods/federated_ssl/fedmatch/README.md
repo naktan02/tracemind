@@ -76,6 +76,9 @@ capability다. 원본 FedMatch snapshot은
   변화가 다음 round 기준으로 새지 않게 한다.
 - C2S/S2C sparse projection은 client metric과 report summary에 non-zero transport
   value count로 남겨 실제 sparse path 사용 여부를 관측한다.
+- Helper context는 선택된 helper 수, 실제 provider에 들어간 helper snapshot 수,
+  missing snapshot 수, lazy materialized helper model 수를 report에 남겨 peer context
+  drift를 관측한다.
 
 아직 원본 FedMatch의 full server/runtime 동작은 열지 않는다. helper weak-view
 probability provider, `labels-at-server` client-local `psi` upload slice,
