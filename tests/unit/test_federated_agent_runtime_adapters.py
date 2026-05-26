@@ -83,8 +83,8 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
 )
 
-build_lora_classifier_helper_provider_for_local_ssl_policy = (
-    helper_provider.build_lora_classifier_helper_provider_for_local_ssl_policy
+build_peft_encoder_helper_provider_for_local_ssl_policy = (
+    helper_provider.build_peft_encoder_helper_provider_for_local_ssl_policy
 )
 
 
@@ -226,11 +226,11 @@ def test_local_ssl_helper_provider_resolver_skips_non_helper_policy(
 
     monkeypatch.setattr(
         "methods.adaptation.text_classifier.peft_encoder.federated_ssl.helper_provider."
-        "build_lora_classifier_helper_probability_provider",
+        "build_peft_encoder_helper_probability_provider",
         _fake_builder,
     )
 
-    provider = build_lora_classifier_helper_provider_for_local_ssl_policy(
+    provider = build_peft_encoder_helper_provider_for_local_ssl_policy(
         method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FIXMATCH,
         peer_context=None,
@@ -258,13 +258,13 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
 
     monkeypatch.setattr(
         "methods.adaptation.text_classifier.peft_encoder.federated_ssl.helper_provider."
-        "build_lora_classifier_helper_probability_provider",
+        "build_peft_encoder_helper_probability_provider",
         _fake_builder,
     )
     timing = TimingRecorder()
     runtime_cache = object()
 
-    resolved = build_lora_classifier_helper_provider_for_local_ssl_policy(
+    resolved = build_peft_encoder_helper_provider_for_local_ssl_policy(
         method_name="fedmatch",
         local_ssl_policy_name=LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
         peer_context=None,

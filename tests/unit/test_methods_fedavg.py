@@ -331,7 +331,7 @@ def test_federated_aggregation_method_registry_points_to_peft_classifier_core() 
         spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
         "peft_encoder_fedavg_projection"
     )
-    assert spec.core_function_name == "compute_lora_classifier_fedavg"
+    assert spec.core_function_name == "compute_peft_encoder_fedavg"
 
 
 def test_federated_aggregation_method_registry_points_to_partitioned_lora_core() -> (
@@ -365,6 +365,4 @@ def test_federated_aggregation_method_registry_points_to_partitioned_peft_core()
         spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     )
-    assert (
-        spec.core_function_name == "compute_lora_classifier_partitioned_delta_average"
-    )
+    assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"

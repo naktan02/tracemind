@@ -140,7 +140,7 @@ def run_method_owned_peft_encoder_local_training(
     )
     labels = tuple(str(label) for label in active_adapter_state.label_schema)
     helper_weak_probability_provider = (
-        helper_provider.build_lora_classifier_helper_provider_for_local_ssl_policy(
+        helper_provider.build_peft_encoder_helper_provider_for_local_ssl_policy(
             method_name=ssl_method_config.name,
             local_ssl_policy_name=local_ssl_policy_name,
             peer_context=peer_context,

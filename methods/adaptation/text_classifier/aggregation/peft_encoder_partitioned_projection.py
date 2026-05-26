@@ -1,8 +1,8 @@
-"""LoRA-classifier partitioned delta average backend."""
+"""PEFT-encoder classifier partitioned delta average backend."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -34,9 +34,9 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 from ..peft_encoder.update.materialization import (
-    materialize_base_lora_classifier_partitioned_state,
-    materialize_base_lora_classifier_state,
-    materialize_lora_classifier_partitioned_update,
+    materialize_base_peft_encoder_partitioned_state,
+    materialize_base_peft_encoder_state,
+    materialize_peft_encoder_partitioned_update,
 )
 from ..peft_encoder.update.partitioned_delta import LoraClassifierPartitionDelta
 from .peft_encoder_fedavg_projection import (
@@ -46,15 +46,17 @@ from .peft_encoder_fedavg_projection import (
     LoraClassifierFedAvgResult,
     LoraClassifierFedAvgUpdate,
     PeftEncoderDeltaPayload,
+    PeftEncoderFedAvgUpdate,
     PeftEncoderStatePayload,
     compute_lora_classifier_fedavg,
-    validate_lora_classifier_update_matches_base,
+    compute_peft_encoder_fedavg,
+    validate_peft_encoder_update_matches_base,
 )
 from .peft_encoder_partitioned_state import (
     apply_lora_classifier_partition_deltas_to_partitioned_state,
     merge_partitioned_lora_classifier_deltas,
 )
-from .peft_encoder_state_projection import build_lora_classifier_state_projection
+from .peft_encoder_state_projection import build_peft_encoder_state_projection
 
 PARTITIONED_DELTA_AVERAGE_BACKEND_NAME = "partitioned_delta_average"
 
@@ -68,6 +70,9 @@ class LoraClassifierPartitionedDeltaAverageUpdate:
     mean_confidence: float | None
     mean_margin: float | None
     delta_l2_norm: float
+
+
+PeftEncoderPartitionedDeltaAverageUpdate = LoraClassifierPartitionedDeltaAverageUpdate
 
 
 def compute_lora_classifier_partitioned_delta_average(
@@ -125,6 +130,21 @@ def compute_lora_classifier_partitioned_delta_average(
     )
 
 
+def compute_peft_encoder_partitioned_delta_average(
+    *,
+    label_schema: Sequence[str],
+    updates: Sequence[PeftEncoderPartitionedDeltaAverageUpdate],
+    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+) -> LoraClassifierFedAvgResult:
+    """partitioned PEFT encoder/head delta를 병합한 뒤 policy weight로 평균한다."""
+
+    return compute_lora_classifier_partitioned_delta_average(
+        label_schema=label_schema,
+        updates=updates,
+        weight_policy_name=weight_policy_name,
+    )
+
+
 def aggregate_lora_classifier_partitioned_delta_average(
     base_state: SharedAdapterState,
     update_payloads: Sequence[SharedAdapterUpdate],
@@ -155,11 +175,11 @@ def aggregate_lora_classifier_partitioned_delta_average(
         updates=method_updates,
         weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
-    base_parameters = materialize_base_lora_classifier_state(
+    base_parameters = materialize_base_peft_encoder_state(
         base_state=base_state,
         context=context,
     )
-    base_partition_parameters = materialize_base_lora_classifier_partitioned_state(
+    base_partition_parameters = materialize_base_peft_encoder_partitioned_state(
         base_state=base_state,
         context=context,
     )
@@ -181,7 +201,7 @@ def aggregate_lora_classifier_partitioned_delta_average(
         next_model_revision=context.next_model_revision,
         artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
     )
-    state_projection = build_lora_classifier_state_projection(
+    state_projection = build_peft_encoder_state_projection(
         base_state=base_state,
         base_parameters=base_parameters,
         next_model_revision=context.next_model_revision,
@@ -211,12 +231,12 @@ def _to_lora_classifier_partitioned_method_update(
     payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext,
 ) -> LoraClassifierPartitionedDeltaAverageUpdate:
-    validate_lora_classifier_update_matches_base(
+    validate_peft_encoder_update_matches_base(
         base_state=base_state,
         payload=payload,
     )
     return LoraClassifierPartitionedDeltaAverageUpdate(
-        partitions=materialize_lora_classifier_partitioned_update(
+        partitions=materialize_peft_encoder_partitioned_update(
             payload=payload,
             context=context,
         ),
@@ -250,7 +270,7 @@ def _compute_average_partition_deltas(
     averaged: dict[str, LoraClassifierPartitionDelta] = {}
     for partition_name in partition_names:
         partition_updates = [
-            LoraClassifierFedAvgUpdate(
+            PeftEncoderFedAvgUpdate(
                 lora_parameter_deltas=partition.lora_parameter_deltas,
                 classifier_head_weight_deltas=partition.classifier_head_weight_deltas,
                 classifier_head_bias_deltas=partition.classifier_head_bias_deltas,
@@ -266,7 +286,7 @@ def _compute_average_partition_deltas(
         ]
         if not partition_updates:
             continue
-        partition_result = compute_lora_classifier_fedavg(
+        partition_result = compute_peft_encoder_fedavg(
             label_schema=label_schema,
             updates=partition_updates,
             weight_policy_name=weight_policy_name,
@@ -297,6 +317,11 @@ def _validate_lora_classifier_partitioned_delta_average_overrides(
         )
 
 
+aggregate_peft_encoder_partitioned_delta_average = (
+    aggregate_lora_classifier_partitioned_delta_average
+)
+
+
 def _register_peft_encoder_partitioned_strategy(
     *,
     adapter_kind: str,
@@ -304,6 +329,16 @@ def _register_peft_encoder_partitioned_strategy(
     update_type: type[object],
     context: str,
     aliases: tuple[str, ...],
+    core_function_name: str,
+    aggregate: Callable[
+        [
+            SharedAdapterState,
+            Sequence[SharedAdapterUpdate],
+            FederatedAggregationContext,
+            Mapping[str, AggregationConfigScalar] | None,
+        ],
+        FederatedAggregationResult,
+    ],
 ) -> None:
     register_fedavg_adapter_strategy(
         FedAvgAdapterStrategySpec(
@@ -313,16 +348,14 @@ def _register_peft_encoder_partitioned_strategy(
             context=context,
             aliases=aliases,
             implementation_module=(
-                compute_lora_classifier_partitioned_delta_average.__module__
+                compute_peft_encoder_partitioned_delta_average.__module__
             ),
-            core_function_name=(
-                compute_lora_classifier_partitioned_delta_average.__name__
-            ),
+            core_function_name=core_function_name,
             metadata={
                 "adapter_kind": adapter_kind,
                 "requires_partitioned_deltas": True,
             },
-            aggregate=aggregate_lora_classifier_partitioned_delta_average,
+            aggregate=aggregate,
             method_name=PARTITIONED_DELTA_AVERAGE_BACKEND_NAME,
         )
     )
@@ -334,6 +367,8 @@ _register_peft_encoder_partitioned_strategy(
     update_type=LoraClassifierDelta,
     context="LoRA-classifier partitioned",
     aliases=("lora_classifier_partitioned_delta_average",),
+    core_function_name=compute_lora_classifier_partitioned_delta_average.__name__,
+    aggregate=aggregate_lora_classifier_partitioned_delta_average,
 )
 _register_peft_encoder_partitioned_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
@@ -341,4 +376,6 @@ _register_peft_encoder_partitioned_strategy(
     update_type=PeftClassifierDelta,
     context="PEFT-classifier partitioned",
     aliases=("peft_classifier_partitioned_delta_average",),
+    core_function_name=compute_peft_encoder_partitioned_delta_average.__name__,
+    aggregate=aggregate_peft_encoder_partitioned_delta_average,
 )

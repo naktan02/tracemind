@@ -1,4 +1,7 @@
-"""LoRA-classifier aggregation artifact materialization helpers."""
+"""PEFT-encoder classifier aggregation artifact materialization helpers.
+
+`lora_classifier` 함수명은 v1 contract compatibility surface로 남긴다.
+"""
 
 from __future__ import annotations
 
@@ -86,6 +89,11 @@ def compact_lora_classifier_materialized_state(
             for key, value in state.classifier_head_biases.items()
         },
     )
+
+
+PeftEncoderMaterializedUpdate = LoraClassifierMaterializedUpdate
+PeftEncoderMaterializedState = LoraClassifierMaterializedState
+compact_peft_encoder_materialized_state = compact_lora_classifier_materialized_state
 
 
 class _AggregationTensorArtifactLoader(Protocol):
@@ -353,6 +361,12 @@ def materialize_lora_classifier_partitioned_update(
             ),
         )
     return partitions
+
+
+materialize_peft_encoder_update = materialize_lora_classifier_update
+materialize_peft_encoder_partitioned_update = (
+    materialize_lora_classifier_partitioned_update
+)
 
 
 def _try_load_partitioned_tensor_artifact(

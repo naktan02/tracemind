@@ -1,8 +1,8 @@
-"""LoRA-classifier family용 FedAvg 계산 core."""
+"""PEFT-encoder classifier family용 FedAvg projection."""
 
 from __future__ import annotations
 
-from collections.abc import Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from typing import cast
 
@@ -46,10 +46,10 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 )
 
 from ..peft_encoder.update.materialization import (
-    materialize_base_lora_classifier_state,
-    materialize_lora_classifier_update,
+    materialize_base_peft_encoder_state,
+    materialize_peft_encoder_update,
 )
-from .peft_encoder_state_projection import build_lora_classifier_state_projection
+from .peft_encoder_state_projection import build_peft_encoder_state_projection
 
 LORA_ADAPTER_ARTIFACT_SLOT = "lora_adapter"
 PEFT_ADAPTER_ARTIFACT_SLOT = "peft_adapter"
@@ -80,6 +80,10 @@ class LoraClassifierFedAvgResult:
     classifier_head_bias_deltas: dict[str, float]
     aggregated_metrics: dict[str, float]
     update_count: int
+
+
+PeftEncoderFedAvgUpdate = LoraClassifierFedAvgUpdate
+PeftEncoderFedAvgResult = LoraClassifierFedAvgResult
 
 
 def compute_lora_classifier_fedavg(
@@ -143,6 +147,21 @@ def compute_lora_classifier_fedavg(
             "classifier_head_label_count": float(len(classifier_head_weight_deltas)),
         },
         update_count=len(valid_updates),
+    )
+
+
+def compute_peft_encoder_fedavg(
+    *,
+    label_schema: Sequence[str],
+    updates: Sequence[PeftEncoderFedAvgUpdate],
+    weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
+) -> PeftEncoderFedAvgResult:
+    """PEFT encoder/head delta를 policy weight로 평균한다."""
+
+    return compute_lora_classifier_fedavg(
+        label_schema=label_schema,
+        updates=updates,
+        weight_policy_name=weight_policy_name,
     )
 
 
@@ -240,9 +259,9 @@ def aggregate_lora_classifier_fedavg(
         next_model_revision=context.next_model_revision,
         artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
     )
-    state_projection = build_lora_classifier_state_projection(
+    state_projection = build_peft_encoder_state_projection(
         base_state=base_state,
-        base_parameters=materialize_base_lora_classifier_state(
+        base_parameters=materialize_base_peft_encoder_state(
             base_state=base_state,
             context=context,
         ),
@@ -273,7 +292,7 @@ def _to_lora_classifier_method_update(
         base_state=base_state,
         payload=payload,
     )
-    materialized = materialize_lora_classifier_update(
+    materialized = materialize_peft_encoder_update(
         payload=payload,
         context=context,
     )
@@ -305,6 +324,10 @@ def validate_lora_classifier_update_matches_base(
         raise ValueError(
             "LoRA-classifier updates must share the base ordered label_schema."
         )
+
+
+aggregate_peft_encoder_fedavg = aggregate_lora_classifier_fedavg
+validate_peft_encoder_update_matches_base = validate_lora_classifier_update_matches_base
 
 
 def _payload_snapshot(payload) -> dict[str, object]:
@@ -347,6 +370,16 @@ def _register_peft_encoder_fedavg_strategy(
     update_type: type[object],
     context: str,
     aliases: tuple[str, ...],
+    core_function_name: str,
+    aggregate: Callable[
+        [
+            SharedAdapterState,
+            Sequence[SharedAdapterUpdate],
+            FederatedAggregationContext,
+            Mapping[str, AggregationConfigScalar] | None,
+        ],
+        FederatedAggregationResult,
+    ],
 ) -> None:
     register_fedavg_adapter_strategy(
         FedAvgAdapterStrategySpec(
@@ -355,13 +388,13 @@ def _register_peft_encoder_fedavg_strategy(
             update_type=update_type,
             context=context,
             aliases=aliases,
-            implementation_module=compute_lora_classifier_fedavg.__module__,
-            core_function_name=compute_lora_classifier_fedavg.__name__,
+            implementation_module=compute_peft_encoder_fedavg.__module__,
+            core_function_name=core_function_name,
             metadata={
                 "adapter_kind": adapter_kind,
                 "requires_inline_or_materialized_artifacts": True,
             },
-            aggregate=aggregate_lora_classifier_fedavg,
+            aggregate=aggregate,
         )
     )
 
@@ -372,6 +405,8 @@ _register_peft_encoder_fedavg_strategy(
     update_type=LoraClassifierDelta,
     context="LoRA-classifier",
     aliases=("lora_classifier_fedavg",),
+    core_function_name=compute_lora_classifier_fedavg.__name__,
+    aggregate=aggregate_lora_classifier_fedavg,
 )
 _register_peft_encoder_fedavg_strategy(
     adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
@@ -379,4 +414,6 @@ _register_peft_encoder_fedavg_strategy(
     update_type=PeftClassifierDelta,
     context="PEFT-classifier",
     aliases=("peft_classifier_fedavg",),
+    core_function_name=compute_peft_encoder_fedavg.__name__,
+    aggregate=aggregate_peft_encoder_fedavg,
 )

@@ -1,4 +1,4 @@
-"""LoRA-classifier FL SSL helper probability provider resolution."""
+"""PEFT-encoder classifier FL SSL helper probability provider resolution."""
 
 from __future__ import annotations
 
@@ -27,9 +27,12 @@ LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeC
 build_lora_classifier_helper_probability_provider = (
     peer_predictions.build_lora_classifier_helper_probability_provider
 )
+build_peft_encoder_helper_probability_provider = (
+    peer_predictions.build_lora_classifier_helper_probability_provider
+)
 
 
-def build_lora_classifier_helper_provider_for_local_ssl_policy(
+def build_peft_encoder_helper_provider_for_local_ssl_policy(
     *,
     method_name: str,
     local_ssl_policy_name: str,
@@ -49,7 +52,7 @@ def build_lora_classifier_helper_provider_for_local_ssl_policy(
     ):
         return None
     if timing_recorder is None:
-        return build_lora_classifier_helper_probability_provider(
+        return build_peft_encoder_helper_probability_provider(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             labels=labels,
@@ -57,8 +60,9 @@ def build_lora_classifier_helper_provider_for_local_ssl_policy(
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )
+
     with timing_recorder.measure("adapter_helper_provider_prepare_seconds"):
-        return build_lora_classifier_helper_probability_provider(
+        return build_peft_encoder_helper_probability_provider(
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
             labels=labels,
@@ -66,3 +70,8 @@ def build_lora_classifier_helper_provider_for_local_ssl_policy(
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )
+
+
+build_lora_classifier_helper_provider_for_local_ssl_policy = (
+    build_peft_encoder_helper_provider_for_local_ssl_policy
+)

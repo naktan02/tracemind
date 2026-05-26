@@ -297,6 +297,10 @@ business logic 파일 추가를 금지한다. 남은 `lora_classifier` runtime/c
 descriptor recipe는 `peft_classifier`를 canonical surface로 사용한다. 기존
 `lora_classifier` profile/runtime pair와 v1 payload reader는 old run artifact와
 legacy override compatibility 용도로만 남긴다.
+PEFT-classifier aggregation registry metadata는 `peft_classifier` family에서
+`compute_peft_encoder_fedavg`, `compute_peft_encoder_partitioned_delta_average`를
+가리킨다. `compute_lora_classifier_*` 함수명은 v1 payload와 legacy adapter kind의
+compatibility alias로만 유지한다.
 
 ## 호환성 정책
 
