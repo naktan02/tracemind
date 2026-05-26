@@ -10,6 +10,11 @@ projection 계층이다.
 - PEFT encoder + classifier head state projection
 - partitioned state projection과 materialization
 
+## 파일
+
+- `feature_head_fedavg_projection.py`: classifier-head update payload를 generic
+  FedAvg core 입력으로 바꾸고 next state를 materialize
+
 ## 금지
 
 - weighted average policy 직접 구현

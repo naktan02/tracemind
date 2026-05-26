@@ -1,18 +1,17 @@
 # Classifier Head Adaptation
 
-`methods/adaptation/classifier_head/`는 classifier-head shared adapter family의
-method-owned aggregation/scoring core를 둔다.
+`methods/adaptation/classifier_head/`는 기존 direct import 호환성만 유지하는
+legacy 경로다. 새 source of truth는 `methods/adaptation/text_classifier/feature_head/`
+와 `methods/adaptation/text_classifier/aggregation/`이다.
 
 ## 책임
 
-- `aggregation/fedavg.py`에서 classifier-head delta를 FedAvg 공통 산술로 평균
-- `ClassifierHeadState`와 `ClassifierHeadDelta`를 family FedAvg core 입력으로 변환
-- label schema와 embedding dimension consistency 검증
-- FedAvg 결과를 다음 classifier-head shared state로 materialize
-- classifier-head shared state 기반 logits scoring backend
+- 기존 `bootstrap.py`, `scoring.py`, `aggregation/fedavg.py` direct path를 named-symbol
+  compatibility shim으로 유지
+- business rule, source-of-truth 상수, registry metadata를 새 경로에 둠
 
 ## 제외
 
-- shared payload shape 정의는 `shared/src/contracts/adapter_contract_families/`가 맡는다.
-- round lifecycle, update storage, publication은 `main_server`가 맡는다.
-- agent-local scoring service orchestration은 `agent`가 맡는다.
+- 새 feature-head 학습/평가/scoring primitive 소유
+- FedAvg 산술과 projection 구현 소유
+- shared payload shape 정의

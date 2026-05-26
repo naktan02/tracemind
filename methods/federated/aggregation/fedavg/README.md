@@ -16,5 +16,5 @@ main_server가 넘긴 resolver/loader capability를 통해서만 생성하거나
 Adapter family별 FedAvg core와 payload projection은 각 family가 소유한다.
 
 - `methods/adaptation/diagonal_scale/aggregation/fedavg.py`
-- `methods/adaptation/classifier_head/aggregation/fedavg.py`
+- `methods/adaptation/text_classifier/aggregation/feature_head_fedavg_projection.py`
 - `methods/adaptation/lora_classifier/aggregation/fedavg.py`

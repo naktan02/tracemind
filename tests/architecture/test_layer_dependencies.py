@@ -785,13 +785,16 @@ def test_text_classifier_adaptation_does_not_import_fedmatch_method() -> None:
 def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() -> None:
     violations = _find_forbidden_imports(
         root=TEXT_CLASSIFIER_ADAPTATION_SRC,
-        forbidden_prefixes=("methods.adaptation.lora_classifier",),
+        forbidden_prefixes=(
+            "methods.adaptation.classifier_head",
+            "methods.adaptation.lora_classifier",
+        ),
     )
 
     assert not violations, (
-        "새 text_classifier adaptation 내부 코드는 legacy lora_classifier 경로를 "
-        "import하지 않는다. 기존 경로는 migration shim으로만 남기고, 내부 source of "
-        "truth는 text_classifier 아래에 둔다.\n"
+        "새 text_classifier adaptation 내부 코드는 legacy classifier_head/"
+        "lora_classifier 경로를 import하지 않는다. 기존 경로는 migration shim으로만 "
+        "남기고, 내부 source of truth는 text_classifier 아래에 둔다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -897,6 +900,42 @@ def test_legacy_peft_adapter_files_are_direct_shims() -> None:
     assert not violations, (
         "legacy peft/lora 파일은 새 peft_adapters 경로의 named symbol만 가져오는 "
         "compatibility shim으로 남긴다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
+def test_legacy_classifier_head_files_are_direct_shims() -> None:
+    package_root = METHODS_SRC / "adaptation" / "classifier_head"
+    shim_paths = (
+        package_root / "bootstrap.py",
+        package_root / "scoring.py",
+        package_root / "aggregation" / "fedavg.py",
+    )
+    allowed_prefixes = (
+        "methods.adaptation.text_classifier.feature_head",
+        "methods.adaptation.text_classifier.aggregation.feature_head_fedavg_projection",
+    )
+    violations: list[str] = []
+    for path in shim_paths:
+        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
+        for node in tree.body:
+            if (
+                isinstance(node, ast.Expr)
+                and isinstance(node.value, ast.Constant)
+                and isinstance(node.value.value, str)
+            ):
+                continue
+            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
+                allowed_prefixes
+            ):
+                if any(alias.name == "*" for alias in node.names):
+                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
+                continue
+            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+
+    assert not violations, (
+        "legacy classifier_head 파일은 새 text_classifier feature-head/projection "
+        "경로의 named symbol만 가져오는 compatibility shim으로 남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
 

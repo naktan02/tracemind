@@ -224,6 +224,12 @@ named-symbol compatibility shim으로만 남겼다.
 - feature-head aggregation 파일은 FedAvg algorithm이 아니라
   feature-head state projection이라는 이름으로 바꾼다.
 
+상태: 완료. `bootstrap.py`, `scoring.py`는
+`text_classifier/feature_head/`로 이동했고,
+`aggregation/fedavg.py`는
+`text_classifier/aggregation/feature_head_fedavg_projection.py`로 이동했다.
+기존 `classifier_head` direct path는 named-symbol compatibility shim으로만 남겼다.
+
 ### 6단계: aggregation projection rename
 
 - generic FedAvg core는 이미 `methods/federated/aggregation/`에 있다.

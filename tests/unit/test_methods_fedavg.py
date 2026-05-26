@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from methods.adaptation.classifier_head.aggregation.fedavg import (
-    ClassifierHeadFedAvgUpdate,
-    compute_classifier_head_fedavg,
-)
 from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
@@ -15,6 +11,9 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
 from methods.adaptation.lora_classifier.aggregation.fedavg import (
     LoraClassifierFedAvgUpdate,
     compute_lora_classifier_fedavg,
+)
+from methods.adaptation.text_classifier.aggregation import (
+    feature_head_fedavg_projection as feature_head_projection,
 )
 from methods.federated.aggregation import registry as aggregation_registry
 from methods.federated.aggregation.fedavg.update_metrics import (
@@ -195,11 +194,11 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
         "normal": [-0.1, -0.2],
     }
 
-    result = compute_classifier_head_fedavg(
+    result = feature_head_projection.compute_classifier_head_fedavg(
         base_label_weights=base_label_weights,
         base_label_biases=base_label_biases,
         updates=[
-            ClassifierHeadFedAvgUpdate(
+            feature_head_projection.ClassifierHeadFedAvgUpdate(
                 label_weight_deltas=first_weight_deltas,
                 label_bias_deltas={"anxiety": 0.05, "normal": -0.05},
                 example_count=2,
@@ -207,7 +206,7 @@ def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            ClassifierHeadFedAvgUpdate(
+            feature_head_projection.ClassifierHeadFedAvgUpdate(
                 label_weight_deltas=second_weight_deltas,
                 label_bias_deltas={"anxiety": 0.03},
                 example_count=1,
