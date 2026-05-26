@@ -5,7 +5,7 @@ from __future__ import annotations
 import importlib
 from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
-from typing import Protocol
+from typing import Any, Protocol
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
@@ -117,6 +117,7 @@ def run_method_owned_lora_classifier_training_core(
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """선택된 method-owned LoRA-classifier local training core를 실행한다."""
 
@@ -147,4 +148,5 @@ def run_method_owned_lora_classifier_training_core(
         peer_probe_rows=peer_probe_rows,
         runtime_resource_cache=runtime_resource_cache,
         timing_recorder=timing_recorder,
+        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )

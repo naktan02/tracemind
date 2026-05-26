@@ -123,6 +123,10 @@ from methods.ssl.base import (
     configure_query_ssl_algorithm_training,
 )
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
+from methods.ssl.state import (
+    export_query_ssl_algorithm_state,
+    load_query_ssl_algorithm_state,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
@@ -172,6 +176,7 @@ def run_method_owned_lora_classifier_training_core(
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """method-owned partitioned objective를 LoRA-classifier update로 실행한다."""
 
@@ -276,6 +281,7 @@ def run_method_owned_lora_classifier_training_core(
             total_steps=step_plan.total_steps,
             num_classes=len(effective_labels),
             unlabeled_row_count=len(effective_unlabeled_rows),
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
         )
 
     with _measure(timing_recorder, "core_training_loop_seconds"):
@@ -610,6 +616,11 @@ def run_method_owned_lora_classifier_training_core(
             probe_batch_size=resolved_unlabeled_batch_size,
         ),
         client_partition_parameters=client_partition_parameters,
+        query_ssl_algorithm_state=(
+            {}
+            if psi_query_ssl_algorithm is None
+            else dict(export_query_ssl_algorithm_state(psi_query_ssl_algorithm))
+        ),
         timing_breakdown=timing_mapping(timing_recorder),
     )
 
@@ -623,9 +634,15 @@ def _build_psi_query_ssl_algorithm(
     total_steps: int,
     num_classes: int,
     unlabeled_row_count: int,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslAlgorithm | None:
     normalized_policy = local_ssl_policy_name.strip().lower().replace("-", "_")
     if normalized_policy == LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT:
+        if initial_query_ssl_algorithm_state:
+            raise ValueError(
+                "Query SSL algorithm state cannot be loaded for "
+                "local_ssl_policy=fedmatch_agreement."
+            )
         return None
     if normalized_policy != LOCAL_SSL_POLICY_FIXMATCH:
         raise NotImplementedError(
@@ -654,6 +671,11 @@ def _build_psi_query_ssl_algorithm(
         num_classes=num_classes,
         unlabeled_row_count=unlabeled_row_count,
     )
+    if initial_query_ssl_algorithm_state:
+        load_query_ssl_algorithm_state(
+            algorithm,
+            initial_query_ssl_algorithm_state,
+        )
     return algorithm
 
 

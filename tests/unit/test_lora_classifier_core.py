@@ -153,6 +153,44 @@ class _CountingQuerySslAlgorithm:
         )
 
 
+class _StatefulCountingQuerySslAlgorithm(_CountingQuerySslAlgorithm):
+    algorithm_name = "stateful_counting"
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.dataset_configured = False
+        self.events: list[str] = []
+
+    def configure_dataset(
+        self,
+        *,
+        num_classes: int,
+        unlabeled_row_count: int,
+    ) -> None:
+        assert num_classes == 2
+        assert unlabeled_row_count == 5
+        self.dataset_configured = True
+        self.events.append("dataset")
+
+    def configure_training(self, *, num_train_iter: int) -> None:
+        self.events.append("training")
+        super().configure_training(num_train_iter=num_train_iter)
+
+    def load_state(self, state):
+        assert self.dataset_configured
+        self.steps = int(state["steps"])
+        self.events.append("load")
+
+    def export_state(self):
+        return {
+            "schema_version": "query_ssl_algorithm_state.v1",
+            "algorithm_name": self.algorithm_name,
+            "stateful": True,
+            "configured": True,
+            "steps": self.steps,
+        }
+
+
 def _build_unlabeled_loader() -> DataLoader[dict[str, torch.Tensor]]:
     rows = [
         {
@@ -196,6 +234,44 @@ def test_query_ssl_training_stops_at_max_train_steps() -> None:
     assert algorithm.num_train_iter == 3
     assert algorithm.steps == 3
     assert len(history) == 3
+
+
+def test_query_ssl_training_loads_initial_state_after_dataset_config() -> None:
+    torch.manual_seed(7)
+    model = LoraTextClassifier(
+        backbone=_TinyBackbone(),
+        hidden_size=3,
+        num_labels=2,
+        classifier_dropout=0.0,
+    )
+    algorithm = _StatefulCountingQuerySslAlgorithm()
+
+    train_query_ssl_classifier(
+        model=model,
+        train_loader=_build_loader(),
+        unlabeled_loader=_build_unlabeled_loader(),
+        selection_loader=_build_loader(),
+        categories=["anxiety", "normal"],
+        device="cpu",
+        epochs=1,
+        max_train_steps=1,
+        learning_rate=0.01,
+        classifier_learning_rate=0.01,
+        weight_decay=0.0,
+        max_grad_norm=1.0,
+        log_every_steps=0,
+        algorithm=algorithm,
+        initial_query_ssl_algorithm_state={
+            "schema_version": "query_ssl_algorithm_state.v1",
+            "algorithm_name": "stateful_counting",
+            "stateful": True,
+            "configured": True,
+            "steps": 4,
+        },
+    )
+
+    assert algorithm.events[:3] == ["dataset", "load", "training"]
+    assert algorithm.steps == 5
 
 
 def test_fedprox_proximal_loss_uses_round_start_snapshot() -> None:

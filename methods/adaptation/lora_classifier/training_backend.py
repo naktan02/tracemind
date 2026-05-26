@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
+from typing import Any
 
 from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
@@ -133,6 +134,7 @@ class LoraClassifierTrainingBackend:
         delta_materializer: QuerySslLoraDeltaMaterializer,
         runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
+        initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     ) -> QuerySslLoraClientTrainingResult:
         """Query SSL raw rows를 methods-owned LoRA local core로 학습한다."""
 
@@ -153,6 +155,7 @@ class LoraClassifierTrainingBackend:
             delta_materializer=delta_materializer,
             runtime_resource_cache=runtime_resource_cache,
             timing_recorder=timing_recorder,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
         )
 
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:

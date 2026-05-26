@@ -64,12 +64,14 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters.sharding import (
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.round_loop import (
     _build_next_client_partition_sync_state,
+    _build_next_query_ssl_algorithm_sync_state,
 )
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
     BootstrappedSimulation,
     ClientPartitionSyncSimulationState,
     ClientRoundExecution,
+    QuerySslAlgorithmSyncSimulationState,
 )
 from scripts.experiments.fl_ssl.federated_simulation.io.resume_checkpoint import (
     load_resume_checkpoint,
@@ -1003,6 +1005,20 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         },
     )
     trainer_calls: list[dict[str, object]] = []
+    previous_algorithm_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "flexmatch",
+        "stateful": True,
+        "configured": True,
+        "round_marker": 1,
+    }
+    returned_algorithm_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "flexmatch",
+        "stateful": True,
+        "configured": True,
+        "round_marker": 2,
+    }
 
     def _fake_query_ssl_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
         trainer_calls.append(dict(kwargs))
@@ -1027,6 +1043,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
                 accepted_label_distribution={"normal": 1},
                 rejected_label_distribution={},
             ),
+            query_ssl_algorithm_state=returned_algorithm_state,
         )
 
     monkeypatch.setattr(
@@ -1126,6 +1143,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         shard=shard,
         training_task=training_task,
         capability_plan=request.capability_plan,
+        previous_query_ssl_algorithm_state=previous_algorithm_state,
     )
 
     assert execution.update_submitted is True
@@ -1143,6 +1161,11 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert trainer_calls[0]["active_adapter_state"] is active_state
     assert trainer_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
     assert trainer_calls[0]["persist_agent_local_update"] is False
+    assert (
+        trainer_calls[0]["initial_query_ssl_algorithm_state"]
+        is previous_algorithm_state
+    )
+    assert execution.query_ssl_algorithm_state is returned_algorithm_state
     assert "lora_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
     assert accepted_payload.delta_format == (
@@ -1307,6 +1330,17 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             classifier_head_biases={"anxiety": 0.015, "normal": -0.015},
         )
     }
+    previous_algorithm_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "fixmatch",
+        "stateful": False,
+    }
+    returned_algorithm_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "fixmatch",
+        "stateful": False,
+        "round_marker": 2,
+    }
     method_calls: list[dict[str, object]] = []
 
     def _fake_method_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
@@ -1334,6 +1368,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             ),
             peer_client_snapshot=returned_peer_snapshot,
             client_partition_parameters=returned_client_partition_parameters,
+            query_ssl_algorithm_state=returned_algorithm_state,
         )
 
     def _unexpected_query_ssl_trainer(**_kwargs: object) -> None:
@@ -1459,6 +1494,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         peer_context=peer_context,
         peer_snapshots={"agent_02": peer_snapshot},
         previous_client_partition_parameters=previous_client_partition_parameters,
+        previous_query_ssl_algorithm_state=previous_algorithm_state,
     )
 
     assert execution.update_submitted is True
@@ -1473,6 +1509,9 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert (
         method_calls[0]["previous_client_partition_parameters"]
         is previous_client_partition_parameters
+    )
+    assert (
+        method_calls[0]["initial_query_ssl_algorithm_state"] is previous_algorithm_state
     )
     assert method_calls[0]["peer_probe_rows"] == (labeled_row,)
     assert method_calls[0]["round_base_snapshot_cache"] is round_base_snapshot_cache
@@ -1509,6 +1548,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     )
     assert execution.peer_client_snapshot is returned_peer_snapshot
     assert execution.client_partition_snapshot is returned_client_partition_parameters
+    assert execution.query_ssl_algorithm_state is returned_algorithm_state
 
 
 def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> None:
@@ -1567,6 +1607,64 @@ def test_build_next_client_partition_sync_state_keeps_previous_snapshots() -> No
     assert next_state.snapshot_for_client("agent_01") is new_agent_01_partition
     assert next_state.snapshot_for_client("agent_02") is old_agent_02_partition
     assert next_state.snapshot_for_client("agent_03") == {}
+
+
+def test_build_next_query_ssl_algorithm_sync_state_keeps_client_local_state() -> None:
+    old_agent_01_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "flexmatch",
+        "stateful": True,
+        "configured": True,
+        "round_marker": 1,
+    }
+    old_agent_02_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "freematch",
+        "stateful": True,
+        "configured": True,
+        "round_marker": 1,
+    }
+    new_agent_01_state = {
+        "schema_version": "query_ssl_algorithm_state.v1",
+        "algorithm_name": "flexmatch",
+        "stateful": True,
+        "configured": True,
+        "round_marker": 2,
+    }
+
+    next_state = _build_next_query_ssl_algorithm_sync_state(
+        previous=QuerySslAlgorithmSyncSimulationState(
+            client_algorithm_states={
+                "agent_01": old_agent_01_state,
+                "agent_02": old_agent_02_state,
+            }
+        ),
+        client_executions=(
+            ClientRoundExecution(
+                summary=ClientRoundSummary(
+                    client_id="agent_01",
+                    candidate_count=1,
+                    accepted_count=1,
+                    update_generated=True,
+                ),
+                update_submitted=True,
+                query_ssl_algorithm_state=new_agent_01_state,
+            ),
+            ClientRoundExecution(
+                summary=ClientRoundSummary(
+                    client_id="agent_03",
+                    candidate_count=1,
+                    accepted_count=0,
+                    update_generated=False,
+                ),
+                update_submitted=False,
+            ),
+        ),
+    )
+
+    assert next_state.state_for_client("agent_01") is new_agent_01_state
+    assert next_state.state_for_client("agent_02") is old_agent_02_state
+    assert next_state.state_for_client("agent_03") == {}
 
 
 def test_resume_checkpoint_preserves_fedmatch_helper_materialization_metrics(

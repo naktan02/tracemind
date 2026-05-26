@@ -44,6 +44,7 @@ def run_client_round(
     previous_client_partition_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:
     """client shard 하나의 local training을 실행하고 update를 제출한다."""
 
@@ -58,6 +59,7 @@ def run_client_round(
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
         previous_client_partition_parameters=previous_client_partition_parameters,
+        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
     )
     if query_ssl_execution is not None:
         return query_ssl_execution

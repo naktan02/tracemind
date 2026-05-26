@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass, field
+from typing import Any
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
@@ -67,6 +68,18 @@ class ClientPartitionSyncSimulationState:
 
 
 @dataclass(frozen=True, slots=True)
+class QuerySslAlgorithmSyncSimulationState:
+    """round 사이에 유지하는 client-local Query SSL algorithm state."""
+
+    client_algorithm_states: Mapping[str, Mapping[str, Any]] = field(
+        default_factory=dict
+    )
+
+    def state_for_client(self, client_id: str) -> Mapping[str, Any]:
+        return self.client_algorithm_states.get(client_id, {})
+
+
+@dataclass(frozen=True, slots=True)
 class BootstrappedSimulation:
     """bootstrap 이후 FL simulation loop에 필요한 context."""
 
@@ -82,6 +95,9 @@ class BootstrappedSimulation:
     )
     client_partition_sync_state: ClientPartitionSyncSimulationState = field(
         default_factory=ClientPartitionSyncSimulationState
+    )
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState = field(
+        default_factory=QuerySslAlgorithmSyncSimulationState
     )
     peer_probe_rows: tuple[LabeledQueryRow, ...] = ()
     peer_probe_manifest: FederatedPeerProbeManifest | None = None
@@ -99,6 +115,7 @@ class ClientRoundExecution:
     client_partition_snapshot: Mapping[str, LoraClassifierMaterializedState] = field(
         default_factory=dict
     )
+    query_ssl_algorithm_state: Mapping[str, Any] = field(default_factory=dict)
 
 
 @dataclass(frozen=True, slots=True)
@@ -108,4 +125,5 @@ class RoundExecution:
     active: ActiveSimulationState
     peer_context_state: PeerContextSimulationState
     client_partition_sync_state: ClientPartitionSyncSimulationState
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState
     summary: SimulationRoundSummary | None

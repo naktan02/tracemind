@@ -2,10 +2,10 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass, field, replace
 from datetime import datetime
-from typing import Protocol, cast
+from typing import Any, Protocol, cast
 
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
@@ -56,6 +56,7 @@ class QuerySslLoraLocalTrainingRequest:
     runtime_resource_cache: RuntimeResourceCache | None = None
     timing_recorder: TimingRecorder | None = None
     persist_update_artifact: bool = True
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None
 
 
 class QuerySslLoraTrainingBackend(Protocol):
@@ -84,6 +85,7 @@ class QuerySslLoraTrainingBackend(Protocol):
         delta_materializer: QuerySslLoraDeltaMaterializer,
         runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
+        initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     ) -> QuerySslLoraClientTrainingResult:
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
 
@@ -131,6 +133,9 @@ class QuerySslLocalTrainingService:
             delta_materializer=request.delta_materializer,
             runtime_resource_cache=request.runtime_resource_cache,
             timing_recorder=request.timing_recorder,
+            initial_query_ssl_algorithm_state=(
+                request.initial_query_ssl_algorithm_state
+            ),
         )
         if request.persist_update_artifact:
             if request.timing_recorder is None:

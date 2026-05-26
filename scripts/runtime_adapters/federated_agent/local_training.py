@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timezone
 from pathlib import Path
+from typing import Any
 
 from agent.src.infrastructure.repositories.training_artifact_repository import (
     TrainingArtifactRepository,
@@ -95,6 +96,7 @@ def run_method_owned_lora_classifier_local_training(
     previous_client_partition_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
 ) -> QuerySslLoraClientTrainingResult:
@@ -167,6 +169,7 @@ def run_method_owned_lora_classifier_local_training(
         peer_probe_rows=peer_probe_rows,
         runtime_resource_cache=runtime_resource_cache,
         timing_recorder=timing_recorder,
+        initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
     if persist_agent_local_update:
         _save_agent_local_update(
@@ -198,6 +201,7 @@ def run_query_ssl_lora_classifier_local_training(
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """simulation runtime state를 method-owned Query SSL LoRA core에 연결한다."""
 
@@ -242,6 +246,7 @@ def run_query_ssl_lora_classifier_local_training(
             runtime_resource_cache=runtime_resource_cache,
             timing_recorder=timing_recorder,
             persist_update_artifact=persist_agent_local_update,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
             delta_materializer=LoraClassifierDeltaMaterializer(
                 artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
             ),

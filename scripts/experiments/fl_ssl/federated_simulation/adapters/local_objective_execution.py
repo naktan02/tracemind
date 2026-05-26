@@ -44,6 +44,7 @@ def run_method_or_manual_local_objective_if_supported(
     previous_client_partition_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
     """현재 지원되는 local objective fast path를 실행한다."""
 
@@ -58,6 +59,7 @@ def run_method_or_manual_local_objective_if_supported(
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
         previous_client_partition_parameters=previous_client_partition_parameters,
+        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
     )
     if method_execution is not None:
         return method_execution
@@ -69,4 +71,5 @@ def run_method_or_manual_local_objective_if_supported(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
     )

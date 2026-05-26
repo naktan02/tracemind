@@ -84,6 +84,7 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
     active = bootstrapped.active
     peer_context_state = bootstrapped.peer_context_state
     client_partition_sync_state = bootstrapped.client_partition_sync_state
+    query_ssl_algorithm_sync_state = bootstrapped.query_ssl_algorithm_sync_state
     round_summaries: list[SimulationRoundSummary] = list(bootstrapped.completed_rounds)
     if request.resume_config.checkpoint_enabled:
         _write_round_resume_checkpoint(
@@ -101,12 +102,14 @@ def run_simulation_request(request: SimulationRunRequest) -> SimulationResult:
             round_index=round_index,
             peer_context_state=peer_context_state,
             client_partition_sync_state=client_partition_sync_state,
+            query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
         )
         if round_execution.summary is None:
             break
         active = round_execution.active
         peer_context_state = round_execution.peer_context_state
         client_partition_sync_state = round_execution.client_partition_sync_state
+        query_ssl_algorithm_sync_state = round_execution.query_ssl_algorithm_sync_state
         round_summaries.append(round_execution.summary)
         if request.resume_config.checkpoint_enabled:
             _write_round_resume_checkpoint(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Mapping
 from typing import Any
 
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
@@ -46,6 +47,7 @@ def run_query_ssl_client_round_if_supported(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
     """Query SSL raw-row client training이 가능한 조합이면 해당 경로로 실행한다."""
 
@@ -58,6 +60,7 @@ def run_query_ssl_client_round_if_supported(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
     )
 
 
@@ -81,6 +84,7 @@ def _run_query_ssl_lora_client_round(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:
     if request.query_ssl_objective_config is None:
         raise ValueError("query_ssl_objective_config is required.")
@@ -116,6 +120,7 @@ def _run_query_ssl_lora_client_round(
             persist_agent_local_update=(
                 request.artifact_persistence_config.persist_agent_local_updates
             ),
+            initial_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
         )
     client_train_time_seconds = time.perf_counter() - training_started_at
     artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
@@ -186,6 +191,7 @@ def _run_query_ssl_lora_client_round(
             timing_breakdown=timing.to_mapping(),
         ),
         update_submitted=update_submitted,
+        query_ssl_algorithm_state=local_result.query_ssl_algorithm_state,
     )
 
 

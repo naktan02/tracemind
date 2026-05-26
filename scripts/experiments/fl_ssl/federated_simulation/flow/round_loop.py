@@ -25,6 +25,7 @@ from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ClientPartitionSyncSimulationState,
     ClientRoundExecution,
     PeerContextSimulationState,
+    QuerySslAlgorithmSyncSimulationState,
     RoundExecution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -44,6 +45,7 @@ def run_one_round(
     round_index: int,
     peer_context_state: PeerContextSimulationState,
     client_partition_sync_state: ClientPartitionSyncSimulationState,
+    query_ssl_algorithm_sync_state: QuerySslAlgorithmSyncSimulationState,
 ) -> RoundExecution:
     """한 communication round를 열고 client update를 모아 publication까지 진행한다."""
 
@@ -133,6 +135,9 @@ def run_one_round(
             previous_client_partition_parameters=(
                 client_partition_sync_state.snapshot_for_client(shard.client_id)
             ),
+            previous_query_ssl_algorithm_state=(
+                query_ssl_algorithm_sync_state.state_for_client(shard.client_id)
+            ),
         )
         for shard in selected_shards
     )
@@ -145,6 +150,7 @@ def run_one_round(
             active=active,
             peer_context_state=peer_context_state,
             client_partition_sync_state=client_partition_sync_state,
+            query_ssl_algorithm_sync_state=query_ssl_algorithm_sync_state,
             summary=None,
         )
     started_at = time.perf_counter()
@@ -154,6 +160,10 @@ def run_one_round(
     )
     next_client_partition_sync_state = _build_next_client_partition_sync_state(
         previous=client_partition_sync_state,
+        client_executions=client_executions,
+    )
+    next_query_ssl_algorithm_sync_state = _build_next_query_ssl_algorithm_sync_state(
+        previous=query_ssl_algorithm_sync_state,
         client_executions=client_executions,
     )
     round_timing["round_peer_state_build_seconds"] = time.perf_counter() - started_at
@@ -193,6 +203,7 @@ def run_one_round(
         active=next_active,
         peer_context_state=next_peer_context_state,
         client_partition_sync_state=next_client_partition_sync_state,
+        query_ssl_algorithm_sync_state=next_query_ssl_algorithm_sync_state,
         summary=SimulationRoundSummary(
             round_id=round_id,
             model_revision=next_model_revision,
@@ -240,6 +251,19 @@ def _build_next_client_partition_sync_state(
             continue
         snapshots[execution.summary.client_id] = execution.client_partition_snapshot
     return ClientPartitionSyncSimulationState(client_partition_snapshots=snapshots)
+
+
+def _build_next_query_ssl_algorithm_sync_state(
+    *,
+    previous: QuerySslAlgorithmSyncSimulationState,
+    client_executions: tuple[ClientRoundExecution, ...],
+) -> QuerySslAlgorithmSyncSimulationState:
+    states = dict(previous.client_algorithm_states)
+    for execution in client_executions:
+        if not execution.query_ssl_algorithm_state:
+            continue
+        states[execution.summary.client_id] = execution.query_ssl_algorithm_state
+    return QuerySslAlgorithmSyncSimulationState(client_algorithm_states=states)
 
 
 def _finalize_round_publication(

@@ -43,6 +43,7 @@ from methods.common.timing import TimingRecorder, timing_mapping
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
+from methods.ssl.state import export_query_ssl_algorithm_state
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
     LoraClassifierDelta,
@@ -135,6 +136,7 @@ class QuerySslLoraClientTrainingResult:
     client_partition_parameters: Mapping[str, LoraClassifierMaterializedState] = field(
         default_factory=dict
     )
+    query_ssl_algorithm_state: Mapping[str, Any] = field(default_factory=dict)
     timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 
@@ -156,6 +158,7 @@ def run_query_ssl_lora_classifier_training_core(
     delta_materializer: QuerySslLoraDeltaMaterializer,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
     """client-local raw text/views로 Query SSL LoRA update를 생성한다."""
 
@@ -266,6 +269,7 @@ def run_query_ssl_lora_classifier_training_core(
             ),
             log_every_steps=0,
             algorithm=algorithm,
+            initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
         )
     diagnostic_threshold = resolve_fixed_pseudo_label_diagnostic_threshold(
         query_ssl_config.parameters
@@ -355,6 +359,7 @@ def run_query_ssl_lora_classifier_training_core(
         local_step_plan=step_plan,
         client_metrics=client_metrics,
         pseudo_label_quality=pseudo_label_quality,
+        query_ssl_algorithm_state=dict(export_query_ssl_algorithm_state(algorithm)),
         timing_breakdown=timing_mapping(timing_recorder),
     )
 

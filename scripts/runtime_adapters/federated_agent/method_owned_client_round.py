@@ -61,6 +61,7 @@ def run_method_owned_client_round_if_supported(
     previous_client_partition_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
     """method-owned LoRA raw-row training이 가능한 조합이면 실행한다."""
 
@@ -77,6 +78,7 @@ def run_method_owned_client_round_if_supported(
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
         previous_client_partition_parameters=previous_client_partition_parameters,
+        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
     )
 
 
@@ -105,6 +107,7 @@ def _run_method_owned_lora_client_round(
     previous_client_partition_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
+    previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:
     if request.ssl_method_config is None:
         raise ValueError("ssl_method_config is required.")
@@ -161,6 +164,7 @@ def _run_method_owned_lora_client_round(
             persist_agent_local_update=(
                 request.artifact_persistence_config.persist_agent_local_updates
             ),
+            initial_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
         )
     with timing.measure("helper_model_cache_release_seconds"):
         _release_transient_model_cache(bootstrapped.runtime_resource_cache)
@@ -267,6 +271,7 @@ def _run_method_owned_lora_client_round(
         update_submitted=update_submitted,
         peer_client_snapshot=local_result.peer_client_snapshot,
         client_partition_snapshot=local_result.client_partition_parameters,
+        query_ssl_algorithm_state=local_result.query_ssl_algorithm_state,
     )
 
 

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import random
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
@@ -30,6 +31,7 @@ from methods.ssl.base import (
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
+from methods.ssl.state import load_query_ssl_algorithm_state
 from shared.src.domain.services.classification_report import (
     safe_divide,
 )
@@ -301,6 +303,7 @@ def train_query_ssl_classifier(
     max_grad_norm: float,
     log_every_steps: int,
     algorithm: QuerySslAlgorithm,
+    initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     resume_checkpoint_path: str | Path | None = None,
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
@@ -323,6 +326,16 @@ def train_query_ssl_classifier(
         num_classes=len(categories),
         unlabeled_row_count=len(unlabeled_loader.dataset),
     )
+    if initial_query_ssl_algorithm_state and resume_checkpoint_path is not None:
+        raise ValueError(
+            "initial_query_ssl_algorithm_state and resume_checkpoint_path cannot "
+            "both be provided."
+        )
+    if initial_query_ssl_algorithm_state:
+        load_query_ssl_algorithm_state(
+            algorithm,
+            initial_query_ssl_algorithm_state,
+        )
     full_epoch_steps = (
         max(len(train_loader), len(unlabeled_loader))
         if labeled_updates_enabled
