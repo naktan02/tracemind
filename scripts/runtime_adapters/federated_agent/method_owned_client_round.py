@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import gc
+import sys
 import time
 from collections.abc import Mapping
 from typing import Any
@@ -293,4 +294,21 @@ def _release_helper_model_cache(runtime_resource_cache: object | None) -> int:
         return removed
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+    _trim_process_allocator()
     return removed
+
+
+def _trim_process_allocator() -> None:
+    """Linux allocator가 해제된 CPU tensor memory를 OS에 반환하도록 요청한다."""
+
+    if not sys.platform.startswith("linux"):
+        return
+    try:
+        import ctypes
+
+        libc = ctypes.CDLL("libc.so.6")
+        malloc_trim = getattr(libc, "malloc_trim", None)
+        if callable(malloc_trim):
+            malloc_trim(0)
+    except Exception:
+        return
