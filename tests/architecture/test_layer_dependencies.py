@@ -349,6 +349,49 @@ def test_query_classifier_adaptation_core_stays_in_methods_layer() -> None:
     )
 
 
+def test_query_classifier_adaptation_stays_input_glue_only() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC / "adaptation" / "query_classifier_adaptation",
+        forbidden_prefixes=(
+            "methods.adaptation.lora_classifier",
+            "methods.adaptation.text_classifier.peft_encoder",
+            "methods.adaptation.peft_adapters",
+            "shared.src.contracts.adapter_contract_families",
+            "shared.src.domain.entities.training.shared_adapter_state",
+            "shared.src.domain.entities.training.shared_adapter_update",
+        ),
+    )
+
+    assert not violations, (
+        "query_classifier_adaptation은 query-domain row/view/token-batch 입력 glue만 "
+        "소유한다. PEFT model composition, shared update payload, adapter-family "
+        "materialization은 각 canonical owner에 둔다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_local_objective_regularizers_stay_update_payload_agnostic() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC / "adaptation" / "local_objective_regularizers",
+        forbidden_prefixes=(
+            "agent.src",
+            "main_server.src",
+            "scripts",
+            "methods.federated_ssl.fedmatch",
+            "shared.src.contracts.adapter_contract_families",
+            "shared.src.domain.entities.training.shared_adapter_state",
+            "shared.src.domain.entities.training.shared_adapter_update",
+        ),
+    )
+
+    assert not violations, (
+        "local_objective_regularizers는 local loss regularization만 소유한다. "
+        "shared payload, server aggregation, method-specific round policy가 필요하면 "
+        "별도 capability로 분리한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
 def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
     forbidden_path = METHODS_SRC / "federated_ssl" / "training_algorithm_profiles.py"
     assert not forbidden_path.exists(), (
@@ -1328,6 +1371,28 @@ def test_agent_does_not_own_privacy_guard_modules() -> None:
         "methods/adaptation/privacy_guards가 소유한다. agent는 selected guard를 "
         "local update 실행 흐름에 연결만 한다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_privacy_guards_stay_runtime_and_objective_agnostic() -> None:
+    violations = _find_forbidden_imports(
+        root=METHODS_SRC / "adaptation" / "privacy_guards",
+        forbidden_prefixes=(
+            "agent.src",
+            "main_server.src",
+            "scripts",
+            "methods.ssl",
+            "methods.federated_ssl.fedmatch",
+            "methods.adaptation.text_classifier",
+            "methods.adaptation.lora_classifier",
+            "methods.adaptation.query_classifier_adaptation",
+        ),
+    )
+
+    assert not violations, (
+        "privacy_guards는 shared adapter update 보호 policy만 소유한다. runtime, "
+        "training objective, SSL method 의미를 import하지 않는다.\n"
+        f"{_format_violations(violations)}"
     )
 
 

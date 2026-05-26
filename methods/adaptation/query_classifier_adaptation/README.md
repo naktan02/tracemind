@@ -11,6 +11,9 @@ glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를
 - `view_rows.py`: weak/original/strong view row 해석과 validation helper
 - `query_ssl_views.py`: 중앙 SSL과 FL client-local SSL이 공유하는 unlabeled
   view surface별 DataLoader builder
+- `local_training_budget.py`: Query SSL local step/batch budget을 labeled/unlabeled
+  loader 노출과 분리해 계산하는 helper
+- `tokenization.py`: run-local text tokenization cache와 padding 정규화 helper
 
 범위 밖:
 
@@ -25,3 +28,5 @@ glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를
   같은 token-batch classifier scaffold를 학습하는 경우에만 이 패키지를 재사용한다.
 - agent API, local private state, query buffer repository 접근은 agent layer에
   남긴다.
+- shared update payload, artifact materialization, PEFT model composition은 이
+  패키지가 소유하지 않는다.
