@@ -1,4 +1,4 @@
-"""LoRA-classifier supervised server seed step primitive."""
+"""PEFT-classifier supervised server seed step primitive."""
 
 from __future__ import annotations
 
@@ -40,6 +40,9 @@ class LoraClassifierSupervisedSeedStepResult:
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
     classifier_head_bias_deltas: Mapping[str, float]
     metrics: dict[str, float]
+
+
+PeftEncoderSupervisedSeedStepResult = LoraClassifierSupervisedSeedStepResult
 
 
 def run_lora_classifier_supervised_seed_step_core(
@@ -122,3 +125,8 @@ def run_lora_classifier_supervised_seed_step_core(
             "server_step_batch_size": float(batch_size),
         },
     )
+
+
+run_peft_encoder_supervised_seed_step_core = (
+    run_lora_classifier_supervised_seed_step_core
+)

@@ -886,7 +886,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     )
     monkeypatch.setattr(
         server_step_execution,
-        "materialize_base_lora_classifier_state",
+        "materialize_base_peft_encoder_state",
         _fake_materialize,
     )
     monkeypatch.setattr(

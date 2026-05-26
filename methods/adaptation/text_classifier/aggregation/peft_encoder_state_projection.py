@@ -1,4 +1,4 @@
-"""LoRA-classifier FedAvg 결과를 다음 global state artifact로 투영한다."""
+"""PEFT-classifier aggregation 결과를 다음 global state artifact로 투영한다."""
 
 from __future__ import annotations
 
@@ -34,6 +34,9 @@ class LoraClassifierStateProjection:
 
     next_state: PeftEncoderStatePayload
     artifacts: dict[str, dict[str, object]]
+
+
+PeftEncoderStateProjection = LoraClassifierStateProjection
 
 
 def build_lora_classifier_state_projection(
@@ -120,6 +123,9 @@ def build_lora_classifier_state_projection(
             },
         },
     )
+
+
+build_peft_encoder_state_projection = build_lora_classifier_state_projection
 
 
 def _build_next_state(

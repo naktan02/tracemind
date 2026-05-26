@@ -1,4 +1,4 @@
-"""Method-owned LoRA-classifier local training core resolver."""
+"""Method-owned PEFT-classifier local training core resolver."""
 
 from __future__ import annotations
 
@@ -31,23 +31,24 @@ QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeC
 
 
 class FederatedSslMethodLocalTrainingConfig(Protocol):
-    """method-owned LoRA local core가 필요한 method config surface."""
+    """method-owned PEFT local core가 필요한 method config surface."""
 
     name: str
     scenario: str | None
     effective_parameters: Mapping[str, object]
 
 
-MethodOwnedLoraClassifierTrainingCore = Callable[
+MethodOwnedPeftEncoderTrainingCore = Callable[
     ...,
     QuerySslLoraClientTrainingResult,
 ]
+MethodOwnedLoraClassifierTrainingCore = MethodOwnedPeftEncoderTrainingCore
 
 
-def resolve_method_owned_lora_classifier_training_core(
+def resolve_method_owned_peft_encoder_training_core(
     method_name: str,
-) -> MethodOwnedLoraClassifierTrainingCore:
-    """method descriptor의 명시 entrypoint로 LoRA local training core를 resolve한다."""
+) -> MethodOwnedPeftEncoderTrainingCore:
+    """method descriptor의 명시 entrypoint로 PEFT local training core를 resolve한다."""
 
     normalized_name = method_name.strip().lower().replace("-", "_")
     if not normalized_name:
@@ -56,19 +57,19 @@ def resolve_method_owned_lora_classifier_training_core(
     entrypoint = descriptor.local_step.runtime_entrypoint
     if entrypoint is None:
         raise NotImplementedError(
-            "Method-owned LoRA-classifier local training core is not declared: "
+            "Method-owned PEFT-classifier local training core is not declared: "
             f"{method_name}"
         )
-    return _load_method_owned_lora_classifier_training_core(entrypoint)
+    return _load_method_owned_peft_encoder_training_core(entrypoint)
 
 
-def _load_method_owned_lora_classifier_training_core(
+def _load_method_owned_peft_encoder_training_core(
     entrypoint: str,
-) -> MethodOwnedLoraClassifierTrainingCore:
+) -> MethodOwnedPeftEncoderTrainingCore:
     module_name, separator, function_name = entrypoint.partition(":")
     if not separator or not module_name.strip() or not function_name.strip():
         raise ValueError(
-            "method-owned LoRA-classifier runtime_entrypoint must use "
+            "method-owned PEFT-classifier runtime_entrypoint must use "
             "'module:function' format."
         )
     try:
@@ -76,7 +77,7 @@ def _load_method_owned_lora_classifier_training_core(
     except ModuleNotFoundError as error:
         if error.name == module_name.strip():
             raise NotImplementedError(
-                "Method-owned LoRA-classifier local training core module is not wired: "
+                "Method-owned PEFT-classifier local training core module is not wired: "
                 f"{module_name}"
             ) from error
         raise
@@ -84,13 +85,13 @@ def _load_method_owned_lora_classifier_training_core(
     core = getattr(module, function_name.strip(), None)
     if core is None:
         raise NotImplementedError(
-            "Method-owned LoRA-classifier local training core function is missing: "
+            "Method-owned PEFT-classifier local training core function is missing: "
             f"{entrypoint}"
         )
     return core
 
 
-def run_method_owned_lora_classifier_training_core(
+def run_method_owned_peft_encoder_training_core(
     *,
     client_id: str,
     seed: int,
@@ -121,9 +122,9 @@ def run_method_owned_lora_classifier_training_core(
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> QuerySslLoraClientTrainingResult:
-    """선택된 method-owned LoRA-classifier local training core를 실행한다."""
+    """선택된 method-owned PEFT-classifier local training core를 실행한다."""
 
-    core = resolve_method_owned_lora_classifier_training_core(ssl_method_config.name)
+    core = resolve_method_owned_peft_encoder_training_core(ssl_method_config.name)
     return core(
         client_id=client_id,
         seed=seed,
@@ -152,3 +153,14 @@ def run_method_owned_lora_classifier_training_core(
         timing_recorder=timing_recorder,
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
+
+
+resolve_method_owned_lora_classifier_training_core = (
+    resolve_method_owned_peft_encoder_training_core
+)
+_load_method_owned_lora_classifier_training_core = (
+    _load_method_owned_peft_encoder_training_core
+)
+run_method_owned_lora_classifier_training_core = (
+    run_method_owned_peft_encoder_training_core
+)

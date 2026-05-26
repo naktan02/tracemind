@@ -19,7 +19,7 @@ from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
     peft_encoder_runtime_payload,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    materialize_base_lora_classifier_state,
+    materialize_base_peft_encoder_state,
 )
 from methods.federated_ssl.capability_plan import (
     SERVER_STEP_NONE,
@@ -133,7 +133,7 @@ def _run_peft_classifier_supervised_seed_step(
         round_index=round_index,
     )
     now = datetime.now(timezone.utc)
-    base_parameters = materialize_base_lora_classifier_state(
+    base_parameters = materialize_base_peft_encoder_state(
         base_state=active.adapter_state,
         context=build_simulation_aggregation_context(
             output_dir=request.output_dir,
@@ -141,7 +141,7 @@ def _run_peft_classifier_supervised_seed_step(
             aggregated_at=now,
         ),
     )
-    seed_result = supervised_seed_step.run_lora_classifier_supervised_seed_step_core(
+    seed_result = supervised_seed_step.run_peft_encoder_supervised_seed_step_core(
         labels=labels,
         base_parameters=base_parameters,
         bootstrap_rows=bootstrapped.dataset_split.bootstrap_rows,
@@ -163,7 +163,7 @@ def _run_peft_classifier_supervised_seed_step(
             peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT,
         ),
     )
-    projection = peft_state_projection.build_lora_classifier_state_projection(
+    projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=active.adapter_state,
         base_parameters=base_parameters,
         next_model_revision=next_model_revision,

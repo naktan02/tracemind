@@ -152,7 +152,7 @@ def run_method_owned_peft_encoder_local_training(
             timing_recorder=timing_recorder,
         )
     )
-    result = method_owned_training.run_method_owned_lora_classifier_training_core(
+    result = method_owned_training.run_method_owned_peft_encoder_training_core(
         client_id=client_id,
         seed=seed,
         labeled_rows=labeled_rows,
