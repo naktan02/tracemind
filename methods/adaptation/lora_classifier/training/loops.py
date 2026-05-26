@@ -18,6 +18,9 @@ from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
 )
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    prepare_fedprox_regularizer,
+)
 from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
@@ -36,7 +39,6 @@ from .batching import (
     next_cycling_batch,
 )
 from .modeling import LoraTextClassifier
-from .fedprox import prepare_lora_training_fedprox
 from .optimizer_step import run_optimizer_loss_step
 from .scalar_metrics import ScalarMetricAccumulator
 from .step_budget import (
@@ -176,7 +178,7 @@ def train_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
-    fedprox = prepare_lora_training_fedprox(
+    fedprox = prepare_fedprox_regularizer(
         proximal_mu=proximal_mu,
         trainable_parameters=trainable_parameters,
     )
@@ -344,7 +346,7 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
-    fedprox = prepare_lora_training_fedprox(
+    fedprox = prepare_fedprox_regularizer(
         proximal_mu=proximal_mu,
         trainable_parameters=trainable_parameters,
     )

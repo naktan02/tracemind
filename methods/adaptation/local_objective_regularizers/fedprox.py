@@ -15,6 +15,35 @@ class FedProxReferenceSnapshot:
     parameters: tuple[torch.Tensor, ...]
 
 
+@dataclass(frozen=True, slots=True)
+class FedProxRegularizer:
+    """FedProx 기준 snapshot과 적용 조건."""
+
+    proximal_mu: float
+    trainable_parameters: tuple[nn.Parameter, ...]
+    reference_snapshot: FedProxReferenceSnapshot | None
+
+    @property
+    def enabled(self) -> bool:
+        return self.proximal_mu > 0.0
+
+    def proximal_loss(self) -> torch.Tensor:
+        if not self.enabled:
+            raise ValueError("FedProx proximal loss is not enabled.")
+        if self.reference_snapshot is None:
+            raise ValueError("FedProx reference snapshot is missing.")
+        return compute_scaled_fedprox_loss(
+            trainable_parameters=self.trainable_parameters,
+            reference_snapshot=self.reference_snapshot,
+            proximal_mu=self.proximal_mu,
+        )
+
+    def add_to_loss(self, loss: torch.Tensor) -> torch.Tensor:
+        if not self.enabled:
+            return loss
+        return loss + self.proximal_loss()
+
+
 def snapshot_trainable_parameters(
     parameters: tuple[nn.Parameter, ...],
 ) -> FedProxReferenceSnapshot:
@@ -72,3 +101,22 @@ def validate_proximal_mu(proximal_mu: float) -> float:
     if normalized < 0.0:
         raise ValueError("proximal_mu must be non-negative.")
     return normalized
+
+
+def prepare_fedprox_regularizer(
+    *,
+    proximal_mu: float,
+    trainable_parameters: tuple[nn.Parameter, ...],
+) -> FedProxRegularizer:
+    """FedProx 검증/snapshot 준비를 수행한다."""
+
+    normalized_mu = validate_proximal_mu(proximal_mu)
+    return FedProxRegularizer(
+        proximal_mu=normalized_mu,
+        trainable_parameters=trainable_parameters,
+        reference_snapshot=(
+            snapshot_trainable_parameters(trainable_parameters)
+            if normalized_mu > 0.0
+            else None
+        ),
+    )

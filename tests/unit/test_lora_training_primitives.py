@@ -9,8 +9,8 @@ from methods.adaptation.lora_classifier.training.batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
 )
-from methods.adaptation.lora_classifier.training.fedprox import (
-    prepare_lora_training_fedprox,
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    prepare_fedprox_regularizer,
 )
 from methods.adaptation.lora_classifier.training.optimizer_step import (
     run_optimizer_loss_step,
@@ -122,11 +122,11 @@ def test_tensor_mapping_l2_matches_partition_delta_metric() -> None:
 
 def test_lora_training_fedprox_adds_loss_only_when_enabled() -> None:
     parameter = torch.nn.Parameter(torch.tensor([1.0]))
-    disabled = prepare_lora_training_fedprox(
+    disabled = prepare_fedprox_regularizer(
         proximal_mu=0.0,
         trainable_parameters=(parameter,),
     )
-    enabled = prepare_lora_training_fedprox(
+    enabled = prepare_fedprox_regularizer(
         proximal_mu=0.5,
         trainable_parameters=(parameter,),
     )
