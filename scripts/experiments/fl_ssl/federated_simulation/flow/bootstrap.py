@@ -38,6 +38,7 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.common_types import TrainingTaskType
+from shared.src.contracts.model_contracts import ModelManifest
 
 from ..io.resume_checkpoint import load_resume_checkpoint
 from ..io.run_artifact_writer import RunArtifactWriter
@@ -48,7 +49,7 @@ def bootstrap_simulation(
     *,
     ssl_method_descriptor: FederatedSslMethodDescriptor | None,
 ) -> BootstrappedSimulation:
-    """초기 LoRA-classifier shared state와 manifest를 만들고 active state로 고정한다."""
+    """초기 shared state와 manifest를 만들고 active state로 고정한다."""
 
     dataset_split = _resolve_dataset_split(request)
     validation_client_shards = split_rows_into_client_shards(

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from typing import Sequence
 
 import torch
 from torch import Tensor
@@ -43,7 +42,9 @@ FEDMATCH_LOSS_COMPONENTS = (
         coefficient_name="lambda_s",
         updated_partition="sigma",
         original_source="models/fedmatch/client.py::loss_fn_s",
-        trace_mapping="labeled rows로 CE를 계산하고 sigma partition만 업데이트한다.",
+        trace_mapping=(
+            "labeled rows로 CE를 계산하고 sigma partition만 업데이트한다."
+        ),
     ),
     FedMatchLossComponentSpec(
         name=FEDMATCH_CONFIDENCE_FILTER,
@@ -51,7 +52,7 @@ FEDMATCH_LOSS_COMPONENTS = (
         updated_partition=None,
         original_source="models/fedmatch/client.py::loss_fn_u",
         trace_mapping=(
-            "weak prediction의 max probability가 threshold 이상인 unlabeled row만 쓴다."
+            "weak prediction confidence가 threshold 이상인 row만 쓴다."
         ),
     ),
     FedMatchLossComponentSpec(
@@ -60,7 +61,7 @@ FEDMATCH_LOSS_COMPONENTS = (
         updated_partition="psi",
         original_source="models/fedmatch/client.py::loss_fn_u",
         trace_mapping=(
-            "helper prediction과 local weak prediction의 KL을 psi objective에 더한다."
+            "helper/local weak prediction KL을 psi objective에 더한다."
         ),
     ),
     FedMatchLossComponentSpec(
@@ -69,7 +70,7 @@ FEDMATCH_LOSS_COMPONENTS = (
         updated_partition="psi",
         original_source="models/fedmatch/client.py::agreement_based_labeling",
         trace_mapping=(
-            "local/helper argmax vote pseudo-label을 strong view CE target으로 쓴다."
+            "local/helper vote pseudo-label을 strong view CE target으로 쓴다."
         ),
     ),
     FedMatchLossComponentSpec(
@@ -112,7 +113,7 @@ class FedMatchLocalObjectiveParameters:
         cls,
         parameters: Mapping[str, object],
     ) -> FedMatchLocalObjectiveParameters:
-        """original/effective parameter mapping에서 tensor objective 값을 읽는다."""
+        """effective parameter mapping에서 tensor objective 값을 읽는다."""
 
         return cls(
             confidence_threshold=float(parameters["confidence_threshold"]),
@@ -129,7 +130,7 @@ class FedMatchLocalObjectiveParameters:
         *,
         scenario_name: str = FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
     ) -> FedMatchLocalObjectiveParameters:
-        """FedMatch 원본 scenario 기본값으로 tensor objective parameter를 만든다."""
+        """원본 scenario 기본값으로 tensor objective parameter를 만든다."""
 
         scenario = resolve_original_scenario_spec(scenario_name)
         return cls(
@@ -213,7 +214,7 @@ def compute_fedmatch_supervised_loss(
     labels: Tensor,
     parameters: FedMatchLocalObjectiveParameters,
 ) -> FedMatchTensorLocalObjectiveResult:
-    """원본 `loss_fn_s`처럼 CE에 `lambda_s`를 곱하고 sigma partition에 라우팅한다."""
+    """원본 `loss_fn_s`처럼 CE를 sigma partition에 라우팅한다."""
 
     _validate_logits_2d(labeled_logits, tensor_name="labeled_logits")
     if labels.ndim != 1:
@@ -242,7 +243,7 @@ def compute_fedmatch_unsupervised_loss(
     selected_helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
     enable_inter_client_consistency: bool = True,
 ) -> FedMatchTensorLocalObjectiveResult:
-    """원본 `loss_fn_u`처럼 confident subset 기준 unsupervised loss를 계산한다."""
+    """원본 `loss_fn_u`처럼 confident subset loss를 계산한다."""
 
     _validate_logits_2d(weak_logits, tensor_name="weak_logits")
 
@@ -319,7 +320,7 @@ def select_confident_prediction_indices(
     *,
     confidence_threshold: float,
 ) -> tuple[int, ...]:
-    """원본 `np.max(y_pred) >= confidence` filter를 framework 독립 함수로 보존한다."""
+    """원본 confidence filter를 framework 독립 함수로 보존한다."""
 
     if confidence_threshold < 0.0 or confidence_threshold > 1.0:
         raise ValueError("confidence_threshold must be between 0 and 1.")

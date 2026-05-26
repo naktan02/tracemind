@@ -39,11 +39,11 @@ experiment package로 이해하면 된다.
    - `round_request_mapper.py`: round task/open request 변환
 7. `scripts/runtime_adapters/federated_agent/`
    - agent local runtime adapter package
-   - `query_ssl_lora_classifier_trainer.py`: manual Query SSL + LoRA-classifier
-     local PEFT trainer bridge
+   - `local_training.py`: local training request/service bridge
+   - `artifact_store.py`: agent-local/server-owned artifact ref bridge
    - `training_example_mapper.py`: simulation row를 agent training example request로 변환
    - `row_validator.py`: `weak_strong_pair` 같은 row-source 요구사항 검증
-   - `training_runtime.py`: local training request/service bridge
+   - `training_runtime.py`: local training backend resolve와 호출
    - `backend_resolver.py`: profile compatibility 검증용 backend resolve
 8. `adapters/method_runtime.py`
    - `methods/federated_ssl/` descriptor를 simulation runtime adapter로 연결

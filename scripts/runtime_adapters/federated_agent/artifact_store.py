@@ -17,7 +17,7 @@ AGENT_LOCAL_ARTIFACT_REF_PREFIX = "agent-local://"
 
 @dataclass(frozen=True, slots=True)
 class SimulationClientArtifactStore:
-    """simulation output directory를 client/server artifact 저장소로 연결한다."""
+    """simulation output을 client/server artifact 저장소로 연결한다."""
 
     output_dir: Path
 
@@ -95,9 +95,10 @@ class SimulationClientArtifactStore:
     def upload_agent_local_json_artifact(self, *, agent_local_ref: str) -> str:
         payload = self._load_agent_local_json_artifact(agent_local_ref)
         store = self._server_store()
-        server_ref = store.ref_for_artifact(
-            "client_uploads/" + "/".join(self._agent_local_artifact_parts(agent_local_ref))
+        artifact_id = "client_uploads/" + "/".join(
+            self._agent_local_artifact_parts(agent_local_ref)
         )
+        server_ref = store.ref_for_artifact(artifact_id)
         store.save_json_artifact_ref(artifact_ref=server_ref, payload=payload)
         return server_ref
 
@@ -153,11 +154,15 @@ class SimulationClientArtifactStore:
         if not artifact_ref.startswith(AGENT_LOCAL_ARTIFACT_REF_PREFIX):
             raise ValueError(f"Expected agent-local artifact ref: {artifact_ref!r}.")
         raw_artifact_id = artifact_ref.removeprefix(AGENT_LOCAL_ARTIFACT_REF_PREFIX)
-        parts = tuple(part.strip() for part in raw_artifact_id.split("/") if part.strip())
+        parts = tuple(
+            part.strip() for part in raw_artifact_id.split("/") if part.strip()
+        )
         if not parts:
             raise ValueError("agent-local artifact ref must contain an artifact id.")
         if any(part in {".", ".."} for part in parts):
-            raise ValueError("agent-local artifact ref must not contain path traversal.")
+            raise ValueError(
+                "agent-local artifact ref must not contain path traversal."
+            )
         return parts
 
 

@@ -103,7 +103,7 @@ class LoraClassifierDeltaMaterializer:
         training_task: TrainingTask,
         client_id: str,
         delta_format: str,
-        artifact_ref_prefix: str,
+        artifact_ref_prefix: str | None = None,
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
@@ -121,6 +121,10 @@ class LoraClassifierDeltaMaterializer:
                 include_inline_deltas=True,
             )
         if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL:
+            if artifact_ref_prefix is None or not artifact_ref_prefix.strip():
+                raise ValueError(
+                    "delta_format=agent_local requires artifact_ref_prefix."
+                )
             if not materialize_primary_deltas and partitioned_deltas is None:
                 raise ValueError(
                     "Skipping primary LoRA/head artifacts requires partitioned_deltas."
@@ -339,9 +343,13 @@ def upload_agent_local_lora_classifier_update(
                 agent_local_ref=update_payload.classifier_head_delta_artifact_ref,
             )
         )
-    if artifact_store.is_agent_local_ref(update_payload.partitioned_deltas_artifact_ref):
+    if artifact_store.is_agent_local_ref(
+        update_payload.partitioned_deltas_artifact_ref
+    ):
         if update_payload.partitioned_deltas_artifact_ref is None:
-            raise AssertionError("partitioned_deltas_artifact_ref unexpectedly missing.")
+            raise AssertionError(
+                "partitioned_deltas_artifact_ref unexpectedly missing."
+            )
         update_fields["partitioned_deltas_artifact_ref"] = (
             artifact_store.upload_agent_local_json_artifact(
                 agent_local_ref=update_payload.partitioned_deltas_artifact_ref,
@@ -358,7 +366,7 @@ def server_owned_lora_classifier_update_artifact_byte_count(
     artifact_store: LoraClassifierDeltaArtifactStore,
     update_payload: LoraClassifierDelta,
 ) -> int:
-    """server-owned update artifact ref들이 가리키는 파일 크기를 합산한다."""
+    """server-owned update artifact ref들의 파일 크기를 합산한다."""
 
     return artifact_store.server_artifact_refs_byte_count(
         artifact_refs=(

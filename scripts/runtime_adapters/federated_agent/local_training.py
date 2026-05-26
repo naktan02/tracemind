@@ -266,7 +266,9 @@ def _save_agent_local_update(
     result: QuerySslLoraClientTrainingResult,
     timing_recorder: TimingRecorder | None,
 ) -> None:
-    repository = TrainingArtifactRepository(state_root=output_dir / "agents" / client_id)
+    repository = TrainingArtifactRepository(
+        state_root=output_dir / "agents" / client_id
+    )
     if timing_recorder is None:
         repository.save_shared_adapter_update(
             result.update_envelope.update_id,

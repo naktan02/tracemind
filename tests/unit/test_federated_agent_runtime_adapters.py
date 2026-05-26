@@ -638,6 +638,22 @@ def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
     assert not (tmp_path / "main_server" / "aggregation_artifacts").exists()
 
 
+def test_query_ssl_lora_delta_materialization_requires_prefix_for_agent_local(
+    tmp_path,
+) -> None:
+    with pytest.raises(ValueError, match="requires artifact_ref_prefix"):
+        prepare_delta_materialization(
+            output_dir=tmp_path,
+            update_id="update_round_0001_agent_01_test",
+            training_task=SimpleNamespace(round_id="round_0001"),
+            client_id="agent_01",
+            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+            lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
+            classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
+            classifier_head_bias_deltas={"anxiety": 0.05},
+        )
+
+
 def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
     tmp_path,
 ) -> None:

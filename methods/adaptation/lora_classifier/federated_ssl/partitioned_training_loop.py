@@ -10,30 +10,30 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.training.loops import (
-    build_optimizer,
-    trainable_model_parameters,
-)
 from methods.adaptation.lora_classifier.training.batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
 )
-from methods.adaptation.lora_classifier.training.step_budget import (
-    resolve_epoch_distributed_step_budget,
+from methods.adaptation.lora_classifier.training.loops import (
+    build_optimizer,
+    trainable_model_parameters,
 )
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
 from methods.adaptation.lora_classifier.training.optimizer_step import (
     run_optimizer_loss_step,
-)
-from methods.adaptation.lora_classifier.training.scalar_metrics import (
-    ScalarMetricAccumulator,
-    tensor_mapping_l2,
 )
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
     named_trainable_parameter_tensors,
     snapshot_trainable_parameter_tensors,
+)
+from methods.adaptation.lora_classifier.training.scalar_metrics import (
+    ScalarMetricAccumulator,
+    tensor_mapping_l2,
+)
+from methods.adaptation.lora_classifier.training.step_budget import (
+    resolve_epoch_distributed_step_budget,
 )
 from methods.adaptation.lora_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -82,7 +82,7 @@ class HelperWeakProbabilityProvider(Protocol):
         *,
         unlabeled_batch: Mapping[str, Tensor],
     ) -> Tensor | Sequence[Tensor] | None:
-        """helper model들이 현재 client batch에 낸 weak-view 확률을 반환한다."""
+        """helper weak-view 확률을 반환한다."""
 
 
 def train_partitioned_lora_classifier(
@@ -274,9 +274,8 @@ def run_partitioned_lora_classifier_step(
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
 
     TraceMind의 LoRA-classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
-    보관하지 않는다. 대신 같은 trainable tensor에 supervised step과 unsupervised
-    step을 순차 적용하고, 두 sub-step의 delta를 logical `sigma`/`psi` partition으로
-    분리해 기록한다.
+    보관하지 않는다. 같은 trainable tensor에 두 step을 순차 적용하고,
+    sub-step delta를 `sigma`/`psi` partition으로 기록한다.
     """
 
     if not isinstance(model, nn.Module):
