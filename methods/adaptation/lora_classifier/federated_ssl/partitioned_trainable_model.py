@@ -81,6 +81,17 @@ class AdapterClassifierPartitionSpec:
         _normalize_partition_name(self.partition_name)
 
 
+@dataclass(frozen=True, slots=True)
+class TextClassifierPartitionSpec:
+    """One full text-classifier module owned by a physical partition."""
+
+    partition_name: str
+    module: nn.Module
+
+    def __post_init__(self) -> None:
+        _normalize_partition_name(self.partition_name)
+
+
 class AdapterClassifierPartition(nn.Module):
     """Trainable adapter and classifier head for a single partition."""
 
@@ -92,6 +103,103 @@ class AdapterClassifierPartition(nn.Module):
     def forward(self, features: Tensor) -> Tensor:
         adapted = self.adapter(features)
         return self.classifier(adapted)
+
+
+class PartitionedTrainableTextClassifierModules(nn.Module):
+    """Physical partitions backed by full text-classifier modules.
+
+    이 wrapper는 PEFT adapter가 transformer 내부에 붙는 `LoraTextClassifier` 같은
+    모델을 partition 단위로 감싼다. feature-space adapter를 새로 가정하지 않고,
+    각 partition module이 자기 forward와 trainable parameter 이름을 소유한다.
+    """
+
+    def __init__(
+        self,
+        *,
+        partitions: Sequence[TextClassifierPartitionSpec],
+        composition_policy: str = PARTITION_COMPOSITION_SUM_LOGITS,
+    ) -> None:
+        super().__init__()
+        self.composition_policy = _normalize_composition_policy(composition_policy)
+        self.partitions = nn.ModuleDict(
+            {
+                _normalize_partition_name(spec.partition_name): spec.module
+                for spec in partitions
+            }
+        )
+        if len(self.partitions) != len(partitions):
+            raise ValueError("partitions must not contain duplicate names.")
+        if not self.partitions:
+            raise ValueError("at least one text-classifier partition is required.")
+
+    def forward_partition(
+        self,
+        partition_name: str,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        partition = self.require_partition(partition_name)
+        return partition(input_ids=input_ids, attention_mask=attention_mask)
+
+    def forward_composed(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+        partition_names: Sequence[str] | None = None,
+    ) -> Tensor:
+        names = (
+            tuple(self.partitions.keys())
+            if partition_names is None
+            else tuple(_normalize_partition_name(name) for name in partition_names)
+        )
+        if not names:
+            raise ValueError("partition_names must not be empty.")
+        logits = [
+            self.forward_partition(
+                name,
+                input_ids=input_ids,
+                attention_mask=attention_mask,
+            )
+            for name in names
+        ]
+        if self.composition_policy == PARTITION_COMPOSITION_SUM_LOGITS:
+            result = logits[0]
+            for value in logits[1:]:
+                result = result + value
+            return result
+        raise ValueError(f"Unsupported composition policy: {self.composition_policy}")
+
+    def require_partition(self, partition_name: str) -> nn.Module:
+        normalized = _normalize_partition_name(partition_name)
+        try:
+            return self.partitions[normalized]
+        except KeyError as error:
+            raise ValueError(
+                f"Unknown text-classifier partition: {normalized}"
+            ) from error
+
+    def partition_parameters(self, partition_name: str) -> tuple[nn.Parameter, ...]:
+        return tuple(
+            parameter
+            for parameter in self.require_partition(partition_name).parameters()
+            if parameter.requires_grad
+        )
+
+    def partition_parameter_tensors(
+        self,
+        partition_name: str,
+    ) -> dict[str, nn.Parameter]:
+        partition = self.require_partition(partition_name)
+        return {
+            name: parameter
+            for name, parameter in partition.named_parameters()
+            if parameter.requires_grad
+        }
+
+    def partition_names(self) -> tuple[str, ...]:
+        return tuple(self.partitions.keys())
 
 
 class PartitionedTrainableAdapterClassifier(nn.Module):
@@ -239,7 +347,7 @@ def snapshot_partition_parameters(
 
 
 def snapshot_partition_parameter_tensors(
-    model: PartitionedTrainableAdapterClassifier,
+    model: PartitionedTrainableTextClassifier,
     partition_name: str,
 ) -> dict[str, Tensor]:
     """Detached clone snapshot keyed by names local to one partition."""

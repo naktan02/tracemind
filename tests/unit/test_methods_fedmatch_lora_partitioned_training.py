@@ -79,6 +79,24 @@ class TinyLoraClassifier(nn.Module):
         return self.classifier(self.encoder_lora(input_ids.float()))
 
 
+class TinyMismatchedPartitionClassifier(nn.Module):
+    """sigma/psi trainable key mismatch를 드러내는 test model."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.other_adapter = nn.Linear(3, 3, bias=False)
+        self.classifier = nn.Linear(3, 2)
+
+    def forward(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        del attention_mask
+        return self.classifier(self.other_adapter(input_ids.float()))
+
+
 class TinyFrozenFeatureExtractor(nn.Module):
     """물리 partition 테스트용 frozen backbone."""
 
@@ -709,6 +727,139 @@ def test_physical_fedmatch_training_returns_cumulative_partitioned_delta() -> No
     assert set(psi.lora_parameter_deltas) == {"adapter.weight"}
     assert set(sigma.classifier_head_weight_deltas) == set(labels)
     assert set(psi.classifier_head_bias_deltas) == set(labels)
+
+
+def test_physical_fedmatch_training_accepts_full_text_classifier_partitions() -> None:
+    model = ptm.PartitionedTrainableTextClassifierModules(
+        partitions=(
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_SIGMA_PARTITION,
+                module=TinyLoraClassifier(),
+            ),
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_PSI_PARTITION,
+                module=TinyLoraClassifier(),
+            ),
+        )
+    )
+    labels = ("anxiety", "normal")
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    train_loader = DataLoader(
+        [
+            {
+                "input_ids": torch.tensor([1.0, 0.0, 0.5]),
+                "attention_mask": torch.ones(3),
+                "labels": torch.tensor(0, dtype=torch.long),
+            },
+            {
+                "input_ids": torch.tensor([0.0, 1.0, 0.5]),
+                "attention_mask": torch.ones(3),
+                "labels": torch.tensor(1, dtype=torch.long),
+            },
+        ],
+        batch_size=2,
+    )
+    unlabeled_loader = DataLoader(
+        [
+            {
+                "weak_input_ids": torch.tensor([1.0, 0.2, 0.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.8, 0.3, 0.1]),
+                "strong_attention_mask": torch.ones(3),
+            },
+            {
+                "weak_input_ids": torch.tensor([0.0, 0.5, 1.0]),
+                "weak_attention_mask": torch.ones(3),
+                "strong_input_ids": torch.tensor([0.1, 0.4, 1.0]),
+                "strong_attention_mask": torch.ones(3),
+            },
+        ],
+        batch_size=2,
+    )
+    step_plan = build_query_ssl_local_step_plan(
+        labeled_loader_steps=1,
+        unlabeled_loader_steps=1,
+        uses_labeled_batches=True,
+        local_epochs=1,
+        max_steps=1,
+    )
+
+    result = train_physical_partitioned_adapter_classifier(
+        model=model,
+        train_loader=train_loader,
+        unlabeled_loader=unlabeled_loader,
+        labels=labels,
+        parameters=parameters,
+        step_plan=step_plan,
+        device="cpu",
+        learning_rate=0.2,
+        classifier_learning_rate=0.2,
+        weight_decay=0.0,
+        max_grad_norm=0.0,
+        supervised_partition=FEDMATCH_SIGMA_PARTITION,
+        unsupervised_partition=FEDMATCH_PSI_PARTITION,
+    )
+
+    sigma = result.partition_deltas[FEDMATCH_SIGMA_PARTITION]
+    psi = result.partition_deltas[FEDMATCH_PSI_PARTITION]
+    assert set(sigma.lora_parameter_deltas) == {"encoder_lora.weight"}
+    assert set(psi.lora_parameter_deltas) == {"encoder_lora.weight"}
+    assert set(sigma.classifier_head_weight_deltas) == set(labels)
+    assert set(psi.classifier_head_bias_deltas) == set(labels)
+
+
+def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
+    model = ptm.PartitionedTrainableTextClassifierModules(
+        partitions=(
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_SIGMA_PARTITION,
+                module=TinyLoraClassifier(),
+            ),
+            ptm.TextClassifierPartitionSpec(
+                partition_name=FEDMATCH_PSI_PARTITION,
+                module=TinyMismatchedPartitionClassifier(),
+            ),
+        )
+    )
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.1,
+        lambda_l1=0.0,
+    )
+
+    with pytest.raises(ValueError, match="same parameter keys"):
+        run_physical_partitioned_adapter_classifier_step(
+            model=model,
+            labeled_batch=None,
+            unlabeled_batch={
+                "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0]]),
+                "weak_attention_mask": torch.ones(1, 3),
+                "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1]]),
+                "strong_attention_mask": torch.ones(1, 3),
+            },
+            parameters=parameters,
+            supervised_partition=FEDMATCH_SIGMA_PARTITION,
+            unsupervised_partition=FEDMATCH_PSI_PARTITION,
+            sigma_optimizer=torch.optim.SGD(
+                model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
+                lr=0.2,
+            ),
+            psi_optimizer=torch.optim.SGD(
+                model.partition_parameters(FEDMATCH_PSI_PARTITION),
+                lr=0.2,
+            ),
+            apply_supervised_step=False,
+        )
 
 
 def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:

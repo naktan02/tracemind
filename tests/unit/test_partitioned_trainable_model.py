@@ -28,6 +28,33 @@ class TinyFrozenFeatureExtractor(nn.Module):
         return self.projection(input_ids.float())
 
 
+class TinyFullTextClassifier(nn.Module):
+    def __init__(self, *, weight_scale: float) -> None:
+        super().__init__()
+        self.encoder_lora = nn.Linear(3, 3, bias=False)
+        self.classifier = nn.Linear(3, 2)
+        with torch.no_grad():
+            self.encoder_lora.weight.copy_(torch.eye(3) * weight_scale)
+            self.classifier.weight.copy_(
+                torch.tensor(
+                    [
+                        [0.3, -0.2, 0.1],
+                        [-0.1, 0.2, 0.4],
+                    ]
+                )
+            )
+            self.classifier.bias.copy_(torch.tensor([0.05, -0.05]))
+
+    def forward(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        del attention_mask
+        return self.classifier(self.encoder_lora(input_ids.float()))
+
+
 def test_partition_plan_rejects_duplicate_partition_names() -> None:
     try:
         ptm.TrainableAdapterPartitionPlan.from_names(["sigma", "sigma"])
@@ -93,6 +120,44 @@ def test_partition_parameter_tensors_use_partition_local_names() -> None:
     }
     assert set(snapshot) == set(parameter_tensors)
     assert all(not name.startswith("sigma.") for name in snapshot)
+
+
+def test_full_text_classifier_partition_preserves_trainable_parameter_names() -> None:
+    model = ptm.PartitionedTrainableTextClassifierModules(
+        partitions=(
+            ptm.TextClassifierPartitionSpec(
+                partition_name="sigma",
+                module=TinyFullTextClassifier(weight_scale=1.0),
+            ),
+            ptm.TextClassifierPartitionSpec(
+                partition_name="psi",
+                module=TinyFullTextClassifier(weight_scale=0.5),
+            ),
+        )
+    )
+    sigma_before = ptm.snapshot_partition_parameter_tensors(model, "sigma")
+    psi_before = ptm.snapshot_partition_parameter_tensors(model, "psi")
+    optimizer = torch.optim.SGD(model.partition_parameters("sigma"), lr=0.2)
+
+    optimizer.zero_grad(set_to_none=True)
+    logits = model.forward_partition(
+        "sigma",
+        input_ids=torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
+        attention_mask=torch.ones(2, 3),
+    )
+    loss = F.cross_entropy(logits, torch.tensor([0, 1], dtype=torch.long))
+    loss.backward()
+    optimizer.step()
+
+    sigma_after = ptm.snapshot_partition_parameter_tensors(model, "sigma")
+    psi_after = ptm.snapshot_partition_parameter_tensors(model, "psi")
+    assert set(sigma_before) == {
+        "encoder_lora.weight",
+        "classifier.weight",
+        "classifier.bias",
+    }
+    assert ptm.parameters_changed(before=sigma_before, after=sigma_after)
+    assert not ptm.parameters_changed(before=psi_before, after=psi_after)
 
 
 def test_composed_forward_sums_partition_logits() -> None:
