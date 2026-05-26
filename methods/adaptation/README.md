@@ -21,6 +21,10 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 - `lora/`: LoRA/RSLoRA builder core
 - `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
   재사용 scaffold
+- `text_classifier/`: text classifier task family의 장기 목표 adaptation 구조.
+  `feature_head/`, `peft_encoder/`, aggregation projection 경계를 분리한다.
+- `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder의 장기 목표 위치.
+  classifier/task payload 의미는 소유하지 않는다.
 - `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의
   token-batch 입력 glue와 weak/strong view row 해석 helper
 

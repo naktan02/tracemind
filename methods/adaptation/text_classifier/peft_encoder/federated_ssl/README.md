@@ -1,0 +1,20 @@
+# PEFT Text Classifier Federated SSL Primitives
+
+`peft_encoder/federated_ssl/`은 PEFT text classifier variant가 FL SSL method와 만나는
+adapter-family 실행 primitive를 소유한다.
+
+## 책임
+
+- method-owned local training bridge
+- helper provider와 peer prediction snapshot materialization
+- supervised seed step primitive
+- partitioned trainable state runtime primitive
+
+## 금지
+
+- FedMatch/FedLGMatch/(FL)^2 method semantics 소유
+- method 이름이 들어간 파일 증식
+- `methods.federated_ssl.fedmatch` 직접 import
+
+method package는 partition plan, objective callable, helper policy를 제공하고, 이
+경로는 전달받은 primitive를 실행한다.
