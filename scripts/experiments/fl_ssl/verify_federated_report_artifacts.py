@@ -35,6 +35,16 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_fl_method_descriptor_name=args.expected_fl_method_descriptor_name,
         expected_fl_method_execution_role=args.expected_fl_method_execution_role,
         expected_federated_ssl_method=args.expected_federated_ssl_method,
+        expected_ssl_method_implementation_status=(
+            args.expected_ssl_method_implementation_status
+        ),
+        expected_ssl_method_scenario=args.expected_ssl_method_scenario,
+        expected_ssl_method_local_budget_policy=(
+            args.expected_ssl_method_local_budget_policy
+        ),
+        expected_ssl_method_parameter_override_status=(
+            args.expected_ssl_method_parameter_override_status
+        ),
         expected_ssl_algorithm=args.expected_ssl_algorithm,
         expected_ssl_method=args.expected_ssl_method,
         expected_adapter_family=args.expected_adapter_family,
@@ -165,6 +175,10 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-fl-method-descriptor-name")
     parser.add_argument("--expected-fl-method-execution-role")
     parser.add_argument("--expected-federated-ssl-method")
+    parser.add_argument("--expected-ssl-method-implementation-status")
+    parser.add_argument("--expected-ssl-method-scenario")
+    parser.add_argument("--expected-ssl-method-local-budget-policy")
+    parser.add_argument("--expected-ssl-method-parameter-override-status")
     parser.add_argument("--expected-ssl-algorithm")
     parser.add_argument("--expected-ssl-method")
     parser.add_argument("--expected-adapter-family")

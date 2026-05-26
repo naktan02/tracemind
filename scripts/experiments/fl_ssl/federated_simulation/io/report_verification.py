@@ -180,6 +180,30 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
+        "protocol.ssl_method.implementation_status",
+        ssl_method.get("implementation_status"),
+        expectation.expected_ssl_method_implementation_status,
+    )
+    _expect_equal(
+        errors,
+        "protocol.ssl_method.scenario",
+        ssl_method.get("scenario"),
+        expectation.expected_ssl_method_scenario,
+    )
+    _expect_equal(
+        errors,
+        "protocol.ssl_method.local_budget_policy",
+        ssl_method.get("local_budget_policy"),
+        expectation.expected_ssl_method_local_budget_policy,
+    )
+    _expect_equal(
+        errors,
+        "protocol.ssl_method.parameter_override_status",
+        ssl_method.get("parameter_override_status"),
+        expectation.expected_ssl_method_parameter_override_status,
+    )
+    _expect_equal(
+        errors,
         "objective.query_ssl.algorithm_name",
         _nested_or_flat_value(objective, "query_ssl", "algorithm_name"),
         expectation.expected_ssl_algorithm,

@@ -37,6 +37,10 @@ def _report_payload(
     fl_method_descriptor_name: str | None = None,
     fl_method_execution_role: str = "manual_baseline",
     federated_ssl_method: str | None = None,
+    ssl_method_implementation_status: str | None = None,
+    ssl_method_scenario: str | None = None,
+    ssl_method_local_budget_policy: str | None = None,
+    ssl_method_parameter_override_status: str | None = None,
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
@@ -84,7 +88,15 @@ def _report_payload(
                 "execution_role": fl_method_execution_role,
             },
             "ssl_method": (
-                None if federated_ssl_method is None else {"name": federated_ssl_method}
+                None
+                if federated_ssl_method is None
+                else {
+                    "name": federated_ssl_method,
+                    "implementation_status": ssl_method_implementation_status,
+                    "scenario": ssl_method_scenario,
+                    "local_budget_policy": ssl_method_local_budget_policy,
+                    "parameter_override_status": ssl_method_parameter_override_status,
+                }
             ),
             "objective": {
                 "query_ssl.algorithm_name": ssl_algorithm,
@@ -527,6 +539,10 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
             fl_method_descriptor_name="fedmatch",
             fl_method_execution_role="method_owned",
             federated_ssl_method="fedmatch",
+            ssl_method_implementation_status="partitioned_trainable_state_slice_v1",
+            ssl_method_scenario="labels-at-client",
+            ssl_method_local_budget_policy="iteration_capped",
+            ssl_method_parameter_override_status="original",
             server_update_policy="fedmatch_partitioned",
             update_partition_policy="partitioned",
             aggregation_weight_policy="uniform",
@@ -543,6 +559,12 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
             expected_fl_method_descriptor_name="fedmatch",
             expected_fl_method_execution_role="method_owned",
             expected_federated_ssl_method="fedmatch",
+            expected_ssl_method_implementation_status=(
+                "partitioned_trainable_state_slice_v1"
+            ),
+            expected_ssl_method_scenario="labels-at-client",
+            expected_ssl_method_local_budget_policy="iteration_capped",
+            expected_ssl_method_parameter_override_status="original",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
             expected_aggregation_weight_policy="uniform",
@@ -642,6 +664,52 @@ def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
     assert (
         "protocol.fl_method.execution_role expected 'method_owned', "
         "got 'manual_baseline'." in result.errors
+    )
+
+
+def test_verify_fedmatch_partitioned_report_flags_ssl_method_protocol_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            fl_method_name="fedmatch",
+            fl_method_descriptor_name="fedmatch",
+            fl_method_execution_role="method_owned",
+            federated_ssl_method="fedmatch",
+            ssl_method_implementation_status="metadata_only",
+            ssl_method_scenario="labels-at-server",
+            ssl_method_local_budget_policy="original_method",
+            ssl_method_parameter_override_status="ablation",
+        ),
+        expectation=FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_ssl_method_implementation_status=(
+                "partitioned_trainable_state_slice_v1"
+            ),
+            expected_ssl_method_scenario="labels-at-client",
+            expected_ssl_method_local_budget_policy="iteration_capped",
+            expected_ssl_method_parameter_override_status="original",
+        ),
+    )
+
+    assert not result.passed
+    assert (
+        "protocol.ssl_method.implementation_status expected "
+        "'partitioned_trainable_state_slice_v1', got 'metadata_only'." in result.errors
+    )
+    assert (
+        "protocol.ssl_method.scenario expected 'labels-at-client', "
+        "got 'labels-at-server'." in result.errors
+    )
+    assert (
+        "protocol.ssl_method.local_budget_policy expected 'iteration_capped', "
+        "got 'original_method'." in result.errors
+    )
+    assert (
+        "protocol.ssl_method.parameter_override_status expected 'original', "
+        "got 'ablation'." in result.errors
     )
 
 
@@ -995,6 +1063,12 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
                 fl_method_descriptor_name="fedmatch",
                 fl_method_execution_role="method_owned",
                 federated_ssl_method="fedmatch",
+                ssl_method_implementation_status=(
+                    "partitioned_trainable_state_slice_v1"
+                ),
+                ssl_method_scenario="labels-at-client",
+                ssl_method_local_budget_policy="iteration_capped",
+                ssl_method_parameter_override_status="original",
             )
         ),
         encoding="utf-8",
@@ -1012,6 +1086,14 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
             "method_owned",
             "--expected-federated-ssl-method",
             "fedmatch",
+            "--expected-ssl-method-implementation-status",
+            "partitioned_trainable_state_slice_v1",
+            "--expected-ssl-method-scenario",
+            "labels-at-client",
+            "--expected-ssl-method-local-budget-policy",
+            "iteration_capped",
+            "--expected-ssl-method-parameter-override-status",
+            "original",
         ]
     )
     output = capsys.readouterr().out

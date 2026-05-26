@@ -24,6 +24,10 @@ class FederatedReportExpectation:
     expected_fl_method_descriptor_name: str | None = None
     expected_fl_method_execution_role: str | None = None
     expected_federated_ssl_method: str | None = None
+    expected_ssl_method_implementation_status: str | None = None
+    expected_ssl_method_scenario: str | None = None
+    expected_ssl_method_local_budget_policy: str | None = None
+    expected_ssl_method_parameter_override_status: str | None = None
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None
     expected_adapter_family: str | None = None

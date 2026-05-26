@@ -237,6 +237,9 @@ override 조합을 verifier로 고정한다. 최소 검증 축은
 `ssl_method=fedmatch`, `server_update_policy=fedmatch_partitioned`,
 `update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
 `peer_context_policy=fixed_probe_output_knn`, `local_ssl_policy=fedmatch_agreement`,
+`ssl_method.implementation_status=partitioned_trainable_state_slice_v1`,
+`ssl_method.local_budget_policy=iteration_capped`,
+`ssl_method.parameter_override_status=original`,
 `partitioned_deltas_artifact_ref`다. Posthoc 통신량을 병합한 report는
 `expected_posthoc_communication_schema_version`과
 `expect_partitioned_sparse_s2c_estimates`로 sparse S2C 추정 필드도 고정한다.
@@ -254,6 +257,10 @@ uv run python -m scripts.experiments.fl_ssl.verify_federated_report_artifacts \
   --expected-fl-method-descriptor-name fedmatch \
   --expected-fl-method-execution-role method_owned \
   --expected-federated-ssl-method fedmatch \
+  --expected-ssl-method-implementation-status partitioned_trainable_state_slice_v1 \
+  --expected-ssl-method-scenario labels-at-client \
+  --expected-ssl-method-local-budget-policy iteration_capped \
+  --expected-ssl-method-parameter-override-status original \
   --expected-server-update-policy fedmatch_partitioned \
   --expected-update-partition-policy partitioned \
   --expected-aggregation-weight-policy uniform \

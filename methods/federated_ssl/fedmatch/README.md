@@ -49,6 +49,9 @@ capability다. 원본 FedMatch snapshot은
   `local_budget_policy=original_method`를 명시할 때만 공통 labeled-anchored SSL
   budget primitive로 계산한다. 이때 입력값은 FedMatch `effective_parameters`의 원본
   `client_batch_size/client_epochs`에서 읽는다.
+- report 검증은 `implementation_status`, `scenario`, `local_budget_policy`,
+  `parameter_override_status`를 함께 고정해, FedMatch가 metadata-only placeholder나
+  원본 budget ablation으로 잘못 실행된 경우를 즉시 실패 처리한다.
 - helper refresh와 KDTree 우선 nearest-neighbor helper selection
 - 공통 `peer_context=fixed_probe_output_knn` mechanism은
   `methods/federated_ssl/peer_context.py`가 실행하고, FedMatch
