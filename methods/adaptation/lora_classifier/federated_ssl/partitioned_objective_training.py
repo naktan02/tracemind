@@ -137,6 +137,8 @@ def run_method_owned_lora_classifier_training_core(
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
     base_parameters: LoraClassifierMaterializedState,
+    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    | None = None,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: PartitionedMethodLocalTrainingConfig,
@@ -269,6 +271,7 @@ def run_method_owned_lora_classifier_training_core(
                 ),
                 labels=effective_labels,
                 base_parameters=base_parameters,
+                base_partition_parameters=base_partition_parameters,
                 lora_config=lora_config,
                 runtime_config=trainer_runtime_config,
                 runtime_resource_cache=runtime_resource_cache,

@@ -144,6 +144,83 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
         )
 
 
+def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
+    base_parameters = LoraClassifierMaterializedState(
+        lora_parameters={
+            "encoder_lora.weight": [
+                0.1,
+                0.2,
+                0.3,
+                0.4,
+                0.5,
+                0.6,
+                0.7,
+                0.8,
+                0.9,
+            ]
+        },
+        classifier_head_weights={
+            "anxiety": [1.0, 1.1, 1.2],
+            "normal": [1.3, 1.4, 1.5],
+        },
+        classifier_head_biases={"anxiety": 1.6, "normal": 1.7},
+    )
+    partition_base_parameters = {
+        "sigma": LoraClassifierMaterializedState(
+            lora_parameters={
+                "encoder_lora.weight": [
+                    2.1,
+                    2.2,
+                    2.3,
+                    2.4,
+                    2.5,
+                    2.6,
+                    2.7,
+                    2.8,
+                    2.9,
+                ]
+            },
+            classifier_head_weights={
+                "anxiety": [3.0, 3.1, 3.2],
+                "normal": [3.3, 3.4, 3.5],
+            },
+            classifier_head_biases={"anxiety": 3.6, "normal": 3.7},
+        )
+    }
+
+    result = build_partitioned_lora_text_classifier_from_config(
+        partition_names=("sigma", "psi"),
+        labels=("anxiety", "normal"),
+        base_parameters=base_parameters,
+        base_partition_parameters=partition_base_parameters,
+        lora_config=LoraClassifierTrainingBackendConfig(),
+        runtime_config=TinyRuntimeConfig(),
+        classifier_factory=_tiny_classifier_factory,  # type: ignore[arg-type]
+    )
+
+    sigma_parameters = result.model.partition_parameter_tensors("sigma")
+    psi_parameters = result.model.partition_parameter_tensors("psi")
+    torch.testing.assert_close(
+        sigma_parameters["encoder_lora.weight"].detach().flatten(),
+        torch.tensor([2.1, 2.2, 2.3, 2.4, 2.5, 2.6, 2.7, 2.8, 2.9]),
+    )
+    torch.testing.assert_close(
+        psi_parameters["encoder_lora.weight"].detach().flatten(),
+        torch.tensor([0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]),
+    )
+
+
+def _tiny_classifier_factory(
+    *,
+    labels: list[str],
+    lora_config: LoraClassifierTrainingBackendConfig,
+    runtime_config: TinyRuntimeConfig,
+    runtime_resource_cache: object | None = None,
+) -> tuple[nn.Module, Any]:
+    del labels, lora_config, runtime_config, runtime_resource_cache
+    return TinyLoraTextClassifier(), object()
+
+
 def _unused_classifier_factory(
     *,
     labels: list[str],

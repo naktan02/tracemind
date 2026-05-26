@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Any, Protocol
 
@@ -64,6 +64,8 @@ def build_partitioned_lora_text_classifier_from_config(
     partition_names: Sequence[str],
     labels: Sequence[str],
     base_parameters: LoraClassifierMaterializedState,
+    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    | None = None,
     lora_config: LoraClassifierTrainingBackendConfig,
     runtime_config: LoraClassifierPartitionRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
@@ -94,7 +96,11 @@ def build_partitioned_lora_text_classifier_from_config(
         load_lora_classifier_base_parameters_into_model(
             model=partition_model,  # type: ignore[arg-type]
             labels=normalized_labels,
-            base_parameters=base_parameters,
+            base_parameters=(
+                base_partition_parameters.get(partition_name, base_parameters)
+                if base_partition_parameters is not None
+                else base_parameters
+            ),
             device=runtime_config.device,
         )
         if tokenizer is None:

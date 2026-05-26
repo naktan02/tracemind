@@ -28,6 +28,9 @@ from ..update.partitioned_tensor_artifact import parse_partitioned_delta_tensor_
 LORA_STATE_PARAMETERS_KEY = "lora_parameters"
 CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "classifier_head_weights"
 CLASSIFIER_HEAD_STATE_BIASES_KEY = "classifier_head_biases"
+PARTITIONED_LORA_STATE_PARAMETERS_KEY = "partitioned_lora_parameters"
+PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY = "partitioned_classifier_head_weights"
+PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY = "partitioned_classifier_head_biases"
 
 
 @dataclass(frozen=True, slots=True)
@@ -100,6 +103,66 @@ def materialize_base_lora_classifier_state(
         classifier_head_weights=classifier_head_weights,
         classifier_head_biases=classifier_head_biases,
     )
+
+
+def materialize_base_lora_classifier_partitioned_state(
+    *,
+    base_state: LoraClassifierState,
+    context: FederatedAggregationContext,
+) -> dict[str, LoraClassifierMaterializedState]:
+    """server-published artifact에 저장된 partition별 global state를 읽는다.
+
+    shared `LoraClassifierState` 계약은 merged LoRA/head artifact ref만 가진다.
+    partitioned state는 그 artifact payload 안의 optional methods-owned metadata로
+    보존하고, 없으면 아직 partitioned global state가 없는 것으로 본다.
+    """
+
+    if (
+        base_state.lora_adapter_artifact_ref is None
+        and base_state.classifier_head_artifact_ref is None
+    ):
+        return {}
+    loader = context.require_artifact_loader(
+        context="LoRA-classifier partitioned base state materialization"
+    )
+    partitioned_lora_parameters: dict[str, dict[str, list[float]]] = {}
+    if base_state.lora_adapter_artifact_ref is not None:
+        lora_artifact = loader.load_json_artifact(
+            artifact_ref=base_state.lora_adapter_artifact_ref
+        )
+        partitioned_lora_parameters = _normalize_partitioned_vector_mapping(
+            lora_artifact.get(PARTITIONED_LORA_STATE_PARAMETERS_KEY, {}),
+            field_name=PARTITIONED_LORA_STATE_PARAMETERS_KEY,
+        )
+
+    partitioned_head_weights: dict[str, dict[str, list[float]]] = {}
+    partitioned_head_biases: dict[str, dict[str, float]] = {}
+    if base_state.classifier_head_artifact_ref is not None:
+        head_artifact = loader.load_json_artifact(
+            artifact_ref=base_state.classifier_head_artifact_ref
+        )
+        partitioned_head_weights = _normalize_partitioned_vector_mapping(
+            head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY, {}),
+            field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+        )
+        partitioned_head_biases = _normalize_partitioned_scalar_mapping(
+            head_artifact.get(PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY, {}),
+            field_name=PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
+        )
+
+    partition_names = sorted(
+        set(partitioned_lora_parameters)
+        | set(partitioned_head_weights)
+        | set(partitioned_head_biases)
+    )
+    return {
+        partition_name: LoraClassifierMaterializedState(
+            lora_parameters=partitioned_lora_parameters.get(partition_name, {}),
+            classifier_head_weights=partitioned_head_weights.get(partition_name, {}),
+            classifier_head_biases=partitioned_head_biases.get(partition_name, {}),
+        )
+        for partition_name in partition_names
+    }
 
 
 def materialize_lora_classifier_update(
@@ -444,6 +507,42 @@ def _normalize_scalar_mapping(
             raise ValueError(f"{field_name} artifact keys must not be empty.")
         result[normalized_key] = float(value)
     return result
+
+
+def _normalize_partitioned_vector_mapping(
+    source: object,
+    *,
+    field_name: str,
+) -> dict[str, dict[str, list[float]]]:
+    if source == {}:
+        return {}
+    if not isinstance(source, Mapping):
+        raise ValueError(f"{field_name} artifact must be a mapping.")
+    return {
+        str(partition_name): _normalize_vector_mapping(
+            values,
+            field_name=f"{field_name}.{partition_name}",
+        )
+        for partition_name, values in source.items()
+    }
+
+
+def _normalize_partitioned_scalar_mapping(
+    source: object,
+    *,
+    field_name: str,
+) -> dict[str, dict[str, float]]:
+    if source == {}:
+        return {}
+    if not isinstance(source, Mapping):
+        raise ValueError(f"{field_name} artifact must be a mapping.")
+    return {
+        str(partition_name): _normalize_scalar_mapping(
+            values,
+            field_name=f"{field_name}.{partition_name}",
+        )
+        for partition_name, values in source.items()
+    }
 
 
 def _l2_norm(

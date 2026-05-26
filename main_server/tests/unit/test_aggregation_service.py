@@ -426,9 +426,21 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
     assert lora_artifact["lora_parameters"]["encoder.q_proj.lora_A"] == pytest.approx(
         [1.3, 1.3]
     )
+    assert lora_artifact["partitioned_lora_parameters"]["sigma"][
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([1.2, 1.0])
+    assert lora_artifact["partitioned_lora_parameters"]["psi"][
+        "encoder.q_proj.lora_A"
+    ] == pytest.approx([1.1, 1.3])
     assert head_artifact["classifier_head_weights"]["anxiety"] == pytest.approx(
         [1.3, 0.2]
     )
+    assert head_artifact["partitioned_classifier_head_weights"]["sigma"][
+        "anxiety"
+    ] == pytest.approx([1.1, 0.0])
+    assert head_artifact["partitioned_classifier_head_weights"]["psi"][
+        "anxiety"
+    ] == pytest.approx([1.2, 0.2])
     assert head_artifact["classifier_head_weights"]["normal"] == pytest.approx(
         [-0.3, 0.8]
     )
@@ -437,6 +449,7 @@ def test_lora_classifier_partitioned_delta_average_publishes_next_state_refs(
     )
     assert result.aggregated_metrics["server_update_partitioned"] == 1.0
     assert result.aggregated_metrics["partition_count_total"] == 2.0
+    assert result.aggregated_metrics["partitioned_global_state_count"] == 2.0
     assert result.update_count == 1
 
 

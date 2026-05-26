@@ -14,6 +14,9 @@ from .materialization import (
     CLASSIFIER_HEAD_STATE_BIASES_KEY,
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     LORA_STATE_PARAMETERS_KEY,
+    PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
+    PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+    PARTITIONED_LORA_STATE_PARAMETERS_KEY,
     LoraClassifierMaterializedState,
 )
 
@@ -38,6 +41,9 @@ def build_lora_classifier_state_projection(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
+    partitioned_parameters: (
+        Mapping[str, LoraClassifierMaterializedState] | None
+    ) = None,
 ) -> LoraClassifierStateProjection:
     """base global snapshot에 aggregated delta를 적용해 next state를 만든다."""
 
@@ -55,6 +61,38 @@ def build_lora_classifier_state_projection(
         base_parameters.classifier_head_biases,
         classifier_head_bias_deltas,
     )
+    lora_artifact: dict[str, object] = {
+        LORA_STATE_PARAMETERS_KEY: next_lora_parameters,
+        "applied_lora_parameter_deltas": {
+            key: [float(value) for value in values]
+            for key, values in lora_parameter_deltas.items()
+        },
+    }
+    classifier_head_artifact: dict[str, object] = {
+        CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: next_classifier_head_weights,
+        CLASSIFIER_HEAD_STATE_BIASES_KEY: next_classifier_head_biases,
+        "applied_classifier_head_weight_deltas": {
+            key: [float(value) for value in values]
+            for key, values in classifier_head_weight_deltas.items()
+        },
+        "applied_classifier_head_bias_deltas": {
+            key: float(value) for key, value in classifier_head_bias_deltas.items()
+        },
+    }
+    if partitioned_parameters:
+        lora_artifact[PARTITIONED_LORA_STATE_PARAMETERS_KEY] = {
+            partition_name: partition.lora_parameters
+            for partition_name, partition in sorted(partitioned_parameters.items())
+        }
+        classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY] = {
+            partition_name: partition.classifier_head_weights
+            for partition_name, partition in sorted(partitioned_parameters.items())
+        }
+        classifier_head_artifact[PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY] = {
+            partition_name: partition.classifier_head_biases
+            for partition_name, partition in sorted(partitioned_parameters.items())
+        }
+
     return LoraClassifierStateProjection(
         next_state=LoraClassifierState(
             schema_version=base_state.schema_version,
@@ -72,23 +110,10 @@ def build_lora_classifier_state_projection(
         ),
         artifacts={
             lora_adapter_artifact_ref: {
-                LORA_STATE_PARAMETERS_KEY: next_lora_parameters,
-                "applied_lora_parameter_deltas": {
-                    key: [float(value) for value in values]
-                    for key, values in lora_parameter_deltas.items()
-                },
+                **lora_artifact,
             },
             classifier_head_artifact_ref: {
-                CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: next_classifier_head_weights,
-                CLASSIFIER_HEAD_STATE_BIASES_KEY: next_classifier_head_biases,
-                "applied_classifier_head_weight_deltas": {
-                    key: [float(value) for value in values]
-                    for key, values in classifier_head_weight_deltas.items()
-                },
-                "applied_classifier_head_bias_deltas": {
-                    key: float(value)
-                    for key, value in classifier_head_bias_deltas.items()
-                },
+                **classifier_head_artifact,
             },
         },
     )

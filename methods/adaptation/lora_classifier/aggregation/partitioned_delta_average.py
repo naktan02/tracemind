@@ -38,10 +38,14 @@ from .fedavg import (
     validate_lora_classifier_update_matches_base,
 )
 from .materialization import (
+    materialize_base_lora_classifier_partitioned_state,
     materialize_base_lora_classifier_state,
     materialize_lora_classifier_partitioned_update,
 )
-from .partitioned_state import merge_partitioned_lora_classifier_deltas
+from .partitioned_state import (
+    apply_lora_classifier_partition_deltas_to_partitioned_state,
+    merge_partitioned_lora_classifier_deltas,
+)
 from .state_projection import build_lora_classifier_state_projection
 
 PARTITIONED_DELTA_AVERAGE_BACKEND_NAME = "partitioned_delta_average"
@@ -138,6 +142,26 @@ def aggregate_lora_classifier_partitioned_delta_average(
         updates=method_updates,
         weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
     )
+    partition_average_deltas = _compute_average_partition_deltas(
+        label_schema=base_state.label_schema,
+        updates=method_updates,
+        weight_policy_name=str((overrides or {}).get("weight_policy", "example_count")),
+    )
+    base_parameters = materialize_base_lora_classifier_state(
+        base_state=base_state,
+        context=context,
+    )
+    base_partition_parameters = materialize_base_lora_classifier_partitioned_state(
+        base_state=base_state,
+        context=context,
+    )
+    next_partition_parameters = (
+        apply_lora_classifier_partition_deltas_to_partitioned_state(
+            base_parameters=base_parameters,
+            base_partition_parameters=base_partition_parameters,
+            partition_deltas=partition_average_deltas,
+        )
+    )
     artifact_ref_resolver = context.require_artifact_ref_resolver(
         context="LoRA-classifier partitioned delta average"
     )
@@ -151,10 +175,7 @@ def aggregate_lora_classifier_partitioned_delta_average(
     )
     state_projection = build_lora_classifier_state_projection(
         base_state=base_state,
-        base_parameters=materialize_base_lora_classifier_state(
-            base_state=base_state,
-            context=context,
-        ),
+        base_parameters=base_parameters,
         next_model_revision=context.next_model_revision,
         updated_at=context.aggregated_at,
         lora_adapter_artifact_ref=lora_adapter_artifact_ref,
@@ -163,10 +184,14 @@ def aggregate_lora_classifier_partitioned_delta_average(
         lora_parameter_deltas=method_result.lora_parameter_deltas,
         classifier_head_weight_deltas=method_result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=method_result.classifier_head_bias_deltas,
+        partitioned_parameters=next_partition_parameters,
     )
     return FederatedAggregationResult(
         next_state=state_projection.next_state,
-        aggregated_metrics=method_result.aggregated_metrics,
+        aggregated_metrics={
+            **method_result.aggregated_metrics,
+            "partitioned_global_state_count": float(len(next_partition_parameters)),
+        },
         update_count=method_result.update_count,
         aggregated_artifacts=state_projection.artifacts,
     )
@@ -192,6 +217,55 @@ def _to_lora_classifier_partitioned_method_update(
         mean_margin=payload.mean_margin,
         delta_l2_norm=payload.l2_norm(),
     )
+
+
+def _compute_average_partition_deltas(
+    *,
+    label_schema: Sequence[str],
+    updates: Sequence[LoraClassifierPartitionedDeltaAverageUpdate],
+    weight_policy_name: str,
+) -> dict[str, LoraClassifierPartitionDelta]:
+    partition_names = sorted(
+        {
+            partition_name
+            for update in updates
+            if update.example_count > 0
+            for partition_name in update.partitions
+        }
+    )
+    averaged: dict[str, LoraClassifierPartitionDelta] = {}
+    for partition_name in partition_names:
+        partition_updates = [
+            LoraClassifierFedAvgUpdate(
+                lora_parameter_deltas=partition.lora_parameter_deltas,
+                classifier_head_weight_deltas=partition.classifier_head_weight_deltas,
+                classifier_head_bias_deltas=partition.classifier_head_bias_deltas,
+                example_count=update.example_count,
+                mean_confidence=update.mean_confidence,
+                mean_margin=update.mean_margin,
+                delta_l2_norm=update.delta_l2_norm,
+            )
+            for update in updates
+            if update.example_count > 0
+            for name, partition in update.partitions.items()
+            if name == partition_name
+        ]
+        if not partition_updates:
+            continue
+        partition_result = compute_lora_classifier_fedavg(
+            label_schema=label_schema,
+            updates=partition_updates,
+            weight_policy_name=weight_policy_name,
+        )
+        averaged[partition_name] = LoraClassifierPartitionDelta(
+            partition_name=partition_name,
+            lora_parameter_deltas=partition_result.lora_parameter_deltas,
+            classifier_head_weight_deltas=(
+                partition_result.classifier_head_weight_deltas
+            ),
+            classifier_head_bias_deltas=partition_result.classifier_head_bias_deltas,
+        )
+    return averaged
 
 
 def _validate_lora_classifier_partitioned_delta_average_overrides(

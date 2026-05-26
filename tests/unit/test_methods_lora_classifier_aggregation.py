@@ -8,7 +8,11 @@ from datetime import datetime, timezone
 import pytest
 
 from methods.adaptation.lora_classifier.aggregation.materialization import (
+    PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
+    PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
+    PARTITIONED_LORA_STATE_PARAMETERS_KEY,
     LoraClassifierMaterializedState,
+    materialize_base_lora_classifier_partitioned_state,
     materialize_base_lora_classifier_state,
     materialize_lora_classifier_partitioned_update,
     materialize_lora_classifier_update,
@@ -425,6 +429,47 @@ def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> N
             base_parameters=base,
             delta=delta,
         )
+
+
+def test_materialize_lora_classifier_partitioned_base_state_reads_artifact_metadata():
+    state = materialize_base_lora_classifier_partitioned_state(
+        base_state=_lora_state(
+            lora_adapter_artifact_ref="aggregation_artifact://state/lora",
+            classifier_head_artifact_ref="aggregation_artifact://state/head",
+        ),
+        context=_aggregation_context(
+            loader=InMemoryJsonArtifactLoader(
+                {
+                    "aggregation_artifact://state/lora": {
+                        PARTITIONED_LORA_STATE_PARAMETERS_KEY: {
+                            "sigma": {"encoder_lora.weight": [0.1, 0.2]},
+                            "psi": {"encoder_lora.weight": [0.3, 0.4]},
+                        }
+                    },
+                    "aggregation_artifact://state/head": {
+                        PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY: {
+                            "sigma": {"anxiety": [0.5, 0.6]},
+                        },
+                        PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY: {
+                            "psi": {"anxiety": -0.1},
+                        },
+                    },
+                }
+            )
+        ),
+    )
+
+    assert set(state) == {"sigma", "psi"}
+    assert state["sigma"].lora_parameters["encoder_lora.weight"] == pytest.approx(
+        [0.1, 0.2]
+    )
+    assert state["sigma"].classifier_head_weights["anxiety"] == pytest.approx(
+        [0.5, 0.6]
+    )
+    assert state["psi"].lora_parameters["encoder_lora.weight"] == pytest.approx(
+        [0.3, 0.4]
+    )
+    assert state["psi"].classifier_head_biases["anxiety"] == pytest.approx(-0.1)
 
 
 def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:

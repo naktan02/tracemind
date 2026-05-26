@@ -65,6 +65,30 @@ def apply_lora_classifier_partition_delta_to_state(
     )
 
 
+def apply_lora_classifier_partition_deltas_to_partitioned_state(
+    *,
+    base_parameters: LoraClassifierMaterializedState,
+    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
+) -> dict[str, LoraClassifierMaterializedState]:
+    """partition별 base state에 partition delta를 적용해 다음 partition state를 만든다.
+
+    첫 partitioned round처럼 partition별 base artifact가 아직 없으면 merged global
+    base를 해당 partition의 시작점으로 사용한다.
+    """
+
+    return {
+        partition_name: apply_lora_classifier_partition_delta_to_state(
+            base_parameters=base_partition_parameters.get(
+                partition_name,
+                base_parameters,
+            ),
+            delta=delta,
+        )
+        for partition_name, delta in sorted(partition_deltas.items())
+    }
+
+
 def _apply_vector_mapping(
     base_values: Mapping[str, Sequence[float]],
     deltas: Mapping[str, Sequence[float]],

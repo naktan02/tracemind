@@ -54,6 +54,7 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_lora_classifier_base_parameters,
+    load_lora_classifier_base_partition_parameters,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
@@ -106,6 +107,13 @@ def run_method_owned_lora_classifier_local_training(
         base_parameters=base_parameters,
         timing_recorder=timing_recorder,
     )
+    base_partition_parameters = _load_base_partition_parameters_if_needed(
+        active_adapter_state=active_adapter_state,
+        output_dir=output_dir,
+        aggregated_at=effective_created_at,
+        round_base_snapshot_cache=round_base_snapshot_cache,
+        timing_recorder=timing_recorder,
+    )
     effective_lora_config = (
         lora_config
         or build_lora_classifier_training_backend_config(training_task.objective_config)
@@ -132,6 +140,7 @@ def run_method_owned_lora_classifier_local_training(
         diagnostic_unlabeled_rows=diagnostic_unlabeled_rows,
         labels=labels,
         base_parameters=base_parameters,
+        base_partition_parameters=base_partition_parameters,
         training_task=training_task,
         model_manifest=model_manifest,
         ssl_method_config=ssl_method_config,
@@ -252,6 +261,30 @@ def _load_base_parameters_if_needed(
         )
     with timing_recorder.measure("adapter_base_materialization_seconds"):
         return load_lora_classifier_base_parameters(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=aggregated_at,
+            round_base_snapshot_cache=round_base_snapshot_cache,
+        )
+
+
+def _load_base_partition_parameters_if_needed(
+    *,
+    active_adapter_state: LoraClassifierState,
+    output_dir: Path,
+    aggregated_at: datetime,
+    round_base_snapshot_cache: RoundBaseSnapshotCache | None,
+    timing_recorder: TimingRecorder | None,
+) -> dict[str, LoraClassifierMaterializedState]:
+    if timing_recorder is None:
+        return load_lora_classifier_base_partition_parameters(
+            active_adapter_state=active_adapter_state,
+            output_dir=output_dir,
+            aggregated_at=aggregated_at,
+            round_base_snapshot_cache=round_base_snapshot_cache,
+        )
+    with timing_recorder.measure("adapter_base_partition_materialization_seconds"):
+        return load_lora_classifier_base_partition_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
