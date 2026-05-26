@@ -61,6 +61,12 @@ def main(argv: Sequence[str] | None = None) -> int:
         expect_lora_classifier_aggregate_snapshot=(
             args.expect_lora_classifier_aggregate_snapshot
         ),
+        expected_posthoc_communication_schema_version=(
+            args.expected_posthoc_communication_schema_version
+        ),
+        expect_partitioned_sparse_s2c_estimates=(
+            args.expect_partitioned_sparse_s2c_estimates
+        ),
         expected_embedding_metadata_status=args.expected_embedding_metadata_status,
         expected_embedding_backend=args.expected_embedding_backend,
         expected_embedding_model_id=args.expected_embedding_model_id,
@@ -188,6 +194,11 @@ def _build_parser() -> argparse.ArgumentParser:
     )
     parser.add_argument(
         "--expect-lora-classifier-aggregate-snapshot",
+        action="store_true",
+    )
+    parser.add_argument("--expected-posthoc-communication-schema-version")
+    parser.add_argument(
+        "--expect-partitioned-sparse-s2c-estimates",
         action="store_true",
     )
     parser.add_argument("--expected-embedding-metadata-status")

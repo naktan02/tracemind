@@ -47,6 +47,8 @@ source of truth로 본다.
   snapshot 존재까지 같은 verifier로 확인한다. FedMatch physical-partition run은
   `fedmatch_partitioned`, `partitioned`, `uniform`, `fixed_probe_output_knn`,
   `fedmatch_agreement`, `partitioned_deltas_artifact_ref`를 verifier expectation으로
+  고정한다. Posthoc communication sidecar를 병합한 뒤에는 같은 verifier에서
+  `fl_ssl_posthoc_communication_cost.v1`와 partitioned sparse S2C 추정 필드도
   고정한다.
 - [x] 실제 FL report 산출물 shape를 result index 샘플로 고정하고 dashboard/index
   소비 필드를 확정했다. `result_index`는 `fl_ssl_main_comparison.report.json`에서

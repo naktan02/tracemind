@@ -40,6 +40,8 @@ class FederatedReportExpectation:
     expect_partitioned_update_artifact_refs: bool = False
     expect_no_agent_local_update_refs: bool = False
     expect_lora_classifier_aggregate_snapshot: bool = False
+    expected_posthoc_communication_schema_version: str | None = None
+    expect_partitioned_sparse_s2c_estimates: bool = False
     expected_embedding_metadata_status: str | None = None
     expected_embedding_backend: str | None = None
     expected_embedding_model_id: str | None = None

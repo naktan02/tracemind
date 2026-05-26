@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+from scripts.experiments.fl_ssl.backfill_communication_costs import (
+    POSTHOC_SCHEMA_VERSION,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.report_verification import (
     FederatedReportExpectation,
     verify_client_count_sweep_summary_path,
@@ -165,6 +168,37 @@ def _round_record_expectation() -> FederatedReportExpectation:
         expected_round_record_count=2,
         expected_round_update_count_matches_client_count=True,
     )
+
+
+def _attach_posthoc_communication_cost(
+    payload: dict[str, object],
+    *,
+    include_sparse_estimate: bool = True,
+    mirror_secondary: bool = True,
+) -> dict[str, object]:
+    posthoc: dict[str, object] = {
+        "schema_version": POSTHOC_SCHEMA_VERSION,
+        "c2s_total_bytes": 28,
+        "s2c_total_bytes_estimated": 336,
+        "bidirectional_total_bytes_estimated": 364,
+        "per_round": [
+            {
+                "round_id": "round_0001",
+                "s2c_partitioned_sparse_transport_bytes_estimated": 0,
+            },
+            {
+                "round_id": "round_0002",
+                "s2c_partitioned_sparse_transport_bytes_estimated": 96,
+            },
+        ],
+    }
+    if include_sparse_estimate:
+        posthoc["s2c_partitioned_sparse_transport_bytes_estimated"] = 96
+    diagnostics = {"communication_cost": {"posthoc_byte_estimates": posthoc}}
+    metrics = {"secondary": {"communication_cost": {"posthoc_byte_estimates": posthoc}}}
+    payload["diagnostics"] = diagnostics
+    payload["metrics"] = metrics if mirror_secondary else {"secondary": {}}
+    return payload
 
 
 def _write_report_run_with_server_update_artifacts(
@@ -578,6 +612,66 @@ def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
     assert (
         "protocol.fl_capabilities.update_partition_policy.name expected "
         "'partitioned', got 'unified'." in result.errors
+    )
+
+
+def test_verify_fedmatch_report_accepts_posthoc_sparse_communication_cost() -> None:
+    payload = _attach_posthoc_communication_cost(
+        _report_payload(
+            client_count=2,
+            completed_rounds=2,
+            round_budget=2,
+            federated_ssl_method="fedmatch",
+        )
+    )
+
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=payload,
+        expectation=FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_posthoc_communication_schema_version=POSTHOC_SCHEMA_VERSION,
+            expect_partitioned_sparse_s2c_estimates=True,
+        ),
+    )
+
+    assert result.passed
+
+
+def test_verify_fedmatch_report_flags_missing_posthoc_sparse_cost_fields() -> None:
+    payload = _attach_posthoc_communication_cost(
+        _report_payload(
+            client_count=2,
+            completed_rounds=2,
+            round_budget=2,
+            federated_ssl_method="fedmatch",
+        ),
+        include_sparse_estimate=False,
+        mirror_secondary=False,
+    )
+
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=payload,
+        expectation=FederatedReportExpectation(
+            expected_federated_ssl_method="fedmatch",
+            expected_posthoc_communication_schema_version=POSTHOC_SCHEMA_VERSION,
+            expect_partitioned_sparse_s2c_estimates=True,
+        ),
+    )
+
+    assert not result.passed
+    assert (
+        "diagnostics.communication_cost.posthoc_byte_estimates"
+        ".s2c_partitioned_sparse_transport_bytes_estimated is required."
+    ) in result.errors
+    assert (
+        "metrics.secondary.communication_cost.posthoc_byte_estimates.schema_version "
+        f"expected '{POSTHOC_SCHEMA_VERSION}', got None."
+    ) in result.errors
+    assert (
+        "metrics.secondary.communication_cost.posthoc_byte_estimates is required."
+        in (result.errors)
     )
 
 

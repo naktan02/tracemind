@@ -237,7 +237,9 @@ override 조합을 verifier로 고정한다. 최소 검증 축은
 `ssl_method=fedmatch`, `server_update_policy=fedmatch_partitioned`,
 `update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
 `peer_context_policy=fixed_probe_output_knn`, `local_ssl_policy=fedmatch_agreement`,
-`partitioned_deltas_artifact_ref`다.
+`partitioned_deltas_artifact_ref`다. Posthoc 통신량을 병합한 report는
+`expected_posthoc_communication_schema_version`과
+`expect_partitioned_sparse_s2c_estimates`로 sparse S2C 추정 필드도 고정한다.
 
 ## Sweep
 

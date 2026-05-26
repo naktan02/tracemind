@@ -279,6 +279,11 @@ def verify_federated_simulation_report_payload(
         rounds=rounds,
         expectation=expectation,
     )
+    _verify_posthoc_communication_cost(
+        errors=errors,
+        payload=payload,
+        expectation=expectation,
+    )
     return VerificationResult(artifact=artifact, errors=tuple(errors))
 
 
@@ -403,6 +408,85 @@ def _verify_shared_update_artifacts(
             run_dir=run_dir,
             rounds=rounds,
         )
+
+
+def _verify_posthoc_communication_cost(
+    *,
+    errors: list[str],
+    payload: Mapping[str, object],
+    expectation: FederatedReportExpectation,
+) -> None:
+    if (
+        expectation.expected_posthoc_communication_schema_version is None
+        and not expectation.expect_partitioned_sparse_s2c_estimates
+    ):
+        return
+    diagnostics = _object_mapping(payload.get("diagnostics"))
+    diagnostic_cost = _object_mapping(diagnostics.get("communication_cost"))
+    diagnostic_posthoc = _object_mapping(diagnostic_cost.get("posthoc_byte_estimates"))
+    _expect_equal(
+        errors,
+        "diagnostics.communication_cost.posthoc_byte_estimates.schema_version",
+        diagnostic_posthoc.get("schema_version"),
+        expectation.expected_posthoc_communication_schema_version,
+    )
+    metrics = _object_mapping(payload.get("metrics"))
+    secondary = _object_mapping(metrics.get("secondary"))
+    secondary_cost = _object_mapping(secondary.get("communication_cost"))
+    secondary_posthoc = _object_mapping(secondary_cost.get("posthoc_byte_estimates"))
+    _expect_equal(
+        errors,
+        "metrics.secondary.communication_cost.posthoc_byte_estimates.schema_version",
+        secondary_posthoc.get("schema_version"),
+        expectation.expected_posthoc_communication_schema_version,
+    )
+    if not expectation.expect_partitioned_sparse_s2c_estimates:
+        return
+    _verify_partitioned_sparse_s2c_estimates(
+        errors=errors,
+        posthoc=diagnostic_posthoc,
+        field_prefix="diagnostics.communication_cost.posthoc_byte_estimates",
+    )
+    _verify_partitioned_sparse_s2c_estimates(
+        errors=errors,
+        posthoc=secondary_posthoc,
+        field_prefix="metrics.secondary.communication_cost.posthoc_byte_estimates",
+    )
+
+
+def _verify_partitioned_sparse_s2c_estimates(
+    *,
+    errors: list[str],
+    posthoc: Mapping[str, object],
+    field_prefix: str,
+) -> None:
+    if not posthoc:
+        errors.append(f"{field_prefix} is required.")
+        return
+    if (
+        _optional_int(posthoc.get("s2c_partitioned_sparse_transport_bytes_estimated"))
+        is None
+    ):
+        errors.append(
+            f"{field_prefix}.s2c_partitioned_sparse_transport_bytes_estimated "
+            "is required."
+        )
+    per_round = _object_sequence(posthoc.get("per_round"))
+    if not per_round:
+        errors.append(f"{field_prefix}.per_round must not be empty.")
+        return
+    for index, round_payload in enumerate(per_round, start=1):
+        round_mapping = _object_mapping(round_payload)
+        if (
+            _optional_int(
+                round_mapping.get("s2c_partitioned_sparse_transport_bytes_estimated")
+            )
+            is None
+        ):
+            errors.append(
+                f"{field_prefix}.per_round[{index}]"
+                ".s2c_partitioned_sparse_transport_bytes_estimated is required."
+            )
 
 
 def _requires_shared_update_artifact_check(
