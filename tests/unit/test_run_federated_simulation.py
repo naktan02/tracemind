@@ -1418,6 +1418,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     request.capability_plan = _fedmatch_agreement_capability_plan()
     runtime_resource_cache = InMemoryRuntimeResourceCache()
     runtime_resource_cache.set_resource("lora_classifier:helper_model:test", object())
+    runtime_resource_cache.set_resource("lora_classifier:backbone_base:test", object())
     runtime_resource_cache.set_resource("lora_classifier:tokenizer:test", object())
     peer_context = FederatedSslPeerContext(
         client_id="agent_01",
@@ -1480,6 +1481,10 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     assert method_calls[0]["persist_agent_local_update"] is False
     assert (
         runtime_resource_cache.get_resource("lora_classifier:helper_model:test") is None
+    )
+    assert (
+        runtime_resource_cache.get_resource("lora_classifier:backbone_base:test")
+        is None
     )
     assert (
         runtime_resource_cache.get_resource("lora_classifier:tokenizer:test")
