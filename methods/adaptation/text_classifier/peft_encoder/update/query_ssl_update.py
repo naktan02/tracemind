@@ -36,7 +36,7 @@ from .partitioned_delta import LoraClassifierPartitionDelta
 
 
 @dataclass(frozen=True, slots=True)
-class QuerySslLoraUpdateBuildResult:
+class QuerySslPeftEncoderUpdateBuildResult:
     """FL adapter가 envelope과 summary에 쓰는 Query SSL local update 결과."""
 
     update_payload: LoraClassifierDelta | PeftClassifierDelta
@@ -44,7 +44,7 @@ class QuerySslLoraUpdateBuildResult:
     accepted_unlabeled_count: int
 
 
-QuerySslPeftEncoderUpdateBuildResult = QuerySslLoraUpdateBuildResult
+QuerySslLoraUpdateBuildResult = QuerySslPeftEncoderUpdateBuildResult
 
 
 def build_query_ssl_peft_encoder_update_payload(
@@ -67,7 +67,7 @@ def build_query_ssl_peft_encoder_update_payload(
     classifier_head_delta_artifact_ref: str | None = None,
     partitioned_deltas_artifact_ref: str | None = None,
     include_inline_deltas: bool = True,
-) -> QuerySslLoraUpdateBuildResult:
+) -> QuerySslPeftEncoderUpdateBuildResult:
     """학습 결과 delta와 history를 shared payload/metric으로 변환한다."""
 
     normalized_delta_format = str(delta_format).strip()
@@ -124,7 +124,7 @@ def build_query_ssl_peft_encoder_update_payload(
         mean_margin=None,
         created_at=created_at,
     )
-    return QuerySslLoraUpdateBuildResult(
+    return QuerySslPeftEncoderUpdateBuildResult(
         update_payload=update_payload,
         client_metrics=build_query_ssl_peft_encoder_client_metrics(
             update_payload=update_payload,
@@ -147,7 +147,7 @@ def build_query_ssl_peft_encoder_client_metrics(
     unlabeled_count: int,
     accepted_unlabeled_count: int,
 ) -> dict[str, float]:
-    """Query SSL LoRA local update client metric을 조립한다."""
+    """Query SSL PEFT encoder local update client metric을 조립한다."""
 
     metrics: dict[str, float] = {
         ClientMetricKeys.SELECTED_EXAMPLES: float(update_payload.example_count),

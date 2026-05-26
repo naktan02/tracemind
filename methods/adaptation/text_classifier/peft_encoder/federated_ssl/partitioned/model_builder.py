@@ -1,4 +1,4 @@
-"""PEFT-backed partitioned LoRA-classifier model builder."""
+"""PEFT-backed partitioned text-classifier model builder."""
 
 from __future__ import annotations
 
@@ -15,12 +15,12 @@ from ...training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
 from ...training.modeling import build_peft_encoder_text_classifier_from_config
-from ...update.materialization import LoraClassifierMaterializedState
+from ...update.materialization import PeftEncoderMaterializedState
 from . import trainable_model as ptm
 
 
-class LoraClassifierPartitionRuntimeConfig(Protocol):
-    """Partitioned LoRA-classifier model build에 필요한 runtime config surface."""
+class PeftEncoderPartitionRuntimeConfig(Protocol):
+    """Partitioned PEFT encoder model build에 필요한 runtime config surface."""
 
     device: str
     classifier_dropout: float
@@ -29,22 +29,22 @@ class LoraClassifierPartitionRuntimeConfig(Protocol):
     trust_remote_code: bool
 
 
-class LoraTextClassifierFactory(Protocol):
-    """LoRA-classifier module factory seam for tests and optional dependencies."""
+class PeftEncoderTextClassifierFactory(Protocol):
+    """PEFT encoder module factory seam for tests and optional dependencies."""
 
     def __call__(
         self,
         *,
         labels: list[str],
         lora_config: LoraClassifierTrainingBackendConfig,
-        runtime_config: LoraClassifierPartitionRuntimeConfig,
+        runtime_config: PeftEncoderPartitionRuntimeConfig,
         runtime_resource_cache: RuntimeResourceCache | None = None,
     ) -> tuple[nn.Module, Any]:
-        """Build one LoRA-classifier module and tokenizer."""
+        """Build one PEFT encoder classifier module and tokenizer."""
 
 
 @dataclass(frozen=True, slots=True)
-class PartitionedLoraTextClassifierBuildResult:
+class PartitionedPeftEncoderTextClassifierBuildResult:
     """Partitioned text classifier model과 tokenizer build 결과."""
 
     model: ptm.PartitionedTrainableTextClassifierModules
@@ -52,21 +52,20 @@ class PartitionedLoraTextClassifierBuildResult:
     partition_names: tuple[str, ...]
 
 
-def build_partitioned_lora_text_classifier_from_config(
+def build_partitioned_peft_encoder_text_classifier_from_config(
     *,
     partition_names: Sequence[str],
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
-    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
-    | None = None,
+    base_parameters: PeftEncoderMaterializedState,
+    base_partition_parameters: Mapping[str, PeftEncoderMaterializedState] | None = None,
     lora_config: LoraClassifierTrainingBackendConfig,
-    runtime_config: LoraClassifierPartitionRuntimeConfig,
+    runtime_config: PeftEncoderPartitionRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
-    classifier_factory: LoraTextClassifierFactory = (
+    classifier_factory: PeftEncoderTextClassifierFactory = (
         build_peft_encoder_text_classifier_from_config
     ),
-) -> PartitionedLoraTextClassifierBuildResult:
-    """Build one full LoRA-classifier module per physical trainable partition.
+) -> PartitionedPeftEncoderTextClassifierBuildResult:
+    """Build one full PEFT encoder classifier module per physical trainable partition.
 
     FedMatch의 sigma/psi 이름 의미는 이 builder가 해석하지 않는다. caller가 넘긴
     partition 이름마다 같은 global base state를 로드한 full text classifier module을
@@ -107,7 +106,7 @@ def build_partitioned_lora_text_classifier_from_config(
 
     if tokenizer is None:  # pragma: no cover - plan rejects empty names first.
         raise ValueError("partition_names must not be empty.")
-    return PartitionedLoraTextClassifierBuildResult(
+    return PartitionedPeftEncoderTextClassifierBuildResult(
         model=ptm.PartitionedTrainableTextClassifierModules(
             partitions=tuple(partition_specs),
             composition_policy=plan.composition_policy,
@@ -124,3 +123,13 @@ def _normalize_labels(labels: Sequence[str]) -> tuple[str, ...]:
     if len(set(normalized)) != len(normalized):
         raise ValueError("labels must not contain duplicates.")
     return normalized
+
+
+LoraClassifierPartitionRuntimeConfig = PeftEncoderPartitionRuntimeConfig
+LoraTextClassifierFactory = PeftEncoderTextClassifierFactory
+PartitionedLoraTextClassifierBuildResult = (
+    PartitionedPeftEncoderTextClassifierBuildResult
+)
+build_partitioned_lora_text_classifier_from_config = (
+    build_partitioned_peft_encoder_text_classifier_from_config
+)

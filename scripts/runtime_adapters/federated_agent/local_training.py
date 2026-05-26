@@ -72,7 +72,6 @@ from shared.src.contracts.training_contracts import TrainingTask
 QuerySslPeftEncoderClientTrainingResult = (
     qssl_training.QuerySslPeftEncoderClientTrainingResult
 )
-QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
 
 
 def run_method_owned_peft_encoder_local_training(

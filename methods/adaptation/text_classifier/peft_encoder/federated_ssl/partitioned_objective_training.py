@@ -101,7 +101,7 @@ from .partitioned.budget import (
     resolve_partitioned_local_budget,
 )
 from .partitioned.model_builder import (
-    build_partitioned_lora_text_classifier_from_config,
+    build_partitioned_peft_encoder_text_classifier_from_config,
 )
 from .partitioned.sparse_sync import (
     PartitionSparseSyncParameters,
@@ -117,10 +117,16 @@ from .partitioned.training_loop import (
     train_physical_partitioned_adapter_classifier,
 )
 
-LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
-QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
-QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
-QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
+PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
+QuerySslPeftEncoderDeltaMaterializer = (
+    qssl_training.QuerySslPeftEncoderDeltaMaterializer
+)
+QuerySslPeftEncoderObjectiveRuntimeConfig = (
+    qssl_training.QuerySslPeftEncoderObjectiveRuntimeConfig
+)
 PseudoLabelDiagnosticThreshold = pld.PseudoLabelDiagnosticThreshold
 build_final_snapshot_pseudo_label_quality = (
     pld.build_final_snapshot_pseudo_label_quality
@@ -158,7 +164,7 @@ class PartitionedLocalRuntimePlan(Protocol):
     emit_supervised_partition: bool
 
 
-def run_partitioned_lora_classifier_training_core(
+def run_partitioned_peft_encoder_training_core(
     *,
     client_id: str,
     seed: int,
@@ -175,20 +181,20 @@ def run_partitioned_lora_classifier_training_core(
     ssl_method_config: PartitionedMethodLocalTrainingConfig,
     partitioned_runtime_plan: PartitionedLocalRuntimePlan,
     local_ssl_policy_name: str,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
-    delta_materializer: QuerySslLoraDeltaMaterializer,
+    delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
     peer_context: FederatedSslPeerContext | None = None,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-) -> QuerySslLoraClientTrainingResult:
+) -> QuerySslPeftEncoderClientTrainingResult:
     """method-owned partitioned objective를 PEFT text-classifier update로 실행한다."""
 
     effective_labeled_rows = list(labeled_rows)
@@ -348,14 +354,16 @@ def run_partitioned_lora_classifier_training_core(
                 ),
             }
         if uses_physical_partition_runtime:
-            partitioned_build = build_partitioned_lora_text_classifier_from_config(
-                partition_names=partitioned_runtime_plan.partition_names,
-                labels=effective_labels,
-                base_parameters=base_parameters,
-                base_partition_parameters=effective_base_partition_parameters,
-                lora_config=lora_config,
-                runtime_config=trainer_runtime_config,
-                runtime_resource_cache=runtime_resource_cache,
+            partitioned_build = (
+                build_partitioned_peft_encoder_text_classifier_from_config(
+                    partition_names=partitioned_runtime_plan.partition_names,
+                    labels=effective_labels,
+                    base_parameters=base_parameters,
+                    base_partition_parameters=effective_base_partition_parameters,
+                    lora_config=lora_config,
+                    runtime_config=trainer_runtime_config,
+                    runtime_resource_cache=runtime_resource_cache,
+                )
             )
             training_result = train_physical_partitioned_adapter_classifier(
                 model=partitioned_build.model,
@@ -601,7 +609,7 @@ def run_partitioned_lora_classifier_training_core(
         created_at=created_at,
     )
 
-    return QuerySslLoraClientTrainingResult(
+    return QuerySslPeftEncoderClientTrainingResult(
         update_envelope=update_envelope,
         update_payload=update_build_result.update_payload,
         candidate_count=len(effective_unlabeled_rows),
@@ -641,7 +649,7 @@ def _payload_format_for_update(
 def _build_psi_query_ssl_algorithm(
     *,
     local_ssl_policy_name: str,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     train_loader_steps: int,
     unlabeled_loader_steps: int,
     total_steps: int,
@@ -711,7 +719,7 @@ def _build_timed_peer_client_snapshot(
     peer_probe_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot:
     with _measure(timing_recorder, "core_peer_snapshot_build_seconds"):
@@ -737,7 +745,7 @@ def _resolve_partitioned_diagnostic_threshold(
     *,
     local_ssl_policy_name: str,
     partitioned_runtime_plan: PartitionedLocalRuntimePlan,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
 ) -> PseudoLabelDiagnosticThreshold:
     if (
         local_ssl_policy_name.strip().lower().replace("-", "_")
@@ -785,3 +793,8 @@ def _validate_labeled_rows_have_known_labels(
             "Partitioned labeled_rows contain labels outside active label_schema: "
             f"{missing}."
         )
+
+
+run_partitioned_lora_classifier_training_core = (
+    run_partitioned_peft_encoder_training_core
+)

@@ -23,7 +23,7 @@ from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
@@ -54,20 +54,20 @@ def evaluate_peft_encoder_state(
     *,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     lora_config: LoraClassifierTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> dict[str, Any]:
-    """materialized global LoRA/head state로 labeled rows를 평가한다."""
+    """materialized global PEFT encoder/head state로 labeled rows를 평가한다."""
 
     effective_labels = [str(label) for label in labels]
     if not effective_labels:
-        raise ValueError("LoRA-classifier evaluation labels must not be empty.")
+        raise ValueError("PEFT encoder evaluation labels must not be empty.")
     if batch_size <= 0:
-        raise ValueError("LoRA-classifier evaluation batch_size must be positive.")
+        raise ValueError("PEFT encoder evaluation batch_size must be positive.")
 
     set_seed(int(seed))
     model, tokenizer = build_peft_encoder_text_classifier_from_config(
@@ -104,7 +104,7 @@ def evaluate_peft_encoder_state_payload(
     *,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     lora_config: LoraClassifierTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
@@ -114,7 +114,7 @@ def evaluate_peft_encoder_state_payload(
     score_distribution_kind: str = LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
     selection_confidence_kind: str = LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
 ) -> dict[str, object]:
-    """LoRA-classifier global state 평가 결과를 canonical payload로 반환한다."""
+    """PEFT encoder global state 평가 결과를 canonical payload로 반환한다."""
 
     report = evaluate_peft_encoder_state(
         rows=rows,
@@ -143,7 +143,7 @@ def evaluate_peft_encoder_validation_payload(
     *,
     rows: Sequence[LabeledQueryRow],
     adapter_state: object,
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     objective_config: TrainingObjectiveConfig | None,
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
@@ -194,7 +194,7 @@ def require_peft_encoder_validation_backend(
     scorer_backend_name: str,
     prototype_scorer_backend_name: str,
 ) -> None:
-    """LoRA-classifier state에 prototype scorer validation이 붙는 drift를 막는다."""
+    """PEFT encoder state에 prototype scorer validation이 붙는 drift를 막는다."""
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         return

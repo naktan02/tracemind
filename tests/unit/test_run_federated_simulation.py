@@ -114,7 +114,7 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
 from scripts.runtime_adapters.federated_agent.local_training import (
-    QuerySslLoraClientTrainingResult,
+    QuerySslPeftEncoderClientTrainingResult,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
@@ -325,7 +325,7 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
-    def _fake_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
+    def _fake_trainer(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
         training_task = kwargs["training_task"]
         active_state = kwargs["active_adapter_state"]
         client_id = str(kwargs["client_id"])
@@ -386,7 +386,7 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 "query_ssl_local_steps": 1.0,
             },
         )
-        return QuerySslLoraClientTrainingResult(
+        return QuerySslPeftEncoderClientTrainingResult(
             update_envelope=update_envelope,
             update_payload=update_payload,
             candidate_count=2,
@@ -1070,9 +1070,11 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         "round_marker": 2,
     }
 
-    def _fake_query_ssl_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
+    def _fake_query_ssl_trainer(
+        **kwargs: object,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         trainer_calls.append(dict(kwargs))
-        return QuerySslLoraClientTrainingResult(
+        return QuerySslPeftEncoderClientTrainingResult(
             update_envelope=update_envelope,
             update_payload=update_payload,
             candidate_count=1,
@@ -1393,9 +1395,11 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     }
     method_calls: list[dict[str, object]] = []
 
-    def _fake_method_trainer(**kwargs: object) -> QuerySslLoraClientTrainingResult:
+    def _fake_method_trainer(
+        **kwargs: object,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         method_calls.append(dict(kwargs))
-        return QuerySslLoraClientTrainingResult(
+        return QuerySslPeftEncoderClientTrainingResult(
             update_envelope=update_envelope,
             update_payload=update_payload,
             candidate_count=1,

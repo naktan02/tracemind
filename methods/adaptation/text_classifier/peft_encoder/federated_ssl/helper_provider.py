@@ -23,7 +23,7 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerContext,
 )
 
-LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
+PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 build_lora_classifier_helper_probability_provider = (
     peer_predictions.build_peft_encoder_helper_probability_provider
 )
@@ -40,7 +40,7 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
     labels: tuple[str, ...],
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     timing_recorder: TimingRecorder | None,
 ) -> object | None:

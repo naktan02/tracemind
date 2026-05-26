@@ -18,7 +18,7 @@ from agent.src.services.training.execution.local_training_service import (
 )
 from agent.src.services.training.execution.query_ssl_local_training_service import (
     QuerySslLocalTrainingService,
-    QuerySslLoraLocalTrainingRequest,
+    QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
@@ -62,7 +62,9 @@ from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
 
-QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
 
 
 class _RecordingLoraTrainExecutor:
@@ -107,7 +109,7 @@ class _QuerySslLoraBackend:
     def build_query_ssl_update(
         self,
         **kwargs: object,
-    ) -> QuerySslLoraClientTrainingResult:
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         self.called = True
         training_task = kwargs["training_task"]
         model_manifest = kwargs["model_manifest"]
@@ -125,7 +127,7 @@ class _QuerySslLoraBackend:
             example_count=self.update_payload.example_count,
             client_metrics={"query_ssl_local_steps": 1.0},
         )
-        return QuerySslLoraClientTrainingResult(
+        return QuerySslPeftEncoderClientTrainingResult(
             update_envelope=update_envelope,
             update_payload=self.update_payload,
             candidate_count=1,
@@ -430,8 +432,8 @@ def test_query_ssl_local_training_service_runs_lora_backend(
         backend=backend,
     )
 
-    result = service.run_lora(
-        QuerySslLoraLocalTrainingRequest(
+    result = service.run_peft_encoder(
+        QuerySslPeftEncoderLocalTrainingRequest(
             client_id="agent_01",
             seed=42,
             labeled_rows=[
@@ -484,8 +486,8 @@ def test_query_ssl_local_training_service_can_skip_local_update_persistence(
         backend=backend,
     )
 
-    result = service.run_lora(
-        QuerySslLoraLocalTrainingRequest(
+    result = service.run_peft_encoder(
+        QuerySslPeftEncoderLocalTrainingRequest(
             client_id="agent_01",
             seed=42,
             labeled_rows=[

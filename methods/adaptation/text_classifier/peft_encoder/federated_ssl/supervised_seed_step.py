@@ -24,17 +24,17 @@ from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
-LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
+PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierSupervisedSeedStepResult:
-    """server bootstrap rows로 학습한 LoRA/classifier delta와 실행 metric."""
+class PeftEncoderSupervisedSeedStepResult:
+    """server bootstrap rows로 학습한 PEFT encoder/classifier delta와 실행 metric."""
 
     lora_parameter_deltas: Mapping[str, Sequence[float]]
     classifier_head_weight_deltas: Mapping[str, Sequence[float]]
@@ -42,24 +42,24 @@ class LoraClassifierSupervisedSeedStepResult:
     metrics: dict[str, float]
 
 
-PeftEncoderSupervisedSeedStepResult = LoraClassifierSupervisedSeedStepResult
+LoraClassifierSupervisedSeedStepResult = PeftEncoderSupervisedSeedStepResult
 
 
-def run_lora_classifier_supervised_seed_step_core(
+def run_peft_encoder_supervised_seed_step_core(
     *,
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     bootstrap_rows: Sequence[LabeledQueryRow],
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     seed: int,
     epochs: int,
     batch_size: int,
     learning_rate: float,
     gradient_clip_norm: float | None,
-) -> LoraClassifierSupervisedSeedStepResult:
-    """server-owned labeled seed rows로 LoRA classifier delta를 계산한다."""
+) -> PeftEncoderSupervisedSeedStepResult:
+    """server-owned labeled seed rows로 PEFT encoder classifier delta를 계산한다."""
 
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
@@ -114,7 +114,7 @@ def run_lora_classifier_supervised_seed_step_core(
             labels=effective_labels,
         )
     )
-    return LoraClassifierSupervisedSeedStepResult(
+    return PeftEncoderSupervisedSeedStepResult(
         lora_parameter_deltas=lora_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
@@ -127,6 +127,6 @@ def run_lora_classifier_supervised_seed_step_core(
     )
 
 
-run_peft_encoder_supervised_seed_step_core = (
-    run_lora_classifier_supervised_seed_step_core
+run_lora_classifier_supervised_seed_step_core = (
+    run_peft_encoder_supervised_seed_step_core
 )

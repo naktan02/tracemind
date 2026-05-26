@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from ...update.materialization import LoraClassifierMaterializedState
+from ...update.materialization import PeftEncoderMaterializedState
 from ...update.partitioned_delta import LoraClassifierPartitionDelta
 
 
@@ -44,7 +44,7 @@ class PartitionSparseUploadProjection:
     """C2S sparse upload payload와 upload 후 client-visible partition state."""
 
     upload_partition_deltas: dict[str, LoraClassifierPartitionDelta]
-    client_partition_parameters: dict[str, LoraClassifierMaterializedState]
+    client_partition_parameters: dict[str, PeftEncoderMaterializedState]
 
 
 def count_partition_delta_nonzero_values(
@@ -59,8 +59,8 @@ def count_partition_delta_nonzero_values(
 
 def apply_partitioned_c2s_sparse_upload(
     *,
-    base_parameters: LoraClassifierMaterializedState,
-    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    base_parameters: PeftEncoderMaterializedState,
+    base_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
     parameters: PartitionSparseSyncParameters,
 ) -> dict[str, LoraClassifierPartitionDelta]:
@@ -88,16 +88,16 @@ def apply_partitioned_c2s_sparse_upload(
 
 def project_partitioned_c2s_sparse_upload(
     *,
-    base_parameters: LoraClassifierMaterializedState,
-    server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
-    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    base_parameters: PeftEncoderMaterializedState,
+    server_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
+    client_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     parameters: PartitionSparseSyncParameters,
 ) -> PartitionSparseUploadProjection:
     """client final state를 sparse C2S payload와 post-upload state로 투영한다."""
 
     sparse_partitions = set(parameters.l1_sparse_partitions)
     upload_deltas: dict[str, LoraClassifierPartitionDelta] = {}
-    projected_client_parameters: dict[str, LoraClassifierMaterializedState] = {}
+    projected_client_parameters: dict[str, PeftEncoderMaterializedState] = {}
     for partition_name, client_partition in sorted(client_partition_parameters.items()):
         server_partition = server_partition_parameters.get(
             partition_name,
@@ -123,8 +123,8 @@ def project_partitioned_c2s_sparse_upload(
 
 def apply_partitioned_s2c_sparse_download(
     *,
-    server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
-    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    server_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
+    client_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     parameters: PartitionSparseSyncParameters,
 ) -> dict[str, LoraClassifierPartitionDelta]:
     """원본 FedMatch `cal_s2c`처럼 server-client sparse diff를 만든다.
@@ -141,7 +141,7 @@ def apply_partitioned_s2c_sparse_download(
             server_parameters=server_partition,
             client_parameters=client_partition_parameters.get(
                 partition_name,
-                LoraClassifierMaterializedState(
+                PeftEncoderMaterializedState(
                     lora_parameters={},
                     classifier_head_weights={},
                     classifier_head_biases={},
@@ -158,10 +158,10 @@ def apply_partitioned_s2c_sparse_download(
 
 def project_partitioned_s2c_sparse_download(
     *,
-    server_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
-    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    server_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
+    client_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     parameters: PartitionSparseSyncParameters,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     """S2C sparse mask로 client partition state를 raw server 값으로 부분 갱신한다."""
 
     sparse_partitions = set(parameters.l1_sparse_partitions)
@@ -171,7 +171,7 @@ def project_partitioned_s2c_sparse_download(
             server_parameters=server_partition,
             client_parameters=client_partition_parameters.get(
                 partition_name,
-                LoraClassifierMaterializedState(
+                PeftEncoderMaterializedState(
                     lora_parameters={},
                     classifier_head_weights={},
                     classifier_head_biases={},
@@ -188,7 +188,7 @@ def project_partitioned_s2c_sparse_download(
 
 def _apply_sparse_upload_to_partition(
     *,
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     delta: LoraClassifierPartitionDelta,
     l1_sparse: bool,
     parameters: PartitionSparseSyncParameters,
@@ -238,8 +238,8 @@ def _nested_nonzero_float_count(value: object) -> int:
 def _build_sparse_upload_partition_delta_from_states(
     *,
     partition_name: str,
-    server_parameters: LoraClassifierMaterializedState,
-    client_parameters: LoraClassifierMaterializedState,
+    server_parameters: PeftEncoderMaterializedState,
+    client_parameters: PeftEncoderMaterializedState,
     l1_sparse: bool,
     parameters: PartitionSparseSyncParameters,
 ) -> LoraClassifierPartitionDelta:
@@ -268,10 +268,10 @@ def _build_sparse_upload_partition_delta_from_states(
 
 def _apply_upload_delta_to_state(
     *,
-    server_parameters: LoraClassifierMaterializedState,
+    server_parameters: PeftEncoderMaterializedState,
     upload_delta: LoraClassifierPartitionDelta,
-) -> LoraClassifierMaterializedState:
-    return LoraClassifierMaterializedState(
+) -> PeftEncoderMaterializedState:
+    return PeftEncoderMaterializedState(
         lora_parameters=_apply_vector_delta_mapping(
             base_values=server_parameters.lora_parameters,
             deltas=upload_delta.lora_parameter_deltas,
@@ -294,8 +294,8 @@ def _apply_upload_delta_to_state(
 def _build_sparse_download_partition_delta(
     *,
     partition_name: str,
-    server_parameters: LoraClassifierMaterializedState,
-    client_parameters: LoraClassifierMaterializedState,
+    server_parameters: PeftEncoderMaterializedState,
+    client_parameters: PeftEncoderMaterializedState,
     l1_sparse: bool,
     parameters: PartitionSparseSyncParameters,
 ) -> LoraClassifierPartitionDelta:
@@ -325,12 +325,12 @@ def _build_sparse_download_partition_delta(
 def _project_sparse_download_partition_state(
     *,
     partition_name: str,
-    server_parameters: LoraClassifierMaterializedState,
-    client_parameters: LoraClassifierMaterializedState,
+    server_parameters: PeftEncoderMaterializedState,
+    client_parameters: PeftEncoderMaterializedState,
     l1_sparse: bool,
     parameters: PartitionSparseSyncParameters,
-) -> LoraClassifierMaterializedState:
-    return LoraClassifierMaterializedState(
+) -> PeftEncoderMaterializedState:
+    return PeftEncoderMaterializedState(
         lora_parameters=_sparse_download_projected_vector_mapping(
             server_values=server_parameters.lora_parameters,
             client_values=client_parameters.lora_parameters,

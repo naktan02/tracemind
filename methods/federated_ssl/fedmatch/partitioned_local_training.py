@@ -19,7 +19,7 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
@@ -31,10 +31,16 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
-LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
-QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
-QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
-QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
+PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
+QuerySslPeftEncoderDeltaMaterializer = (
+    qssl_training.QuerySslPeftEncoderDeltaMaterializer
+)
+QuerySslPeftEncoderObjectiveRuntimeConfig = (
+    qssl_training.QuerySslPeftEncoderObjectiveRuntimeConfig
+)
 PartitionedMethodLocalTrainingConfig = (
     partitioned_objective_training.PartitionedMethodLocalTrainingConfig
 )
@@ -48,22 +54,21 @@ def run_method_owned_lora_classifier_training_core(
     unlabeled_rows: Sequence[LabeledQueryRow],
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
-    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
-    | None = None,
-    previous_client_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    base_parameters: PeftEncoderMaterializedState,
+    base_partition_parameters: Mapping[str, PeftEncoderMaterializedState] | None = None,
+    previous_client_partition_parameters: Mapping[str, PeftEncoderMaterializedState]
     | None = None,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     ssl_method_config: PartitionedMethodLocalTrainingConfig,
     local_ssl_policy_name: str,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig | None,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
-    delta_materializer: QuerySslLoraDeltaMaterializer,
+    delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
     peer_context: FederatedSslPeerContext | None = None,
     helper_weak_probability_provider: (
         training_loop.HelperWeakProbabilityProvider | None
@@ -72,14 +77,14 @@ def run_method_owned_lora_classifier_training_core(
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-) -> QuerySslLoraClientTrainingResult:
+) -> QuerySslPeftEncoderClientTrainingResult:
     """FedMatch descriptor가 호출하는 PEFT text classifier partitioned runtime."""
 
     partitioned_runtime_plan = build_fedmatch_partitioned_runtime_plan(
         scenario_name=ssl_method_config.scenario,
         effective_parameters=ssl_method_config.effective_parameters,
     )
-    return partitioned_objective_training.run_partitioned_lora_classifier_training_core(
+    return partitioned_objective_training.run_partitioned_peft_encoder_training_core(
         client_id=client_id,
         seed=seed,
         labeled_rows=labeled_rows,
