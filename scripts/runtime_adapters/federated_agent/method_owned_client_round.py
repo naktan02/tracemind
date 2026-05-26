@@ -6,8 +6,12 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from methods.adaptation.lora_classifier.update.delta_artifacts import (
+    server_owned_lora_classifier_update_artifact_byte_count,
+    upload_agent_local_lora_classifier_update,
+)
 from methods.common.timing import TimingRecorder
-from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -28,12 +32,9 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent import (
-    method_owned_lora_classifier_trainer as method_trainer,
-)
-from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
-    server_owned_lora_classifier_update_artifact_byte_count,
-    upload_agent_local_lora_classifier_update,
+from scripts.runtime_adapters.federated_agent import local_training as method_trainer
+from scripts.runtime_adapters.federated_agent.artifact_store import (
+    SimulationClientArtifactStore,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
@@ -49,6 +50,7 @@ def run_method_owned_client_round_if_supported(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution | None:
@@ -63,6 +65,7 @@ def run_method_owned_client_round_if_supported(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        capability_plan=capability_plan,
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
     )
@@ -87,6 +90,7 @@ def _run_method_owned_lora_client_round(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution:
@@ -118,11 +122,7 @@ def _run_method_owned_lora_client_round(
             training_task=training_task,
             model_manifest=active.manifest,
             ssl_method_config=request.ssl_method_config,
-            local_ssl_policy_name=(
-                LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
-                if request.capability_plan is None
-                else request.capability_plan.local_ssl_policy_name
-            ),
+            local_ssl_policy_name=capability_plan.local_ssl_policy_name,
             query_ssl_config=request.query_ssl_objective_config,
             peer_context=peer_context,
             peer_snapshots=peer_snapshots,
@@ -150,9 +150,10 @@ def _run_method_owned_lora_client_round(
             ),
         )
     client_train_time_seconds = time.perf_counter() - training_started_at
+    artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
     with timing.measure("update_upload_materialize_seconds"):
         server_update_payload = upload_agent_local_lora_classifier_update(
-            output_dir=request.output_dir,
+            artifact_store=artifact_store,
             update_payload=local_result.update_payload,
         )
     with timing.measure("server_update_submit_seconds"):
@@ -186,7 +187,7 @@ def _run_method_owned_lora_client_round(
             ),
             client_artifact_bytes=(
                 server_owned_lora_classifier_update_artifact_byte_count(
-                    output_dir=request.output_dir,
+                    artifact_store=artifact_store,
                     update_payload=server_update_payload,
                 )
                 if update_submitted

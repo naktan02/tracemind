@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -34,6 +35,7 @@ def run_method_or_manual_local_objective_if_supported(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution | None:
@@ -46,6 +48,7 @@ def run_method_or_manual_local_objective_if_supported(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        capability_plan=capability_plan,
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
     )

@@ -1,13 +1,16 @@
-"""LoRA-classifier simulation base state materialization bridge."""
+"""Federated-agent simulation base state materialization bridge."""
 
 from __future__ import annotations
 
 from datetime import datetime
 from pathlib import Path
-from typing import cast
 
 from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
     AggregationArtifactStore,
+)
+from methods.adaptation.lora_classifier.aggregation.base_state_snapshot import (
+    LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME,
+    lora_classifier_base_state_artifact_refs,
 )
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     LoraClassifierMaterializedState,
@@ -22,8 +25,6 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
 
-LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME = "lora_classifier_base_state.v1"
-
 
 def load_lora_classifier_base_parameters(
     *,
@@ -35,14 +36,14 @@ def load_lora_classifier_base_parameters(
     """server-published LoRA-classifier base state를 materialize한다."""
 
     if round_base_snapshot_cache is None:
-        return _materialize_base_parameters(
+        return _materialize_lora_classifier_base_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
         )
     snapshot = round_base_snapshot_cache.get_or_materialize(
-        key=_cache_key(active_adapter_state),
-        materialize=lambda: _materialize_base_parameters(
+        key=_lora_classifier_cache_key(active_adapter_state),
+        materialize=lambda: _materialize_lora_classifier_base_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
@@ -56,7 +57,7 @@ def load_lora_classifier_base_parameters(
     return snapshot
 
 
-def _materialize_base_parameters(
+def _materialize_lora_classifier_base_parameters(
     *,
     active_adapter_state: LoraClassifierState,
     output_dir: Path,
@@ -74,24 +75,13 @@ def _materialize_base_parameters(
     )
 
 
-def _cache_key(active_adapter_state: LoraClassifierState) -> RoundBaseSnapshotCacheKey:
+def _lora_classifier_cache_key(
+    active_adapter_state: LoraClassifierState,
+) -> RoundBaseSnapshotCacheKey:
     return RoundBaseSnapshotCacheKey(
         adapter_kind=str(active_adapter_state.adapter_kind),
         model_revision=str(active_adapter_state.model_revision),
         schema_version=str(active_adapter_state.schema_version),
-        artifact_refs=(
-            (
-                "lora_adapter_artifact_ref",
-                _ref_value(active_adapter_state.lora_adapter_artifact_ref),
-            ),
-            (
-                "classifier_head_artifact_ref",
-                _ref_value(active_adapter_state.classifier_head_artifact_ref),
-            ),
-        ),
+        artifact_refs=lora_classifier_base_state_artifact_refs(active_adapter_state),
         materializer_name=LORA_CLASSIFIER_BASE_STATE_MATERIALIZER_NAME,
     )
-
-
-def _ref_value(value: str | None) -> str:
-    return "" if value is None else cast(str, value)

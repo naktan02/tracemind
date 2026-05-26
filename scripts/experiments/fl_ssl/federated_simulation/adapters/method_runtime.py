@@ -11,9 +11,6 @@ from methods.federated_ssl.base import (
     FederatedSslMethodDescriptor,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
-from scripts.experiments.fl_ssl.federated_simulation.models import (
-    FederatedClientShard,
-)
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_round_open_request,
 )
@@ -21,28 +18,10 @@ from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
 from shared.src.contracts.common_types import TrainingTaskType
-from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 MANUAL_BASELINE_RUNTIME_NAME = "manual_baseline"
 MANUAL_BASELINE_TRAINING_TASK_TYPE = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING.value
 MANUAL_BASELINE_TRAINING_ROW_SOURCE = TRAINING_ROW_SOURCE_UNLABELED_POOL_WHEN_AVAILABLE
-
-
-@dataclass(frozen=True, slots=True)
-class FederatedClientLocalTrainingContext:
-    """client local training 준비에 필요한 runtime 입력."""
-
-    shard: FederatedClientShard
-    training_task: Any
-
-
-@dataclass(frozen=True, slots=True)
-class FederatedClientLocalTrainingPlan:
-    """runtime이 선택한 local training 입력과 실행 adapter."""
-
-    rows: list[LabeledQueryRow]
-    examples: tuple[Any, ...]
-    service: Any
 
 
 class FederatedSslSimulationRuntime(Protocol):
@@ -60,13 +39,6 @@ class FederatedSslSimulationRuntime(Protocol):
         training_task_config: FederatedTrainingTaskConfig,
     ) -> Any:
         """method별 round task를 생성한다."""
-
-    def build_local_training_plan(
-        self,
-        *,
-        context: FederatedClientLocalTrainingContext,
-    ) -> FederatedClientLocalTrainingPlan:
-        """client local training 입력과 실행 adapter를 준비한다."""
 
 
 @dataclass(frozen=True, slots=True)
@@ -93,17 +65,6 @@ class DefaultFederatedSslSimulationRuntime:
         return build_round_open_request(
             round_id=round_id,
             training_task_config=training_task_config,
-        )
-
-    def build_local_training_plan(
-        self,
-        *,
-        context: FederatedClientLocalTrainingContext,
-    ) -> FederatedClientLocalTrainingPlan:
-        del context
-        raise NotImplementedError(
-            "FL SSL simulation no longer supports prototype-scored generic local "
-            "training. Use the LoRA-classifier method/manual local objective path."
         )
 
 

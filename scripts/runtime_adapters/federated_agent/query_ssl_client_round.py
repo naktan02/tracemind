@@ -5,6 +5,10 @@ from __future__ import annotations
 import time
 from typing import Any
 
+from methods.adaptation.lora_classifier.update.delta_artifacts import (
+    server_owned_lora_classifier_update_artifact_byte_count,
+    upload_agent_local_lora_classifier_update,
+)
 from methods.common.timing import TimingRecorder
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
@@ -22,11 +26,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
-    server_owned_lora_classifier_update_artifact_byte_count,
-    upload_agent_local_lora_classifier_update,
+from scripts.runtime_adapters.federated_agent.artifact_store import (
+    SimulationClientArtifactStore,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
+from scripts.runtime_adapters.federated_agent.local_training import (
     run_query_ssl_lora_classifier_local_training,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
@@ -115,9 +118,10 @@ def _run_query_ssl_lora_client_round(
             ),
         )
     client_train_time_seconds = time.perf_counter() - training_started_at
+    artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
     with timing.measure("update_upload_materialize_seconds"):
         server_update_payload = upload_agent_local_lora_classifier_update(
-            output_dir=request.output_dir,
+            artifact_store=artifact_store,
             update_payload=local_result.update_payload,
         )
     with timing.measure("server_update_submit_seconds"):
@@ -151,7 +155,7 @@ def _run_query_ssl_lora_client_round(
             ),
             client_artifact_bytes=(
                 server_owned_lora_classifier_update_artifact_byte_count(
-                    output_dir=request.output_dir,
+                    artifact_store=artifact_store,
                     update_payload=server_update_payload,
                 )
                 if update_submitted

@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -25,18 +26,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from .local_objective_execution import run_method_or_manual_local_objective_if_supported
 
 
-def build_round_training_scoring_service(
-    *,
-    request: SimulationRunRequest,
-    active: ActiveSimulationState,
-    training_task: Any,
-) -> Any:
-    """prototype-scored fallback 제거 후에는 별도 scoring service를 만들지 않는다."""
-
-    del request, active, training_task
-    return None
-
-
 def run_client_round(
     *,
     request: SimulationRunRequest,
@@ -46,7 +35,7 @@ def run_client_round(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
-    training_scoring_service: Any,
+    capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
 ) -> ClientRoundExecution:
@@ -59,6 +48,7 @@ def run_client_round(
         round_id=round_id,
         shard=shard,
         training_task=training_task,
+        capability_plan=capability_plan,
         peer_context=peer_context,
         peer_snapshots=peer_snapshots,
     )

@@ -21,6 +21,9 @@ from methods.adaptation.lora_classifier.config import (
 from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
 )
+from methods.adaptation.lora_classifier.update.delta_artifacts import (
+    LoraClassifierDeltaMaterializer,
+)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
@@ -92,10 +95,10 @@ from scripts.runtime_adapters.federated_agent import (
     method_owned_client_round,
     query_ssl_client_round,
 )
-from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
-    prepare_delta_materialization,
+from scripts.runtime_adapters.federated_agent.artifact_store import (
+    SimulationClientArtifactStore,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
+from scripts.runtime_adapters.federated_agent.local_training import (
     QuerySslLoraClientTrainingResult,
 )
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
@@ -125,6 +128,12 @@ from shared.src.contracts.training_contracts import (
     make_training_update_envelope,
 )
 from shared.src.domain.value_objects.embedding_adapter_spec import EmbeddingAdapterSpec
+
+
+def prepare_delta_materialization(*, output_dir, **kwargs):
+    return LoraClassifierDeltaMaterializer(
+        artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
+    ).prepare(**kwargs)
 
 
 def _row(query_id: str, text: str, label: str) -> dict[str, str]:
@@ -740,6 +749,34 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
             self.activated.append(manifest)
             return manifest
 
+        def publish_shared_adapter_projection(
+            self,
+            *,
+            base_manifest: object,
+            next_state: object,
+            artifacts: object,
+            published_at: object,
+            notes: str,
+        ) -> object:
+            del artifacts, published_at, notes
+            self.state_repository.save_shared_adapter_state(next_state)
+            next_manifest = base_manifest.model_copy(
+                update={
+                    "model_revision": next_state.model_revision,
+                    "artifact_ref": self.state_repository.ref_for_revision(
+                        next_state.model_revision
+                    ),
+                }
+            )
+            self.activate_manifest(next_manifest)
+
+            class _Publication:
+                def __init__(self, *, next_manifest: object, next_state: object):
+                    self.next_manifest = next_manifest
+                    self.next_state = next_state
+
+            return _Publication(next_manifest=next_manifest, next_state=next_state)
+
     server_runtime = _ServerRuntime()
 
     def _fake_build_model(**_: object) -> tuple[object, object]:
@@ -1062,7 +1099,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         round_id="round_0001",
         shard=shard,
         training_task=training_task,
-        training_scoring_service=object(),
+        capability_plan=request.capability_plan,
     )
 
     assert execution.update_submitted is True
@@ -1357,7 +1394,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         round_id="round_0001",
         shard=shard,
         training_task=training_task,
-        training_scoring_service=object(),
+        capability_plan=request.capability_plan,
         peer_context=peer_context,
         peer_snapshots={"agent_02": peer_snapshot},
     )
@@ -1579,12 +1616,6 @@ def test_manual_federated_ssl_simulation_runtime_has_no_method_descriptor() -> N
 
     with pytest.raises(NotImplementedError, match="descriptor is not wired yet"):
         build_federated_ssl_simulation_runtime("paper_method_candidate")
-
-
-def test_manual_federated_ssl_runtime_rejects_generic_training_plan() -> None:
-    runtime = build_manual_federated_ssl_simulation_runtime()
-    with pytest.raises(NotImplementedError, match="prototype-scored generic"):
-        runtime.build_local_training_plan(context=object())  # type: ignore[arg-type]
 
 
 def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) -> None:

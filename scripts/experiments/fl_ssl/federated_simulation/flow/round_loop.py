@@ -11,7 +11,6 @@ from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     server_step_execution,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.client_training import (
-    build_round_training_scoring_service,
     run_client_round,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
@@ -92,16 +91,6 @@ def run_one_round(
     training_task = round_record.training_task
 
     started_at = time.perf_counter()
-    training_scoring_service = build_round_training_scoring_service(
-        request=request,
-        active=active,
-        training_task=training_task,
-    )
-    round_timing["round_training_scoring_prepare_seconds"] = (
-        time.perf_counter() - started_at
-    )
-
-    started_at = time.perf_counter()
     selected_shards, participation_selection = select_participating_clients(
         clients=bootstrapped.dataset_split.client_shards,
         policy=capability_plan.client_participation_policy,
@@ -136,7 +125,7 @@ def run_one_round(
             round_id=round_id,
             shard=shard,
             training_task=training_task,
-            training_scoring_service=training_scoring_service,
+            capability_plan=capability_plan,
             peer_context=peer_context_by_client.get(shard.client_id),
             peer_snapshots=peer_context_state.client_snapshots,
         )

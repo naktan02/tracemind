@@ -72,27 +72,6 @@ class LoraClassifierTrainExecutor(Protocol):
         """agent-local raw text rows로 LoRA/classifier delta artifact를 만든다."""
 
 
-class NotImplementedLoraClassifierTrainExecutor:
-    """실제 LoRA train step이 붙기 전 명시적으로 실패하는 executor."""
-
-    def train(
-        self,
-        *,
-        training_task: TrainingTask,
-        model_manifest: ModelManifest,
-        rows: Sequence[LoraClassifierTrainingRow],
-        label_schema: tuple[str, ...],
-        config: LoraClassifierUpdateConfig,
-        created_at: datetime,
-    ) -> LoraClassifierTrainArtifacts:
-        del training_task, model_manifest, rows, label_schema, config, created_at
-        raise NotImplementedError(
-            "LoRA-classifier train executor is not implemented yet. "
-            "Use the payload-only backend path until PEFT artifact materialization "
-            "is wired."
-        )
-
-
 def resolve_lora_classifier_label_schema(
     *,
     rows: Sequence[LoraClassifierTrainingRow],

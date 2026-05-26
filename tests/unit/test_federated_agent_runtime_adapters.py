@@ -20,6 +20,10 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.update.delta_artifacts import (
+    LoraClassifierDeltaMaterializer,
+    upload_agent_local_lora_classifier_update,
+)
 from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
     HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
     LORA_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
@@ -49,11 +53,10 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.fl_ssl.federated_simulation.runtime_resources import (
     RoundBaseSnapshotCache,
 )
-from scripts.runtime_adapters.federated_agent import (
-    lora_classifier_base_state as base_state_adapter,
-)
-from scripts.runtime_adapters.federated_agent import (
-    query_ssl_lora_classifier_trainer as qtrainer,
+from scripts.runtime_adapters.federated_agent import base_state_materialization
+from scripts.runtime_adapters.federated_agent import local_training as qtrainer
+from scripts.runtime_adapters.federated_agent.artifact_store import (
+    SimulationClientArtifactStore,
 )
 from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
@@ -61,14 +64,10 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
 from scripts.runtime_adapters.federated_agent.local_ssl_helper_provider import (
     build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
-from scripts.runtime_adapters.federated_agent.lora_classifier_artifacts import (
-    prepare_delta_materialization,
-    upload_agent_local_lora_classifier_update,
-)
-from scripts.runtime_adapters.federated_agent.lora_classifier_base_state import (
+from scripts.runtime_adapters.federated_agent.base_state_materialization import (
     load_lora_classifier_base_parameters,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_lora_classifier_trainer import (
+from scripts.runtime_adapters.federated_agent.local_training import (
     run_query_ssl_lora_classifier_local_training,
 )
 from scripts.runtime_adapters.federated_agent.row_validator import (
@@ -84,6 +83,12 @@ from shared.src.contracts.training_contracts import (
     TrainingSelectionPolicy,
     TrainingTask,
 )
+
+
+def prepare_delta_materialization(*, output_dir, **kwargs):
+    return LoraClassifierDeltaMaterializer(
+        artifact_store=SimulationClientArtifactStore(output_dir=output_dir)
+    ).prepare(**kwargs)
 
 
 def test_resolve_example_generation_backend_name_uses_runtime_fallback() -> None:
@@ -181,8 +186,8 @@ def test_lora_classifier_base_parameters_use_round_cache(
         return materialized
 
     monkeypatch.setattr(
-        base_state_adapter,
-        "_materialize_base_parameters",
+        base_state_materialization,
+        "_materialize_lora_classifier_base_parameters",
         _fake_materialize,
     )
     cache = RoundBaseSnapshotCache()
@@ -709,7 +714,7 @@ def test_upload_agent_local_lora_update_materializes_server_owned_refs(
     )
 
     uploaded = upload_agent_local_lora_classifier_update(
-        output_dir=tmp_path,
+        artifact_store=SimulationClientArtifactStore(output_dir=tmp_path),
         update_payload=update_payload,
     )
 
