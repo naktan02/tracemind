@@ -1,0 +1,24 @@
+# @package local_update_profile
+
+# PEFT-classifier family 위에서 classifier logits 기반 pseudo-label selection을 사용한다.
+# LoRA/DoRA 같은 mechanism은 round_runtime.peft_classifier.peft_adapter_name으로
+# 구분하고, shared update payload는 peft_classifier v2 계약으로 쓴다.
+algorithm_profile_name: peft_pseudo_label_v1
+training_scope: adapter_only
+training_backend_name: peft_classifier_trainer
+confidence_threshold: 0.6
+margin_threshold: 0.02
+# selection 경로의 raw-row/logits backend 이름은 아직 legacy compatibility surface다.
+# local update payload와 global state의 canonical family는 peft_classifier다.
+example_generation_backend_name: lora_classifier_raw_rows
+evidence_backend_name: lora_classifier_logits
+scorer_backend_name: lora_classifier_logits
+score_policy_name: top1_probability
+score_top_k: null
+validation_scorer_backend_name: peft_classifier_eval
+validation_score_policy_name: null
+validation_score_top_k: null
+pseudo_label_algorithm_name: top1_margin_threshold
+acceptance_policy_name: top1_margin_threshold
+privacy_guard_name: noop
+evidence_backend_temperature: 1.0

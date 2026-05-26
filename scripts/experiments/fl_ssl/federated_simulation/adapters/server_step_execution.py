@@ -14,6 +14,10 @@ from methods.adaptation.text_classifier.aggregation import (
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
     supervised_seed_step,
 )
+from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+    is_peft_encoder_adapter_family,
+    peft_encoder_runtime_payload,
+)
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     materialize_base_lora_classifier_state,
 )
@@ -40,8 +44,10 @@ from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
     build_simulation_aggregation_context,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierState,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierState,
 )
 
 
@@ -86,7 +92,7 @@ def run_server_step_if_supported(
             "server_step_policy is declared but not implemented in simulation "
             f"runtime: {capability_plan.server_step_policy_name}"
         )
-    return _run_lora_classifier_supervised_seed_step(
+    return _run_peft_classifier_supervised_seed_step(
         request=request,
         bootstrapped=bootstrapped,
         active=active,
@@ -94,28 +100,30 @@ def run_server_step_if_supported(
     )
 
 
-def _run_lora_classifier_supervised_seed_step(
+def _run_peft_classifier_supervised_seed_step(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
     active: ActiveSimulationState,
     round_index: int,
 ) -> ServerStepExecution:
-    if request.round_runtime_config.adapter_family_name != LORA_CLASSIFIER_ADAPTER_KIND:
+    adapter_family_name = request.round_runtime_config.adapter_family_name
+    if not is_peft_encoder_adapter_family(adapter_family_name):
         raise NotImplementedError(
-            "supervised_seed_step currently supports lora_classifier simulation "
-            "runtime."
+            "supervised_seed_step currently supports PEFT-backed classifier "
+            "simulation runtime."
         )
-    if request.round_runtime_config.lora_classifier is None:
-        raise ValueError("lora_classifier runtime config is required.")
-    if not isinstance(active.adapter_state, LoraClassifierState):
-        raise ValueError("supervised_seed_step requires active LoraClassifierState.")
+    runtime_payload = peft_encoder_runtime_payload(request.round_runtime_config)
+    if runtime_payload is None:
+        raise ValueError("PEFT-backed classifier runtime config is required.")
+    if not isinstance(active.adapter_state, LoraClassifierState | PeftClassifierState):
+        raise ValueError("supervised_seed_step requires active classifier state.")
     if not bootstrapped.dataset_split.bootstrap_rows:
         raise ValueError("supervised_seed_step requires server bootstrap_rows.")
     if request.ssl_method_config is None:
         raise ValueError("supervised_seed_step requires ssl_method_config.")
 
-    lora_config = request.round_runtime_config.lora_classifier.training_backend_config
+    lora_config = runtime_payload.training_backend_config
     labels = tuple(str(label) for label in active.adapter_state.label_schema)
     seed_parameters = resolve_method_supervised_seed_step_parameters(
         method_name=request.ssl_method_config.name,
@@ -148,10 +156,10 @@ def _run_lora_classifier_supervised_seed_step(
     )
     next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
     artifact_refs = build_server_aggregate_artifact_refs(
-        adapter_family_name=LORA_CLASSIFIER_ADAPTER_KIND,
+        adapter_family_name=str(active.adapter_state.adapter_kind),
         next_model_revision=next_model_revision,
         artifact_names=(
-            peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT,
+            _adapter_artifact_slot(active.adapter_state),
             peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT,
         ),
     )
@@ -161,7 +169,7 @@ def _run_lora_classifier_supervised_seed_step(
         next_model_revision=next_model_revision,
         updated_at=now,
         lora_adapter_artifact_ref=artifact_refs.refs_by_name[
-            peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT
+            _adapter_artifact_slot(active.adapter_state)
         ],
         classifier_head_artifact_ref=artifact_refs.refs_by_name[
             peft_fedavg_projection.CLASSIFIER_HEAD_ARTIFACT_SLOT
@@ -193,3 +201,11 @@ def _run_lora_classifier_supervised_seed_step(
         model_revision=next_model_revision,
         metrics=seed_result.metrics,
     )
+
+
+def _adapter_artifact_slot(
+    adapter_state: LoraClassifierState | PeftClassifierState,
+) -> str:
+    if isinstance(adapter_state, PeftClassifierState):
+        return peft_fedavg_projection.PEFT_ADAPTER_ARTIFACT_SLOT
+    return peft_fedavg_projection.LORA_ADAPTER_ARTIFACT_SLOT

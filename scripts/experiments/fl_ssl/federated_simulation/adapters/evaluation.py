@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
-    LORA_CLASSIFIER_EVALUATOR_NAME,
+    PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES,
     evaluate_peft_encoder_validation_payload,
     require_peft_encoder_state,
 )
@@ -35,9 +35,13 @@ def evaluate_simulation_validation(
 ) -> SimulationEvaluation:
     """PEFT-backed classifier state 기준 validation row를 평가한다."""
 
-    if request.validation_config.scorer_backend_name != LORA_CLASSIFIER_EVALUATOR_NAME:
+    if (
+        request.validation_config.scorer_backend_name
+        not in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES
+    ):
         raise ValueError(
-            "FL SSL simulation validation only supports lora_classifier_eval. "
+            "FL SSL simulation validation only supports peft_classifier_eval "
+            "or legacy lora_classifier_eval. "
             "Prototype-based validation was removed from this simulation path."
         )
     if not rows:

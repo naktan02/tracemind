@@ -40,8 +40,15 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 LORA_CLASSIFIER_EVALUATOR_NAME = "lora_classifier_eval"
+PEFT_CLASSIFIER_EVALUATOR_NAME = "peft_classifier_eval"
+PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES = (
+    PEFT_CLASSIFIER_EVALUATOR_NAME,
+    LORA_CLASSIFIER_EVALUATOR_NAME,
+)
 LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "lora_classifier_logits_softmax"
 LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "lora_classifier_top1_probability"
+PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND = "peft_classifier_logits_softmax"
+PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND = "peft_classifier_top1_probability"
 
 
 def evaluate_lora_classifier_state(
@@ -104,6 +111,9 @@ def evaluate_lora_classifier_state_payload(
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
+    loss_kind: str = "cross_entropy_from_lora_classifier_logits",
+    score_distribution_kind: str = LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
+    selection_confidence_kind: str = LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
 ) -> dict[str, object]:
     """LoRA-classifier global state 평가 결과를 canonical payload로 반환한다."""
 
@@ -122,9 +132,9 @@ def evaluate_lora_classifier_state_payload(
         report=report,
         row_count=row_count,
         accepted_ratio=1.0 if row_count > 0 else 0.0,
-        loss_kind="cross_entropy_from_lora_classifier_logits",
-        score_distribution_kind=LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
-        selection_confidence_kind=LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
+        loss_kind=loss_kind,
+        score_distribution_kind=score_distribution_kind,
+        selection_confidence_kind=selection_confidence_kind,
         mean_selection_confidence=float(report["mean_top_1_probability"]),
         mean_selection_margin=float(report["mean_margin_top1_top2"]),
     )
@@ -145,9 +155,10 @@ def evaluate_lora_classifier_validation_payload(
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires classifier state; "
+            "PEFT-backed classifier evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
+    is_peft_classifier = isinstance(adapter_state, PeftClassifierState)
     return evaluate_lora_classifier_state_payload(
         rows=rows,
         labels=adapter_state.label_schema,
@@ -160,6 +171,21 @@ def evaluate_lora_classifier_validation_payload(
         batch_size=batch_size,
         seed=seed,
         runtime_resource_cache=runtime_resource_cache,
+        loss_kind=(
+            "cross_entropy_from_peft_classifier_logits"
+            if is_peft_classifier
+            else "cross_entropy_from_lora_classifier_logits"
+        ),
+        score_distribution_kind=(
+            PEFT_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND
+            if is_peft_classifier
+            else LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND
+        ),
+        selection_confidence_kind=(
+            PEFT_CLASSIFIER_EVALUATION_CONFIDENCE_KIND
+            if is_peft_classifier
+            else LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND
+        ),
     )
 
 
@@ -198,11 +224,11 @@ def require_lora_classifier_validation_backend(
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         return
-    if scorer_backend_name == LORA_CLASSIFIER_EVALUATOR_NAME:
+    if scorer_backend_name in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES:
         return
     raise ValueError(
-        "LoRA-classifier validation must use "
-        f"{LORA_CLASSIFIER_EVALUATOR_NAME!r}. "
+        "PEFT-backed classifier validation must use one of "
+        f"{PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES!r}. "
         f"{prototype_scorer_backend_name!r} is prototype/selection-only "
         "and does not read LoRA/classifier global state."
     )
@@ -215,7 +241,7 @@ def require_lora_classifier_state(
 
     if not isinstance(adapter_state, LoraClassifierState | PeftClassifierState):
         raise ValueError(
-            f"{LORA_CLASSIFIER_EVALUATOR_NAME!r} requires classifier state; "
+            "PEFT-backed classifier evaluation requires classifier state; "
             f"got {type(adapter_state).__name__}."
         )
     return adapter_state

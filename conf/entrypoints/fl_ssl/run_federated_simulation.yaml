@@ -19,7 +19,7 @@ defaults:
   - /strategy_axes/fl/aggregation_weight_policy: example_count
   - /strategy_axes/fl/query_multiview_source: materialized_rows
   - /strategy_axes/fl/method_descriptor: null
-  - /strategy_axes/fl/local_update_profile: lora_pseudo_label_v1
+  - /strategy_axes/fl/local_update_profile: peft_pseudo_label_v1
   - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
   - /strategy_axes/fl/local_ssl_policy: query_ssl_method
   - _self_
@@ -131,10 +131,30 @@ query_ssl_strong_view_policy: first_aug
 # `local_update_profile`은 agent local SSL update 정책을 소유한다.
 # server round의 adapter family와 aggregation backend는 leaf 값으로 직접 고른다.
 round_runtime:
-  adapter_family_name: lora_classifier
+  adapter_family_name: peft_classifier
   aggregation_backend_name: fedavg
-  # legacy classifier_head family bootstrap leaf다. 현재 FL SSL simulation은 lora_classifier만 지원한다.
+  # canonical PEFT-classifier family bootstrap leaf다. LoRA/DoRA 등 mechanism은
+  # peft_adapter_name과 adapter parameters로 구분한다.
   classifier_head_bootstrap_logit_scale: 8.0
+  peft_classifier:
+    backbone_model_id: ${paper_backbone.model_id}
+    backbone_revision: ${paper_backbone.revision}
+    tokenizer_model_id: ${paper_backbone.tokenizer_model_id}
+    tokenizer_revision: ${paper_backbone.tokenizer_revision}
+    pooling: ${paper_backbone.pooling}
+    max_length: ${paper_backbone.max_length}
+    task_prefix: ${paper_backbone.task_prefix}
+    peft_adapter_name: ${lora.peft_adapter_name}
+    rank: ${lora.rank}
+    alpha: ${lora.alpha}
+    dropout: ${lora.dropout}
+    bias: ${lora.bias}
+    target_modules: ${lora.target_modules}
+    use_rslora: ${lora.use_rslora}
+    artifact_format: simulation_peft_classifier_state_ref
+    peft_adapter_artifact_ref: null
+    classifier_head_artifact_ref: null
+  # legacy compatibility leaf다. 기존 override/config는 이 값을 계속 읽을 수 있다.
   lora_classifier:
     backbone_model_id: ${paper_backbone.model_id}
     backbone_revision: ${paper_backbone.revision}
@@ -183,6 +203,29 @@ training_task:
       algorithm_name: ${query_ssl_method.algorithm_name}
       strong_view_policy: ${query_ssl_strong_view_policy}
       unlabeled_batch_size: ${query_ssl_method.unlabeled_batch_size}
+    peft_classifier:
+      backbone_model_id: ${round_runtime.peft_classifier.backbone_model_id}
+      backbone_revision: ${round_runtime.peft_classifier.backbone_revision}
+      tokenizer_model_id: ${round_runtime.peft_classifier.tokenizer_model_id}
+      tokenizer_revision: ${round_runtime.peft_classifier.tokenizer_revision}
+      pooling: ${round_runtime.peft_classifier.pooling}
+      max_length: ${round_runtime.peft_classifier.max_length}
+      task_prefix: ${round_runtime.peft_classifier.task_prefix}
+      peft_adapter_name: ${round_runtime.peft_classifier.peft_adapter_name}
+      rank: ${round_runtime.peft_classifier.rank}
+      alpha: ${round_runtime.peft_classifier.alpha}
+      dropout: ${round_runtime.peft_classifier.dropout}
+      bias: ${round_runtime.peft_classifier.bias}
+      target_modules: ${round_runtime.peft_classifier.target_modules}
+      use_rslora: ${round_runtime.peft_classifier.use_rslora}
+      # FedProx proximal coefficient. 0.0이면 기존 FedAvg local objective와 동일하다.
+      proximal_mu: 0.0
+      delta_format: server_uploaded_artifact_ref
+      artifact_ref_prefix: agent-local://peft_classifier
+      text_metadata_keys: strong_text,training_text,raw_text,text,weak_text
+      label_schema: anxiety,depression,normal,suicidal
+    # legacy compatibility scope다. lora_classifier trainer/profile override가
+    # 아직 이 scope를 읽을 수 있으므로 v2 migration window 동안 유지한다.
     lora_classifier:
       backbone_model_id: ${round_runtime.lora_classifier.backbone_model_id}
       backbone_revision: ${round_runtime.lora_classifier.backbone_revision}

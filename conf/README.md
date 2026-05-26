@@ -136,17 +136,17 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `training_task.local_epochs`, `training_task.batch_size`,
   `training_task.max_steps`
   - FL round에서 각 client가 수행하는 local optimizer 반복을 소유한다.
-  - manual `Query SSL + LoRA-classifier`에서는 실제 step 수가
+  - manual `Query SSL + PEFT-classifier`에서는 실제 step 수가
     `min(max_steps, local_epochs * full_epoch_steps)`로 계산된다.
   - `batch_size`는 labeled loader step 수를 바꾸고, 기본 설정에서는
     `query_ssl_method.unlabeled_batch_size=${training_task.batch_size}`라서
     unlabeled loader step 수도 함께 바꾼다. 필요하면
     `query_ssl_method.unlabeled_batch_size=<N>`으로 따로 override한다.
 - `training_task.objective`
-  - Hydra YAML에서는 `query_ssl`, `lora_classifier`, `evidence_backend`처럼
+  - Hydra YAML에서는 `query_ssl`, `peft_classifier`, `evidence_backend`처럼
     owner scope별 nested mapping으로 적을 수 있다.
   - `shared` contract 경계에서는 기존 report/runtime compatibility를 위해
-    `query_ssl.algorithm_name`, `lora_classifier.delta_format` 같은 dotted flat key로
+    `query_ssl.algorithm_name`, `peft_classifier.delta_format` 같은 dotted flat key로
     정규화된다.
   - 새 adapter family 값을 추가할 때도 entrypoint에 긴 quoted dotted key를 늘리기보다
     owner scope 아래에 묶고, canonical 해석은 `TrainingObjectiveConfig`가 맡긴다.

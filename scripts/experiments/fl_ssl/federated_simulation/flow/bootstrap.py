@@ -4,6 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
+from methods.adaptation.text_classifier.peft_encoder.evaluation import (
+    PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES,
+)
 from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
     is_peft_encoder_adapter_family,
 )
@@ -225,10 +228,13 @@ def _require_classifier_simulation_runtime(request: SimulationRunRequest) -> Non
             "Use round_runtime.adapter_family_name=peft_classifier or "
             "lora_classifier."
         )
-    if request.validation_config.scorer_backend_name != "lora_classifier_eval":
+    if (
+        request.validation_config.scorer_backend_name
+        not in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES
+    ):
         raise ValueError(
-            "FL SSL simulation validation must use lora_classifier_eval after "
-            "embedding/prototype scorer removal."
+            "FL SSL simulation validation must use peft_classifier_eval or legacy "
+            "lora_classifier_eval after embedding/prototype scorer removal."
         )
 
 
