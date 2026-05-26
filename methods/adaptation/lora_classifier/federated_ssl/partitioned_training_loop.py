@@ -10,6 +10,9 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
+from methods.adaptation.lora_classifier.federated_ssl import (
+    partitioned_trainable_model as ptm,
+)
 from methods.adaptation.lora_classifier.training.batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
@@ -342,6 +345,97 @@ def run_partitioned_lora_classifier_step(
     )
 
 
+def run_physical_partitioned_lora_classifier_step(
+    *,
+    model: ptm.PartitionedTrainableAdapterClassifier,
+    labeled_batch: Mapping[str, Tensor] | None,
+    unlabeled_batch: Mapping[str, Tensor],
+    parameters: FedMatchLocalObjectiveParameters,
+    supervised_partition: str,
+    unsupervised_partition: str,
+    sigma_optimizer: torch.optim.Optimizer,
+    psi_optimizer: torch.optim.Optimizer,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
+    enable_inter_client_consistency: bool = True,
+    apply_supervised_step: bool = True,
+    max_grad_norm: float = 0.0,
+) -> PartitionedLoraStepResult:
+    """원본 의미의 sigma/psi를 물리적으로 분리한 partition에 적용한다.
+
+    frozen backbone은 공유하고 adapter/head trainable state만 partition별로
+    보관한다. 이 함수는 partition 이름의 FedMatch 의미를 해석하지 않고,
+    caller가 지정한 supervised/unsupervised partition에 objective를 라우팅한다.
+    """
+
+    if apply_supervised_step and labeled_batch is None:
+        raise ValueError("FedMatch physical supervised step requires labeled_batch.")
+
+    before_sigma = ptm.snapshot_partition_parameter_tensors(
+        model,
+        supervised_partition,
+    )
+    if apply_supervised_step:
+        if labeled_batch is None:
+            raise ValueError(
+                "FedMatch physical supervised step requires labeled_batch."
+            )
+        supervised = _apply_physical_fedmatch_supervised_step(
+            model=model,
+            partition_name=supervised_partition,
+            labeled_batch=labeled_batch,
+            parameters=parameters,
+            optimizer=sigma_optimizer,
+            max_grad_norm=max_grad_norm,
+        )
+        after_sigma = ptm.snapshot_partition_parameter_tensors(
+            model,
+            supervised_partition,
+        )
+        sigma_parameter_deltas = diff_parameter_snapshots(
+            after=after_sigma,
+            before=before_sigma,
+        )
+    else:
+        supervised = _empty_supervised_step_result(before_sigma)
+        after_sigma = before_sigma
+        sigma_parameter_deltas = {}
+
+    before_psi = ptm.snapshot_partition_parameter_tensors(
+        model,
+        unsupervised_partition,
+    )
+    unsupervised = _apply_physical_fedmatch_unsupervised_step(
+        model=model,
+        sigma_partition_snapshot=after_sigma,
+        unsupervised_partition=unsupervised_partition,
+        unlabeled_batch=unlabeled_batch,
+        parameters=parameters,
+        optimizer=psi_optimizer,
+        helper_weak_probability_provider=helper_weak_probability_provider,
+        enable_inter_client_consistency=enable_inter_client_consistency,
+        max_grad_norm=max_grad_norm,
+    )
+    after_psi = ptm.snapshot_partition_parameter_tensors(
+        model,
+        unsupervised_partition,
+    )
+    psi_parameter_deltas = diff_parameter_snapshots(
+        after=after_psi,
+        before=before_psi,
+    )
+
+    return PartitionedLoraStepResult(
+        supervised=supervised,
+        unsupervised=unsupervised,
+        sigma_parameter_deltas=sigma_parameter_deltas,
+        psi_parameter_deltas=psi_parameter_deltas,
+        metrics={
+            **{f"sigma_{key}": value for key, value in supervised.metrics.items()},
+            **{f"psi_{key}": value for key, value in unsupervised.metrics.items()},
+        },
+    )
+
+
 def _apply_fedmatch_supervised_step(
     *,
     model: TextBatchClassifier,
@@ -369,6 +463,42 @@ def _apply_fedmatch_supervised_step(
     run_optimizer_loss_step(
         optimizer=optimizer,
         trainable_parameters=trainable_model_parameters(_as_torch_module(model)),
+        max_grad_norm=max_grad_norm,
+        compute_loss=compute_loss,
+    )
+    assert result is not None
+    return result
+
+
+def _apply_physical_fedmatch_supervised_step(
+    *,
+    model: ptm.PartitionedTrainableAdapterClassifier,
+    partition_name: str,
+    labeled_batch: Mapping[str, Tensor],
+    parameters: FedMatchLocalObjectiveParameters,
+    optimizer: torch.optim.Optimizer,
+    max_grad_norm: float,
+) -> FedMatchTensorLocalObjectiveResult:
+    result: FedMatchTensorLocalObjectiveResult | None = None
+
+    def compute_loss() -> Tensor:
+        nonlocal result
+
+        logits = model.forward_partition(
+            partition_name,
+            input_ids=labeled_batch["input_ids"],
+            attention_mask=labeled_batch["attention_mask"],
+        )
+        result = compute_fedmatch_supervised_loss(
+            labeled_logits=logits,
+            labels=labeled_batch["labels"],
+            parameters=parameters,
+        )
+        return result.total_loss
+
+    run_optimizer_loss_step(
+        optimizer=optimizer,
+        trainable_parameters=model.partition_parameters(partition_name),
         max_grad_norm=max_grad_norm,
         compute_loss=compute_loss,
     )
@@ -456,6 +586,70 @@ def _apply_fedmatch_unsupervised_step(
     return result
 
 
+def _apply_physical_fedmatch_unsupervised_step(
+    *,
+    model: ptm.PartitionedTrainableAdapterClassifier,
+    sigma_partition_snapshot: Mapping[str, Tensor],
+    unsupervised_partition: str,
+    unlabeled_batch: Mapping[str, Tensor],
+    parameters: FedMatchLocalObjectiveParameters,
+    optimizer: torch.optim.Optimizer,
+    helper_weak_probability_provider: HelperWeakProbabilityProvider | None,
+    enable_inter_client_consistency: bool,
+    max_grad_norm: float,
+) -> FedMatchTensorLocalObjectiveResult:
+    result: FedMatchTensorLocalObjectiveResult | None = None
+
+    def compute_loss() -> Tensor:
+        nonlocal result
+
+        weak_logits = model.forward_partition(
+            unsupervised_partition,
+            input_ids=unlabeled_batch["weak_input_ids"],
+            attention_mask=unlabeled_batch["weak_attention_mask"],
+        )
+        confidence_mask = _fedmatch_confidence_mask(
+            weak_logits=weak_logits,
+            confidence_threshold=parameters.confidence_threshold,
+        )
+        selected_strong_logits = _forward_selected_physical_strong_view(
+            model=model,
+            partition_name=unsupervised_partition,
+            unlabeled_batch=unlabeled_batch,
+            confidence_mask=confidence_mask,
+            reference_logits=weak_logits,
+        )
+        selected_helper_probabilities = _compute_selected_helper_probabilities(
+            helper_weak_probability_provider=helper_weak_probability_provider,
+            unlabeled_batch=unlabeled_batch,
+            confidence_mask=confidence_mask,
+        )
+        result = compute_fedmatch_unsupervised_loss(
+            weak_logits=weak_logits,
+            selected_strong_logits=selected_strong_logits,
+            selected_helper_weak_probabilities=selected_helper_probabilities,
+            parameter_partitions=FedMatchParameterPartitions(
+                sigma={
+                    key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
+                    for key, value in sigma_partition_snapshot.items()
+                },
+                psi=model.partition_parameter_tensors(unsupervised_partition),
+            ),
+            parameters=parameters,
+            enable_inter_client_consistency=enable_inter_client_consistency,
+        )
+        return result.total_loss
+
+    run_optimizer_loss_step(
+        optimizer=optimizer,
+        trainable_parameters=model.partition_parameters(unsupervised_partition),
+        max_grad_norm=max_grad_norm,
+        compute_loss=compute_loss,
+    )
+    assert result is not None
+    return result
+
+
 def _single_model_fedmatch_parameters(
     parameters: FedMatchLocalObjectiveParameters,
 ) -> FedMatchLocalObjectiveParameters:
@@ -535,6 +729,24 @@ def _forward_selected_strong_view(
     if selected_count == 0:
         return reference_logits.new_empty((0, int(reference_logits.shape[1])))
     return model(
+        input_ids=unlabeled_batch["strong_input_ids"][confidence_mask],
+        attention_mask=unlabeled_batch["strong_attention_mask"][confidence_mask],
+    )
+
+
+def _forward_selected_physical_strong_view(
+    *,
+    model: ptm.PartitionedTrainableAdapterClassifier,
+    partition_name: str,
+    unlabeled_batch: Mapping[str, Tensor],
+    confidence_mask: Tensor,
+    reference_logits: Tensor,
+) -> Tensor:
+    selected_count = int(confidence_mask.sum().item())
+    if selected_count == 0:
+        return reference_logits.new_empty((0, int(reference_logits.shape[1])))
+    return model.forward_partition(
+        partition_name,
         input_ids=unlabeled_batch["strong_input_ids"][confidence_mask],
         attention_mask=unlabeled_batch["strong_attention_mask"][confidence_mask],
     )

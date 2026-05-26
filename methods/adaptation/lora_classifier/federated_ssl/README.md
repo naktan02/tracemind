@@ -21,10 +21,11 @@ DoRA 같은 다른 PEFT adapter로 교체될 수 있는 trainable-adapter mechan
 - `partitioned_trainable_model.py`: frozen feature extractor 위에서 physical
   trainable adapter/head partition을 보관하고 composed forward를 제공하는
   adapter-neutral primitive다.
-- `partitioned_training_loop.py`: LoRA-classifier trainable tensor 위에서 logical
-  partition step을 실행한다. 다음 구현 단계에서는 이 경로를 `sigma/psi` 같은
-  method-owned partition name을 모르는 physical trainable-adapter partition
-  primitive로 낮춘다.
+- `partitioned_training_loop.py`: 기존 LoRA-classifier 단일 trainable tensor 위의
+  logical partition step과, frozen backbone 위 physical trainable adapter/head
+  partition step을 함께 제공한다. physical step은 `sigma/psi` 같은 method-owned
+  partition name을 직접 해석하지 않고 caller가 지정한 supervised/unsupervised
+  partition에 objective를 라우팅한다.
 - `peer_predictions.py`: 이전 round client-local LoRA snapshot을 helper weak-view
   probability provider와 peer selection vector로 materialize한다.
 
@@ -72,7 +73,8 @@ LoRA 전용이 아니라 나중에 `lora`, `dora` 같은 PEFT adapter 축으로 
 - `TrainableAdapterPartitionPlan`: partition 이름, 학습 대상 parameter scope,
   optimizer routing, upload policy를 표현한다. `sigma/psi`라는 이름은 FedMatch가
   주입하고, 이 plan type은 이름의 논문 의미를 해석하지 않는다.
-- `PartitionedTrainableAdapterLoop`: frozen backbone 위에서 partition별
+- `PartitionedTrainableAdapterClassifier`와
+  `run_physical_partitioned_lora_classifier_step`: frozen backbone 위에서 partition별
   adapter/head parameter를 학습시키는 execution primitive다.
 - `AdapterClassifierDeltaBundle`: 현재 payload의 `lora_parameter_deltas`와
   `classifier_head_*_deltas`를 감싸는 adapter-neutral 내부 표현이다. shared payload가

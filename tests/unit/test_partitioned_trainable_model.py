@@ -80,6 +80,21 @@ def test_physical_partition_optimizer_updates_only_selected_partition() -> None:
     assert not ptm.parameters_changed(before=feature_before, after=feature_after)
 
 
+def test_partition_parameter_tensors_use_partition_local_names() -> None:
+    model = _build_partitioned_model()
+
+    parameter_tensors = model.partition_parameter_tensors("sigma")
+    snapshot = ptm.snapshot_partition_parameter_tensors(model, "sigma")
+
+    assert set(parameter_tensors) == {
+        "adapter.weight",
+        "classifier.weight",
+        "classifier.bias",
+    }
+    assert set(snapshot) == set(parameter_tensors)
+    assert all(not name.startswith("sigma.") for name in snapshot)
+
+
 def test_composed_forward_sums_partition_logits() -> None:
     model = _build_partitioned_model()
     batch = {

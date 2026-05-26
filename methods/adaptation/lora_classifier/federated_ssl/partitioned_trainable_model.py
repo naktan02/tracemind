@@ -177,6 +177,19 @@ class PartitionedTrainableAdapterClassifier(nn.Module):
     def partition_parameters(self, partition_name: str) -> tuple[nn.Parameter, ...]:
         return tuple(self.require_partition(partition_name).parameters())
 
+    def partition_parameter_tensors(
+        self,
+        partition_name: str,
+    ) -> dict[str, nn.Parameter]:
+        """Return trainable tensors with keys local to the physical partition."""
+
+        partition = self.require_partition(partition_name)
+        return {
+            name: parameter
+            for name, parameter in partition.named_parameters()
+            if parameter.requires_grad
+        }
+
     def partition_named_parameters(
         self,
         partition_name: str,
@@ -200,6 +213,18 @@ def snapshot_partition_parameters(
     return {
         name: parameter.detach().clone()
         for name, parameter in model.partition_named_parameters(partition_name).items()
+    }
+
+
+def snapshot_partition_parameter_tensors(
+    model: PartitionedTrainableAdapterClassifier,
+    partition_name: str,
+) -> dict[str, Tensor]:
+    """Detached clone snapshot keyed by names local to one partition."""
+
+    return {
+        name: parameter.detach().clone()
+        for name, parameter in model.partition_parameter_tensors(partition_name).items()
     }
 
 

@@ -10,11 +10,15 @@ from torch.utils.data import DataLoader
 from methods.adaptation.lora_classifier.federated_ssl import (
     partitioned_objective_training,
 )
+from methods.adaptation.lora_classifier.federated_ssl import (
+    partitioned_trainable_model as ptm,
+)
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     resolve_method_owned_lora_classifier_training_core,
 )
 from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop import (
     run_partitioned_lora_classifier_step,
+    run_physical_partitioned_lora_classifier_step,
     train_partitioned_lora_classifier,
 )
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
@@ -31,6 +35,8 @@ from methods.adaptation.query_classifier_adaptation.local_training_budget import
     build_query_ssl_local_step_plan,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
+    FEDMATCH_PSI_L1_REGULARIZATION,
+    FEDMATCH_SIGMA_PSI_L2_REGULARIZATION,
     FedMatchLocalObjectiveParameters,
 )
 from methods.federated_ssl.fedmatch.parameter_routing import (
@@ -70,6 +76,25 @@ class TinyLoraClassifier(nn.Module):
     ) -> Tensor:
         del attention_mask
         return self.classifier(self.encoder_lora(input_ids.float()))
+
+
+class TinyFrozenFeatureExtractor(nn.Module):
+    """물리 partition 테스트용 frozen backbone."""
+
+    def __init__(self) -> None:
+        super().__init__()
+        self.projection = nn.Linear(3, 3, bias=False)
+        with torch.no_grad():
+            self.projection.weight.copy_(torch.eye(3))
+
+    def forward(
+        self,
+        *,
+        input_ids: Tensor,
+        attention_mask: Tensor,
+    ) -> Tensor:
+        del attention_mask
+        return self.projection(input_ids.float())
 
 
 def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> None:
@@ -455,6 +480,158 @@ def test_fedmatch_lora_single_model_regularizer_does_not_shrink_full_parameters(
     )
 
 
+def test_physical_fedmatch_step_updates_separate_sigma_and_psi_partitions() -> None:
+    model = _build_physical_partitioned_model()
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.0,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
+    feature_before = {
+        name: parameter.detach().clone()
+        for name, parameter in model.feature_extractor.named_parameters()
+    }
+    sigma_before = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_SIGMA_PARTITION,
+    )
+    psi_before = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_PSI_PARTITION,
+    )
+
+    result = run_physical_partitioned_lora_classifier_step(
+        model=model,
+        labeled_batch={
+            "input_ids": torch.tensor([[1.0, 0.0, 0.5], [0.0, 1.0, 0.5]]),
+            "attention_mask": torch.ones(2, 3),
+            "labels": torch.tensor([0, 1], dtype=torch.long),
+        },
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+            "weak_attention_mask": torch.ones(2, 3),
+            "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1], [0.1, 0.4, 1.0]]),
+            "strong_attention_mask": torch.ones(2, 3),
+        },
+        parameters=parameters,
+        supervised_partition=FEDMATCH_SIGMA_PARTITION,
+        unsupervised_partition=FEDMATCH_PSI_PARTITION,
+        sigma_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
+            lr=0.2,
+        ),
+        psi_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_PSI_PARTITION),
+            lr=0.2,
+        ),
+    )
+
+    feature_after = {
+        name: parameter.detach().clone()
+        for name, parameter in model.feature_extractor.named_parameters()
+    }
+    sigma_after = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_SIGMA_PARTITION,
+    )
+    psi_after = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_PSI_PARTITION,
+    )
+    assert set(result.sigma_parameter_deltas) == {
+        "adapter.weight",
+        "classifier.weight",
+        "classifier.bias",
+    }
+    assert set(result.psi_parameter_deltas) == set(result.sigma_parameter_deltas)
+    assert ptm.parameters_changed(before=sigma_before, after=sigma_after)
+    assert ptm.parameters_changed(before=psi_before, after=psi_after)
+    assert not ptm.parameters_changed(before=feature_before, after=feature_after)
+    torch.testing.assert_close(
+        result.metrics["sigma_labeled_count"],
+        torch.tensor(2.0),
+    )
+    torch.testing.assert_close(
+        result.metrics["psi_confident_count"],
+        torch.tensor(2.0),
+    )
+
+
+def test_physical_fedmatch_unsupervised_regularizer_keeps_sigma_fixed() -> None:
+    model = _build_physical_partitioned_model()
+    parameters = FedMatchLocalObjectiveParameters(
+        confidence_threshold=0.99,
+        lambda_s=1.0,
+        lambda_i=0.0,
+        lambda_a=1.0,
+        lambda_l2=0.5,
+        lambda_l1=0.1,
+    )
+    sigma_before = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_SIGMA_PARTITION,
+    )
+    psi_before = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_PSI_PARTITION,
+    )
+
+    result = run_physical_partitioned_lora_classifier_step(
+        model=model,
+        labeled_batch=None,
+        unlabeled_batch={
+            "weak_input_ids": torch.tensor([[1.0, 0.2, 0.0], [0.0, 0.5, 1.0]]),
+            "weak_attention_mask": torch.ones(2, 3),
+            "strong_input_ids": torch.tensor([[0.8, 0.3, 0.1], [0.1, 0.4, 1.0]]),
+            "strong_attention_mask": torch.ones(2, 3),
+        },
+        parameters=parameters,
+        supervised_partition=FEDMATCH_SIGMA_PARTITION,
+        unsupervised_partition=FEDMATCH_PSI_PARTITION,
+        sigma_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_SIGMA_PARTITION),
+            lr=0.2,
+        ),
+        psi_optimizer=torch.optim.SGD(
+            model.partition_parameters(FEDMATCH_PSI_PARTITION),
+            lr=0.2,
+        ),
+        apply_supervised_step=False,
+    )
+
+    sigma_after = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_SIGMA_PARTITION,
+    )
+    psi_after = ptm.snapshot_partition_parameter_tensors(
+        model,
+        FEDMATCH_PSI_PARTITION,
+    )
+    assert not ptm.parameters_changed(before=sigma_before, after=sigma_after)
+    assert ptm.parameters_changed(before=psi_before, after=psi_after)
+    torch.testing.assert_close(
+        result.unsupervised.metrics["confident_count"],
+        torch.tensor(0.0),
+    )
+    assert (
+        float(
+            result.unsupervised.loss_components[FEDMATCH_PSI_L1_REGULARIZATION].detach()
+        )
+        > 0.0
+    )
+    assert (
+        float(
+            result.unsupervised.loss_components[
+                FEDMATCH_SIGMA_PSI_L2_REGULARIZATION
+            ].detach()
+        )
+        > 0.0
+    )
+
+
 def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
@@ -603,3 +780,38 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
     assert result.metrics["train_sup_loss"] == 0.0
     assert result.metrics["train_fedmatch_sigma_delta_l2"] == 0.0
     assert result.metrics["train_fedmatch_psi_delta_l2"] > 0.0
+
+
+def _build_physical_partitioned_model() -> ptm.PartitionedTrainableAdapterClassifier:
+    return ptm.PartitionedTrainableAdapterClassifier(
+        feature_extractor=TinyFrozenFeatureExtractor(),
+        partitions=(
+            _physical_partition_spec(FEDMATCH_SIGMA_PARTITION, weight_scale=1.0),
+            _physical_partition_spec(FEDMATCH_PSI_PARTITION, weight_scale=0.5),
+        ),
+    )
+
+
+def _physical_partition_spec(
+    partition_name: str,
+    *,
+    weight_scale: float,
+) -> ptm.AdapterClassifierPartitionSpec:
+    adapter = nn.Linear(3, 3, bias=False)
+    classifier = nn.Linear(3, 2)
+    with torch.no_grad():
+        adapter.weight.copy_(torch.eye(3) * weight_scale)
+        classifier.weight.copy_(
+            torch.tensor(
+                [
+                    [0.3, -0.2, 0.1],
+                    [-0.1, 0.2, 0.4],
+                ]
+            )
+        )
+        classifier.bias.copy_(torch.tensor([0.05, -0.05]))
+    return ptm.AdapterClassifierPartitionSpec(
+        partition_name=partition_name,
+        adapter=adapter,
+        classifier=classifier,
+    )
