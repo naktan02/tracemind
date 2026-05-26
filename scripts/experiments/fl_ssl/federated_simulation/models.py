@@ -291,8 +291,8 @@ class FederatedSslMethodConfig:
 
 
 @dataclass(slots=True)
-class FederatedLoraClassifierRuntimeConfig:
-    """LoRA-classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
+class FederatedPeftEncoderRuntimeConfig:
+    """PEFT-backed classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
 
     training_backend_config: LoraClassifierTrainingBackendConfig
     artifact_format: str = "simulation_lora_classifier_state_ref"
@@ -306,7 +306,7 @@ class FederatedLoraClassifierRuntimeConfig:
         source: Mapping[str, object],
         *,
         default_artifact_format: str = "simulation_lora_classifier_state_ref",
-    ) -> "FederatedLoraClassifierRuntimeConfig":
+    ) -> "FederatedPeftEncoderRuntimeConfig":
         """Hydra round_runtime classifier mapping을 typed config로 해석한다."""
 
         artifact_format = str(
@@ -319,7 +319,7 @@ class FederatedLoraClassifierRuntimeConfig:
                 {
                     key: value
                     for key, value in source.items()
-                    if key not in _LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS
+                    if key not in _PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS
                 }
             ),
             artifact_format=artifact_format,
@@ -336,12 +336,12 @@ class FederatedLoraClassifierRuntimeConfig:
         )
 
     def backbone_payload(self) -> dict[str, str | int]:
-        """shared lora_classifier state에 넣을 backbone/tokenizer snapshot."""
+        """shared PEFT-backed classifier state에 넣을 backbone/tokenizer snapshot."""
 
         return self.training_backend_config.to_backbone_payload()
 
     def lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """shared lora_classifier state에 넣을 LoRA config snapshot."""
+        """legacy lora_classifier state에 넣을 LoRA config snapshot."""
 
         return self.training_backend_config.to_lora_config_payload()
 
@@ -351,7 +351,10 @@ class FederatedLoraClassifierRuntimeConfig:
         return self.training_backend_config.to_peft_adapter_config_payload()
 
 
-_LORA_CLASSIFIER_RUNTIME_ARTIFACT_KEYS = frozenset(
+FederatedLoraClassifierRuntimeConfig = FederatedPeftEncoderRuntimeConfig
+
+
+_PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS = frozenset(
     {
         "artifact_format",
         "lora_adapter_artifact_ref",
@@ -375,8 +378,8 @@ class FederatedRoundRuntimeConfig:
     adapter_family_name: str
     aggregation_backend_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
-    lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None
-    peft_classifier: FederatedLoraClassifierRuntimeConfig | None = None
+    lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None
+    peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None
 
     def runtime_payload_for_adapter_family(self) -> object | None:
         """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""

@@ -39,8 +39,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDiagnosticViewConfig,
     FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
-    FederatedLoraClassifierRuntimeConfig,
     FederatedPeerProbeConfig,
+    FederatedPeftEncoderRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedResumeConfig,
@@ -230,20 +230,20 @@ def _build_training_task_config(
 
 def _build_lora_classifier_runtime_config(
     cfg: DictConfig,
-) -> FederatedLoraClassifierRuntimeConfig | None:
+) -> FederatedPeftEncoderRuntimeConfig | None:
     if "lora_classifier" not in cfg or cfg.lora_classifier is None:
         return None
-    return FederatedLoraClassifierRuntimeConfig.from_mapping(
+    return FederatedPeftEncoderRuntimeConfig.from_mapping(
         to_plain_dict(cfg.lora_classifier)
     )
 
 
 def _build_peft_classifier_runtime_config(
     cfg: DictConfig,
-) -> FederatedLoraClassifierRuntimeConfig | None:
+) -> FederatedPeftEncoderRuntimeConfig | None:
     if "peft_classifier" not in cfg or cfg.peft_classifier is None:
         return None
-    return FederatedLoraClassifierRuntimeConfig.from_mapping(
+    return FederatedPeftEncoderRuntimeConfig.from_mapping(
         to_plain_dict(cfg.peft_classifier),
         default_artifact_format="simulation_peft_classifier_state_ref",
     )

@@ -87,7 +87,7 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
-    FederatedLoraClassifierRuntimeConfig,
+    FederatedPeftEncoderRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedResumeConfig,
@@ -464,8 +464,8 @@ def _default_round_runtime_config(
     adapter_family_name: str = "lora_classifier",
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
-    lora_classifier: FederatedLoraClassifierRuntimeConfig | None = None,
-    peft_classifier: FederatedLoraClassifierRuntimeConfig | None = None,
+    lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
+    peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
 ) -> FederatedRoundRuntimeConfig:
     return FederatedRoundRuntimeConfig(
         adapter_family_name=adapter_family_name,
@@ -522,8 +522,8 @@ def _fedmatch_agreement_capability_plan() -> FederatedSslCapabilityPlan:
     )
 
 
-def _lora_runtime_config() -> FederatedLoraClassifierRuntimeConfig:
-    return FederatedLoraClassifierRuntimeConfig(
+def _lora_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
+    return FederatedPeftEncoderRuntimeConfig(
         training_backend_config=LoraClassifierTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
             backbone_revision="main",
@@ -2213,7 +2213,7 @@ def test_build_initial_shared_state_rejects_unknown_family() -> None:
 def test_run_simulation_request_rejects_lora_runtime_objective_drift(
     tmp_path,
 ) -> None:
-    drifted_lora_runtime = FederatedLoraClassifierRuntimeConfig(
+    drifted_lora_runtime = FederatedPeftEncoderRuntimeConfig(
         training_backend_config=LoraClassifierTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
             backbone_revision="main",
