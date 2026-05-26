@@ -310,6 +310,10 @@ local update payload 조립도 `build_peft_encoder_delta_update`,
 `build_query_ssl_peft_encoder_update_payload`를 canonical entrypoint로 사용한다.
 기존 `build_lora_classifier_*`, `build_query_ssl_lora_*` 이름은 v1 import
 compatibility alias다.
+local model builder는 `methods/adaptation/peft_adapters/` registry를 통해
+PEFT mechanism builder를 선택한다. 현재 built-in은 LoRA/RSLoRA지만,
+text-classifier training core는 `get_peft_model` 직접 호출 대신 builder seam을
+통해 backbone adapter를 구성한다.
 
 ## 호환성 정책
 

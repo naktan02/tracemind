@@ -1,14 +1,14 @@
-"""LoRA + classifier scaffold 모델 빌더."""
+"""PEFT-backed classifier scaffold 모델 빌더."""
 
 from __future__ import annotations
 
 import copy
+from types import SimpleNamespace
 from typing import Any, Protocol
 
 from torch import nn
 
 from methods.adaptation.peft_adapters.base import PeftAdapterBuildContext
-from methods.adaptation.peft_adapters.lora.builder import resolve_target_modules
 from methods.adaptation.peft_adapters.registry import (
     build_peft_adapter_builder,
     resolve_peft_adapter_name,
@@ -128,16 +128,16 @@ def build_lora_text_classifier_from_config(
         runtime_config=runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
-    peft_config = LoraConfig(
-        r=int(lora_config.rank),
-        lora_alpha=int(lora_config.alpha),
-        lora_dropout=float(lora_config.dropout),
-        target_modules=resolve_target_modules(lora_config.target_modules),
-        bias=lora_config.bias,
-        use_rslora=bool(lora_config.use_rslora),
-        task_type=TaskType.FEATURE_EXTRACTION,
+    peft_adapter_builder = build_peft_adapter_builder(lora_config.peft_adapter_name)
+    backbone = peft_adapter_builder.build_backbone(
+        backbone_base=backbone_base,
+        context=PeftAdapterBuildContext(
+            cfg=_peft_adapter_cfg_from_training_config(lora_config),
+            lora_config_cls=LoraConfig,
+            task_type=TaskType,
+            get_peft_model=get_peft_model,
+        ),
     )
-    backbone = get_peft_model(backbone_base, peft_config)
     model = LoraTextClassifier(
         backbone=backbone,
         hidden_size=int(backbone.config.hidden_size),
@@ -224,6 +224,24 @@ def _runtime_resource_key(
     values: dict[str, object],
 ) -> str:
     return peft_encoder_resource_cache_key(kind=kind, values=values)
+
+
+def _peft_adapter_cfg_from_training_config(
+    lora_config: LoraClassifierTrainingBackendConfig,
+) -> SimpleNamespace:
+    """PEFT adapter builder가 기대하는 config surface로 trainer config를 맞춘다."""
+
+    return SimpleNamespace(
+        lora=SimpleNamespace(
+            peft_adapter_name=lora_config.peft_adapter_name,
+            rank=lora_config.rank,
+            alpha=lora_config.alpha,
+            dropout=lora_config.dropout,
+            target_modules=lora_config.target_modules,
+            bias=lora_config.bias,
+            use_rslora=lora_config.use_rslora,
+        )
+    )
 
 
 def build_model(

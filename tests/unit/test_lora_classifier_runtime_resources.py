@@ -119,6 +119,92 @@ def test_lora_classifier_model_builder_reuses_runtime_resources(
     assert model_a.backbone is not model_b.backbone
 
 
+def test_lora_classifier_model_builder_uses_peft_adapter_builder(
+    monkeypatch,
+) -> None:
+    captured: dict[str, object] = {}
+
+    class _Tokenizer:
+        pad_token = "<pad>"
+        eos_token = "<eos>"
+        unk_token = "<unk>"
+
+    class _AutoTokenizer:
+        @staticmethod
+        def from_pretrained(*_args, **_kwargs):
+            return _Tokenizer()
+
+    class _Backbone(nn.Module):
+        def __init__(self) -> None:
+            super().__init__()
+            self.config = SimpleNamespace(hidden_size=2)
+
+    class _AutoModel:
+        @staticmethod
+        def from_pretrained(*_args, **_kwargs):
+            return _Backbone()
+
+    class _TaskType:
+        FEATURE_EXTRACTION = "FEATURE_EXTRACTION"
+
+    class _LoraConfig:
+        pass
+
+    class _FakePeftBuilder:
+        adapter_name = "fake"
+
+        def build_backbone(self, *, backbone_base, context):
+            captured["backbone_base"] = backbone_base
+            captured["peft_adapter_name"] = context.cfg.lora.peft_adapter_name
+            captured["rank"] = context.cfg.lora.rank
+            captured["lora_config_cls"] = context.lora_config_cls
+            captured["task_type"] = context.task_type
+            captured["get_peft_model"] = context.get_peft_model
+            return backbone_base
+
+        def build_summary(self, *, cfg):
+            return {"adapter_name": cfg.lora.peft_adapter_name}
+
+    def _fake_get_peft_model(backbone_base, _peft_config):
+        return backbone_base
+
+    monkeypatch.setattr(
+        modeling,
+        "require_transformer_stack",
+        lambda: (
+            _AutoModel,
+            _AutoTokenizer,
+            _LoraConfig,
+            _TaskType,
+            _fake_get_peft_model,
+            object,
+        ),
+    )
+    monkeypatch.setattr(
+        modeling,
+        "build_peft_adapter_builder",
+        lambda adapter_name: (
+            captured.update({"adapter_name": adapter_name}) or _FakePeftBuilder()
+        ),
+    )
+
+    modeling.build_lora_text_classifier_from_config(
+        labels=["anxiety", "normal"],
+        lora_config=LoraClassifierTrainingBackendConfig(
+            peft_adapter_name="fake_adapter",
+            rank=4,
+        ),
+        runtime_config=_RuntimeConfig(),
+    )
+
+    assert captured["adapter_name"] == "fake_adapter"
+    assert captured["peft_adapter_name"] == "fake_adapter"
+    assert captured["rank"] == 4
+    assert captured["lora_config_cls"] is _LoraConfig
+    assert captured["task_type"] is _TaskType
+    assert captured["get_peft_model"] is _fake_get_peft_model
+
+
 def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None:
     class _Backbone(nn.Module):
         def __init__(self) -> None:
