@@ -50,6 +50,9 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
+TEXT_CLASSIFIER_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "text_classifier"
+TEXT_CLASSIFIER_AGGREGATION_SRC = TEXT_CLASSIFIER_ADAPTATION_SRC / "aggregation"
+PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
 LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
     AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
 )
@@ -702,6 +705,72 @@ def test_adapter_family_federated_ssl_files_do_not_multiply_by_method_name() -> 
         "소유한다. 새 FL SSL method마다 <method>_*.py 파일을 늘리지 말고 "
         "method 의미는 methods/federated_ssl/<method>/에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_text_classifier_adaptation_does_not_import_fedmatch_method() -> None:
+    violations = _find_forbidden_imports(
+        root=TEXT_CLASSIFIER_ADAPTATION_SRC,
+        forbidden_prefixes=("methods.federated_ssl.fedmatch",),
+    )
+
+    assert not violations, (
+        "methods/adaptation/text_classifier/**는 text classifier 실행 primitive를 "
+        "소유한다. FedMatch 의미, partition routing, original parameter는 "
+        "methods/federated_ssl/fedmatch/에서 callable/config로 주입한다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() -> None:
+    violations = _find_forbidden_imports(
+        root=TEXT_CLASSIFIER_ADAPTATION_SRC,
+        forbidden_prefixes=("methods.adaptation.lora_classifier",),
+    )
+
+    assert not violations, (
+        "새 text_classifier adaptation 내부 코드는 legacy lora_classifier 경로를 "
+        "import하지 않는다. 기존 경로는 migration shim으로만 남기고, 내부 source of "
+        "truth는 text_classifier 아래에 둔다.\n"
+        f"{_format_violations(violations)}"
+    )
+
+
+def test_text_classifier_aggregation_files_stay_projection_only() -> None:
+    violations: list[Path] = []
+    if TEXT_CLASSIFIER_AGGREGATION_SRC.is_dir():
+        for path in _iter_python_files(TEXT_CLASSIFIER_AGGREGATION_SRC):
+            source = path.read_text(encoding="utf-8")
+            if path.stem.endswith("_projection"):
+                continue
+            if "weighted_average" in source or "def fedavg" in source.lower():
+                violations.append(_relative_repo_path(path))
+
+    assert not violations, (
+        "methods/adaptation/text_classifier/aggregation/**는 family state를 generic "
+        "aggregation input/output으로 바꾸는 projection만 소유한다. weighted average "
+        "policy와 FedAvg algorithm은 methods/federated/aggregation/에 둔다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
+    violations = _find_forbidden_imports(
+        root=PEFT_ADAPTERS_SRC,
+        forbidden_prefixes=(
+            "methods.adaptation.classifier_head",
+            "methods.adaptation.lora_classifier",
+            "methods.adaptation.text_classifier",
+            "shared.src.contracts.adapter_contract_families.classifier_head",
+            "shared.src.contracts.adapter_contract_families.lora_classifier",
+        ),
+    )
+
+    assert not violations, (
+        "methods/adaptation/peft_adapters/**는 LoRA/DoRA 같은 PEFT mechanism만 "
+        "소유한다. classifier label, task head, update payload 의미는 "
+        "text_classifier adaptation 또는 shared contract가 소유한다.\n"
+        f"{_format_violations(violations)}"
     )
 
 
