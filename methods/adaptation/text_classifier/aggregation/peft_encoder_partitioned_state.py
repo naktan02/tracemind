@@ -1,4 +1,4 @@
-"""LoRA-classifier partitioned aggregation state helpers."""
+"""PEFT encoder classifier partitioned aggregation state helpers."""
 
 from __future__ import annotations
 
@@ -11,10 +11,10 @@ from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta im
 from ..peft_encoder.update.materialization import LoraClassifierMaterializedState
 
 
-def merge_partitioned_lora_classifier_deltas(
+def merge_partitioned_peft_encoder_deltas(
     partitions: Mapping[str, LoraClassifierPartitionDelta],
 ) -> LoraClassifierPartitionDelta:
-    """partition별 delta를 하나의 LoRA-classifier delta로 합친다.
+    """partition별 delta를 하나의 PEFT encoder classifier delta로 합친다.
 
     같은 parameter key가 여러 partition에 있으면 값을 element-wise로 더한다.
     """
@@ -38,7 +38,7 @@ def merge_partitioned_lora_classifier_deltas(
     )
 
 
-def apply_lora_classifier_partition_delta_to_state(
+def apply_peft_encoder_partition_delta_to_state(
     *,
     base_parameters: LoraClassifierMaterializedState,
     delta: LoraClassifierPartitionDelta,
@@ -65,7 +65,7 @@ def apply_lora_classifier_partition_delta_to_state(
     )
 
 
-def apply_lora_classifier_partition_deltas_to_partitioned_state(
+def apply_peft_encoder_partition_deltas_to_partitioned_state(
     *,
     base_parameters: LoraClassifierMaterializedState,
     base_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
@@ -78,7 +78,7 @@ def apply_lora_classifier_partition_deltas_to_partitioned_state(
     """
 
     return {
-        partition_name: apply_lora_classifier_partition_delta_to_state(
+        partition_name: apply_peft_encoder_partition_delta_to_state(
             base_parameters=base_partition_parameters.get(
                 partition_name,
                 base_parameters,
@@ -89,7 +89,7 @@ def apply_lora_classifier_partition_deltas_to_partitioned_state(
     }
 
 
-def split_lora_classifier_state_by_residual_factor(
+def split_peft_encoder_state_by_residual_factor(
     *,
     published_parameters: LoraClassifierMaterializedState,
     base_partition_name: str,
@@ -110,11 +110,11 @@ def split_lora_classifier_state_by_residual_factor(
     base_scale = 1.0 / (1.0 + residual_factor)
     residual_scale = residual_factor / (1.0 + residual_factor)
     return {
-        base_partition_name: _scale_lora_classifier_state(
+        base_partition_name: _scale_peft_encoder_state(
             published_parameters,
             scale=base_scale,
         ),
-        residual_partition_name: _scale_lora_classifier_state(
+        residual_partition_name: _scale_peft_encoder_state(
             published_parameters,
             scale=residual_scale,
         ),
@@ -131,7 +131,7 @@ def _apply_vector_mapping(
         delta_vector = [float(value) for value in deltas.get(key, [])]
         if base_vector and delta_vector and len(base_vector) != len(delta_vector):
             raise ValueError(
-                f"Partitioned LoRA-classifier delta dimension mismatch for {key!r}."
+                f"Partitioned PEFT-classifier delta dimension mismatch for {key!r}."
             )
         if not base_vector:
             result[key] = delta_vector
@@ -145,7 +145,7 @@ def _apply_vector_mapping(
     return result
 
 
-def _scale_lora_classifier_state(
+def _scale_peft_encoder_state(
     state: LoraClassifierMaterializedState,
     *,
     scale: float,
@@ -178,8 +178,20 @@ def _merge_vector_mapping(
             continue
         if len(target[normalized_key]) != len(vector):
             raise ValueError(
-                "Partitioned LoRA-classifier deltas must share dimensions per key."
+                "Partitioned PEFT-classifier deltas must share dimensions per key."
             )
         target[normalized_key] = [
             left + right for left, right in zip(target[normalized_key], vector)
         ]
+
+
+merge_partitioned_lora_classifier_deltas = merge_partitioned_peft_encoder_deltas
+apply_lora_classifier_partition_delta_to_state = (
+    apply_peft_encoder_partition_delta_to_state
+)
+apply_lora_classifier_partition_deltas_to_partitioned_state = (
+    apply_peft_encoder_partition_deltas_to_partitioned_state
+)
+split_lora_classifier_state_by_residual_factor = (
+    split_peft_encoder_state_by_residual_factor
+)

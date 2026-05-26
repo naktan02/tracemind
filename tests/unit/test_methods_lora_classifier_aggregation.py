@@ -482,7 +482,7 @@ def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> 
         )
 
 
-def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> None:
+def test_peft_encoder_partitioned_deltas_merge_without_fedmatch_names() -> None:
     partitions = normalize_partition_deltas(
         (
             LoraClassifierPartitionDelta(
@@ -500,7 +500,7 @@ def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> No
         )
     )
 
-    merged = peft_part_state.merge_partitioned_lora_classifier_deltas(partitions)
+    merged = peft_part_state.merge_partitioned_peft_encoder_deltas(partitions)
 
     assert merged.partition_name == "merged"
     assert merged.lora_parameter_deltas["encoder.q_proj.lora_A"] == pytest.approx(
@@ -510,7 +510,7 @@ def test_lora_classifier_partitioned_deltas_merge_without_fedmatch_names() -> No
     assert merged.classifier_head_bias_deltas["anxiety"] == pytest.approx(0.2)
 
 
-def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None:
+def test_peft_encoder_partition_delta_applies_to_materialized_state() -> None:
     base = LoraClassifierMaterializedState(
         lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
         classifier_head_weights={"anxiety": [0.3, 0.4]},
@@ -526,7 +526,7 @@ def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None
         classifier_head_bias_deltas={"anxiety": -0.1, "normal": 0.2},
     )
 
-    state = peft_part_state.apply_lora_classifier_partition_delta_to_state(
+    state = peft_part_state.apply_peft_encoder_partition_delta_to_state(
         base_parameters=base,
         delta=delta,
     )
@@ -539,14 +539,14 @@ def test_lora_classifier_partition_delta_applies_to_materialized_state() -> None
     )
 
 
-def test_lora_classifier_state_splits_published_state_by_residual_factor() -> None:
+def test_peft_encoder_state_splits_published_state_by_residual_factor() -> None:
     published = LoraClassifierMaterializedState(
         lora_parameters={"encoder_lora.weight": [1.2, -2.4]},
         classifier_head_weights={"anxiety": [3.6, -4.8]},
         classifier_head_biases={"anxiety": 6.0},
     )
 
-    partitions = peft_part_state.split_lora_classifier_state_by_residual_factor(
+    partitions = peft_part_state.split_peft_encoder_state_by_residual_factor(
         published_parameters=published,
         base_partition_name="sigma",
         residual_partition_name="psi",
@@ -569,7 +569,7 @@ def test_lora_classifier_state_splits_published_state_by_residual_factor() -> No
     assert partitions["psi"].classifier_head_biases["anxiety"] == pytest.approx(1.0)
 
 
-def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> None:
+def test_peft_encoder_partition_delta_rejects_state_dimension_mismatch() -> None:
     base = LoraClassifierMaterializedState(
         lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
         classifier_head_weights={},
@@ -583,7 +583,7 @@ def test_lora_classifier_partition_delta_rejects_state_dimension_mismatch() -> N
     )
 
     with pytest.raises(ValueError, match="dimension mismatch"):
-        peft_part_state.apply_lora_classifier_partition_delta_to_state(
+        peft_part_state.apply_peft_encoder_partition_delta_to_state(
             base_parameters=base,
             delta=delta,
         )
@@ -906,7 +906,7 @@ def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client(
     result = peft_part_projection.compute_peft_encoder_partitioned_delta_average(
         label_schema=("anxiety", "normal"),
         updates=(
-            peft_part_projection.LoraClassifierPartitionedDeltaAverageUpdate(
+            peft_part_projection.PeftEncoderPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",
@@ -931,7 +931,7 @@ def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client(
                 mean_margin=0.3,
                 delta_l2_norm=0.5,
             ),
-            peft_part_projection.LoraClassifierPartitionedDeltaAverageUpdate(
+            peft_part_projection.PeftEncoderPartitionedDeltaAverageUpdate(
                 partitions={
                     "sigma": LoraClassifierPartitionDelta(
                         partition_name="sigma",

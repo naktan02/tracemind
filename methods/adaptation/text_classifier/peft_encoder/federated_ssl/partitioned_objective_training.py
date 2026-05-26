@@ -335,7 +335,7 @@ def run_partitioned_lora_classifier_training_core(
         elif (
             uses_physical_partition_runtime and not effective_base_partition_parameters
         ):
-            split_published_state = ps.split_lora_classifier_state_by_residual_factor
+            split_published_state = ps.split_peft_encoder_state_by_residual_factor
             effective_base_partition_parameters = split_published_state(
                 published_parameters=base_parameters,
                 base_partition_name=partitioned_runtime_plan.supervised_partition,
@@ -395,7 +395,7 @@ def run_partitioned_lora_classifier_training_core(
                     partition_deltas=training_result.partition_deltas,
                 )
             client_partition_parameters = (
-                ps.apply_lora_classifier_partition_deltas_to_partitioned_state(
+                ps.apply_peft_encoder_partition_deltas_to_partitioned_state(
                     base_parameters=base_parameters,
                     base_partition_parameters=effective_base_partition_parameters,
                     partition_deltas=training_result.partition_deltas,
@@ -422,10 +422,10 @@ def run_partitioned_lora_classifier_training_core(
                     c2s_projection.client_partition_parameters.items()
                 )
             }
-            merged_partition_delta = ps.merge_partitioned_lora_classifier_deltas(
+            merged_partition_delta = ps.merge_partitioned_peft_encoder_deltas(
                 training_result.partition_deltas
             )
-            merged_parameters = ps.apply_lora_classifier_partition_delta_to_state(
+            merged_parameters = ps.apply_peft_encoder_partition_delta_to_state(
                 base_parameters=base_parameters,
                 delta=merged_partition_delta,
             )
