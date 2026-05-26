@@ -370,6 +370,34 @@ def test_write_result_index_records_exports_fl_ssl_dashboard_filters(
     assert bundle["projection_images"][0]["eval_set"] == "validation"
 
 
+def test_fl_ssl_dashboard_filters_include_peft_classifier_v2_and_legacy_v1(
+    tmp_path: Path,
+) -> None:
+    legacy_report_path = _write_fl_ssl_report(tmp_path)
+    peft_report_path = _write_peft_fl_ssl_report(tmp_path)
+    db_path = tmp_path / "experiment_results.sqlite"
+    dashboard_path = tmp_path / "experiment_dashboard.json"
+    records = [
+        load_result_index_records(legacy_report_path),
+        load_result_index_records(peft_report_path),
+    ]
+
+    write_result_index_records(db_path=db_path, records=records)
+    bundle = write_dashboard_bundle(db_path=db_path, output_path=dashboard_path)
+
+    assert bundle["filters"]["adapter_families"] == [
+        "lora_classifier",
+        "peft_classifier",
+    ]
+    assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
+    assert bundle["filters"]["peft_adapter_names"] == ["lora"]
+    assert {
+        row["adapter_family_name"]
+        for row in bundle["fl_ssl_runs"]
+        if row["track"] == "fl_ssl_main_comparison"
+    } == {"lora_classifier", "peft_classifier"}
+
+
 def _write_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
