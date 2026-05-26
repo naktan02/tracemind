@@ -5,6 +5,7 @@
     "expected_adapter_family": "lora_classifier",
     "expected_aggregation": "fedavg",
     "expected_delta_format": "server_uploaded_artifact_ref",
+    "expected_run_control_output_dir": "runs/fl_ssl",
     "expected_round_update_count_matches_client_count": true,
     "expected_shared_update_count_matches_round_updates": true,
     "expect_server_owned_update_artifacts": true,
@@ -13,53 +14,33 @@
   },
   "artifacts": [
     {
-      "name": "fixmatch_alpha03_current_smoke_1round",
-      "report": "runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds1/20260517T232304Z/reports/fl_ssl_main_comparison.report.json",
-      "expectation": {
-        "expected_completed_rounds": 1,
-        "expected_round_budget": 1,
-        "expected_client_count": 10,
-        "expected_round_record_count": 1,
-        "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "alpha0.3_clients10_seed42",
-        "expected_ssl_algorithm": "fixmatch",
-        "expected_ssl_method": "fixmatch_usb_v1",
-        "expected_embedding_metadata_status": "recorded",
-        "expected_embedding_backend": "transformers_mxbai",
-        "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "expected_embedding_device": "cuda",
-        "expected_embedding_local_files_only": true,
-        "expected_local_trainer_metadata_status": "recorded",
-        "expected_local_trainer_device": "cuda",
-        "expected_local_trainer_local_files_only": true
-      }
-    },
-    {
-      "name": "fixmatch_alpha03_main_50round",
-      "report": "runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds50/20260517T150549Z/reports/fl_ssl_main_comparison.report.json",
-      "expectation": {
-        "expected_completed_rounds": 50,
-        "expected_round_budget": 50,
-        "expected_client_count": 10,
-        "expected_round_record_count": 50,
-        "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "clients10_seed42",
-        "expected_ssl_algorithm": "fixmatch",
-        "expected_ssl_method": "fixmatch_usb_v1"
-      }
-    },
-    {
-      "name": "flexmatch_alpha03_reduced_ablation_5round",
-      "report": "runs/fl_ssl/manual_baselines/flexmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T205436Z/reports/fl_ssl_main_comparison.report.json",
+      "name": "fedmatch_alpha03_shared_client_reduced_5round",
+      "report": "runs/fl_ssl/fedmatch/fedmatch__lora_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z/reports/fl_ssl_main_comparison.report.json",
       "expectation": {
         "expected_completed_rounds": 5,
         "expected_round_budget": 5,
         "expected_client_count": 10,
         "expected_round_record_count": 5,
         "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "alpha0.3_clients10_seed42",
-        "expected_ssl_algorithm": "flexmatch",
-        "expected_ssl_method": "flexmatch_usb_v1",
+        "expected_split_id_contains": "labels_pc100_shared_client_seed",
+        "expected_labeled_exposure_policy": "shared_client_seed",
+        "expected_run_control_budget_name": "reduced",
+        "expected_fl_method_name": "fedmatch",
+        "expected_fl_method_descriptor_name": "fedmatch",
+        "expected_fl_method_execution_role": "method_owned",
+        "expected_federated_ssl_method": "fedmatch",
+        "expected_ssl_method_implementation_status": "partitioned_trainable_state_slice_v1",
+        "expected_ssl_method_scenario": "labels-at-client",
+        "expected_ssl_method_local_budget_policy": "iteration_capped",
+        "expected_ssl_method_parameter_override_status": "original",
+        "expected_server_update_policy": "fedmatch_partitioned",
+        "expected_update_partition_policy": "partitioned",
+        "expected_aggregation_weight_policy": "uniform",
+        "expected_peer_context_policy": "fixed_probe_output_knn",
+        "expected_local_ssl_policy": "fedmatch_agreement",
+        "expect_partitioned_update_artifact_refs": true,
+        "expected_posthoc_communication_schema_version": "fl_ssl_posthoc_communication_cost.v1",
+        "expect_partitioned_sparse_s2c_estimates": true,
         "expected_embedding_metadata_status": "recorded",
         "expected_embedding_backend": "transformers_mxbai",
         "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
@@ -68,64 +49,6 @@
         "expected_local_trainer_metadata_status": "recorded",
         "expected_local_trainer_device": "cuda",
         "expected_local_trainer_local_files_only": true
-      }
-    },
-    {
-      "name": "freematch_alpha03_reduced_ablation_5round",
-      "report": "runs/fl_ssl/manual_baselines/freematch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T212002Z/reports/fl_ssl_main_comparison.report.json",
-      "expectation": {
-        "expected_completed_rounds": 5,
-        "expected_round_budget": 5,
-        "expected_client_count": 10,
-        "expected_round_record_count": 5,
-        "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "alpha0.3_clients10_seed42",
-        "expected_ssl_algorithm": "freematch",
-        "expected_ssl_method": "freematch_usb_v1",
-        "expected_embedding_metadata_status": "recorded",
-        "expected_embedding_backend": "transformers_mxbai",
-        "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "expected_embedding_device": "cuda",
-        "expected_embedding_local_files_only": true,
-        "expected_local_trainer_metadata_status": "recorded",
-        "expected_local_trainer_device": "cuda",
-        "expected_local_trainer_local_files_only": true
-      }
-    },
-    {
-      "name": "pseudolabel_alpha03_reduced_ablation_5round",
-      "report": "runs/fl_ssl/manual_baselines/pseudolabel_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds5/20260517T214526Z/reports/fl_ssl_main_comparison.report.json",
-      "expectation": {
-        "expected_completed_rounds": 5,
-        "expected_round_budget": 5,
-        "expected_client_count": 10,
-        "expected_round_record_count": 5,
-        "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "alpha0.3_clients10_seed42",
-        "expected_ssl_algorithm": "pseudolabel",
-        "expected_ssl_method": "pseudolabel_usb_v1",
-        "expected_embedding_metadata_status": "recorded",
-        "expected_embedding_backend": "transformers_mxbai",
-        "expected_embedding_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "expected_embedding_device": "cuda",
-        "expected_embedding_local_files_only": true,
-        "expected_local_trainer_metadata_status": "recorded",
-        "expected_local_trainer_device": "cuda",
-        "expected_local_trainer_local_files_only": true
-      }
-    },
-    {
-      "name": "fixmatch_alpha03_client_count_sweep_1round",
-      "client_count_sweep_summary": "runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/sweeps/client_count_rounds1/20260517T193320Z/reports/fl_ssl_client_count_sweep.summary.json",
-      "expected_client_counts": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
-      "expectation": {
-        "expected_completed_rounds": 1,
-        "expected_round_budget": 1,
-        "expected_round_record_count": 1,
-        "expected_shard_alpha": 0.3,
-        "expected_split_id_contains": "alpha0.3",
-        "expected_ssl_algorithm": "fixmatch",
-        "expected_ssl_method": "fixmatch_usb_v1"
       }
     }
   ]

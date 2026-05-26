@@ -1102,6 +1102,107 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
     assert f"PASS {report_path}" in output
 
 
+def test_verify_artifact_manifest_accepts_fedmatch_partitioned_expectations(
+    tmp_path: Path,
+    capsys,
+) -> None:
+    report_path = _write_report_run_with_server_update_artifacts(
+        tmp_path,
+        payload=_attach_posthoc_communication_cost(
+            _report_payload(
+                client_count=2,
+                completed_rounds=2,
+                round_budget=2,
+                fl_method_name="fedmatch",
+                fl_method_descriptor_name="fedmatch",
+                fl_method_execution_role="method_owned",
+                federated_ssl_method="fedmatch",
+                ssl_method_implementation_status=(
+                    "partitioned_trainable_state_slice_v1"
+                ),
+                ssl_method_scenario="labels-at-client",
+                ssl_method_local_budget_policy="iteration_capped",
+                ssl_method_parameter_override_status="original",
+                labeled_exposure_policy="shared_client_seed",
+                run_control_budget_name="reduced",
+                server_update_policy="fedmatch_partitioned",
+                update_partition_policy="partitioned",
+                aggregation_weight_policy="uniform",
+                peer_context_policy="fixed_probe_output_knn",
+                local_ssl_policy="fedmatch_agreement",
+            )
+        ),
+        partitioned_only=True,
+    )
+    manifest_path = tmp_path / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "defaults": {
+                    "expected_seed": 42,
+                    "expected_shard_policy_name": "dirichlet_label_skew",
+                    "expected_shard_alpha": 0.3,
+                    "expected_run_control_output_dir": "runs/fl_ssl",
+                    "expected_delta_format": "server_uploaded_artifact_ref",
+                    "expected_round_update_count_matches_client_count": True,
+                    "expected_shared_update_count_matches_round_updates": True,
+                    "expect_server_owned_update_artifacts": True,
+                    "expect_no_agent_local_update_refs": True,
+                    "expect_lora_classifier_aggregate_snapshot": True,
+                },
+                "artifacts": [
+                    {
+                        "name": "fedmatch_reduced",
+                        "report": "run/reports/fl_ssl_main_comparison.report.json",
+                        "expectation": {
+                            "expected_completed_rounds": 2,
+                            "expected_round_budget": 2,
+                            "expected_client_count": 2,
+                            "expected_round_record_count": 2,
+                            "expected_labeled_exposure_policy": "shared_client_seed",
+                            "expected_run_control_budget_name": "reduced",
+                            "expected_fl_method_name": "fedmatch",
+                            "expected_fl_method_descriptor_name": "fedmatch",
+                            "expected_fl_method_execution_role": "method_owned",
+                            "expected_federated_ssl_method": "fedmatch",
+                            "expected_ssl_method_implementation_status": (
+                                "partitioned_trainable_state_slice_v1"
+                            ),
+                            "expected_ssl_method_scenario": "labels-at-client",
+                            "expected_ssl_method_local_budget_policy": (
+                                "iteration_capped"
+                            ),
+                            "expected_ssl_method_parameter_override_status": (
+                                "original"
+                            ),
+                            "expected_server_update_policy": "fedmatch_partitioned",
+                            "expected_update_partition_policy": "partitioned",
+                            "expected_aggregation_weight_policy": "uniform",
+                            "expected_peer_context_policy": "fixed_probe_output_knn",
+                            "expected_local_ssl_policy": "fedmatch_agreement",
+                            "expect_partitioned_update_artifact_refs": True,
+                            "expected_posthoc_communication_schema_version": (
+                                POSTHOC_SCHEMA_VERSION
+                            ),
+                            "expect_partitioned_sparse_s2c_estimates": True,
+                        },
+                    }
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    exit_code = verify_federated_report_artifacts_main(
+        ["--manifest", str(manifest_path)]
+    )
+    output = capsys.readouterr().out
+
+    assert exit_code == 0
+    assert "PASS fedmatch_reduced:" in output
+    assert str(report_path) in output
+
+
 def test_verify_artifact_manifest_entry_expectation_overrides_defaults(
     tmp_path: Path,
     capsys,

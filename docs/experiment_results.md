@@ -67,7 +67,7 @@ Purpose:
 |---|---|---|
 | Prototype strategy smoke | `runs/prototype_strategy/<run_id>/summary.json` | hash_debug/real backend/refactor smoke 통과 |
 | Threshold sweep smoke | `runs/prototype_threshold_sweep/<run_id>/summary.json` | grid search와 summary/grid 산출물 형식 |
-| FL SSL current PEFT smoke | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds1/20260517T232304Z/reports/fl_ssl_main_comparison.report.json` | `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`, server-owned artifact-ref delta |
+| FL SSL historical PEFT smoke | `runs/fl_ssl/manual_baselines/fixmatch_usb_v1__lora_classifier__fedavg/alpha03_seed42/clients10_rounds1/20260517T232304Z/reports/fl_ssl_main_comparison.report.json` | 2026-05-17 당시 `gpu_local + mxbai`, `FixMatch + FedAvg + LoRA-classifier`, server-owned artifact-ref delta 확인. 현재 로컬 artifact는 없음 |
 
 이전 `runs/federated_simulation*` 수평 산출물은 `runs/fl_ssl` method-first layout으로
 마이그레이션했고 원본 root 폴더는 제거했다. 현재 FL SSL 결과는
@@ -80,9 +80,10 @@ FL SSL 현재 감사 기준:
 - 검증 manifest: `docs/operations/fl_ssl_artifact_verification_manifest.current.json`
 - 검증 명령:
   `uv run python scripts/experiments/fl_ssl/verify_federated_report_artifacts.py --manifest docs/operations/fl_ssl_artifact_verification_manifest.current.json`
-- 현재 manifest는 current 1-round smoke, 기존 alpha=0.3 50-round report,
-  FlexMatch/FreeMatch/PseudoLabel 5-round reduced ablation, client_count 1..10
-  1-round summary를 검증한다.
+- 현재 manifest는 이 워크스페이스에 남아 있는 2026-05-26 FedMatch
+  `10 clients x 5 rounds` reduced report를 검증한다. 2026-05-17 계열
+  historical manual baseline artifact들은 현재 로컬에 없으므로 `current`
+  manifest 대상에서 제외했다.
 - Dirichlet `alpha=0.1` final stress는 현재 `runs/fl_ssl` 아래 검증 가능한
   report가 없고 기본 비교가 아니므로, 마지막 stress 실행 전까지 current result 표에
   포함하지 않는다.

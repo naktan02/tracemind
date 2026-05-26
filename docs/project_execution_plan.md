@@ -250,11 +250,12 @@ Runtime translation:
   단일 run은 `rounds`, seed/client-count sweep은 `rounds * sweep 항목 수`로
   계산하며, 장시간 실행은 `run_safety.allow_long_run=true`와
   `run_safety.long_run_ack=ALLOW_FL_SSL_LONG_RUN`을 명시한 경우에만 시작된다.
-- 기존 smoke/main/reduced ablation/1-round sweep 산출물은
-  `scripts/experiments/fl_ssl/verify_federated_report_artifacts.py`로 round budget,
-  client count, SSL method, adapter family, aggregation, delta format metadata를
-  재검증할 수 있다. 현재 감사용 manifest는
-  `docs/operations/fl_ssl_artifact_verification_manifest.current.json`다.
+- 현재 워크스페이스의 감사용 manifest
+  `docs/operations/fl_ssl_artifact_verification_manifest.current.json`는
+  2026-05-26 FedMatch reduced report를 round budget, client count, method-owned
+  FedMatch protocol, partitioned delta artifact ref, sparse S2C posthoc estimate까지
+  재검증한다. 2026-05-17 manual baseline 계열 historical artifact는 현재 로컬에
+  없어 current manifest 대상에서 제외했다.
 - FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
   `server_update_policy=fedmatch_partitioned`,
   `local_ssl_policy=fedmatch_agreement` 조합으로 2026-05-22에 확인했다.
