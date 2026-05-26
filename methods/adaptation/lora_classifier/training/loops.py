@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import random
-from collections.abc import Iterator, Mapping
-from math import ceil
 from pathlib import Path
 from typing import Any
 
@@ -20,16 +18,12 @@ from methods.adaptation.common.selection_training_loop import (
     SelectionTrackedEpochResult,
     run_selection_tracked_training_loop,
 )
-from methods.adaptation.local_objective_regularizers.fedprox import (
-    compute_scaled_fedprox_loss,
-    snapshot_trainable_parameters,
-    validate_proximal_mu,
-)
 from methods.evaluation.classification_report import (
     build_classification_evaluation_report,
 )
 from methods.ssl.base import (
     QuerySslAlgorithm,
+    QuerySslStepResult,
     configure_query_ssl_algorithm_dataset,
     configure_query_ssl_algorithm_training,
 )
@@ -37,7 +31,18 @@ from shared.src.domain.services.classification_report import (
     safe_divide,
 )
 
+from .batching import (
+    move_tensor_batch_to_device,
+    next_cycling_batch,
+)
 from .modeling import LoraTextClassifier
+from .fedprox import prepare_lora_training_fedprox
+from .optimizer_step import run_optimizer_loss_step
+from .scalar_metrics import ScalarMetricAccumulator
+from .step_budget import (
+    remaining_effective_epochs,
+    resolve_epoch_distributed_step_budget,
+)
 
 
 def set_seed(seed: int) -> None:
@@ -171,23 +176,17 @@ def train_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
-    proximal_mu = validate_proximal_mu(proximal_mu)
-    fedprox_global_parameters = (
-        snapshot_trainable_parameters(trainable_parameters)
-        if proximal_mu > 0.0
-        else None
+    fedprox = prepare_lora_training_fedprox(
+        proximal_mu=proximal_mu,
+        trainable_parameters=trainable_parameters,
     )
     criterion = nn.CrossEntropyLoss()
-    full_epoch_steps = len(train_loader)
-    if max_train_steps is not None and max_train_steps <= 0:
-        raise ValueError("max_train_steps must be positive when provided.")
-    total_train_steps = (
-        int(max_train_steps)
-        if max_train_steps is not None
-        else int(epochs) * full_epoch_steps
+    step_budget = resolve_epoch_distributed_step_budget(
+        epochs=int(epochs),
+        full_epoch_steps=len(train_loader),
+        max_train_steps=max_train_steps,
+        invalid_max_steps_message="max_train_steps must be positive when provided.",
     )
-    steps_per_epoch_budget = max(1, ceil(total_train_steps / max(1, int(epochs))))
-    effective_epochs = min(max(1, int(epochs)), total_train_steps)
     completed_steps = 0
 
     def train_epoch(epoch: int) -> SelectionTrackedEpochResult:
@@ -197,13 +196,10 @@ def train_classifier(
         epoch_loss_total = 0.0
         epoch_rows = 0
         train_iterator = iter(train_loader)
-        epoch_steps = min(
-            steps_per_epoch_budget,
-            total_train_steps - completed_steps,
-        )
+        epoch_steps = step_budget.remaining_epoch_steps(completed_steps)
 
         for step_index in range(1, epoch_steps + 1):
-            batch, train_iterator = _next_batch(
+            batch, train_iterator = next_cycling_batch(
                 loader=train_loader,
                 iterator=train_iterator,
             )
@@ -211,20 +207,17 @@ def train_classifier(
             attention_mask = batch["attention_mask"].to(device)
             labels = batch["labels"].to(device)
 
-            optimizer.zero_grad(set_to_none=True)
-            logits = model(input_ids=input_ids, attention_mask=attention_mask)
-            loss = criterion(logits, labels)
-            if proximal_mu > 0.0:
-                assert fedprox_global_parameters is not None
-                loss = loss + compute_scaled_fedprox_loss(
-                    trainable_parameters=trainable_parameters,
-                    reference_snapshot=fedprox_global_parameters,
-                    proximal_mu=proximal_mu,
-                )
-            loss.backward()
-            if max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
-            optimizer.step()
+            def compute_loss() -> torch.Tensor:
+                logits = model(input_ids=input_ids, attention_mask=attention_mask)
+                loss = criterion(logits, labels)
+                return fedprox.add_to_loss(loss)
+
+            loss = run_optimizer_loss_step(
+                optimizer=optimizer,
+                trainable_parameters=trainable_parameters,
+                max_grad_norm=max_grad_norm,
+                compute_loss=compute_loss,
+            )
 
             batch_rows = len(labels)
             completed_steps += 1
@@ -254,7 +247,7 @@ def train_classifier(
 
     history, best_selection_report = run_selection_tracked_training_loop(
         model=model,
-        epochs=effective_epochs,
+        epochs=step_budget.effective_epochs,
         train_epoch=train_epoch,
         evaluate_selection=evaluate_selection,
         best_checkpoint_error_message=(
@@ -265,78 +258,27 @@ def train_classifier(
     return model, history, best_selection_report
 
 
-def _next_batch(
-    *,
-    loader: DataLoader[dict[str, Any]],
-    iterator: Iterator[dict[str, Any]],
-) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
-    try:
-        return next(iterator), iterator
-    except StopIteration:
-        refreshed_iterator = iter(loader)
-        return next(refreshed_iterator), refreshed_iterator
-
-
-def move_tensor_batch_to_device(
-    *,
-    batch: Mapping[str, Any],
-    device: str,
-) -> dict[str, Any]:
-    """tensor 값만 target device로 이동하고 non-tensor metadata는 보존한다."""
-
-    moved: dict[str, Any] = {}
-    for key, value in batch.items():
-        if isinstance(value, torch.Tensor):
-            moved[key] = value.to(
-                device,
-                non_blocking=_is_cuda_device(device),
-            )
-        else:
-            moved[key] = value
-    return moved
-
-
-def _is_cuda_device(device: str) -> bool:
-    return str(device).startswith("cuda")
-
-
-def _accumulate_scalar_tensors(
-    *,
-    sums: dict[str, float],
-    values: Mapping[str, torch.Tensor],
-) -> None:
-    for name, value in values.items():
-        sums[name] = sums.get(name, 0.0) + float(value.detach().item())
-
-
-def _build_average_scalar_record(
-    *,
-    sums: dict[str, float],
-    step_count: int,
-) -> dict[str, float]:
-    return {
-        f"train_{name}": round(safe_divide(total, step_count), 6)
-        for name, total in sums.items()
-    }
-
-
 def _format_running_scalars(
     *,
     total_loss_sum: float,
-    component_sums: dict[str, float],
-    metric_sums: dict[str, float],
+    component_metrics: ScalarMetricAccumulator,
+    step_metrics: ScalarMetricAccumulator,
     step_count: int,
 ) -> str:
     fields = [
         f"running_total_loss={safe_divide(total_loss_sum, step_count):.4f}",
     ]
     fields.extend(
-        f"running_{name}={safe_divide(total, step_count):.4f}"
-        for name, total in component_sums.items()
+        component_metrics.running_fields(
+            denominator=step_count,
+            key_prefix="running_",
+        )
     )
     fields.extend(
-        f"running_{name}={safe_divide(total, step_count):.4f}"
-        for name, total in metric_sums.items()
+        step_metrics.running_fields(
+            denominator=step_count,
+            key_prefix="running_",
+        )
     )
     return " ".join(fields)
 
@@ -384,18 +326,15 @@ def train_query_ssl_classifier(
         if labeled_updates_enabled
         else len(unlabeled_loader)
     )
-    if max_train_steps is not None and max_train_steps <= 0:
-        raise ValueError("max_train_steps must be positive when provided.")
-    total_train_steps = (
-        int(max_train_steps)
-        if max_train_steps is not None
-        else int(epochs) * full_epoch_steps
+    step_budget = resolve_epoch_distributed_step_budget(
+        epochs=int(epochs),
+        full_epoch_steps=full_epoch_steps,
+        max_train_steps=max_train_steps,
+        invalid_max_steps_message="max_train_steps must be positive when provided.",
     )
-    steps_per_epoch_budget = max(1, ceil(total_train_steps / max(1, int(epochs))))
-    effective_epochs = min(max(1, int(epochs)), total_train_steps)
     configure_query_ssl_algorithm_training(
         algorithm,
-        num_train_iter=max(1, total_train_steps),
+        num_train_iter=max(1, step_budget.total_train_steps),
     )
 
     optimizer = build_optimizer(
@@ -405,11 +344,9 @@ def train_query_ssl_classifier(
         weight_decay=weight_decay,
     )
     trainable_parameters = trainable_model_parameters(model)
-    proximal_mu = validate_proximal_mu(proximal_mu)
-    fedprox_global_parameters = (
-        snapshot_trainable_parameters(trainable_parameters)
-        if proximal_mu > 0.0
-        else None
+    fedprox = prepare_lora_training_fedprox(
+        proximal_mu=proximal_mu,
+        trainable_parameters=trainable_parameters,
     )
 
     resume_state = load_query_ssl_training_checkpoint(
@@ -423,10 +360,11 @@ def train_query_ssl_classifier(
     completed_steps = resume_state.completed_steps
     initial_history = resume_state.history
     initial_best_checkpoint_state = resume_state.best_checkpoint_state
-    remaining_steps = max(0, total_train_steps - completed_steps)
-    effective_epochs = min(
-        max(1, int(epochs)),
-        max(1, ceil(remaining_steps / steps_per_epoch_budget)),
+    remaining_steps = max(0, step_budget.total_train_steps - completed_steps)
+    effective_epochs = remaining_effective_epochs(
+        epochs=int(epochs),
+        remaining_steps=remaining_steps,
+        steps_per_epoch_budget=step_budget.steps_per_epoch_budget,
     )
     checkpoint_every_epochs = int(resume_checkpoint_every_epochs)
     if checkpoint_every_epochs < 0:
@@ -443,21 +381,18 @@ def train_query_ssl_classifier(
 
         model.train()
         step_total_loss_sum = 0.0
-        step_component_sums: dict[str, float] = {}
-        step_metric_sums: dict[str, float] = {}
+        component_metrics = ScalarMetricAccumulator()
+        step_metrics = ScalarMetricAccumulator()
         step_count = 0
 
         labeled_iterator = None if not labeled_updates_enabled else iter(train_loader)
         unlabeled_iterator = iter(unlabeled_loader)
 
-        epoch_steps = min(
-            steps_per_epoch_budget,
-            total_train_steps - completed_steps,
-        )
+        epoch_steps = step_budget.remaining_epoch_steps(completed_steps)
         for step_index in range(1, epoch_steps + 1):
             if labeled_updates_enabled:
                 assert labeled_iterator is not None
-                labeled_batch, labeled_iterator = _next_batch(
+                labeled_batch, labeled_iterator = next_cycling_batch(
                     loader=train_loader,
                     iterator=labeled_iterator,
                 )
@@ -467,7 +402,7 @@ def train_query_ssl_classifier(
                 )
             else:
                 labeled_batch = None
-            unlabeled_batch, unlabeled_iterator = _next_batch(
+            unlabeled_batch, unlabeled_iterator = next_cycling_batch(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
@@ -476,49 +411,47 @@ def train_query_ssl_classifier(
                 device=device,
             )
 
-            optimizer.zero_grad(set_to_none=True)
-            step_output = algorithm.compute_step(
-                model=model,
-                labeled_batch=labeled_batch,
-                unlabeled_batch=unlabeled_batch,
+            step_output: QuerySslStepResult | None = None
+
+            def compute_total_loss() -> torch.Tensor:
+                nonlocal step_output
+
+                step_output = algorithm.compute_step(
+                    model=model,
+                    labeled_batch=labeled_batch,
+                    unlabeled_batch=unlabeled_batch,
+                )
+                total_loss = step_output.total_loss
+                if fedprox.enabled:
+                    fedprox_loss = fedprox.proximal_loss()
+                    total_loss = total_loss + fedprox_loss
+                    component_metrics.add_tensor(
+                        "fedprox_proximal_loss",
+                        fedprox_loss,
+                    )
+                return total_loss
+
+            total_loss = run_optimizer_loss_step(
+                optimizer=optimizer,
+                trainable_parameters=trainable_parameters,
+                max_grad_norm=max_grad_norm,
+                compute_loss=compute_total_loss,
             )
-            total_loss = step_output.total_loss
-            if proximal_mu > 0.0:
-                assert fedprox_global_parameters is not None
-                fedprox_loss = compute_scaled_fedprox_loss(
-                    trainable_parameters=trainable_parameters,
-                    reference_snapshot=fedprox_global_parameters,
-                    proximal_mu=proximal_mu,
-                )
-                total_loss = total_loss + fedprox_loss
-                step_component_sums["fedprox_proximal_loss"] = (
-                    step_component_sums.get("fedprox_proximal_loss", 0.0)
-                    + float(fedprox_loss.detach().item())
-                )
-            total_loss.backward()
-            if max_grad_norm > 0:
-                torch.nn.utils.clip_grad_norm_(trainable_parameters, max_grad_norm)
-            optimizer.step()
+            assert step_output is not None
 
             step_count += 1
             completed_steps += 1
             step_total_loss_sum += float(total_loss.detach().item())
-            _accumulate_scalar_tensors(
-                sums=step_component_sums,
-                values=step_output.loss_components,
-            )
-            _accumulate_scalar_tensors(
-                sums=step_metric_sums,
-                values=step_output.metrics,
-            )
+            component_metrics.add_tensor_mapping(step_output.loss_components)
+            step_metrics.add_tensor_mapping(step_output.metrics)
 
             if log_every_steps > 0 and step_index % log_every_steps == 0:
                 print(
                     f"[epoch={epoch} step={step_index}] "
                     + _format_running_scalars(
                         total_loss_sum=step_total_loss_sum,
-                        component_sums=step_component_sums,
-                        metric_sums=step_metric_sums,
+                        component_metrics=component_metrics,
+                        step_metrics=step_metrics,
                         step_count=step_count,
                     ),
                     flush=True,
@@ -528,13 +461,13 @@ def train_query_ssl_classifier(
             train_loss_total=step_total_loss_sum,
             train_loss_denominator=step_count,
             extra_train_metrics={
-                **_build_average_scalar_record(
-                    sums=step_component_sums,
-                    step_count=step_count,
+                **component_metrics.average_record(
+                    denominator=step_count,
+                    key_prefix="train_",
                 ),
-                **_build_average_scalar_record(
-                    sums=step_metric_sums,
-                    step_count=step_count,
+                **step_metrics.average_record(
+                    denominator=step_count,
+                    key_prefix="train_",
                 ),
             },
         )
@@ -554,7 +487,10 @@ def train_query_ssl_classifier(
     ) -> None:
         if checkpoint_output_dir is None or checkpoint_every_epochs <= 0:
             return
-        if epoch % checkpoint_every_epochs != 0 and completed_steps < total_train_steps:
+        if (
+            epoch % checkpoint_every_epochs != 0
+            and completed_steps < step_budget.total_train_steps
+        ):
             return
         save_query_ssl_training_checkpoint(
             checkpoint_output_dir=checkpoint_output_dir,
@@ -562,7 +498,7 @@ def train_query_ssl_classifier(
             model=model,
             optimizer=optimizer,
             completed_steps=completed_steps,
-            total_train_steps=total_train_steps,
+            total_train_steps=step_budget.total_train_steps,
             history=history,
             best_checkpoint_state=best_checkpoint_state,
             categories=categories,

@@ -2,9 +2,8 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator, Mapping, Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
-from math import ceil
 from typing import Any, Protocol
 
 import torch
@@ -13,10 +12,23 @@ from torch.utils.data import DataLoader
 
 from methods.adaptation.lora_classifier.training.loops import (
     build_optimizer,
-    move_tensor_batch_to_device,
     trainable_model_parameters,
 )
+from methods.adaptation.lora_classifier.training.batching import (
+    move_tensor_batch_to_device,
+    next_cycling_batch,
+)
+from methods.adaptation.lora_classifier.training.step_budget import (
+    resolve_epoch_distributed_step_budget,
+)
 from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
+from methods.adaptation.lora_classifier.training.optimizer_step import (
+    run_optimizer_loss_step,
+)
+from methods.adaptation.lora_classifier.training.scalar_metrics import (
+    ScalarMetricAccumulator,
+    tensor_mapping_l2,
+)
 from methods.adaptation.lora_classifier.training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
@@ -41,7 +53,6 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_SIGMA_PARTITION,
 )
 from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchClassifier
-from shared.src.domain.services.classification_report import safe_divide
 
 
 @dataclass(frozen=True, slots=True)
@@ -112,30 +123,34 @@ def train_partitioned_lora_classifier(
     total_steps = int(step_plan.total_steps)
     if total_steps <= 0:
         raise ValueError("FedMatch local step_plan.total_steps must be positive.")
-    steps_per_epoch_budget = max(
-        1,
-        ceil(total_steps / max(1, int(step_plan.local_epochs))),
+    step_budget = resolve_epoch_distributed_step_budget(
+        epochs=int(step_plan.local_epochs),
+        full_epoch_steps=int(step_plan.full_epoch_steps),
+        max_train_steps=total_steps,
+        invalid_max_steps_message=(
+            "FedMatch local step_plan.total_steps must be positive."
+        ),
     )
     completed_steps = 0
-    scalar_sums: dict[str, float] = {}
+    scalar_metrics = ScalarMetricAccumulator()
     sigma_parameter_delta_sums: dict[str, Tensor] = {}
     psi_parameter_delta_sums: dict[str, Tensor] = {}
 
-    for _epoch in range(1, min(int(step_plan.local_epochs), total_steps) + 1):
+    for _epoch in range(1, step_budget.effective_epochs + 1):
         model.train()
         labeled_iterator = iter(train_loader) if use_supervised_steps else None
         unlabeled_iterator = iter(unlabeled_loader)
-        epoch_steps = min(steps_per_epoch_budget, total_steps - completed_steps)
+        epoch_steps = step_budget.remaining_epoch_steps(completed_steps)
         for _step_index in range(1, epoch_steps + 1):
             labeled_batch = None
             if use_supervised_steps:
                 if train_loader is None or labeled_iterator is None:
                     raise ValueError("supervised FedMatch steps require train_loader.")
-                labeled_batch, labeled_iterator = _next_batch(
+                labeled_batch, labeled_iterator = next_cycling_batch(
                     loader=train_loader,
                     iterator=labeled_iterator,
                 )
-            unlabeled_batch, unlabeled_iterator = _next_batch(
+            unlabeled_batch, unlabeled_iterator = next_cycling_batch(
                 loader=unlabeled_loader,
                 iterator=unlabeled_iterator,
             )
@@ -168,45 +183,37 @@ def train_partitioned_lora_classifier(
                 max_grad_norm=max_grad_norm,
             )
             completed_steps += 1
-            _accumulate_named_scalar(
-                scalar_sums,
+            scalar_metrics.add_tensor(
                 "sup_loss",
                 step_result.supervised.total_loss,
             )
-            _accumulate_named_scalar(
-                scalar_sums,
+            scalar_metrics.add_tensor(
                 "unsup_loss",
                 step_result.unsupervised.total_loss,
             )
-            _accumulate_named_scalar(
-                scalar_sums,
+            scalar_metrics.add_tensor(
                 "total_loss",
                 step_result.supervised.total_loss + step_result.unsupervised.total_loss,
             )
-            _accumulate_named_scalar(
-                scalar_sums,
+            scalar_metrics.add_tensor(
                 "util_ratio",
                 step_result.unsupervised.metrics["util_ratio"],
             )
-            _accumulate_mapping_scalars(
-                scalar_sums,
-                prefix="fedmatch_sigma",
-                values=step_result.supervised.metrics,
+            scalar_metrics.add_tensor_mapping(
+                step_result.supervised.metrics,
+                prefix="fedmatch_sigma_",
             )
-            _accumulate_mapping_scalars(
-                scalar_sums,
-                prefix="fedmatch_psi",
-                values=step_result.unsupervised.metrics,
+            scalar_metrics.add_tensor_mapping(
+                step_result.unsupervised.metrics,
+                prefix="fedmatch_psi_",
             )
-            _accumulate_named_float(
-                scalar_sums,
+            scalar_metrics.add_float(
                 "fedmatch_sigma_delta_l2",
-                _parameter_delta_l2(step_result.sigma_parameter_deltas),
+                tensor_mapping_l2(step_result.sigma_parameter_deltas),
             )
-            _accumulate_named_float(
-                scalar_sums,
+            scalar_metrics.add_float(
                 "fedmatch_psi_delta_l2",
-                _parameter_delta_l2(step_result.psi_parameter_deltas),
+                tensor_mapping_l2(step_result.psi_parameter_deltas),
             )
             if emit_sigma_partition:
                 _accumulate_parameter_deltas(
@@ -221,10 +228,10 @@ def train_partitioned_lora_classifier(
             break
 
     return PartitionedLoraTrainingResult(
-        metrics={
-            f"train_{name}": round(safe_divide(value, completed_steps), 6)
-            for name, value in scalar_sums.items()
-        },
+        metrics=scalar_metrics.average_record(
+            denominator=completed_steps,
+            key_prefix="train_",
+        ),
         partition_deltas={
             **(
                 {
@@ -344,22 +351,29 @@ def _apply_fedmatch_supervised_step(
     optimizer: torch.optim.Optimizer,
     max_grad_norm: float,
 ) -> FedMatchTensorLocalObjectiveResult:
-    optimizer.zero_grad(set_to_none=True)
-    logits = model(
-        input_ids=labeled_batch["input_ids"],
-        attention_mask=labeled_batch["attention_mask"],
-    )
-    result = compute_fedmatch_supervised_loss(
-        labeled_logits=logits,
-        labels=labeled_batch["labels"],
-        parameters=parameters,
-    )
-    result.total_loss.backward()
-    _clip_gradients_if_needed(
-        model=model,
+    result: FedMatchTensorLocalObjectiveResult | None = None
+
+    def compute_loss() -> Tensor:
+        nonlocal result
+
+        logits = model(
+            input_ids=labeled_batch["input_ids"],
+            attention_mask=labeled_batch["attention_mask"],
+        )
+        result = compute_fedmatch_supervised_loss(
+            labeled_logits=logits,
+            labels=labeled_batch["labels"],
+            parameters=parameters,
+        )
+        return result.total_loss
+
+    run_optimizer_loss_step(
+        optimizer=optimizer,
+        trainable_parameters=trainable_model_parameters(_as_torch_module(model)),
         max_grad_norm=max_grad_norm,
+        compute_loss=compute_loss,
     )
-    optimizer.step()
+    assert result is not None
     return result
 
 
@@ -393,46 +407,53 @@ def _apply_fedmatch_unsupervised_step(
     enable_inter_client_consistency: bool,
     max_grad_norm: float,
 ) -> FedMatchTensorLocalObjectiveResult:
-    optimizer.zero_grad(set_to_none=True)
-    weak_logits = model(
-        input_ids=unlabeled_batch["weak_input_ids"],
-        attention_mask=unlabeled_batch["weak_attention_mask"],
-    )
-    confidence_mask = _fedmatch_confidence_mask(
-        weak_logits=weak_logits,
-        confidence_threshold=parameters.confidence_threshold,
-    )
-    selected_strong_logits = _forward_selected_strong_view(
-        model=model,
-        unlabeled_batch=unlabeled_batch,
-        confidence_mask=confidence_mask,
-        reference_logits=weak_logits,
-    )
-    selected_helper_probabilities = _compute_selected_helper_probabilities(
-        helper_weak_probability_provider=helper_weak_probability_provider,
-        unlabeled_batch=unlabeled_batch,
-        confidence_mask=confidence_mask,
-    )
-    result = compute_fedmatch_unsupervised_loss(
-        weak_logits=weak_logits,
-        selected_strong_logits=selected_strong_logits,
-        selected_helper_weak_probabilities=selected_helper_probabilities,
-        parameter_partitions=FedMatchParameterPartitions(
-            sigma={
-                key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
-                for key, value in sigma_snapshot.items()
-            },
-            psi=named_trainable_parameter_tensors(_as_torch_module(model)),
-        ),
-        parameters=parameters,
-        enable_inter_client_consistency=enable_inter_client_consistency,
-    )
-    result.total_loss.backward()
-    _clip_gradients_if_needed(
-        model=model,
+    result: FedMatchTensorLocalObjectiveResult | None = None
+
+    def compute_loss() -> Tensor:
+        nonlocal result
+
+        weak_logits = model(
+            input_ids=unlabeled_batch["weak_input_ids"],
+            attention_mask=unlabeled_batch["weak_attention_mask"],
+        )
+        confidence_mask = _fedmatch_confidence_mask(
+            weak_logits=weak_logits,
+            confidence_threshold=parameters.confidence_threshold,
+        )
+        selected_strong_logits = _forward_selected_strong_view(
+            model=model,
+            unlabeled_batch=unlabeled_batch,
+            confidence_mask=confidence_mask,
+            reference_logits=weak_logits,
+        )
+        selected_helper_probabilities = _compute_selected_helper_probabilities(
+            helper_weak_probability_provider=helper_weak_probability_provider,
+            unlabeled_batch=unlabeled_batch,
+            confidence_mask=confidence_mask,
+        )
+        result = compute_fedmatch_unsupervised_loss(
+            weak_logits=weak_logits,
+            selected_strong_logits=selected_strong_logits,
+            selected_helper_weak_probabilities=selected_helper_probabilities,
+            parameter_partitions=FedMatchParameterPartitions(
+                sigma={
+                    key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
+                    for key, value in sigma_snapshot.items()
+                },
+                psi=named_trainable_parameter_tensors(_as_torch_module(model)),
+            ),
+            parameters=parameters,
+            enable_inter_client_consistency=enable_inter_client_consistency,
+        )
+        return result.total_loss
+
+    run_optimizer_loss_step(
+        optimizer=optimizer,
+        trainable_parameters=trainable_model_parameters(_as_torch_module(model)),
         max_grad_norm=max_grad_norm,
+        compute_loss=compute_loss,
     )
-    optimizer.step()
+    assert result is not None
     return result
 
 
@@ -506,18 +527,25 @@ def _apply_query_ssl_psi_step(
     algorithm: QuerySslAlgorithm,
     max_grad_norm: float,
 ) -> FedMatchTensorLocalObjectiveResult:
-    optimizer.zero_grad(set_to_none=True)
-    step_result = algorithm.compute_step(
-        model=model,
-        labeled_batch=None,
-        unlabeled_batch=dict(unlabeled_batch),
-    )
-    step_result.total_loss.backward()
-    _clip_gradients_if_needed(
-        model=model,
+    step_result: QuerySslStepResult | None = None
+
+    def compute_loss() -> Tensor:
+        nonlocal step_result
+
+        step_result = algorithm.compute_step(
+            model=model,
+            labeled_batch=None,
+            unlabeled_batch=dict(unlabeled_batch),
+        )
+        return step_result.total_loss
+
+    run_optimizer_loss_step(
+        optimizer=optimizer,
+        trainable_parameters=trainable_model_parameters(_as_torch_module(model)),
         max_grad_norm=max_grad_norm,
+        compute_loss=compute_loss,
     )
-    optimizer.step()
+    assert step_result is not None
     return _query_ssl_step_result_as_partition_result(step_result)
 
 
@@ -533,58 +561,8 @@ def _query_ssl_step_result_as_partition_result(
     )
 
 
-def _clip_gradients_if_needed(
-    *,
-    model: TextBatchClassifier,
-    max_grad_norm: float,
-) -> None:
-    if max_grad_norm > 0.0:
-        torch.nn.utils.clip_grad_norm_(
-            trainable_model_parameters(_as_torch_module(model)),
-            max_grad_norm,
-        )
-
-
 def _as_torch_module(model: TextBatchClassifier) -> nn.Module:
     return model  # type: ignore[return-value]
-
-
-def _next_batch(
-    *,
-    loader: DataLoader[dict[str, Any]],
-    iterator: Iterator[dict[str, Any]],
-) -> tuple[dict[str, Any], Iterator[dict[str, Any]]]:
-    try:
-        return next(iterator), iterator
-    except StopIteration:
-        refreshed_iterator = iter(loader)
-        return next(refreshed_iterator), refreshed_iterator
-
-
-def _accumulate_named_scalar(
-    sums: dict[str, float],
-    name: str,
-    value: Tensor,
-) -> None:
-    _accumulate_named_float(sums, name, float(value.detach().item()))
-
-
-def _accumulate_named_float(
-    sums: dict[str, float],
-    name: str,
-    value: float,
-) -> None:
-    sums[name] = sums.get(name, 0.0) + float(value)
-
-
-def _accumulate_mapping_scalars(
-    sums: dict[str, float],
-    *,
-    prefix: str,
-    values: Mapping[str, Tensor],
-) -> None:
-    for name, value in values.items():
-        _accumulate_named_scalar(sums, f"{prefix}_{name}", value)
 
 
 def _accumulate_parameter_deltas(
@@ -599,10 +577,3 @@ def _accumulate_parameter_deltas(
         if sums[name].shape != detached.shape:
             raise ValueError("FedMatch partition delta shape changed during training.")
         sums[name] = sums[name] + detached
-
-
-def _parameter_delta_l2(parameter_deltas: Mapping[str, Tensor]) -> float:
-    squared_norm = 0.0
-    for delta in parameter_deltas.values():
-        squared_norm += float(torch.sum(torch.square(delta.detach())).item())
-    return squared_norm**0.5
