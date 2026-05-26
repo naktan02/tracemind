@@ -505,6 +505,13 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.training_task.objective.training_backend_name == (
         "peft_classifier_trainer"
     )
+    assert cfg.training_task.objective.example_generation_backend_name == (
+        "peft_classifier_raw_rows"
+    )
+    assert cfg.training_task.objective.evidence_backend_name == (
+        "peft_classifier_logits"
+    )
+    assert cfg.training_task.objective.scorer_backend_name == "peft_classifier_logits"
     assert cfg.training_task.objective.privacy_guard_name == "noop"
     assert cfg.query_ssl_method.name == "fixmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "fixmatch"
