@@ -5,7 +5,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any
 
-from methods.adaptation.lora_classifier.initial_state import (
+from methods.adaptation.text_classifier.peft_encoder.initial_state import (
     build_initial_lora_classifier_state,
 )
 from shared.src.contracts.adapter_contract_families.classifier_head import (

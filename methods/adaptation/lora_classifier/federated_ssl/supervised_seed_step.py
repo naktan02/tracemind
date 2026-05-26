@@ -5,29 +5,31 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.training.delta_extraction import (
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
     extract_lora_classifier_parameter_deltas,
     load_lora_classifier_base_parameters_into_model,
 )
-from methods.adaptation.lora_classifier.training.loops import (
+from methods.adaptation.text_classifier.peft_encoder.training.loops import (
     set_seed,
     train_classifier,
 )
-from methods.adaptation.lora_classifier.training.modeling import (
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_lora_text_classifier_from_config,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-)
-from methods.adaptation.query_classifier_adaptation.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
 
 
 @dataclass(frozen=True, slots=True)

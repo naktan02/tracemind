@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig

@@ -11,20 +11,20 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.query_classifier_adaptation.data import build_weak_dataloader
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.training.delta_extraction import (
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
-from methods.adaptation.lora_classifier.training.modeling import (
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     LoraTextClassifier,
     build_lora_text_classifier_from_config,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-)
-from methods.adaptation.query_classifier_adaptation.data import build_weak_dataloader
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
     compact_lora_classifier_materialized_state,
@@ -35,6 +35,8 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerContext,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
 
 LORA_CLASSIFIER_PEER_SNAPSHOT_KIND = "lora_classifier_materialized_state.v1"
 

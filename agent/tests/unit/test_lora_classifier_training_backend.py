@@ -28,14 +28,14 @@ from methods.adaptation.local_update_registry import (
 from methods.adaptation.lora_classifier import (
     config as lora_config,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    QuerySslLoraClientTrainingResult,
-)
-from methods.adaptation.lora_classifier.training_backend import (
-    LoraClassifierTrainingBackend,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.training_backend import (
+    LoraClassifierTrainingBackend,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
     LoraClassifierTrainArtifacts,
@@ -59,6 +59,8 @@ from shared.src.domain.entities.inference.events import ScoredEvent
 from shared.src.domain.entities.training.pseudo_label_candidate import (
     PseudoLabelCandidate,
 )
+
+QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
 
 
 class _RecordingLoraTrainExecutor:

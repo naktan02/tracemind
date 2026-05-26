@@ -4,18 +4,20 @@ from __future__ import annotations
 
 from typing import Any
 
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.text_classifier.peft_encoder.config import (
     build_lora_classifier_training_backend_config,
 )
-from methods.adaptation.lora_classifier.evaluation import require_lora_classifier_state
-from methods.adaptation.lora_classifier.training.delta_extraction import (
+from methods.adaptation.text_classifier.peft_encoder.evaluation import (
+    require_lora_classifier_state,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
 )
-from methods.adaptation.lora_classifier.training.loops import set_seed
-from methods.adaptation.lora_classifier.training.modeling import (
+from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_lora_text_classifier_from_config,
 )
-from methods.adaptation.query_classifier_adaptation.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     materialize_base_lora_classifier_state,
 )

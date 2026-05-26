@@ -6,11 +6,11 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.lora_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
-)
 from methods.adaptation.server_update_materialization import (
     require_server_materializable_update_payload,
+)
+from methods.adaptation.text_classifier.peft_encoder.config import (
+    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
 )
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,

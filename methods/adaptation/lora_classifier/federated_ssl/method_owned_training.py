@@ -7,14 +7,11 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-    QuerySslLoraClientTrainingResult,
-    QuerySslLoraDeltaMaterializer,
-    QuerySslLoraObjectiveRuntimeConfig,
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -26,6 +23,11 @@ from methods.federated_ssl.registry import resolve_federated_ssl_method_descript
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
+QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
+QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
+QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
 
 
 class FederatedSslMethodLocalTrainingConfig(Protocol):

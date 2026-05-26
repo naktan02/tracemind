@@ -14,11 +14,8 @@ from methods.adaptation.local_update_backend import SharedAdapterTrainingBackend
 from methods.adaptation.local_update_registry import (
     build_shared_adapter_training_backend,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-    QuerySslLoraClientTrainingResult,
-    QuerySslLoraDeltaMaterializer,
-    QuerySslLoraObjectiveRuntimeConfig,
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -33,6 +30,11 @@ from shared.src.services.secure_update_codec import (
     NoOpSecureUpdateCodec,
     SecureUpdateCodec,
 )
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
+QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
+QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
+QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
 
 
 @dataclass(slots=True)

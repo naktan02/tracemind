@@ -14,20 +14,20 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslLocalTrainingService,
     QuerySslLoraLocalTrainingRequest,
 )
-from methods.adaptation.lora_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
-    build_lora_classifier_training_backend_config,
-)
 from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
     build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from methods.adaptation.lora_classifier.federated_ssl.method_owned_training import (
     run_method_owned_lora_classifier_training_core,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    QuerySslLoraClientTrainingResult,
+from methods.adaptation.text_classifier.peft_encoder.config import (
+    LoraClassifierTrainingBackendConfig,
+    build_lora_classifier_training_backend_config,
 )
-from methods.adaptation.lora_classifier.training_backend import (
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.training_backend import (
     LoraClassifierTrainingBackend,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
@@ -63,6 +63,8 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
+
+QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
 
 
 def run_method_owned_lora_classifier_local_training(

@@ -270,6 +270,15 @@ compatibility shim으로만 남겼다. Generic weighted-average 산술은 계속
 - `adapter_kind=lora_classifier`와 report field rename은 producer, consumer,
   verifier, docs를 같이 바꿀 수 있을 때 v2 migration으로 닫는다.
 
+상태: 진행 중. 내부 코드는 legacy `lora_classifier/aggregation`,
+`lora_classifier/update`, `lora_classifier/config.py`, `lora_classifier/training/*`,
+`lora_classifier/training_backend.py`, `lora_classifier/initial_state.py`,
+`lora_classifier/evaluation.py` 경로를 직접 import하지 않는다. 해당 경로들은
+compatibility shim으로만 남긴다. 다음 보정 대상은
+`lora_classifier/federated_ssl`에 남은 family execution bridge와
+`peft/`, `lora/`, `classifier_head/`, `text_classifier/feature_head/` legacy shim
+폴더의 제거 조건이다.
+
 ## 호환성 정책
 
 - 기존 `lora_classifier` run artifact, manifest, report verifier는 즉시 깨지면 안 된다.

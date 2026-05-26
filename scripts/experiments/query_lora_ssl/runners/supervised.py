@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from methods.adaptation.lora_classifier.training.loops import (
+from methods.adaptation.text_classifier.peft_encoder.training.loops import (
     train_classifier as train_query_lora_classifier,
 )
 from scripts.experiments.query_lora_ssl.harness.common import (

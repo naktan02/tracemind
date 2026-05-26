@@ -19,12 +19,12 @@ def build_federated_local_training_service(
     from agent.src.services.training.execution.local_training_service import (
         LocalTrainingService,
     )
-    from methods.adaptation.lora_classifier.config import (
+    from methods.adaptation.text_classifier.peft_encoder.config import (
         LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
         build_lora_classifier_training_backend_config,
     )
-    from methods.adaptation.lora_classifier.training_backend import (
+    from methods.adaptation.text_classifier.peft_encoder.training_backend import (
         LoraClassifierTrainingBackend,
     )
     from methods.adaptation.text_classifier.peft_encoder.update import (

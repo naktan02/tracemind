@@ -16,13 +16,6 @@ from methods.adaptation.lora_classifier.federated_ssl.method_owned_training impo
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     extract_lora_classifier_materialized_state,
 )
-from methods.adaptation.lora_classifier.training.partitioned_deltas import (
-    build_adapter_classifier_delta_bundle,
-    build_lora_classifier_partition_delta_from_parameter_deltas,
-    diff_parameter_snapshots,
-    project_adapter_classifier_delta_bundle_to_lora_partition_delta,
-    snapshot_trainable_parameter_tensors,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
@@ -32,6 +25,9 @@ from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned i
 )
 from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
     trainable_model as ptm,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    partitioned_deltas,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -50,6 +46,20 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_SIGMA_PARTITION,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
+
+build_adapter_classifier_delta_bundle = (
+    partitioned_deltas.build_adapter_classifier_delta_bundle
+)
+build_lora_classifier_partition_delta_from_parameter_deltas = (
+    partitioned_deltas.build_lora_classifier_partition_delta_from_parameter_deltas
+)
+diff_parameter_snapshots = partitioned_deltas.diff_parameter_snapshots
+project_adapter_classifier_delta_bundle_to_lora_partition_delta = (
+    partitioned_deltas.project_adapter_classifier_delta_bundle_to_lora_partition_delta
+)
+snapshot_trainable_parameter_tensors = (
+    partitioned_deltas.snapshot_trainable_parameter_tensors
+)
 
 
 def _fedmatch_objective(

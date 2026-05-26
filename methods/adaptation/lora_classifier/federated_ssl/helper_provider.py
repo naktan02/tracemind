@@ -4,14 +4,14 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from methods.adaptation.lora_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
-)
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     build_lora_classifier_helper_probability_provider,
 )
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
+from methods.adaptation.text_classifier.peft_encoder.config import (
+    LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
@@ -22,6 +22,8 @@ from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
 )
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
 
 
 def build_lora_classifier_helper_provider_for_local_ssl_policy(

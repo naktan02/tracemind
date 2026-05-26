@@ -10,14 +10,14 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
 )
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
+)
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
-    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qcore,

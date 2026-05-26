@@ -9,9 +9,6 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-from methods.adaptation.lora_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
-)
 from methods.adaptation.lora_classifier.federated_ssl.partition_sparse_sync import (
     PartitionSparseSyncParameters,
     apply_partitioned_s2c_sparse_download,
@@ -35,27 +32,6 @@ from methods.adaptation.lora_classifier.federated_ssl.partitioned_training_loop 
 from methods.adaptation.lora_classifier.federated_ssl.peer_predictions import (
     build_lora_classifier_peer_client_snapshot,
 )
-from methods.adaptation.lora_classifier.training.delta_extraction import (
-    extract_lora_classifier_parameter_deltas,
-    load_lora_classifier_base_parameters_into_model,
-)
-from methods.adaptation.lora_classifier.training.loops import set_seed
-from methods.adaptation.lora_classifier.training.modeling import (
-    LoraTextClassifier,
-    build_lora_text_classifier_from_config,
-)
-from methods.adaptation.lora_classifier.training.pseudo_label_diagnostics import (
-    PseudoLabelDiagnosticThreshold,
-    build_final_snapshot_pseudo_label_quality,
-    resolve_fixed_pseudo_label_diagnostic_threshold,
-    tokenization_cache_namespace,
-)
-from methods.adaptation.lora_classifier.training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-    QuerySslLoraClientTrainingResult,
-    QuerySslLoraDeltaMaterializer,
-    QuerySslLoraObjectiveRuntimeConfig,
-)
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader,
     build_multiview_dataloader,
@@ -72,6 +48,24 @@ from methods.adaptation.query_classifier_adaptation.view_rows import (
 )
 from methods.adaptation.text_classifier.aggregation import (
     peft_encoder_partitioned_state as ps,
+)
+from methods.adaptation.text_classifier.peft_encoder.config import (
+    LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    pseudo_label_diagnostics as pld,
+)
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+    extract_lora_classifier_parameter_deltas,
+    load_lora_classifier_base_parameters_into_model,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+    LoraTextClassifier,
+    build_lora_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     LoraClassifierMaterializedState,
@@ -134,6 +128,19 @@ from shared.src.contracts.training_contracts import (
     TrainingTask,
     make_training_update_envelope,
 )
+
+LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
+QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
+QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
+QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
+PseudoLabelDiagnosticThreshold = pld.PseudoLabelDiagnosticThreshold
+build_final_snapshot_pseudo_label_quality = (
+    pld.build_final_snapshot_pseudo_label_quality
+)
+resolve_fixed_pseudo_label_diagnostic_threshold = (
+    pld.resolve_fixed_pseudo_label_diagnostic_threshold
+)
+tokenization_cache_namespace = pld.tokenization_cache_namespace
 
 
 class PartitionedMethodLocalTrainingConfig(Protocol):

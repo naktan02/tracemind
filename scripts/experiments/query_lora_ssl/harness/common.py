@@ -10,20 +10,20 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.lora_classifier.training.loops import (
-    evaluate_classifier as evaluate_query_lora_classifier,
-)
-from methods.adaptation.lora_classifier.training.loops import (
-    set_seed as set_query_lora_seed,
-)
-from methods.adaptation.lora_classifier.training.modeling import (
-    build_model as build_query_lora_model,
-)
 from methods.adaptation.query_classifier_adaptation.data import (
     build_dataloader as build_query_lora_dataloader,
 )
 from methods.adaptation.query_classifier_adaptation.data import (
     build_label_index as build_query_lora_label_index,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.loops import (
+    evaluate_classifier as evaluate_query_lora_classifier,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.loops import (
+    set_seed as set_query_lora_seed,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+    build_model as build_query_lora_model,
 )
 from scripts.experiments.query_lora_ssl.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,

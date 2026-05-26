@@ -12,17 +12,23 @@ from methods.adaptation.local_objective_regularizers.fedprox import (
     compute_fedprox_proximal_loss,
     snapshot_trainable_parameters,
 )
-from methods.adaptation.lora_classifier.config import (
+from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.lora_classifier.training.loops import (
+from methods.adaptation.text_classifier.peft_encoder.training import (
+    pseudo_label_diagnostics as pld,
+)
+from methods.adaptation.text_classifier.peft_encoder.training.loops import (
     evaluate_classifier,
     train_classifier,
     train_query_ssl_classifier,
 )
-from methods.adaptation.lora_classifier.training.modeling import LoraTextClassifier
-from methods.adaptation.lora_classifier.training.pseudo_label_diagnostics import (
-    resolve_fixed_pseudo_label_diagnostic_threshold,
+from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+    LoraTextClassifier,
+)
+
+resolve_fixed_pseudo_label_diagnostic_threshold = (
+    pld.resolve_fixed_pseudo_label_diagnostic_threshold
 )
 
 

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.adaptation.lora_classifier.evaluation import (
+from methods.adaptation.text_classifier.peft_encoder.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
     evaluate_lora_classifier_validation_payload,
     require_lora_classifier_state,
