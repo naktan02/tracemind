@@ -5,6 +5,9 @@ from __future__ import annotations
 import gc
 import time
 
+from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+    clear_peft_encoder_transient_resource_cache,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -145,12 +148,9 @@ def _build_client_evaluations(
 def _release_helper_model_cache_before_final_evaluation(
     bootstrapped: BootstrappedSimulation,
 ) -> None:
-    """최종 평가 전에 FedMatch helper model 참조를 내려 GPU 압박을 줄인다."""
+    """최종 평가 전에 method helper model 참조를 내려 GPU 압박을 줄인다."""
 
-    cache = bootstrapped.runtime_resource_cache
-    clear_resources = getattr(cache, "clear_resources", None)
-    if callable(clear_resources):
-        clear_resources(key_prefix="lora_classifier:helper_model:")
+    clear_peft_encoder_transient_resource_cache(bootstrapped.runtime_resource_cache)
     gc.collect()
     try:
         import torch

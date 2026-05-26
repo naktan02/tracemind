@@ -6,6 +6,9 @@ import json
 from dataclasses import asdict, dataclass
 from pathlib import Path
 
+from methods.federated_ssl.client_diagnostics import (
+    client_method_diagnostics_from_payload,
+)
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     ClientRoundSummary,
     SimulationEvaluation,
@@ -209,28 +212,7 @@ def _client_summary_from_payload(payload: dict[str, object]) -> ClientRoundSumma
                 payload.get("rejected_label_distribution", {})
             ).items()
         },
-        fedmatch_helper_count=_optional_float(payload.get("fedmatch_helper_count")),
-        fedmatch_peer_context_helper_count=_optional_float(
-            payload.get("fedmatch_peer_context_helper_count")
-        ),
-        fedmatch_helper_provider_count=_optional_float(
-            payload.get("fedmatch_helper_provider_count")
-        ),
-        fedmatch_missing_helper_snapshot_count=_optional_float(
-            payload.get("fedmatch_missing_helper_snapshot_count")
-        ),
-        fedmatch_materialized_helper_model_count=_optional_float(
-            payload.get("fedmatch_materialized_helper_model_count")
-        ),
-        fedmatch_peer_context_refreshed=_optional_float(
-            payload.get("fedmatch_peer_context_refreshed")
-        ),
-        fedmatch_c2s_sparse_upload_value_count=_optional_float(
-            payload.get("fedmatch_c2s_sparse_upload_value_count")
-        ),
-        fedmatch_s2c_sparse_download_value_count=_optional_float(
-            payload.get("fedmatch_s2c_sparse_download_value_count")
-        ),
+        method_diagnostics=client_method_diagnostics_from_payload(payload),
         timing_breakdown={
             str(key): float(value)
             for key, value in dict(payload.get("timing_breakdown", {})).items()

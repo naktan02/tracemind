@@ -8,6 +8,9 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
+from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+    clear_peft_encoder_transient_resource_cache,
+)
 from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
     is_peft_encoder_adapter_family,
 )
@@ -20,6 +23,9 @@ from methods.adaptation.text_classifier.peft_encoder.update.materialization impo
 )
 from methods.common.timing import TimingRecorder
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.client_diagnostics import (
+    extract_client_method_diagnostics,
+)
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
     FederatedSslPeerContext,
@@ -236,37 +242,9 @@ def _run_method_owned_lora_client_round(
             rejected_label_distribution=(
                 pseudo_label_quality.rejected_label_distribution
             ),
-            fedmatch_helper_count=_optional_float_metric(
-                local_result.client_metrics.get("fedmatch_helper_count")
-            ),
-            fedmatch_peer_context_helper_count=_optional_float_metric(
-                local_result.client_metrics.get("fedmatch_peer_context_helper_count")
-            ),
-            fedmatch_helper_provider_count=_optional_float_metric(
-                local_result.client_metrics.get("fedmatch_helper_provider_count")
-            ),
-            fedmatch_missing_helper_snapshot_count=_optional_float_metric(
-                local_result.client_metrics.get(
-                    "fedmatch_missing_helper_snapshot_count"
-                )
-            ),
-            fedmatch_materialized_helper_model_count=_optional_float_metric(
-                local_result.client_metrics.get(
-                    "fedmatch_materialized_helper_model_count"
-                )
-            ),
-            fedmatch_peer_context_refreshed=_optional_float_metric(
-                local_result.client_metrics.get("fedmatch_peer_context_refreshed")
-            ),
-            fedmatch_c2s_sparse_upload_value_count=_optional_float_metric(
-                local_result.client_metrics.get(
-                    "fedmatch_c2s_sparse_upload_value_count"
-                )
-            ),
-            fedmatch_s2c_sparse_download_value_count=_optional_float_metric(
-                local_result.client_metrics.get(
-                    "fedmatch_s2c_sparse_download_value_count"
-                )
+            method_diagnostics=extract_client_method_diagnostics(
+                method_name=request.ssl_method_config.name,
+                metrics=local_result.client_metrics,
             ),
             timing_breakdown=timing.to_mapping(),
         ),
@@ -281,21 +259,14 @@ def _round_index_from_id(round_id: str) -> int:
     return int(round_id.rsplit("_", maxsplit=1)[-1])
 
 
-def _optional_float_metric(value: object) -> float | None:
-    if value is None:
-        return None
-    return float(value)
-
-
 def _release_transient_model_cache(runtime_resource_cache: object | None) -> int:
     """client 경계에서 무거운 model materialization cache를 폐기한다."""
 
-    clear_resources = getattr(runtime_resource_cache, "clear_resources", None)
-    removed = 0
-    if callable(clear_resources):
-        removed += int(clear_resources(key_prefix="lora_classifier:helper_model:"))
-        # mxbai backbone base는 RSS를 크게 잡아먹는다. tokenizer cache는 유지한다.
-        removed += int(clear_resources(key_prefix="lora_classifier:backbone_base:"))
+    removed = (
+        0
+        if runtime_resource_cache is None
+        else clear_peft_encoder_transient_resource_cache(runtime_resource_cache)
+    )
     gc.collect()
     try:
         import torch

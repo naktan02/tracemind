@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import copy
-import json
 from typing import Any, Protocol
 
 from torch import nn
@@ -16,6 +15,9 @@ from methods.adaptation.peft_adapters.registry import (
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+    peft_encoder_resource_cache_key,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 
@@ -221,8 +223,7 @@ def _runtime_resource_key(
     kind: str,
     values: dict[str, object],
 ) -> str:
-    payload = json.dumps(values, sort_keys=True, separators=(",", ":"))
-    return f"lora_classifier:{kind}:{payload}"
+    return peft_encoder_resource_cache_key(kind=kind, values=values)
 
 
 def build_model(

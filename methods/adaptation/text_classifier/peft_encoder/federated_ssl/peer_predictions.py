@@ -15,6 +15,9 @@ from methods.adaptation.query_classifier_adaptation.data import build_weak_datal
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+    peft_encoder_resource_cache_key,
+)
 from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
@@ -319,8 +322,7 @@ def _helper_model_cache_key(
         "device": trainer_runtime_config.device,
         "classifier_dropout": trainer_runtime_config.classifier_dropout,
     }
-    encoded = json.dumps(payload, sort_keys=True, separators=(",", ":"))
-    return f"lora_classifier:helper_model:{encoded}"
+    return peft_encoder_resource_cache_key(kind="helper_model", values=payload)
 
 
 def _materialized_state_hash(

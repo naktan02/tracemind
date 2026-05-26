@@ -2,6 +2,9 @@
 
 from __future__ import annotations
 
+from methods.federated_ssl.client_diagnostics import (
+    client_method_diagnostics_payload,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import safe_ratio
 from scripts.experiments.fl_ssl.federated_simulation.io.report_metrics import (
     evaluation_to_payload,
@@ -115,7 +118,7 @@ def evaluation_delta(
 
 
 def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
-    return {
+    payload = {
         "client_id": client.client_id,
         "candidate_count": client.candidate_count,
         "diagnostic_candidate_count": client.diagnostic_candidate_count,
@@ -142,26 +145,10 @@ def _client_round_payload(client: ClientRoundSummary) -> dict[str, object]:
         "pseudo_label_evaluated_count": client.pseudo_label_evaluated_count,
         "accepted_label_distribution": client.accepted_label_distribution,
         "rejected_label_distribution": client.rejected_label_distribution,
-        "fedmatch_helper_count": client.fedmatch_helper_count,
-        "fedmatch_peer_context_helper_count": (
-            client.fedmatch_peer_context_helper_count
-        ),
-        "fedmatch_helper_provider_count": client.fedmatch_helper_provider_count,
-        "fedmatch_missing_helper_snapshot_count": (
-            client.fedmatch_missing_helper_snapshot_count
-        ),
-        "fedmatch_materialized_helper_model_count": (
-            client.fedmatch_materialized_helper_model_count
-        ),
-        "fedmatch_peer_context_refreshed": client.fedmatch_peer_context_refreshed,
-        "fedmatch_c2s_sparse_upload_value_count": (
-            client.fedmatch_c2s_sparse_upload_value_count
-        ),
-        "fedmatch_s2c_sparse_download_value_count": (
-            client.fedmatch_s2c_sparse_download_value_count
-        ),
         "timing_breakdown": dict(client.timing_breakdown),
     }
+    payload.update(client_method_diagnostics_payload(client.method_diagnostics))
+    return payload
 
 
 def _round_point_to_payload(point: dict[str, object]) -> dict[str, object]:

@@ -9,6 +9,9 @@ from methods.federated.aggregation_weighting import (
     AggregationWeightPolicy,
 )
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.client_diagnostics import (
+    client_method_diagnostics_summary_payload,
+)
 from scripts.experiments.fl_ssl.federated_simulation.io.report_math import (
     numeric_summary,
 )
@@ -80,46 +83,11 @@ def _round_aggregation_diagnostics(
         for client in round_summary.clients
         if client.update_generated and client.delta_l2_norm is not None
     ]
-    fedmatch_helper_counts = [
-        client.fedmatch_helper_count
-        for client in round_summary.clients
-        if client.fedmatch_helper_count is not None
-    ]
-    fedmatch_peer_context_helper_counts = [
-        client.fedmatch_peer_context_helper_count
-        for client in round_summary.clients
-        if client.fedmatch_peer_context_helper_count is not None
-    ]
-    fedmatch_helper_provider_counts = [
-        client.fedmatch_helper_provider_count
-        for client in round_summary.clients
-        if client.fedmatch_helper_provider_count is not None
-    ]
-    fedmatch_missing_helper_snapshot_counts = [
-        client.fedmatch_missing_helper_snapshot_count
-        for client in round_summary.clients
-        if client.fedmatch_missing_helper_snapshot_count is not None
-    ]
-    fedmatch_materialized_helper_model_counts = [
-        client.fedmatch_materialized_helper_model_count
-        for client in round_summary.clients
-        if client.fedmatch_materialized_helper_model_count is not None
-    ]
-    fedmatch_c2s_sparse_upload_value_counts = [
-        client.fedmatch_c2s_sparse_upload_value_count
-        for client in round_summary.clients
-        if client.fedmatch_c2s_sparse_upload_value_count is not None
-    ]
-    fedmatch_s2c_sparse_download_value_counts = [
-        client.fedmatch_s2c_sparse_download_value_count
-        for client in round_summary.clients
-        if client.fedmatch_s2c_sparse_download_value_count is not None
-    ]
     zero_update_client_count = sum(
         1 for client in round_summary.clients if not client.update_generated
     )
     delta_l2_norm_summary = numeric_summary(delta_l2_norms)
-    return {
+    payload = {
         "round_id": round_summary.round_id,
         "total_client_count": (
             round_summary.total_client_count or len(round_summary.clients)
@@ -140,30 +108,6 @@ def _round_aggregation_diagnostics(
         "aggregation_example_basis": "update_envelope.example_count",
         "aggregation_weight_basis": weight_policy.name,
         "aggregation_metrics": dict(round_summary.aggregation_metrics),
-        "fedmatch_helper_count_summary": numeric_summary(fedmatch_helper_counts),
-        "fedmatch_peer_context_helper_count_summary": numeric_summary(
-            fedmatch_peer_context_helper_counts
-        ),
-        "fedmatch_helper_provider_count_summary": numeric_summary(
-            fedmatch_helper_provider_counts
-        ),
-        "fedmatch_missing_helper_snapshot_count_summary": numeric_summary(
-            fedmatch_missing_helper_snapshot_counts
-        ),
-        "fedmatch_materialized_helper_model_count_summary": numeric_summary(
-            fedmatch_materialized_helper_model_counts
-        ),
-        "fedmatch_peer_context_refreshed_count": sum(
-            1
-            for client in round_summary.clients
-            if client.fedmatch_peer_context_refreshed
-        ),
-        "fedmatch_c2s_sparse_upload_value_count_summary": numeric_summary(
-            fedmatch_c2s_sparse_upload_value_counts
-        ),
-        "fedmatch_s2c_sparse_download_value_count_summary": numeric_summary(
-            fedmatch_s2c_sparse_download_value_counts
-        ),
         "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_example_count_summary": numeric_summary(
             aggregation_example_counts
@@ -174,6 +118,13 @@ def _round_aggregation_diagnostics(
         "max_delta_l2_norm": delta_l2_norm_summary["max"],
         "update_norm_variance": delta_l2_norm_summary["variance"],
     }
+    payload.update(
+        client_method_diagnostics_summary_payload(
+            (client.method_diagnostics for client in round_summary.clients),
+            numeric_summary=numeric_summary,
+        )
+    )
+    return payload
 
 
 def _client_aggregation_weight(

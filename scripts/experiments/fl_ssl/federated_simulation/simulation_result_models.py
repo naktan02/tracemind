@@ -25,14 +25,7 @@ class ClientRoundSummary:
     pseudo_label_evaluated_count: int = 0
     accepted_label_distribution: dict[str, int] = field(default_factory=dict)
     rejected_label_distribution: dict[str, int] = field(default_factory=dict)
-    fedmatch_helper_count: float | None = None
-    fedmatch_peer_context_helper_count: float | None = None
-    fedmatch_helper_provider_count: float | None = None
-    fedmatch_missing_helper_snapshot_count: float | None = None
-    fedmatch_materialized_helper_model_count: float | None = None
-    fedmatch_peer_context_refreshed: float | None = None
-    fedmatch_c2s_sparse_upload_value_count: float | None = None
-    fedmatch_s2c_sparse_download_value_count: float | None = None
+    method_diagnostics: dict[str, float] = field(default_factory=dict)
     timing_breakdown: dict[str, float] = field(default_factory=dict)
 
     def __post_init__(self) -> None:
@@ -40,60 +33,9 @@ class ClientRoundSummary:
             raise ValueError("diagnostic_candidate_count must be non-negative.")
         if self.diagnostic_candidate_count == 0 and self.candidate_count > 0:
             self.diagnostic_candidate_count = self.candidate_count
-        if self.fedmatch_helper_count is not None:
-            self.fedmatch_helper_count = float(self.fedmatch_helper_count)
-            if self.fedmatch_helper_count < 0.0:
-                raise ValueError("fedmatch_helper_count must be non-negative.")
-        if self.fedmatch_peer_context_helper_count is not None:
-            self.fedmatch_peer_context_helper_count = float(
-                self.fedmatch_peer_context_helper_count
-            )
-            if self.fedmatch_peer_context_helper_count < 0.0:
-                raise ValueError(
-                    "fedmatch_peer_context_helper_count must be non-negative."
-                )
-        if self.fedmatch_helper_provider_count is not None:
-            self.fedmatch_helper_provider_count = float(
-                self.fedmatch_helper_provider_count
-            )
-            if self.fedmatch_helper_provider_count < 0.0:
-                raise ValueError("fedmatch_helper_provider_count must be non-negative.")
-        if self.fedmatch_missing_helper_snapshot_count is not None:
-            self.fedmatch_missing_helper_snapshot_count = float(
-                self.fedmatch_missing_helper_snapshot_count
-            )
-            if self.fedmatch_missing_helper_snapshot_count < 0.0:
-                raise ValueError(
-                    "fedmatch_missing_helper_snapshot_count must be non-negative."
-                )
-        if self.fedmatch_materialized_helper_model_count is not None:
-            self.fedmatch_materialized_helper_model_count = float(
-                self.fedmatch_materialized_helper_model_count
-            )
-            if self.fedmatch_materialized_helper_model_count < 0.0:
-                raise ValueError(
-                    "fedmatch_materialized_helper_model_count must be non-negative."
-                )
-        if self.fedmatch_peer_context_refreshed is not None:
-            self.fedmatch_peer_context_refreshed = float(
-                self.fedmatch_peer_context_refreshed
-            )
-        if self.fedmatch_c2s_sparse_upload_value_count is not None:
-            self.fedmatch_c2s_sparse_upload_value_count = float(
-                self.fedmatch_c2s_sparse_upload_value_count
-            )
-            if self.fedmatch_c2s_sparse_upload_value_count < 0.0:
-                raise ValueError(
-                    "fedmatch_c2s_sparse_upload_value_count must be non-negative."
-                )
-        if self.fedmatch_s2c_sparse_download_value_count is not None:
-            self.fedmatch_s2c_sparse_download_value_count = float(
-                self.fedmatch_s2c_sparse_download_value_count
-            )
-            if self.fedmatch_s2c_sparse_download_value_count < 0.0:
-                raise ValueError(
-                    "fedmatch_s2c_sparse_download_value_count must be non-negative."
-                )
+        self.method_diagnostics = {
+            str(key): float(value) for key, value in self.method_diagnostics.items()
+        }
         self.timing_breakdown = {
             str(key): float(value)
             for key, value in self.timing_breakdown.items()
