@@ -10,6 +10,8 @@ from typing import Any
 POSTHOC_SCHEMA_VERSION = "fl_ssl_posthoc_communication_cost.v1"
 REPORT_NAME = "fl_ssl_main_comparison.report.json"
 SIDECAR_NAME = "fl_ssl_posthoc_communication_cost.json"
+SPARSE_VALUE_BYTES = 4
+SPARSE_INDEX_BYTES = 4
 
 
 def main() -> None:
@@ -72,6 +74,7 @@ def build_posthoc_communication_cost(
     c2s_payload_bytes = 0
     c2s_artifact_bytes = 0
     s2c_global_state_bytes = 0
+    s2c_partitioned_sparse_bytes = 0
     s2c_manifest_task_bytes = 0
     per_round: list[dict[str, object]] = []
 
@@ -90,16 +93,22 @@ def build_posthoc_communication_cost(
             run_dir=run_dir,
             model_revision=active_revision,
         )
+        sparse_state_bytes = _global_partitioned_sparse_transport_bytes(
+            run_dir=run_dir,
+            model_revision=active_revision,
+        )
         manifest_task_bytes = _round_manifest_task_bytes(
             run_dir=run_dir,
             round_id=str(round_payload.get("round_id") or ""),
         )
         round_s2c_global = state_bytes * selected_client_count
+        round_s2c_sparse = sparse_state_bytes * selected_client_count
         round_s2c_manifest_task = manifest_task_bytes * selected_client_count
 
         c2s_payload_bytes += round_c2s_payload
         c2s_artifact_bytes += round_c2s_artifact
         s2c_global_state_bytes += round_s2c_global
+        s2c_partitioned_sparse_bytes += round_s2c_sparse
         s2c_manifest_task_bytes += round_s2c_manifest_task
         per_round.append(
             {
@@ -111,6 +120,7 @@ def build_posthoc_communication_cost(
                 "c2s_artifact_bytes": round_c2s_artifact,
                 "c2s_total_bytes": round_c2s_payload + round_c2s_artifact,
                 "s2c_global_state_bytes_estimated": round_s2c_global,
+                "s2c_partitioned_sparse_transport_bytes_estimated": (round_s2c_sparse),
                 "s2c_manifest_task_bytes_estimated": round_s2c_manifest_task,
                 "s2c_total_bytes_estimated": (
                     round_s2c_global + round_s2c_manifest_task
@@ -137,12 +147,17 @@ def build_posthoc_communication_cost(
                 "runtime-only final evaluation timing cannot be recovered posthoc",
                 "actual network transport framing/compression is not measured",
                 "in-memory helper snapshot exchange is not directly measured",
+                "partitioned sparse transport uses non-zero value plus flat index "
+                "byte estimates from saved artifact metadata, not measured packets",
             ],
         },
         "c2s_payload_bytes": c2s_payload_bytes,
         "c2s_artifact_bytes": c2s_artifact_bytes,
         "c2s_total_bytes": c2s_total,
         "s2c_global_state_bytes_estimated": s2c_global_state_bytes,
+        "s2c_partitioned_sparse_transport_bytes_estimated": (
+            s2c_partitioned_sparse_bytes
+        ),
         "s2c_manifest_task_bytes_estimated": s2c_manifest_task_bytes,
         "s2c_total_bytes_estimated": s2c_total,
         "bidirectional_total_bytes_estimated": c2s_total + s2c_total,
@@ -242,6 +257,65 @@ def _global_state_material_bytes(*, run_dir: Path, model_revision: str) -> int:
         for artifact_ref in artifact_refs
         if artifact_ref is not None
     )
+
+
+def _global_partitioned_sparse_transport_bytes(
+    *,
+    run_dir: Path,
+    model_revision: str,
+) -> int:
+    state_path = (
+        run_dir
+        / "main_server"
+        / "shared_adapter_states"
+        / "versions"
+        / f"{model_revision}.json"
+    )
+    state = _load_json_object(state_path) if state_path.exists() else {}
+    artifact_refs = (
+        _optional_str(state.get("lora_adapter_artifact_ref")),
+        _optional_str(state.get("classifier_head_artifact_ref")),
+    )
+    nonzero_count = sum(
+        _partitioned_artifact_nonzero_count(
+            run_dir=run_dir,
+            artifact_ref=artifact_ref,
+        )
+        for artifact_ref in artifact_refs
+        if artifact_ref is not None
+    )
+    return nonzero_count * (SPARSE_VALUE_BYTES + SPARSE_INDEX_BYTES)
+
+
+def _partitioned_artifact_nonzero_count(*, run_dir: Path, artifact_ref: str) -> int:
+    path = _server_aggregate_artifact_path(run_dir=run_dir, artifact_ref=artifact_ref)
+    if not path.exists():
+        return 0
+    try:
+        artifact = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError, UnicodeDecodeError):
+        return 0
+    if not isinstance(artifact, dict):
+        return 0
+    return sum(
+        _nested_nonzero_float_count(artifact.get(key))
+        for key in (
+            "partitioned_lora_parameters",
+            "partitioned_classifier_head_weights",
+            "partitioned_classifier_head_biases",
+        )
+    )
+
+
+def _nested_nonzero_float_count(value: object) -> int:
+    if isinstance(value, dict):
+        return sum(_nested_nonzero_float_count(child) for child in value.values())
+    if isinstance(value, list):
+        return sum(_nested_nonzero_float_count(child) for child in value)
+    try:
+        return int(float(value) != 0.0)
+    except (TypeError, ValueError):
+        return 0
 
 
 def _round_manifest_task_bytes(*, run_dir: Path, round_id: str) -> int:

@@ -96,6 +96,81 @@ def test_build_posthoc_communication_cost_estimates_c2s_and_s2c(
     assert posthoc["s2c_total_bytes_estimated"] > 240
 
 
+def test_build_posthoc_communication_cost_estimates_partitioned_sparse_s2c(
+    tmp_path: Path,
+) -> None:
+    run_dir = tmp_path / "runs" / "fl_ssl" / "fedmatch" / "split" / "r"
+    report_path = run_dir / "reports" / "fl_ssl_main_comparison.report.json"
+    _write_json(
+        run_dir
+        / "main_server"
+        / "shared_adapter_states"
+        / "versions"
+        / "sim_rev_0000.json",
+        {
+            "lora_adapter_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0000/lora_adapter"
+            ),
+            "classifier_head_artifact_ref": (
+                "server-aggregate://lora_classifier/sim_rev_0000/classifier_head"
+            ),
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0000"
+        / "lora_adapter.json",
+        {
+            "partitioned_lora_parameters": {
+                "sigma": {"encoder_lora.weight": [1.0, 0.0]},
+                "psi": {"encoder_lora.weight": [0.0, 2.0]},
+            }
+        },
+    )
+    _write_json(
+        run_dir
+        / "main_server"
+        / "aggregation_artifacts"
+        / "versions"
+        / "lora_classifier"
+        / "sim_rev_0000"
+        / "classifier_head.json",
+        {
+            "partitioned_classifier_head_weights": {
+                "sigma": {"anxiety": [3.0, 0.0]},
+            },
+            "partitioned_classifier_head_biases": {
+                "psi": {"anxiety": -1.0},
+            },
+        },
+    )
+    payload = {
+        "rounds": [
+            {
+                "round_id": "round_0001",
+                "round_index": 1,
+                "selected_client_count": 3,
+                "clients": [],
+            }
+        ],
+    }
+
+    posthoc = build_posthoc_communication_cost(
+        report_path=report_path,
+        payload=payload,
+    )
+
+    assert posthoc["s2c_partitioned_sparse_transport_bytes_estimated"] == 96
+    assert (
+        posthoc["per_round"][0]["s2c_partitioned_sparse_transport_bytes_estimated"]
+        == 96
+    )
+
+
 def test_write_posthoc_communication_cost_merges_report_and_sidecar(
     tmp_path: Path,
 ) -> None:
