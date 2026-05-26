@@ -106,6 +106,10 @@ def _round_summary_from_payload(payload: dict[str, object]) -> SimulationRoundSu
             str(key): float(value)
             for key, value in dict(payload.get("round_timing_breakdown", {})).items()
         },
+        aggregation_metrics={
+            str(key): float(value)
+            for key, value in dict(payload.get("aggregation_metrics", {})).items()
+        },
         total_payload_bytes=_optional_int(payload.get("total_payload_bytes")),
         gpu_memory_peak_mb=_optional_float(payload.get("gpu_memory_peak_mb")),
         total_client_count=int(payload.get("total_client_count", 0)),

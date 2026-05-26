@@ -42,6 +42,7 @@ def build_round_payloads(result: SimulationResult) -> list[dict[str, object]]:
                 ],
                 "round_time_seconds": round_summary.round_time_seconds,
                 "round_timing_breakdown": dict(round_summary.round_timing_breakdown),
+                "aggregation_metrics": dict(round_summary.aggregation_metrics),
                 "total_payload_bytes": round_summary.total_payload_bytes,
                 "gpu_memory_peak_mb": round_summary.gpu_memory_peak_mb,
             }

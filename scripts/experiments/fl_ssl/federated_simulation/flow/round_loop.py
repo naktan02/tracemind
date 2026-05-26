@@ -160,7 +160,7 @@ def run_one_round(
 
     next_model_revision = f"sim_rev_{round_index:04d}"
     started_at = time.perf_counter()
-    next_active = _finalize_round_publication(
+    next_active, aggregation_metrics = _finalize_round_publication(
         request=request,
         bootstrapped=bootstrapped,
         round_id=round_id,
@@ -201,6 +201,7 @@ def run_one_round(
             clients=tuple(execution.summary for execution in client_executions),
             round_time_seconds=round_elapsed,
             round_timing_breakdown=round_timing,
+            aggregation_metrics=aggregation_metrics,
             total_payload_bytes=sum(
                 execution.summary.client_payload_bytes or 0
                 for execution in client_executions
@@ -247,7 +248,7 @@ def _finalize_round_publication(
     bootstrapped: BootstrappedSimulation,
     round_id: str,
     next_model_revision: str,
-) -> ActiveSimulationState:
+) -> tuple[ActiveSimulationState, dict[str, float]]:
     finalized_round = bootstrapped.server_runtime.finalize_round(
         round_id=round_id,
         next_model_revision=next_model_revision,
@@ -261,7 +262,10 @@ def _finalize_round_publication(
         output_dir=request.output_dir,
         manifest=active_manifest,
     )
-    return ActiveSimulationState(
-        manifest=active_manifest,
-        adapter_state=active_state,
+    return (
+        ActiveSimulationState(
+            manifest=active_manifest,
+            adapter_state=active_state,
+        ),
+        dict(finalized_round.publication.aggregated_metrics),
     )

@@ -151,6 +151,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                     "round_client_execution_seconds": 1.0,
                     "round_validation_seconds": 0.2,
                 },
+                aggregation_metrics={"server_update_partitioned": 1.0},
                 total_payload_bytes=100,
                 clients=(
                     ClientRoundSummary(
@@ -200,6 +201,10 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
                 round_timing_breakdown={
                     "round_client_execution_seconds": 1.7,
                     "round_validation_seconds": 0.3,
+                },
+                aggregation_metrics={
+                    "server_update_partitioned": 1.0,
+                    "partitioned_global_state_count": 2.0,
                 },
                 total_payload_bytes=200,
                 clients=(
@@ -368,6 +373,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert payload["rounds"][0]["global_validation"]["macro_f1"] == pytest.approx(0.4)
     assert payload["rounds"][0]["round_time_seconds"] == pytest.approx(1.5)
     assert payload["rounds"][0]["total_payload_bytes"] == 100
+    assert payload["rounds"][1]["aggregation_metrics"][
+        "partitioned_global_state_count"
+    ] == pytest.approx(2.0)
     assert payload["rounds"][1]["delta_from_previous_round"]["loss_reduction"] == (
         pytest.approx(0.3)
     )
@@ -377,6 +385,9 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
     assert round_progression["best_round"]["selection_metric"] == "macro_f1"
     assert round_progression["validation_curve"][0]["round_index"] == 0
     assert second_round_aggregation["zero_update_client_count"] == 0
+    assert second_round_aggregation["aggregation_metrics"][
+        "server_update_partitioned"
+    ] == pytest.approx(1.0)
     assert second_round_aggregation["total_aggregation_examples"] == 10
     assert second_round_aggregation["aggregation_example_basis"] == (
         "update_envelope.example_count"

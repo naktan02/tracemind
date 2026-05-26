@@ -104,6 +104,7 @@ def _round_aggregation_diagnostics(
         "total_aggregation_weight": total_aggregation_weight,
         "aggregation_example_basis": "update_envelope.example_count",
         "aggregation_weight_basis": weight_policy.name,
+        "aggregation_metrics": dict(round_summary.aggregation_metrics),
         "accepted_count_summary": numeric_summary(accepted_counts),
         "aggregation_example_count_summary": numeric_summary(
             aggregation_example_counts
