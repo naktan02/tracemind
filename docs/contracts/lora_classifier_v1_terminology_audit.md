@@ -1,8 +1,8 @@
 # LoRA Classifier V1 Terminology Audit
 
 이 문서는 `lora_classifier` 용어가 남아 있는 표면을 분류한다. 현재 source of truth는
-코드와 code-adjacent README이며, 이 문서는 contract v2 rename 전까지 바꿔도 되는 것과
-바꾸면 안 되는 것을 구분하는 보조 기준이다.
+코드와 code-adjacent README이며, 이 문서는 v2 migration이 끝날 때까지 바꿔도 되는
+것과 바꾸면 안 되는 것을 구분하는 보조 기준이다.
 
 ## 결론
 
@@ -14,6 +14,12 @@
 하지만 `lora_classifier`는 아직 v1 cross-boundary contract 이름이다. shared payload,
 Hydra runtime config, report verifier, artifact path, 기존 run fixture가 이 이름을
 읽기 때문에 폴더 이동과 동시에 rename하지 않는다.
+
+신규 v2 shared contract 이름은 `peft_classifier`다. `adapter_kind=peft_classifier`,
+`payload_format=peft_classifier_update`, `schema_version=peft_classifier_state.v2` /
+`peft_classifier_delta.v2`를 사용한다. v2는 LoRA/DoRA 같은 mechanism을
+`peft_adapter_config.peft_adapter_name`으로 표현하고, classifier head는 별도 구성요소로
+유지한다.
 
 ## 유지해야 하는 v1 표면
 

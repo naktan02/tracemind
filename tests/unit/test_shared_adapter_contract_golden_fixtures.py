@@ -11,6 +11,7 @@ from pydantic import ValidationError
 from shared.src.contracts.adapter_contract_families.base import (
     CLASSIFIER_HEAD_STATE_V1,
     LORA_CLASSIFIER_DELTA_V1,
+    PEFT_CLASSIFIER_DELTA_V2,
 )
 from shared.src.contracts.adapter_contract_families.registry import (
     parse_shared_adapter_state_payload,
@@ -31,6 +32,16 @@ def test_lora_classifier_delta_golden_fixture_round_trips_shape() -> None:
     dumped = parsed.model_dump(mode="json")
 
     assert parsed.schema_version == LORA_CLASSIFIER_DELTA_V1
+    assert dumped == fixture
+
+
+def test_peft_classifier_delta_golden_fixture_round_trips_shape() -> None:
+    fixture = _load_fixture("peft_classifier_delta.v2.json")
+
+    parsed = parse_shared_adapter_update_payload(fixture)
+    dumped = parsed.model_dump(mode="json")
+
+    assert parsed.schema_version == PEFT_CLASSIFIER_DELTA_V2
     assert dumped == fixture
 
 

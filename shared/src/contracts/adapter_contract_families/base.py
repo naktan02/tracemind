@@ -18,6 +18,8 @@ CLASSIFIER_HEAD_STATE_V1 = "classifier_head_state.v1"
 CLASSIFIER_HEAD_DELTA_V1 = "classifier_head_delta.v1"
 LORA_CLASSIFIER_STATE_V1 = "lora_classifier_state.v1"
 LORA_CLASSIFIER_DELTA_V1 = "lora_classifier_delta.v1"
+PEFT_CLASSIFIER_STATE_V2 = "peft_classifier_state.v2"
+PEFT_CLASSIFIER_DELTA_V2 = "peft_classifier_delta.v2"
 CURRENT_SHARED_ADAPTER_STATE_V1 = "current_shared_adapter_state.v1"
 VectorAdapterStateSchemaVersion: TypeAlias = Literal["vector_adapter_state.v1"]
 VectorAdapterDeltaSchemaVersion: TypeAlias = Literal["vector_adapter_delta.v1"]
@@ -25,6 +27,8 @@ ClassifierHeadStateSchemaVersion: TypeAlias = Literal["classifier_head_state.v1"
 ClassifierHeadDeltaSchemaVersion: TypeAlias = Literal["classifier_head_delta.v1"]
 LoraClassifierStateSchemaVersion: TypeAlias = Literal["lora_classifier_state.v1"]
 LoraClassifierDeltaSchemaVersion: TypeAlias = Literal["lora_classifier_delta.v1"]
+PeftClassifierStateSchemaVersion: TypeAlias = Literal["peft_classifier_state.v2"]
+PeftClassifierDeltaSchemaVersion: TypeAlias = Literal["peft_classifier_delta.v2"]
 CurrentSharedAdapterStateSchemaVersion: TypeAlias = Literal[
     "current_shared_adapter_state.v1"
 ]
@@ -36,6 +40,7 @@ class AdapterKind(StrEnum):
     DIAGONAL_SCALE = "diagonal_scale"
     CLASSIFIER_HEAD = "classifier_head"
     LORA_CLASSIFIER = "lora_classifier"
+    PEFT_CLASSIFIER = "peft_classifier"
 
 
 class SharedAdapterStatePayload(BaseModel):

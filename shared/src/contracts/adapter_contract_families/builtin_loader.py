@@ -15,6 +15,10 @@ from .lora_classifier import (
     LoraClassifierAdapterStatePayload,
     LoraClassifierAdapterUpdatePayload,
 )
+from .peft_classifier import (
+    PeftClassifierAdapterStatePayload,
+    PeftClassifierAdapterUpdatePayload,
+)
 from .registry import register_shared_adapter_payload_family
 
 _BUILTINS_LOADED = False
@@ -40,5 +44,10 @@ def load_builtin_shared_adapter_payload_families() -> None:
         AdapterKind.LORA_CLASSIFIER.value,
         state_payload_type=LoraClassifierAdapterStatePayload,
         update_payload_type=LoraClassifierAdapterUpdatePayload,
+    )
+    register_shared_adapter_payload_family(
+        AdapterKind.PEFT_CLASSIFIER.value,
+        state_payload_type=PeftClassifierAdapterStatePayload,
+        update_payload_type=PeftClassifierAdapterUpdatePayload,
     )
     _BUILTINS_LOADED = True

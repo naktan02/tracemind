@@ -56,6 +56,7 @@ Family별 구현은 `adapter_contract_families/base.py`,
 `adapter_contract_families/diagonal_scale.py`,
 `adapter_contract_families/classifier_head.py`,
 `adapter_contract_families/lora_classifier.py`,
+`adapter_contract_families/peft_classifier.py`,
 `adapter_contract_families/registry.py`,
 `adapter_contract_families/builtin_loader.py`, `adapter_contract_families/io.py`,
 `adapter_contract_families/factories.py`로 나뉜다. Registry는 lookup helper만
@@ -77,12 +78,22 @@ runtime과 test는 family별 direct import를 사용한다.
   - `label_weights`, `label_biases`는 category별 linear head 파라미터다
 - `LoraClassifierAdapterStatePayload`
   - LoRA-classifier concrete 구현
+  - v1 compatibility contract다. 신규 runtime 전환 목표는
+    `PeftClassifierAdapterStatePayload`다
   - frozen backbone/tokenizer, LoRA config, label schema, LoRA adapter artifact ref,
     classifier head artifact ref를 함께 설명한다
   - FL delta mode에서 state artifact ref는 누적된 전역 LoRA parameter와 classifier
     head weight/bias snapshot을 가리킨다. client update delta artifact와 같은 의미가
     아니다
   - raw text나 agent-local query state는 포함하지 않는다
+- `PeftClassifierAdapterStatePayload`
+  - PEFT-classifier v2 concrete 구현
+  - LoRA/DoRA 같은 adapter mechanism은 `peft_adapter_config.peft_adapter_name`과
+    `peft_adapter_config.parameters`로 표현하고, classifier head는 별도 artifact로
+    유지한다
+  - `adapter_kind=peft_classifier`, `schema_version=peft_classifier_state.v2`를
+    사용한다
+  - v1 `lora_classifier` producer/consumer가 남아 있는 동안 병행 파싱을 지원한다
 - `CurrentSharedAdapterStatePayload`
   - 서버 current `ModelManifest`와 실제 `SharedAdapterStatePayload`를 함께
     내려주는 agent sync payload
@@ -99,6 +110,8 @@ runtime과 test는 family별 direct import를 사용한다.
   - `label_weight_deltas`, `label_bias_deltas`는 category별 head 변화량이다
 - `LoraClassifierAdapterUpdatePayload`
   - LoRA-classifier update concrete 구현
+  - v1 compatibility contract다. 신규 runtime 전환 목표는
+    `PeftClassifierAdapterUpdatePayload`다
   - `base_model_revision`, `example_count`, backbone/tokenizer, LoRA config,
     label schema를 포함한다
   - LoRA/classifier update weight는 큰 artifact가 될 수 있으므로
@@ -115,6 +128,14 @@ runtime과 test는 family별 direct import를 사용한다.
     값이며 실제 저장 포맷은 runtime artifact store가 소유한다. 현재 partitioned
     runtime은 binary tensor artifact를 우선 사용하고 JSON은 legacy/debug fallback으로
     유지한다
+- `PeftClassifierAdapterUpdatePayload`
+  - PEFT-classifier v2 update concrete 구현
+  - canonical payload format은 `peft_classifier_update`다
+  - PEFT adapter delta는 `peft_adapter_delta_artifact_ref` 또는
+    `peft_parameter_deltas`로 표현한다. 필드명에는 LoRA를 넣지 않으며,
+    실제 mechanism은 `peft_adapter_config.peft_adapter_name`이 식별한다
+  - classifier head delta와 logical `partitioned_deltas` 의미는 v1과 동일하게
+    유지하되, partition 이름과 sigma/psi 같은 method 의미는 `methods/`가 소유한다
 
 ### `training_objective_contracts.py`
 
