@@ -1,1 +1,0 @@
-"""Classifier-head aggregation adapters."""

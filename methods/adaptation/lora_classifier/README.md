@@ -83,8 +83,8 @@ migration 전까지 유지한다.
   `methods/adaptation/query_classifier_adaptation/data.py`에 남긴다.
 - agent-local query buffer 접근, payload 저장, upload, secure codec은 `agent`가
   소유한다.
-- LoRA/RSLoRA adapter builder 자체는 `methods/adaptation/lora/`와
-  `methods/adaptation/peft/`가 소유한다.
+- LoRA/RSLoRA adapter builder 자체는 `methods/adaptation/peft_adapters/`가
+  소유한다.
 - FL runtime state/update payload shape는 `shared`, update upload와 artifact 저장은
   `agent`/`main_server`, generic aggregation method 산술/strategy wiring은
   `methods/federated/aggregation/`이 맡는다.

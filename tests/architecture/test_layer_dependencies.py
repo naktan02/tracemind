@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import ast
+from collections.abc import Sequence
 from pathlib import Path
 
 import yaml
@@ -1085,106 +1086,52 @@ def test_internal_code_does_not_import_legacy_lora_classifier_core_paths() -> No
     )
 
 
-def test_legacy_peft_adapter_files_are_direct_shims() -> None:
-    shim_paths = (
-        METHODS_SRC / "adaptation" / "peft" / "base.py",
-        METHODS_SRC / "adaptation" / "peft" / "registry.py",
-        METHODS_SRC / "adaptation" / "lora" / "lora_adapter.py",
+def test_legacy_peft_adapter_packages_are_removed() -> None:
+    legacy_paths = (
+        METHODS_SRC / "adaptation" / "peft",
+        METHODS_SRC / "adaptation" / "lora",
     )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "methods.adaptation.peft_adapters"
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+    existing_paths = _existing_non_cache_paths(legacy_paths)
 
-    assert not violations, (
-        "legacy peft/lora 파일은 새 peft_adapters 경로의 named symbol만 가져오는 "
-        "compatibility shim으로 남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
+    assert not existing_paths, (
+        "PEFT mechanism source of truth는 methods/adaptation/peft_adapters/**다. "
+        "legacy methods/adaptation/peft, methods/adaptation/lora package는 "
+        "compatibility phase 종료 후 다시 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
 
 
-def test_legacy_classifier_head_files_are_direct_shims() -> None:
-    package_root = METHODS_SRC / "adaptation" / "classifier_head"
-    shim_paths = (
-        package_root / "bootstrap.py",
-        package_root / "scoring.py",
-        package_root / "aggregation" / "fedavg.py",
-    )
-    allowed_prefixes = (
-        "methods.adaptation.classification.feature_head",
-        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                allowed_prefixes
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
-
-    assert not violations, (
-        "legacy classifier_head 파일은 새 classification feature-head/projection "
-        "경로의 named symbol만 가져오는 compatibility shim으로 남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
-    )
-
-
-def test_legacy_text_classifier_feature_head_files_are_direct_shims() -> None:
-    shim_paths = (
-        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head" / "bootstrap.py",
-        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head" / "scoring.py",
+def test_legacy_classifier_head_packages_are_removed() -> None:
+    legacy_paths = (
+        METHODS_SRC / "adaptation" / "classifier_head",
+        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head",
         TEXT_CLASSIFIER_AGGREGATION_SRC / "feature_head_fedavg_projection.py",
     )
-    allowed_prefixes = (
-        "methods.adaptation.classification.feature_head",
-        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                allowed_prefixes
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+    existing_paths = _existing_non_cache_paths(legacy_paths)
 
-    assert not violations, (
-        "legacy text_classifier feature-head 파일은 새 classification 경로의 named "
-        "symbol만 가져오는 compatibility shim으로 남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
+    assert not existing_paths, (
+        "feature-head classification source of truth는 "
+        "methods/adaptation/classification/**다. legacy classifier_head와 "
+        "text_classifier/feature_head shim package는 compatibility phase 종료 후 "
+        "다시 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
+
+
+def _existing_non_cache_paths(paths: Sequence[Path]) -> list[Path]:
+    existing_paths: list[Path] = []
+    for path in paths:
+        if path.is_file():
+            existing_paths.append(_relative_repo_path(path))
+        elif path.is_dir():
+            for child in _iter_python_files(path):
+                existing_paths.append(_relative_repo_path(child))
+            existing_paths.extend(
+                _relative_repo_path(child)
+                for child in path.rglob("*.md")
+                if "__pycache__" not in child.parts
+            )
+    return sorted(existing_paths)
 
 
 def test_adaptation_aggregation_files_stay_projection_only() -> None:

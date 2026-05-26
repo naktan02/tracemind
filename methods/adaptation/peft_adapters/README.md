@@ -17,5 +17,5 @@ builder와 registry를 소유한다. text classifier task나 update payload 의�
 - text classifier update payload 조립
 - FL SSL method semantics 소유
 
-현재 `methods/adaptation/peft/`와 `methods/adaptation/lora/`는 compatibility
-shim으로만 남긴다.
+기존 `methods/adaptation/peft/`와 `methods/adaptation/lora/` compatibility
+package는 제거했다. 새 내부 코드는 이 경로를 직접 import한다.

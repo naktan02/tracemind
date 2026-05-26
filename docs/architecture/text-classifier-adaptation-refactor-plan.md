@@ -207,8 +207,8 @@ parameter routing, helper policy, local objective, server policy를 소유한다
 `text_classifier/peft_encoder/`로 이동했다. 기존 `lora_classifier` 경로는
 direct-file compatibility shim으로 남겼고, 새 내부 코드는 legacy
 `methods.adaptation.lora_classifier`를 import하지 않는다. PEFT mechanism protocol,
-registry, LoRA builder도 `peft_adapters/`로 이동했고 기존 `peft/`, `lora/` 경로는
-shim으로 남겼다.
+registry, LoRA builder도 `peft_adapters/`로 이동했다. 기존 `peft/`, `lora/`
+compatibility package는 내부 import가 끊긴 뒤 제거했다.
 
 ### 4단계: 중립화된 partitioned primitive 이동
 
@@ -237,7 +237,7 @@ named-symbol compatibility shim으로만 남겼다.
 `classification/feature_head/`로 이동했고, `aggregation/fedavg.py`는
 `classification/aggregation/feature_head_fedavg_projection.py`로 이동했다.
 이전 단계의 `text_classifier/feature_head`와 기존 `classifier_head` direct path는
-named-symbol compatibility shim으로만 남겼다. `scoring_registry.py`는 깊은
+내부 import가 끊긴 뒤 제거했다. `scoring_registry.py`는 깊은
 `*/scoring.py` 모듈을 스캔하므로 `classifier_head_logits` 등록이 legacy shim에
 의존하지 않는다.
 
@@ -285,6 +285,9 @@ compatibility shim으로만 남긴다. `helper_provider.py`,
 FedMatch scenario, local supervision, sigma/psi partition routing, upload partition,
 objective 생성, `psi_factor` 해석은
 `methods/federated_ssl/fedmatch/partitioned_runtime_plan.py`로 분리했다.
+`peft/`, `lora/`, `classifier_head/`, `text_classifier/feature_head`,
+`text_classifier/aggregation/feature_head_fedavg_projection.py` legacy shim은 제거했고
+architecture guard는 해당 경로가 다시 생기지 않게 막는다.
 
 ## 호환성 정책
 

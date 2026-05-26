@@ -11,20 +11,19 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 
 - `diagonal_scale/`: diagonal-scale heuristic local update 계산 core와 family별
   aggregation adapter
-- `classifier_head/`: classifier-head shared adapter family aggregation/scoring core
+- `classification/`: modality-independent classification primitive와 feature-head
+  aggregation/scoring projection
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
 - `server_update_materialization.py`: adapter family별 서버 materialization
   preflight를 찾아 실행하는 dispatcher
 - `privacy_guards/`: shared adapter update clipping/DP policy core와 registry
-- `peft/`: PEFT adapter builder protocol과 registry
-- `lora/`: LoRA/RSLoRA builder core
+- `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와 registry.
+  classifier/task payload 의미는 소유하지 않는다.
 - `lora_classifier/`: frozen backbone + LoRA/PEFT adapter + classifier head
   재사용 scaffold
 - `text_classifier/`: text classifier task family의 장기 목표 adaptation 구조.
-  `feature_head/`, `peft_encoder/`, aggregation projection 경계를 분리한다.
-- `peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder의 장기 목표 위치.
-  classifier/task payload 의미는 소유하지 않는다.
+  `peft_encoder/`, aggregation projection 경계를 분리한다.
 - `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의
   token-batch 입력 glue와 weak/strong view row 해석 helper
 

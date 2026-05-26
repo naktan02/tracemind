@@ -68,8 +68,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
 - `methods/ssl/algorithms/pseudolabel/`: USB 스타일 PseudoLabel objective core
 - `methods/ssl/hooks/`: 중앙/FL SSL이 공유하는 pseudo-labeling, masking,
   selection hook
-- `methods/adaptation/peft/`: PEFT adapter builder seam
-- `methods/adaptation/lora/`: LoRA/RSLoRA builder core
+- `methods/adaptation/peft_adapters/`: LoRA/DoRA 같은 PEFT mechanism builder와
+  registry
 - `methods/adaptation/local_objective_regularizers/`: FedProx처럼 adapter family와
   분리된 client-local objective regularizer
 - `methods/adaptation/lora_classifier/`: frozen backbone + LoRA/PEFT adapter +

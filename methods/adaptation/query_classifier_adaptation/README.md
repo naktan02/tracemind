@@ -14,8 +14,8 @@ glue를 소유한다. frozen text backbone에 PEFT adapter와 classifier head를
 범위 밖:
 
 - Query SSL objective 자체는 `methods/ssl/`이 소유한다.
-- LoRA/RSLoRA 같은 PEFT adapter builder는 `methods/adaptation/lora/`와
-  `methods/adaptation/peft/`가 소유한다.
+- LoRA/RSLoRA 같은 PEFT adapter builder는
+  `methods/adaptation/peft_adapters/`가 소유한다.
 - LoRA + classifier 모델/학습 scaffold는 `methods/adaptation/lora_classifier/`가
   소유한다.
 - prototype 기반 query adaptation이 추가되면 이 패키지 아래에 넣지 않는다.

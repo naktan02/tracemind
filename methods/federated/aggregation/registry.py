@@ -31,6 +31,11 @@ _FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
     tuple[str, str],
     tuple[FederatedAggregationStrategyFactory, FederatedAggregationMethodSpec],
 ] = {}
+_ADAPTER_AGGREGATION_MODULE_OVERRIDES = {
+    ("classifier_head", "fedavg"): (
+        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection"
+    ),
+}
 
 
 def register_federated_aggregation_strategy(
@@ -166,11 +171,14 @@ def _import_adapter_aggregation_module(
     normalized_adapter_kind: str,
     normalized_method_name: str,
 ) -> None:
-    module_name = (
-        f"{_ADAPTATION_PACKAGE}."
-        f"{normalized_adapter_kind.replace('-', '_')}."
-        "aggregation."
-        f"{normalized_method_name.replace('-', '_')}"
+    module_name = _ADAPTER_AGGREGATION_MODULE_OVERRIDES.get(
+        (normalized_adapter_kind, normalized_method_name),
+        (
+            f"{_ADAPTATION_PACKAGE}."
+            f"{normalized_adapter_kind.replace('-', '_')}."
+            "aggregation."
+            f"{normalized_method_name.replace('-', '_')}"
+        ),
     )
     try:
         importlib.import_module(module_name)
