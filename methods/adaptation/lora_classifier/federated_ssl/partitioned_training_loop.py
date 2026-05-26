@@ -44,16 +44,10 @@ from methods.adaptation.lora_classifier.update.partitioned_delta import (
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     QuerySslLocalStepPlan,
 )
-from methods.federated_ssl.fedmatch.local_objective import (
-    FedMatchLocalObjectiveParameters,
-    FedMatchParameterPartitions,
-    FedMatchTensorLocalObjectiveResult,
-    compute_fedmatch_supervised_loss,
-    compute_fedmatch_unsupervised_loss,
-)
-from methods.federated_ssl.fedmatch.parameter_routing import (
-    FEDMATCH_PSI_PARTITION,
-    FEDMATCH_SIGMA_PARTITION,
+from methods.federated_ssl.local_objective import (
+    PartitionedObjectiveParameterTensors,
+    PartitionedTensorLocalObjective,
+    TensorLocalObjectiveResult,
 )
 from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchClassifier
 
@@ -62,8 +56,8 @@ from methods.ssl.base import QuerySslAlgorithm, QuerySslStepResult, TextBatchCla
 class PartitionedLoraStepResult:
     """한 step에서 분리 적용한 partition delta와 loss 진단."""
 
-    supervised: FedMatchTensorLocalObjectiveResult
-    unsupervised: FedMatchTensorLocalObjectiveResult
+    supervised: TensorLocalObjectiveResult
+    unsupervised: TensorLocalObjectiveResult
     sigma_parameter_deltas: Mapping[str, Tensor]
     psi_parameter_deltas: Mapping[str, Tensor]
     metrics: Mapping[str, Tensor]
@@ -94,7 +88,7 @@ def train_partitioned_lora_classifier(
     train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     step_plan: QuerySslLocalStepPlan,
     device: str,
     learning_rate: float,
@@ -105,7 +99,10 @@ def train_partitioned_lora_classifier(
     psi_query_ssl_algorithm: QuerySslAlgorithm | None = None,
     enable_inter_client_consistency: bool = True,
     use_supervised_steps: bool = True,
+    supervised_partition: str,
+    unsupervised_partition: str,
     emit_sigma_partition: bool = True,
+    metric_prefix: str = "partitioned",
 ) -> PartitionedLoraTrainingResult:
     """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
@@ -172,7 +169,7 @@ def train_partitioned_lora_classifier(
                     )
                 ),
                 unlabeled_batch=device_unlabeled_batch,
-                parameters=parameters,
+                objective=objective,
                 sigma_optimizer=sigma_optimizer,
                 psi_optimizer=psi_optimizer,
                 helper_weak_probability_provider=helper_weak_probability_provider,
@@ -204,18 +201,18 @@ def train_partitioned_lora_classifier(
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.supervised.metrics,
-                prefix="fedmatch_sigma_",
+                prefix=f"{metric_prefix}_sigma_",
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.unsupervised.metrics,
-                prefix="fedmatch_psi_",
+                prefix=f"{metric_prefix}_psi_",
             )
             scalar_metrics.add_float(
-                "fedmatch_sigma_delta_l2",
+                f"{metric_prefix}_sigma_delta_l2",
                 tensor_mapping_l2(step_result.sigma_parameter_deltas),
             )
             scalar_metrics.add_float(
-                "fedmatch_psi_delta_l2",
+                f"{metric_prefix}_psi_delta_l2",
                 tensor_mapping_l2(step_result.psi_parameter_deltas),
             )
             if emit_sigma_partition:
@@ -238,9 +235,9 @@ def train_partitioned_lora_classifier(
         partition_deltas={
             **(
                 {
-                    FEDMATCH_SIGMA_PARTITION: (
+                    supervised_partition: (
                         build_lora_classifier_partition_delta_from_parameter_deltas(
-                            partition_name=FEDMATCH_SIGMA_PARTITION,
+                            partition_name=supervised_partition,
                             parameter_deltas=sigma_parameter_delta_sums,
                             labels=labels,
                         )
@@ -249,9 +246,9 @@ def train_partitioned_lora_classifier(
                 if emit_sigma_partition
                 else {}
             ),
-            FEDMATCH_PSI_PARTITION: (
+            unsupervised_partition: (
                 build_lora_classifier_partition_delta_from_parameter_deltas(
-                    partition_name=FEDMATCH_PSI_PARTITION,
+                    partition_name=unsupervised_partition,
                     parameter_deltas=psi_parameter_delta_sums,
                     labels=labels,
                 )
@@ -266,7 +263,7 @@ def train_physical_partitioned_adapter_classifier(
     train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     step_plan: QuerySslLocalStepPlan,
     device: str,
     learning_rate: float,
@@ -279,6 +276,7 @@ def train_physical_partitioned_adapter_classifier(
     enable_inter_client_consistency: bool = True,
     use_supervised_steps: bool = True,
     emit_supervised_partition: bool = True,
+    metric_prefix: str = "partitioned",
 ) -> PartitionedLoraTrainingResult:
     """physical trainable partition loop를 budget만큼 실행한다.
 
@@ -354,7 +352,7 @@ def train_physical_partitioned_adapter_classifier(
                     batch=unlabeled_batch,
                     device=device,
                 ),
-                parameters=parameters,
+                objective=objective,
                 supervised_partition=supervised_partition,
                 unsupervised_partition=unsupervised_partition,
                 sigma_optimizer=sigma_optimizer,
@@ -380,18 +378,18 @@ def train_physical_partitioned_adapter_classifier(
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.supervised.metrics,
-                prefix="fedmatch_sigma_",
+                prefix=f"{metric_prefix}_sigma_",
             )
             scalar_metrics.add_tensor_mapping(
                 step_result.unsupervised.metrics,
-                prefix="fedmatch_psi_",
+                prefix=f"{metric_prefix}_psi_",
             )
             scalar_metrics.add_float(
-                "fedmatch_sigma_delta_l2",
+                f"{metric_prefix}_sigma_delta_l2",
                 tensor_mapping_l2(step_result.sigma_parameter_deltas),
             )
             scalar_metrics.add_float(
-                "fedmatch_psi_delta_l2",
+                f"{metric_prefix}_psi_delta_l2",
                 tensor_mapping_l2(step_result.psi_parameter_deltas),
             )
             if emit_supervised_partition:
@@ -441,7 +439,7 @@ def run_partitioned_lora_classifier_step(
     model: TextBatchClassifier,
     labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     sigma_optimizer: torch.optim.Optimizer,
     psi_optimizer: torch.optim.Optimizer,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None = None,
@@ -466,10 +464,10 @@ def run_partitioned_lora_classifier_step(
     if apply_supervised_step:
         if labeled_batch is None:
             raise ValueError("FedMatch supervised step requires labeled_batch.")
-        supervised = _apply_fedmatch_supervised_step(
+        supervised = _apply_supervised_objective_step(
             model=model,
             labeled_batch=labeled_batch,
-            parameters=parameters,
+            objective=objective,
             optimizer=sigma_optimizer,
             max_grad_norm=max_grad_norm,
         )
@@ -479,7 +477,7 @@ def run_partitioned_lora_classifier_step(
             before=before_supervised,
         )
     else:
-        supervised = _empty_supervised_step_result(before_supervised)
+        supervised = _empty_objective_step_result(before_supervised)
         after_supervised = before_supervised
         sigma_parameter_deltas = {}
 
@@ -492,11 +490,11 @@ def run_partitioned_lora_classifier_step(
             max_grad_norm=max_grad_norm,
         )
         if psi_query_ssl_algorithm is not None
-        else _apply_fedmatch_unsupervised_step(
+        else _apply_unsupervised_objective_step(
             model=model,
             sigma_snapshot=after_supervised,
             unlabeled_batch=unlabeled_batch,
-            parameters=parameters,
+            objective=objective,
             optimizer=psi_optimizer,
             helper_weak_probability_provider=helper_weak_probability_provider,
             enable_inter_client_consistency=enable_inter_client_consistency,
@@ -526,7 +524,7 @@ def run_physical_partitioned_adapter_classifier_step(
     model: ptm.PartitionedTrainableTextClassifier,
     labeled_batch: Mapping[str, Tensor] | None,
     unlabeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     supervised_partition: str,
     unsupervised_partition: str,
     sigma_optimizer: torch.optim.Optimizer,
@@ -555,12 +553,12 @@ def run_physical_partitioned_adapter_classifier_step(
             raise ValueError(
                 "FedMatch physical supervised step requires labeled_batch."
             )
-        supervised = _apply_physical_fedmatch_supervised_step(
+        supervised = _apply_physical_supervised_objective_step(
             model=model,
             partition_name=supervised_partition,
             composed_partition_names=(supervised_partition, unsupervised_partition),
             labeled_batch=labeled_batch,
-            parameters=parameters,
+            objective=objective,
             optimizer=sigma_optimizer,
             max_grad_norm=max_grad_norm,
         )
@@ -573,7 +571,7 @@ def run_physical_partitioned_adapter_classifier_step(
             before=before_sigma,
         )
     else:
-        supervised = _empty_supervised_step_result(before_sigma)
+        supervised = _empty_objective_step_result(before_sigma)
         after_sigma = before_sigma
         sigma_parameter_deltas = {}
 
@@ -581,13 +579,13 @@ def run_physical_partitioned_adapter_classifier_step(
         model,
         unsupervised_partition,
     )
-    unsupervised = _apply_physical_fedmatch_unsupervised_step(
+    unsupervised = _apply_physical_unsupervised_objective_step(
         model=model,
         sigma_partition_snapshot=after_sigma,
         supervised_partition=supervised_partition,
         unsupervised_partition=unsupervised_partition,
         unlabeled_batch=unlabeled_batch,
-        parameters=parameters,
+        objective=objective,
         optimizer=psi_optimizer,
         helper_weak_probability_provider=helper_weak_probability_provider,
         enable_inter_client_consistency=enable_inter_client_consistency,
@@ -614,15 +612,15 @@ def run_physical_partitioned_adapter_classifier_step(
     )
 
 
-def _apply_fedmatch_supervised_step(
+def _apply_supervised_objective_step(
     *,
     model: TextBatchClassifier,
     labeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     optimizer: torch.optim.Optimizer,
     max_grad_norm: float,
-) -> FedMatchTensorLocalObjectiveResult:
-    result: FedMatchTensorLocalObjectiveResult | None = None
+) -> TensorLocalObjectiveResult:
+    result: TensorLocalObjectiveResult | None = None
 
     def compute_loss() -> Tensor:
         nonlocal result
@@ -631,10 +629,9 @@ def _apply_fedmatch_supervised_step(
             input_ids=labeled_batch["input_ids"],
             attention_mask=labeled_batch["attention_mask"],
         )
-        result = compute_fedmatch_supervised_loss(
+        result = objective.compute_supervised_loss(
             labeled_logits=logits,
             labels=labeled_batch["labels"],
-            parameters=parameters,
         )
         return result.total_loss
 
@@ -648,17 +645,17 @@ def _apply_fedmatch_supervised_step(
     return result
 
 
-def _apply_physical_fedmatch_supervised_step(
+def _apply_physical_supervised_objective_step(
     *,
     model: ptm.PartitionedTrainableTextClassifier,
     partition_name: str,
     composed_partition_names: Sequence[str],
     labeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     optimizer: torch.optim.Optimizer,
     max_grad_norm: float,
-) -> FedMatchTensorLocalObjectiveResult:
-    result: FedMatchTensorLocalObjectiveResult | None = None
+) -> TensorLocalObjectiveResult:
+    result: TensorLocalObjectiveResult | None = None
 
     def compute_loss() -> Tensor:
         nonlocal result
@@ -669,10 +666,9 @@ def _apply_physical_fedmatch_supervised_step(
             partition_names=composed_partition_names,
             trainable_partition_name=partition_name,
         )
-        result = compute_fedmatch_supervised_loss(
+        result = objective.compute_supervised_loss(
             labeled_logits=logits,
             labels=labeled_batch["labels"],
-            parameters=parameters,
         )
         return result.total_loss
 
@@ -686,9 +682,9 @@ def _apply_physical_fedmatch_supervised_step(
     return result
 
 
-def _empty_supervised_step_result(
+def _empty_objective_step_result(
     parameter_snapshot: Mapping[str, Tensor],
-) -> FedMatchTensorLocalObjectiveResult:
+) -> TensorLocalObjectiveResult:
     try:
         reference = next(iter(parameter_snapshot.values()))
     except StopIteration as error:
@@ -696,27 +692,27 @@ def _empty_supervised_step_result(
             "FedMatch partitioned step requires trainable parameters."
         ) from error
     zero = reference.new_zeros(())
-    return FedMatchTensorLocalObjectiveResult(
+    return TensorLocalObjectiveResult(
         total_loss=zero,
-        partition_losses={FEDMATCH_SIGMA_PARTITION: zero},
+        partition_losses={},
         loss_components={},
         metrics={"labeled_count": reference.new_tensor(0.0)},
         debug_tensors={},
     )
 
 
-def _apply_fedmatch_unsupervised_step(
+def _apply_unsupervised_objective_step(
     *,
     model: TextBatchClassifier,
     sigma_snapshot: Mapping[str, Tensor],
     unlabeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     optimizer: torch.optim.Optimizer,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None,
     enable_inter_client_consistency: bool,
     max_grad_norm: float,
-) -> FedMatchTensorLocalObjectiveResult:
-    result: FedMatchTensorLocalObjectiveResult | None = None
+) -> TensorLocalObjectiveResult:
+    result: TensorLocalObjectiveResult | None = None
 
     def compute_loss() -> Tensor:
         nonlocal result
@@ -725,9 +721,8 @@ def _apply_fedmatch_unsupervised_step(
             input_ids=unlabeled_batch["weak_input_ids"],
             attention_mask=unlabeled_batch["weak_attention_mask"],
         )
-        confidence_mask = _fedmatch_confidence_mask(
+        confidence_mask = objective.build_confidence_mask(
             weak_logits=weak_logits,
-            confidence_threshold=parameters.confidence_threshold,
         )
         selected_strong_logits = _forward_selected_strong_view(
             model=model,
@@ -740,18 +735,17 @@ def _apply_fedmatch_unsupervised_step(
             unlabeled_batch=unlabeled_batch,
             confidence_mask=confidence_mask,
         )
-        result = compute_fedmatch_unsupervised_loss(
+        result = objective.compute_unsupervised_loss(
             weak_logits=weak_logits,
             selected_strong_logits=selected_strong_logits,
             selected_helper_weak_probabilities=selected_helper_probabilities,
-            parameter_partitions=FedMatchParameterPartitions(
-                sigma={
+            parameter_tensors=PartitionedObjectiveParameterTensors(
+                reference={
                     key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
                     for key, value in sigma_snapshot.items()
                 },
-                psi=named_trainable_parameter_tensors(_as_torch_module(model)),
+                trainable=named_trainable_parameter_tensors(_as_torch_module(model)),
             ),
-            parameters=_single_model_fedmatch_parameters(parameters),
             enable_inter_client_consistency=enable_inter_client_consistency,
         )
         return result.total_loss
@@ -766,20 +760,20 @@ def _apply_fedmatch_unsupervised_step(
     return result
 
 
-def _apply_physical_fedmatch_unsupervised_step(
+def _apply_physical_unsupervised_objective_step(
     *,
     model: ptm.PartitionedTrainableTextClassifier,
     sigma_partition_snapshot: Mapping[str, Tensor],
     supervised_partition: str,
     unsupervised_partition: str,
     unlabeled_batch: Mapping[str, Tensor],
-    parameters: FedMatchLocalObjectiveParameters,
+    objective: PartitionedTensorLocalObjective,
     optimizer: torch.optim.Optimizer,
     helper_weak_probability_provider: HelperWeakProbabilityProvider | None,
     enable_inter_client_consistency: bool,
     max_grad_norm: float,
-) -> FedMatchTensorLocalObjectiveResult:
-    result: FedMatchTensorLocalObjectiveResult | None = None
+) -> TensorLocalObjectiveResult:
+    result: TensorLocalObjectiveResult | None = None
 
     def compute_loss() -> Tensor:
         nonlocal result
@@ -791,9 +785,8 @@ def _apply_physical_fedmatch_unsupervised_step(
             partition_names=composed_partition_names,
             trainable_partition_name=unsupervised_partition,
         )
-        confidence_mask = _fedmatch_confidence_mask(
+        confidence_mask = objective.build_confidence_mask(
             weak_logits=weak_logits,
-            confidence_threshold=parameters.confidence_threshold,
         )
         selected_strong_logits = _forward_selected_physical_strong_view(
             model=model,
@@ -808,18 +801,17 @@ def _apply_physical_fedmatch_unsupervised_step(
             unlabeled_batch=unlabeled_batch,
             confidence_mask=confidence_mask,
         )
-        result = compute_fedmatch_unsupervised_loss(
+        result = objective.compute_unsupervised_loss(
             weak_logits=weak_logits,
             selected_strong_logits=selected_strong_logits,
             selected_helper_weak_probabilities=selected_helper_probabilities,
-            parameter_partitions=FedMatchParameterPartitions(
-                sigma={
+            parameter_tensors=PartitionedObjectiveParameterTensors(
+                reference={
                     key: value.to(device=weak_logits.device, dtype=weak_logits.dtype)
                     for key, value in sigma_partition_snapshot.items()
                 },
-                psi=model.partition_parameter_tensors(unsupervised_partition),
+                trainable=model.partition_parameter_tensors(unsupervised_partition),
             ),
-            parameters=parameters,
             enable_inter_client_consistency=enable_inter_client_consistency,
         )
         return result.total_loss
@@ -832,28 +824,6 @@ def _apply_physical_fedmatch_unsupervised_step(
     )
     assert result is not None
     return result
-
-
-def _single_model_fedmatch_parameters(
-    parameters: FedMatchLocalObjectiveParameters,
-) -> FedMatchLocalObjectiveParameters:
-    """LoRA slice는 sigma/psi 별도 변수 없이 단일 tensor를 순차 업데이트한다.
-
-    원본 FedMatch의 L1/L2는 별도 psi 변수에 거는 regularizer다. 여기서 같은
-    trainable tensor 전체를 psi로 보면 confident sample이 0개인 round에서도
-    classifier head와 LoRA parameter가 0으로 수축한다.
-    """
-
-    if parameters.lambda_l1 == 0.0 and parameters.lambda_l2 == 0.0:
-        return parameters
-    return FedMatchLocalObjectiveParameters(
-        confidence_threshold=parameters.confidence_threshold,
-        lambda_s=parameters.lambda_s,
-        lambda_i=parameters.lambda_i,
-        lambda_a=parameters.lambda_a,
-        lambda_l2=0.0,
-        lambda_l1=0.0,
-    )
 
 
 def _compute_selected_helper_probabilities(
@@ -891,15 +861,6 @@ def _select_weak_view_batch(
         elif isinstance(value, Tensor):
             selected_batch[key] = value
     return selected_batch
-
-
-def _fedmatch_confidence_mask(
-    *,
-    weak_logits: Tensor,
-    confidence_threshold: float,
-) -> Tensor:
-    weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
-    return torch.max(weak_probabilities, dim=-1).values >= confidence_threshold
 
 
 def _forward_selected_strong_view(
@@ -945,7 +906,7 @@ def _apply_query_ssl_psi_step(
     optimizer: torch.optim.Optimizer,
     algorithm: QuerySslAlgorithm,
     max_grad_norm: float,
-) -> FedMatchTensorLocalObjectiveResult:
+) -> TensorLocalObjectiveResult:
     step_result: QuerySslStepResult | None = None
 
     def compute_loss() -> Tensor:
@@ -970,10 +931,10 @@ def _apply_query_ssl_psi_step(
 
 def _query_ssl_step_result_as_partition_result(
     step_result: QuerySslStepResult,
-) -> FedMatchTensorLocalObjectiveResult:
-    return FedMatchTensorLocalObjectiveResult(
+) -> TensorLocalObjectiveResult:
+    return TensorLocalObjectiveResult(
         total_loss=step_result.total_loss,
-        partition_losses={FEDMATCH_PSI_PARTITION: step_result.total_loss},
+        partition_losses={"unsupervised": step_result.total_loss},
         loss_components=step_result.loss_components,
         metrics=step_result.metrics,
         debug_tensors=step_result.debug_tensors,

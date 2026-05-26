@@ -98,6 +98,7 @@ from methods.federated_ssl.capability_plan import (
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FedMatchLocalObjectiveParameters,
+    build_fedmatch_partitioned_tensor_objective,
 )
 from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
@@ -208,6 +209,11 @@ def run_method_owned_lora_classifier_training_core(
 
     parameters = FedMatchLocalObjectiveParameters.from_mapping(
         ssl_method_config.effective_parameters
+    )
+    physical_objective = build_fedmatch_partitioned_tensor_objective(parameters)
+    sequential_objective = build_fedmatch_partitioned_tensor_objective(
+        parameters,
+        omit_regularization_for_single_trainable_model=True,
     )
     tokenization_cache = resolve_text_tokenization_cache(runtime_resource_cache)
     tokenization_cache_namespace_value = tokenization_cache_namespace(lora_config)
@@ -358,7 +364,7 @@ def run_method_owned_lora_classifier_training_core(
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
                 labels=effective_labels,
-                parameters=parameters,
+                objective=physical_objective,
                 step_plan=step_plan,
                 device=trainer_runtime_config.device,
                 learning_rate=float(training_task.learning_rate),
@@ -380,6 +386,7 @@ def run_method_owned_lora_classifier_training_core(
                     FEDMATCH_SIGMA_PARTITION
                     in upload_partitions_for_scenario(scenario_name=scenario_name)
                 ),
+                metric_prefix="fedmatch",
             )
             if partition_initialization_metrics:
                 training_result = PartitionedLoraTrainingResult(
@@ -438,7 +445,7 @@ def run_method_owned_lora_classifier_training_core(
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
                 labels=effective_labels,
-                parameters=parameters,
+                objective=sequential_objective,
                 step_plan=step_plan,
                 device=trainer_runtime_config.device,
                 learning_rate=float(training_task.learning_rate),
@@ -455,10 +462,13 @@ def run_method_owned_lora_classifier_training_core(
                     helper_weak_probability_provider is not None
                 ),
                 use_supervised_steps=local_supervision_regime.uses_client_labeled_rows,
+                supervised_partition=FEDMATCH_SIGMA_PARTITION,
+                unsupervised_partition=FEDMATCH_PSI_PARTITION,
                 emit_sigma_partition=(
                     FEDMATCH_SIGMA_PARTITION
                     in upload_partitions_for_scenario(scenario_name=scenario_name)
                 ),
+                metric_prefix="fedmatch",
             )
     history_record = training_result.metrics
     diagnostic_threshold = _resolve_partitioned_diagnostic_threshold(

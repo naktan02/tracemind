@@ -14,7 +14,11 @@ from methods.federated_ssl.fedmatch.original_spec import (
     FEDMATCH_SCENARIO_LABELS_AT_CLIENT,
     resolve_original_scenario_spec,
 )
-from methods.federated_ssl.local_objective import FederatedSslLocalObjectiveSpec
+from methods.federated_ssl.local_objective import (
+    FederatedSslLocalObjectiveSpec,
+    PartitionedObjectiveParameterTensors,
+    TensorLocalObjectiveResult,
+)
 
 FEDMATCH_LOCAL_OBJECTIVE_NAME = "fedmatch_sigma_psi_local_objective"
 FEDMATCH_CONFIDENCE_FILTER = "confidence_filter"
@@ -42,27 +46,21 @@ FEDMATCH_LOSS_COMPONENTS = (
         coefficient_name="lambda_s",
         updated_partition="sigma",
         original_source="models/fedmatch/client.py::loss_fn_s",
-        trace_mapping=(
-            "labeled rows로 CE를 계산하고 sigma partition만 업데이트한다."
-        ),
+        trace_mapping=("labeled rows로 CE를 계산하고 sigma partition만 업데이트한다."),
     ),
     FedMatchLossComponentSpec(
         name=FEDMATCH_CONFIDENCE_FILTER,
         coefficient_name="confidence_threshold",
         updated_partition=None,
         original_source="models/fedmatch/client.py::loss_fn_u",
-        trace_mapping=(
-            "weak prediction confidence가 threshold 이상인 row만 쓴다."
-        ),
+        trace_mapping=("weak prediction confidence가 threshold 이상인 row만 쓴다."),
     ),
     FedMatchLossComponentSpec(
         name=FEDMATCH_INTER_CLIENT_KL,
         coefficient_name="lambda_i",
         updated_partition="psi",
         original_source="models/fedmatch/client.py::loss_fn_u",
-        trace_mapping=(
-            "helper/local weak prediction KL을 psi objective에 더한다."
-        ),
+        trace_mapping=("helper/local weak prediction KL을 psi objective에 더한다."),
     ),
     FedMatchLossComponentSpec(
         name=FEDMATCH_AGREEMENT_PSEUDO_LABEL_CE,
@@ -179,6 +177,61 @@ class FedMatchTensorLocalObjectiveResult:
     debug_tensors: Mapping[str, Tensor]
 
 
+@dataclass(frozen=True, slots=True)
+class FedMatchPartitionedTensorObjective:
+    """partitioned runtime에 주입되는 FedMatch tensor objective adapter."""
+
+    parameters: FedMatchLocalObjectiveParameters
+    omit_regularization_for_single_trainable_model: bool = False
+
+    def compute_supervised_loss(
+        self,
+        *,
+        labeled_logits: Tensor,
+        labels: Tensor,
+    ) -> TensorLocalObjectiveResult:
+        result = compute_fedmatch_supervised_loss(
+            labeled_logits=labeled_logits,
+            labels=labels,
+            parameters=self.parameters,
+        )
+        return _to_generic_objective_result(result)
+
+    def build_confidence_mask(
+        self,
+        *,
+        weak_logits: Tensor,
+    ) -> Tensor:
+        weak_probabilities = torch.softmax(weak_logits.detach(), dim=-1)
+        return torch.max(weak_probabilities, dim=-1).values >= (
+            self.parameters.confidence_threshold
+        )
+
+    def compute_unsupervised_loss(
+        self,
+        *,
+        weak_logits: Tensor,
+        selected_strong_logits: Tensor,
+        parameter_tensors: PartitionedObjectiveParameterTensors,
+        selected_helper_weak_probabilities: Tensor | Sequence[Tensor] | None = None,
+        enable_inter_client_consistency: bool = True,
+    ) -> TensorLocalObjectiveResult:
+        result = compute_fedmatch_unsupervised_loss(
+            weak_logits=weak_logits,
+            selected_strong_logits=selected_strong_logits,
+            selected_helper_weak_probabilities=selected_helper_weak_probabilities,
+            parameter_partitions=FedMatchParameterPartitions(
+                sigma=parameter_tensors.reference,
+                psi=parameter_tensors.trainable,
+            ),
+            parameters=_single_model_parameters(self.parameters)
+            if self.omit_regularization_for_single_trainable_model
+            else self.parameters,
+            enable_inter_client_consistency=enable_inter_client_consistency,
+        )
+        return _to_generic_objective_result(result)
+
+
 local_objective_spec = FederatedSslLocalObjectiveSpec(
     objective_name=FEDMATCH_LOCAL_OBJECTIVE_NAME,
     required_batch_views=("weak_text", "strong_text"),
@@ -192,6 +245,50 @@ local_objective_spec = FederatedSslLocalObjectiveSpec(
         ),
     },
 )
+
+
+def build_fedmatch_partitioned_tensor_objective(
+    parameters: FedMatchLocalObjectiveParameters,
+    *,
+    omit_regularization_for_single_trainable_model: bool = False,
+) -> FedMatchPartitionedTensorObjective:
+    """adapter-family partitioned runtime에 넘길 FedMatch objective를 만든다."""
+
+    return FedMatchPartitionedTensorObjective(
+        parameters=parameters,
+        omit_regularization_for_single_trainable_model=(
+            omit_regularization_for_single_trainable_model
+        ),
+    )
+
+
+def _to_generic_objective_result(
+    result: FedMatchTensorLocalObjectiveResult,
+) -> TensorLocalObjectiveResult:
+    return TensorLocalObjectiveResult(
+        total_loss=result.total_loss,
+        partition_losses=result.partition_losses,
+        loss_components=result.loss_components,
+        metrics=result.metrics,
+        debug_tensors=result.debug_tensors,
+    )
+
+
+def _single_model_parameters(
+    parameters: FedMatchLocalObjectiveParameters,
+) -> FedMatchLocalObjectiveParameters:
+    """단일 tensor sequential runtime에서는 psi regularizer를 생략한다."""
+
+    if parameters.lambda_l1 == 0.0 and parameters.lambda_l2 == 0.0:
+        return parameters
+    return FedMatchLocalObjectiveParameters(
+        confidence_threshold=parameters.confidence_threshold,
+        lambda_s=parameters.lambda_s,
+        lambda_i=parameters.lambda_i,
+        lambda_a=parameters.lambda_a,
+        lambda_l2=0.0,
+        lambda_l1=0.0,
+    )
 
 
 def fedmatch_loss_weights(

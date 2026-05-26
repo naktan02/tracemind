@@ -708,6 +708,29 @@ def test_adapter_family_federated_ssl_files_do_not_multiply_by_method_name() -> 
     )
 
 
+def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
+    path = (
+        METHODS_SRC
+        / "adaptation"
+        / "lora_classifier"
+        / "federated_ssl"
+        / "partitioned_training_loop.py"
+    )
+    imports = _collect_absolute_imports(path)
+    violations = sorted(
+        imported
+        for imported in imports
+        if imported.startswith("methods.federated_ssl.fedmatch")
+    )
+
+    assert not violations, (
+        "partitioned_training_loop.py는 adapter-family execution primitive다. "
+        "FedMatch objective와 partition 이름은 methods/federated_ssl/fedmatch/의 "
+        "caller가 주입해야 한다.\n"
+        f"{chr(10).join(f'- {item}' for item in violations)}"
+    )
+
+
 def test_text_classifier_adaptation_does_not_import_fedmatch_method() -> None:
     violations = _find_forbidden_imports(
         root=TEXT_CLASSIFIER_ADAPTATION_SRC,
