@@ -18,6 +18,8 @@
   trainable adapter/head partition scope로 매핑하는 metadata
 - `partitioned_runtime_plan.py`: scenario, local supervision, sigma/psi routing,
   upload partition, objective, `psi_factor`를 adapter-family runtime plan으로 정규화
+- `partitioned_local_training.py`: FedMatch descriptor가 호출하는 partitioned local
+  training entrypoint. 현재는 PEFT text classifier runtime bridge로 위임한다.
 - `server_step_parameters.py`: labels-at-server supervised seed step budget 해석
 
 LoRA-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned optimizer

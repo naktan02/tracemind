@@ -7,9 +7,6 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.lora_classifier.federated_ssl import (
-    partitioned_objective_training,
-)
 from methods.adaptation.query_classifier_adaptation.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
@@ -42,6 +39,9 @@ from methods.federated_ssl.fedmatch.local_objective import (
 from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_PSI_PARTITION,
     FEDMATCH_SIGMA_PARTITION,
+)
+from methods.federated_ssl.fedmatch.partitioned_local_training import (
+    run_method_owned_lora_classifier_training_core as run_fedmatch_partitioned_training,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 
@@ -164,10 +164,7 @@ def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> N
         "fedmatch"
     )
 
-    assert (
-        core
-        is partitioned_objective_training.run_method_owned_lora_classifier_training_core
-    )
+    assert core is run_fedmatch_partitioned_training
 
 
 def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
