@@ -20,6 +20,9 @@ class FederatedReportExpectation:
     expected_labeled_exposure_policy: str | None = None
     expected_run_control_budget_name: str | None = None
     expected_run_control_output_dir: str | None = None
+    expected_fl_method_name: str | None = None
+    expected_fl_method_descriptor_name: str | None = None
+    expected_fl_method_execution_role: str | None = None
     expected_federated_ssl_method: str | None = None
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None

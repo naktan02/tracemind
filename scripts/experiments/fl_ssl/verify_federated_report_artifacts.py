@@ -31,6 +31,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_labeled_exposure_policy=args.expected_labeled_exposure_policy,
         expected_run_control_budget_name=args.expected_run_control_budget_name,
         expected_run_control_output_dir=args.expected_run_control_output_dir,
+        expected_fl_method_name=args.expected_fl_method_name,
+        expected_fl_method_descriptor_name=args.expected_fl_method_descriptor_name,
+        expected_fl_method_execution_role=args.expected_fl_method_execution_role,
         expected_federated_ssl_method=args.expected_federated_ssl_method,
         expected_ssl_algorithm=args.expected_ssl_algorithm,
         expected_ssl_method=args.expected_ssl_method,
@@ -158,6 +161,9 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-labeled-exposure-policy")
     parser.add_argument("--expected-run-control-budget-name")
     parser.add_argument("--expected-run-control-output-dir")
+    parser.add_argument("--expected-fl-method-name")
+    parser.add_argument("--expected-fl-method-descriptor-name")
+    parser.add_argument("--expected-fl-method-execution-role")
     parser.add_argument("--expected-federated-ssl-method")
     parser.add_argument("--expected-ssl-algorithm")
     parser.add_argument("--expected-ssl-method")

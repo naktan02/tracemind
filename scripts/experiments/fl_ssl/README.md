@@ -250,6 +250,9 @@ uv run python -m scripts.experiments.fl_ssl.backfill_communication_costs \
 
 uv run python -m scripts.experiments.fl_ssl.verify_federated_report_artifacts \
   --report <run-dir>/reports/fl_ssl_main_comparison.report.json \
+  --expected-fl-method-name fedmatch \
+  --expected-fl-method-descriptor-name fedmatch \
+  --expected-fl-method-execution-role method_owned \
   --expected-federated-ssl-method fedmatch \
   --expected-server-update-policy fedmatch_partitioned \
   --expected-update-partition-policy partitioned \
@@ -348,12 +351,14 @@ client/server 정책을 함께 소유할 때 사용한다. 이 경우
 
 ```bash
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
+  run_controls/fl_ssl/budget=reduced \
   fl_method.composition_mode=method_owned \
   strategy_axes/fl/method_descriptor=fedmatch \
+  strategy_axes/fl/server_update_policy=fedmatch_partitioned \
   strategy_axes/fl/update_partition_policy=partitioned \
   strategy_axes/fl/aggregation_weight_policy=uniform \
-  federated_run_budget.client_count=10 \
-  federated_run_budget.rounds=1
+  strategy_axes/fl/peer_context_policy=fixed_probe_output_knn \
+  strategy_axes/fl/local_ssl_policy=fedmatch_agreement
 ```
 
 현재 FedMatch는 descriptor, capability surface, 원본 core/config snapshot,

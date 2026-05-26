@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
-from methods.federated_ssl.capability_axes import LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT
+from methods.federated_ssl.capability_axes import (
+    LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT,
+    SERVER_UPDATE_FEDMATCH_PARTITIONED,
+)
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.fedmatch.descriptor import FEDMATCH_METHOD_NAME
 
@@ -21,4 +24,10 @@ def validate_method_capability_compatibility(
         raise ValueError(
             "local_ssl_policy=fedmatch_agreement requires the FedMatch "
             "method-owned descriptor."
+        )
+    if capability_plan.server_update_policy_name != SERVER_UPDATE_FEDMATCH_PARTITIONED:
+        raise ValueError(
+            "local_ssl_policy=fedmatch_agreement requires "
+            "server_update_policy=fedmatch_partitioned so sigma/psi partitioned "
+            "state is preserved across rounds."
         )

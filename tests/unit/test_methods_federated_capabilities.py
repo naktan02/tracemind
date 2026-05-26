@@ -216,7 +216,7 @@ def test_fedmatch_descriptor_requires_partition_and_weight_capabilities() -> Non
         peer_context_policy={"name": "none"},
         update_partition_policy={"name": "partitioned"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT},
-        server_update_policy={"name": SERVER_UPDATE_FEDAVG_MERGED_DELTA},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
         query_multiview_source={"name": "materialized_rows"},
     )
     incompatible_plan = FederatedSslCapabilityPlan.from_mappings(
@@ -228,7 +228,7 @@ def test_fedmatch_descriptor_requires_partition_and_weight_capabilities() -> Non
         peer_context_policy={"name": "none"},
         update_partition_policy={"name": "unified"},
         local_ssl_policy={"name": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT},
-        server_update_policy={"name": SERVER_UPDATE_FEDAVG_MERGED_DELTA},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
         query_multiview_source={"name": "materialized_rows"},
     )
 
@@ -284,6 +284,28 @@ def test_fedmatch_partitioned_server_update_can_express_fixmatch_policy() -> Non
         method_descriptor=descriptor,
         capability_plan=plan,
     )
+
+
+def test_fedmatch_agreement_requires_partitioned_server_update() -> None:
+    descriptor = resolve_federated_ssl_method_descriptor("fedmatch")
+    plan = FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "shared_client_seed"},
+        local_supervision_regime={"name": "client_labeled_and_unlabeled"},
+        server_step_policy={"name": "none"},
+        peer_context_policy={"name": PEER_CONTEXT_FIXED_PROBE_OUTPUT_KNN},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": LOCAL_SSL_POLICY_FEDMATCH_AGREEMENT},
+        server_update_policy={"name": SERVER_UPDATE_FEDAVG_MERGED_DELTA},
+        query_multiview_source={"name": "materialized_rows"},
+    )
+
+    with pytest.raises(ValueError, match="fedmatch_partitioned"):
+        validate_federated_ssl_capability_compatibility(
+            method_descriptor=descriptor,
+            capability_plan=plan,
+        )
 
 
 def test_fedmatch_partitioned_fixmatch_is_simulation_supported() -> None:

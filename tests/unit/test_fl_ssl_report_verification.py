@@ -33,6 +33,9 @@ def _report_payload(
     labeled_exposure_policy: str = "client_local_split",
     run_control_budget_name: str = "main",
     run_control_output_dir: str = "runs/fl_ssl",
+    fl_method_name: str = "manual",
+    fl_method_descriptor_name: str | None = None,
+    fl_method_execution_role: str = "manual_baseline",
     federated_ssl_method: str | None = None,
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
@@ -74,6 +77,11 @@ def _report_payload(
                 "metadata_status": "recorded",
                 "budget_name": run_control_budget_name,
                 "output_dir": run_control_output_dir,
+            },
+            "fl_method": {
+                "name": fl_method_name,
+                "descriptor_name": fl_method_descriptor_name,
+                "execution_role": fl_method_execution_role,
             },
             "ssl_method": (
                 None if federated_ssl_method is None else {"name": federated_ssl_method}
@@ -515,6 +523,9 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
             client_count=2,
             completed_rounds=1,
             round_budget=1,
+            fl_method_name="fedmatch",
+            fl_method_descriptor_name="fedmatch",
+            fl_method_execution_role="method_owned",
             federated_ssl_method="fedmatch",
             server_update_policy="fedmatch_partitioned",
             update_partition_policy="partitioned",
@@ -528,6 +539,9 @@ def test_verify_fedmatch_partitioned_report_requires_capabilities_and_partition_
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
+            expected_fl_method_name="fedmatch",
+            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_execution_role="method_owned",
             expected_federated_ssl_method="fedmatch",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
@@ -553,6 +567,9 @@ def test_verify_fedmatch_partitioned_report_rejects_primary_only_update_refs(
             client_count=1,
             completed_rounds=1,
             round_budget=1,
+            fl_method_name="fedmatch",
+            fl_method_descriptor_name="fedmatch",
+            fl_method_execution_role="method_owned",
             federated_ssl_method="fedmatch",
             server_update_policy="fedmatch_partitioned",
             update_partition_policy="partitioned",
@@ -566,6 +583,9 @@ def test_verify_fedmatch_partitioned_report_rejects_primary_only_update_refs(
     result = verify_federated_simulation_report_path(
         report_path,
         FederatedReportExpectation(
+            expected_fl_method_name="fedmatch",
+            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_execution_role="method_owned",
             expected_federated_ssl_method="fedmatch",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
@@ -593,11 +613,17 @@ def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
             client_count=2,
             completed_rounds=1,
             round_budget=1,
+            fl_method_name="fedmatch",
+            fl_method_descriptor_name="fedmatch",
+            fl_method_execution_role="manual_baseline",
             federated_ssl_method="fedmatch",
             server_update_policy="fedavg_merged_delta",
             update_partition_policy="unified",
         ),
         expectation=FederatedReportExpectation(
+            expected_fl_method_name="fedmatch",
+            expected_fl_method_descriptor_name="fedmatch",
+            expected_fl_method_execution_role="method_owned",
             expected_federated_ssl_method="fedmatch",
             expected_server_update_policy="fedmatch_partitioned",
             expected_update_partition_policy="partitioned",
@@ -612,6 +638,10 @@ def test_verify_fedmatch_partitioned_report_flags_capability_drift() -> None:
     assert (
         "protocol.fl_capabilities.update_partition_policy.name expected "
         "'partitioned', got 'unified'." in result.errors
+    )
+    assert (
+        "protocol.fl_method.execution_role expected 'method_owned', "
+        "got 'manual_baseline'." in result.errors
     )
 
 
@@ -961,6 +991,9 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
                 client_count=1,
                 completed_rounds=1,
                 round_budget=1,
+                fl_method_name="fedmatch",
+                fl_method_descriptor_name="fedmatch",
+                fl_method_execution_role="method_owned",
                 federated_ssl_method="fedmatch",
             )
         ),
@@ -971,6 +1004,12 @@ def test_verify_artifact_cli_accepts_federated_ssl_method_descriptor(
         [
             "--report",
             str(report_path),
+            "--expected-fl-method-name",
+            "fedmatch",
+            "--expected-fl-method-descriptor-name",
+            "fedmatch",
+            "--expected-fl-method-execution-role",
+            "method_owned",
             "--expected-federated-ssl-method",
             "fedmatch",
         ]

@@ -86,6 +86,8 @@ delta를 aggregation하고, `server_update_policy=fedmatch_partitioned`면 simul
 runtime이 LoRA-classifier `partitioned_delta_average` backend로 `partitioned_deltas`를
 소비한다. 이 backend는 client sparse projection 이후 제출된 LoRA-classifier
 partition delta를 평균하는 simulation slice다.
+`local_ssl_policy=fedmatch_agreement`는 원본 FedMatch agreement objective 의미를
+보존하기 위해 `server_update_policy=fedmatch_partitioned`와 함께 써야 한다.
 `server_step_policy=supervised_seed_step`은 round open 전에 server bootstrap rows로
 LoRA-classifier active state를 한 번 더 발행한 뒤 client round를 시작한다.
 

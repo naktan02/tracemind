@@ -905,6 +905,38 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
 
 
+def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "run_controls/fl_ssl/budget=reduced",
+                "strategy_axes/fl/method_descriptor=fedmatch",
+                "fl_method.composition_mode=method_owned",
+                "strategy_axes/fl/server_update_policy=fedmatch_partitioned",
+                "strategy_axes/fl/update_partition_policy=partitioned",
+                "strategy_axes/fl/aggregation_weight_policy=uniform",
+                "strategy_axes/fl/peer_context_policy=fixed_probe_output_knn",
+                "strategy_axes/fl/local_ssl_policy=fedmatch_agreement",
+            ],
+        )
+
+    capability_plan = _build_capability_plan(
+        cfg=cfg,
+        labeled_exposure_policy=_plain_dict(cfg.labeled_exposure_policy),
+    )
+
+    assert cfg.federated_run_budget.name == "reduced"
+    assert cfg.federated_run_budget.rounds == 5
+    assert cfg.local_ssl_policy.name == "fedmatch_agreement"
+    assert cfg.server_update_policy.name == "fedmatch_partitioned"
+    assert capability_plan.local_ssl_policy_name == "fedmatch_agreement"
+    assert capability_plan.server_update_policy_name == "fedmatch_partitioned"
+    assert capability_plan.update_partition_policy_name == "partitioned"
+    assert capability_plan.aggregation_weight_policy.name == "uniform"
+    assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
+
+
 def test_federated_simulation_legacy_peer_context_override_uses_canonical_name() -> (
     None
 ):
