@@ -29,8 +29,8 @@ from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
-    compact_lora_classifier_materialized_state,
+    PeftEncoderMaterializedState,
+    compact_peft_encoder_materialized_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import (
@@ -193,7 +193,7 @@ def extract_peft_encoder_materialized_state(
     *,
     model: LoraTextClassifier,
     labels: Sequence[str],
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     """현재 PEFT encoder classifier trainable state를 materialize한다."""
 
     lora_parameters: dict[str, list[float]] = {}
@@ -217,8 +217,8 @@ def extract_peft_encoder_materialized_state(
         ]
         classifier_head_biases[key] = float(bias[label_index].item())
 
-    return compact_lora_classifier_materialized_state(
-        LoraClassifierMaterializedState(
+    return compact_peft_encoder_materialized_state(
+        PeftEncoderMaterializedState(
             lora_parameters=lora_parameters,
             classifier_head_weights=classifier_head_weights,
             classifier_head_biases=classifier_head_biases,
@@ -246,10 +246,10 @@ def build_peft_encoder_helper_probability_provider(
             continue
         if snapshot.payload_kind != PEFT_ENCODER_PEER_SNAPSHOT_KIND:
             continue
-        if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
+        if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
             raise TypeError(
                 "PEFT-classifier helper snapshot payload must be "
-                "LoraClassifierMaterializedState."
+                "PeftEncoderMaterializedState."
             )
         helper_snapshots.append(snapshot)
     if not helper_snapshots:
@@ -272,8 +272,8 @@ def _materialize_helper_model(
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> LoraTextClassifier:
-    if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
-        raise TypeError("snapshot payload must be LoraClassifierMaterializedState.")
+    if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
+        raise TypeError("snapshot payload must be PeftEncoderMaterializedState.")
     cache_key = _helper_model_cache_key(
         snapshot=snapshot,
         labels=labels,
@@ -312,8 +312,8 @@ def _helper_model_cache_key(
     lora_config: LoraClassifierTrainingBackendConfig,
     trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
 ) -> str:
-    if not isinstance(snapshot.payload, LoraClassifierMaterializedState):
-        raise TypeError("snapshot payload must be LoraClassifierMaterializedState.")
+    if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
+        raise TypeError("snapshot payload must be PeftEncoderMaterializedState.")
     payload = {
         "client_id": snapshot.client_id,
         "payload_hash": _materialized_state_hash(snapshot.payload),
@@ -327,7 +327,7 @@ def _helper_model_cache_key(
 
 
 def _materialized_state_hash(
-    state: LoraClassifierMaterializedState,
+    state: PeftEncoderMaterializedState,
 ) -> str:
     payload = {
         "lora_parameters": _sorted_numeric_mapping(state.lora_parameters),

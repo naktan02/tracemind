@@ -48,8 +48,8 @@ from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
-    compact_lora_classifier_materialized_state,
+    PeftEncoderMaterializedState,
+    compact_peft_encoder_materialized_state,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -166,10 +166,9 @@ def run_partitioned_lora_classifier_training_core(
     unlabeled_rows: Sequence[LabeledQueryRow],
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
-    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
-    | None = None,
-    previous_client_partition_parameters: Mapping[str, LoraClassifierMaterializedState]
+    base_parameters: PeftEncoderMaterializedState,
+    base_partition_parameters: Mapping[str, PeftEncoderMaterializedState] | None = None,
+    previous_client_partition_parameters: Mapping[str, PeftEncoderMaterializedState]
     | None = None,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -415,9 +414,7 @@ def run_partitioned_lora_classifier_training_core(
                 partition_deltas=c2s_projection.upload_partition_deltas,
             )
             client_partition_parameters = {
-                partition_name: compact_lora_classifier_materialized_state(
-                    partition_state
-                )
+                partition_name: compact_peft_encoder_materialized_state(partition_state)
                 for partition_name, partition_state in (
                     c2s_projection.client_partition_parameters.items()
                 )

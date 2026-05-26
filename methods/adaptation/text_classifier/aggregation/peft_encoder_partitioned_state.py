@@ -8,7 +8,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta im
     LoraClassifierPartitionDelta,
 )
 
-from ..peft_encoder.update.materialization import LoraClassifierMaterializedState
+from ..peft_encoder.update.materialization import PeftEncoderMaterializedState
 
 
 def merge_partitioned_peft_encoder_deltas(
@@ -40,12 +40,12 @@ def merge_partitioned_peft_encoder_deltas(
 
 def apply_peft_encoder_partition_delta_to_state(
     *,
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     delta: LoraClassifierPartitionDelta,
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     """base state에 merged partition delta를 적용한 materialized state를 만든다."""
 
-    return LoraClassifierMaterializedState(
+    return PeftEncoderMaterializedState(
         lora_parameters=_apply_vector_mapping(
             base_parameters.lora_parameters,
             delta.lora_parameter_deltas,
@@ -67,10 +67,10 @@ def apply_peft_encoder_partition_delta_to_state(
 
 def apply_peft_encoder_partition_deltas_to_partitioned_state(
     *,
-    base_parameters: LoraClassifierMaterializedState,
-    base_partition_parameters: Mapping[str, LoraClassifierMaterializedState],
+    base_parameters: PeftEncoderMaterializedState,
+    base_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
     partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     """partition별 base state에 partition delta를 적용해 다음 partition state를 만든다.
 
     첫 partitioned round처럼 partition별 base artifact가 아직 없으면 merged global
@@ -91,11 +91,11 @@ def apply_peft_encoder_partition_deltas_to_partitioned_state(
 
 def split_peft_encoder_state_by_residual_factor(
     *,
-    published_parameters: LoraClassifierMaterializedState,
+    published_parameters: PeftEncoderMaterializedState,
     base_partition_name: str,
     residual_partition_name: str,
     residual_factor: float,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     """`published = base + residual`, `residual = base * factor`로 초기 분해한다."""
 
     if residual_factor < 0.0:
@@ -146,11 +146,11 @@ def _apply_vector_mapping(
 
 
 def _scale_peft_encoder_state(
-    state: LoraClassifierMaterializedState,
+    state: PeftEncoderMaterializedState,
     *,
     scale: float,
-) -> LoraClassifierMaterializedState:
-    return LoraClassifierMaterializedState(
+) -> PeftEncoderMaterializedState:
+    return PeftEncoderMaterializedState(
         lora_parameters={
             key: [float(value) * scale for value in values]
             for key, values in state.lora_parameters.items()

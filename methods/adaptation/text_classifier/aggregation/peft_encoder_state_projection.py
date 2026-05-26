@@ -22,7 +22,7 @@ from ..peft_encoder.update.materialization import (
     PARTITIONED_LORA_STATE_PARAMETERS_KEY,
     PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
     PEFT_STATE_PARAMETERS_KEY,
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 
 PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
@@ -42,7 +42,7 @@ LoraClassifierStateProjection = PeftEncoderStateProjection
 def build_peft_encoder_state_projection(
     *,
     base_state: PeftEncoderStatePayload,
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     next_model_revision: str,
     updated_at: datetime,
     lora_adapter_artifact_ref: str,
@@ -51,9 +51,7 @@ def build_peft_encoder_state_projection(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
-    partitioned_parameters: (
-        Mapping[str, LoraClassifierMaterializedState] | None
-    ) = None,
+    partitioned_parameters: (Mapping[str, PeftEncoderMaterializedState] | None) = None,
 ) -> PeftEncoderStateProjection:
     """base global snapshot에 aggregated delta를 적용해 next state를 만든다."""
 

@@ -46,8 +46,8 @@ PeftEncoderDeltaPayload = LoraClassifierDelta | PeftClassifierDelta
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierMaterializedUpdate:
-    """LoRA-classifier aggregation core가 소비하는 materialized client delta."""
+class PeftEncoderMaterializedUpdate:
+    """PEFT encoder aggregation core가 소비하는 materialized client delta."""
 
     lora_parameter_deltas: dict[str, list[float]]
     classifier_head_weight_deltas: dict[str, list[float]]
@@ -56,7 +56,7 @@ class LoraClassifierMaterializedUpdate:
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierMaterializedState:
+class PeftEncoderMaterializedState:
     """다음 global state projection이 소비하는 base global snapshot."""
 
     lora_parameters: dict[str, list[float]]
@@ -64,12 +64,12 @@ class LoraClassifierMaterializedState:
     classifier_head_biases: dict[str, float]
 
 
-def compact_lora_classifier_materialized_state(
-    state: LoraClassifierMaterializedState,
-) -> LoraClassifierMaterializedState:
+def compact_peft_encoder_materialized_state(
+    state: PeftEncoderMaterializedState,
+) -> PeftEncoderMaterializedState:
     """simulation memory 보존용으로 vector payload를 float32 array로 압축한다."""
 
-    return LoraClassifierMaterializedState(
+    return PeftEncoderMaterializedState(
         lora_parameters=cast(
             dict[str, list[float]],
             {
@@ -91,9 +91,9 @@ def compact_lora_classifier_materialized_state(
     )
 
 
-PeftEncoderMaterializedUpdate = LoraClassifierMaterializedUpdate
-PeftEncoderMaterializedState = LoraClassifierMaterializedState
-compact_peft_encoder_materialized_state = compact_lora_classifier_materialized_state
+LoraClassifierMaterializedUpdate = PeftEncoderMaterializedUpdate
+LoraClassifierMaterializedState = PeftEncoderMaterializedState
+compact_lora_classifier_materialized_state = compact_peft_encoder_materialized_state
 
 
 class _AggregationTensorArtifactLoader(Protocol):
@@ -105,11 +105,11 @@ class _AggregationTensorArtifactLoader(Protocol):
         """opaque artifact ref를 safetensors tensor payload로 materialize한다."""
 
 
-def materialize_base_lora_classifier_state(
+def materialize_base_peft_encoder_state(
     *,
     base_state: PeftEncoderStatePayload,
     context: FederatedAggregationContext,
-) -> LoraClassifierMaterializedState:
+) -> PeftEncoderMaterializedState:
     """base global state artifact를 읽고 없으면 zero-initialized state로 본다."""
 
     loader = None
@@ -119,7 +119,7 @@ def materialize_base_lora_classifier_state(
         or base_state.classifier_head_artifact_ref is not None
     ):
         loader = context.require_artifact_loader(
-            context="LoRA-classifier base state materialization"
+            context="PEFT-classifier base state materialization"
         )
 
     lora_parameters: dict[str, list[float]] = {}
@@ -143,18 +143,18 @@ def materialize_base_lora_classifier_state(
             )
         )
 
-    return LoraClassifierMaterializedState(
+    return PeftEncoderMaterializedState(
         lora_parameters=lora_parameters,
         classifier_head_weights=classifier_head_weights,
         classifier_head_biases=classifier_head_biases,
     )
 
 
-def materialize_base_lora_classifier_partitioned_state(
+def materialize_base_peft_encoder_partitioned_state(
     *,
     base_state: PeftEncoderStatePayload,
     context: FederatedAggregationContext,
-) -> dict[str, LoraClassifierMaterializedState]:
+) -> dict[str, PeftEncoderMaterializedState]:
     """server-published artifact에 저장된 partition별 global state를 읽는다.
 
     shared `LoraClassifierState` 계약은 merged LoRA/head artifact ref만 가진다.
@@ -169,7 +169,7 @@ def materialize_base_lora_classifier_partitioned_state(
     ):
         return {}
     loader = context.require_artifact_loader(
-        context="LoRA-classifier partitioned base state materialization"
+        context="PEFT-classifier partitioned base state materialization"
     )
     partitioned_lora_parameters: dict[str, dict[str, list[float]]] = {}
     if peft_adapter_artifact_ref is not None:
@@ -205,7 +205,7 @@ def materialize_base_lora_classifier_partitioned_state(
         | set(partitioned_head_biases)
     )
     return {
-        partition_name: LoraClassifierMaterializedState(
+        partition_name: PeftEncoderMaterializedState(
             lora_parameters=partitioned_lora_parameters.get(partition_name, {}),
             classifier_head_weights=partitioned_head_weights.get(partition_name, {}),
             classifier_head_biases=partitioned_head_biases.get(partition_name, {}),
@@ -214,24 +214,24 @@ def materialize_base_lora_classifier_partitioned_state(
     }
 
 
-materialize_base_peft_encoder_state = materialize_base_lora_classifier_state
-materialize_base_peft_encoder_partitioned_state = (
-    materialize_base_lora_classifier_partitioned_state
+materialize_base_lora_classifier_state = materialize_base_peft_encoder_state
+materialize_base_lora_classifier_partitioned_state = (
+    materialize_base_peft_encoder_partitioned_state
 )
 
 
-def materialize_lora_classifier_update(
+def materialize_peft_encoder_update(
     *,
     payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext,
-) -> LoraClassifierMaterializedUpdate:
+) -> PeftEncoderMaterializedUpdate:
     """inline delta 또는 server-owned artifact ref update를 delta mapping으로 읽는다."""
 
     loader = None
     peft_parameter_deltas = _peft_parameter_deltas(payload)
     if peft_parameter_deltas is None or payload.classifier_head_weight_deltas is None:
         loader = context.require_artifact_loader(
-            context="LoRA-classifier aggregation materialization"
+            context="PEFT-classifier aggregation materialization"
         )
 
     if peft_parameter_deltas is not None:
@@ -265,7 +265,7 @@ def materialize_lora_classifier_update(
     if not classifier_head_bias_deltas and head_artifact is not None:
         classifier_head_bias_deltas = head_artifact[1]
 
-    return LoraClassifierMaterializedUpdate(
+    return PeftEncoderMaterializedUpdate(
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
@@ -281,7 +281,7 @@ def materialize_lora_classifier_update(
     )
 
 
-def materialize_lora_classifier_partitioned_update(
+def materialize_peft_encoder_partitioned_update(
     *,
     payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext | None = None,
@@ -292,11 +292,11 @@ def materialize_lora_classifier_partitioned_update(
     if partitioned_deltas is None and payload.partitioned_deltas_artifact_ref:
         if context is None:
             raise ValueError(
-                "LoRA-classifier partitioned artifact materialization requires an "
+                "PEFT-classifier partitioned artifact materialization requires an "
                 "aggregation context."
             )
         loader = context.require_artifact_loader(
-            context="LoRA-classifier partitioned aggregation materialization"
+            context="PEFT-classifier partitioned aggregation materialization"
         )
         tensor_partitions = _try_load_partitioned_tensor_artifact(
             loader=loader,
@@ -310,14 +310,14 @@ def materialize_lora_classifier_partitioned_update(
         source = artifact.get("partitions", artifact)
         if not isinstance(source, Mapping):
             raise ValueError(
-                "LoRA-classifier partitioned delta artifact must contain a "
+                "PEFT-classifier partitioned delta artifact must contain a "
                 "mapping payload."
             )
         partitioned_deltas = source
 
     if partitioned_deltas is None:
         raise ValueError(
-            "LoRA-classifier partitioned aggregation requires partitioned_deltas "
+            "PEFT-classifier partitioned aggregation requires partitioned_deltas "
             "or partitioned_deltas_artifact_ref."
         )
     partitions: dict[str, LoraClassifierPartitionDelta] = {}
@@ -363,9 +363,9 @@ def materialize_lora_classifier_partitioned_update(
     return partitions
 
 
-materialize_peft_encoder_update = materialize_lora_classifier_update
-materialize_peft_encoder_partitioned_update = (
-    materialize_lora_classifier_partitioned_update
+materialize_lora_classifier_update = materialize_peft_encoder_update
+materialize_lora_classifier_partitioned_update = (
+    materialize_peft_encoder_partitioned_update
 )
 
 
