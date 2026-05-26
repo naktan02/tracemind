@@ -12,7 +12,7 @@ from agent.src.infrastructure.repositories.training_artifact_repository import (
 )
 from agent.src.services.training.execution.query_ssl_local_training_service import (
     QuerySslLocalTrainingService,
-    QuerySslLoraLocalTrainingRequest,
+    QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
@@ -69,7 +69,10 @@ from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
-QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
+QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
 
 
 def run_method_owned_peft_encoder_local_training(
@@ -106,7 +109,7 @@ def run_method_owned_peft_encoder_local_training(
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
-) -> QuerySslLoraClientTrainingResult:
+) -> QuerySslPeftEncoderClientTrainingResult:
     """simulation runtime state를 선택된 method-owned PEFT encoder core에 연결한다."""
 
     if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
@@ -213,7 +216,7 @@ def run_query_ssl_peft_encoder_local_training(
     timing_recorder: TimingRecorder | None = None,
     persist_agent_local_update: bool = True,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-) -> QuerySslLoraClientTrainingResult:
+) -> QuerySslPeftEncoderClientTrainingResult:
     """simulation runtime state를 Query SSL PEFT encoder core에 연결한다."""
 
     if not isinstance(active_adapter_state, LoraClassifierState | PeftClassifierState):
@@ -242,8 +245,8 @@ def run_query_ssl_peft_encoder_local_training(
             objective_config=training_task.objective_config,
         ),
     )
-    return service.run_lora(
-        QuerySslLoraLocalTrainingRequest(
+    return service.run_peft_encoder(
+        QuerySslPeftEncoderLocalTrainingRequest(
             client_id=client_id,
             seed=seed,
             labeled_rows=labeled_rows,
@@ -328,7 +331,7 @@ def _save_agent_local_update(
     *,
     output_dir: Path,
     client_id: str,
-    result: QuerySslLoraClientTrainingResult,
+    result: QuerySslPeftEncoderClientTrainingResult,
     timing_recorder: TimingRecorder | None,
 ) -> None:
     repository = TrainingArtifactRepository(

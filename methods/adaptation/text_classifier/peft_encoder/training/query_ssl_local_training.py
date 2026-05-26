@@ -30,7 +30,7 @@ from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -73,8 +73,8 @@ from .pseudo_label_diagnostics import (
 )
 
 
-class QuerySslLoraObjectiveRuntimeConfig(Protocol):
-    """Query SSL LoRA local core가 필요한 objective config surface."""
+class QuerySslPeftEncoderObjectiveRuntimeConfig(Protocol):
+    """Query SSL PEFT encoder local core가 필요한 objective config surface."""
 
     algorithm_name: str
     parameters: Mapping[str, object]
@@ -82,8 +82,8 @@ class QuerySslLoraObjectiveRuntimeConfig(Protocol):
     unlabeled_batch_size: int | None
 
 
-class LoraClassifierTrainerRuntimeConfig(Protocol):
-    """LoRA classifier 모델 로딩/학습 core가 필요한 runtime config surface."""
+class PeftEncoderTrainerRuntimeConfig(Protocol):
+    """PEFT encoder classifier 모델 로딩/학습 core가 필요한 runtime config surface."""
 
     device: str
     classifier_dropout: float
@@ -93,8 +93,8 @@ class LoraClassifierTrainerRuntimeConfig(Protocol):
 
 
 @dataclass(frozen=True, slots=True)
-class QuerySslLoraDeltaMaterialization:
-    """LoRA/head delta가 update payload에 담기는 방식."""
+class QuerySslPeftEncoderDeltaMaterialization:
+    """PEFT encoder/head delta가 update payload에 담기는 방식."""
 
     delta_format: str
     lora_delta_artifact_ref: str | None
@@ -103,7 +103,7 @@ class QuerySslLoraDeltaMaterialization:
     partitioned_deltas_artifact_ref: str | None = None
 
 
-class QuerySslLoraDeltaMaterializer(Protocol):
+class QuerySslPeftEncoderDeltaMaterializer(Protocol):
     """runtime별 delta artifact 저장소 bridge."""
 
     def prepare(
@@ -119,12 +119,12 @@ class QuerySslLoraDeltaMaterializer(Protocol):
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
         materialize_primary_deltas: bool = True,
-    ) -> QuerySslLoraDeltaMaterialization:
+    ) -> QuerySslPeftEncoderDeltaMaterialization:
         """delta 저장 방식을 결정하고 artifact ref를 반환한다."""
 
 
 @dataclass(frozen=True, slots=True)
-class QuerySslLoraClientTrainingResult:
+class QuerySslPeftEncoderClientTrainingResult:
     """FL round loop가 서버 제출과 client summary에 쓰는 local training 결과."""
 
     update_envelope: TrainingUpdateEnvelope
@@ -137,14 +137,21 @@ class QuerySslLoraClientTrainingResult:
         default_factory=PseudoLabelQualitySummary.empty
     )
     peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
-    client_partition_parameters: Mapping[str, LoraClassifierMaterializedState] = field(
+    client_partition_parameters: Mapping[str, PeftEncoderMaterializedState] = field(
         default_factory=dict
     )
     query_ssl_algorithm_state: Mapping[str, Any] = field(default_factory=dict)
     timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 
-def run_query_ssl_lora_classifier_training_core(
+QuerySslLoraObjectiveRuntimeConfig = QuerySslPeftEncoderObjectiveRuntimeConfig
+LoraClassifierTrainerRuntimeConfig = PeftEncoderTrainerRuntimeConfig
+QuerySslLoraDeltaMaterialization = QuerySslPeftEncoderDeltaMaterialization
+QuerySslLoraDeltaMaterializer = QuerySslPeftEncoderDeltaMaterializer
+QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
+
+
+def run_query_ssl_peft_encoder_training_core(
     *,
     client_id: str,
     seed: int,
@@ -152,26 +159,28 @@ def run_query_ssl_lora_classifier_training_core(
     unlabeled_rows: Sequence[LabeledQueryRow],
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None,
     labels: Sequence[str],
-    base_parameters: LoraClassifierMaterializedState,
+    base_parameters: PeftEncoderMaterializedState,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
-    delta_materializer: QuerySslLoraDeltaMaterializer,
+    delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     timing_recorder: TimingRecorder | None = None,
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-) -> QuerySslLoraClientTrainingResult:
-    """client-local raw text/views로 Query SSL LoRA update를 생성한다."""
+) -> QuerySslPeftEncoderClientTrainingResult:
+    """client-local raw text/views로 Query SSL PEFT encoder update를 생성한다."""
 
     effective_labeled_rows = list(labeled_rows)
     effective_unlabeled_rows = list(unlabeled_rows)
     if not effective_labeled_rows:
-        raise ValueError("Query SSL LoRA local training requires labeled_rows.")
+        raise ValueError("Query SSL PEFT encoder local training requires labeled_rows.")
     if not effective_unlabeled_rows:
-        raise ValueError("Query SSL LoRA local training requires unlabeled_rows.")
+        raise ValueError(
+            "Query SSL PEFT encoder local training requires unlabeled_rows."
+        )
 
     descriptor = resolve_query_ssl_algorithm_descriptor(query_ssl_config.algorithm_name)
     validate_query_ssl_unlabeled_views(
@@ -182,7 +191,7 @@ def run_query_ssl_lora_classifier_training_core(
     algorithm = descriptor.build_algorithm(query_ssl_config.parameters)
     effective_labels = tuple(str(label) for label in labels)
     if not effective_labels:
-        raise ValueError("LoRA classifier label schema must not be empty.")
+        raise ValueError("PEFT encoder classifier label schema must not be empty.")
     _validate_labeled_rows_have_known_labels(
         rows=effective_labeled_rows,
         labels=effective_labels,
@@ -194,7 +203,7 @@ def run_query_ssl_lora_classifier_training_core(
         with _measure(timing_recorder, "core_seed_seconds"):
             set_seed(int(seed))
         with _measure(timing_recorder, "core_model_build_seconds"):
-            model, tokenizer = _build_lora_classifier_model(
+            model, tokenizer = _build_peft_encoder_model(
                 labels=effective_labels,
                 lora_config=lora_config,
                 trainer_runtime_config=trainer_runtime_config,
@@ -355,7 +364,7 @@ def run_query_ssl_lora_classifier_training_core(
         client_metrics=dict(client_metrics),
         created_at=created_at,
     )
-    return QuerySslLoraClientTrainingResult(
+    return QuerySslPeftEncoderClientTrainingResult(
         update_envelope=update_envelope,
         update_payload=update_payload,
         candidate_count=len(effective_unlabeled_rows),
@@ -368,11 +377,11 @@ def run_query_ssl_lora_classifier_training_core(
     )
 
 
-def _build_lora_classifier_model(
+def _build_peft_encoder_model(
     *,
     labels: Sequence[str],
     lora_config: LoraClassifierTrainingBackendConfig,
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> tuple[LoraTextClassifier, Any]:
     return build_peft_encoder_text_classifier_from_config(
@@ -381,6 +390,10 @@ def _build_lora_classifier_model(
         runtime_config=trainer_runtime_config,
         runtime_resource_cache=runtime_resource_cache,
     )
+
+
+run_query_ssl_lora_classifier_training_core = run_query_ssl_peft_encoder_training_core
+_build_lora_classifier_model = _build_peft_encoder_model
 
 
 def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:

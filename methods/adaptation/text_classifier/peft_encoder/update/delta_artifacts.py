@@ -22,7 +22,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 )
 from shared.src.contracts.training_contracts import TrainingTask
 
-from ..training.query_ssl_local_training import QuerySslLoraDeltaMaterialization
+from ..training.query_ssl_local_training import QuerySslPeftEncoderDeltaMaterialization
 from .json_delta_artifact import (
     build_classifier_head_delta_json_artifact_payload,
     build_lora_delta_json_artifact_payload,
@@ -110,12 +110,12 @@ class PeftEncoderDeltaMaterializer:
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
         materialize_primary_deltas: bool = True,
-    ) -> QuerySslLoraDeltaMaterialization:
+    ) -> QuerySslPeftEncoderDeltaMaterialization:
         """delta_format에 맞게 PEFT encoder/classifier delta artifact ref를 준비한다."""
 
         normalized_delta_format = str(delta_format).strip()
         if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
-            return QuerySslLoraDeltaMaterialization(
+            return QuerySslPeftEncoderDeltaMaterialization(
                 delta_format=normalized_delta_format,
                 lora_delta_artifact_ref=None,
                 classifier_head_delta_artifact_ref=None,
@@ -173,7 +173,7 @@ class PeftEncoderDeltaMaterializer:
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
         materialize_primary_deltas: bool,
-    ) -> QuerySslLoraDeltaMaterialization:
+    ) -> QuerySslPeftEncoderDeltaMaterialization:
         lora_delta_ref = None
         head_delta_ref = None
         if materialize_primary_deltas:
@@ -228,7 +228,7 @@ class PeftEncoderDeltaMaterializer:
                     partitioned_deltas=partitioned_deltas,
                 ),
             )
-        return QuerySslLoraDeltaMaterialization(
+        return QuerySslPeftEncoderDeltaMaterialization(
             delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
             lora_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,
@@ -247,7 +247,7 @@ class PeftEncoderDeltaMaterializer:
         classifier_head_bias_deltas: Mapping[str, float],
         partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
         materialize_primary_deltas: bool,
-    ) -> QuerySslLoraDeltaMaterialization:
+    ) -> QuerySslPeftEncoderDeltaMaterialization:
         lora_delta_ref = (
             self.artifact_store.ref_for_server_client_update_artifact(
                 training_task=training_task,
@@ -306,7 +306,7 @@ class PeftEncoderDeltaMaterializer:
                 tensors=tensors,
                 metadata=metadata,
             )
-        return QuerySslLoraDeltaMaterialization(
+        return QuerySslPeftEncoderDeltaMaterialization(
             delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
             lora_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,

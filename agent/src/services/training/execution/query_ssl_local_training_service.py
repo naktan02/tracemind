@@ -18,7 +18,7 @@ from methods.adaptation.text_classifier.peft_encoder.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
@@ -31,27 +31,33 @@ from shared.src.services.secure_update_codec import (
     SecureUpdateCodec,
 )
 
-LoraClassifierTrainerRuntimeConfig = qssl_training.LoraClassifierTrainerRuntimeConfig
-QuerySslLoraClientTrainingResult = qssl_training.QuerySslLoraClientTrainingResult
-QuerySslLoraDeltaMaterializer = qssl_training.QuerySslLoraDeltaMaterializer
-QuerySslLoraObjectiveRuntimeConfig = qssl_training.QuerySslLoraObjectiveRuntimeConfig
+PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
+QuerySslPeftEncoderClientTrainingResult = (
+    qssl_training.QuerySslPeftEncoderClientTrainingResult
+)
+QuerySslPeftEncoderDeltaMaterializer = (
+    qssl_training.QuerySslPeftEncoderDeltaMaterializer
+)
+QuerySslPeftEncoderObjectiveRuntimeConfig = (
+    qssl_training.QuerySslPeftEncoderObjectiveRuntimeConfig
+)
 
 
 @dataclass(slots=True)
-class QuerySslLoraLocalTrainingRequest:
-    """Query SSL LoRA local training 실행 입력 묶음."""
+class QuerySslPeftEncoderLocalTrainingRequest:
+    """Query SSL PEFT encoder local training 실행 입력 묶음."""
 
     client_id: str
     seed: int
     labeled_rows: Sequence[LabeledQueryRow]
     unlabeled_rows: Sequence[LabeledQueryRow]
     labels: Sequence[str]
-    base_parameters: LoraClassifierMaterializedState
+    base_parameters: PeftEncoderMaterializedState
     training_task: TrainingTask
     model_manifest: ModelManifest
-    query_ssl_config: QuerySslLoraObjectiveRuntimeConfig
-    trainer_runtime_config: LoraClassifierTrainerRuntimeConfig
-    delta_materializer: QuerySslLoraDeltaMaterializer
+    query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig
+    trainer_runtime_config: PeftEncoderTrainerRuntimeConfig
+    delta_materializer: QuerySslPeftEncoderDeltaMaterializer
     created_at: datetime | None = None
     agent_id: str | None = None
     diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None = None
@@ -61,8 +67,8 @@ class QuerySslLoraLocalTrainingRequest:
     initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None
 
 
-class QuerySslLoraTrainingBackend(Protocol):
-    """Query SSL LoRA raw-row local training capability."""
+class QuerySslPeftEncoderTrainingBackend(Protocol):
+    """Query SSL PEFT encoder raw-row local training capability."""
 
     backend_name: str
 
@@ -78,18 +84,26 @@ class QuerySslLoraTrainingBackend(Protocol):
         unlabeled_rows: Sequence[LabeledQueryRow],
         diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None,
         labels: Sequence[str],
-        base_parameters: LoraClassifierMaterializedState,
+        base_parameters: PeftEncoderMaterializedState,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
-        trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+        query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
+        trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
         created_at: datetime,
-        delta_materializer: QuerySslLoraDeltaMaterializer,
+        delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
         runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
         initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-    ) -> QuerySslLoraClientTrainingResult:
+    ) -> QuerySslPeftEncoderClientTrainingResult:
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
+
+
+LoraClassifierTrainerRuntimeConfig = PeftEncoderTrainerRuntimeConfig
+QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
+QuerySslLoraDeltaMaterializer = QuerySslPeftEncoderDeltaMaterializer
+QuerySslLoraObjectiveRuntimeConfig = QuerySslPeftEncoderObjectiveRuntimeConfig
+QuerySslLoraLocalTrainingRequest = QuerySslPeftEncoderLocalTrainingRequest
+QuerySslLoraTrainingBackend = QuerySslPeftEncoderTrainingBackend
 
 
 @dataclass(slots=True)
@@ -105,11 +119,11 @@ class QuerySslLocalTrainingService:
     )
     clock: Clock = field(default_factory=SystemUtcClock)
 
-    def run_lora(
+    def run_peft_encoder(
         self,
-        request: QuerySslLoraLocalTrainingRequest,
-    ) -> QuerySslLoraClientTrainingResult:
-        """Query SSL LoRA raw-row training을 선택된 local backend로 실행한다."""
+        request: QuerySslPeftEncoderLocalTrainingRequest,
+    ) -> QuerySslPeftEncoderClientTrainingResult:
+        """Query SSL PEFT encoder raw-row training을 선택된 local backend로 실행한다."""
 
         if (
             request.training_task.model_revision
@@ -117,7 +131,9 @@ class QuerySslLocalTrainingService:
         ):
             raise ValueError("TrainingTask model_revision must match ModelManifest.")
 
-        backend = self._resolve_lora_backend(training_task=request.training_task)
+        backend = self._resolve_peft_encoder_backend(
+            training_task=request.training_task
+        )
         effective_created_at = request.created_at or self.clock.now()
         result = backend.build_query_ssl_update(
             client_id=request.client_id,
@@ -162,18 +178,21 @@ class QuerySslLocalTrainingService:
         )
         return replace(result, update_envelope=encoded_envelope)
 
-    def _resolve_lora_backend(
+    def _resolve_peft_encoder_backend(
         self,
         *,
         training_task: TrainingTask,
-    ) -> QuerySslLoraTrainingBackend:
+    ) -> QuerySslPeftEncoderTrainingBackend:
         backend = self._resolve_backend(training_task=training_task)
         if not hasattr(backend, "build_query_ssl_update"):
             raise ValueError(
-                "Selected local training backend does not support Query SSL LoRA: "
-                f"{backend.backend_name}."
+                "Selected local training backend does not support Query SSL PEFT "
+                f"encoder: {backend.backend_name}."
             )
-        return cast(QuerySslLoraTrainingBackend, backend)
+        return cast(QuerySslPeftEncoderTrainingBackend, backend)
+
+    run_lora = run_peft_encoder
+    _resolve_lora_backend = _resolve_peft_encoder_backend
 
     def _resolve_backend(
         self,

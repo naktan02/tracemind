@@ -372,14 +372,14 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     runtime_resource_cache = object()
 
-    def _fake_build_lora_classifier_model(**kwargs):
+    def _fake_build_peft_encoder_model(**kwargs):
         captured["runtime_resource_cache"] = kwargs["runtime_resource_cache"]
         return object(), object()
 
     monkeypatch.setattr(
         qcore,
-        "_build_lora_classifier_model",
-        _fake_build_lora_classifier_model,
+        "_build_peft_encoder_model",
+        _fake_build_peft_encoder_model,
     )
     monkeypatch.setattr(
         qtrainer,

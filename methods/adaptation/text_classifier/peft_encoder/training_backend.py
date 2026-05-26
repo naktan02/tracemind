@@ -12,10 +12,10 @@ from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
-    LoraClassifierTrainExecutor,
+    PeftEncoderTrainExecutor,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder
@@ -54,11 +54,11 @@ from .config import (
     build_peft_classifier_training_backend_config,
 )
 from .training.query_ssl_local_training import (
-    LoraClassifierTrainerRuntimeConfig,
-    QuerySslLoraClientTrainingResult,
-    QuerySslLoraDeltaMaterializer,
-    QuerySslLoraObjectiveRuntimeConfig,
-    run_query_ssl_lora_classifier_training_core,
+    PeftEncoderTrainerRuntimeConfig,
+    QuerySslPeftEncoderClientTrainingResult,
+    QuerySslPeftEncoderDeltaMaterializer,
+    QuerySslPeftEncoderObjectiveRuntimeConfig,
+    run_query_ssl_peft_encoder_training_core,
 )
 from .update.payload_builder import build_peft_encoder_delta_update
 
@@ -102,8 +102,8 @@ PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 
 
 @dataclass(slots=True)
-class LoraClassifierTrainingBackend:
-    """raw text accepted example을 LoRA-classifier update payload로 바꾼다.
+class PeftEncoderTrainingBackend:
+    """raw text accepted example을 PEFT encoder classifier update payload로 바꾼다.
 
     이 backend는 raw text를 shared payload에 넣지 않는다. 현재는 실제 LoRA
     weight 파일을 생성하는 executor 없이 계약-compatible artifact ref를 남긴다.
@@ -116,13 +116,13 @@ class LoraClassifierTrainingBackend:
     config: LoraClassifierTrainingBackendConfig = field(
         default_factory=LoraClassifierTrainingBackendConfig
     )
-    train_executor: LoraClassifierTrainExecutor | None = None
+    train_executor: PeftEncoderTrainExecutor | None = None
 
     @classmethod
     def from_objective_config(
         cls,
         objective_config: TrainingObjectiveConfig | None,
-    ) -> "LoraClassifierTrainingBackend":
+    ) -> "PeftEncoderTrainingBackend":
         return cls(
             config=build_lora_classifier_training_backend_config(objective_config)
         )
@@ -153,20 +153,20 @@ class LoraClassifierTrainingBackend:
         unlabeled_rows: Sequence[LabeledQueryRow],
         diagnostic_unlabeled_rows: Sequence[LabeledQueryRow] | None,
         labels: Sequence[str],
-        base_parameters: LoraClassifierMaterializedState,
+        base_parameters: PeftEncoderMaterializedState,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        query_ssl_config: QuerySslLoraObjectiveRuntimeConfig,
-        trainer_runtime_config: LoraClassifierTrainerRuntimeConfig,
+        query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
+        trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
         created_at: datetime,
-        delta_materializer: QuerySslLoraDeltaMaterializer,
+        delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
         runtime_resource_cache: RuntimeResourceCache | None = None,
         timing_recorder: TimingRecorder | None = None,
         initial_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
-    ) -> QuerySslLoraClientTrainingResult:
-        """Query SSL raw rows를 methods-owned LoRA local core로 학습한다."""
+    ) -> QuerySslPeftEncoderClientTrainingResult:
+        """Query SSL raw rows를 methods-owned PEFT encoder local core로 학습한다."""
 
-        return run_query_ssl_lora_classifier_training_core(
+        return run_query_ssl_peft_encoder_training_core(
             client_id=client_id,
             seed=seed,
             labeled_rows=labeled_rows,
@@ -189,7 +189,7 @@ class LoraClassifierTrainingBackend:
     def to_payload(self, update: SharedAdapterUpdate) -> SharedAdapterUpdatePayload:
         if not isinstance(update, LoraClassifierDelta | PeftClassifierDelta):
             raise TypeError(
-                "LoraClassifierTrainingBackend expects PEFT classifier delta "
+                "PeftEncoderTrainingBackend expects PEFT classifier delta "
                 f"for payload conversion, got {type(update)!r}."
             )
         return update
@@ -210,8 +210,8 @@ class LoraClassifierTrainingBackend:
         )
 
 
-PeftClassifierTrainingBackend = LoraClassifierTrainingBackend
-PeftEncoderTrainingBackend = LoraClassifierTrainingBackend
+LoraClassifierTrainingBackend = PeftEncoderTrainingBackend
+PeftClassifierTrainingBackend = PeftEncoderTrainingBackend
 
 
 def build_lora_classifier_client_metrics(
@@ -219,7 +219,7 @@ def build_lora_classifier_client_metrics(
 ) -> dict[str, float]:
     if not isinstance(update, LoraClassifierDelta | PeftClassifierDelta):
         raise TypeError(
-            "LoraClassifierTrainingBackend expects PEFT classifier delta "
+            "PeftEncoderTrainingBackend expects PEFT classifier delta "
             f"for metric extraction, got {type(update)!r}."
         )
     return {
@@ -239,10 +239,10 @@ def build_lora_classifier_client_metrics(
 )
 def build_lora_classifier_training_backend(
     objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackend:
-    """registry용 LoRA-classifier training backend factory."""
+) -> PeftEncoderTrainingBackend:
+    """registry용 legacy LoRA-classifier training backend factory."""
 
-    return LoraClassifierTrainingBackend.from_objective_config(objective_config)
+    return PeftEncoderTrainingBackend.from_objective_config(objective_config)
 
 
 @register_shared_adapter_training_backend(
@@ -251,10 +251,10 @@ def build_lora_classifier_training_backend(
 )
 def build_peft_classifier_training_backend(
     objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackend:
+) -> PeftEncoderTrainingBackend:
     """registry용 PEFT-classifier v2 training backend factory."""
 
-    return LoraClassifierTrainingBackend(
+    return PeftEncoderTrainingBackend(
         backend_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
         payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
