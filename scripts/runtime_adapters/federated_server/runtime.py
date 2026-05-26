@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -19,6 +21,7 @@ from main_server.src.services.federation.rounds.boundary.models import (
     RoundFinalizeRequest,
     RoundOpenDraftRequest,
     RoundRecord,
+    RoundStatus,
 )
 from main_server.src.services.federation.rounds.families.registry import (
     build_shared_adapter_round_family,
@@ -36,6 +39,11 @@ from main_server.src.services.federation.rounds.server_policy.executor import (
     ROUND_ACTIVE_PAIR_ONLY_POLICY_NAME,
     ROUND_RUNTIME_AGGREGATION_BACKEND_POLICY_NAME,
     ServerPolicyExecutionSummary,
+)
+from main_server.src.services.federation.rounds.shared_adapter_publication import (
+    SharedAdapterStatePublication,
+    SharedAdapterStatePublicationRequest,
+    SharedAdapterStatePublicationService,
 )
 from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
@@ -225,6 +233,43 @@ class SimulationServerRuntime:
             activated_at=manifest.published_at,
         )
 
+    def activate_manifest_revision(self, model_revision: str) -> ModelManifest:
+        """server manifest repository의 revision을 active manifest로 되살린다."""
+
+        manifest_repository = (
+            self.lifecycle_service.active_manifest_service.manifest_repository
+        )
+        return self.activate_manifest(
+            manifest_repository.load_model_manifest(model_revision)
+        )
+
+    def archive_incomplete_round_for_resume(self, next_round_index: int) -> None:
+        """checkpoint 이후 partial round record를 보존 이동해 round id 충돌을 피한다."""
+
+        round_id = f"round_{next_round_index:04d}"
+        round_repository = self.lifecycle_service.round_repository
+        if not round_repository.has_round(round_id):
+            return
+        record = round_repository.load_round(round_id)
+        if record.status == RoundStatus.FINALIZED:
+            raise ValueError(
+                "FL SSL resume checkpoint is behind an already-finalized round: "
+                f"{round_id}. Rebuild the checkpoint from a complete report or "
+                "start a new run directory."
+            )
+        active_pointer = round_repository.load_active_pointer()
+        if active_pointer is not None and active_pointer.round_id == round_id:
+            round_repository.clear_active(expected_round_id=round_id)
+        source_path = round_repository.path_for_round(round_id)
+        archive_dir = round_repository.state_root / "incomplete_resume_rounds"
+        archive_dir.mkdir(parents=True, exist_ok=True)
+        archive_path = archive_dir / f"{round_id}.json"
+        suffix = 1
+        while archive_path.exists():
+            archive_path = archive_dir / f"{round_id}.{suffix}.json"
+            suffix += 1
+        source_path.replace(archive_path)
+
     def open_round(self, request: RoundOpenDraftRequest) -> RoundRecord:
         """main_server round lifecycle을 통해 round를 연다."""
 
@@ -272,6 +317,35 @@ class SimulationServerRuntime:
             manifest=manifest,
             state_repository=self.state_repository,
             round_manager=self.round_manager,
+        )
+
+    def publish_shared_adapter_projection(
+        self,
+        *,
+        base_manifest: ModelManifest,
+        next_state: SharedAdapterState,
+        artifacts: Mapping[str, Mapping[str, Any]],
+        published_at: datetime,
+        notes: str,
+    ) -> SharedAdapterStatePublication:
+        """계산된 next shared adapter projection을 server-owned state로 발행한다."""
+
+        publisher = SharedAdapterStatePublicationService(
+            adapter_family=self.round_manager.adapter_family,
+            state_repository=self.state_repository,
+            active_manifest_service=self.lifecycle_service.active_manifest_service,
+            artifact_store=AggregationArtifactStore(
+                state_root=self.output_dir / "main_server" / "aggregation_artifacts"
+            ),
+        )
+        return publisher.publish_projection(
+            SharedAdapterStatePublicationRequest(
+                base_manifest=base_manifest,
+                next_state=next_state,
+                artifacts=artifacts,
+                published_at=published_at,
+                notes=notes,
+            )
         )
 
 

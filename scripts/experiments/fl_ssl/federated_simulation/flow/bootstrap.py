@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from main_server.src.services.federation.rounds.boundary.models import RoundStatus
 from methods.federated_ssl.base import FederatedSslMethodDescriptor
 from methods.federated_ssl.capability_plan import PEER_CONTEXT_NONE
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
@@ -39,7 +38,6 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
 )
 from shared.src.contracts.common_types import TrainingTaskType
-from shared.src.contracts.model_contracts import ModelManifest
 
 from ..io.resume_checkpoint import load_resume_checkpoint
 from ..io.run_artifact_writer import RunArtifactWriter
@@ -145,13 +143,11 @@ def _resume_simulation(
 
     checkpoint = load_resume_checkpoint(request.output_dir)
     _require_resume_supported(request)
-    _archive_incomplete_next_round(
-        server_runtime=server_runtime,
-        next_round_index=checkpoint.completed_round_count + 1,
+    server_runtime.archive_incomplete_round_for_resume(
+        next_round_index=checkpoint.completed_round_count + 1
     )
-    active_manifest = _activate_checkpoint_manifest(
-        server_runtime=server_runtime,
-        checkpoint_model_revision=(
+    active_manifest = server_runtime.activate_manifest_revision(
+        (
             checkpoint.rounds[-1].model_revision
             if checkpoint.rounds
             else checkpoint.initial_model_revision
@@ -180,50 +176,6 @@ def _resume_simulation(
         runtime_resource_cache=runtime_resource_cache,
         round_base_snapshot_cache=RoundBaseSnapshotCache(),
     )
-
-
-def _activate_checkpoint_manifest(
-    *,
-    server_runtime: SimulationServerRuntime,
-    checkpoint_model_revision: str,
-) -> ModelManifest:
-    manifest_repository = (
-        server_runtime.lifecycle_service.active_manifest_service.manifest_repository
-    )
-    manifest = manifest_repository.load_model_manifest(checkpoint_model_revision)
-    return server_runtime.activate_manifest(manifest)
-
-
-def _archive_incomplete_next_round(
-    *,
-    server_runtime: SimulationServerRuntime,
-    next_round_index: int,
-) -> None:
-    """checkpoint 이후 partial round record를 보존 이동해 round id 충돌을 피한다."""
-
-    round_id = f"round_{next_round_index:04d}"
-    round_repository = server_runtime.lifecycle_service.round_repository
-    if not round_repository.has_round(round_id):
-        return
-    record = round_repository.load_round(round_id)
-    if record.status == RoundStatus.FINALIZED:
-        raise ValueError(
-            "FL SSL resume checkpoint is behind an already-finalized round: "
-            f"{round_id}. Rebuild the checkpoint from a complete report or start a "
-            "new run directory."
-        )
-    active_pointer = round_repository.load_active_pointer()
-    if active_pointer is not None and active_pointer.round_id == round_id:
-        round_repository.clear_active(expected_round_id=round_id)
-    source_path = round_repository.path_for_round(round_id)
-    archive_dir = round_repository.state_root / "incomplete_resume_rounds"
-    archive_dir.mkdir(parents=True, exist_ok=True)
-    archive_path = archive_dir / f"{round_id}.json"
-    suffix = 1
-    while archive_path.exists():
-        archive_path = archive_dir / f"{round_id}.{suffix}.json"
-        suffix += 1
-    source_path.replace(archive_path)
 
 
 def _require_resume_supported(request: SimulationRunRequest) -> None:

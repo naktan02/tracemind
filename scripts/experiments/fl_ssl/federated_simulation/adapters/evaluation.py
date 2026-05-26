@@ -7,6 +7,9 @@ from methods.adaptation.lora_classifier.evaluation import (
     evaluate_lora_classifier_validation_payload,
     require_lora_classifier_state,
 )
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    materialize_base_lora_classifier_state,
+)
 from methods.common.runtime_resources import RuntimeResourceCache
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (
     ActiveSimulationState,
@@ -15,8 +18,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationEvaluation,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_server.lora_classifier_state import (
-    materialize_simulation_lora_classifier_base_state,
+from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
+    build_simulation_aggregation_context,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
@@ -43,9 +46,13 @@ def evaluate_simulation_validation(
     payload = evaluate_lora_classifier_validation_payload(
         rows=rows,
         adapter_state=adapter_state,
-        base_parameters=materialize_simulation_lora_classifier_base_state(
-            output_dir=request.output_dir,
-            adapter_state=adapter_state,
+        base_parameters=materialize_base_lora_classifier_state(
+            base_state=adapter_state,
+            context=build_simulation_aggregation_context(
+                output_dir=request.output_dir,
+                next_model_revision=adapter_state.model_revision,
+                aggregated_at=adapter_state.updated_at,
+            ),
         ),
         objective_config=objective_config,
         runtime_config=request.local_trainer_runtime_config,

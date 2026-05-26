@@ -5,13 +5,6 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
-from main_server.src.services.federation.rounds.aggregation.artifact_refs import (
-    AggregatedArtifactRefBuilder,
-    AggregationArtifactStore,
-)
-from main_server.src.services.federation.rounds.aggregation.executor import (
-    DEFAULT_AGGREGATED_ARTIFACT_FORMAT,
-)
 from methods.adaptation.lora_classifier.aggregation.fedavg import (
     CLASSIFIER_HEAD_ARTIFACT_SLOT,
     LORA_ADAPTER_ARTIFACT_SLOT,
@@ -34,7 +27,6 @@ from methods.adaptation.lora_classifier.training.modeling import (
     build_lora_text_classifier_from_config,
 )
 from methods.adaptation.query_classifier_adaptation.data import build_dataloader
-from methods.federated.aggregation.base import FederatedAggregationContext
 from methods.federated_ssl.capability_plan import (
     SERVER_STEP_NONE,
     SERVER_STEP_SUPERVISED_SEED,
@@ -50,11 +42,14 @@ from scripts.experiments.fl_ssl.federated_simulation.io.run_artifact_writer impo
 from scripts.experiments.fl_ssl.federated_simulation.models import (
     SimulationRunRequest,
 )
+from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
+    build_server_aggregate_artifact_refs,
+    build_simulation_aggregation_context,
+)
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierState,
 )
-from shared.src.contracts.model_contracts import ModelManifest
 
 
 def require_supported_server_step(
@@ -144,16 +139,13 @@ def _run_lora_classifier_supervised_seed_step(
         runtime_config=request.local_trainer_runtime_config,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
-    artifact_store = AggregationArtifactStore(
-        state_root=request.output_dir / "main_server" / "aggregation_artifacts"
-    )
     now = datetime.now(timezone.utc)
     base_parameters = materialize_base_lora_classifier_state(
         base_state=active.adapter_state,
-        context=FederatedAggregationContext(
+        context=build_simulation_aggregation_context(
+            output_dir=request.output_dir,
             next_model_revision=active.adapter_state.model_revision,
             aggregated_at=now,
-            artifact_loader=artifact_store,
         ),
     )
     load_lora_classifier_base_parameters_into_model(
@@ -196,69 +188,48 @@ def _run_lora_classifier_supervised_seed_step(
         )
     )
     next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
-    artifact_ref_builder = AggregatedArtifactRefBuilder(
-        artifact_ref_prefix=f"server-aggregate://{LORA_CLASSIFIER_ADAPTER_KIND}",
-        artifact_format=DEFAULT_AGGREGATED_ARTIFACT_FORMAT,
-    )
-    lora_adapter_artifact_ref = artifact_ref_builder.build_ref(
+    artifact_refs = build_server_aggregate_artifact_refs(
+        adapter_family_name=LORA_CLASSIFIER_ADAPTER_KIND,
         next_model_revision=next_model_revision,
-        artifact_name=LORA_ADAPTER_ARTIFACT_SLOT,
-    )
-    classifier_head_artifact_ref = artifact_ref_builder.build_ref(
-        next_model_revision=next_model_revision,
-        artifact_name=CLASSIFIER_HEAD_ARTIFACT_SLOT,
+        artifact_names=(
+            LORA_ADAPTER_ARTIFACT_SLOT,
+            CLASSIFIER_HEAD_ARTIFACT_SLOT,
+        ),
     )
     projection = build_lora_classifier_state_projection(
         base_state=active.adapter_state,
         base_parameters=base_parameters,
         next_model_revision=next_model_revision,
         updated_at=now,
-        lora_adapter_artifact_ref=lora_adapter_artifact_ref,
-        classifier_head_artifact_ref=classifier_head_artifact_ref,
-        artifact_format=artifact_ref_builder.artifact_format,
+        lora_adapter_artifact_ref=artifact_refs.refs_by_name[
+            LORA_ADAPTER_ARTIFACT_SLOT
+        ],
+        classifier_head_artifact_ref=artifact_refs.refs_by_name[
+            CLASSIFIER_HEAD_ARTIFACT_SLOT
+        ],
+        artifact_format=artifact_refs.artifact_format,
         lora_parameter_deltas=lora_deltas,
         classifier_head_weight_deltas=head_weight_deltas,
         classifier_head_bias_deltas=head_bias_deltas,
     )
-    for artifact_ref, payload in projection.artifacts.items():
-        artifact_store.save_json_artifact_ref(
-            artifact_ref=artifact_ref,
-            payload=dict(payload),
-        )
-    adapter_family = bootstrapped.server_runtime.round_manager.adapter_family
-    next_state_payload = adapter_family.state_to_payload(projection.next_state)
-    bootstrapped.server_runtime.state_repository.save_shared_adapter_state(
-        next_state_payload
-    )
-    next_manifest = ModelManifest(
-        schema_version=active.manifest.schema_version,
-        model_id=active.manifest.model_id,
-        model_revision=projection.next_state.model_revision,
+    publication = bootstrapped.server_runtime.publish_shared_adapter_projection(
+        base_manifest=active.manifest,
+        next_state=projection.next_state,
+        artifacts=projection.artifacts,
         published_at=now,
-        artifact_kind="shared_adapter_state",
-        artifact_ref=bootstrapped.server_runtime.state_repository.ref_for_revision(
-            projection.next_state.model_revision
-        ),
-        auxiliary_artifact_versions=dict(active.manifest.auxiliary_artifact_versions),
-        training_scope=active.manifest.training_scope,
-        training_enabled=active.manifest.training_enabled,
-        compatible_task_types=active.manifest.compatible_task_types,
-        base_model_id=active.manifest.base_model_id,
-        base_model_revision=active.manifest.base_model_revision,
         notes=(
             "supervised_seed_step published from server bootstrap_rows before "
             f"round_{round_index:04d}"
         ),
     )
-    bootstrapped.server_runtime.activate_manifest(next_manifest)
     RunArtifactWriter().save_model_manifest(
         output_dir=request.output_dir,
-        manifest=next_manifest,
+        manifest=publication.next_manifest,
     )
     return ServerStepExecution(
         active=ActiveSimulationState(
-            manifest=next_manifest,
-            adapter_state=projection.next_state,
+            manifest=publication.next_manifest,
+            adapter_state=publication.next_state,
         ),
         model_revision=next_model_revision,
         metrics={

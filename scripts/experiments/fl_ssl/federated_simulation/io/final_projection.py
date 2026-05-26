@@ -7,6 +7,9 @@ from typing import Any
 from methods.adaptation.lora_classifier.config import (
     build_lora_classifier_training_backend_config,
 )
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    materialize_base_lora_classifier_state,
+)
 from methods.adaptation.lora_classifier.evaluation import require_lora_classifier_state
 from methods.adaptation.lora_classifier.training.delta_extraction import (
     load_lora_classifier_base_parameters_into_model,
@@ -25,8 +28,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
 from scripts.experiments.lora_classifier_projection import (
     write_lora_classifier_projection_artifacts,
 )
-from scripts.runtime_adapters.federated_server.lora_classifier_state import (
-    materialize_simulation_lora_classifier_base_state,
+from scripts.runtime_adapters.federated_server.aggregation_artifacts import (
+    build_simulation_aggregation_context,
 )
 
 
@@ -79,9 +82,13 @@ def _build_final_projection_artifacts(
     load_lora_classifier_base_parameters_into_model(
         model=model,
         labels=labels,
-        base_parameters=materialize_simulation_lora_classifier_base_state(
-            output_dir=request.output_dir,
-            adapter_state=adapter_state,
+        base_parameters=materialize_base_lora_classifier_state(
+            base_state=adapter_state,
+            context=build_simulation_aggregation_context(
+                output_dir=request.output_dir,
+                next_model_revision=adapter_state.model_revision,
+                aggregated_at=adapter_state.updated_at,
+            ),
         ),
         device=request.local_trainer_runtime_config.device,
     )
