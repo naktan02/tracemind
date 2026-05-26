@@ -10,8 +10,8 @@ from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
     is_peft_encoder_adapter_family,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
-    server_owned_lora_classifier_update_artifact_byte_count,
-    upload_agent_local_lora_classifier_update,
+    server_owned_peft_encoder_update_artifact_byte_count,
+    upload_agent_local_peft_encoder_update,
 )
 from methods.common.timing import TimingRecorder
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
@@ -127,7 +127,7 @@ def _run_query_ssl_lora_client_round(
     client_train_time_seconds = time.perf_counter() - training_started_at
     artifact_store = SimulationClientArtifactStore(output_dir=request.output_dir)
     with timing.measure("update_upload_materialize_seconds"):
-        server_update_payload = upload_agent_local_lora_classifier_update(
+        server_update_payload = upload_agent_local_peft_encoder_update(
             artifact_store=artifact_store,
             update_payload=local_result.update_payload,
         )
@@ -161,7 +161,7 @@ def _run_query_ssl_lora_client_round(
                 else None
             ),
             client_artifact_bytes=(
-                server_owned_lora_classifier_update_artifact_byte_count(
+                server_owned_peft_encoder_update_artifact_byte_count(
                     artifact_store=artifact_store,
                     update_payload=server_update_payload,
                 )

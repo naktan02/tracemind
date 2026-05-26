@@ -311,7 +311,7 @@ class LoraClassifierDeltaMaterializer:
         )
 
 
-def upload_agent_local_lora_classifier_update(
+def upload_agent_local_peft_encoder_update(
     *,
     artifact_store: LoraClassifierDeltaArtifactStore,
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
@@ -359,7 +359,7 @@ def upload_agent_local_lora_classifier_update(
     return update_payload.model_copy(update=update_fields)
 
 
-def server_owned_lora_classifier_update_artifact_byte_count(
+def server_owned_peft_encoder_update_artifact_byte_count(
     *,
     artifact_store: LoraClassifierDeltaArtifactStore,
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
@@ -373,6 +373,12 @@ def server_owned_lora_classifier_update_artifact_byte_count(
             update_payload.partitioned_deltas_artifact_ref,
         ),
     )
+
+
+upload_agent_local_lora_classifier_update = upload_agent_local_peft_encoder_update
+server_owned_lora_classifier_update_artifact_byte_count = (
+    server_owned_peft_encoder_update_artifact_byte_count
+)
 
 
 def _adapter_delta_artifact_ref(
