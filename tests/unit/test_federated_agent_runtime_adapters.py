@@ -414,7 +414,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qcore,
-        "build_query_ssl_lora_update_payload",
+        "build_query_ssl_peft_encoder_update_payload",
         lambda **_kwargs: SimpleNamespace(
             update_payload=update_payload,
             client_metrics={"query_ssl_local_steps": 1.0},

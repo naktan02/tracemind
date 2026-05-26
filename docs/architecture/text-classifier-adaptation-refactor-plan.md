@@ -305,6 +305,11 @@ PEFT-classifier trainer config 해석은
 `build_peft_classifier_training_backend_config`가 canonical entrypoint이고,
 `build_lora_classifier_training_backend_config`는 v1 scope와 legacy payload
 compatibility entrypoint로 남긴다.
+local update payload 조립도 `build_peft_encoder_delta_update`,
+`build_peft_encoder_delta_payload_from_artifacts`,
+`build_query_ssl_peft_encoder_update_payload`를 canonical entrypoint로 사용한다.
+기존 `build_lora_classifier_*`, `build_query_ssl_lora_*` 이름은 v1 import
+compatibility alias다.
 
 ## 호환성 정책
 

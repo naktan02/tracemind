@@ -55,7 +55,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta im
     LoraClassifierPartitionDelta,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
-    build_query_ssl_lora_update_payload,
+    build_query_ssl_peft_encoder_update_payload,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
@@ -514,7 +514,7 @@ def run_partitioned_lora_classifier_training_core(
             materialize_primary_deltas=False,
         )
     with _measure(timing_recorder, "core_update_payload_build_seconds"):
-        update_build_result = build_query_ssl_lora_update_payload(
+        update_build_result = build_query_ssl_peft_encoder_update_payload(
             training_task=training_task,
             model_manifest=model_manifest,
             lora_config=lora_config,

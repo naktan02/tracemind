@@ -1,4 +1,4 @@
-"""Query SSL LoRA-classifier local update payload/metric 조립."""
+"""Query SSL PEFT-backed classifier local update payload/metric 조립."""
 
 from __future__ import annotations
 
@@ -30,7 +30,7 @@ from ..training.delta_extraction import (
 )
 from .local_update import (
     LoraClassifierTrainArtifacts,
-    build_lora_classifier_delta_payload_from_artifacts,
+    build_peft_encoder_delta_payload_from_artifacts,
 )
 from .partitioned_delta import LoraClassifierPartitionDelta
 
@@ -44,7 +44,10 @@ class QuerySslLoraUpdateBuildResult:
     accepted_unlabeled_count: int
 
 
-def build_query_ssl_lora_update_payload(
+QuerySslPeftEncoderUpdateBuildResult = QuerySslLoraUpdateBuildResult
+
+
+def build_query_ssl_peft_encoder_update_payload(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -79,7 +82,7 @@ def build_query_ssl_lora_update_payload(
         has_primary_artifact_refs or has_partitioned_artifact_ref
     ):
         raise ValueError(
-            "artifact-ref Query SSL LoRA update requires lora/head delta refs or "
+            "artifact-ref Query SSL PEFT update requires adapter/head delta refs or "
             "partitioned_deltas_artifact_ref."
         )
     util_ratio = finite_float_or_none(history_record.get("train_util_ratio"))
@@ -89,7 +92,7 @@ def build_query_ssl_lora_update_payload(
         classifier_head_weight_deltas=classifier_head_weight_deltas,
         classifier_head_bias_deltas=classifier_head_bias_deltas,
     )
-    update_payload = build_lora_classifier_delta_payload_from_artifacts(
+    update_payload = build_peft_encoder_delta_payload_from_artifacts(
         training_task=training_task,
         model_manifest=model_manifest,
         config=lora_config,
@@ -123,7 +126,7 @@ def build_query_ssl_lora_update_payload(
     )
     return QuerySslLoraUpdateBuildResult(
         update_payload=update_payload,
-        client_metrics=build_query_ssl_lora_client_metrics(
+        client_metrics=build_query_ssl_peft_encoder_client_metrics(
             update_payload=update_payload,
             step_plan=step_plan,
             history_record=history_record,
@@ -135,7 +138,7 @@ def build_query_ssl_lora_update_payload(
     )
 
 
-def build_query_ssl_lora_client_metrics(
+def build_query_ssl_peft_encoder_client_metrics(
     *,
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
     step_plan: QuerySslLocalStepPlan,
@@ -178,6 +181,10 @@ def build_query_ssl_lora_client_metrics(
         if str(key).startswith("train_"):
             metrics[f"query_ssl_{key}"] = numeric_value
     return metrics
+
+
+build_query_ssl_lora_update_payload = build_query_ssl_peft_encoder_update_payload
+build_query_ssl_lora_client_metrics = build_query_ssl_peft_encoder_client_metrics
 
 
 def _build_labeled_row_label_counts(

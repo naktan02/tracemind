@@ -1,4 +1,4 @@
-"""LoRA-classifier agent runtime update assembly."""
+"""PEFT-backed classifier agent runtime update assembly."""
 
 from __future__ import annotations
 
@@ -10,8 +10,8 @@ from methods.adaptation.text_classifier.peft_encoder.update.local_update import 
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainExecutor,
     LoraClassifierTrainingRow,
-    build_lora_classifier_delta_from_rows,
-    resolve_lora_classifier_label_schema,
+    build_peft_encoder_delta_from_rows,
+    resolve_peft_encoder_label_schema,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
@@ -25,7 +25,7 @@ from shared.src.contracts.training_contracts import TrainingTask
 from ..config import LoraClassifierTrainingBackendConfig
 
 
-def build_lora_classifier_delta_update(
+def build_peft_encoder_delta_update(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -35,13 +35,13 @@ def build_lora_classifier_delta_update(
     train_executor: LoraClassifierTrainExecutor | None = None,
 ) -> LoraClassifierDelta | PeftClassifierDelta:
     rows = tuple(
-        build_lora_classifier_training_row(example=example, config=config)
+        build_peft_encoder_training_row(example=example, config=config)
         for example in accepted_examples
     )
     if not rows:
         raise ValueError("accepted_examples must not be empty.")
 
-    label_schema = resolve_lora_classifier_label_schema(
+    label_schema = resolve_peft_encoder_label_schema(
         rows=rows,
         configured_labels=config.label_schema,
         candidate_label_space=_build_candidate_label_space(accepted_examples),
@@ -63,7 +63,7 @@ def build_lora_classifier_delta_update(
         )
     )
 
-    return build_lora_classifier_delta_from_rows(
+    return build_peft_encoder_delta_from_rows(
         training_task=training_task,
         model_manifest=model_manifest,
         rows=rows,
@@ -72,6 +72,9 @@ def build_lora_classifier_delta_update(
         artifacts=artifacts,
         created_at=created_at,
     )
+
+
+build_lora_classifier_delta_update = build_peft_encoder_delta_update
 
 
 def _build_candidate_label_space(
@@ -95,7 +98,7 @@ def _build_payload_only_artifacts(
     config: LoraClassifierTrainingBackendConfig,
     created_at: datetime,
 ) -> LoraClassifierTrainArtifacts:
-    base_artifact_ref = build_lora_classifier_base_artifact_ref(
+    base_artifact_ref = build_peft_encoder_base_artifact_ref(
         prefix=config.artifact_ref_prefix,
         training_task=training_task,
         created_at=created_at,
@@ -109,7 +112,7 @@ def _build_payload_only_artifacts(
     )
 
 
-def build_lora_classifier_training_row(
+def build_peft_encoder_training_row(
     *,
     example: AcceptedTrainingExample,
     config: LoraClassifierTrainingBackendConfig,
@@ -117,7 +120,7 @@ def build_lora_classifier_training_row(
     candidate = example.candidate
     if candidate is None:
         raise ValueError("Accepted example must carry a pseudo-label candidate.")
-    text = extract_lora_classifier_training_text(example=example, config=config)
+    text = extract_peft_encoder_training_text(example=example, config=config)
     label = candidate.label.strip()
     if not label:
         raise ValueError("Pseudo-label candidate label must not be empty.")
@@ -129,7 +132,7 @@ def build_lora_classifier_training_row(
     )
 
 
-def extract_lora_classifier_training_text(
+def extract_peft_encoder_training_text(
     *,
     example: AcceptedTrainingExample,
     config: LoraClassifierTrainingBackendConfig,
@@ -146,13 +149,13 @@ def extract_lora_classifier_training_text(
         return translated_text.strip()
 
     raise ValueError(
-        "lora_classifier_trainer requires raw text or translated text on accepted "
-        "examples. The fixed-embedding-only training path cannot produce LoRA "
-        "classifier updates."
+        "PEFT-backed classifier trainer requires raw text or translated text on "
+        "accepted examples. The fixed-embedding-only training path cannot produce "
+        "classifier adapter updates."
     )
 
 
-def build_lora_classifier_base_artifact_ref(
+def build_peft_encoder_base_artifact_ref(
     *,
     prefix: str,
     training_task: TrainingTask,
@@ -181,3 +184,8 @@ def slug_artifact_ref_part(value: str) -> str:
     if not normalized:
         raise ValueError("artifact ref path parts must not be empty.")
     return normalized
+
+
+build_lora_classifier_training_row = build_peft_encoder_training_row
+extract_lora_classifier_training_text = extract_peft_encoder_training_text
+build_lora_classifier_base_artifact_ref = build_peft_encoder_base_artifact_ref

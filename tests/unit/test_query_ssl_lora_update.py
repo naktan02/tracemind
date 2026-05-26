@@ -124,7 +124,7 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
 
 
 def test_query_ssl_lora_update_payload_requires_refs_for_artifact_mode() -> None:
-    with pytest.raises(ValueError, match="requires lora/head delta refs"):
+    with pytest.raises(ValueError, match="requires adapter/head delta refs"):
         build_query_ssl_lora_update_payload(
             training_task=_training_task(),
             model_manifest=make_embedding_manifest(

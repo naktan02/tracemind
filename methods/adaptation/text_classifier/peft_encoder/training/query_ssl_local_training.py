@@ -1,4 +1,4 @@
-"""Query SSL LoRA-classifier local training core."""
+"""Query SSL PEFT-backed classifier local training core."""
 
 from __future__ import annotations
 
@@ -36,7 +36,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta im
     LoraClassifierPartitionDelta,
 )
 from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
-    build_query_ssl_lora_update_payload,
+    build_query_ssl_peft_encoder_update_payload,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping
@@ -317,7 +317,7 @@ def run_query_ssl_lora_classifier_training_core(
             classifier_head_bias_deltas=head_bias_deltas,
         )
     with _measure(timing_recorder, "core_update_payload_build_seconds"):
-        update_build_result = build_query_ssl_lora_update_payload(
+        update_build_result = build_query_ssl_peft_encoder_update_payload(
             training_task=training_task,
             model_manifest=model_manifest,
             lora_config=lora_config,

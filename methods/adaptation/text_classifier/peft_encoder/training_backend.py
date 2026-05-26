@@ -60,7 +60,7 @@ from .training.query_ssl_local_training import (
     QuerySslLoraObjectiveRuntimeConfig,
     run_query_ssl_lora_classifier_training_core,
 )
-from .update.payload_builder import build_lora_classifier_delta_update
+from .update.payload_builder import build_peft_encoder_delta_update
 
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
@@ -135,7 +135,7 @@ class LoraClassifierTrainingBackend:
         accepted_examples: tuple[AcceptedTrainingExample, ...],
         created_at: datetime,
     ) -> LoraClassifierDelta | PeftClassifierDelta:
-        return build_lora_classifier_delta_update(
+        return build_peft_encoder_delta_update(
             training_task=training_task,
             model_manifest=model_manifest,
             accepted_examples=accepted_examples,

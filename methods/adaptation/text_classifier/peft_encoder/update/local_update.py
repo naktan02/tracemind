@@ -1,4 +1,7 @@
-"""LoRA-classifier local update core."""
+"""PEFT-backed classifier local update core.
+
+`LoraClassifier*` 이름은 v1 payload compatibility surface로 유지한다.
+"""
 
 from __future__ import annotations
 
@@ -82,7 +85,13 @@ class LoraClassifierTrainExecutor(Protocol):
         """agent-local raw text rows로 LoRA/classifier delta artifact를 만든다."""
 
 
-def resolve_lora_classifier_label_schema(
+PeftEncoderTrainingRow = LoraClassifierTrainingRow
+PeftEncoderTrainArtifacts = LoraClassifierTrainArtifacts
+PeftEncoderUpdateConfig = LoraClassifierUpdateConfig
+PeftEncoderTrainExecutor = LoraClassifierTrainExecutor
+
+
+def resolve_peft_encoder_label_schema(
     *,
     rows: Sequence[LoraClassifierTrainingRow],
     configured_labels: Sequence[str],
@@ -105,7 +114,7 @@ def resolve_lora_classifier_label_schema(
     return labels
 
 
-def build_lora_classifier_delta_from_rows(
+def build_peft_encoder_delta_from_rows(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -121,7 +130,7 @@ def build_lora_classifier_delta_from_rows(
         raise ValueError("rows must not be empty.")
 
     label_counts = Counter(row.label for row in rows)
-    return build_lora_classifier_delta_payload_from_artifacts(
+    return build_peft_encoder_delta_payload_from_artifacts(
         training_task=training_task,
         model_manifest=model_manifest,
         config=config,
@@ -136,7 +145,7 @@ def build_lora_classifier_delta_from_rows(
     )
 
 
-def build_lora_classifier_delta_payload_from_artifacts(
+def build_peft_encoder_delta_payload_from_artifacts(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
@@ -192,7 +201,7 @@ def build_lora_classifier_delta_payload_from_artifacts(
         )
     if config.payload_adapter_kind != LORA_CLASSIFIER_ADAPTER_KIND:
         raise ValueError(
-            "LoRA-classifier update builder only supports lora_classifier or "
+            "PEFT-backed classifier update builder only supports lora_classifier or "
             f"peft_classifier payloads, got {config.payload_adapter_kind!r}."
         )
     return make_lora_classifier_delta_payload(
@@ -230,6 +239,13 @@ def build_lora_classifier_delta_payload_from_artifacts(
         delta_l2_norm=artifacts.delta_l2_norm,
         created_at=created_at,
     )
+
+
+resolve_lora_classifier_label_schema = resolve_peft_encoder_label_schema
+build_lora_classifier_delta_from_rows = build_peft_encoder_delta_from_rows
+build_lora_classifier_delta_payload_from_artifacts = (
+    build_peft_encoder_delta_payload_from_artifacts
+)
 
 
 def _build_partitioned_delta_payload(
