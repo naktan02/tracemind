@@ -63,7 +63,7 @@ from scripts.runtime_adapters.federated_agent.backend_resolver import (
     resolve_example_generation_backend_name,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
-    load_lora_classifier_base_parameters,
+    load_peft_encoder_base_parameters,
 )
 from scripts.runtime_adapters.federated_agent.local_training import (
     run_query_ssl_lora_classifier_local_training,
@@ -190,18 +190,18 @@ def test_lora_classifier_base_parameters_use_round_cache(
 
     monkeypatch.setattr(
         base_state_materialization,
-        "_materialize_lora_classifier_base_parameters",
+        "_materialize_peft_encoder_base_parameters",
         _fake_materialize,
     )
     cache = RoundBaseSnapshotCache()
 
-    first = load_lora_classifier_base_parameters(
+    first = load_peft_encoder_base_parameters(
         active_adapter_state=active_state,
         output_dir=tmp_path,
         aggregated_at=SimpleNamespace(),
         round_base_snapshot_cache=cache,
     )
-    second = load_lora_classifier_base_parameters(
+    second = load_peft_encoder_base_parameters(
         active_adapter_state=active_state,
         output_dir=tmp_path,
         aggregated_at=SimpleNamespace(),
@@ -383,7 +383,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     )
     monkeypatch.setattr(
         qtrainer,
-        "load_lora_classifier_base_parameters",
+        "load_peft_encoder_base_parameters",
         lambda **_kwargs: object(),
     )
     monkeypatch.setattr(

@@ -56,8 +56,8 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
 )
 from scripts.runtime_adapters.federated_agent.base_state_materialization import (
-    load_lora_classifier_base_parameters,
-    load_lora_classifier_base_partition_parameters,
+    load_peft_encoder_base_parameters,
+    load_peft_encoder_base_partition_parameters,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
@@ -279,14 +279,14 @@ def _load_base_parameters_if_needed(
     if base_parameters is not None:
         return base_parameters
     if timing_recorder is None:
-        return load_lora_classifier_base_parameters(
+        return load_peft_encoder_base_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
             round_base_snapshot_cache=round_base_snapshot_cache,
         )
     with timing_recorder.measure("adapter_base_materialization_seconds"):
-        return load_lora_classifier_base_parameters(
+        return load_peft_encoder_base_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
@@ -303,14 +303,14 @@ def _load_base_partition_parameters_if_needed(
     timing_recorder: TimingRecorder | None,
 ) -> dict[str, LoraClassifierMaterializedState]:
     if timing_recorder is None:
-        return load_lora_classifier_base_partition_parameters(
+        return load_peft_encoder_base_partition_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
             round_base_snapshot_cache=round_base_snapshot_cache,
         )
     with timing_recorder.measure("adapter_base_partition_materialization_seconds"):
-        return load_lora_classifier_base_partition_parameters(
+        return load_peft_encoder_base_partition_parameters(
             active_adapter_state=active_adapter_state,
             output_dir=output_dir,
             aggregated_at=aggregated_at,
