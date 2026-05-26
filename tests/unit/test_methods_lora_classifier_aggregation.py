@@ -372,7 +372,7 @@ def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
 
 
 def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> None:
-    projection = peft_state_projection.build_lora_classifier_state_projection(
+    projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=_lora_state(),
         base_parameters=LoraClassifierMaterializedState(
             lora_parameters={
@@ -420,7 +420,7 @@ def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> No
 
 
 def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> None:
-    projection = peft_state_projection.build_lora_classifier_state_projection(
+    projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=_peft_state(),
         base_parameters=LoraClassifierMaterializedState(
             lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},
@@ -458,7 +458,7 @@ def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> N
 
 def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> None:
     with pytest.raises(ValueError, match="delta dimension mismatch"):
-        peft_state_projection.build_lora_classifier_state_projection(
+        peft_state_projection.build_peft_encoder_state_projection(
             base_state=_lora_state(),
             base_parameters=LoraClassifierMaterializedState(
                 lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},

@@ -29,17 +29,17 @@ PeftEncoderStatePayload = LoraClassifierState | PeftClassifierState
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierStateProjection:
+class PeftEncoderStateProjection:
     """server publication runtime이 저장할 next state와 artifact payload."""
 
     next_state: PeftEncoderStatePayload
     artifacts: dict[str, dict[str, object]]
 
 
-PeftEncoderStateProjection = LoraClassifierStateProjection
+LoraClassifierStateProjection = PeftEncoderStateProjection
 
 
-def build_lora_classifier_state_projection(
+def build_peft_encoder_state_projection(
     *,
     base_state: PeftEncoderStatePayload,
     base_parameters: LoraClassifierMaterializedState,
@@ -54,7 +54,7 @@ def build_lora_classifier_state_projection(
     partitioned_parameters: (
         Mapping[str, LoraClassifierMaterializedState] | None
     ) = None,
-) -> LoraClassifierStateProjection:
+) -> PeftEncoderStateProjection:
     """base global snapshot에 aggregated delta를 적용해 next state를 만든다."""
 
     next_lora_parameters = _apply_vector_deltas(
@@ -105,7 +105,7 @@ def build_lora_classifier_state_projection(
             for partition_name, partition in sorted(partitioned_parameters.items())
         }
 
-    return LoraClassifierStateProjection(
+    return PeftEncoderStateProjection(
         next_state=_build_next_state(
             base_state=base_state,
             next_model_revision=next_model_revision,
@@ -125,7 +125,7 @@ def build_lora_classifier_state_projection(
     )
 
 
-build_peft_encoder_state_projection = build_lora_classifier_state_projection
+build_lora_classifier_state_projection = build_peft_encoder_state_projection
 
 
 def _build_next_state(
