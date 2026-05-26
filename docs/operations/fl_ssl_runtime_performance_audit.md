@@ -4,6 +4,61 @@
 실행 기준과 성능 수치를 남기기 위한 operations 문서이며, payload 계약의 source of
 truth는 `shared/src/contracts/adapter_contract_families/lora_classifier.py`다.
 
+## 2026-05-26 FedMatch Reduced 검증
+
+목적:
+
+- FedMatch method-owned `fedmatch_partitioned` 경로를 `10 clients x 5 rounds`
+  reduced budget에서 실제 완주시키고, report verifier로 protocol drift를 막는다.
+- main/full-budget은 이 검증 범위에 포함하지 않는다.
+
+실행 조건:
+
+- Method: `fl_method.composition_mode=method_owned`,
+  `strategy_axes/fl/method_descriptor=fedmatch`
+- Runtime axes: `server_update_policy=fedmatch_partitioned`,
+  `update_partition_policy=partitioned`, `aggregation_weight_policy=uniform`,
+  `peer_context_policy=fixed_probe_output_knn`,
+  `local_ssl_policy=fedmatch_agreement`
+- Split: `shared_general_reddit_pc100_alpha03_clients10`
+- Budget: `run_controls/fl_ssl/budget=reduced`, `10 clients`, `5 rounds`,
+  `training_task.max_steps=20`
+- Run directory:
+  `runs/fl_ssl/fedmatch/fedmatch__lora_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z`
+
+메모리 관련 변경:
+
+- FedMatch helper model cache를 client 경계에서 폐기한다.
+- mxbai backbone base cache도 client 경계에서 폐기하고 tokenizer cache만 유지한다.
+- round 간 보존되는 peer/client partition snapshot vector는 in-memory에서 float32
+  array로 압축하고, JSON artifact payload로 쓸 때만 list로 정규화한다.
+- 위 변경은 FedMatch sigma/psi state 의미를 바꾸지 않고 runtime 표현과 cache
+  lifecycle만 바꾼다.
+
+검증 결과:
+
+- `backfill_communication_costs --write` PASS
+- `verify_federated_report_artifacts` PASS
+- Posthoc communication estimate:
+  C2S `1,429,494,473 bytes`, S2C `19,496,932,570 bytes`, total
+  `20,926,427,043 bytes`
+- Run directory size: `3.4G`
+- Initial validation: macro-F1 `0.265190`, loss `1.371803`, accuracy `0.336827`,
+  ECE `0.016458`
+- Final validation: macro-F1 `0.138327`, loss `2.880688`, accuracy `0.259424`,
+  ECE `0.381286`
+
+해석:
+
+- protocol과 artifact 경로는 `fedmatch_partitioned`, `partitioned`,
+  `fixed_probe_output_knn`, `fedmatch_agreement`,
+  `partitioned_deltas_artifact_ref`, sparse S2C posthoc estimate까지 verifier로
+  고정됐다.
+- 성능은 초기 모델보다 악화됐다. 이 기록은 실행 경로 검증이지 FedMatch 성능
+  우위의 근거가 아니다.
+- `clients10_rounds30/20260526T122807Z`는 사용자 요청으로 중단한 partial main
+  artifact이며 검증 산출물로 사용하지 않는다.
+
 ## 2026-05-23 FedMatch Reduced 비교
 
 공통 조건:

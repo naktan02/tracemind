@@ -103,7 +103,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   확인했다. 1-round smoke는 previous client snapshot이 없어 helper count 0이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
   report verification CLI도 PASS했다.
-- [ ] FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
+- [x] FedMatch reduced run 전에 LoRA-classifier simulation 병목을 줄인다.
   현재 병목은 client/round마다 frozen transformer backbone/tokenizer를 재로딩하는 것,
   helper snapshot마다 helper model을 materialize하는 것, 전체 validation rows를
   fixed probe처럼 사용하는 것이었다. `fixed_probe_output_knn` probe는
@@ -120,7 +120,15 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   labels-at-client budget은 `ssl_method.local_budget_policy=original_method`를
   명시한 별도 faithful run에서만 공통 labeled-anchored SSL budget primitive로
   계산한다.
-  남은 작업은 FedMatch method-owned reduced run 검증이다.
+  2026-05-26에는 helper/backbone cache를 client 경계에서 회수하고, round 간
+  보존되는 peer/client partition snapshot vector를 float32 array로 압축했다.
+  이후 `shared_general_reddit_pc100_alpha03_clients10` materialized split에서
+  FedMatch method-owned `10 clients x 5 rounds` reduced run을 완료했고,
+  posthoc communication backfill과 report verifier가 PASS했다.
+  산출물은
+  `runs/fl_ssl/fedmatch/fedmatch__lora_classifier__fedmatch_partitioned/labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/clients10_rounds5/20260526T120100Z`다.
+  최종 macro-F1은 `0.138327`로 초기 `0.265190`보다 낮아, 실행 경로 검증은
+  닫혔지만 성능 해석은 별도 method/ablation 비교에서 다룬다.
 - [x] server update/delta 해석 축과 local SSL objective 축을 분리했다.
   `server_update_policy=fedavg_merged_delta`는 현재 merged delta/FedAvg runtime이고,
   `fedmatch_partitioned`는 LoRA-classifier `partitioned_delta_average` simulation backend로
@@ -234,7 +242,8 @@ methods/evaluation/                            # stable metric helper만
   runtime metadata를 확인했다. runtime metadata 도입 전 50-round report와 1-round
   client-count sweep은 archive/reference로만 보고, final stress/ablation/sweep과
   full-budget main 실행은 후보와 비교 조건이 확정된 뒤 현재 `30-round` preset으로
-  별도 실행한다.
+  별도 실행한다. 2026-05-26 `clients10_rounds30/20260526T122807Z`는 사용자 중단으로
+  초반 partial artifact만 남은 비검증 산출물이며 main evidence로 사용하지 않는다.
 - [x] 새 FL simulation report protocol은 `embedding_adapter`와
   `local_trainer_runtime` metadata를 기록한다. 이후 논문용 산출물은 이 필드로
   `gpu_local + mxbai` 여부를 확인하고, `hash_debug`/CPU smoke 결과를 성능

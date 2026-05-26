@@ -300,13 +300,13 @@ Runtime translation:
 9. `training_view`는 현재 기본 계획에서 제외한다. 학습 pool을 제한하면 model update
    의미가 바뀌므로, runtime이 여전히 과한 경우에만 별도 debug/runtime ablation으로
    검토한다.
-10. 최적화 후 FedMatch method-owned reduced run을 다시 닫는다. 확인 대상은
+10. 최적화 후 FedMatch method-owned reduced run을 다시 닫았다. 확인 대상은
    `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
-   helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata다.
-   비교용 reduced 조건은 우선 `10 clients`, `5 rounds`, `max_steps=20`으로 둔다.
-   FedMatch도 기본 `local_budget_policy=iteration_capped`로 같은 local update
-   budget을 쓰고, 원본 labels-at-client budget은
+   helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata였다.
+   2026-05-26 `10 clients`, `5 rounds`, `max_steps=20`,
+   `local_budget_policy=iteration_capped` run은 posthoc communication backfill 뒤
+   verifier PASS했다. 원본 labels-at-client budget은
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
 11. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
