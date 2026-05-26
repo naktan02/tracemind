@@ -37,12 +37,12 @@ from methods.federated_ssl.execution_plan import (
     COMPOSITION_MODE_MANUAL,
     COMPOSITION_MODE_METHOD_OWNED,
 )
+from methods.federated_ssl.local_objective import (
+    requires_method_helper_probability_provider,
+)
 from methods.federated_ssl.local_supervision import (
     require_rows_match_local_supervision_regime,
     resolve_local_supervision_regime,
-)
-from methods.federated_ssl.local_objective import (
-    requires_method_helper_probability_provider,
 )
 from methods.federated_ssl.registry import resolve_federated_ssl_method_descriptor
 from methods.federated_ssl.server_step import (

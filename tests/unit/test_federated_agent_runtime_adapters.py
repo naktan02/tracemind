@@ -20,12 +20,12 @@ from methods.adaptation.lora_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
+from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
+    build_lora_classifier_helper_provider_for_local_ssl_policy,
+)
 from methods.adaptation.lora_classifier.update.delta_artifacts import (
     LoraClassifierDeltaMaterializer,
     upload_agent_local_lora_classifier_update,
-)
-from methods.adaptation.lora_classifier.federated_ssl.helper_provider import (
-    build_lora_classifier_helper_provider_for_local_ssl_policy,
 )
 from methods.adaptation.lora_classifier.update.merged_tensor_artifact import (
     HEAD_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,

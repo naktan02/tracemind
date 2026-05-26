@@ -99,6 +99,7 @@ def test_wellbeing_services_refresh_projection_before_read(
     projection_service = WellbeingSignalProjectionService(
         scored_event_repository=scored_event_repository,
         snapshot_repository=snapshot_repository,
+        lookback_days=60,
     )
     summary_service = WellbeingSummaryService(
         repository=snapshot_repository,

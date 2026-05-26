@@ -72,9 +72,7 @@ def _registered_router_modules(
             continue
         if node.module is None or not node.module.startswith(f"{package_prefix}."):
             continue
-        module_name = node.module.removeprefix(f"{package_prefix}.").split(".", 1)[
-            0
-        ]
+        module_name = node.module.removeprefix(f"{package_prefix}.").split(".", 1)[0]
         for alias in node.names:
             if alias.name == "router":
                 router_alias_to_module[alias.asname or alias.name] = module_name

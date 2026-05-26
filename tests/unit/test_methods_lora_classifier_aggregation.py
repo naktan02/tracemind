@@ -181,9 +181,7 @@ def test_merged_delta_tensor_artifacts_roundtrip() -> None:
     assert head_bias_deltas == pytest.approx({"anxiety": 0.2, "normal": -0.2})
 
 
-def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() -> (
-    None
-):
+def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() -> None:
     lora_tensors, lora_metadata = build_lora_delta_tensor_artifact(
         {
             "encoder.q_proj.lora_A": [0.2, 0.4],

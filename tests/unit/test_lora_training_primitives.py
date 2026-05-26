@@ -5,12 +5,12 @@ from __future__ import annotations
 import torch
 from torch.utils.data import DataLoader
 
+from methods.adaptation.local_objective_regularizers.fedprox import (
+    prepare_fedprox_regularizer,
+)
 from methods.adaptation.lora_classifier.training.batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
-)
-from methods.adaptation.local_objective_regularizers.fedprox import (
-    prepare_fedprox_regularizer,
 )
 from methods.adaptation.lora_classifier.training.optimizer_step import (
     run_optimizer_loss_step,

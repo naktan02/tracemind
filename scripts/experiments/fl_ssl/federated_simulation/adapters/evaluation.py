@@ -2,13 +2,13 @@
 
 from __future__ import annotations
 
+from methods.adaptation.lora_classifier.aggregation.materialization import (
+    materialize_base_lora_classifier_state,
+)
 from methods.adaptation.lora_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
     evaluate_lora_classifier_validation_payload,
     require_lora_classifier_state,
-)
-from methods.adaptation.lora_classifier.aggregation.materialization import (
-    materialize_base_lora_classifier_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from scripts.experiments.fl_ssl.federated_simulation.flow.state import (

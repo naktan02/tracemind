@@ -66,9 +66,7 @@ def build_simulation_result(
         active=active,
         runtime_resource_cache=bootstrapped.runtime_resource_cache,
     )
-    result_timing["result_final_projection_seconds"] = (
-        time.perf_counter() - started_at
-    )
+    result_timing["result_final_projection_seconds"] = time.perf_counter() - started_at
     if request.report_config is not None:
         started_at = time.perf_counter()
         report_payload = SimulationReportBuilder().build_payload(

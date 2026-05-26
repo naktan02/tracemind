@@ -72,8 +72,7 @@ def load_resume_checkpoint(output_dir: Path) -> SimulationResumeCheckpoint:
     schema_version = str(payload.get("schema_version", "")).strip()
     if schema_version != CHECKPOINT_SCHEMA_VERSION:
         raise ValueError(
-            "Unsupported FL SSL resume checkpoint schema_version: "
-            f"{schema_version!r}."
+            f"Unsupported FL SSL resume checkpoint schema_version: {schema_version!r}."
         )
     rounds = tuple(
         _round_summary_from_payload(round_payload)
@@ -133,9 +132,7 @@ def _evaluation_from_payload(payload: dict[str, object]) -> SimulationEvaluation
         weighted_f1=float(payload.get("weighted_f1", 0.0)),
         balanced_accuracy=float(payload.get("balanced_accuracy", 0.0)),
         worst_category_f1=_optional_str(payload.get("worst_category_f1")),
-        worst_category_f1_value=_optional_float(
-            payload.get("worst_category_f1_value")
-        ),
+        worst_category_f1_value=_optional_float(payload.get("worst_category_f1_value")),
         worst_category_recall=_optional_float(payload.get("worst_category_recall")),
         worst_category_precision=_optional_float(
             payload.get("worst_category_precision")

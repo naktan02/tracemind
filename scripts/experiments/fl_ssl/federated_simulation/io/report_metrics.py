@@ -137,9 +137,7 @@ def build_communication_cost_summary(result: SimulationResult) -> dict[str, obje
         "acceptance_ratio": safe_ratio(total_accepted, total_candidates),
         "round_time_seconds": numeric_summary(round_times),
         "client_train_time_seconds": numeric_summary(client_train_times),
-        "timing_breakdown_summary": _timing_breakdown_summary(
-            timing_breakdown_values
-        ),
+        "timing_breakdown_summary": _timing_breakdown_summary(timing_breakdown_values),
         "round_timing_breakdown_summary": _timing_breakdown_summary(
             round_timing_breakdown_values
         ),

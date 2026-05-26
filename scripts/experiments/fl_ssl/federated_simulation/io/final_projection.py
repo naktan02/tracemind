@@ -4,11 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
-from methods.adaptation.lora_classifier.config import (
-    build_lora_classifier_training_backend_config,
-)
 from methods.adaptation.lora_classifier.aggregation.materialization import (
     materialize_base_lora_classifier_state,
+)
+from methods.adaptation.lora_classifier.config import (
+    build_lora_classifier_training_backend_config,
 )
 from methods.adaptation.lora_classifier.evaluation import require_lora_classifier_state
 from methods.adaptation.lora_classifier.training.delta_extraction import (

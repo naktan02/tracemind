@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
 
-from main_server.src.infrastructure.repositories.shared_adapter_state_repository import (
-    SharedAdapterStateRepository,
+from main_server.src.infrastructure.repositories import (
+    shared_adapter_state_repository as state_repo_module,
 )
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
@@ -48,7 +48,7 @@ class SharedAdapterStatePublicationService:
     """server-owned artifact/state 저장과 active manifest 전환을 맡는다."""
 
     adapter_family: SharedAdapterRoundFamily
-    state_repository: SharedAdapterStateRepository
+    state_repository: state_repo_module.SharedAdapterStateRepository
     active_manifest_service: ActiveModelManifestService
     artifact_store: AggregationArtifactStore
 

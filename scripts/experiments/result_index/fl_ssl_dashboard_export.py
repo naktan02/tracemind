@@ -8,6 +8,8 @@ from typing import Any
 
 from scripts.experiments.result_index.report_parsing import (
     as_mapping as _as_mapping,
+)
+from scripts.experiments.result_index.report_parsing import (
     as_sequence as _as_sequence,
 )
 

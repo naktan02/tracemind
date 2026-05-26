@@ -457,6 +457,21 @@ def _partitioned_server_update_capability_plan() -> FederatedSslCapabilityPlan:
     )
 
 
+def _fedmatch_agreement_capability_plan() -> FederatedSslCapabilityPlan:
+    return FederatedSslCapabilityPlan.from_mappings(
+        client_participation_policy={"name": "all_clients"},
+        aggregation_weight_policy={"name": "uniform"},
+        labeled_exposure_policy={"name": "shared_client_seed"},
+        local_supervision_regime={"name": "client_labeled_and_unlabeled"},
+        server_step_policy={"name": "none"},
+        peer_context_policy={"name": "fixed_probe_output_knn"},
+        update_partition_policy={"name": "partitioned"},
+        local_ssl_policy={"name": "fedmatch_agreement"},
+        server_update_policy={"name": SERVER_UPDATE_FEDMATCH_PARTITIONED},
+        query_multiview_source={"name": "materialized_rows"},
+    )
+
+
 def _lora_runtime_config() -> FederatedLoraClassifierRuntimeConfig:
     return FederatedLoraClassifierRuntimeConfig(
         training_backend_config=LoraClassifierTrainingBackendConfig(
@@ -1361,6 +1376,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
             classifier_dropout=0.1,
         ),
     )
+    request.capability_plan = _fedmatch_agreement_capability_plan()
     peer_context = FederatedSslPeerContext(
         client_id="agent_01",
         policy_name="fixed_probe_output_knn",
