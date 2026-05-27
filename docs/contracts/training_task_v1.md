@@ -131,7 +131,7 @@ family는 서로 다른 선택이다.
   "max_steps": 50,
   "objective_config": {
     "algorithm_profile_name": "prototype_pseudo_label_v1",
-    "training_backend_name": "lora_classifier_trainer",
+    "training_backend_name": "peft_classifier_trainer",
     "confidence_threshold": 0.6,
     "margin_threshold": 0.02,
     "example_generation_backend_name": "prototype_rescore",

@@ -343,7 +343,7 @@ uv run python -c "import torch; print(torch.cuda.is_available(), torch.cuda.devi
 테스트나 디버그 실행이 중단됐거나 터미널 상태가 이상하면 먼저 stale process를 본다.
 
 ```bash
-ps aux | rg "pytest|uv run python|uvicorn|train_lora|run_federated"
+ps aux | rg "pytest|uv run python|uvicorn|train_peft|run_federated"
 ```
 
 종료가 필요하면 대상 PID와 명령을 확인한 뒤 최소 범위로 종료한다.

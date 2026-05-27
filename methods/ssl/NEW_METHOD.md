@@ -1,7 +1,7 @@
 # Query SSL New Method Guide
 
 이 문서는 중앙 Query SSL control에 새 SSL objective를 추가할 때의 최소 경계를
-고정한다. 대상은 `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
+고정한다. 대상은 `scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py`
 공통 entrypoint가 실행할 수 있는 `methods/ssl` algorithm이다.
 
 중앙 SSL은 pooled/offline control이다. live agent training runtime이나
@@ -133,7 +133,7 @@ interface shape만 보여주는 참고다.
 
 ## 어디를 건드리지 않을지
 
-- `scripts/experiments/central_ssl_control/train_lora_<method>.py`를 새로 만들지 않는다.
+- 중앙 SSL method별 Python entrypoint를 새로 만들지 않는다.
   같은 runner로 표현되는 방법론은 Hydra `strategy_axes/ssl/consistency_method`만
   교체한다.
 - `agent/`와 `main_server/`에 중앙 SSL method-specific 파일을 추가하지 않는다.
