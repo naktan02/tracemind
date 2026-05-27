@@ -11,10 +11,10 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AggregationArtifactStore,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
-    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+    PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
+    PEFT_ENCODER_DELTA_FORMAT_INLINE,
+    PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
     PeftEncoderTrainingBackendConfig,
 )
@@ -350,7 +350,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
 ) -> None:
     captured: dict[str, object] = {}
     peft_config = PeftEncoderTrainingBackendConfig(
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE,
     )
     active_state = make_peft_classifier_state_payload(
         model_id="mxbai-peft-classifier",
@@ -371,7 +371,7 @@ def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
         peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
         classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE,
     )
     runtime_resource_cache = object()
 
@@ -511,7 +511,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
             "anxiety": [0.3, -0.1],
@@ -520,7 +520,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
     )
 
-    assert plan.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert plan.delta_format == PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
     assert plan.include_inline_deltas is False
     assert plan.lora_delta_artifact_ref is not None
     assert plan.classifier_head_delta_artifact_ref is not None
@@ -579,7 +579,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_partitioned_ref(
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
         classifier_head_bias_deltas={"anxiety": 0.05},
@@ -638,13 +638,13 @@ def test_query_ssl_peft_encoder_delta_materialization_keeps_inline_debug_payload
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE,
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
         classifier_head_bias_deltas={"anxiety": 0.05},
     )
 
-    assert plan.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+    assert plan.delta_format == PEFT_ENCODER_DELTA_FORMAT_INLINE
     assert plan.include_inline_deltas is True
     assert plan.lora_delta_artifact_ref is None
     assert plan.classifier_head_delta_artifact_ref is None
@@ -660,7 +660,7 @@ def test_query_ssl_peft_encoder_delta_materialization_requires_prefix_for_agent_
             update_id="update_round_0001_agent_01_test",
             training_task=SimpleNamespace(round_id="round_0001"),
             client_id="agent_01",
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
             lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
             classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
             classifier_head_bias_deltas={"anxiety": 0.05},
@@ -675,7 +675,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_agent_local_refs(
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         artifact_ref_prefix="agent-local://peft_classifier",
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
@@ -685,7 +685,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_agent_local_refs(
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
     )
 
-    assert plan.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+    assert plan.delta_format == PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
     assert plan.include_inline_deltas is False
     assert plan.lora_delta_artifact_ref is not None
     assert plan.classifier_head_delta_artifact_ref is not None
@@ -706,7 +706,7 @@ def test_upload_agent_local_lora_v1_update_materializes_server_owned_refs(
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         artifact_ref_prefix="agent-local://lora_classifier",
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
@@ -741,7 +741,7 @@ def test_upload_agent_local_lora_v1_update_materializes_server_owned_refs(
         example_count=2,
         lora_delta_artifact_ref=plan.lora_delta_artifact_ref,
         classifier_head_delta_artifact_ref=plan.classifier_head_delta_artifact_ref,
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
     )
 
     uploaded = upload_agent_local_peft_encoder_update(
@@ -749,7 +749,7 @@ def test_upload_agent_local_lora_v1_update_materializes_server_owned_refs(
         update_payload=update_payload,
     )
 
-    assert uploaded.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert uploaded.delta_format == PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
     assert uploaded.lora_delta_artifact_ref is not None
     assert uploaded.classifier_head_delta_artifact_ref is not None
     assert uploaded.lora_delta_artifact_ref.startswith(AGGREGATION_ARTIFACT_REF_PREFIX)
@@ -782,7 +782,7 @@ def test_upload_agent_local_peft_update_materializes_server_owned_refs(
         update_id="update_round_0001_agent_01_test",
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         artifact_ref_prefix="agent-local://peft_classifier",
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
@@ -819,7 +819,7 @@ def test_upload_agent_local_peft_update_materializes_server_owned_refs(
         example_count=2,
         peft_adapter_delta_artifact_ref=plan.lora_delta_artifact_ref,
         classifier_head_delta_artifact_ref=plan.classifier_head_delta_artifact_ref,
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
     )
 
     uploaded = upload_agent_local_peft_encoder_update(
@@ -827,7 +827,7 @@ def test_upload_agent_local_peft_update_materializes_server_owned_refs(
         update_payload=update_payload,
     )
 
-    assert uploaded.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert uploaded.delta_format == PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
     assert uploaded.peft_adapter_delta_artifact_ref is not None
     assert uploaded.classifier_head_delta_artifact_ref is not None
     assert uploaded.peft_adapter_delta_artifact_ref.startswith(

@@ -13,9 +13,9 @@ from methods.adaptation.peft_text_classifier import (
     evaluation as peft_encoder_evaluation,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
-    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
+    PEFT_ENCODER_DELTA_FORMAT_INLINE,
+    PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.evaluation import (
@@ -347,7 +347,7 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 label: [0.01 * scale, 0.0] for label in labels
             },
             classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE,
             mean_confidence=0.8,
             delta_l2_norm=0.1 * scale,
         )
@@ -653,7 +653,7 @@ def _default_simulation_request(
 
 def _peft_objective_extras(
     *,
-    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    delta_format: str = PEFT_ENCODER_DELTA_FORMAT_INLINE,
 ) -> dict[str, str | int | float | bool]:
     return {
         "peft_classifier.backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
@@ -978,7 +978,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
                 **_peft_objective_extras(
-                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+                    delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
                 ),
             }
         ),
@@ -1008,7 +1008,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         update_id="update_test",
         training_task=training_task,
         client_id="agent_01",
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         artifact_ref_prefix="agent-local://peft_classifier",
         lora_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={
@@ -1029,7 +1029,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         classifier_head_delta_artifact_ref=(
             delta_plan.classifier_head_delta_artifact_ref
         ),
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
         mean_confidence=0.5,
         delta_l2_norm=0.2,
     )
@@ -1135,7 +1135,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+                delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
             ),
         ),
         validation_config=_default_validation_config(
@@ -1216,9 +1216,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     assert execution.query_ssl_algorithm_state is returned_algorithm_state
     assert "lora_config" not in trainer_calls[0]
     accepted_payload = server_runtime.accepted[0][2]
-    assert accepted_payload.delta_format == (
-        LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
-    )
+    assert accepted_payload.delta_format == (PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED)
     assert accepted_payload.peft_adapter_delta_artifact_ref.startswith(
         "aggregation_artifact::"
     )
@@ -1264,9 +1262,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
                 "scorer_backend_name": "peft_classifier_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
-                **_peft_objective_extras(
-                    delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
-                ),
+                **_peft_objective_extras(delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE),
             }
         ),
         selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 4}),
@@ -1304,7 +1300,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             "normal": [0.0, -0.1],
         },
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE,
         mean_confidence=0.5,
         delta_l2_norm=0.2,
     )
@@ -1472,7 +1468,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+                delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE
             ),
         ),
         validation_config=_default_validation_config(
@@ -2032,7 +2028,7 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
             training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+                delta_format=PEFT_ENCODER_DELTA_FORMAT_INLINE
             ),
         ),
         query_ssl_objective_config=FederatedQuerySslObjectiveConfig(
@@ -2460,7 +2456,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     )
     assert update_paths
     update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
-    assert update_payload["delta_format"] == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+    assert update_payload["delta_format"] == PEFT_ENCODER_DELTA_FORMAT_INLINE
     assert update_payload["peft_adapter_delta_artifact_ref"] is None
     assert update_payload["classifier_head_delta_artifact_ref"] is None
     assert update_payload["peft_parameter_deltas"]
@@ -2597,7 +2593,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
     update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
     assert update_payload["adapter_kind"] == "peft_classifier"
     assert update_payload["schema_version"] == "peft_classifier_delta.v2"
-    assert update_payload["delta_format"] == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+    assert update_payload["delta_format"] == PEFT_ENCODER_DELTA_FORMAT_INLINE
     assert update_payload["peft_parameter_deltas"]
     assert "lora_parameter_deltas" not in update_payload
     peft_aggregate_path = (

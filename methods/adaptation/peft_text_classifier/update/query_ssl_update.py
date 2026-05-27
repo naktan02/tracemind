@@ -21,7 +21,7 @@ from shared.src.contracts.training_contracts import ClientMetricKeys, TrainingTa
 from shared.src.domain.services.classification_report import safe_divide
 
 from ..config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    PEFT_ENCODER_DELTA_FORMAT_INLINE,
     PeftEncoderTrainingBackendConfig,
 )
 from ..training.delta_extraction import (
@@ -59,7 +59,7 @@ def build_query_ssl_peft_encoder_update_payload(
     classifier_head_bias_deltas: Mapping[str, float],
     partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
     created_at: datetime,
-    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+    delta_format: str = PEFT_ENCODER_DELTA_FORMAT_INLINE,
     lora_delta_artifact_ref: str | None = None,
     classifier_head_delta_artifact_ref: str | None = None,
     partitioned_deltas_artifact_ref: str | None = None,

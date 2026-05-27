@@ -31,9 +31,9 @@ LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE = "lora_classifier"
 PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE = "peft_classifier"
 LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "lora_classifier"
 PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND = "peft_classifier"
-LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
-LORA_CLASSIFIER_DELTA_FORMAT_INLINE = "inline_delta"
-LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED = "server_uploaded_artifact_ref"
+PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL = "agent_local_artifact_ref"
+PEFT_ENCODER_DELTA_FORMAT_INLINE = "inline_delta"
+PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED = "server_uploaded_artifact_ref"
 
 _STRING_CONFIG_KEYS = (
     "backbone_model_id",
@@ -85,7 +85,7 @@ class PeftEncoderTrainingBackendConfig:
     bias: str = "none"
     target_modules: str = "all-linear"
     use_rslora: bool = False
-    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
+    delta_format: str = PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL
     artifact_ref_prefix: str = "agent-local://peft_classifier"
     text_metadata_keys: tuple[str, ...] = (
         "strong_text",

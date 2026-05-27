@@ -23,9 +23,9 @@ def build_federated_local_training_service(
         build_shared_adapter_training_backend,
     )
     from methods.adaptation.peft_text_classifier.config import (
-        LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
         PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
+        PEFT_ENCODER_DELTA_FORMAT_INLINE,
     )
     from methods.adaptation.peft_text_classifier.training_backend import (
         PeftEncoderTrainingBackend,
@@ -47,7 +47,7 @@ def build_federated_local_training_service(
         if (
             isinstance(candidate_backend, PeftEncoderTrainingBackend)
             and candidate_backend.config.delta_format
-            == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
+            == PEFT_ENCODER_DELTA_FORMAT_INLINE
         ):
             backend = PeftEncoderTrainingBackend(
                 backend_name=candidate_backend.backend_name,

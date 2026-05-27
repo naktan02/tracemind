@@ -532,6 +532,9 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
         "class PeftEncoderTrainingBackendConfig:",
         'artifact_ref_prefix: str = "agent-local://peft_classifier"',
         "payload_adapter_kind: str = PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
+        "PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL",
+        "PEFT_ENCODER_DELTA_FORMAT_INLINE",
+        "PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED",
         "class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):",
         'artifact_ref_prefix: str = "agent-local://lora_classifier"',
         "payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
@@ -542,6 +545,9 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
         "PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
         "PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
         "def build_lora_classifier_training_backend_config(",
+        "LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL",
+        "LORA_CLASSIFIER_DELTA_FORMAT_INLINE",
+        "LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 

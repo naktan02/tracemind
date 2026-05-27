@@ -10,9 +10,9 @@ from dataclasses import dataclass
 from typing import Protocol
 
 from methods.adaptation.peft_text_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
-    LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
+    PEFT_ENCODER_DELTA_FORMAT_INLINE,
+    PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierDelta,
@@ -114,14 +114,14 @@ class PeftEncoderDeltaMaterializer:
         """delta_format에 맞게 PEFT encoder/classifier delta artifact ref를 준비한다."""
 
         normalized_delta_format = str(delta_format).strip()
-        if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_INLINE:
+        if normalized_delta_format == PEFT_ENCODER_DELTA_FORMAT_INLINE:
             return QuerySslPeftEncoderDeltaMaterialization(
                 delta_format=normalized_delta_format,
                 lora_delta_artifact_ref=None,
                 classifier_head_delta_artifact_ref=None,
                 include_inline_deltas=True,
             )
-        if normalized_delta_format == LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL:
+        if normalized_delta_format == PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL:
             if artifact_ref_prefix is None or not artifact_ref_prefix.strip():
                 raise ValueError(
                     "delta_format=agent_local requires artifact_ref_prefix."
@@ -141,7 +141,7 @@ class PeftEncoderDeltaMaterializer:
                 partitioned_deltas=partitioned_deltas,
                 materialize_primary_deltas=materialize_primary_deltas,
             )
-        if normalized_delta_format != LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED:
+        if normalized_delta_format != PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED:
             raise ValueError(
                 "Unsupported Query SSL PEFT encoder delta_format: "
                 f"{normalized_delta_format!r}."
@@ -229,7 +229,7 @@ class PeftEncoderDeltaMaterializer:
                 ),
             )
         return QuerySslPeftEncoderDeltaMaterialization(
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_AGENT_LOCAL,
             lora_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,
             include_inline_deltas=False,
@@ -307,7 +307,7 @@ class PeftEncoderDeltaMaterializer:
                 metadata=metadata,
             )
         return QuerySslPeftEncoderDeltaMaterialization(
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
             lora_delta_artifact_ref=lora_delta_ref,
             classifier_head_delta_artifact_ref=head_delta_ref,
             include_inline_deltas=False,
@@ -359,7 +359,7 @@ def upload_agent_local_peft_encoder_update(
         )
     if not update_fields:
         return update_payload
-    update_fields["delta_format"] = LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    update_fields["delta_format"] = PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
     return update_payload.model_copy(update=update_fields)
 
 

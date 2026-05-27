@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 
 from methods.adaptation.peft_text_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
@@ -80,7 +80,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
         lora_config=PeftEncoderTrainingBackendConfig(
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
         ),
         labels=("anxiety", "normal"),
         labeled_rows=[_row("l1", "anxiety")],
@@ -104,7 +104,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
         },
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
         created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
         lora_delta_artifact_ref="aggregation_artifact::round_0001/agent_01/peft",
         classifier_head_delta_artifact_ref=(
             "aggregation_artifact::round_0001/agent_01/head"
@@ -114,7 +114,7 @@ def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline()
 
     payload = result.update_payload
     assert isinstance(payload, PeftClassifierDelta)
-    assert payload.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
+    assert payload.delta_format == PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED
     assert payload.peft_adapter_delta_artifact_ref == (
         "aggregation_artifact::round_0001/agent_01/peft"
     )
@@ -160,6 +160,6 @@ def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode()
             },
             classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
             created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
-            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+            delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
             include_inline_deltas=False,
         )

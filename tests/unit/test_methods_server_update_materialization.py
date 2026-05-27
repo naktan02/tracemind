@@ -7,7 +7,7 @@ from datetime import datetime, timezone
 import pytest
 
 from methods.adaptation.peft_text_classifier.config import (
-    LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
 )
 from methods.adaptation.server_update_materialization import (
     require_server_materializable_update_payload,
@@ -69,7 +69,7 @@ def test_lora_materialization_allows_server_owned_refs_without_inline_delta() ->
         classifier_head_delta_artifact_ref=(
             "aggregation_artifact::agent_001/classifier_head_delta"
         ),
-        delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+        delta_format=PEFT_ENCODER_DELTA_FORMAT_SERVER_UPLOADED,
     )
 
     require_server_materializable_update_payload(payload)
