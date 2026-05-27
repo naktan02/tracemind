@@ -553,6 +553,28 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
     )
 
 
+def test_peft_training_backend_marks_legacy_lora_factories() -> None:
+    path = PEFT_TEXT_CLASSIFIER_SRC / "training_backend.py"
+    source = path.read_text(encoding="utf-8")
+    required_snippets = (
+        "def from_legacy_lora_objective_config(",
+        "def build_legacy_lora_classifier_training_backend(",
+    )
+    forbidden_snippets = (
+        "def from_objective_config(",
+        "def build_lora_classifier_training_backend(",
+    )
+    missing = [snippet for snippet in required_snippets if snippet not in source]
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not missing and not violations, (
+        "PEFT training backend의 v1 lora_classifier_trainer 경로는 legacy "
+        "compatibility factory 이름으로 드러나야 한다. active PEFT factory처럼 "
+        "보이는 generic/lora 이름을 다시 만들지 않는다.\n"
+        f"missing={missing}\nviolations={violations}"
+    )
+
+
 def test_peft_method_modules_use_canonical_config_type_name() -> None:
     allowed_paths = {
         Path("methods/adaptation/peft_text_classifier/config.py"),

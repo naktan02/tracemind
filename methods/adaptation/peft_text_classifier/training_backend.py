@@ -115,10 +115,12 @@ class PeftEncoderTrainingBackend:
     train_executor: PeftEncoderTrainExecutor | None = None
 
     @classmethod
-    def from_objective_config(
+    def from_legacy_lora_objective_config(
         cls,
         objective_config: TrainingObjectiveConfig | None,
     ) -> "PeftEncoderTrainingBackend":
+        """v1 lora_classifier_trainer registry alias용 backend를 만든다."""
+
         return cls(
             backend_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
             payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
@@ -234,12 +236,14 @@ def build_peft_encoder_client_metrics(
     "lora_classifier_trainer",
     catalog_entry=LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY,
 )
-def build_lora_classifier_training_backend(
+def build_legacy_lora_classifier_training_backend(
     objective_config: TrainingObjectiveConfig | None,
 ) -> PeftEncoderTrainingBackend:
     """registry용 legacy LoRA-classifier training backend factory."""
 
-    return PeftEncoderTrainingBackend.from_objective_config(objective_config)
+    return PeftEncoderTrainingBackend.from_legacy_lora_objective_config(
+        objective_config
+    )
 
 
 @register_shared_adapter_training_backend(

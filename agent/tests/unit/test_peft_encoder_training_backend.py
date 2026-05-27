@@ -235,8 +235,8 @@ def _example(
     )
 
 
-def test_peft_encoder_backend_builds_artifact_ref_update_without_text() -> None:
-    backend = PeftEncoderTrainingBackend.from_objective_config(
+def test_legacy_lora_backend_builds_artifact_ref_update_without_text() -> None:
+    backend = PeftEncoderTrainingBackend.from_legacy_lora_objective_config(
         TrainingObjectiveConfig(
             training_backend_name="lora_classifier_trainer",
             extras={
