@@ -84,29 +84,6 @@ def write_peft_encoder_projection_artifacts(
     }
 
 
-def write_lora_classifier_projection_artifacts(
-    *,
-    model: Any,
-    eval_loaders: Mapping[str, Any] | None,
-    categories: list[str],
-    device: str,
-    projection_dir: Path,
-    seed: int,
-    schema_version: str,
-) -> dict[str, Any] | None:
-    """legacy 호출부를 위한 PEFT encoder projection writer alias."""
-
-    return write_peft_encoder_projection_artifacts(
-        model=model,
-        eval_loaders=eval_loaders,
-        categories=categories,
-        device=device,
-        projection_dir=projection_dir,
-        seed=seed,
-        schema_version=schema_version,
-    )
-
-
 def _build_dataset_projection(
     *,
     model: Any,

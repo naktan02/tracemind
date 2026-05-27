@@ -637,6 +637,25 @@ def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None
     )
 
 
+def test_peft_projection_artifacts_do_not_keep_lora_classifier_aliases() -> None:
+    script_shim_path = SCRIPTS_SRC / "experiments" / "lora_classifier_projection.py"
+    projection_writer_path = (
+        METHODS_SRC / "adaptation" / "peft_text_classifier" / "projection_artifacts.py"
+    )
+    source = projection_writer_path.read_text(encoding="utf-8")
+
+    assert not script_shim_path.exists(), (
+        "scripts는 PEFT projection writer의 legacy lora_classifier alias shim을 "
+        "소유하지 않는다. 실행 표면은 conf-declared runtime adapter나 methods core를 "
+        "직접 호출한다."
+    )
+    assert "write_lora_classifier_projection_artifacts" not in source, (
+        "PEFT projection artifact writer는 canonical "
+        "write_peft_encoder_projection_artifacts만 제공한다. legacy "
+        "lora_classifier alias를 재도입하지 않는다."
+    )
+
+
 def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> None:
     fixture_path = TEST_FIXTURES_SRC / "federated_ssl_dummy_method.py"
     imports = _collect_absolute_imports(fixture_path)
