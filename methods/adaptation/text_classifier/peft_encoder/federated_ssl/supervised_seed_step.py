@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.query_text_views.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )

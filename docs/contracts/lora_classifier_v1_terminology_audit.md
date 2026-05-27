@@ -40,7 +40,7 @@ Hydra runtime config, report verifier, artifact path, 기존 run fixture가 이 
 | PEFT encoder aggregation/state projection | `methods/adaptation/text_classifier/aggregation/` |
 | LoRA/RSLoRA adapter mechanism | `methods/adaptation/peft_adapters/` |
 | FedMatch method semantics | `methods/federated_ssl/fedmatch/` |
-| Query row/view/token-batch glue | `methods/adaptation/query_classifier_adaptation/` |
+| Query row/view/token-batch glue | `methods/adaptation/query_text_views/` |
 
 `methods/adaptation/lora_classifier/**`는 direct-file compatibility shim만 남긴다.
 새 business logic, source-of-truth constant, method/runtime policy를 추가하지 않는다.

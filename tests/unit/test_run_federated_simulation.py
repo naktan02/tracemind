@@ -9,7 +9,7 @@ from pathlib import Path
 
 import pytest
 
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
 )

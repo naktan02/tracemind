@@ -55,8 +55,8 @@ TEXT_CLASSIFIER_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "text_classifier"
 TEXT_CLASSIFIER_AGGREGATION_SRC = TEXT_CLASSIFIER_ADAPTATION_SRC / "aggregation"
 CLASSIFICATION_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "classification"
 PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
-LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC = (
-    AGENT_SRC / "services" / "training" / "query_classifier_adaptation"
+LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
+    AGENT_SRC / "services" / "training" / "query_text_views"
 )
 
 TEMPORARY_MAIN_SERVER_AGENT_IMPORT_EXCEPTIONS: set[Path] = set()
@@ -336,22 +336,31 @@ def test_methods_layer_does_not_import_runtime_or_research_layers() -> None:
     assert not violations, _format_violations(violations)
 
 
-def test_query_classifier_adaptation_core_stays_in_methods_layer() -> None:
+def test_query_text_views_core_stays_in_methods_layer() -> None:
     existing_paths = [
         _relative_repo_path(path)
-        for path in _iter_python_files(LEGACY_AGENT_QUERY_CLASSIFIER_ADAPTATION_SRC)
+        for path in _iter_python_files(LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC)
     ]
     assert not existing_paths, (
-        "query classifier adaptation 학습 scaffold는 "
-        "methods/adaptation/query_classifier_adaptation에 둔다. "
+        "query text view/token-batch glue는 "
+        "methods/adaptation/query_text_views에 둔다. "
         "agent는 local runtime/API와 private state만 소유한다. "
         f"legacy paths={sorted(str(path) for path in existing_paths)}"
     )
 
 
-def test_query_classifier_adaptation_stays_input_glue_only() -> None:
+def test_legacy_query_classifier_adaptation_package_is_removed() -> None:
+    legacy_root = METHODS_SRC / "adaptation" / "query_classifier_adaptation"
+    assert not legacy_root.exists(), (
+        "query input/view glue의 canonical package는 "
+        "methods/adaptation/query_text_views다. legacy "
+        "methods/adaptation/query_classifier_adaptation package를 다시 만들지 않는다."
+    )
+
+
+def test_query_text_views_stays_input_glue_only() -> None:
     violations = _find_forbidden_imports(
-        root=METHODS_SRC / "adaptation" / "query_classifier_adaptation",
+        root=METHODS_SRC / "adaptation" / "query_text_views",
         forbidden_prefixes=(
             "methods.adaptation.lora_classifier",
             "methods.adaptation.text_classifier.peft_encoder",
@@ -363,7 +372,7 @@ def test_query_classifier_adaptation_stays_input_glue_only() -> None:
     )
 
     assert not violations, (
-        "query_classifier_adaptation은 query-domain row/view/token-batch 입력 glue만 "
+        "query_text_views는 query-domain row/view/token-batch 입력 glue만 "
         "소유한다. PEFT model composition, shared update payload, adapter-family "
         "materialization은 각 canonical owner에 둔다.\n"
         f"{_format_violations(violations)}"
@@ -1431,7 +1440,7 @@ def test_privacy_guards_stay_runtime_and_objective_agnostic() -> None:
             "methods.federated_ssl.fedmatch",
             "methods.adaptation.text_classifier",
             "methods.adaptation.lora_classifier",
-            "methods.adaptation.query_classifier_adaptation",
+            "methods.adaptation.query_text_views",
         ),
     )
 

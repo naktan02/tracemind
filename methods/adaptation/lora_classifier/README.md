@@ -102,7 +102,7 @@ migration 전까지 유지한다.
 범위 밖:
 
 - raw query row 로딩과 tokenizer batch 생성 glue는 현재
-  `methods/adaptation/query_classifier_adaptation/data.py`에 남긴다.
+  `methods/adaptation/query_text_views/data.py`에 남긴다.
 - agent-local query buffer 접근, payload 저장, upload, secure codec은 `agent`가
   소유한다.
 - LoRA/RSLoRA adapter builder 자체는 `methods/adaptation/peft_adapters/`가

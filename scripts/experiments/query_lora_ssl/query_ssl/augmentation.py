@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     attach_usb_multiview_candidate_pair,
     rows_have_usb_multiview_candidates,
     validate_usb_multiview_candidate_rows,

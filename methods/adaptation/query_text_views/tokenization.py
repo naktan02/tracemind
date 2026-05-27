@@ -1,4 +1,4 @@
-"""Query classifier text tokenization cache와 padding helper."""
+"""Query text tokenization cache와 padding helper."""
 
 from __future__ import annotations
 
@@ -10,9 +10,7 @@ import torch
 
 from methods.common.runtime_resources import RuntimeResourceCache
 
-TEXT_TOKENIZATION_CACHE_RESOURCE_KEY = (
-    "query_classifier_adaptation:text_tokenization_cache:v1"
-)
+TEXT_TOKENIZATION_CACHE_RESOURCE_KEY = "query_text_views:text_tokenization_cache:v1"
 
 
 @dataclass(frozen=True, slots=True)

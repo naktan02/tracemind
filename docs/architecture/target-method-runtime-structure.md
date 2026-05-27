@@ -207,8 +207,8 @@ Adapter 뒤로 옮긴다.
   `methods/classification/linear_head`로 정한다.
 - `methods/adaptation/text_classifier/peft_encoder`의 canonical 이름을
   `methods/adaptation/peft_text_classifier`로 전환한다.
-- `methods/adaptation/query_classifier_adaptation`은 `query_text_views`로 바꿔
-  input/view glue 역할을 이름에 드러낸다.
+- `methods/adaptation/query_text_views`는 text query input/view glue 역할만
+  소유한다.
 - `lora_classifier` shim은 v1 compatibility package로 축소한다.
 
 ### 4단계: scripts 분기 제거

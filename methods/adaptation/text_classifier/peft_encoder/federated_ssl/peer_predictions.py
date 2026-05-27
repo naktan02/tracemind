@@ -11,7 +11,7 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from methods.adaptation.query_classifier_adaptation.data import build_weak_dataloader
+from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LoraClassifierTrainingBackendConfig,
 )

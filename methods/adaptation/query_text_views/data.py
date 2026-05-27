@@ -8,7 +8,7 @@ from typing import Any
 import torch
 from torch.utils.data import DataLoader, Dataset
 
-from methods.adaptation.query_classifier_adaptation.tokenization import (
+from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
     encode_texts,
 )

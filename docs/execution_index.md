@@ -66,7 +66,7 @@ Seed / central SSL:
 7. `scripts/experiments/query_lora_ssl/*`
 8. `methods/adaptation/text_classifier/peft_encoder/*`
 9. `methods/evaluation/*`
-10. `methods/adaptation/query_classifier_adaptation/*`
+10. `methods/adaptation/query_text_views/*`
 11. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
 12. `methods/ssl/*`
 13. `methods/adaptation/*`

@@ -10,10 +10,10 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     build_dataloader as build_query_lora_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     build_label_index as build_query_lora_label_index,
 )
 from methods.adaptation.text_classifier.peft_encoder.training.loops import (

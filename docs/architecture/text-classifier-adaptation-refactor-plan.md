@@ -122,7 +122,7 @@ methods/adaptation/
   diagonal_scale/
   privacy_guards/
   local_objective_regularizers/
-  query_classifier_adaptation/
+  query_text_views/
 ```
 
 `peft_encoder/`는 순수 encoder만 뜻하지 않는다. 이 폴더는

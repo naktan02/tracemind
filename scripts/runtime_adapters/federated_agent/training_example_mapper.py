@@ -6,7 +6,7 @@ from collections.abc import Callable, Mapping
 from datetime import datetime
 from typing import Any
 
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     resolve_query_strong_text,
     resolve_query_weak_text,
 )

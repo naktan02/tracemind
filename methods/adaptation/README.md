@@ -24,8 +24,8 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
   호환성을 위한 legacy shim package
 - `text_classifier/`: text classifier task family의 장기 목표 adaptation 구조.
   `peft_encoder/`, aggregation projection 경계를 분리한다.
-- `query_classifier_adaptation/`: query-domain LoRA/classifier 중앙 실험의
-  token-batch 입력 glue와 weak/strong view row 해석 helper
+- `query_text_views/`: query-domain text row/view의 token-batch 입력 glue와
+  weak/strong view row 해석 helper
 
 rank, alpha, target module 같은 실행 파라미터는 code folder가 아니라 config에서
 선택한다.

@@ -2,16 +2,16 @@
 
 from __future__ import annotations
 
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     TextMultiviewDataset,
     TextWeakDataset,
     build_multiview_dataloader,
     build_weak_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.query_ssl_views import (
+from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.tokenization import (
+from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

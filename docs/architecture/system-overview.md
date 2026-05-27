@@ -140,7 +140,7 @@ Reddit Labeled Data
 | LoRA supervised entrypoint | `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py` |
 | LoRA SSL entrypoint | `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py` |
 | 중앙/FL 공통 LoRA SSL harness | `scripts/experiments/query_lora_ssl/*` |
-| trainer core | `methods/adaptation/query_classifier_adaptation/*`, `methods/ssl/*`, `methods/adaptation/*` |
+| trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
 | query buffer repository | `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | query buffer selection | `agent/src/services/training/selection/query_buffer_selection_service.py` |

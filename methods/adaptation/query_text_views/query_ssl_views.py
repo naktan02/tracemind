@@ -5,14 +5,14 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     build_multiview_dataloader,
     build_weak_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.tokenization import (
+from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
 )
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     USB_WEAK_BUILDER_NAME,
 )

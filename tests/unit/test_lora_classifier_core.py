@@ -405,10 +405,10 @@ def test_query_ssl_training_resume_checkpoint_continues_remaining_steps(
     assert len(resumed_history) == 3
 
 
-def test_query_classifier_adaptation_paths_do_not_keep_compatibility_shims() -> None:
+def test_query_text_views_paths_do_not_keep_compatibility_shims() -> None:
     from pathlib import Path
 
-    package_root = Path("methods/adaptation/query_classifier_adaptation")
+    package_root = Path("methods/adaptation/query_text_views")
 
     assert not (package_root / "modeling.py").exists()
     assert not (package_root / "training.py").exists()

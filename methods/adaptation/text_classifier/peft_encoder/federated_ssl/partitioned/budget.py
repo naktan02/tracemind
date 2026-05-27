@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from math import ceil
 
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     LOCAL_BUDGET_POLICY_ITERATION_CAPPED,
     LOCAL_BUDGET_POLICY_LABELED_ANCHORED,
     LOCAL_BUDGET_POLICY_ORIGINAL_METHOD,

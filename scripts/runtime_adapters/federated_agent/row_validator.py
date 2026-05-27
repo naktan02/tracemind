@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     row_supports_weak_strong_pair,
 )
 

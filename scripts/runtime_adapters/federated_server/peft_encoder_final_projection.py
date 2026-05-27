@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from methods.adaptation.query_classifier_adaptation.data import build_dataloader
+from methods.adaptation.query_text_views.data import build_dataloader
 from methods.adaptation.text_classifier.peft_encoder.evaluation import (
     require_peft_encoder_state,
 )

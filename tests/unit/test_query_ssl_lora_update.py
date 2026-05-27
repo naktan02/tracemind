@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (

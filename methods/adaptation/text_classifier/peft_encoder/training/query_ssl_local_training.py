@@ -9,21 +9,21 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     build_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
     build_query_ssl_local_step_plan,
 )
-from methods.adaptation.query_classifier_adaptation.query_ssl_views import (
+from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.tokenization import (
+from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
     resolve_text_tokenization_cache,
 )
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     validate_query_ssl_unlabeled_views,
 )
 from methods.adaptation.text_classifier.peft_encoder.config import (

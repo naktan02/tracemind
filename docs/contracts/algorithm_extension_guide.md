@@ -28,7 +28,7 @@
 |---|---|---|---|---|
 | SSL objective | `methods/ssl/*` | `scripts/experiments/*`, agent runtime 필요 시 adapter | `conf/strategy_axes/ssl/*` | `tests/unit`, `tests/integration` |
 | Pseudo-label selection | `methods/ssl/hooks/*` | agent acceptance/selection adapter, scripts control runner | `conf/strategy_axes/ssl/pseudo_label_selection/*` | selection unit, central control smoke |
-| Query SSL adaptation | `methods/adaptation/query_classifier_adaptation/*` | scripts central SSL runners | `conf/entrypoints/central_ssl_control/*` | trainer smoke, artifact metadata |
+| Query SSL adaptation | `methods/adaptation/query_text_views/*` | scripts central SSL runners | `conf/entrypoints/central_ssl_control/*` | trainer smoke, artifact metadata |
 | PEFT adapter | `methods/adaptation/*` | scripts trainer, future agent adapter | `conf/strategy_axes/adaptation/*` | adapter builder unit |
 | Prototype building | `methods/prototype/building/*` | scripts prototype CLI, main_server publication adapter | `conf/strategy_axes/prototype/*` | builder unit, publication integration |
 | Prototype scoring/evidence | `methods/prototype/scoring/*`, `methods/prototype/evidence/*` | agent scoring/evidence backends, scripts analysis | training objective config | scoring/evidence unit |

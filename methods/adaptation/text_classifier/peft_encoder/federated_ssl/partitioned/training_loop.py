@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     QuerySslLocalStepPlan,
 )
 from methods.federated_ssl.local_objective import (

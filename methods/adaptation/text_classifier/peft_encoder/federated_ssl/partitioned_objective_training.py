@@ -9,17 +9,17 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
-from methods.adaptation.query_classifier_adaptation.data import (
+from methods.adaptation.query_text_views.data import (
     build_dataloader,
     build_multiview_dataloader,
 )
-from methods.adaptation.query_classifier_adaptation.local_training_budget import (
+from methods.adaptation.query_text_views.local_training_budget import (
     LOCAL_BUDGET_POLICY_ORIGINAL_METHOD,
 )
-from methods.adaptation.query_classifier_adaptation.tokenization import (
+from methods.adaptation.query_text_views.tokenization import (
     resolve_text_tokenization_cache,
 )
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
 )

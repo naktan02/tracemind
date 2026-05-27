@@ -6,7 +6,7 @@ import json
 from collections.abc import Callable, Sequence
 from pathlib import Path
 
-from methods.adaptation.query_classifier_adaptation.view_rows import (
+from methods.adaptation.query_text_views.view_rows import (
     QuerySslBacktranslationPair,
     attach_usb_multiview_candidate_pair,
     validate_usb_multiview_candidate_rows,
