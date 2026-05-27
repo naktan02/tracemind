@@ -85,17 +85,10 @@ descriptor = FederatedSslMethodDescriptor(
     ),
     recipe=FederatedSslMethodRecipe(
         method_name=FEDMATCH_METHOD_NAME,
-        supported_local_update_profile_names=(
-            "peft_pseudo_label_v1",
-            "lora_pseudo_label_v1",
-        ),
+        supported_local_update_profile_names=("peft_pseudo_label_v1",),
         supported_runtime_pairs=(
             FederatedSslRuntimePair(
                 adapter_family_name="peft_classifier",
-                aggregation_backend_name="fedavg",
-            ),
-            FederatedSslRuntimePair(
-                adapter_family_name="lora_classifier",
                 aggregation_backend_name="fedavg",
             ),
         ),

@@ -112,9 +112,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - LoRA-classifier backbone/LoRA 세부 값은
     `strategy_axes/adaptation/transformer_backbone`과
     `strategy_axes/adaptation/peft_adapter`에서 온다.
-  - target 구조에서는 `adapter_family_name=lora_classifier`를
-    `update_family_name=peft_text_classifier` compatibility alias로 축소하고,
-    prototype은 adapter가 아니라 `prototype_pack` update family로 표현한다.
+  - target 구조에서는 active config leaf가 `adapter_family_name=peft_classifier`
+    + `update_family_name=peft_text_classifier`를 사용한다. `lora_classifier`는
+    old-run artifact/report compatibility reader에서만 해석하고, prototype은
+    adapter가 아니라 `prototype_pack` update family로 표현한다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.

@@ -77,12 +77,12 @@ central fixed embedding + classifier seed
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled pool selection policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
 | Labeled exposure policy | `shared_client_seed` 기본, `client_local_split` legacy/ablation, `server_only_seed` artifact/request metadata | `strategy_axes/fl/labeled_exposure_policy` + materialized manifest metadata | separates how many labeled rows are selected from where selected labeled rows are visible | simulation capability |
-| Validation evaluator | `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/peft_text_classifier/evaluation.py` | FL SSL simulation |
+| Validation evaluator | `peft_classifier_eval` (`lora_classifier_eval`은 old-run compatibility reader) | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/peft_text_classifier/evaluation.py` | FL SSL simulation |
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, config-declared runtime adapter executor | simulation active; `supervised_seed_step` implementation is a PEFT encoder runtime adapter, not script-owned policy logic |
-| Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, adapter-family server update resolver | merged FedAvg active, partitioned LoRA `partitioned_delta_average` simulation active |
-| Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and LoRA helper weak-probability provider active |
+| Server update policy | `fedavg_merged_delta`, `fedmatch_partitioned` | `strategy_axes/fl/server_update_policy` | `methods/federated_ssl/capability_axes.py`, compatibility validator, adapter-family server update resolver | merged FedAvg active, partitioned PEFT-classifier update simulation active |
+| Peer context policy | `none`, `fixed_probe_output_knn` (`prediction_similarity_topk` legacy alias) | `strategy_axes/fl/peer_context_policy` | `methods/federated_ssl/capability_plan.py`, simulation peer-context adapter, `methods/federated_ssl/peer_context.py` | `none` active, KDTree 우선 fixed-probe nearest-neighbor helper context selection and PEFT classifier helper weak-probability provider active |
 | Peer probe surface | `label_balanced`, max 128 rows | `peer_probe.*` in FL simulation entrypoint | simulation fixed text probe selector + report protocol metadata | active for `fixed_probe_output_knn` helper selection |
 | Update partition policy | `unified`, `partitioned` | `strategy_axes/fl/update_partition_policy` | common capability + method/adaptation partition helpers | `unified` active, `partitioned` method-gated |
 | Local SSL policy | `profile_pseudo_label`, `fixmatch`, `flexmatch`, `freematch`, `adamatch`, `pseudolabel`, `fedmatch_agreement` | `strategy_axes/fl/local_ssl_policy` + `strategy_axes/ssl/consistency_method` | `methods/federated_ssl/capability_axes.py`, `methods/ssl/algorithms/*`, method-local objective | Query SSL-backed policies active in manual mode, FedMatch agreement active in method-owned slice |
@@ -90,9 +90,9 @@ central fixed embedding + classifier seed
 | Query multiview source | `materialized_rows`, `agent_generated_or_cached` | `strategy_axes/fl/query_multiview_source` | materialized JSONL rows now, live agent source later | materialized active, live planned |
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
-| FL local-update profile | `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | LoRA-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
+| FL local-update profile | `peft_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | PEFT-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
-| Adapter family | `classifier_head`, `lora_classifier`, `peft_classifier`; `diagonal_scale`는 v1 compatibility | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
+| Adapter family | `classifier_head`, `peft_classifier`; `lora_classifier`/`diagonal_scale`는 v1 compatibility | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_classifier/training/` | simulation |
 | Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
@@ -197,11 +197,11 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - `lora_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, split, seed, metric을 고정한다.
-- Agent `lora_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
+- Agent `peft_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
   source row metadata 또는 translated text에서 agent-local raw text를 읽고,
   shared update payload에는 raw text 없이 LoRA/classifier artifact ref와 통계만 남긴다.
   live stored-event runtime translation은 raw text 저장 경계가 정리될 때까지 2차 범위다.
-- LoRA-classifier FedAvg 경로는 inline LoRA parameter delta와 classifier-head
+- PEFT-classifier FedAvg 경로는 inline PEFT adapter delta와 classifier-head
   delta의 FedAvg shape/version을 methods-owned core로 검증한다. Server-owned
   `aggregation_artifact::` JSON artifact-ref update는 main_server가 제공한 loader로
   materialize한다. client는 base revision 기준 delta를 보내고, 서버는
@@ -209,15 +209,15 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   저장한다. `agent-local://` ref는 upload 경로가 붙기 전까지 거부한다.
 - FL simulation 기본 조합은 `composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
-  `local_update_profile=lora_pseudo_label_v1`,
-  `round_runtime.adapter_family_name=lora_classifier`,
+  `local_update_profile=peft_pseudo_label_v1`,
+  `round_runtime.adapter_family_name=peft_classifier`,
   `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` /
   prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
   다시 필요해질 때 method-owned capability로 추가한다. 이 조합은
   `strategy_axes/fl/method_descriptor`를 compose하지 않는다.
-- 기본 manual LoRA-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
+- 기본 manual PEFT-classifier simulation 경로는 `query_ssl_method.algorithm_name`으로
   `methods/ssl/algorithms/*`를 resolve하고, client별 `labeled_rows`와
-  `unlabeled_rows`로 실제 PEFT LoRA/classifier local optimizer를 실행한다.
+  `unlabeled_rows`로 실제 PEFT adapter/classifier local optimizer를 실행한다.
   update는 server-owned uploaded artifact ref로 제출된다. 실제 step 수는
   `min(training_task.max_steps, training_task.local_epochs * full_epoch_steps)`이며,
   `training_task.batch_size`와 `query_ssl_method.unlabeled_batch_size`가

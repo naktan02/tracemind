@@ -10,7 +10,8 @@ training_backend_name: peft_classifier_trainer
 confidence_threshold: 0.6
 margin_threshold: 0.02
 # selection 경로도 canonical PEFT-classifier family 이름을 기록한다.
-# LoRA 전용 이름은 lora_pseudo_label_v1 legacy profile에만 남긴다.
+# LoRA 전용 local update profile leaf는 제거했고, old-run reader compatibility는
+# artifact/report loader 계층에서만 다룬다.
 example_generation_backend_name: peft_classifier_raw_rows
 evidence_backend_name: peft_classifier_logits
 scorer_backend_name: peft_classifier_logits

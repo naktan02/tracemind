@@ -143,13 +143,11 @@ def test_fedmatch_descriptor_prefers_peft_classifier_recipe_surface() -> None:
     assert descriptor.recipe is not None
     assert descriptor.recipe.supported_local_update_profile_names == (
         "peft_pseudo_label_v1",
-        "lora_pseudo_label_v1",
     )
     assert [
         pair.normalized_key for pair in descriptor.recipe.supported_runtime_pairs
     ] == [
         ("peft_classifier", "fedavg"),
-        ("lora_classifier", "fedavg"),
     ]
 
 

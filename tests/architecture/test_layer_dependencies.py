@@ -411,6 +411,34 @@ def test_fl_local_update_profiles_do_not_keep_python_mapping_catalog() -> None:
     )
 
 
+def test_fl_local_update_profiles_do_not_keep_lora_classifier_leaf() -> None:
+    profile_root = CONF_SRC / "strategy_axes" / "fl" / "local_update_profile"
+    forbidden_path = profile_root / "lora_pseudo_label_v1.yaml"
+    assert not forbidden_path.exists(), (
+        "active FL local update profile leaf는 peft_pseudo_label_v1을 사용한다. "
+        "lora_pseudo_label_v1은 old-run artifact/report reader compatibility "
+        "표면으로만 남기고 Hydra 실행 profile로 되살리지 않는다."
+    )
+
+
+def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
+    path = CONF_SRC / "entrypoints" / "fl_ssl" / "run_federated_simulation.yaml"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "round_runtime.lora_classifier",
+        "training_task.objective.lora_classifier",
+        "artifact_ref_prefix: agent-local://lora_classifier",
+        "lora_pseudo_label_v1",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    assert not violations, (
+        "FL simulation entrypoint는 현재 실행 조합만 소유한다. lora_classifier "
+        "runtime scope와 legacy profile leaf는 old-run reader compatibility에 "
+        "격리하고 root Hydra entrypoint에 다시 복제하지 않는다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

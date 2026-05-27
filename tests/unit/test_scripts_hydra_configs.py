@@ -1109,7 +1109,6 @@ def test_fedmatch_local_budget_policy_can_select_original_method() -> None:
     "profile_name",
     [
         "peft_pseudo_label_v1",
-        "lora_pseudo_label_v1",
     ],
 )
 def test_federated_simulation_local_update_profile_is_hydra_source_of_truth(
@@ -1222,7 +1221,7 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
                 "fl_method.composition_mode=manual",
                 "strategy_axes/fl/shard_policy=dirichlet_alpha03",
                 "strategy_axes/ssl/consistency_method=flexmatch_usb_v1",
-                "round_runtime.adapter_family_name=lora_classifier",
+                "round_runtime.adapter_family_name=peft_classifier",
                 "round_runtime.aggregation_backend_name=fedavg",
                 "fl_data.source_mode=materialized_client_split",
                 f"fl_data.split_manifest={split_manifest}",
@@ -1240,7 +1239,7 @@ def test_federated_simulation_shared_seed_flexmatch_reduced_command_shape() -> N
     assert cfg.shard_policy.alpha == 0.3
     assert cfg.query_ssl_method.name == "flexmatch_usb_v1"
     assert cfg.query_ssl_method.algorithm_name == "flexmatch"
-    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.fl_data.source_mode == "materialized_client_split"
     assert cfg.fl_data.split_manifest == split_manifest
@@ -1330,8 +1329,7 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
             config_name="entrypoints/fl_ssl/run_federated_simulation",
             overrides=[
                 "fl_method.composition_mode=manual",
-                "strategy_axes/fl/local_update_profile=lora_pseudo_label_v1",
-                "round_runtime.adapter_family_name=lora_classifier",
+                "round_runtime.adapter_family_name=peft_classifier",
                 "round_runtime.aggregation_backend_name=fedavg",
             ],
         )
@@ -1345,8 +1343,8 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
         method_descriptor=None,
     )
 
-    assert cfg.local_update_profile.algorithm_profile_name == "lora_pseudo_label_v1"
-    assert cfg.round_runtime.adapter_family_name == "lora_classifier"
+    assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
+    assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert plan.method_name == "manual"
     assert plan.execution_role == "manual_baseline"
