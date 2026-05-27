@@ -12,7 +12,7 @@ from methods.adaptation.peft_text_classifier.resource_cache import (
     clear_peft_encoder_transient_resource_cache,
 )
 from methods.adaptation.peft_text_classifier.runtime_family import (
-    is_peft_encoder_adapter_family,
+    is_peft_encoder_update_family,
 )
 from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     server_owned_peft_encoder_update_artifact_byte_count,
@@ -93,8 +93,8 @@ def _supports_method_owned_peft_encoder_client_training(
 ) -> bool:
     return (
         request.ssl_method_config is not None
-        and is_peft_encoder_adapter_family(
-            request.round_runtime_config.adapter_family_name
+        and is_peft_encoder_update_family(
+            request.round_runtime_config.update_family_name
         )
         and request.round_runtime_config.runtime_payload_for_update_family() is not None
     )

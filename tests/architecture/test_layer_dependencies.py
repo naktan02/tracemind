@@ -530,6 +530,38 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
     )
 
 
+def test_peft_runtime_bridges_use_update_family_for_support_checks() -> None:
+    checked_paths = (
+        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "peft_encoder_method_owned_client_round.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "peft_encoder_query_ssl_client_round.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_server_step.py",
+    )
+    forbidden_snippets = (
+        "is_peft_encoder_adapter_family",
+        "round_runtime_config.adapter_family_name",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "PEFT runtime bridge의 지원 여부와 payload 선택은 update_family_name 기준이다. "
+        "adapter_family_name은 shared contract/aggregation compatibility 표면에만 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
     checked_paths = (
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "runtime.py",

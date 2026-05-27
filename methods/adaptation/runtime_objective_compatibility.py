@@ -73,10 +73,9 @@ def require_adapter_runtime_matches_objective(
     if validator is None:
         return
     if runtime_config is None:
-        runtime_field_name = normalized_adapter_kind.replace("-", "_")
         raise ValueError(
             f"{normalized_adapter_kind} round runtime requires "
-            f"{runtime_field_name} bootstrap config."
+            "configured runtime payload."
         )
     validator(runtime_config=runtime_config, objective_config=objective_config)
 

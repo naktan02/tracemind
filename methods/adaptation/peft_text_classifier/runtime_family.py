@@ -30,24 +30,23 @@ from .initial_state import (
 from .training_backend import PeftEncoderTrainingBackend
 
 PeftEncoderState = LoraClassifierState | PeftClassifierState
-PEFT_ENCODER_ADAPTER_KINDS = (PEFT_CLASSIFIER_ADAPTER_KIND,)
+PEFT_TEXT_CLASSIFIER_UPDATE_FAMILY = "peft_text_classifier"
+PEFT_ENCODER_UPDATE_FAMILIES = (PEFT_TEXT_CLASSIFIER_UPDATE_FAMILY,)
 
 
 class PeftEncoderRoundRuntimeConfig(Protocol):
     """PEFT-backed classifier runtime payload를 가진 round runtime surface."""
 
-    adapter_family_name: str
+    update_family_name: str
 
     def runtime_payload_for_update_family(self) -> object | None:
         """update family config가 해석한 runtime payload를 반환한다."""
 
 
-def is_peft_encoder_adapter_family(adapter_family_name: object) -> bool:
-    """runtime adapter family가 PEFT-backed classifier 계열인지 판정한다."""
+def is_peft_encoder_update_family(update_family_name: object) -> bool:
+    """runtime update family가 PEFT-backed classifier 계열인지 판정한다."""
 
-    return _normalize_adapter_family_name(adapter_family_name) in (
-        PEFT_ENCODER_ADAPTER_KINDS
-    )
+    return _normalize_family_name(update_family_name) in PEFT_ENCODER_UPDATE_FAMILIES
 
 
 def peft_encoder_runtime_payload(
@@ -55,10 +54,8 @@ def peft_encoder_runtime_payload(
 ) -> LoraClassifierInitialStateConfig | None:
     """PEFT-backed update family runtime payload를 반환한다."""
 
-    adapter_family_name = _normalize_adapter_family_name(
-        round_runtime_config.adapter_family_name
-    )
-    if adapter_family_name == PEFT_CLASSIFIER_ADAPTER_KIND:
+    update_family_name = _normalize_family_name(round_runtime_config.update_family_name)
+    if update_family_name == PEFT_TEXT_CLASSIFIER_UPDATE_FAMILY:
         runtime_payload = round_runtime_config.runtime_payload_for_update_family()
         if runtime_payload is None:
             return None
@@ -79,15 +76,13 @@ def build_initial_peft_encoder_state(
     """지원 family면 initial shared state를 만들고, 아니면 None을 반환한다."""
 
     _ = embedding_dim
-    adapter_family_name = _normalize_adapter_family_name(
-        round_runtime_config.adapter_family_name
-    )
+    update_family_name = _normalize_family_name(round_runtime_config.update_family_name)
     runtime_payload = peft_encoder_runtime_payload(round_runtime_config)
-    if adapter_family_name == PEFT_CLASSIFIER_ADAPTER_KIND:
+    if update_family_name == PEFT_TEXT_CLASSIFIER_UPDATE_FAMILY:
         if runtime_payload is None:
             raise ValueError(
-                "peft_classifier round runtime requires peft_classifier "
-                "bootstrap config."
+                "peft_text_classifier round runtime requires configured runtime "
+                "payload."
             )
         return build_initial_peft_classifier_state(
             config=runtime_payload,
@@ -107,7 +102,7 @@ def build_peft_text_classifier_composition_slug(
 ) -> str:
     """PEFT text classifier run layout slug를 family owner 쪽에서 만든다."""
 
-    family_name = _normalize_adapter_family_name(update_family_name)
+    family_name = _normalize_family_name(update_family_name)
     runtime_payload = _runtime_payload_mapping(
         round_runtime_mapping=round_runtime_mapping,
         update_family_name=update_family_name,
@@ -179,8 +174,8 @@ def build_training_backend_for_peft_encoder_state(
     return PeftEncoderTrainingBackend(config=config)
 
 
-def _normalize_adapter_family_name(adapter_family_name: object) -> str:
-    return str(adapter_family_name).strip().lower().replace("-", "_")
+def _normalize_family_name(family_name: object) -> str:
+    return str(family_name).strip().lower().replace("-", "_")
 
 
 def _require_peft_encoder_runtime_payload(

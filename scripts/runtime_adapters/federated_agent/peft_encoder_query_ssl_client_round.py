@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.runtime_family import (
-    is_peft_encoder_adapter_family,
+    is_peft_encoder_update_family,
 )
 from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     server_owned_peft_encoder_update_artifact_byte_count,
@@ -85,8 +85,8 @@ def _supports_query_ssl_peft_encoder_client_training(
     return (
         request.ssl_method_config is None
         and request.query_ssl_objective_config is not None
-        and is_peft_encoder_adapter_family(
-            request.round_runtime_config.adapter_family_name
+        and is_peft_encoder_update_family(
+            request.round_runtime_config.update_family_name
         )
         and request.round_runtime_config.runtime_payload_for_update_family() is not None
     )

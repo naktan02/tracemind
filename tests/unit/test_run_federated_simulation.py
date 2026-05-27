@@ -2256,7 +2256,8 @@ def test_build_initial_shared_state_rejects_builder_without_state() -> None:
     with pytest.raises(ValueError, match="initial_state_builder returned no"):
         build_initial_shared_state(
             round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="future_family"
+                adapter_family_name="future_family",
+                update_family_name="future_family",
             ),
             model_id="future-model",
             model_revision="sim_rev_0000",
@@ -2353,7 +2354,7 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
 
     with pytest.raises(
         ValueError,
-        match="peft_classifier round runtime requires peft_classifier bootstrap config",
+        match="peft_classifier round runtime requires configured runtime payload",
     ):
         run_simulation_request(request)
 

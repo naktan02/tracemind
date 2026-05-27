@@ -14,7 +14,7 @@ from methods.adaptation.peft_text_classifier.federated_ssl import (
     supervised_seed_step,
 )
 from methods.adaptation.peft_text_classifier.runtime_family import (
-    is_peft_encoder_adapter_family,
+    is_peft_encoder_update_family,
     peft_encoder_runtime_payload,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
@@ -57,8 +57,8 @@ def run_peft_encoder_supervised_seed_step(
 ) -> server_step_execution.ServerStepExecution:
     """PEFT-backed text classifier server supervised seed step을 실행한다."""
 
-    adapter_family_name = request.round_runtime_config.adapter_family_name
-    if not is_peft_encoder_adapter_family(adapter_family_name):
+    update_family_name = request.round_runtime_config.update_family_name
+    if not is_peft_encoder_update_family(update_family_name):
         raise NotImplementedError(
             "supervised_seed_step currently supports PEFT-backed classifier "
             "simulation runtime."
