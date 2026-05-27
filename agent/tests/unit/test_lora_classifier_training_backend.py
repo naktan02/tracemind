@@ -33,8 +33,8 @@ from methods.adaptation.peft_text_classifier.training_backend import (
     PeftEncoderTrainingBackend,
 )
 from methods.adaptation.peft_text_classifier.update.local_update import (
-    LoraClassifierTrainArtifacts,
-    LoraClassifierTrainingRow,
+    PeftEncoderTrainArtifacts,
+    PeftEncoderTrainingRow,
 )
 from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
@@ -76,14 +76,14 @@ class _RecordingLoraTrainExecutor:
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        rows: Sequence[LoraClassifierTrainingRow],
+        rows: Sequence[PeftEncoderTrainingRow],
         label_schema: tuple[str, ...],
         config: lora_config.PeftEncoderTrainingBackendConfig,
         created_at: datetime,
-    ) -> LoraClassifierTrainArtifacts:
+    ) -> PeftEncoderTrainArtifacts:
         del training_task, model_manifest, rows, config, created_at
         self.label_schema = label_schema
-        return LoraClassifierTrainArtifacts(
+        return PeftEncoderTrainArtifacts(
             lora_delta_artifact_ref="agent-local://custom/lora_delta",
             classifier_head_delta_artifact_ref=(
                 "agent-local://custom/classifier_head_delta"

@@ -11,9 +11,9 @@ from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     peft_encoder_delta_l2_norm,
 )
 from methods.adaptation.peft_text_classifier.update.local_update import (
-    LoraClassifierTrainArtifacts,
-    LoraClassifierTrainingRow,
-    LoraClassifierUpdateConfig,
+    PeftEncoderTrainArtifacts,
+    PeftEncoderTrainingRow,
+    PeftEncoderUpdateConfig,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
@@ -31,11 +31,11 @@ class SimulationInlinePeftEncoderTrainExecutor:
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        rows: Sequence[LoraClassifierTrainingRow],
+        rows: Sequence[PeftEncoderTrainingRow],
         label_schema: tuple[str, ...],
-        config: LoraClassifierUpdateConfig,
+        config: PeftEncoderUpdateConfig,
         created_at: datetime,
-    ) -> LoraClassifierTrainArtifacts:
+    ) -> PeftEncoderTrainArtifacts:
         del model_manifest, created_at
         if not rows:
             raise ValueError("PEFT encoder simulation inline delta requires rows.")
@@ -57,7 +57,7 @@ class SimulationInlinePeftEncoderTrainExecutor:
             learning_rate=float(training_task.learning_rate),
             scale=self.classifier_delta_scale,
         )
-        return LoraClassifierTrainArtifacts(
+        return PeftEncoderTrainArtifacts(
             lora_parameter_deltas=lora_parameter_deltas,
             classifier_head_weight_deltas=classifier_head_weight_deltas,
             classifier_head_bias_deltas=classifier_head_bias_deltas,
@@ -71,8 +71,8 @@ class SimulationInlinePeftEncoderTrainExecutor:
 
 def _build_lora_parameter_deltas(
     *,
-    rows: Sequence[LoraClassifierTrainingRow],
-    config: LoraClassifierUpdateConfig,
+    rows: Sequence[PeftEncoderTrainingRow],
+    config: PeftEncoderUpdateConfig,
     scale: float,
 ) -> dict[str, list[float]]:
     rank = int(getattr(config, "rank", 1))
@@ -96,7 +96,7 @@ def _build_lora_parameter_deltas(
 
 def _average_text_signature(
     *,
-    rows: Sequence[LoraClassifierTrainingRow],
+    rows: Sequence[PeftEncoderTrainingRow],
     vector_dim: int,
     salt: str,
     scale: float,
@@ -113,7 +113,7 @@ def _average_text_signature(
 
 def _build_classifier_head_weight_deltas(
     *,
-    rows: Sequence[LoraClassifierTrainingRow],
+    rows: Sequence[PeftEncoderTrainingRow],
     label_schema: tuple[str, ...],
     learning_rate: float,
     scale: float,
@@ -139,7 +139,7 @@ def _build_classifier_head_weight_deltas(
 
 def _build_classifier_head_bias_deltas(
     *,
-    rows: Sequence[LoraClassifierTrainingRow],
+    rows: Sequence[PeftEncoderTrainingRow],
     label_schema: tuple[str, ...],
     learning_rate: float,
     scale: float,

@@ -7,9 +7,9 @@ from datetime import datetime, timezone
 
 from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.peft_text_classifier.update.local_update import (
-    LoraClassifierTrainArtifacts,
-    LoraClassifierTrainExecutor,
-    LoraClassifierTrainingRow,
+    PeftEncoderTrainArtifacts,
+    PeftEncoderTrainExecutor,
+    PeftEncoderTrainingRow,
     build_peft_encoder_delta_from_rows,
     resolve_peft_encoder_label_schema,
 )
@@ -32,7 +32,7 @@ def build_peft_encoder_delta_update(
     accepted_examples: tuple[AcceptedTrainingExample, ...],
     config: LoraClassifierTrainingBackendConfig,
     created_at: datetime,
-    train_executor: LoraClassifierTrainExecutor | None = None,
+    train_executor: PeftEncoderTrainExecutor | None = None,
 ) -> LoraClassifierDelta | PeftClassifierDelta:
     rows = tuple(
         build_peft_encoder_training_row(example=example, config=config)
@@ -94,13 +94,13 @@ def _build_payload_only_artifacts(
     training_task: TrainingTask,
     config: LoraClassifierTrainingBackendConfig,
     created_at: datetime,
-) -> LoraClassifierTrainArtifacts:
+) -> PeftEncoderTrainArtifacts:
     base_artifact_ref = build_peft_encoder_base_artifact_ref(
         prefix=config.artifact_ref_prefix,
         training_task=training_task,
         created_at=created_at,
     )
-    return LoraClassifierTrainArtifacts(
+    return PeftEncoderTrainArtifacts(
         lora_delta_artifact_ref=f"{base_artifact_ref}/lora_delta",
         classifier_head_delta_artifact_ref=(
             f"{base_artifact_ref}/classifier_head_delta"
@@ -113,7 +113,7 @@ def build_peft_encoder_training_row(
     *,
     example: AcceptedTrainingExample,
     config: LoraClassifierTrainingBackendConfig,
-) -> LoraClassifierTrainingRow:
+) -> PeftEncoderTrainingRow:
     candidate = example.candidate
     if candidate is None:
         raise ValueError("Accepted example must carry a pseudo-label candidate.")
@@ -121,7 +121,7 @@ def build_peft_encoder_training_row(
     label = candidate.label.strip()
     if not label:
         raise ValueError("Pseudo-label candidate label must not be empty.")
-    return LoraClassifierTrainingRow(
+    return PeftEncoderTrainingRow(
         text=text,
         label=label,
         confidence=float(candidate.confidence),

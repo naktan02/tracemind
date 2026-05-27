@@ -29,7 +29,7 @@ from ..training.delta_extraction import (
     peft_encoder_delta_l2_norm,
 )
 from .local_update import (
-    LoraClassifierTrainArtifacts,
+    PeftEncoderTrainArtifacts,
     build_peft_encoder_delta_payload_from_artifacts,
 )
 from .partitioned_delta import LoraClassifierPartitionDelta
@@ -96,7 +96,7 @@ def build_query_ssl_peft_encoder_update_payload(
         label_schema=labels,
         example_count=len(labeled_rows) + len(unlabeled_rows),
         label_counts=_build_labeled_row_label_counts(labeled_rows),
-        artifacts=LoraClassifierTrainArtifacts(
+        artifacts=PeftEncoderTrainArtifacts(
             lora_delta_artifact_ref=lora_delta_artifact_ref,
             classifier_head_delta_artifact_ref=classifier_head_delta_artifact_ref,
             lora_parameter_deltas=(

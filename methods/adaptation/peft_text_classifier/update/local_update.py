@@ -1,7 +1,4 @@
-"""PEFT-backed classifier local update core.
-
-`LoraClassifier*` 이름은 v1 payload compatibility surface로 유지한다.
-"""
+"""PEFT-backed classifier local update core."""
 
 from __future__ import annotations
 
@@ -30,8 +27,8 @@ from .partitioned_delta import LoraClassifierPartitionDelta
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierTrainingRow:
-    """LoRA-classifier update core가 소비하는 raw-text 학습 row."""
+class PeftEncoderTrainingRow:
+    """PEFT encoder update core가 소비하는 raw-text 학습 row."""
 
     text: str
     label: str
@@ -40,8 +37,8 @@ class LoraClassifierTrainingRow:
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierTrainArtifacts:
-    """LoRA train executor가 payload core에 돌려주는 artifact snapshot."""
+class PeftEncoderTrainArtifacts:
+    """PEFT train executor가 payload core에 돌려주는 artifact snapshot."""
 
     lora_delta_artifact_ref: str | None = None
     classifier_head_delta_artifact_ref: str | None = None
@@ -53,8 +50,8 @@ class LoraClassifierTrainArtifacts:
     delta_l2_norm: float = 0.0
 
 
-class LoraClassifierUpdateConfig(Protocol):
-    """Payload core가 필요한 LoRA-classifier config surface."""
+class PeftEncoderUpdateConfig(Protocol):
+    """Payload core가 필요한 PEFT encoder config surface."""
 
     delta_format: str
     payload_adapter_kind: str
@@ -69,31 +66,25 @@ class LoraClassifierUpdateConfig(Protocol):
         """Shared payload에 기록할 PEFT adapter config snapshot을 반환한다."""
 
 
-class LoraClassifierTrainExecutor(Protocol):
-    """실제 PEFT/LoRA 학습 실행기가 만족해야 하는 boundary."""
+class PeftEncoderTrainExecutor(Protocol):
+    """실제 PEFT 학습 실행기가 만족해야 하는 boundary."""
 
     def train(
         self,
         *,
         training_task: TrainingTask,
         model_manifest: ModelManifest,
-        rows: Sequence[LoraClassifierTrainingRow],
+        rows: Sequence[PeftEncoderTrainingRow],
         label_schema: tuple[str, ...],
-        config: LoraClassifierUpdateConfig,
+        config: PeftEncoderUpdateConfig,
         created_at: datetime,
-    ) -> LoraClassifierTrainArtifacts:
-        """agent-local raw text rows로 LoRA/classifier delta artifact를 만든다."""
-
-
-PeftEncoderTrainingRow = LoraClassifierTrainingRow
-PeftEncoderTrainArtifacts = LoraClassifierTrainArtifacts
-PeftEncoderUpdateConfig = LoraClassifierUpdateConfig
-PeftEncoderTrainExecutor = LoraClassifierTrainExecutor
+    ) -> PeftEncoderTrainArtifacts:
+        """agent-local raw text rows로 PEFT/classifier delta artifact를 만든다."""
 
 
 def resolve_peft_encoder_label_schema(
     *,
-    rows: Sequence[LoraClassifierTrainingRow],
+    rows: Sequence[PeftEncoderTrainingRow],
     configured_labels: Sequence[str],
     candidate_label_space: Sequence[str] = (),
 ) -> tuple[str, ...]:
@@ -118,10 +109,10 @@ def build_peft_encoder_delta_from_rows(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    rows: Sequence[LoraClassifierTrainingRow],
+    rows: Sequence[PeftEncoderTrainingRow],
     label_schema: tuple[str, ...],
-    config: LoraClassifierUpdateConfig,
-    artifacts: LoraClassifierTrainArtifacts,
+    config: PeftEncoderUpdateConfig,
+    artifacts: PeftEncoderTrainArtifacts,
     created_at: datetime,
 ) -> LoraClassifierDelta | PeftClassifierDelta:
     """Resolved rows와 artifact snapshot으로 shared delta payload를 만든다."""
@@ -149,11 +140,11 @@ def build_peft_encoder_delta_payload_from_artifacts(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    config: LoraClassifierUpdateConfig,
+    config: PeftEncoderUpdateConfig,
     label_schema: Sequence[str],
     example_count: int,
     label_counts: Mapping[str, int],
-    artifacts: LoraClassifierTrainArtifacts,
+    artifacts: PeftEncoderTrainArtifacts,
     delta_format: str,
     mean_confidence: float | None,
     mean_margin: float | None,
