@@ -16,7 +16,7 @@ from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.evaluation import (
     PEFT_CLASSIFIER_EVALUATOR_NAME,
@@ -526,7 +526,7 @@ def _fedmatch_agreement_capability_plan() -> FederatedSslCapabilityPlan:
 
 def _peft_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
     return FederatedPeftEncoderRuntimeConfig(
-        training_backend_config=LoraClassifierTrainingBackendConfig(
+        training_backend_config=PeftEncoderTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
             backbone_revision="main",
             tokenizer_model_id="mixedbread-ai/mxbai-embed-large-v1",
@@ -2226,7 +2226,7 @@ def test_run_simulation_request_rejects_peft_runtime_objective_drift(
     tmp_path,
 ) -> None:
     drifted_peft_runtime = FederatedPeftEncoderRuntimeConfig(
-        training_backend_config=LoraClassifierTrainingBackendConfig(
+        training_backend_config=PeftEncoderTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
             backbone_revision="main",
             tokenizer_model_id="mixedbread-ai/mxbai-embed-large-v1",

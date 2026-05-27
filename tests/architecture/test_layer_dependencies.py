@@ -645,6 +645,7 @@ def test_peft_core_unit_tests_use_canonical_config_type() -> None:
     checked_paths = (
         REPO_ROOT / "tests" / "unit" / "test_peft_encoder_runtime_resources.py",
         REPO_ROOT / "tests" / "unit" / "test_peft_encoder_training_core.py",
+        REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py",
     )
     violations = [
         _relative_repo_path(path)
