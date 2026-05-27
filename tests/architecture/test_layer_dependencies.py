@@ -618,6 +618,29 @@ def test_query_ssl_update_unit_test_uses_peft_encoder_surface() -> None:
     )
 
 
+def test_partitioned_model_builder_unit_test_uses_peft_encoder_surface() -> None:
+    legacy_path = (
+        REPO_ROOT / "tests" / "unit" / "test_partitioned_lora_model_builder.py"
+    )
+    active_path = (
+        REPO_ROOT / "tests" / "unit" / "test_partitioned_peft_encoder_model_builder.py"
+    )
+    source = active_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "LoraClassifierTrainingBackendConfig",
+        "test_partitioned_lora_builder",
+        "LoRA-classifier builder tests",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert active_path.exists() and not legacy_path.exists() and not violations, (
+        "Partitioned model builder unit test는 active PEFT encoder builder surface를 "
+        "검증한다. LoRA는 adapter parameter 예시나 v1 compatibility 테스트에만 "
+        "남긴다.\n"
+        f"legacy_exists={legacy_path.exists()}\nviolations={violations}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

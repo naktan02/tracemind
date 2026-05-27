@@ -1,4 +1,4 @@
-"""PEFT-backed partitioned LoRA-classifier builder tests."""
+"""PEFT encoder partitioned model builder tests."""
 
 from __future__ import annotations
 
@@ -10,7 +10,7 @@ import torch
 from torch import Tensor, nn
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
     model_builder,
@@ -45,14 +45,16 @@ class TinyPeftEncoderTextClassifier(nn.Module):
         return self.classifier(self.encoder_lora(input_ids.float()))
 
 
-def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None:
+def test_partitioned_peft_encoder_builder_loads_base_state_into_each_partition() -> (
+    None
+):
     calls: list[tuple[tuple[str, ...], object | None]] = []
     tokenizer = object()
 
     def classifier_factory(
         *,
         labels: list[str],
-        lora_config: LoraClassifierTrainingBackendConfig,
+        lora_config: PeftEncoderTrainingBackendConfig,
         runtime_config: TinyRuntimeConfig,
         runtime_resource_cache: object | None = None,
     ) -> tuple[nn.Module, Any]:
@@ -86,7 +88,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         runtime_config=TinyRuntimeConfig(),
         runtime_resource_cache=cache,  # type: ignore[arg-type]
         classifier_factory=classifier_factory,  # type: ignore[arg-type]
@@ -116,7 +118,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
     )
 
 
-def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -> None:
+def test_partitioned_peft_encoder_builder_rejects_invalid_inputs() -> None:
     base_parameters = PeftEncoderMaterializedState(
         lora_parameters={},
         classifier_head_weights={},
@@ -128,7 +130,7 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
             partition_names=("sigma", "sigma"),
             labels=("anxiety", "normal"),
             base_parameters=base_parameters,
-            lora_config=LoraClassifierTrainingBackendConfig(),
+            lora_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
             classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
         )
@@ -138,13 +140,13 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
             partition_names=("sigma", "psi"),
             labels=("anxiety", "anxiety"),
             base_parameters=base_parameters,
-            lora_config=LoraClassifierTrainingBackendConfig(),
+            lora_config=PeftEncoderTrainingBackendConfig(),
             runtime_config=TinyRuntimeConfig(),
             classifier_factory=_unused_classifier_factory,  # type: ignore[arg-type]
         )
 
 
-def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
+def test_partitioned_peft_encoder_builder_prefers_partition_base_state() -> None:
     base_parameters = PeftEncoderMaterializedState(
         lora_parameters={
             "encoder_lora.weight": [
@@ -193,7 +195,7 @@ def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
         base_partition_parameters=partition_base_parameters,
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         runtime_config=TinyRuntimeConfig(),
         classifier_factory=_tiny_classifier_factory,  # type: ignore[arg-type]
     )
@@ -213,7 +215,7 @@ def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
 def _tiny_classifier_factory(
     *,
     labels: list[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: TinyRuntimeConfig,
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:
@@ -224,7 +226,7 @@ def _tiny_classifier_factory(
 def _unused_classifier_factory(
     *,
     labels: list[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: TinyRuntimeConfig,
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:  # pragma: no cover - validation fails first.
