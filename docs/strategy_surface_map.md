@@ -62,13 +62,13 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
-| Training backend | `lora_classifier_trainer` (`peft_text_classifier` core) | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | FL simulation scaffold |
+| Training backend | `peft_classifier_trainer`, `lora_classifier_trainer` compatibility alias | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | FL simulation scaffold |
 | Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*` core + agent runtime adapter | 활성 runtime |
 | Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*` core + agent runtime adapter | 활성 runtime |
 | Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, `methods/classification/linear_head/scoring.py` core + agent runtime adapter | 활성 runtime |
 | Score policy | `max_cosine`, `topk_mean_cosine` | `TrainingObjectiveConfig.score_policy_name` | `methods/prototype/scoring/policy_registry.py` + `score_policies/*` | 활성 runtime |
 | Acceptance policy | `top1_margin_threshold`, `top1_confidence_only` | `TrainingObjectiveConfig.acceptance_policy_name` | `methods/ssl/hooks/selection.py` + agent compatibility metadata | 활성 runtime |
-| Privacy guard | `diagonal_scale_clip_only`, `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `methods/adaptation/privacy_guards/*` core + agent executor | 활성 runtime |
+| Privacy guard | `classifier_head_clip_only`, `noop` | `TrainingObjectiveConfig.privacy_guard_name` | `methods/adaptation/privacy_guards/*` core + agent executor | 활성 runtime |
 
 ## FL/서버 축
 
@@ -227,8 +227,6 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   compatibility는 닫혔다. live `agent`/`main_server` runtime translation은 winner
   method 확정 뒤 별도 범위로 진행한다.
 - live `main_server`의 no-config round runtime fallback은 server runtime config의
-  named legacy profile로 격리된 `diagonal_scale` compatibility path다.
-  `RoundManagerService`는 이 기본값을 소유하지 않고, methods-level
-  `diagonal_scale` 구현 core는 제거된 상태를 유지한다. 새 논문/FL SSL 실행
-  기본값으로 해석하지 않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시
+  named `default_peft_classifier.v1` profile이다. `RoundManagerService`는 이
+  기본값을 소유하지 않는다. 논문 비교와 simulation entrypoint는 `conf/`의 명시
   `round_runtime.*` leaf를 source of truth로 사용한다.

@@ -203,28 +203,19 @@ class RuntimeFallbackTrainingProfile:
 
 PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
 
-LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS = freeze_mapping(
-    {
-        "training_backend.delta_scale_multiplier": 10.0,
-        "training_backend.max_abs_delta": 0.05,
-        "training_backend.minimum_effective_scale": 1e-4,
-    }
-)
-
 RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": "prototype_pseudo_label_v1",
-        "training_backend_name": "diagonal_scale_heuristic",
+        "training_backend_name": "peft_classifier_trainer",
         "confidence_threshold": 0.6,
         "margin_threshold": 0.02,
-        "example_generation_backend_name": "prototype_rescore",
+        "example_generation_backend_name": "weak_strong_pair",
         "evidence_backend_name": "prototype_similarity_evidence",
         "scorer_backend_name": "prototype_similarity",
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",
         "pseudo_label_algorithm_name": "top1_margin_threshold",
-        "privacy_guard_name": "diagonal_scale_clip_only",
-        **dict(LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS),
+        "privacy_guard_name": "noop",
     }
 )
 

@@ -37,9 +37,9 @@ from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
 from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadDelta,
+    ClassifierHeadState,
 )
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import (
@@ -67,13 +67,14 @@ def _build_service(
         )
     )
     state_repository.save_shared_adapter_state(
-        DiagonalScaleAdapterStatePayload(
-            schema_version="vector_adapter_state.v1",
-            adapter_kind="diagonal_scale",
+        ClassifierHeadState(
+            schema_version="classifier_head_state.v1",
+            adapter_kind="classifier_head",
             model_id="tracemind-embed",
             model_revision="rev_000",
-            training_scope="adapter_only",
-            dimension_scales=[1.0, 1.0],
+            training_scope="head_only",
+            label_weights={"anxiety": [1.0, 0.0], "normal": [0.0, 1.0]},
+            label_biases={"anxiety": 0.0, "normal": 0.0},
             updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         )
     )
@@ -85,7 +86,7 @@ def _build_service(
         artifact_kind="shared_adapter_state",
         artifact_ref=state_repository.ref_for_revision("rev_000"),
         auxiliary_artifact_versions={"prototype_pack": "proto_000"},
-        training_scope="adapter_only",
+        training_scope="head_only",
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
     )
@@ -102,7 +103,7 @@ def _build_service(
         ),
         round_manager_service=RoundManagerService(
             adapter_family=build_shared_adapter_round_family(
-                "diagonal_scale",
+                "classifier_head",
                 aggregation_backend_name="fedavg",
             ),
             artifact_repository=state_repository,
@@ -125,16 +126,18 @@ def _build_update(
     update_id: str = "update_001",
 ) -> TrainingUpdateSubmission:
     del tmp_path
-    update_payload = DiagonalScaleAdapterUpdatePayload(
-        schema_version="vector_adapter_delta.v1",
-        adapter_kind="diagonal_scale",
+    update_payload = ClassifierHeadDelta(
+        schema_version="classifier_head_delta.v1",
+        adapter_kind="classifier_head",
         model_id="tracemind-embed",
         base_model_revision="rev_000",
-        training_scope="adapter_only",
-        dimension_deltas=[0.05, -0.02],
+        training_scope="head_only",
+        label_weight_deltas={"anxiety": [0.05, -0.02], "normal": [0.0, 0.02]},
+        label_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         example_count=3,
         mean_confidence=0.8,
         mean_margin=0.15,
+        label_counts={"anxiety": 2, "normal": 1},
     )
     envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
@@ -143,9 +146,9 @@ def _build_update(
         task_id=task_id,
         model_id="tracemind-embed",
         base_model_revision="rev_000",
-        training_scope="adapter_only",
+        training_scope="head_only",
         payload_ref=f"client-submission::{update_id}",
-        payload_format="diagonal_scale_update",
+        payload_format="classifier_head_update",
         example_count=3,
         client_metrics={"mean_loss": 0.2},
     )

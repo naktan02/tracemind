@@ -28,13 +28,13 @@ class ServerRoundRuntimeProfile:
     )
 
 
-LEGACY_DIAGONAL_SCALE_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
-    profile_name="legacy_diagonal_scale.v1",
-    adapter_family_name="diagonal_scale",
+DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
+    profile_name="default_peft_classifier.v1",
+    adapter_family_name="peft_classifier",
     aggregation_backend_name="fedavg",
 )
 DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
-    LEGACY_DIAGONAL_SCALE_SERVER_ROUND_RUNTIME_PROFILE
+    DEFAULT_PEFT_CLASSIFIER_SERVER_ROUND_RUNTIME_PROFILE
 )
 
 

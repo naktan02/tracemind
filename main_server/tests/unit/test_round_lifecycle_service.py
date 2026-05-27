@@ -108,10 +108,6 @@ from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterStatePayload,
     SharedAdapterUpdatePayload,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DiagonalScaleAdapterStatePayload,
-    DiagonalScaleAdapterUpdatePayload,
-)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
@@ -386,19 +382,19 @@ def _build_service(
         )
     )
     state_repository.save_shared_adapter_state(
-        DiagonalScaleAdapterStatePayload(
-            schema_version="vector_adapter_state.v1",
-            adapter_kind="diagonal_scale",
-            model_id="tracemind-embed",
+        _TestShiftStatePayload(
+            schema_version="test_shift_state.v1",
+            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+            model_id="test-shift-model",
             model_revision="rev_000",
             training_scope="adapter_only",
-            dimension_scales=[1.0, 1.0],
+            shift_bias=0.0,
             updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         )
     )
     active_manifest = ModelManifest(
         schema_version="model_manifest.v1",
-        model_id="tracemind-embed",
+        model_id="test-shift-model",
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
@@ -421,8 +417,8 @@ def _build_service(
         ),
         round_manager_service=RoundManagerService(
             adapter_family=build_shared_adapter_round_family(
-                "diagonal_scale",
-                aggregation_backend_name="fedavg",
+                TEST_SHIFT_FAMILY_NAME,
+                aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
             ),
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
@@ -531,27 +527,25 @@ def _build_update(
     agent_id: str | None = None,
 ) -> TrainingUpdateSubmission:
     del tmp_path
-    update_payload = DiagonalScaleAdapterUpdatePayload(
-        schema_version="vector_adapter_delta.v1",
-        adapter_kind="diagonal_scale",
-        model_id="tracemind-embed",
+    update_payload = _TestShiftUpdatePayload(
+        schema_version="test_shift_delta.v1",
+        adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+        model_id="test-shift-model",
         base_model_revision=base_model_revision,
         training_scope="adapter_only",
-        dimension_deltas=[0.05, -0.02],
+        shift_delta=0.05,
         example_count=3,
-        mean_confidence=0.8,
-        mean_margin=0.15,
     )
     envelope = TrainingUpdateEnvelope(
         schema_version="training_update_envelope.v1",
         update_id=update_id,
         round_id=round_id,
         task_id=task_id,
-        model_id="tracemind-embed",
+        model_id="test-shift-model",
         base_model_revision=base_model_revision,
         training_scope="adapter_only",
         payload_ref=f"client-submission::{update_id}",
-        payload_format="diagonal_scale_update",
+        payload_format=TEST_SHIFT_PAYLOAD_FORMAT,
         example_count=3,
         client_metrics={"mean_loss": 0.2},
         agent_id=agent_id,
@@ -616,13 +610,9 @@ def test_round_lifecycle_rejects_agent_local_lora_artifact_refs_at_accept(
     tmp_path: Path,
 ) -> None:
     fixed_time = datetime(2026, 4, 2, 9, 0, tzinfo=timezone.utc)
-    service, _active_manifest, round_repository = _build_service(
+    service, _active_manifest, round_repository = _build_lora_service(
         tmp_path=tmp_path,
         fixed_time=fixed_time,
-    )
-    service.round_manager_service.adapter_family = build_shared_adapter_round_family(
-        "lora_classifier",
-        aggregation_backend_name="fedavg",
     )
     record = service.open_round(RoundOpenDraftRequest(round_id="round_0001"))
     update_payload = make_lora_classifier_delta_payload(
@@ -1016,13 +1006,13 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         )
     )
     state_repository.save_shared_adapter_state(
-        DiagonalScaleAdapterStatePayload(
-            schema_version="vector_adapter_state.v1",
-            adapter_kind="diagonal_scale",
-            model_id="tracemind-embed",
+        _TestShiftStatePayload(
+            schema_version="test_shift_state.v1",
+            adapter_kind=TEST_SHIFT_ADAPTER_KIND,
+            model_id="test-shift-model",
             model_revision="rev_000",
             training_scope="adapter_only",
-            dimension_scales=[1.0, 1.0],
+            shift_bias=0.0,
             updated_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         )
     )
@@ -1069,9 +1059,9 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         )
     )
     _StaticEmbeddingAdapterFactory._vectors = {
-        "cluster_a_1": [1.0, 0.0],
-        "cluster_a_2": [1.0, 0.1],
-        "normal_1": [0.0, 1.0],
+        "cluster_a_1": [1.0],
+        "cluster_a_2": [1.1],
+        "normal_1": [0.0],
     }
     prototype_rebuild_runtime_service = StoredReferencePrototypeRebuildService(
         input_repository=input_repository,
@@ -1091,7 +1081,7 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
     )
     active_manifest = ModelManifest(
         schema_version="model_manifest.v1",
-        model_id="tracemind-embed",
+        model_id="test-shift-model",
         model_revision="rev_000",
         published_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         artifact_kind="shared_adapter_state",
@@ -1114,8 +1104,8 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
         ),
         round_manager_service=RoundManagerService(
             adapter_family=build_shared_adapter_round_family(
-                "diagonal_scale",
-                aggregation_backend_name="fedavg",
+                TEST_SHIFT_FAMILY_NAME,
+                aggregation_backend_name=TEST_SHIFT_BACKEND_NAME,
             ),
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),

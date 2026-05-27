@@ -18,27 +18,16 @@ from main_server.src.services.federation.rounds.aggregation.registry import (
     build_shared_adapter_aggregation_backend,
     list_shared_adapter_aggregation_backend_catalog_entries,
 )
-from methods.adaptation.diagonal_scale.aggregation.fedavg import (
-    DEFAULT_DIAGONAL_SCALE_MAX_SCALE,
-    DEFAULT_DIAGONAL_SCALE_MIN_SCALE,
-)
 from methods.adaptation.peft_text_classifier.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
-from methods.federated.aggregation.fedavg.strategy import (
-    FedAvgAggregationStrategy,
-)
 from methods.federated.aggregation.registry import build_federated_aggregation_strategy
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadDelta,
     ClassifierHeadState,
-)
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterDelta,
-    VectorAdapterState,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
@@ -50,62 +39,13 @@ from shared.src.contracts.adapter_contract_families.lora_classifier import (
 )
 
 
-def _build_base_state() -> VectorAdapterState:
-    return VectorAdapterState(
-        schema_version="vector_adapter_state.v1",
-        adapter_kind="diagonal_scale",
-        model_id="tracemind-embed",
-        model_revision="rev_000",
-        training_scope="adapter_only",
-        dimension_scales=[1.0, 1.0],
-        updated_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
-    )
-
-
-def _build_update(
-    *,
-    deltas: list[float],
-    example_count: int = 1,
-) -> VectorAdapterDelta:
-    return VectorAdapterDelta(
-        schema_version="vector_adapter_delta.v1",
-        adapter_kind="diagonal_scale",
-        model_id="tracemind-embed",
-        base_model_revision="rev_000",
-        training_scope="adapter_only",
-        dimension_deltas=deltas,
-        example_count=example_count,
-        mean_confidence=0.9,
-        mean_margin=0.2,
-        label_counts={"anxiety": example_count},
-        created_at=datetime(2026, 4, 8, tzinfo=timezone.utc),
-    )
-
-
-def test_diagonal_scale_aggregation_uses_shared_default_config() -> None:
-    backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="diagonal_scale",
-        backend_name="fedavg",
-    )
-
-    assert isinstance(backend, MethodAggregationBackend)
-    assert isinstance(backend.strategy, FedAvgAggregationStrategy)
-    assert backend.adapter_kind == "diagonal_scale"
-    assert backend.strategy.overrides is None
-    assert DEFAULT_DIAGONAL_SCALE_MIN_SCALE == 0.75
-    assert DEFAULT_DIAGONAL_SCALE_MAX_SCALE == 1.25
-
-
 def test_aggregation_backend_catalog_points_to_methods_core() -> None:
     entries = {
         entry.item_name: entry
         for entry in list_shared_adapter_aggregation_backend_catalog_entries()
     }
 
-    assert (
-        entries["diagonal_scale.fedavg"].implementation_module
-        == "methods.adaptation.diagonal_scale.aggregation.fedavg"
-    )
+    assert "diagonal_scale.fedavg" not in entries
     assert (
         entries["classifier_head.fedavg"].implementation_module
         == "methods.classification.linear_head.aggregation."
@@ -133,25 +73,6 @@ def test_aggregation_backend_catalog_points_to_methods_core() -> None:
         ]
         is True
     )
-
-
-def test_diagonal_scale_aggregation_applies_backend_overrides() -> None:
-    backend = build_shared_adapter_aggregation_backend(
-        adapter_kind="diagonal_scale",
-        backend_name="fedavg",
-        overrides={"min_scale": 0.9, "max_scale": 1.1},
-    )
-
-    result = backend.aggregate(
-        base_state=_build_base_state(),
-        update_payloads=(_build_update(deltas=[0.5, -0.5], example_count=1),),
-        next_model_revision="rev_001",
-        aggregated_at=datetime(2026, 4, 8, 1, tzinfo=timezone.utc),
-    )
-
-    assert isinstance(backend, MethodAggregationBackend)
-    assert backend.adapter_kind == "diagonal_scale"
-    assert result.next_state.dimension_scales == [1.1, 0.9]
 
 
 def test_classifier_head_fedavg_aggregation_updates_weights_and_biases() -> None:

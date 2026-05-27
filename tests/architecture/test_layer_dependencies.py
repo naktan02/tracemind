@@ -449,11 +449,22 @@ def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> 
 def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> None:
     path = METHODS_FEDERATED_SSL_SRC / "runtime_fallbacks.py"
     imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
 
     assert "methods.adaptation.diagonal_scale.config" not in imports, (
         "runtime fallback profile은 legacy compatibility 값을 소유하되 "
         "diagonal_scale 구현 config를 import하지 않는다. fallback이 남아 있어도 "
         "adapter implementation과 runtime default를 강결합하지 않는다."
+    )
+    forbidden_snippets = (
+        "diagonal_scale_heuristic",
+        "diagonal_scale_clip_only",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    assert not violations, (
+        "runtime fallback은 삭제된 diagonal_scale 실행 구현을 기본값으로 선택하지 "
+        "않는다. v1 diagonal_scale은 shared contract compatibility 표면에만 남긴다.\n"
+        f"violations={violations}"
     )
 
 
@@ -482,6 +493,7 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
         MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "runtime" / "config.py"
     )
     imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
 
     assert (
         "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
@@ -490,6 +502,19 @@ def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
         "않는다. legacy no-config fallback은 named runtime profile 값으로만 "
         "격리한다."
     )
+    assert "legacy_diagonal_scale" not in source
+    assert 'adapter_family_name="diagonal_scale"' not in source
+
+
+def test_privacy_guards_do_not_register_removed_diagonal_scale_guard() -> None:
+    path = METHODS_SRC / "adaptation" / "privacy_guards" / "clip_only.py"
+    imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
+
+    assert (
+        "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
+    )
+    assert "diagonal_scale_clip_only" not in source
 
 
 def test_agent_layer_does_not_import_main_server_or_scripts() -> None:

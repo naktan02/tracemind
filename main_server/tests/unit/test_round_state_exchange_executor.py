@@ -86,7 +86,7 @@ def _build_record() -> RoundRecord:
         batch_size=2,
         learning_rate=0.01,
         max_steps=1,
-        objective_config={"training_backend_name": "diagonal_scale_heuristic"},
+        objective_config={"training_backend_name": "peft_classifier_trainer"},
         selection_policy=TrainingSelectionPolicy.from_mapping({"min_confidence": 0.5}),
     )
     return RoundRecord(
@@ -126,7 +126,7 @@ def _build_update(
         base_model_revision="rev_000",
         training_scope="adapter_only",
         payload_ref=f"server-update://{update_id}",
-        payload_format="diagonal_scale_update",
+        payload_format="peft_classifier_update",
         example_count=example_count,
         client_metrics=client_metrics,
     )

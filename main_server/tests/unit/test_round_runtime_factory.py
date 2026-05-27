@@ -90,8 +90,8 @@ TEST_METHOD_DESCRIPTOR = FederatedSslMethodDescriptor(
         method_name=TEST_METHOD_NAME,
         supported_runtime_pairs=(
             FederatedSslRuntimePair(
-                adapter_family_name="diagonal_scale",
-                aggregation_backend_name="fedavg",
+                adapter_family_name=TEST_FAMILY_NAME,
+                aggregation_backend_name=TEST_BACKEND_NAME,
             ),
         ),
     ),
@@ -230,7 +230,7 @@ def test_round_runtime_config_rejects_incompatible_family_backend() -> None:
     with pytest.raises(ValueError):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                adapter_family_name="diagonal_scale",
+                adapter_family_name="peft_classifier",
                 aggregation_backend_name=TEST_BACKEND_NAME,
             )
         )
@@ -257,8 +257,8 @@ def test_round_runtime_config_rejects_method_recipe_runtime_pair_drift(
     with pytest.raises(ValueError, match="method recipe does not support"):
         build_round_manager_service_from_config(
             ServerRoundRuntimeConfig(
-                adapter_family_name=TEST_FAMILY_NAME,
-                aggregation_backend_name=TEST_BACKEND_NAME,
+                adapter_family_name="lora_classifier",
+                aggregation_backend_name="fedavg",
                 method_descriptor_name=TEST_METHOD_NAME,
             )
         )
@@ -279,8 +279,8 @@ def test_round_lifecycle_config_wires_method_descriptor(
     )
     service = build_round_lifecycle_service_from_config(
         ServerRoundRuntimeConfig(
-            adapter_family_name="diagonal_scale",
-            aggregation_backend_name="fedavg",
+            adapter_family_name=TEST_FAMILY_NAME,
+            aggregation_backend_name=TEST_BACKEND_NAME,
             method_descriptor_name=TEST_METHOD_NAME,
         )
     )

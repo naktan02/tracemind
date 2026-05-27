@@ -8,10 +8,6 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
     CLASSIFIER_HEAD_ADAPTER_KIND,
     ClassifierHeadDelta,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
-    VectorAdapterDelta,
-)
 from shared.src.contracts.registry_catalog_metadata import RegistryCatalogEntry
 from shared.src.contracts.training_contracts import TrainingTask
 from shared.src.domain.entities.training.shared_adapter_update import (
@@ -21,14 +17,6 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 from .base import PrivacyProtectedUpdate
 from .registry import register_shared_adapter_privacy_guard
 
-DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
-    item_name="diagonal_scale_clip_only",
-    display_name="diagonal_scale_clip_only",
-    implementation_module="methods.adaptation.privacy_guards.clip_only",
-    core_method_name="diagonal_scale_clip_only",
-    family_name="privacy_guard",
-    supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
-)
 CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name="classifier_head_clip_only",
     display_name="classifier_head_clip_only",
@@ -75,20 +63,6 @@ class ClipOnlyPrivacyGuard:
 
 
 @register_shared_adapter_privacy_guard(
-    "diagonal_scale_clip_only",
-    catalog_entry=DIAGONAL_SCALE_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
-)
-def build_diagonal_scale_clip_only_privacy_guard() -> ClipOnlyPrivacyGuard:
-    """registry용 diagonal-scale clip-only privacy guard factory."""
-
-    return ClipOnlyPrivacyGuard(
-        guard_name="diagonal_scale_clip_only",
-        supported_adapter_kinds=(DIAGONAL_SCALE_ADAPTER_KIND,),
-        update_type=VectorAdapterDelta,
-    )
-
-
-@register_shared_adapter_privacy_guard(
     "classifier_head_clip_only",
     catalog_entry=CLASSIFIER_HEAD_CLIP_ONLY_PRIVACY_GUARD_CATALOG_ENTRY,
 )
@@ -107,12 +81,6 @@ def _scale_update_delta(
     *,
     scale: float,
 ) -> SharedAdapterUpdate:
-    if isinstance(update, VectorAdapterDelta):
-        return update.model_copy(
-            update={
-                "dimension_deltas": [value * scale for value in update.dimension_deltas]
-            }
-        )
     if isinstance(update, ClassifierHeadDelta):
         return update.model_copy(
             update={

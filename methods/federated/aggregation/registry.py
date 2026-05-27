@@ -136,6 +136,7 @@ def list_federated_aggregation_method_specs(
 
     _import_aggregation_package_modules()
     _import_adaptation_aggregation_modules()
+    _import_classification_aggregation_modules()
     normalized_adapter_kind = (
         adapter_kind.strip().lower() if adapter_kind is not None else None
     )
