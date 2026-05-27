@@ -14,7 +14,9 @@ from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
+    PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     helper_provider,
@@ -75,6 +77,7 @@ from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_lora_classifier_state_payload,
     make_peft_classifier_delta_payload,
+    make_peft_classifier_state_payload,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.training_contracts import (
@@ -160,7 +163,7 @@ def test_row_validator_accepts_non_multiview_backend_without_view_fields() -> No
     )
 
 
-def test_lora_classifier_base_parameters_use_round_cache(
+def test_peft_encoder_base_parameters_cache_lora_v1_state(
     tmp_path,
     monkeypatch,
 ) -> None:
@@ -236,7 +239,7 @@ def test_local_ssl_helper_provider_resolver_skips_non_helper_policy(
         peer_context=None,
         peer_snapshots=None,
         labels=("anxiety", "normal"),
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(device="cpu"),
         runtime_resource_cache=None,
         timing_recorder=None,
@@ -270,7 +273,7 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
         peer_context=None,
         peer_snapshots={},
         labels=("anxiety", "normal"),
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(device="cpu"),
         runtime_resource_cache=runtime_cache,
         timing_recorder=timing,
@@ -338,7 +341,7 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
         ),
     ],
 )
-def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
+def test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm(
     tmp_path,
     monkeypatch,
     method_name,
@@ -346,26 +349,26 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     parameters,
 ) -> None:
     captured: dict[str, object] = {}
-    lora_config = LoraClassifierTrainingBackendConfig(
+    peft_config = PeftEncoderTrainingBackendConfig(
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     )
-    active_state = make_lora_classifier_state_payload(
-        model_id="mxbai-lora-classifier",
+    active_state = make_peft_classifier_state_payload(
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         training_scope="adapter_only",
-        backbone=lora_config.to_backbone_payload(),
-        lora_config=lora_config.to_lora_config_payload(),
+        backbone=peft_config.to_backbone_payload(),
+        peft_adapter_config=peft_config.to_peft_adapter_config_payload(),
         label_schema=("anxiety", "normal"),
     )
-    update_payload = make_lora_classifier_delta_payload(
-        model_id="mxbai-lora-classifier",
+    update_payload = make_peft_classifier_delta_payload(
+        model_id="mxbai-peft-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
-        backbone=lora_config.to_backbone_payload(),
-        lora_config=lora_config.to_lora_config_payload(),
+        backbone=peft_config.to_backbone_payload(),
+        peft_adapter_config=peft_config.to_peft_adapter_config_payload(),
         label_schema=("anxiety", "normal"),
         example_count=1,
-        lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
+        peft_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
         classifier_head_weight_deltas={"anxiety": [0.1], "normal": [-0.1]},
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -459,7 +462,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             schema_version="training_task.v1",
             round_id="round_0001",
             task_id="task_round_0001",
-            model_id="mxbai-lora-classifier",
+            model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
             training_scope="adapter_only",
             local_epochs=1,
@@ -468,13 +471,13 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             max_steps=3,
             gradient_clip_norm=None,
             objective_config=TrainingObjectiveConfig.from_mapping(
-                {"training_backend_name": "lora_classifier_trainer"}
+                {"training_backend_name": PEFT_CLASSIFIER_TRAINING_BACKEND_NAME}
             ),
             selection_policy=TrainingSelectionPolicy.from_mapping({"max_examples": 1}),
             task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
         ),
         model_manifest=SimpleNamespace(
-            model_id="mxbai-lora-classifier",
+            model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
         ),
         query_ssl_config=FederatedQuerySslObjectiveConfig(
@@ -484,7 +487,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
             strong_view_policy="first_aug",
             unlabeled_batch_size=2,
         ),
-        lora_config=lora_config,
+        lora_config=peft_config,
         trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
             device="cpu",
             local_files_only=True,
@@ -500,7 +503,7 @@ def test_query_ssl_lora_local_training_resolves_selected_ssl_algorithm(
     assert result.pseudo_label_quality.pseudo_label_correct_count == 1
 
 
-def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
+def test_query_ssl_peft_encoder_delta_materialization_writes_server_owned_refs(
     tmp_path,
 ) -> None:
     plan = prepare_delta_materialization(
@@ -568,7 +571,7 @@ def test_query_ssl_lora_delta_materialization_writes_server_owned_refs(
     )
 
 
-def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(
+def test_query_ssl_peft_encoder_delta_materialization_writes_partitioned_ref(
     tmp_path,
 ) -> None:
     plan = prepare_delta_materialization(
@@ -627,7 +630,7 @@ def test_query_ssl_lora_delta_materialization_writes_partitioned_ref(
     )
 
 
-def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
+def test_query_ssl_peft_encoder_delta_materialization_keeps_inline_debug_payload(
     tmp_path,
 ) -> None:
     plan = prepare_delta_materialization(
@@ -648,7 +651,7 @@ def test_query_ssl_lora_delta_materialization_keeps_inline_debug_payload(
     assert not (tmp_path / "main_server" / "aggregation_artifacts").exists()
 
 
-def test_query_ssl_lora_delta_materialization_requires_prefix_for_agent_local(
+def test_query_ssl_peft_encoder_delta_materialization_requires_prefix_for_agent_local(
     tmp_path,
 ) -> None:
     with pytest.raises(ValueError, match="requires artifact_ref_prefix"):
@@ -664,7 +667,7 @@ def test_query_ssl_lora_delta_materialization_requires_prefix_for_agent_local(
         )
 
 
-def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
+def test_query_ssl_peft_encoder_delta_materialization_writes_agent_local_refs(
     tmp_path,
 ) -> None:
     plan = prepare_delta_materialization(
@@ -673,7 +676,7 @@ def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
         training_task=SimpleNamespace(round_id="round_0001"),
         client_id="agent_01",
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
-        artifact_ref_prefix="agent-local://lora_classifier",
+        artifact_ref_prefix="agent-local://peft_classifier",
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
             "anxiety": [0.3, -0.1],
@@ -695,7 +698,7 @@ def test_query_ssl_lora_delta_materialization_writes_agent_local_refs(
     assert not (tmp_path / "main_server" / "aggregation_artifacts").exists()
 
 
-def test_upload_agent_local_lora_update_materializes_server_owned_refs(
+def test_upload_agent_local_lora_v1_update_materializes_server_owned_refs(
     tmp_path,
 ) -> None:
     plan = prepare_delta_materialization(

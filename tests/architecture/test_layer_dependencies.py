@@ -661,6 +661,50 @@ def test_peft_core_unit_tests_use_canonical_config_type() -> None:
     )
 
 
+def test_peft_training_primitives_unit_test_uses_peft_encoder_surface() -> None:
+    legacy_path = REPO_ROOT / "tests" / "unit" / "test_lora_training_primitives.py"
+    active_path = (
+        REPO_ROOT / "tests" / "unit" / "test_peft_encoder_training_primitives.py"
+    )
+    source = active_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "LoRA-classifier training primitive",
+        "test_lora_training",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert active_path.exists() and not legacy_path.exists() and not violations, (
+        "PEFT training primitive unit test는 active PEFT encoder surface를 "
+        "검증한다. LoRA는 adapter mechanism이나 v1 compatibility payload 테스트에만 "
+        "남긴다.\n"
+        f"legacy_exists={legacy_path.exists()}\nviolations={violations}"
+    )
+
+
+def test_federated_agent_runtime_adapter_unit_tests_name_active_peft_surface() -> None:
+    path = REPO_ROOT / "tests" / "unit" / "test_federated_agent_runtime_adapters.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "test_query_ssl_lora_local_training",
+        "test_query_ssl_lora_delta_materialization",
+        "test_lora_classifier_base_parameters",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    required_snippets = (
+        "test_query_ssl_peft_encoder_local_training_resolves_selected_ssl_algorithm",
+        "make_peft_classifier_state_payload",
+        "make_peft_classifier_delta_payload",
+        "test_upload_agent_local_lora_v1_update_materializes_server_owned_refs",
+    )
+    missing = [snippet for snippet in required_snippets if snippet not in source]
+
+    assert not violations and not missing, (
+        "federated agent runtime adapter unit test는 active 경로를 PEFT encoder로 "
+        "부르고, v1 LoRA payload compatibility는 이름에 v1을 드러낸다.\n"
+        f"violations={violations}\nmissing={missing}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",
