@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from datetime import datetime
 from typing import Protocol
 
@@ -93,6 +93,28 @@ def build_initial_peft_encoder_state(
             updated_at=updated_at,
         )
     return None
+
+
+def build_peft_text_classifier_composition_slug(
+    *,
+    round_runtime_mapping: Mapping[str, object],
+    update_family_name: str,
+) -> str:
+    """PEFT text classifier run layout slug를 family owner 쪽에서 만든다."""
+
+    family_name = _normalize_adapter_family_name(update_family_name)
+    runtime_payload = round_runtime_mapping.get(PEFT_CLASSIFIER_ADAPTER_KIND)
+    if not isinstance(runtime_payload, Mapping):
+        return family_name
+    peft_adapter_name = str(runtime_payload.get("peft_adapter_name") or "").strip()
+    if not peft_adapter_name:
+        return family_name
+    normalized_adapter_name = peft_adapter_name.lower().replace("-", "_")
+    if family_name.startswith(f"{normalized_adapter_name}_"):
+        return family_name
+    if family_name.endswith(f"_{normalized_adapter_name}"):
+        return family_name
+    return f"{family_name}_{peft_adapter_name}"
 
 
 def build_training_backend_config_for_peft_encoder_state(

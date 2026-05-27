@@ -116,20 +116,22 @@ def load_fl_ssl_result_index_records(
         examples_per_second=None,
         trainable_param_ratio=None,
         peft_adapter_name=optional_str(
-            _classifier_objective_value(objective, "peft_adapter_name")
+            _trainable_state_objective_value(objective, "peft_adapter_name")
         ),
-        lora_rank=optional_int(_classifier_objective_value(objective, "rank")),
-        lora_alpha=optional_int(_classifier_objective_value(objective, "alpha")),
-        lora_dropout=optional_float(_classifier_objective_value(objective, "dropout")),
-        lora_bias=optional_str(_classifier_objective_value(objective, "bias")),
+        lora_rank=optional_int(_trainable_state_objective_value(objective, "rank")),
+        lora_alpha=optional_int(_trainable_state_objective_value(objective, "alpha")),
+        lora_dropout=optional_float(
+            _trainable_state_objective_value(objective, "dropout")
+        ),
+        lora_bias=optional_str(_trainable_state_objective_value(objective, "bias")),
         lora_target_modules=optional_str(
-            _classifier_objective_value(objective, "target_modules")
+            _trainable_state_objective_value(objective, "target_modules")
         ),
         lora_use_rslora=_optional_bool(
-            _classifier_objective_value(objective, "use_rslora")
+            _trainable_state_objective_value(objective, "use_rslora")
         ),
         lora_use_dora=_optional_bool(
-            _classifier_objective_value(objective, "use_dora")
+            _trainable_state_objective_value(objective, "use_dora")
         ),
         run_control_budget_name=optional_str(run_control.get("budget_name")),
         run_control_output_dir=optional_str(run_control.get("output_dir")),
@@ -147,7 +149,7 @@ def load_fl_ssl_result_index_records(
         fl_execution_role=optional_str(fl_method.get("execution_role")),
         fl_descriptor_name=descriptor_name,
         update_delta_format=optional_str(
-            _classifier_objective_value(objective, "delta_format")
+            _trainable_state_objective_value(objective, "delta_format")
         ),
         local_regularizer_name=local_regularizer_name,
         local_regularizer_mu=local_regularizer_mu,
@@ -278,22 +280,37 @@ def infer_fl_method_family(
 
 
 def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | None]:
-    proximal_mu = optional_float(_classifier_objective_value(objective, "proximal_mu"))
+    proximal_mu = optional_float(
+        _trainable_state_objective_value(objective, "proximal_mu")
+    )
     if proximal_mu is not None and proximal_mu > 0:
         return "fedprox", proximal_mu
     return "none", None
 
 
-def _classifier_objective_value(objective: dict[str, Any], key: str) -> object:
-    """PEFT-classifier objective key를 먼저 읽고 legacy LoRA key로 fallback한다."""
+def _trainable_state_objective_value(objective: dict[str, Any], key: str) -> object:
+    """objective payload에서 update-family scoped 값을 generic하게 찾는다."""
 
-    for family_name in ("peft_classifier", "lora_classifier"):
-        value = objective.get(f"{family_name}.{key}")
-        if value is not None:
-            return value
-        nested = objective.get(family_name)
-        if isinstance(nested, dict) and nested.get(key) is not None:
-            return nested.get(key)
+    direct_value = objective.get(key)
+    if direct_value is not None:
+        return direct_value
+    dotted_suffix = f".{key}"
+    values: list[object] = []
+    for raw_key, value in objective.items():
+        if str(raw_key).endswith(dotted_suffix):
+            values.append(value)
+        if isinstance(value, dict):
+            nested_value = _trainable_state_objective_value(value, key)
+            if nested_value is not None:
+                values.append(nested_value)
+    normalized_values = {str(value) for value in values if value is not None}
+    if len(normalized_values) > 1:
+        raise ValueError(
+            f"FL SSL objective has conflicting {key!r} values: "
+            f"{sorted(normalized_values)}"
+        )
+    if values:
+        return values[0]
     return None
 
 

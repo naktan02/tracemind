@@ -1195,6 +1195,27 @@ def test_fl_scripts_legacy_family_names_stay_in_declared_compatibility_files() -
     )
 
 
+def test_fl_run_layout_stays_update_family_oriented() -> None:
+    path = SCRIPTS_SRC / "experiments" / "fl_ssl" / "run_layout.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "training_task.objective.peft_classifier.proximal_mu",
+        "training_task.objective.lora_classifier.proximal_mu",
+        'f"round_runtime.{family}.peft_adapter_name"',
+        "_resolve_adapter_runtime_slug",
+        "_resolve_peft_adapter_kind",
+        "peft_adapter_name",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "FL run layout은 active output path를 update_family_name 중심으로 만든다. "
+        "FedProx 같은 local regularizer 표기는 objective payload에서 generic하게 "
+        "읽고, classifier-family별 dotted path를 직접 소유하지 않는다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None:
     package_root = METHODS_SRC / "federated_ssl"
     forbidden_path_fragments = ("dummy", "test_only")

@@ -275,7 +275,7 @@ def test_result_index_prefers_canonical_fl_ssl_hardlink_path(
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__lora_classifier__fedavg"
+        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260517T150549Z"
@@ -308,7 +308,7 @@ def test_load_result_index_records_keeps_new_fl_ssl_layout_parts(
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == (
-        "manual_baselines__fixmatch_usb_v1__lora_classifier__fedavg__"
+        "manual_baselines__fixmatch_usb_v1__peft_text_classifier_lora__fedavg__"
         "alpha03_seed42__clients10_rounds50__20260518T010203Z"
     )
 
@@ -500,7 +500,7 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__peft_classifier__fedavg"
+        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260527T120000Z"
@@ -608,7 +608,7 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
         / "runs"
         / "fl_ssl"
         / "manual_baselines"
-        / "fixmatch_usb_v1__lora_classifier__fedavg"
+        / "fixmatch_usb_v1__peft_text_classifier_lora__fedavg"
         / "alpha03_seed42"
         / "clients10_rounds50"
         / "20260518T010203Z"

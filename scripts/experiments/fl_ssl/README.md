@@ -39,7 +39,7 @@ client_participation_policy=all_clients
 composition_mode=manual
 query_ssl_method=fixmatch_usb_v1
 local_update_profile=peft_pseudo_label_v1
-adapter_family=peft_classifier
+update_family=peft_text_classifier
 aggregation_backend=fedavg
 output_dir=runs/_smoke/fl_ssl
 ```
@@ -162,17 +162,17 @@ FL SSL 실행 명령은 보통 다섯 축을 동시에 고른다.
 2. data source: labeled/unlabeled/validation/test source 선택
 3. data split: runtime split인지, materialized client split인지
 4. run condition: client_count, rounds, seed, shard policy
-5. runtime family: adapter_family, aggregation_backend, local_update_profile
+5. runtime family: update_family, aggregation_backend, local_update_profile
 ```
 
 현재 기본값은 `fl_method.composition_mode=manual`이다. 즉 별도 override가 없으면
 상위 FL method를 고르는 것이 아니라 아래 lower axes를 조합한다.
 
 ```text
-query_ssl_method + round_runtime.adapter_family_name + round_runtime.aggregation_backend_name
+query_ssl_method + round_runtime.update_family_name + round_runtime.aggregation_backend_name
 ```
 
-기본 조합은 `fixmatch_usb_v1 + peft_classifier + fedavg`다.
+기본 조합은 `fixmatch_usb_v1 + peft_text_classifier + fedavg`다.
 
 ## 단일 Simulation 실행
 
@@ -209,21 +209,21 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```text
 runs/fl_ssl/
   manual_baselines/
-    fixmatch_usb_v1__peft_classifier_lora__fedavg/
+    fixmatch_usb_v1__peft_text_classifier_lora__fedavg/
       labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/
         clients10_rounds1/
         clients10_rounds5/
   fedmatch/
-    fedmatch__peft_classifier_lora__fedmatch_partitioned/
+    fedmatch__peft_text_classifier_lora__fedmatch_partitioned/
       labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/
         clients10_rounds5/
 ```
 
-manual baseline의 composition 폴더는 `query_ssl_method + adapter runtime +
-aggregation_backend`를 쓴다. `peft_classifier`처럼 adapter mechanism이 별도 축인
-family는 `peft_classifier_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
+manual baseline의 composition 폴더는 `query_ssl_method + update family +
+aggregation_backend`를 쓴다. `peft_text_classifier`처럼 PEFT mechanism이 별도 축인
+family는 `peft_text_classifier_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
 `method_owned` run은 Query SSL lower axis가 아니라
-`method_descriptor + adapter runtime + server_update_policy`를 쓴다.
+`method_descriptor + update family + server_update_policy`를 쓴다.
 
 split 폴더명은 labeled/unlabeled source, labeled exposure, seed만 사람이 읽는
 이름으로 남긴다. Dirichlet alpha, manifest hash, 전체 source JSONL 경로 같은 세부
@@ -309,6 +309,7 @@ manual baseline에서는 lower axes를 직접 고른다. `composition_mode=manua
 uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=manual \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
+  strategy_axes/trainable_state/update_family=peft_text_classifier \
   round_runtime.adapter_family_name=peft_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \
@@ -451,6 +452,7 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
   fl_method.composition_mode=manual \
   strategy_axes/fl/shard_policy=dirichlet_alpha03 \
   strategy_axes/ssl/consistency_method=flexmatch_usb_v1 \
+  strategy_axes/trainable_state/update_family=peft_text_classifier \
   round_runtime.adapter_family_name=peft_classifier \
   round_runtime.aggregation_backend_name=fedavg \
   fl_data.source_mode=materialized_client_split \

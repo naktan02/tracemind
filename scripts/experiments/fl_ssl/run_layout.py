@@ -3,7 +3,10 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
+from importlib import import_module
 from pathlib import Path
+from typing import Any
 
 from omegaconf import DictConfig, OmegaConf
 
@@ -86,9 +89,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
 
     if not _is_manual_fl_composition(cfg):
         method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
-        adapter_family = _resolve_adapter_runtime_slug(
-            cfg, _select(cfg, "round_runtime.adapter_family_name", default=None)
-        )
+        update_family = _resolve_update_runtime_slug(cfg)
         server_update_policy = (
             _select(cfg, "server_update_policy.name", default=None)
             or _select(cfg, "round_runtime.aggregation_backend_name", default=None)
@@ -96,7 +97,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
         )
         return "__".join(
             _slugify(part)
-            for part in (method_name, adapter_family, server_update_policy)
+            for part in (method_name, update_family, server_update_policy)
         )
 
     query_ssl_method = (
@@ -104,9 +105,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
         or _select(cfg, "ssl_method.name", default=None)
         or "unknown_ssl"
     )
-    adapter_family = _resolve_adapter_runtime_slug(
-        cfg, _select(cfg, "round_runtime.adapter_family_name", default=None)
-    )
+    update_family = _resolve_update_runtime_slug(cfg)
     aggregation_backend = (
         _select(cfg, "round_runtime.aggregation_backend_name", default=None)
         or _select(cfg, "ssl_method.server_step.aggregation_backend_name", default=None)
@@ -114,7 +113,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
     )
     return "__".join(
         _slugify(part)
-        for part in (query_ssl_method, adapter_family, aggregation_backend)
+        for part in (query_ssl_method, update_family, aggregation_backend)
     )
 
 
@@ -160,25 +159,63 @@ def _is_manual_fl_composition(cfg: DictConfig) -> bool:
     return str(composition_mode or "").strip().lower() == "manual"
 
 
-def _resolve_adapter_runtime_slug(cfg: DictConfig, adapter_family: object) -> str:
-    family = str(adapter_family or "unknown_family").strip() or "unknown_family"
-    adapter_kind = _select(
+def _resolve_update_runtime_slug(cfg: DictConfig) -> str:
+    family = (
+        _select(cfg, "round_runtime.update_family_name", default=None)
+        or _select(cfg, "round_runtime.adapter_family_name", default=None)
+        or "unknown_family"
+    )
+    family = str(family).strip() or "unknown_family"
+    configured_slug = _build_configured_update_family_slug(cfg, family)
+    if configured_slug is not None:
+        return configured_slug
+    return family
+
+
+def _build_configured_update_family_slug(
+    cfg: DictConfig,
+    update_family_name: str,
+) -> str | None:
+    builder_path = _select(
         cfg,
-        f"round_runtime.{family}.peft_adapter_name",
+        "round_runtime.composition_slug_builder",
         default=None,
     )
-    if adapter_kind is None:
-        return family
-    normalized_kind = str(adapter_kind).strip()
-    if not normalized_kind:
-        return family
-    normalized_family = family.lower().replace("-", "_")
-    normalized_kind_key = normalized_kind.lower().replace("-", "_")
-    if normalized_family.startswith(f"{normalized_kind_key}_"):
-        return family
-    if normalized_family.endswith(f"_{normalized_kind_key}"):
-        return family
-    return f"{family}_{normalized_kind}"
+    if builder_path is None:
+        return None
+    round_runtime = _select(cfg, "round_runtime", default=None)
+    if round_runtime is None:
+        return None
+    builder = _load_callable(str(builder_path), field_name="composition_slug_builder")
+    if OmegaConf.is_config(round_runtime):
+        runtime_mapping = OmegaConf.to_container(round_runtime, resolve=True)
+    else:
+        runtime_mapping = round_runtime
+    if not isinstance(runtime_mapping, Mapping):
+        return None
+    slug = builder(
+        round_runtime_mapping=runtime_mapping,
+        update_family_name=update_family_name,
+    )
+    normalized_slug = str(slug).strip()
+    if not normalized_slug:
+        raise ValueError("round_runtime.composition_slug_builder returned empty slug.")
+    return normalized_slug
+
+
+def _load_callable(path: str, *, field_name: str) -> Any:
+    module_name, separator, attribute_name = path.rpartition(".")
+    if not separator or not module_name or not attribute_name:
+        raise ValueError(
+            f"round_runtime.{field_name} must be a fully qualified callable path: "
+            f"{path!r}"
+        )
+    target = getattr(import_module(module_name), attribute_name)
+    if not callable(target):
+        raise TypeError(
+            f"round_runtime.{field_name} must point to a callable: {path!r}"
+        )
+    return target
 
 
 def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:
@@ -233,17 +270,51 @@ def _resolve_label_budget_slug(cfg: DictConfig) -> str | None:
 
 
 def _resolve_local_regularizer_slug(cfg: DictConfig) -> str | None:
-    proximal_mu = _select(
-        cfg,
-        "training_task.objective.peft_classifier.proximal_mu",
-        default=None,
-    )
+    proximal_mu = _select_objective_parameter(cfg, "proximal_mu")
     if proximal_mu is None:
         return None
     normalized_mu = float(proximal_mu)
     if normalized_mu <= 0.0:
         return None
     return f"fedprox_mu{normalized_mu:g}"
+
+
+def _select_objective_parameter(cfg: DictConfig, key: str) -> object | None:
+    objective = _select(cfg, "training_task.objective", default=None)
+    if objective is None:
+        return None
+    if OmegaConf.is_config(objective):
+        objective_mapping = OmegaConf.to_container(objective, resolve=True)
+    else:
+        objective_mapping = objective
+    if not isinstance(objective_mapping, Mapping):
+        return None
+
+    values = _collect_objective_parameter_values(objective_mapping, key)
+    normalized_values = {str(value) for value in values if value is not None}
+    if not normalized_values:
+        return None
+    if len(normalized_values) > 1:
+        raise ValueError(
+            f"training_task.objective has conflicting {key!r} values: "
+            f"{sorted(normalized_values)}"
+        )
+    return values[0]
+
+
+def _collect_objective_parameter_values(
+    objective: Mapping[object, object],
+    key: str,
+) -> list[object]:
+    values: list[object] = []
+    dotted_suffix = f".{key}"
+    for raw_key, value in objective.items():
+        normalized_key = str(raw_key)
+        if normalized_key == key or normalized_key.endswith(dotted_suffix):
+            values.append(value)
+        if isinstance(value, Mapping):
+            values.extend(_collect_objective_parameter_values(value, key))
+    return values
 
 
 def _extract_manifest_component(manifest: str, *, prefix: str) -> str | None:
