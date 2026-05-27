@@ -1,4 +1,4 @@
-"""Query-domain LoRA SSL runner 공통 scaffolding."""
+"""Query-domain PEFT SSL runner 공통 scaffolding."""
 
 from __future__ import annotations
 
@@ -11,19 +11,19 @@ from typing import Any
 from omegaconf import OmegaConf
 
 from methods.adaptation.peft_text_classifier.training.loops import (
-    evaluate_classifier as evaluate_query_lora_classifier,
+    evaluate_classifier as evaluate_query_peft_classifier,
 )
 from methods.adaptation.peft_text_classifier.training.loops import (
-    set_seed as set_query_lora_seed,
+    set_seed as set_query_peft_seed,
 )
 from methods.adaptation.peft_text_classifier.training.modeling import (
-    build_model as build_query_lora_model,
+    build_model as build_query_peft_model,
 )
 from methods.adaptation.query_text_views.data import (
-    build_dataloader as build_query_lora_dataloader,
+    build_dataloader as build_query_peft_dataloader,
 )
 from methods.adaptation.query_text_views.data import (
-    build_label_index as build_query_lora_label_index,
+    build_label_index as build_query_peft_label_index,
 )
 from scripts.experiments.query_peft_ssl.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
@@ -40,8 +40,8 @@ from shared.src.domain.services.classification_report import (
 
 
 @dataclass(slots=True)
-class SupervisedLoraRunContext:
-    """Supervised LoRA runner가 공유하는 실행 컨텍스트."""
+class SupervisedPeftRunContext:
+    """Supervised PEFT runner가 공유하는 실행 컨텍스트."""
 
     cfg: Any
     effective_selection_set: str
@@ -61,10 +61,10 @@ class SupervisedLoraRunContext:
     selection_loader: Any
 
 
-LoraLabeledRunContext = SupervisedLoraRunContext
+PeftLabeledRunContext = SupervisedPeftRunContext
 
 
-def prepare_supervised_lora_run_context(
+def prepare_supervised_peft_run_context(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None,
@@ -75,8 +75,8 @@ def prepare_supervised_lora_run_context(
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
     trainer_version_prefix: str = "lora_clf",
-) -> SupervisedLoraRunContext:
-    """Supervised LoRA runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
+) -> SupervisedPeftRunContext:
+    """Supervised PEFT runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
     effective_selection_set = str(selection_set_name or cfg.selection_set)
     effective_train_jsonl_ref = str(
@@ -94,7 +94,7 @@ def prepare_supervised_lora_run_context(
             f"selection_set '{effective_selection_set}' is not included in eval_sets."
         )
 
-    set_query_lora_seed(int(cfg.seed))
+    set_query_peft_seed(int(cfg.seed))
     effective_train_rows = (
         load_labeled_query_rows(Path(effective_train_jsonl_ref))
         if train_rows is None
@@ -121,7 +121,7 @@ def prepare_supervised_lora_run_context(
         selection_set_name=effective_selection_set,
     )
 
-    model, tokenizer, backbone_summary = build_query_lora_model(
+    model, tokenizer, backbone_summary = build_query_peft_model(
         cfg=effective_cfg,
         categories=categories,
         device=training_device,
@@ -133,7 +133,7 @@ def prepare_supervised_lora_run_context(
         flush=True,
     )
 
-    train_loader = build_query_lora_dataloader(
+    train_loader = build_query_peft_dataloader(
         rows=effective_train_rows,
         label_to_index=label_to_index,
         tokenizer=tokenizer,
@@ -150,7 +150,7 @@ def prepare_supervised_lora_run_context(
         tokenizer=tokenizer,
     )
 
-    return SupervisedLoraRunContext(
+    return SupervisedPeftRunContext(
         cfg=effective_cfg,
         effective_selection_set=effective_selection_set,
         eval_set_map=eval_set_map,
@@ -170,7 +170,7 @@ def prepare_supervised_lora_run_context(
     )
 
 
-def prepare_labeled_lora_run_context(
+def prepare_labeled_peft_run_context(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None,
@@ -181,10 +181,10 @@ def prepare_labeled_lora_run_context(
     eval_set_refs: Mapping[str, str | Path] | None = None,
     trainer_version_override: str | None = None,
     trainer_version_prefix: str = "lora_clf",
-) -> LoraLabeledRunContext:
-    """Labeled LoRA family runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
+) -> PeftLabeledRunContext:
+    """Labeled PEFT family runner 공통 입력 정규화와 dataloader 준비를 수행한다."""
 
-    return prepare_supervised_lora_run_context(
+    return prepare_supervised_peft_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -223,7 +223,7 @@ def build_eval_loaders(
             if eval_row_map is None
             else eval_row_map[dataset_name]
         )
-        eval_loaders[dataset_name] = build_query_lora_dataloader(
+        eval_loaders[dataset_name] = build_query_peft_dataloader(
             rows=rows,
             label_to_index=label_to_index,
             tokenizer=tokenizer,
@@ -236,7 +236,7 @@ def build_eval_loaders(
     return eval_loaders
 
 
-def evaluate_supervised_lora_run_context(
+def evaluate_supervised_peft_run_context(
     *,
     model: Any,
     eval_loaders: Mapping[str, Any],
@@ -247,7 +247,7 @@ def evaluate_supervised_lora_run_context(
 
     results: dict[str, Any] = {}
     for dataset_name, dataloader in eval_loaders.items():
-        report = evaluate_query_lora_classifier(
+        report = evaluate_query_peft_classifier(
             model=model,
             dataloader=dataloader,
             categories=categories,
@@ -286,9 +286,9 @@ def evaluate_lora_run_context(
     categories: list[str],
     device: str,
 ) -> dict[str, Any]:
-    """Labeled LoRA family 모델을 모든 eval set에서 평가한다."""
+    """Labeled PEFT family 모델을 모든 eval set에서 평가한다."""
 
-    return evaluate_supervised_lora_run_context(
+    return evaluate_supervised_peft_run_context(
         model=model,
         eval_loaders=eval_loaders,
         categories=categories,
@@ -341,7 +341,7 @@ def _resolve_categories(
         ]
 
     if effective_categories_override is None:
-        return build_query_lora_label_index(rows)
+        return build_query_peft_label_index(rows)
 
     categories = list(
         dict.fromkeys(str(category) for category in effective_categories_override)

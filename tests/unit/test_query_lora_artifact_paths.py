@@ -1,4 +1,4 @@
-"""Query LoRA run artifact path tests."""
+"""Query PEFT run artifact path tests."""
 
 from __future__ import annotations
 
@@ -8,7 +8,7 @@ from hydra import compose, initialize_config_module
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_peft_ssl.io.artifact_paths import (
-    build_query_lora_run_artifact_paths,
+    build_query_peft_run_artifact_paths,
 )
 
 
@@ -28,7 +28,7 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
         }
     )
 
-    paths = build_query_lora_run_artifact_paths(
+    paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
         trainer_version="lora_fixmatch_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
@@ -65,7 +65,7 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
         }
     )
 
-    paths = build_query_lora_run_artifact_paths(
+    paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
         trainer_version="lora_replay_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
@@ -85,7 +85,7 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
-    paths = build_query_lora_run_artifact_paths(
+    paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
         trainer_version="lora_smoke_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
@@ -109,7 +109,7 @@ def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
         }
     )
 
-    paths = build_query_lora_run_artifact_paths(
+    paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
         trainer_version="lora_clf_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),
@@ -129,7 +129,7 @@ def test_supervised_smoke_budget_paths_stay_under_smoke_root() -> None:
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
-    paths = build_query_lora_run_artifact_paths(
+    paths = build_query_peft_run_artifact_paths(
         cfg=cfg,
         trainer_version="lora_supervised_smoke_2026_05_10_155954",
         created_at=datetime(2026, 5, 10, 15, 59, 54, tzinfo=timezone.utc),

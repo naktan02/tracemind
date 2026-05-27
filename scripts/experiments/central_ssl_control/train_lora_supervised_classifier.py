@@ -6,7 +6,7 @@ import hydra
 from omegaconf import DictConfig
 
 from scripts.experiments.query_peft_ssl.runners.supervised import (
-    run_supervised_lora_baseline,
+    run_supervised_peft_baseline,
 )
 
 
@@ -16,7 +16,7 @@ from scripts.experiments.query_peft_ssl.runners.supervised import (
     config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
 )
 def main(cfg: DictConfig) -> None:
-    run_supervised_lora_baseline(cfg)
+    run_supervised_peft_baseline(cfg)
 
 
 if __name__ == "__main__":

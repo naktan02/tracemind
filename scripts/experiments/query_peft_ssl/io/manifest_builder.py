@@ -1,4 +1,4 @@
-"""Query-domain LoRA SSL manifest/report payload 조립."""
+"""Query-domain PEFT SSL manifest/report payload 조립."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from scripts.experiments.query_peft_ssl.io.artifact_paths import (
-    QueryLoraRunArtifactPaths,
+    QueryPeftRunArtifactPaths,
 )
 
 
-def build_query_lora_run_manifest(
+def build_query_peft_run_manifest(
     *,
     cfg: Any,
     trainer_version: str,
@@ -21,7 +21,7 @@ def build_query_lora_run_manifest(
     history: list[dict[str, Any]],
     best_selection_report: dict[str, Any],
     categories: list[str],
-    paths: QueryLoraRunArtifactPaths,
+    paths: QueryPeftRunArtifactPaths,
     extra_manifest: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     manifest = {
@@ -58,7 +58,7 @@ def build_query_lora_run_manifest(
     return manifest
 
 
-def build_query_lora_eval_report(
+def build_query_peft_eval_report(
     *,
     trainer_version: str,
     manifest: dict[str, Any],

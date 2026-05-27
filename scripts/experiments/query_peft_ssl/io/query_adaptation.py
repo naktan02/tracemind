@@ -1,4 +1,4 @@
-"""Query adaptation dataset을 LoRA baseline JSONL 입력으로 내보내는 helper."""
+"""Query adaptation dataset을 PEFT baseline JSONL 입력으로 내보내는 helper."""
 
 from __future__ import annotations
 

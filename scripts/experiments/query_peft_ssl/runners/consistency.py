@@ -7,7 +7,7 @@ from pathlib import Path
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.training.loops import (
-    train_query_ssl_classifier as train_query_ssl_lora_classifier,
+    train_query_ssl_classifier as train_query_ssl_peft_classifier,
 )
 from methods.adaptation.query_text_views.query_ssl_views import (
     build_query_ssl_unlabeled_dataloader,
@@ -37,7 +37,7 @@ from shared.src.contracts.labeled_query_row_contracts import (
 )
 
 
-def run_query_ssl_lora_baseline(
+def run_query_ssl_peft_baseline(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None = None,
@@ -49,7 +49,7 @@ def run_query_ssl_lora_baseline(
 ) -> dict[str, str]:
     """query_ssl_method.algorithm_name에 맞는 중앙 Query SSL baseline을 실행한다."""
 
-    return run_consistency_query_ssl_lora_baseline(
+    return run_consistency_query_ssl_peft_baseline(
         cfg=cfg,
         descriptor=resolve_query_ssl_algorithm_descriptor(
             str(cfg.query_ssl_method.algorithm_name)
@@ -63,7 +63,7 @@ def run_query_ssl_lora_baseline(
     )
 
 
-def run_consistency_query_ssl_lora_baseline(
+def run_consistency_query_ssl_peft_baseline(
     cfg,
     *,
     descriptor: QuerySslAlgorithmDescriptor,
@@ -112,7 +112,7 @@ def run_consistency_query_ssl_lora_baseline(
         (model, history, best_selection_report),
         runtime_metrics,
     ) = run_with_training_runtime_metrics(
-        lambda: train_query_ssl_lora_classifier(
+        lambda: train_query_ssl_peft_classifier(
             model=context.model,
             train_loader=context.train_loader,
             unlabeled_loader=unlabeled_loader,

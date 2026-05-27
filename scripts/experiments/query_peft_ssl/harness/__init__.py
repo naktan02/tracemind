@@ -1,1 +1,1 @@
-"""Query-domain LoRA SSL harness package marker."""
+"""Query-domain PEFT SSL harness package marker."""

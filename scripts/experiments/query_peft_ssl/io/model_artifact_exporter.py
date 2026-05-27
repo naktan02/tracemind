@@ -1,4 +1,4 @@
-"""Query-domain LoRA SSL 모델 산출물 exporter."""
+"""Query-domain PEFT SSL 모델 산출물 exporter."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from typing import Any
 import torch
 
 from scripts.experiments.query_peft_ssl.io.artifact_paths import (
-    QueryLoraRunArtifactPaths,
+    QueryPeftRunArtifactPaths,
 )
 
 
-class QueryLoraModelArtifactExporter:
+class QueryPeftModelArtifactExporter:
     """adapter/tokenizer/classifier 파일 저장만 담당한다."""
 
     def export(
@@ -20,7 +20,7 @@ class QueryLoraModelArtifactExporter:
         model: Any,
         tokenizer: Any,
         categories: list[str],
-        paths: QueryLoraRunArtifactPaths,
+        paths: QueryPeftRunArtifactPaths,
     ) -> None:
         model.backbone.save_pretrained(paths.adapter_output_dir)
         tokenizer.save_pretrained(paths.adapter_output_dir)

@@ -1,1 +1,1 @@
-"""Query-domain LoRA SSL config helper package marker."""
+"""Query-domain PEFT SSL config helper package marker."""

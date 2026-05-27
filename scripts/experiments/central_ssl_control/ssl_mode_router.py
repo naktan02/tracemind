@@ -5,7 +5,7 @@ from __future__ import annotations
 from omegaconf import DictConfig
 
 from scripts.experiments.query_peft_ssl.runners.consistency import (
-    run_query_ssl_lora_baseline,
+    run_query_ssl_peft_baseline,
 )
 from scripts.experiments.query_peft_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
@@ -20,7 +20,7 @@ def run_central_ssl_mode(cfg: DictConfig) -> None:
 
     mode = str(getattr(cfg, "ssl_input_mode", SSL_INPUT_MODE_CONSISTENCY)).strip()
     if mode == SSL_INPUT_MODE_CONSISTENCY:
-        run_query_ssl_lora_baseline(cfg=cfg)
+        run_query_ssl_peft_baseline(cfg=cfg)
         return
     if mode == SSL_INPUT_MODE_PSEUDO_LABEL_REPLAY:
         run_pseudo_label_self_training(cfg=cfg)

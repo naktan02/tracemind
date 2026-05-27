@@ -1,4 +1,4 @@
-"""Query LoRA run artifact 저장 검증."""
+"""Query PEFT run artifact 저장 검증."""
 
 from __future__ import annotations
 

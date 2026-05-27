@@ -670,6 +670,30 @@ def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
     )
 
 
+def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
+    forbidden_snippets = (
+        "query_" + "lora",
+        "Query" + "Lora",
+        "run_query_ssl_" + "lora",
+        "train_query_ssl_" + "lora",
+        "Supervised" + "Lora",
+        "Lora" + "Labeled",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in _iter_python_files(QUERY_PEFT_SSL_SRC)
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "query_peft_ssl harness 내부 helper/type 이름은 PEFT 기준을 사용한다. "
+        "LoRA는 adapter mechanism이나 old-run artifact/entrypoint compatibility "
+        "표면에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_peft_partition_delta_uses_canonical_internal_type_name() -> None:
     checked_roots = (
         PEFT_TEXT_CLASSIFIER_SRC,

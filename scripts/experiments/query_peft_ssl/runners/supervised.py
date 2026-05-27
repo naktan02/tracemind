@@ -1,4 +1,4 @@
-"""Query-domain LoRA supervised baseline runner."""
+"""Query-domain PEFT supervised baseline runner."""
 
 from __future__ import annotations
 
@@ -7,11 +7,11 @@ from pathlib import Path
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.training.loops import (
-    train_classifier as train_query_lora_classifier,
+    train_classifier as train_query_peft_classifier,
 )
 from scripts.experiments.query_peft_ssl.harness.common import (
-    evaluate_supervised_lora_run_context,
-    prepare_supervised_lora_run_context,
+    evaluate_supervised_peft_run_context,
+    prepare_supervised_peft_run_context,
 )
 from scripts.experiments.query_peft_ssl.io.artifacts import write_run_artifacts
 from scripts.experiments.query_peft_ssl.runtime_metrics import (
@@ -20,7 +20,7 @@ from scripts.experiments.query_peft_ssl.runtime_metrics import (
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
 
-def run_supervised_lora_baseline(
+def run_supervised_peft_baseline(
     cfg,
     *,
     train_rows: list[LabeledQueryRow] | None = None,
@@ -32,13 +32,13 @@ def run_supervised_lora_baseline(
     extra_manifest: Mapping[str, Any] | None = None,
     categories_override: list[str] | tuple[str, ...] | None = None,
 ) -> dict[str, str]:
-    """LoRA baseline을 실행한다.
+    """PEFT baseline을 실행한다.
 
     기본 경로는 cfg가 가리키는 JSONL을 읽는다. query adaptation처럼 이미 메모리에
     조립된 labeled row가 있으면 override로 받아 JSONL bridge 없이 바로 학습한다.
     """
 
-    context = prepare_supervised_lora_run_context(
+    context = prepare_supervised_peft_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -53,7 +53,7 @@ def run_supervised_lora_baseline(
         (model, history, best_selection_report),
         runtime_metrics,
     ) = run_with_training_runtime_metrics(
-        lambda: train_query_lora_classifier(
+        lambda: train_query_peft_classifier(
             model=context.model,
             train_loader=context.train_loader,
             selection_loader=context.selection_loader,
@@ -76,7 +76,7 @@ def run_supervised_lora_baseline(
         device=context.training_device,
     )
 
-    results = evaluate_supervised_lora_run_context(
+    results = evaluate_supervised_peft_run_context(
         model=model,
         eval_loaders=context.eval_loaders,
         categories=context.categories,

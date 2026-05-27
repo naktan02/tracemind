@@ -190,7 +190,7 @@ def test_run_pseudo_label_self_training_calls_baseline_runner_with_combined_rows
 
     monkeypatch.setattr(
         "scripts.experiments.query_peft_ssl.runners.pseudo_label."
-        "run_supervised_lora_baseline",
+        "run_supervised_peft_baseline",
         _fake_runner,
     )
 

@@ -1,4 +1,4 @@
-"""Query-domain LoRA SSL JSON 산출물 writer."""
+"""Query-domain PEFT SSL JSON 산출물 writer."""
 
 from __future__ import annotations
 
@@ -7,17 +7,17 @@ from pathlib import Path
 from typing import Any
 
 from scripts.experiments.query_peft_ssl.io.artifact_paths import (
-    QueryLoraRunArtifactPaths,
+    QueryPeftRunArtifactPaths,
 )
 
 
-class QueryLoraRunArtifactWriter:
+class QueryPeftRunArtifactWriter:
     """manifest/report JSON 쓰기만 담당한다."""
 
     def write(
         self,
         *,
-        paths: QueryLoraRunArtifactPaths,
+        paths: QueryPeftRunArtifactPaths,
         manifest: dict[str, Any],
         report: dict[str, Any],
     ) -> None:

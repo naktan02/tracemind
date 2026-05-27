@@ -1,4 +1,4 @@
-"""Query adaptation dataset으로 supervised LoRA baseline을 실행하는 helper."""
+"""Query adaptation dataset으로 supervised PEFT baseline을 실행하는 helper."""
 
 from __future__ import annotations
 
@@ -16,7 +16,7 @@ from scripts.experiments.query_peft_ssl.io.query_adaptation import (
     write_query_adaptation_lora_dataset,
 )
 from scripts.experiments.query_peft_ssl.runners.supervised import (
-    run_supervised_lora_baseline,
+    run_supervised_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -85,7 +85,7 @@ def run_query_adaptation_supervised_baseline(
         selection_set_name=selection_set_name,
         generated_at=generated_at,
     )
-    run_outputs = run_supervised_lora_baseline(
+    run_outputs = run_supervised_peft_baseline(
         prepared.cfg,
         train_rows=prepared.train_rows,
         eval_rows_by_name=prepared.eval_rows_by_name,

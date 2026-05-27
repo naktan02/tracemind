@@ -21,7 +21,7 @@ from scripts.experiments.query_peft_ssl.runners.pseudo_label_inputs import (
     resolve_pseudo_label_training_rows,
 )
 from scripts.experiments.query_peft_ssl.runners.supervised import (
-    run_supervised_lora_baseline,
+    run_supervised_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -112,7 +112,7 @@ def run_pseudo_label_self_training(
         export_root=export_root,
         generated_at=generated_at,
     )
-    run_outputs = run_supervised_lora_baseline(
+    run_outputs = run_supervised_peft_baseline(
         prepared.cfg,
         train_rows=prepared.combined_train_rows,
         train_jsonl_ref=prepared.train_jsonl_ref,

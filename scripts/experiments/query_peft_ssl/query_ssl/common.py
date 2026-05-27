@@ -10,9 +10,9 @@ from typing import Any
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_peft_ssl.harness.common import (
-    LoraLabeledRunContext,
+    PeftLabeledRunContext,
     evaluate_lora_run_context,
-    prepare_labeled_lora_run_context,
+    prepare_labeled_peft_run_context,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
     LabeledQueryRow,
@@ -99,7 +99,7 @@ def prepare_query_ssl_run_context(
     if not effective_unlabeled_rows:
         raise ValueError(f"{algorithm_name} unlabeled_rows must not be empty.")
 
-    base_context = prepare_labeled_lora_run_context(
+    base_context = prepare_labeled_peft_run_context(
         cfg,
         train_rows=train_rows,
         eval_rows_by_name=eval_rows_by_name,
@@ -133,7 +133,7 @@ def evaluate_query_ssl_run_context(
 
 def _build_query_ssl_run_context(
     *,
-    base_context: LoraLabeledRunContext,
+    base_context: PeftLabeledRunContext,
     effective_unlabeled_rows: list[LabeledQueryRow],
 ) -> QuerySslRunContext:
     return QuerySslRunContext(

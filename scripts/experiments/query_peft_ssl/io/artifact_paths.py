@@ -1,4 +1,4 @@
-"""Query-domain LoRA SSL 산출물 경로 계산."""
+"""Query-domain PEFT SSL 산출물 경로 계산."""
 
 from __future__ import annotations
 
@@ -12,7 +12,7 @@ from scripts.artifacts.run_artifacts import build_run_dir
 
 
 @dataclass(frozen=True, slots=True)
-class QueryLoraRunArtifactPaths:
+class QueryPeftRunArtifactPaths:
     """한 run에서 생성되는 산출물 경로 묶음."""
 
     output_dir: Path
@@ -45,12 +45,12 @@ class QueryLoraRunArtifactPaths:
         }
 
 
-def build_query_lora_run_artifact_paths(
+def build_query_peft_run_artifact_paths(
     *,
     cfg: Any,
     trainer_version: str,
     created_at: datetime,
-) -> QueryLoraRunArtifactPaths:
+) -> QueryPeftRunArtifactPaths:
     base_output_dir = Path(str(cfg.output_dir))
     run_group = _resolve_query_ssl_run_group(cfg)
     if run_group is not None:
@@ -62,7 +62,7 @@ def build_query_lora_run_artifact_paths(
     )
     adapter_output_dir = Path(str(cfg.adapter_output_dir)) / trainer_version
     classifier_output_dir = Path(str(cfg.classifier_output_dir))
-    return QueryLoraRunArtifactPaths(
+    return QueryPeftRunArtifactPaths(
         output_dir=output_dir,
         adapter_output_dir=adapter_output_dir,
         classifier_output_dir=classifier_output_dir,

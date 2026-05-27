@@ -1,1 +1,1 @@
-"""Query-domain LoRA SSL IO package marker."""
+"""Query-domain PEFT SSL IO package marker."""

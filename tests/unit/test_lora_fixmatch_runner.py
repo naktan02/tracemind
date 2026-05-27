@@ -4,7 +4,7 @@ import torch
 from omegaconf import OmegaConf
 
 from scripts.experiments.query_peft_ssl.runners.consistency import (
-    run_query_ssl_lora_baseline,
+    run_query_ssl_peft_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
@@ -112,7 +112,7 @@ def _usb_unlabeled_row(query_id: str, label: str, text: str) -> LabeledQueryRow:
     )
 
 
-def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
+def test_run_query_ssl_peft_baseline_wires_fixmatch_method_manifest(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -156,7 +156,7 @@ def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.build_query_lora_model",
+        "scripts.experiments.query_peft_ssl.harness.common.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -165,11 +165,11 @@ def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
     )
     monkeypatch.setattr(
         "scripts.experiments.query_peft_ssl.runners.consistency."
-        "train_query_ssl_lora_classifier",
+        "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_lora_classifier",
+        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_peft_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -186,7 +186,7 @@ def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
         _fake_write_run_artifacts,
     )
 
-    outputs = run_query_ssl_lora_baseline(
+    outputs = run_query_ssl_peft_baseline(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
@@ -234,7 +234,7 @@ def test_run_query_ssl_lora_baseline_wires_fixmatch_method_manifest(
     assert runtime_metrics["trainable_param_ratio"] == 0.5
 
 
-def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
+def test_run_query_ssl_peft_baseline_uses_methods_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -268,7 +268,7 @@ def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.build_query_lora_model",
+        "scripts.experiments.query_peft_ssl.harness.common.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -277,11 +277,11 @@ def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
     )
     monkeypatch.setattr(
         "scripts.experiments.query_peft_ssl.runners.consistency."
-        "train_query_ssl_lora_classifier",
+        "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_lora_classifier",
+        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_peft_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -301,7 +301,7 @@ def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
         },
     )
 
-    run_query_ssl_lora_baseline(
+    run_query_ssl_peft_baseline(
         cfg=_build_cfg(),
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_usb_unlabeled_row("u1", "depression", "우울해요")],
@@ -315,7 +315,7 @@ def test_run_query_ssl_lora_baseline_uses_methods_descriptor(
     assert captured["algorithm"].uses_labeled_batches is True
 
 
-def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
+def test_run_query_ssl_peft_baseline_wires_flexmatch_descriptor(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -365,7 +365,7 @@ def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
         )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.build_query_lora_model",
+        "scripts.experiments.query_peft_ssl.harness.common.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -374,11 +374,11 @@ def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
     )
     monkeypatch.setattr(
         "scripts.experiments.query_peft_ssl.runners.consistency."
-        "train_query_ssl_lora_classifier",
+        "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_lora_classifier",
+        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_peft_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -398,7 +398,7 @@ def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
         },
     )
 
-    run_query_ssl_lora_baseline(
+    run_query_ssl_peft_baseline(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[
@@ -418,7 +418,7 @@ def test_run_query_ssl_lora_baseline_wires_flexmatch_descriptor(
     assert unlabeled_batch["row_indices"].tolist() == [0, 1]
 
 
-def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmentation(
+def test_run_query_ssl_peft_baseline_uses_pseudolabel_weak_text_without_augmentation(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -473,7 +473,7 @@ def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmenta
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.build_query_lora_model",
+        "scripts.experiments.query_peft_ssl.harness.common.build_query_peft_model",
         lambda **_kwargs: (
             _DummyModel(),
             _DummyTokenizer(),
@@ -482,11 +482,11 @@ def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmenta
     )
     monkeypatch.setattr(
         "scripts.experiments.query_peft_ssl.runners.consistency."
-        "train_query_ssl_lora_classifier",
+        "train_query_ssl_peft_classifier",
         _fake_train_query_ssl_classifier,
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_lora_classifier",
+        "scripts.experiments.query_peft_ssl.harness.common.evaluate_query_peft_classifier",
         lambda **_kwargs: {
             "loss": 0.1,
             "accuracy_top_1": 0.8,
@@ -503,7 +503,7 @@ def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmenta
         _fake_write_run_artifacts,
     )
 
-    outputs = run_query_ssl_lora_baseline(
+    outputs = run_query_ssl_peft_baseline(
         cfg=cfg,
         train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
         unlabeled_rows=[_labeled_row("u1", "depression", "우울해요")],
@@ -529,7 +529,7 @@ def test_run_query_ssl_lora_baseline_uses_pseudolabel_weak_text_without_augmenta
     assert "query_ssl_augmenter" not in captured["extra_manifest"]
 
 
-def test_run_query_ssl_lora_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
+def test_run_query_ssl_peft_baseline_rejects_unlabeled_rows_without_usb_candidates_when_precomputed_only() -> (  # noqa: E501
     None
 ):
     cfg = _build_cfg()
@@ -544,7 +544,7 @@ def test_run_query_ssl_lora_baseline_rejects_unlabeled_rows_without_usb_candidat
     unlabeled_rows = [_labeled_row("u1", "depression", "우울해요")]
 
     try:
-        run_query_ssl_lora_baseline(
+        run_query_ssl_peft_baseline(
             cfg=cfg,
             train_rows=[_labeled_row("seed_q1", "anxiety", "불안해요")],
             unlabeled_rows=unlabeled_rows,
