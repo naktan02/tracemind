@@ -6,7 +6,6 @@ import json
 from collections.abc import Mapping
 
 PEFT_ENCODER_RESOURCE_CACHE_NAMESPACE = "peft_encoder"
-PEFT_ENCODER_LEGACY_RESOURCE_CACHE_NAMESPACE = "lora_classifier"
 
 PEFT_ENCODER_TRANSIENT_RESOURCE_KINDS = (
     "helper_model",
@@ -31,12 +30,6 @@ def peft_encoder_resource_cache_prefix(kind: str) -> str:
     return f"{PEFT_ENCODER_RESOURCE_CACHE_NAMESPACE}:{kind}:"
 
 
-def peft_encoder_legacy_resource_cache_prefix(kind: str) -> str:
-    """legacy lora_classifier runtime resource prefix."""
-
-    return f"{PEFT_ENCODER_LEGACY_RESOURCE_CACHE_NAMESPACE}:{kind}:"
-
-
 def clear_peft_encoder_transient_resource_cache(runtime_resource_cache: object) -> int:
     """round 뒤 버려도 되는 무거운 PEFT-backed classifier cache를 비운다."""
 
@@ -47,8 +40,5 @@ def clear_peft_encoder_transient_resource_cache(runtime_resource_cache: object) 
     for kind in PEFT_ENCODER_TRANSIENT_RESOURCE_KINDS:
         removed += int(
             clear_resources(key_prefix=peft_encoder_resource_cache_prefix(kind))
-        )
-        removed += int(
-            clear_resources(key_prefix=peft_encoder_legacy_resource_cache_prefix(kind))
         )
     return removed

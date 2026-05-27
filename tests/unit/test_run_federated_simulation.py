@@ -19,7 +19,7 @@ from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.evaluation import (
-    LORA_CLASSIFIER_EVALUATOR_NAME,
+    PEFT_CLASSIFIER_EVALUATOR_NAME,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     supervised_seed_step,
@@ -137,7 +137,6 @@ from shared.src.contracts.adapter_contract_families.factories import (
 )
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
-    LoraClassifierState,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
@@ -184,7 +183,7 @@ def test_round_task_mapper_accepts_federated_ssl_method_step_task_type() -> None
         min_required_examples=1,
         gradient_clip_norm=0.5,
         objective_config={
-            "training_backend_name": "lora_classifier_trainer",
+            "training_backend_name": "peft_classifier_trainer",
         },
         selection_policy={"max_examples": 8},
     )
@@ -202,7 +201,7 @@ def test_round_task_mapper_migrates_legacy_fedmatch_task_type() -> None:
         min_required_examples=1,
         gradient_clip_norm=0.5,
         objective_config={
-            "training_backend_name": "lora_classifier_trainer",
+            "training_backend_name": "peft_classifier_trainer",
         },
         selection_policy={"max_examples": 8},
     )
@@ -224,9 +223,9 @@ def _default_training_task_config(
     margin_threshold: float,
     max_examples: int,
     gradient_clip_norm: float | None,
-    training_backend_name: str = "lora_classifier_trainer",
+    training_backend_name: str = "peft_classifier_trainer",
     privacy_guard_name: str = "noop",
-    scorer_backend_name: str = "lora_classifier_logits",
+    scorer_backend_name: str = "peft_classifier_logits",
     score_policy_name: str = "top1_probability",
     score_top_k: int | None = None,
     task_type: TrainingTaskType | str = TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
@@ -245,8 +244,8 @@ def _default_training_task_config(
                 "training_backend_name": training_backend_name,
                 "confidence_threshold": confidence_threshold,
                 "margin_threshold": margin_threshold,
-                "example_generation_backend_name": "lora_classifier_raw_rows",
-                "evidence_backend_name": "lora_classifier_logits",
+                "example_generation_backend_name": "peft_classifier_raw_rows",
+                "evidence_backend_name": "peft_classifier_logits",
                 "scorer_backend_name": scorer_backend_name,
                 "score_policy_name": score_policy_name,
                 **({} if score_top_k is None else {"score_top_k": score_top_k}),
@@ -266,7 +265,7 @@ def _default_validation_config(
     *,
     confidence_threshold: float,
     margin_threshold: float,
-    scorer_backend_name: str = LORA_CLASSIFIER_EVALUATOR_NAME,
+    scorer_backend_name: str = PEFT_CLASSIFIER_EVALUATOR_NAME,
     score_policy_name: str | None = None,
     score_top_k: int | None = None,
 ) -> FederatedValidationConfig:
@@ -280,7 +279,7 @@ def _default_validation_config(
     )
 
 
-def _default_lora_validation_config(
+def _default_peft_validation_config(
     *,
     confidence_threshold: float,
     margin_threshold: float,
@@ -288,12 +287,12 @@ def _default_lora_validation_config(
     return _default_validation_config(
         confidence_threshold=confidence_threshold,
         margin_threshold=margin_threshold,
-        scorer_backend_name=LORA_CLASSIFIER_EVALUATOR_NAME,
+        scorer_backend_name=PEFT_CLASSIFIER_EVALUATOR_NAME,
         score_policy_name=None,
     )
 
 
-def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
+def _patch_peft_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
     def _fake_evaluator(**kwargs):
         rows = list(kwargs["rows"])
         labels = [str(label) for label in kwargs["adapter_state"].label_schema]
@@ -314,9 +313,9 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
             report=report,
             row_count=len(rows),
             accepted_ratio=1.0,
-            loss_kind="cross_entropy_from_lora_classifier_logits",
-            score_distribution_kind="lora_classifier_logits_softmax",
-            selection_confidence_kind="lora_classifier_top1_probability",
+            loss_kind="cross_entropy_from_peft_classifier_logits",
+            score_distribution_kind="peft_classifier_logits_softmax",
+            selection_confidence_kind="peft_classifier_top1_probability",
             mean_selection_confidence=float(report["mean_top_1_probability"]),
             mean_selection_margin=float(report["mean_margin_top1_top2"]),
         )
@@ -328,7 +327,7 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
-def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
+def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
     def _fake_trainer(**kwargs: object) -> QuerySslPeftEncoderClientTrainingResult:
         training_task = kwargs["training_task"]
         active_state = kwargs["active_adapter_state"]
@@ -340,8 +339,8 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 model_id=training_task.model_id,
                 base_model_revision=training_task.model_revision,
                 training_scope=training_task.training_scope,
-                backbone=_lora_runtime_config().backbone_payload(),
-                peft_adapter_config=_lora_runtime_config().peft_adapter_config_payload(),
+                backbone=_peft_runtime_config().backbone_payload(),
+                peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
                 label_schema=labels,
                 example_count=2,
                 peft_parameter_deltas={"lora.test": [0.01 * scale]},
@@ -359,8 +358,8 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
                 model_id=training_task.model_id,
                 base_model_revision=training_task.model_revision,
                 training_scope=training_task.training_scope,
-                backbone=_lora_runtime_config().backbone_payload(),
-                lora_config=_lora_runtime_config().lora_config_payload(),
+                backbone=_peft_runtime_config().backbone_payload(),
+                lora_config=_peft_runtime_config().lora_config_payload(),
                 label_schema=labels,
                 example_count=2,
                 lora_parameter_deltas={"lora.test": [0.01 * scale]},
@@ -465,7 +464,7 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
 
 def _default_round_runtime_config(
     *,
-    adapter_family_name: str = "lora_classifier",
+    adapter_family_name: str = "peft_classifier",
     update_family_name: str = "peft_text_classifier",
     initial_state_builder: str | None = (
         "methods.adaptation.peft_text_classifier.runtime_family."
@@ -491,7 +490,6 @@ def _default_round_runtime_config(
     ),
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
-    lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
 ) -> FederatedRoundRuntimeConfig:
     return FederatedRoundRuntimeConfig(
@@ -504,20 +502,11 @@ def _default_round_runtime_config(
         transient_resource_cleaner=transient_resource_cleaner,
         local_objective_executors=local_objective_executors,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
-        lora_classifier=(
-            lora_classifier
-            if lora_classifier is not None
-            else (
-                _lora_runtime_config()
-                if adapter_family_name == "lora_classifier"
-                else None
-            )
-        ),
         peft_classifier=(
             peft_classifier
             if peft_classifier is not None
             else (
-                _lora_runtime_config()
+                _peft_runtime_config()
                 if adapter_family_name == "peft_classifier"
                 else None
             )
@@ -555,7 +544,7 @@ def _fedmatch_agreement_capability_plan() -> FederatedSslCapabilityPlan:
     )
 
 
-def _lora_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
+def _peft_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
     return FederatedPeftEncoderRuntimeConfig(
         training_backend_config=LoraClassifierTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
@@ -645,7 +634,7 @@ def _default_simulation_request(
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
         validation_config=validation_config
         or _default_validation_config(
@@ -682,43 +671,31 @@ def _default_simulation_request(
     )
 
 
-def _lora_objective_extras(
-    *,
-    delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-) -> dict[str, str | int | float | bool]:
-    return {
-        "lora_classifier.backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "lora_classifier.backbone_revision": "main",
-        "lora_classifier.tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
-        "lora_classifier.tokenizer_revision": "main",
-        "lora_classifier.pooling": "mean",
-        "lora_classifier.max_length": 256,
-        "lora_classifier.task_prefix": "",
-        "lora_classifier.peft_adapter_name": "lora",
-        "lora_classifier.rank": 8,
-        "lora_classifier.alpha": 16,
-        "lora_classifier.dropout": 0.1,
-        "lora_classifier.bias": "none",
-        "lora_classifier.target_modules": "all-linear",
-        "lora_classifier.use_rslora": False,
-        "lora_classifier.delta_format": delta_format,
-        "lora_classifier.artifact_ref_prefix": "agent-local://lora_classifier",
-        "lora_classifier.text_metadata_keys": (
-            "strong_text,training_text,raw_text,text,weak_text"
-        ),
-        "lora_classifier.label_schema": "anxiety,depression,normal,suicidal",
-    }
-
-
 def _peft_objective_extras(
     *,
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
 ) -> dict[str, str | int | float | bool]:
     return {
-        key.replace("lora_classifier.", "peft_classifier."): value
-        for key, value in _lora_objective_extras(delta_format=delta_format).items()
-    } | {
+        "peft_classifier.backbone_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "peft_classifier.backbone_revision": "main",
+        "peft_classifier.tokenizer_model_id": "mixedbread-ai/mxbai-embed-large-v1",
+        "peft_classifier.tokenizer_revision": "main",
+        "peft_classifier.pooling": "mean",
+        "peft_classifier.max_length": 256,
+        "peft_classifier.task_prefix": "",
+        "peft_classifier.peft_adapter_name": "lora",
+        "peft_classifier.rank": 8,
+        "peft_classifier.alpha": 16,
+        "peft_classifier.dropout": 0.1,
+        "peft_classifier.bias": "none",
+        "peft_classifier.target_modules": "all-linear",
+        "peft_classifier.use_rslora": False,
+        "peft_classifier.delta_format": delta_format,
         "peft_classifier.artifact_ref_prefix": "agent-local://peft_classifier",
+        "peft_classifier.text_metadata_keys": (
+            "strong_text,training_text,raw_text,text,weak_text"
+        ),
+        "peft_classifier.label_schema": "anxiety,depression,normal,suicidal",
     }
 
 
@@ -774,8 +751,8 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     bootstrap_row = _row("seed_1", "server labeled panic", "anxiety")
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
@@ -984,7 +961,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
     assert len(server_runtime.activated) == 1
 
 
-def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
+def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1012,15 +989,15 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         max_steps=9,
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
-                "training_backend_name": "lora_classifier_trainer",
+                "training_backend_name": "peft_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
-                "example_generation_backend_name": "lora_classifier_raw_rows",
-                "evidence_backend_name": "lora_classifier_logits",
-                "scorer_backend_name": "lora_classifier_logits",
+                "example_generation_backend_name": "peft_classifier_raw_rows",
+                "evidence_backend_name": "peft_classifier_logits",
+                "scorer_backend_name": "peft_classifier_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
-                **_lora_objective_extras(
+                **_peft_objective_extras(
                     delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
                 ),
             }
@@ -1036,8 +1013,8 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     )
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
@@ -1052,7 +1029,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         training_task=training_task,
         client_id="agent_01",
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
-        artifact_ref_prefix="agent-local://lora_classifier",
+        artifact_ref_prefix="agent-local://peft_classifier",
         lora_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={
             "anxiety": [0.1, 0.0],
@@ -1064,8 +1041,8 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         model_id="mxbai-lora-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
-        backbone=_lora_runtime_config().backbone_payload(),
-        lora_config=_lora_runtime_config().lora_config_payload(),
+        backbone=_peft_runtime_config().backbone_payload(),
+        lora_config=_peft_runtime_config().lora_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
         lora_delta_artifact_ref=delta_plan.lora_delta_artifact_ref,
@@ -1167,17 +1144,17 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         seed=42,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(
+            objective_extras=_peft_objective_extras(
                 delta_format=LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
             ),
         ),
@@ -1269,7 +1246,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
     assert "agent-local://" not in accepted_payload.model_dump_json()
 
 
-def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
+def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -1297,15 +1274,15 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         max_steps=9,
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
-                "training_backend_name": "lora_classifier_trainer",
+                "training_backend_name": "peft_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
-                "example_generation_backend_name": "lora_classifier_raw_rows",
-                "evidence_backend_name": "lora_classifier_logits",
-                "scorer_backend_name": "lora_classifier_logits",
+                "example_generation_backend_name": "peft_classifier_raw_rows",
+                "evidence_backend_name": "peft_classifier_logits",
+                "scorer_backend_name": "peft_classifier_logits",
                 "pseudo_label_algorithm_name": "top1_margin_threshold",
                 "privacy_guard_name": "noop",
-                **_lora_objective_extras(
+                **_peft_objective_extras(
                     delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
                 ),
             }
@@ -1321,8 +1298,8 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     )
     active_state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-lora-classifier",
         model_revision="sim_rev_0000",
@@ -1335,8 +1312,8 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         model_id="mxbai-lora-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
-        backbone=_lora_runtime_config().backbone_payload(),
-        lora_config=_lora_runtime_config().lora_config_payload(),
+        backbone=_peft_runtime_config().backbone_payload(),
+        lora_config=_peft_runtime_config().lora_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
         lora_parameter_deltas={"lora.test": [0.1]},
@@ -1502,17 +1479,17 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         seed=42,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(
+            objective_extras=_peft_objective_extras(
                 delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
             ),
         ),
@@ -1547,9 +1524,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
     runtime_resource_cache = InMemoryRuntimeResourceCache()
     runtime_resource_cache.set_resource("peft_encoder:helper_model:test", object())
     runtime_resource_cache.set_resource("peft_encoder:backbone_base:test", object())
-    runtime_resource_cache.set_resource("lora_classifier:helper_model:test", object())
-    runtime_resource_cache.set_resource("lora_classifier:backbone_base:test", object())
-    runtime_resource_cache.set_resource("lora_classifier:tokenizer:test", object())
+    runtime_resource_cache.set_resource("peft_encoder:tokenizer:test", object())
     peer_context = FederatedSslPeerContext(
         client_id="agent_01",
         policy_name="fixed_probe_output_knn",
@@ -1618,15 +1593,7 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         runtime_resource_cache.get_resource("peft_encoder:backbone_base:test") is None
     )
     assert (
-        runtime_resource_cache.get_resource("lora_classifier:helper_model:test") is None
-    )
-    assert (
-        runtime_resource_cache.get_resource("lora_classifier:backbone_base:test")
-        is None
-    )
-    assert (
-        runtime_resource_cache.get_resource("lora_classifier:tokenizer:test")
-        is not None
+        runtime_resource_cache.get_resource("peft_encoder:tokenizer:test") is not None
     )
     assert "helper_model_cache_release_seconds" in execution.summary.timing_breakdown
     assert execution.summary.method_diagnostics["fedmatch_helper_count"] == (
@@ -2044,7 +2011,7 @@ def test_simulation_server_runtime_accepts_no_method_descriptor(tmp_path: Path) 
 
 def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -> None:
     backend_name = resolve_simulation_aggregation_backend_name(
-        adapter_family_name="lora_classifier",
+        adapter_family_name="peft_classifier",
         aggregation_backend_name="fedavg",
         capability_plan=_partitioned_server_update_capability_plan(),
     )
@@ -2052,7 +2019,7 @@ def test_simulation_server_runtime_maps_partitioned_server_update_to_backend() -
     assert backend_name == "partitioned_delta_average"
 
 
-def test_simulation_server_runtime_rejects_partitioned_policy_for_non_lora_family() -> (
+def test_simulation_server_runtime_rejects_partitioned_policy_for_non_peft_family() -> (
     None
 ):
     with pytest.raises(ValueError, match="not supported by adapter family"):
@@ -2072,17 +2039,17 @@ def test_run_simulation_request_rejects_manual_partitioned_update_until_producer
         rounds=0,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(
+            objective_extras=_peft_objective_extras(
                 delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE
             ),
         ),
@@ -2196,32 +2163,11 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         run_simulation_request(request)
 
 
-def test_build_initial_shared_state_supports_lora_classifier_family() -> None:
-    state = build_initial_shared_state(
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
-        ),
-        model_id="mxbai-lora-classifier",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=2,
-        labels=["anxiety", "normal"],
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    assert isinstance(state, LoraClassifierState)
-    assert state.adapter_kind == "lora_classifier"
-    assert state.label_schema == ["anxiety", "normal"]
-    assert state.lora_config.rank == 8
-    assert state.apply([3.0, 4.0]) == pytest.approx([0.6, 0.8])
-
-
 def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
     state = build_initial_shared_state(
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="peft_classifier",
-            peft_classifier=_lora_runtime_config(),
+            peft_classifier=_peft_runtime_config(),
         ),
         model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
@@ -2294,10 +2240,10 @@ def test_build_initial_shared_state_rejects_builder_without_state() -> None:
         )
 
 
-def test_run_simulation_request_rejects_lora_runtime_objective_drift(
+def test_run_simulation_request_rejects_peft_runtime_objective_drift(
     tmp_path,
 ) -> None:
-    drifted_lora_runtime = FederatedPeftEncoderRuntimeConfig(
+    drifted_peft_runtime = FederatedPeftEncoderRuntimeConfig(
         training_backend_config=LoraClassifierTrainingBackendConfig(
             backbone_model_id="mixedbread-ai/mxbai-embed-large-v1",
             backbone_revision="main",
@@ -2317,44 +2263,44 @@ def test_run_simulation_request_rejects_lora_runtime_objective_drift(
     )
     request = _default_simulation_request(
         tmp_path,
-        output_name="lora_drift",
+        output_name="peft_drift",
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=drifted_lora_runtime,
+            adapter_family_name="peft_classifier",
+            peft_classifier=drifted_peft_runtime,
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
     )
 
-    with pytest.raises(ValueError, match="LoRA-classifier.*training_task.objective"):
+    with pytest.raises(ValueError, match="PEFT-classifier.*training_task.objective"):
         run_simulation_request(request)
 
 
-def test_run_simulation_request_rejects_missing_lora_runtime_config(
+def test_run_simulation_request_rejects_missing_peft_runtime_config(
     tmp_path,
 ) -> None:
     request = _default_simulation_request(
         tmp_path,
-        output_name="missing_lora_runtime_config",
+        output_name="missing_peft_runtime_config",
         train_rows=[
             _row("a1", "panic panic", "anxiety"),
             _row("n1", "calm calm", "normal"),
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=FederatedRoundRuntimeConfig(
-            adapter_family_name="lora_classifier",
+            adapter_family_name="peft_classifier",
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_classifier",
             initial_state_builder=(
@@ -2366,31 +2312,31 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
                 "evaluate_peft_encoder_simulation_validation_payload"
             ),
             classifier_head_bootstrap_logit_scale=8.0,
-            lora_classifier=None,
+            peft_classifier=None,
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
     )
 
     with pytest.raises(
         ValueError,
-        match="lora_classifier round runtime requires lora_classifier bootstrap config",
+        match="peft_classifier round runtime requires peft_classifier bootstrap config",
     ):
         run_simulation_request(request)
 
 
-def test_run_simulation_request_bootstraps_lora_classifier_profile(
+def test_run_simulation_request_bootstraps_peft_classifier_profile(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2408,19 +2354,19 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
         validation_rows=validation_rows,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_lora_validation_config(
+        validation_config=_default_peft_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
@@ -2433,23 +2379,23 @@ def test_run_simulation_request_bootstraps_lora_classifier_profile(
     assert result.final_validation == result.initial_validation
 
 
-def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
+def test_peft_classifier_validation_rejects_prototype_similarity(tmp_path) -> None:
     request = _default_simulation_request(
         tmp_path,
         output_name="lora_prototype_validation_rejected",
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
         validation_config=_default_validation_config(
             confidence_threshold=0.0,
@@ -2459,16 +2405,16 @@ def test_lora_classifier_validation_rejects_prototype_similarity(tmp_path) -> No
         ),
     )
 
-    with pytest.raises(ValueError, match="lora_classifier_eval"):
+    with pytest.raises(ValueError, match="peft_classifier_eval"):
         run_simulation_request(request)
 
 
-def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
+def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
-    _patch_query_ssl_lora_trainer(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_peft_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2489,10 +2435,10 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         _row("vn", "calm calm", "normal"),
         _row("vs", "die die", "suicidal"),
     ]
-    output_dir = tmp_path / "lora_inline_round"
+    output_dir = tmp_path / "peft_inline_round"
     request = _default_simulation_request(
         tmp_path,
-        output_name="lora_inline_round",
+        output_name="peft_inline_round",
         train_rows=train_rows,
         validation_rows=validation_rows,
         client_count=4,
@@ -2500,19 +2446,19 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
         bootstrap_ratio=1 / 3,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_lora_validation_config(
+        validation_config=_default_peft_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
@@ -2533,70 +2479,70 @@ def test_run_simulation_request_completes_lora_classifier_inline_delta_rounds(
     assert update_paths
     update_payload = json.loads(update_paths[0].read_text(encoding="utf-8"))
     assert update_payload["delta_format"] == LORA_CLASSIFIER_DELTA_FORMAT_INLINE
-    assert update_payload["lora_delta_artifact_ref"] is None
+    assert update_payload["peft_adapter_delta_artifact_ref"] is None
     assert update_payload["classifier_head_delta_artifact_ref"] is None
-    assert update_payload["lora_parameter_deltas"]
+    assert update_payload["peft_parameter_deltas"]
     assert update_payload["classifier_head_weight_deltas"]
     assert "agent-local://" not in json.dumps(update_payload)
-    lora_aggregate_path = (
+    peft_aggregate_path = (
         output_dir
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0001"
-        / "lora_adapter.json"
+        / "peft_adapter.json"
     )
     head_aggregate_path = (
         output_dir
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0001"
         / "classifier_head.json"
     )
-    assert lora_aggregate_path.exists()
+    assert peft_aggregate_path.exists()
     assert head_aggregate_path.exists()
-    assert json.loads(lora_aggregate_path.read_text(encoding="utf-8"))[
-        "lora_parameters"
+    assert json.loads(peft_aggregate_path.read_text(encoding="utf-8"))[
+        "peft_parameters"
     ]
     assert json.loads(head_aggregate_path.read_text(encoding="utf-8"))[
         "classifier_head_weights"
     ]
-    second_lora_aggregate_path = (
+    second_peft_aggregate_path = (
         output_dir
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0002"
-        / "lora_adapter.json"
+        / "peft_adapter.json"
     )
     second_head_aggregate_path = (
         output_dir
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "lora_classifier"
+        / "peft_classifier"
         / "sim_rev_0002"
         / "classifier_head.json"
     )
-    assert second_lora_aggregate_path.exists()
+    assert second_peft_aggregate_path.exists()
     assert second_head_aggregate_path.exists()
-    first_lora_artifact = json.loads(lora_aggregate_path.read_text(encoding="utf-8"))
+    first_peft_artifact = json.loads(peft_aggregate_path.read_text(encoding="utf-8"))
     first_head_artifact = json.loads(head_aggregate_path.read_text(encoding="utf-8"))
-    second_lora_artifact = json.loads(
-        second_lora_aggregate_path.read_text(encoding="utf-8")
+    second_peft_artifact = json.loads(
+        second_peft_aggregate_path.read_text(encoding="utf-8")
     )
     second_head_artifact = json.loads(
         second_head_aggregate_path.read_text(encoding="utf-8")
     )
-    assert second_lora_artifact != first_lora_artifact
+    assert second_peft_artifact != first_peft_artifact
     _assert_vector_mapping_accumulates(
-        before=first_lora_artifact["lora_parameters"],
-        delta=second_lora_artifact["applied_lora_parameter_deltas"],
-        after=second_lora_artifact["lora_parameters"],
+        before=first_peft_artifact["peft_parameters"],
+        delta=second_peft_artifact["applied_peft_parameter_deltas"],
+        after=second_peft_artifact["peft_parameters"],
     )
     _assert_vector_mapping_accumulates(
         before=first_head_artifact["classifier_head_weights"],
@@ -2614,8 +2560,8 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
-    _patch_query_ssl_lora_trainer(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_peft_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2639,7 +2585,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         model_id="mxbai-peft-classifier",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="peft_classifier",
-            peft_classifier=_lora_runtime_config(),
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
@@ -2650,7 +2596,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
             privacy_guard_name="noop",
             objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_lora_validation_config(
+        validation_config=_default_peft_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
@@ -2698,8 +2644,8 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
-    _patch_query_ssl_lora_trainer(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_peft_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2731,19 +2677,19 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
         bootstrap_ratio=1 / 3,
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="lora_classifier_trainer",
+            training_backend_name="peft_classifier_trainer",
             privacy_guard_name="noop",
-            objective_extras=_lora_objective_extras(),
+            objective_extras=_peft_objective_extras(),
         ),
-        validation_config=_default_lora_validation_config(
+        validation_config=_default_peft_validation_config(
             confidence_threshold=0.0,
             margin_threshold=0.0,
         ),
@@ -2766,8 +2712,8 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
             bootstrap_ratio=1 / 3,
             model_id="mxbai-lora-classifier",
             round_runtime_config=_default_round_runtime_config(
-                adapter_family_name="lora_classifier",
-                lora_classifier=_lora_runtime_config(),
+                adapter_family_name="peft_classifier",
+                peft_classifier=_peft_runtime_config(),
             ),
             training_task_config=base_request.training_task_config,
             validation_config=base_request.validation_config,
@@ -2798,8 +2744,8 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
         ],
         model_id="mxbai-lora-classifier",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="lora_classifier",
-            lora_classifier=_lora_runtime_config(),
+            adapter_family_name="peft_classifier",
+            peft_classifier=_peft_runtime_config(),
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,
@@ -2824,8 +2770,8 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
-    _patch_query_ssl_lora_trainer(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_peft_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -2908,10 +2854,10 @@ def test_run_simulation_completes_one_round_with_small_fixture(
     assert "weighted_f1" in report["metrics"]["secondary"]
     assert "max_calibration_error" in report["metrics"]["secondary"]
     assert report["metrics"]["final_validation"]["loss_kind"] == (
-        "cross_entropy_from_lora_classifier_logits"
+        "cross_entropy_from_peft_classifier_logits"
     )
     assert report["metrics"]["final_validation"]["score_distribution_kind"] == (
-        "lora_classifier_logits_softmax"
+        "peft_classifier_logits_softmax"
     )
     assert report["metrics"]["round_progression"]["round_count"] == 1
     assert (
@@ -2982,7 +2928,7 @@ def test_run_simulation_completes_one_round_with_small_fixture(
 
 
 def test_run_simulation_request_preserves_typed_boundary(tmp_path, monkeypatch) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),
@@ -3018,8 +2964,8 @@ def test_run_simulation_accepts_hydra_style_detail_configs(
     tmp_path,
     monkeypatch,
 ) -> None:
-    _patch_lora_classifier_evaluator(monkeypatch)
-    _patch_query_ssl_lora_trainer(monkeypatch)
+    _patch_peft_classifier_evaluator(monkeypatch)
+    _patch_query_ssl_peft_trainer(monkeypatch)
     train_rows = [
         _row("a1", "panic panic", "anxiety"),
         _row("a2", "panic panic", "anxiety"),

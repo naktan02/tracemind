@@ -239,12 +239,6 @@ def _resolve_local_regularizer_slug(cfg: DictConfig) -> str | None:
         default=None,
     )
     if proximal_mu is None:
-        proximal_mu = _select(
-            cfg,
-            "training_task.objective.lora_classifier.proximal_mu",
-            default=None,
-        )
-    if proximal_mu is None:
         return None
     normalized_mu = float(proximal_mu)
     if normalized_mu <= 0.0:

@@ -7,7 +7,6 @@ from datetime import datetime
 from typing import Protocol
 
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_ADAPTER_KIND,
     LoraClassifierState,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
@@ -26,23 +25,18 @@ from .config import (
 )
 from .initial_state import (
     LoraClassifierInitialStateConfig,
-    build_initial_lora_classifier_state,
     build_initial_peft_classifier_state,
 )
 from .training_backend import PeftEncoderTrainingBackend
 
 PeftEncoderState = LoraClassifierState | PeftClassifierState
-PEFT_ENCODER_ADAPTER_KINDS = (
-    PEFT_CLASSIFIER_ADAPTER_KIND,
-    LORA_CLASSIFIER_ADAPTER_KIND,
-)
+PEFT_ENCODER_ADAPTER_KINDS = (PEFT_CLASSIFIER_ADAPTER_KIND,)
 
 
 class PeftEncoderRoundRuntimeConfig(Protocol):
     """PEFT-backed classifier runtime payload를 가진 round runtime surface."""
 
     adapter_family_name: str
-    lora_classifier: LoraClassifierInitialStateConfig | None
     peft_classifier: LoraClassifierInitialStateConfig | None
 
 
@@ -63,11 +57,7 @@ def peft_encoder_runtime_payload(
         round_runtime_config.adapter_family_name
     )
     if adapter_family_name == PEFT_CLASSIFIER_ADAPTER_KIND:
-        return (
-            round_runtime_config.peft_classifier or round_runtime_config.lora_classifier
-        )
-    if adapter_family_name == LORA_CLASSIFIER_ADAPTER_KIND:
-        return round_runtime_config.lora_classifier
+        return round_runtime_config.peft_classifier
     return None
 
 
@@ -88,20 +78,6 @@ def build_initial_peft_encoder_state(
         round_runtime_config.adapter_family_name
     )
     runtime_payload = peft_encoder_runtime_payload(round_runtime_config)
-    if adapter_family_name == LORA_CLASSIFIER_ADAPTER_KIND:
-        if runtime_payload is None:
-            raise ValueError(
-                "lora_classifier round runtime requires lora_classifier "
-                "bootstrap config."
-            )
-        return build_initial_lora_classifier_state(
-            config=runtime_payload,
-            model_id=model_id,
-            model_revision=model_revision,
-            training_scope=training_scope,
-            labels=labels,
-            updated_at=updated_at,
-        )
     if adapter_family_name == PEFT_CLASSIFIER_ADAPTER_KIND:
         if runtime_payload is None:
             raise ValueError(

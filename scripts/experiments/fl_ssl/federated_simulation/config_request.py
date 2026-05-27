@@ -113,7 +113,6 @@ def build_simulation_request_from_config(
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
-        lora_classifier=round_runtime_payloads.get("lora_classifier"),
         peft_classifier=round_runtime_payloads.get("peft_classifier"),
     )
     actual_seed = int(cfg.seed if seed is None else seed)

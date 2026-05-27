@@ -192,17 +192,19 @@ methods/evaluation/                            # stable metric helper만
 
 ## Runtime Translation
 
-- [x] `lora_classifier` family의 state/update shape와 inline/server-owned artifact-ref
-  FedAvg core를 smoke로 검증했다.
-- [x] FL simulation에서 `lora_pseudo_label_v1` local profile과
-  `round_runtime.adapter_family_name=lora_classifier`,
+- [x] `peft_classifier` family의 state/update shape와 inline/server-owned artifact-ref
+  FedAvg core를 smoke로 검증했다. v1 `lora_classifier` shape는 old artifact reader
+  compatibility로만 유지한다.
+- [x] FL simulation에서 `peft_pseudo_label_v1` local profile과
+  `round_runtime.adapter_family_name=peft_classifier`,
+  `round_runtime.update_family_name=peft_text_classifier`,
   `round_runtime.aggregation_backend_name=fedavg` leaf 조합을 compose할 수 있다.
-- [x] LoRA-classifier FedAvg는 두 라운드에서
+- [x] PEFT-classifier FedAvg는 두 라운드에서
   `previous global snapshot + round aggregated delta = next global snapshot`
   수식을 테스트로 고정했다.
 - [x] FL simulation inline-delta 경로도 `sim_rev_0002 = sim_rev_0001 +
   round2 applied delta` 수식을 테스트로 고정했다.
-- [x] manual `Query SSL + LoRA-classifier` simulation 경로는
+- [x] manual `Query SSL + PEFT-classifier` simulation 경로는
   `methods/ssl/algorithms/*`와 실제 PEFT LoRA/classifier local trainer를 호출한다.
 - [x] method-owned FedMatch LoRA simulation 경로는 manual Query SSL trainer를 우회해
   FedMatch local objective를 LoRA-classifier family slice에서 호출하고, merged delta와

@@ -179,10 +179,10 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
 - method selection: 현재 기본 baseline은 v1 실행 field 기준
   `fl_method.composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
-  `round_runtime.adapter_family_name=lora_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg`다. target 구조에서는 같은 의미를
-  `update_family_name=peft_text_classifier`와 generic FedAvg runtime profile로
-  표현한다.
+  `round_runtime.adapter_family_name=peft_classifier`,
+  `round_runtime.update_family_name=peft_text_classifier`,
+  `round_runtime.aggregation_backend_name=fedavg`다. `lora_classifier`는 v1
+  artifact/report reader compatibility 이름으로만 남긴다.
 - runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
   성능 숫자나 논문 비교 근거로 쓰지 않는다.
 

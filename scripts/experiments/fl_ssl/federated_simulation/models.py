@@ -309,7 +309,6 @@ class FederatedRoundRuntimeConfig:
     final_projection_builder: str | None = None
     transient_resource_cleaner: str | None = None
     classifier_head_bootstrap_logit_scale: float = 8.0
-    lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None
 
     def __post_init__(self) -> None:

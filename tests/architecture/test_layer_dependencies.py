@@ -439,6 +439,46 @@ def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     )
 
 
+def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> None:
+    checked_paths = (
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "models.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "config_request.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_round_runtime.py",
+        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
+        METHODS_SRC / "adaptation" / "peft_text_classifier" / "resource_cache.py",
+    )
+    forbidden_snippets = (
+        'round_runtime_payloads.get("lora_classifier")',
+        'round_runtime_mapping.get("lora_classifier")',
+        "lora_classifier: FederatedPeftEncoderRuntimeConfig",
+        "round_runtime_config.lora_classifier",
+        "or round_runtime_config.lora_classifier",
+        'adapter_family_name == "lora_classifier"',
+        "LORA_CLASSIFIER_ADAPTER_KIND,",
+        "PEFT_ENCODER_LEGACY_RESOURCE_CACHE_NAMESPACE",
+        "peft_encoder_legacy_resource_cache_prefix",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "active FL simulation runtime은 peft_classifier bootstrap scope만 연다. "
+        "v1 lora_classifier는 shared contract/old artifact reader compatibility "
+        "표면으로만 남기고, runtime model/payload builder에 다시 직접 열지 않는다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

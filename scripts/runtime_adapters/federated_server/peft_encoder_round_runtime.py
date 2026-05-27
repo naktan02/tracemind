@@ -81,12 +81,6 @@ def build_peft_encoder_round_runtime_payloads(
     """Hydra round_runtime mapping에서 PEFT-backed classifier payload를 만든다."""
 
     payloads: dict[str, object] = {}
-    legacy_lora_config = _optional_mapping(round_runtime_mapping.get("lora_classifier"))
-    if legacy_lora_config is not None:
-        payloads["lora_classifier"] = FederatedPeftEncoderRuntimeConfig.from_mapping(
-            legacy_lora_config,
-            default_artifact_format="simulation_lora_classifier_state_ref",
-        )
     peft_config = _optional_mapping(round_runtime_mapping.get("peft_classifier"))
     if peft_config is not None:
         payloads["peft_classifier"] = FederatedPeftEncoderRuntimeConfig.from_mapping(
