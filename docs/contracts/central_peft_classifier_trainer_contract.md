@@ -148,8 +148,8 @@ Query Buffer (raw text)
 1. seed baseline reference
 2. initial seed checkpoint reference
 3. backbone reference
-4. LoRA config snapshot
-5. LoRA adapter checkpoint
+4. PEFT adapter mechanism config snapshot
+5. PEFT adapter checkpoint
 6. classifier head checkpoint
 7. label schema snapshot
 8. accepted query-derived row manifest
@@ -159,26 +159,29 @@ Query Buffer (raw text)
 
 중요:
 
-- LoRA adapter와 classifier head는 분리된 artifact로 남기는 편이 좋다.
-- 그래야 나중에 시스템 FL translation에서 `lora_classifier` family의 LoRA
-  adapter와 classifier head 결합 방식을 다시 선택하기 쉽다.
+- PEFT adapter와 classifier head는 분리된 artifact로 남기는 편이 좋다.
+- 그래야 나중에 시스템 FL translation에서 `peft_text_classifier` update family가
+  adapter mechanism과 classifier head 결합 방식을 다시 선택하기 쉽다.
 
 ## future FL SSL translation 경계
 
 중앙 control 결과와 FL SSL winner를 시스템/FL로 옮길 때는 아래 원칙을 지킨다.
 
 1. paper/adaptation checkpoint를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 우겨넣지 않는다.
-2. 먼저 `lora_classifier` family용 state/update payload를 별도 정의한다.
-3. `lora_classifier`는 classifier head에 LoRA 옵션을 붙인 것이 아니라, LoRA
-   adapter state와 classifier head state를 함께 배포/집계하는 별도 family로 본다.
-4. LoRA target module 이름과 rank 같은 핵심 메타데이터는 적응 트랙 산출물에서 보존한다.
-5. `diagonal_scale`은 제거하지 않고 lightweight baseline으로 유지한다.
-6. `classifier_head` family는 translation fallback으로 남길 수 있다.
+2. translation 후보는 `peft_text_classifier` 같은 trainable state/update family로 연다.
+   v1 `lora_classifier` payload 이름은 old artifact reader compatibility 표면으로만 해석한다.
+3. PEFT adapter state와 classifier head state는 같은 update family 안에서 함께
+   배포/집계하되, adapter mechanism(`lora`, `dora` 등)은 별도 PEFT adapter 축으로 둔다.
+4. PEFT target module 이름, rank, alpha 같은 핵심 메타데이터는 적응 트랙 산출물에서 보존한다.
+5. `diagonal_scale`은 active translation baseline이 아니라 legacy shared payload
+   compatibility contract로만 유지한다.
+6. `linear_head`는 embedding/vector 위 classification primitive이며,
+   `peft_text_classifier`의 fallback 하위 폴더가 아니다.
 
 기본 scaffold 고정값:
 
 1. backbone/tokenizer: `strategy_axes/adaptation/transformer_backbone=mxbai_encoder`
-2. LoRA config: `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
+2. PEFT adapter config: 기본 mechanism은 `lora`, `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`
 3. initial checkpoint: 중앙 Query SSL method 비교 기본값은 `none`이다. 기존
    `canonical_fixed_classifier_seed` warm-start는 continual adaptation 또는
    ablation run에서 명시적으로 선택한다.
