@@ -677,6 +677,25 @@ def test_local_update_registry_does_not_embed_peft_backend_override() -> None:
     )
 
 
+def test_adapter_family_module_resolver_does_not_embed_concrete_family_map() -> None:
+    path = METHODS_SRC / "adaptation" / "adapter_family_modules.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        '"classifier_head":',
+        '"lora_classifier":',
+        '"peft_classifier":',
+        '"methods.adaptation.peft_text_classifier"',
+        '"methods.classification.linear_head"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "adapter family module resolver는 concrete family alias table을 소유하지 "
+        "않는다. alias 선언은 구현 owner 옆 adapter_family_module manifest에 둔다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def test_peft_method_modules_use_canonical_config_type_name() -> None:
     allowed_paths = {
         Path("methods/adaptation/peft_text_classifier/config.py"),
@@ -2143,7 +2162,7 @@ def test_server_update_materialization_dispatcher_stays_family_agnostic() -> Non
     )
     assert "peft_classifier" not in source, (
         "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
-        "패키지 경로 alias는 adapter_family_modules.py가 소유한다."
+        "패키지 경로 alias는 구현 owner 옆 adapter_family_module manifest가 소유한다."
     )
 
 
@@ -2187,7 +2206,7 @@ def test_runtime_objective_compatibility_dispatcher_stays_family_agnostic() -> N
     )
     assert "peft_classifier" not in source, (
         "dispatcher는 PEFT-classifier family 이름도 하드코딩하지 않는다. "
-        "패키지 경로 alias는 adapter_family_modules.py가 소유한다."
+        "패키지 경로 alias는 구현 owner 옆 adapter_family_module manifest가 소유한다."
     )
 
 
