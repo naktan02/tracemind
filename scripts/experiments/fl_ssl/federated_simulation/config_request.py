@@ -86,6 +86,11 @@ def build_simulation_request_from_config(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
         update_family_name=str(cfg.round_runtime.update_family_name),
+        runtime_payload_key=_optional_config_str(
+            cfg.round_runtime,
+            "runtime_payload_key",
+        ),
+        runtime_payloads=round_runtime_payloads,
         round_runtime_payload_builder=_optional_config_str(
             cfg.round_runtime,
             "round_runtime_payload_builder",
@@ -113,7 +118,6 @@ def build_simulation_request_from_config(
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
-        peft_classifier=round_runtime_payloads.get("peft_classifier"),
     )
     actual_seed = int(cfg.seed if seed is None else seed)
     shard_policy = FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy))

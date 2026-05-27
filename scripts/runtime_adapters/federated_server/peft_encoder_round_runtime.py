@@ -4,13 +4,9 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
     PeftEncoderTrainingBackendConfig,
-)
-from methods.adaptation.peft_text_classifier.runtime_family import (
-    peft_encoder_runtime_payload,
 )
 
 
@@ -83,17 +79,13 @@ def build_peft_encoder_round_runtime_payloads(
     payloads: dict[str, object] = {}
     peft_config = _optional_mapping(round_runtime_mapping.get("peft_classifier"))
     if peft_config is not None:
-        payloads["peft_classifier"] = FederatedPeftEncoderRuntimeConfig.from_mapping(
-            peft_config,
-            default_artifact_format="simulation_peft_classifier_state_ref",
+        payloads["peft_text_classifier"] = (
+            FederatedPeftEncoderRuntimeConfig.from_mapping(
+                peft_config,
+                default_artifact_format="simulation_peft_classifier_state_ref",
+            )
         )
     return payloads
-
-
-def resolve_peft_encoder_runtime_payload(round_runtime_config: Any) -> object | None:
-    """PEFT-backed classifier family면 adapter family에 맞는 payload를 돌려준다."""
-
-    return peft_encoder_runtime_payload(round_runtime_config)
 
 
 _PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS = frozenset(

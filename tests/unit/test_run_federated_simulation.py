@@ -90,7 +90,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedDatasetSplit,
     FederatedDiagnosticsConfig,
     FederatedLocalTrainerRuntimeConfig,
-    FederatedPeftEncoderRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedResumeConfig,
@@ -122,6 +121,10 @@ from scripts.runtime_adapters.federated_agent.local_training import (
 from scripts.runtime_adapters.federated_server import peft_encoder_server_step
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
+)
+from scripts.runtime_adapters.federated_server.peft_encoder_round_runtime import (
+    FederatedPeftEncoderRuntimeConfig,
+    build_peft_encoder_round_runtime_payloads,
 )
 from scripts.runtime_adapters.federated_server.round_request_mapper import (
     build_federated_training_task_config,
@@ -472,25 +475,29 @@ def _default_round_runtime_config(
     classifier_head_bootstrap_logit_scale: float = 8.0,
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
 ) -> FederatedRoundRuntimeConfig:
+    runtime_payload = (
+        peft_classifier
+        if peft_classifier is not None
+        else (
+            _peft_runtime_config()
+            if update_family_name == "peft_text_classifier"
+            else None
+        )
+    )
     return FederatedRoundRuntimeConfig(
         adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
         update_family_name=update_family_name,
+        runtime_payload_key=update_family_name if runtime_payload is not None else None,
+        runtime_payloads=(
+            {update_family_name: runtime_payload} if runtime_payload is not None else {}
+        ),
         initial_state_builder=initial_state_builder,
         validation_evaluator=validation_evaluator,
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
         local_objective_executors=local_objective_executors,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
-        peft_classifier=(
-            peft_classifier
-            if peft_classifier is not None
-            else (
-                _peft_runtime_config()
-                if adapter_family_name == "peft_classifier"
-                else None
-            )
-        ),
     )
 
 
@@ -542,6 +549,35 @@ def _peft_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
             target_modules="all-linear",
             use_rslora=False,
         ),
+    )
+
+
+def test_peft_encoder_round_runtime_payload_uses_update_family_key() -> None:
+    payloads = build_peft_encoder_round_runtime_payloads(
+        {
+            "peft_classifier": {
+                "backbone_model_id": "mxbai",
+                "backbone_revision": "main",
+                "tokenizer_model_id": "mxbai",
+                "tokenizer_revision": "main",
+                "pooling": "mean",
+                "max_length": 32,
+                "task_prefix": "",
+                "peft_adapter_name": "lora",
+                "rank": 8,
+                "alpha": 16,
+                "dropout": 0.1,
+                "bias": "none",
+                "target_modules": "all-linear",
+                "use_rslora": False,
+            }
+        }
+    )
+
+    assert "peft_classifier" not in payloads
+    assert isinstance(
+        payloads["peft_text_classifier"],
+        FederatedPeftEncoderRuntimeConfig,
     )
 
 
@@ -2290,7 +2326,6 @@ def test_run_simulation_request_rejects_missing_peft_runtime_config(
                 "evaluate_peft_encoder_simulation_validation_payload"
             ),
             classifier_head_bootstrap_logit_scale=8.0,
-            peft_classifier=None,
         ),
         training_task_config=_default_training_task_config(
             confidence_threshold=0.0,

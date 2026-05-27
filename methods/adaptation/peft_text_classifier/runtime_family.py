@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping, Sequence
 from datetime import datetime
-from typing import Protocol
+from typing import Protocol, cast
 
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
@@ -37,7 +37,9 @@ class PeftEncoderRoundRuntimeConfig(Protocol):
     """PEFT-backed classifier runtime payload를 가진 round runtime surface."""
 
     adapter_family_name: str
-    peft_classifier: LoraClassifierInitialStateConfig | None
+
+    def runtime_payload_for_update_family(self) -> object | None:
+        """update family config가 해석한 runtime payload를 반환한다."""
 
 
 def is_peft_encoder_adapter_family(adapter_family_name: object) -> bool:
@@ -51,13 +53,16 @@ def is_peft_encoder_adapter_family(adapter_family_name: object) -> bool:
 def peft_encoder_runtime_payload(
     round_runtime_config: PeftEncoderRoundRuntimeConfig,
 ) -> LoraClassifierInitialStateConfig | None:
-    """adapter family 이름에 맞는 runtime payload를 반환한다."""
+    """PEFT-backed update family runtime payload를 반환한다."""
 
     adapter_family_name = _normalize_adapter_family_name(
         round_runtime_config.adapter_family_name
     )
     if adapter_family_name == PEFT_CLASSIFIER_ADAPTER_KIND:
-        return round_runtime_config.peft_classifier
+        runtime_payload = round_runtime_config.runtime_payload_for_update_family()
+        if runtime_payload is None:
+            return None
+        return _require_peft_encoder_runtime_payload(runtime_payload)
     return None
 
 
@@ -152,3 +157,27 @@ def build_training_backend_for_peft_encoder_state(
 
 def _normalize_adapter_family_name(adapter_family_name: object) -> str:
     return str(adapter_family_name).strip().lower().replace("-", "_")
+
+
+def _require_peft_encoder_runtime_payload(
+    runtime_payload: object,
+) -> LoraClassifierInitialStateConfig:
+    required_attributes = (
+        "artifact_format",
+        "lora_adapter_artifact_ref",
+        "classifier_head_artifact_ref",
+        "backbone_payload",
+        "lora_config_payload",
+        "peft_adapter_config_payload",
+    )
+    missing = [
+        attribute
+        for attribute in required_attributes
+        if not hasattr(runtime_payload, attribute)
+    ]
+    if missing:
+        raise TypeError(
+            "PEFT text classifier runtime payload is missing required surface: "
+            f"{missing}"
+        )
+    return cast(LoraClassifierInitialStateConfig, runtime_payload)

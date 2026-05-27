@@ -480,6 +480,47 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
     )
 
 
+def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
+    checked_paths = (
+        SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "models.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "config_request.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "peft_encoder_method_owned_client_round.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_agent"
+        / "peft_encoder_query_ssl_client_round.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "fl_ssl"
+        / "federated_simulation"
+        / "adapters"
+        / "runtime_compatibility.py",
+    )
+    forbidden_snippets = (
+        "peft_classifier: FederatedPeftEncoderRuntimeConfig",
+        'round_runtime_payloads.get("peft_classifier")',
+        "runtime_payload_for_adapter_family",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "FL round runtime model은 update family별 payload를 generic map으로 보관한다. "
+        "새 update family 추가 때 scripts model/config_request에 family-specific "
+        "field를 추가하지 않는다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
     source = (
         REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py"

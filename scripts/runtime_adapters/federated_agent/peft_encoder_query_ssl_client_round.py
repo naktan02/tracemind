@@ -88,8 +88,7 @@ def _supports_query_ssl_peft_encoder_client_training(
         and is_peft_encoder_adapter_family(
             request.round_runtime_config.adapter_family_name
         )
-        and request.round_runtime_config.runtime_payload_for_adapter_family()
-        is not None
+        and request.round_runtime_config.runtime_payload_for_update_family() is not None
     )
 
 
@@ -105,7 +104,7 @@ def _run_query_ssl_peft_encoder_client_round(
 ) -> ClientRoundExecution:
     if request.query_ssl_objective_config is None:
         raise ValueError("query_ssl_objective_config is required.")
-    if request.round_runtime_config.runtime_payload_for_adapter_family() is None:
+    if request.round_runtime_config.runtime_payload_for_update_family() is None:
         raise ValueError("PEFT classifier runtime config is required.")
 
     timing = TimingRecorder()

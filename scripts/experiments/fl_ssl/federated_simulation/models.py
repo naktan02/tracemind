@@ -13,10 +13,6 @@ from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from scripts.experiments.fl_ssl.federated_simulation import (
     simulation_result_models,
 )
-from scripts.runtime_adapters.federated_server.peft_encoder_round_runtime import (
-    FederatedPeftEncoderRuntimeConfig,
-    resolve_peft_encoder_runtime_payload,
-)
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
 )
@@ -302,6 +298,8 @@ class FederatedRoundRuntimeConfig:
     adapter_family_name: str
     aggregation_backend_name: str
     update_family_name: str
+    runtime_payload_key: str | None = None
+    runtime_payloads: dict[str, object] = field(default_factory=dict)
     round_runtime_payload_builder: str | None = None
     local_objective_executors: tuple[str, ...] = ()
     initial_state_builder: str | None = None
@@ -309,7 +307,6 @@ class FederatedRoundRuntimeConfig:
     final_projection_builder: str | None = None
     transient_resource_cleaner: str | None = None
     classifier_head_bootstrap_logit_scale: float = 8.0
-    peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None
 
     def __post_init__(self) -> None:
         normalized_adapter_family = (
@@ -334,15 +331,19 @@ class FederatedRoundRuntimeConfig:
             raise ValueError("round_runtime.update_family_name must not be empty.")
         self.adapter_family_name = normalized_adapter_family
         self.update_family_name = normalized_update_family
+        normalized_runtime_payload_key = _optional_str(self.runtime_payload_key)
+        if normalized_runtime_payload_key is not None:
+            normalized_runtime_payload_key = (
+                normalized_runtime_payload_key.lower().replace("-", "_")
+            )
+        self.runtime_payload_key = normalized_runtime_payload_key
 
-    def runtime_payload_for_adapter_family(self) -> object | None:
-        """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""
+    def runtime_payload_for_update_family(self) -> object | None:
+        """update-family config가 지정한 runtime payload를 반환한다."""
 
-        return resolve_peft_encoder_runtime_payload(self) or getattr(
-            self,
-            self.adapter_family_name,
-            None,
-        )
+        if self.runtime_payload_key is not None:
+            return self.runtime_payloads.get(self.runtime_payload_key)
+        return self.runtime_payloads.get(self.update_family_name)
 
 
 @dataclass(frozen=True, slots=True)

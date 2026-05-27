@@ -17,6 +17,6 @@ def require_round_runtime_matches_training_objective(
 
     require_adapter_runtime_matches_objective(
         adapter_kind=request.round_runtime_config.adapter_family_name,
-        runtime_config=request.round_runtime_config.runtime_payload_for_adapter_family(),
+        runtime_config=request.round_runtime_config.runtime_payload_for_update_family(),
         objective_config=request.training_task_config.objective_config,
     )

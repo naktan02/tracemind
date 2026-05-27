@@ -105,7 +105,7 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `strategy_axes/trainable_state/update_family`, `round_runtime.aggregation_backend_name`
   - FL entrypoint의 update family와 aggregation backend 실행 leaf다.
   - `strategy_axes/trainable_state/update_family/*`가 `update_family_name`과
-    `composition_slug_builder`, `initial_state_builder`, 필요한 경우
+    `runtime_payload_key`, `composition_slug_builder`, `initial_state_builder`, 필요한 경우
     `validation_evaluator`를 함께 제공한다.
     scripts는 family 이름으로 분기하지 않고 이 callable들을 실행한다.
   - high-level compose preset은 중복 source-of-truth를 피하기 위해 두지 않는다.
