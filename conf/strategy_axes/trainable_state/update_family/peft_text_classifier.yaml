@@ -2,3 +2,4 @@
 
 update_family_name: peft_text_classifier
 initial_state_builder: methods.adaptation.text_classifier.peft_encoder.runtime_family.build_initial_peft_encoder_state
+validation_evaluator: methods.adaptation.text_classifier.peft_encoder.evaluation.evaluate_peft_encoder_simulation_validation_payload

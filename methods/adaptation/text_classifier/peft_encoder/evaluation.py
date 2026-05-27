@@ -24,11 +24,13 @@ from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
 )
 from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
     PeftEncoderMaterializedState,
+    materialize_base_peft_encoder_state,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
 )
+from methods.federated.aggregation.base import FederatedAggregationContext
 from shared.src.contracts.adapter_contract_families.lora_classifier import (
     LoraClassifierState,
 )
@@ -185,6 +187,42 @@ def evaluate_peft_encoder_validation_payload(
             if is_peft_classifier
             else LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND
         ),
+    )
+
+
+def evaluate_peft_encoder_simulation_validation_payload(
+    *,
+    rows: Sequence[LabeledQueryRow],
+    adapter_state: object,
+    aggregation_context: FederatedAggregationContext,
+    objective_config: TrainingObjectiveConfig | None,
+    runtime_config: LoraClassifierModelRuntimeConfig,
+    batch_size: int,
+    seed: int,
+    scorer_backend_name: str,
+    runtime_resource_cache: RuntimeResourceCache | None = None,
+) -> dict[str, object]:
+    """FL simulation이 넘긴 PEFT-backed classifier state를 평가한다."""
+
+    state = require_peft_encoder_state(adapter_state)
+    if scorer_backend_name not in PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES:
+        raise ValueError(
+            "PEFT-backed classifier validation must use one of "
+            f"{PEFT_CLASSIFIER_ACCEPTED_EVALUATOR_NAMES!r}: "
+            f"{scorer_backend_name!r}."
+        )
+    return evaluate_peft_encoder_validation_payload(
+        rows=rows,
+        adapter_state=state,
+        base_parameters=materialize_base_peft_encoder_state(
+            base_state=state,
+            context=aggregation_context,
+        ),
+        objective_config=objective_config,
+        runtime_config=runtime_config,
+        batch_size=batch_size,
+        seed=seed,
+        runtime_resource_cache=runtime_resource_cache,
     )
 
 

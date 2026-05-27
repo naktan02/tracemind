@@ -91,6 +91,8 @@ def build_protocol_payload(
         "round_runtime": {
             "adapter_family_name": round_runtime_config.adapter_family_name,
             "update_family_name": round_runtime_config.update_family_name,
+            "initial_state_builder": round_runtime_config.initial_state_builder,
+            "validation_evaluator": round_runtime_config.validation_evaluator,
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
             "classifier_head_bootstrap_logit_scale": (
                 round_runtime_config.classifier_head_bootstrap_logit_scale

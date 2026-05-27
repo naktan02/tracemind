@@ -13,6 +13,9 @@ from methods.adaptation.query_classifier_adaptation.local_training_budget import
     build_labeled_anchored_query_ssl_batch_plan,
     build_query_ssl_local_step_plan,
 )
+from methods.adaptation.text_classifier.peft_encoder import (
+    evaluation as peft_encoder_evaluation,
+)
 from methods.adaptation.text_classifier.peft_encoder.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
@@ -52,9 +55,6 @@ from methods.federated_ssl.peer_context import (
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_training,
     server_step_execution,
-)
-from scripts.experiments.fl_ssl.federated_simulation.adapters import (
-    evaluation as evaluation_adapter,
 )
 from scripts.experiments.fl_ssl.federated_simulation.adapters.method_runtime import (
     build_federated_ssl_simulation_runtime,
@@ -324,8 +324,8 @@ def _patch_lora_classifier_evaluator(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        evaluation_adapter,
-        "evaluate_peft_encoder_validation_payload",
+        peft_encoder_evaluation,
+        "evaluate_peft_encoder_simulation_validation_payload",
         _fake_evaluator,
     )
 
@@ -473,6 +473,10 @@ def _default_round_runtime_config(
         "methods.adaptation.text_classifier.peft_encoder.runtime_family."
         "build_initial_peft_encoder_state"
     ),
+    validation_evaluator: str | None = (
+        "methods.adaptation.text_classifier.peft_encoder.evaluation."
+        "evaluate_peft_encoder_simulation_validation_payload"
+    ),
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -483,6 +487,7 @@ def _default_round_runtime_config(
         aggregation_backend_name=aggregation_backend_name,
         update_family_name=update_family_name,
         initial_state_builder=initial_state_builder,
+        validation_evaluator=validation_evaluator,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=(
             lora_classifier
@@ -2357,6 +2362,10 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
             initial_state_builder=(
                 "methods.adaptation.text_classifier.peft_encoder.runtime_family."
                 "build_initial_peft_encoder_state"
+            ),
+            validation_evaluator=(
+                "methods.adaptation.text_classifier.peft_encoder.evaluation."
+                "evaluate_peft_encoder_simulation_validation_payload"
             ),
             classifier_head_bootstrap_logit_scale=8.0,
             lora_classifier=None,
