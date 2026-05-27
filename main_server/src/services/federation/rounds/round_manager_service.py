@@ -19,9 +19,6 @@ from main_server.src.services.federation.rounds.boundary.models import (
 from main_server.src.services.federation.rounds.families.models import (
     SharedAdapterRoundFamily,
 )
-from main_server.src.services.federation.rounds.families.registry import (
-    build_shared_adapter_round_family,
-)
 from methods.federated_ssl.runtime_fallbacks import (
     build_runtime_fallback_secure_aggregation_config,
     build_runtime_fallback_training_objective_config,
@@ -72,12 +69,7 @@ class RoundPublicationRequest:
 class RoundManagerService:
     """라운드용 task를 만들고 새 active manifest를 발행한다."""
 
-    adapter_family: SharedAdapterRoundFamily = field(
-        default_factory=lambda: build_shared_adapter_round_family(
-            "diagonal_scale",
-            aggregation_backend_name="fedavg",
-        )
-    )
+    adapter_family: SharedAdapterRoundFamily
     artifact_repository: SharedAdapterStateRepository = field(
         default_factory=SharedAdapterStateRepository
     )

@@ -226,7 +226,8 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   agent-local artifact upload, server-owned materialization, manifest/version
   compatibility는 닫혔다. live `agent`/`main_server` runtime translation은 winner
   method 확정 뒤 별도 범위로 진행한다.
-- live `main_server`의 no-config round runtime fallback은 legacy
-  `diagonal_scale` compatibility path다. 새 논문/FL SSL 실행 기본값으로 해석하지
-  않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시 `round_runtime.*`
-  leaf를 source of truth로 사용한다.
+- live `main_server`의 no-config round runtime fallback은 server runtime config의
+  named legacy profile로 격리된 `diagonal_scale` compatibility path다.
+  `RoundManagerService`는 이 기본값을 소유하지 않는다. 새 논문/FL SSL 실행 기본값으로
+  해석하지 않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시
+  `round_runtime.*` leaf를 source of truth로 사용한다.

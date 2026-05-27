@@ -420,6 +420,10 @@ def _build_service(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
+            adapter_family=build_shared_adapter_round_family(
+                "diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
         ),
@@ -1109,6 +1113,10 @@ def test_round_lifecycle_finalizes_with_prototype_rebuild_runtime(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
+            adapter_family=build_shared_adapter_round_family(
+                "diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
         ),

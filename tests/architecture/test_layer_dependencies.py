@@ -445,6 +445,41 @@ def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> 
     )
 
 
+def test_round_manager_does_not_own_default_adapter_family() -> None:
+    path = (
+        MAIN_SERVER_SRC
+        / "services"
+        / "federation"
+        / "rounds"
+        / "round_manager_service.py"
+    )
+    source = path.read_text(encoding="utf-8")
+    imports = _collect_absolute_imports(path)
+
+    assert "main_server.src.services.federation.rounds.families.registry" not in imports
+    assert "build_shared_adapter_round_family" not in source
+    assert "diagonal_scale" not in source, (
+        "RoundManagerService는 round lifecycle orchestration만 소유한다. no-config "
+        "legacy adapter family fallback은 runtime/config profile에 격리하고, "
+        "service는 caller가 조립한 adapter_family를 받는다."
+    )
+
+
+def test_server_round_runtime_config_isolates_legacy_adapter_profile() -> None:
+    path = (
+        MAIN_SERVER_SRC / "services" / "federation" / "rounds" / "runtime" / "config.py"
+    )
+    imports = _collect_absolute_imports(path)
+
+    assert (
+        "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
+    ), (
+        "server runtime config는 shared diagonal_scale contract를 직접 import하지 "
+        "않는다. legacy no-config fallback은 named runtime profile 값으로만 "
+        "격리한다."
+    )
+
+
 def test_agent_layer_does_not_import_main_server_or_scripts() -> None:
     violations = _find_forbidden_imports(
         root=AGENT_SRC,

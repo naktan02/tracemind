@@ -44,6 +44,9 @@ from main_server.src.infrastructure.repositories.round_repository import RoundRe
 from main_server.src.services.federation.rounds.active_manifest_service import (
     ActiveModelManifestService,
 )
+from main_server.src.services.federation.rounds.families.registry import (
+    build_shared_adapter_round_family,
+)
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
@@ -141,6 +144,10 @@ def round_service(state_root: Path, artifact_root: Path) -> RoundLifecycleServic
             )
         ),
         round_manager_service=RoundManagerService(
+            adapter_family=build_shared_adapter_round_family(
+                "diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
             artifact_repository=state_repository,
         ),
     )

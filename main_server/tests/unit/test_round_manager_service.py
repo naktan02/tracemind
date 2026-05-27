@@ -48,6 +48,13 @@ from shared.src.contracts.training_contracts import (  # noqa: E402
 from shared.src.domain.services.clock import FixedClock
 
 
+def _build_diagonal_scale_round_family():
+    return build_shared_adapter_round_family(
+        "diagonal_scale",
+        aggregation_backend_name="fedavg",
+    )
+
+
 def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -> None:
     repository = shared_adapter_state_repository_module.SharedAdapterStateRepository(
         state_root=tmp_path / "shared_states"
@@ -98,6 +105,7 @@ def test_round_manager_publishes_next_model_and_prototype_pair(tmp_path: Path) -
     )
 
     service = RoundManagerService(
+        adapter_family=_build_diagonal_scale_round_family(),
         artifact_repository=repository,
         update_payload_repository=update_repository,
     )
@@ -277,7 +285,7 @@ def test_round_manager_publishes_lora_classifier_next_state(tmp_path: Path) -> N
 
 
 def test_round_manager_sets_default_policy_names_on_training_task() -> None:
-    service = RoundManagerService()
+    service = RoundManagerService(adapter_family=_build_diagonal_scale_round_family())
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -348,7 +356,7 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
 
 
 def test_round_manager_accepts_secure_aggregation_config_on_training_task() -> None:
-    service = RoundManagerService()
+    service = RoundManagerService(adapter_family=_build_diagonal_scale_round_family())
 
     task = service.create_training_task(
         RoundOpenRequest(
@@ -418,6 +426,7 @@ def test_round_manager_uses_injected_clock_for_publication_time(
     )
     fixed_time = datetime(2026, 3, 30, 15, 0, tzinfo=timezone.utc)
     service = RoundManagerService(
+        adapter_family=_build_diagonal_scale_round_family(),
         artifact_repository=repository,
         update_payload_repository=update_repository,
         clock=FixedClock(fixed_time),

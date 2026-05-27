@@ -7,26 +7,48 @@ import os
 from collections.abc import Mapping
 from dataclasses import dataclass, field
 
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
-)
-
 from ..aggregation.models import AggregationConfigScalar
 
 ROUND_ADAPTER_FAMILY_ENV = "TRACEMIND_ROUND_ADAPTER_FAMILY"
 ROUND_AGGREGATION_BACKEND_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND"
 ROUND_AGGREGATION_BACKEND_CONFIG_ENV = "TRACEMIND_ROUND_AGGREGATION_BACKEND_CONFIG"
 ROUND_METHOD_DESCRIPTOR_ENV = "TRACEMIND_ROUND_METHOD_DESCRIPTOR"
-LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK = DIAGONAL_SCALE_ADAPTER_KIND
+
+
+@dataclass(frozen=True, slots=True)
+class ServerRoundRuntimeProfile:
+    """명시 runtime config가 없을 때 쓰는 compatibility profile."""
+
+    profile_name: str
+    adapter_family_name: str
+    aggregation_backend_name: str
+    method_descriptor_name: str | None = None
+    aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
+        default_factory=dict
+    )
+
+
+LEGACY_DIAGONAL_SCALE_SERVER_ROUND_RUNTIME_PROFILE = ServerRoundRuntimeProfile(
+    profile_name="legacy_diagonal_scale.v1",
+    adapter_family_name="diagonal_scale",
+    aggregation_backend_name="fedavg",
+)
+DEFAULT_SERVER_ROUND_RUNTIME_PROFILE = (
+    LEGACY_DIAGONAL_SCALE_SERVER_ROUND_RUNTIME_PROFILE
+)
 
 
 @dataclass(slots=True)
 class ServerRoundRuntimeConfig:
     """서버가 round orchestration을 조립할 때 사용하는 전략 선택 축."""
 
-    adapter_family_name: str = LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK
-    aggregation_backend_name: str = "fedavg"
-    method_descriptor_name: str | None = None
+    adapter_family_name: str = DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name
+    aggregation_backend_name: str = (
+        DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name
+    )
+    method_descriptor_name: str | None = (
+        DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+    )
     aggregation_backend_overrides: Mapping[str, AggregationConfigScalar] = field(
         default_factory=dict
     )
@@ -42,14 +64,20 @@ def load_server_round_runtime_config_from_env(
     return ServerRoundRuntimeConfig(
         adapter_family_name=source.get(
             ROUND_ADAPTER_FAMILY_ENV,
-            LEGACY_SERVER_ROUND_ADAPTER_FAMILY_FALLBACK,
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.adapter_family_name,
         ),
         aggregation_backend_name=source.get(
             ROUND_AGGREGATION_BACKEND_ENV,
-            "fedavg",
+            DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_name,
         ),
-        method_descriptor_name=_optional_env_value(source, ROUND_METHOD_DESCRIPTOR_ENV),
-        aggregation_backend_overrides=_load_aggregation_backend_overrides(source),
+        method_descriptor_name=(
+            _optional_env_value(source, ROUND_METHOD_DESCRIPTOR_ENV)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.method_descriptor_name
+        ),
+        aggregation_backend_overrides=(
+            _load_aggregation_backend_overrides(source)
+            or DEFAULT_SERVER_ROUND_RUNTIME_PROFILE.aggregation_backend_overrides
+        ),
     )
 
 

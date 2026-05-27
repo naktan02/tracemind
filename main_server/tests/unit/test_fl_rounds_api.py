@@ -27,6 +27,9 @@ from main_server.src.services.federation.rounds.boundary.payloads import (
     RoundFinalizeRequestPayload,
     RoundOpenRequestPayload,
 )
+from main_server.src.services.federation.rounds.families.registry import (
+    build_shared_adapter_round_family,
+)
 from main_server.src.services.federation.rounds.round_lifecycle_service import (
     RoundLifecycleService,
 )
@@ -98,6 +101,10 @@ def _build_service(
             clock=FixedClock(fixed_time),
         ),
         round_manager_service=RoundManagerService(
+            adapter_family=build_shared_adapter_round_family(
+                "diagonal_scale",
+                aggregation_backend_name="fedavg",
+            ),
             artifact_repository=state_repository,
             clock=FixedClock(fixed_time),
         ),
