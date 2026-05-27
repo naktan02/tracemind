@@ -127,6 +127,12 @@ from scripts.runtime_adapters.federated_server.runtime import (
     SimulationServerRuntime,
     resolve_simulation_aggregation_backend_name,
 )
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    ClassifierHeadState,
+)
+from shared.src.contracts.adapter_contract_families.diagonal_scale import (
+    VectorAdapterState,
+)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_peft_classifier_delta_payload,
@@ -463,6 +469,10 @@ def _default_round_runtime_config(
     *,
     adapter_family_name: str = "lora_classifier",
     update_family_name: str = "peft_text_classifier",
+    initial_state_builder: str | None = (
+        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "build_initial_peft_encoder_state"
+    ),
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -472,6 +482,7 @@ def _default_round_runtime_config(
         adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
         update_family_name=update_family_name,
+        initial_state_builder=initial_state_builder,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=(
             lora_classifier
@@ -2202,8 +2213,71 @@ def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
     assert state.peft_adapter_config.parameters["rank"] == 8
 
 
-def test_build_initial_shared_state_rejects_unknown_family() -> None:
-    with pytest.raises(ValueError, match="Unsupported simulation adapter family"):
+def test_build_initial_shared_state_uses_configured_diagonal_scale_builder() -> None:
+    state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="diagonal_scale",
+            update_family_name="diagonal_scale",
+            initial_state_builder=(
+                "methods.adaptation.diagonal_scale.initial_state."
+                "build_initial_diagonal_scale_state"
+            ),
+        ),
+        model_id="mxbai-diagonal",
+        model_revision="sim_rev_0000",
+        training_scope="adapter_only",
+        embedding_dim=3,
+        labels=["anxiety", "normal"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(state, VectorAdapterState)
+    assert state.adapter_kind == "diagonal_scale"
+    assert state.dimension_scales == [1.0, 1.0, 1.0]
+
+
+def test_build_initial_shared_state_uses_configured_linear_head_builder() -> None:
+    state = build_initial_shared_state(
+        round_runtime_config=_default_round_runtime_config(
+            adapter_family_name="classifier_head",
+            update_family_name="linear_head",
+            initial_state_builder=(
+                "methods.adaptation.classification.feature_head.bootstrap."
+                "build_zero_classifier_head_state"
+            ),
+        ),
+        model_id="mxbai-linear-head",
+        model_revision="sim_rev_0000",
+        training_scope="head_only",
+        embedding_dim=2,
+        labels=["normal", "anxiety"],
+        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+    )
+
+    assert isinstance(state, ClassifierHeadState)
+    assert state.adapter_kind == "classifier_head"
+    assert state.labels == ("anxiety", "normal")
+    assert state.label_weights == {"anxiety": [0.0, 0.0], "normal": [0.0, 0.0]}
+
+
+def test_build_initial_shared_state_rejects_missing_builder() -> None:
+    with pytest.raises(ValueError, match="initial_state_builder is required"):
+        build_initial_shared_state(
+            round_runtime_config=_default_round_runtime_config(
+                adapter_family_name="future_family",
+                initial_state_builder=None,
+            ),
+            model_id="future-model",
+            model_revision="sim_rev_0000",
+            training_scope="adapter_only",
+            embedding_dim=2,
+            labels=["anxiety", "normal"],
+            updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
+        )
+
+
+def test_build_initial_shared_state_rejects_builder_without_state() -> None:
+    with pytest.raises(ValueError, match="initial_state_builder returned no"):
         build_initial_shared_state(
             round_runtime_config=_default_round_runtime_config(
                 adapter_family_name="future_family"
@@ -2280,6 +2354,10 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
             adapter_family_name="lora_classifier",
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_classifier",
+            initial_state_builder=(
+                "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+                "build_initial_peft_encoder_state"
+            ),
             classifier_head_bootstrap_logit_scale=8.0,
             lora_classifier=None,
         ),

@@ -77,11 +77,13 @@ def build_initial_peft_encoder_state(
     model_id: str,
     model_revision: str,
     training_scope: str,
+    embedding_dim: int,
     labels: Sequence[str],
     updated_at: datetime,
 ) -> SharedAdapterState | None:
     """지원 family면 initial shared state를 만들고, 아니면 None을 반환한다."""
 
+    _ = embedding_dim
     adapter_family_name = _normalize_adapter_family_name(
         round_runtime_config.adapter_family_name
     )

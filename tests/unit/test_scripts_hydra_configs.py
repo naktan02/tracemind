@@ -495,6 +495,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
     assert cfg.round_runtime.update_family_name == "peft_text_classifier"
+    assert cfg.round_runtime.initial_state_builder == (
+        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "build_initial_peft_encoder_state"
+    )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
@@ -698,6 +702,10 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         == cfg.local_update_profile.algorithm_profile_name
     )
     assert cfg.round_runtime.update_family_name == "peft_text_classifier"
+    assert cfg.round_runtime.initial_state_builder == (
+        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "build_initial_peft_encoder_state"
+    )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio

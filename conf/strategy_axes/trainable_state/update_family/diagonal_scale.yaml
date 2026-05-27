@@ -1,3 +1,4 @@
 # @package round_runtime
 
 update_family_name: diagonal_scale
+initial_state_builder: methods.adaptation.diagonal_scale.initial_state.build_initial_diagonal_scale_state

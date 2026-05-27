@@ -3,19 +3,9 @@
 from __future__ import annotations
 
 from datetime import datetime
+from importlib import import_module
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
-    build_initial_peft_encoder_state,
-)
-from shared.src.contracts.adapter_contract_families.classifier_head import (
-    CLASSIFIER_HEAD_ADAPTER_KIND,
-    ClassifierHeadState,
-)
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
-    VectorAdapterState,
-)
 from shared.src.domain.entities.training.shared_adapter_state import SharedAdapterState
 
 
@@ -29,37 +19,48 @@ def build_initial_shared_state(
     labels: tuple[str, ...] | list[str],
     updated_at: datetime,
 ) -> SharedAdapterState:
-    """simulation bootstrap용 초기 shared state를 family별로 만든다."""
-    adapter_family_name = _adapter_family_name(round_runtime_config)
-    if adapter_family_name == CLASSIFIER_HEAD_ADAPTER_KIND:
-        return ClassifierHeadState.zero_initialized(
-            model_id=model_id,
-            model_revision=model_revision,
-            labels=labels,
-            embedding_dim=embedding_dim,
-            training_scope=training_scope,
-            updated_at=updated_at,
-        )
-    peft_encoder_state = build_initial_peft_encoder_state(
+    """simulation bootstrap용 초기 shared state를 config-declared builder로 만든다."""
+
+    builder = _load_initial_state_builder(
+        _initial_state_builder_path(round_runtime_config)
+    )
+    state = builder(
         round_runtime_config=round_runtime_config,
         model_id=model_id,
         model_revision=model_revision,
         training_scope=training_scope,
+        embedding_dim=embedding_dim,
         labels=labels,
         updated_at=updated_at,
     )
-    if peft_encoder_state is not None:
-        return peft_encoder_state
-    if adapter_family_name == DIAGONAL_SCALE_ADAPTER_KIND:
-        return VectorAdapterState.identity(
-            model_id=model_id,
-            model_revision=model_revision,
-            training_scope=training_scope,
-            embedding_dim=embedding_dim,
-            updated_at=updated_at,
+    if state is None:
+        raise ValueError(
+            "round_runtime.initial_state_builder returned no initial shared state: "
+            f"{_initial_state_builder_path(round_runtime_config)!r}."
         )
-    raise ValueError(f"Unsupported simulation adapter family: {adapter_family_name}")
+    return state
 
 
-def _adapter_family_name(round_runtime_config: Any) -> str:
-    return str(round_runtime_config.adapter_family_name).strip().lower()
+def _initial_state_builder_path(round_runtime_config: Any) -> str:
+    raw_value = getattr(round_runtime_config, "initial_state_builder", None)
+    builder_path = "" if raw_value is None else str(raw_value).strip()
+    if not builder_path:
+        raise ValueError("round_runtime.initial_state_builder is required.")
+    return builder_path
+
+
+def _load_initial_state_builder(builder_path: str) -> Any:
+    module_name, separator, function_name = builder_path.rpartition(".")
+    if not separator or not module_name or not function_name:
+        raise ValueError(
+            "round_runtime.initial_state_builder must be a fully qualified "
+            f"function path: {builder_path!r}."
+        )
+    module = import_module(module_name)
+    builder = getattr(module, function_name, None)
+    if not callable(builder):
+        raise ValueError(
+            "round_runtime.initial_state_builder must point to a callable: "
+            f"{builder_path!r}."
+        )
+    return builder

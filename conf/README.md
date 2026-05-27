@@ -105,6 +105,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
 - `round_runtime.adapter_family_name`, `round_runtime.aggregation_backend_name`
   - FL entrypoint의 직접 leaf 값이다.
   - server round runtime의 adapter family와 aggregation backend를 고른다.
+  - `strategy_axes/trainable_state/update_family/*`가 `update_family_name`과
+    `initial_state_builder`를 함께 제공한다. scripts는 family 이름으로 분기하지
+    않고 이 builder를 실행한다.
   - high-level compose preset은 중복 source-of-truth를 피하기 위해 두지 않는다.
   - LoRA-classifier backbone/LoRA 세부 값은
     `strategy_axes/adaptation/transformer_backbone`과

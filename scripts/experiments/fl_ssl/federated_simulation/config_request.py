@@ -84,6 +84,10 @@ def build_simulation_request_from_config(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
         update_family_name=str(cfg.round_runtime.update_family_name),
+        initial_state_builder=_optional_config_str(
+            cfg.round_runtime,
+            "initial_state_builder",
+        ),
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
