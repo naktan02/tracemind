@@ -41,13 +41,46 @@ from methods.federated_ssl.registry import (
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 TEST_FIXTURE_ROOT = Path(__file__).resolve().parents[1] / "fixtures"
+TEST_ONLY_ADAPTER_KIND = "test_only_update_family"
+OTHER_TEST_ONLY_ADAPTER_KIND = "other_test_only_update_family"
+TEST_ONLY_AGGREGATION_BACKEND_NAME = "test_only_aggregation_backend"
+OTHER_TEST_ONLY_AGGREGATION_BACKEND_NAME = "other_test_only_aggregation_backend"
+TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME = "test_only_local_update_profile"
+OTHER_TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME = "other_test_only_local_update_profile"
+
+
+def _local_update_profile_mapping(
+    *,
+    profile_name: str = TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME,
+) -> dict[str, object]:
+    return {
+        "algorithm_profile_name": profile_name,
+        "training_scope": "adapter_only",
+        "training_backend_name": "test_only_training_backend",
+        "confidence_threshold": 0.6,
+        "margin_threshold": 0.02,
+        "example_generation_backend_name": "test_only_example_generation_backend",
+        "evidence_backend_name": "test_only_evidence_backend",
+        "scorer_backend_name": "test_only_scorer_backend",
+        "score_policy_name": "test_only_score_policy",
+        "score_top_k": None,
+        "validation_scorer_backend_name": "test_only_validation_scorer_backend",
+        "validation_score_policy_name": "test_only_validation_score_policy",
+        "validation_score_top_k": None,
+        "pseudo_label_algorithm_name": "test_only_pseudo_label_algorithm",
+        "acceptance_policy_name": "test_only_acceptance_policy",
+        "privacy_guard_name": "test_only_privacy_guard",
+        "evidence_backend_temperature": 1.0,
+    }
+
+
 METHOD_OWNED_RECIPE = FederatedSslMethodRecipe(
     method_name="method_owned_ssl",
-    supported_local_update_profile_names=("prototype_pseudo_label_v1",),
+    supported_local_update_profile_names=(TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME,),
     supported_runtime_pairs=(
         FederatedSslRuntimePair(
-            adapter_family_name="diagonal_scale",
-            aggregation_backend_name="fedavg",
+            adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+            aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
         ),
     ),
 )
@@ -143,8 +176,8 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
             "composition_mode": COMPOSITION_MODE_MANUAL,
             "manual_axes": {
                 "client_ssl_objective": "pseudo_label",
-                "server_aggregation": "fedavg",
-                "update_family": "diagonal_scale",
+                "server_aggregation": TEST_ONLY_AGGREGATION_BACKEND_NAME,
+                "update_family": TEST_ONLY_ADAPTER_KIND,
             },
         },
         security_policy={"name": "plaintext"},
@@ -156,8 +189,8 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
     assert plan.composition_mode == COMPOSITION_MODE_MANUAL
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "pseudo_label"
-    assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "diagonal_scale"
+    assert plan.manual_axes.server_aggregation == TEST_ONLY_AGGREGATION_BACKEND_NAME
+    assert plan.manual_axes.update_family == TEST_ONLY_ADAPTER_KIND
 
 
 def test_federated_ssl_execution_plan_preserves_configured_update_family() -> None:
@@ -166,15 +199,15 @@ def test_federated_ssl_execution_plan_preserves_configured_update_family() -> No
             "composition_mode": COMPOSITION_MODE_MANUAL,
             "manual_axes": {
                 "client_ssl_objective": "fixmatch",
-                "server_aggregation": "fedavg",
-                "update_family": "peft_text_classifier",
+                "server_aggregation": TEST_ONLY_AGGREGATION_BACKEND_NAME,
+                "update_family": OTHER_TEST_ONLY_ADAPTER_KIND,
             },
         },
         security_policy={"name": "plaintext"},
         method_descriptor=None,
     )
 
-    assert plan.manual_axes.update_family == "peft_text_classifier"
+    assert plan.manual_axes.update_family == OTHER_TEST_ONLY_ADAPTER_KIND
 
 
 def test_federated_ssl_execution_plan_rejects_method_owned_manual_axes() -> None:
@@ -227,25 +260,7 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
     dummy_descriptor = fixture.DUMMY_FEDERATED_SSL_DESCRIPTOR
 
     local_update_profile = LocalUpdateProfile.from_mapping(
-        {
-            "algorithm_profile_name": "dummy_local_update_profile_v1",
-            "training_scope": "adapter_only",
-            "training_backend_name": "diagonal_scale_heuristic",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "score_top_k": None,
-            "validation_scorer_backend_name": "prototype_similarity",
-            "validation_score_policy_name": "max_cosine",
-            "validation_score_top_k": None,
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "diagonal_scale_clip_only",
-            "evidence_backend_temperature": 1.0,
-        }
+        _local_update_profile_mapping(profile_name="dummy_local_update_profile_v1")
     )
 
     assert (
@@ -267,9 +282,9 @@ def test_federated_ssl_registry_supports_test_only_method_extension(
         FederatedSslProfileCompatibilityContext(
             method_descriptor=dummy_descriptor,
             local_update_profile=local_update_profile,
-            local_update_adapter_kind="diagonal_scale",
-            round_adapter_family_name="diagonal_scale",
-            round_aggregation_backend_name="fedavg",
+            local_update_adapter_kind=fixture.TEST_ONLY_ADAPTER_KIND,
+            round_adapter_family_name=fixture.TEST_ONLY_ADAPTER_KIND,
+            round_aggregation_backend_name=(fixture.TEST_ONLY_AGGREGATION_BACKEND_NAME),
         )
     )
 
@@ -343,8 +358,8 @@ def test_federated_ssl_method_descriptor_rejects_recipe_name_drift() -> None:
                 method_name="other_method",
                 supported_runtime_pairs=(
                     FederatedSslRuntimePair(
-                        adapter_family_name="diagonal_scale",
-                        aggregation_backend_name="fedavg",
+                        adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                        aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
                     ),
                 ),
             ),
@@ -362,27 +377,7 @@ def test_federated_ssl_round_state_exchange_spec_rejects_duplicate_metric_keys()
 
 
 def test_local_update_profile_validates_training_objective_drift() -> None:
-    profile = LocalUpdateProfile.from_mapping(
-        {
-            "algorithm_profile_name": "prototype_pseudo_label_v1",
-            "training_scope": "adapter_only",
-            "training_backend_name": "diagonal_scale_heuristic",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "score_top_k": None,
-            "validation_scorer_backend_name": "prototype_similarity",
-            "validation_score_policy_name": "max_cosine",
-            "validation_score_top_k": None,
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "diagonal_scale_clip_only",
-            "evidence_backend_temperature": 1.0,
-        }
-    )
+    profile = LocalUpdateProfile.from_mapping(_local_update_profile_mapping())
     objective = TrainingObjectiveConfig.from_mapping(
         {
             **profile.to_training_objective_mapping(),
@@ -409,61 +404,25 @@ def test_local_update_profile_validates_training_objective_drift() -> None:
 
 
 def test_fl_ssl_compatibility_rejects_adapter_family_drift() -> None:
-    profile = LocalUpdateProfile.from_mapping(
-        {
-            "algorithm_profile_name": "prototype_pseudo_label_v1",
-            "training_scope": "adapter_only",
-            "training_backend_name": "diagonal_scale_heuristic",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "score_top_k": None,
-            "validation_scorer_backend_name": "prototype_similarity",
-            "validation_score_policy_name": "max_cosine",
-            "validation_score_top_k": None,
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "diagonal_scale_clip_only",
-            "evidence_backend_temperature": 1.0,
-        }
-    )
+    profile = LocalUpdateProfile.from_mapping(_local_update_profile_mapping())
 
     with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
         validate_federated_ssl_profile_compatibility(
             FederatedSslProfileCompatibilityContext(
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
-                local_update_adapter_kind="diagonal_scale",
-                round_adapter_family_name="lora_classifier",
-                round_aggregation_backend_name="fedavg",
+                local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+                round_adapter_family_name=OTHER_TEST_ONLY_ADAPTER_KIND,
+                round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )
 
 
 def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
     profile = LocalUpdateProfile.from_mapping(
-        {
-            "algorithm_profile_name": "paper_candidate_profile",
-            "training_scope": "adapter_only",
-            "training_backend_name": "diagonal_scale_heuristic",
-            "confidence_threshold": 0.6,
-            "margin_threshold": 0.02,
-            "example_generation_backend_name": "prototype_rescore",
-            "evidence_backend_name": "prototype_similarity_evidence",
-            "scorer_backend_name": "prototype_similarity",
-            "score_policy_name": "max_cosine",
-            "score_top_k": None,
-            "validation_scorer_backend_name": "prototype_similarity",
-            "validation_score_policy_name": "max_cosine",
-            "validation_score_top_k": None,
-            "pseudo_label_algorithm_name": "top1_margin_threshold",
-            "acceptance_policy_name": "top1_margin_threshold",
-            "privacy_guard_name": "diagonal_scale_clip_only",
-            "evidence_backend_temperature": 1.0,
-        }
+        _local_update_profile_mapping(
+            profile_name=OTHER_TEST_ONLY_LOCAL_UPDATE_PROFILE_NAME
+        )
     )
 
     with pytest.raises(ValueError, match="method recipe.*local_update_profile"):
@@ -471,9 +430,9 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
             FederatedSslProfileCompatibilityContext(
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=profile,
-                local_update_adapter_kind="diagonal_scale",
-                round_adapter_family_name="diagonal_scale",
-                round_aggregation_backend_name="fedavg",
+                local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )
 
@@ -482,8 +441,8 @@ def test_fl_ssl_compatibility_rejects_method_recipe_mismatch() -> None:
             FederatedSslProfileCompatibilityContext(
                 method_descriptor=METHOD_OWNED_DESCRIPTOR,
                 local_update_profile=None,
-                local_update_adapter_kind="diagonal_scale",
-                round_adapter_family_name="diagonal_scale",
-                round_aggregation_backend_name="trimmed_mean",
+                local_update_adapter_kind=TEST_ONLY_ADAPTER_KIND,
+                round_adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+                round_aggregation_backend_name=OTHER_TEST_ONLY_AGGREGATION_BACKEND_NAME,
             )
         )

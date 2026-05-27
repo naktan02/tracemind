@@ -19,9 +19,9 @@ from methods.federated_ssl.base import (
     FederatedSslServerStepSpec,
 )
 from methods.federated_ssl.registry import register_federated_ssl_method_descriptor
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_ADAPTER_KIND,
-)
+
+TEST_ONLY_ADAPTER_KIND = "test_only_update_family"
+TEST_ONLY_AGGREGATION_BACKEND_NAME = "test_only_aggregation_backend"
 
 
 @dataclass(frozen=True, slots=True)
@@ -59,8 +59,8 @@ DUMMY_FEDERATED_SSL_RECIPE = FederatedSslMethodRecipe(
     supported_local_update_profile_names=("dummy_local_update_profile_v1",),
     supported_runtime_pairs=(
         FederatedSslRuntimePair(
-            adapter_family_name=DIAGONAL_SCALE_ADAPTER_KIND,
-            aggregation_backend_name="fedavg",
+            adapter_family_name=TEST_ONLY_ADAPTER_KIND,
+            aggregation_backend_name=TEST_ONLY_AGGREGATION_BACKEND_NAME,
         ),
     ),
 )

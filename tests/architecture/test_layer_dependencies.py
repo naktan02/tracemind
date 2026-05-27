@@ -43,6 +43,7 @@ PYTHON_SOURCE_ROOTS = (
     SCRIPTS_SRC,
     REPO_ROOT / "tests",
 )
+TEST_FIXTURES_SRC = REPO_ROOT / "tests" / "fixtures"
 FORBIDDEN_DUNDER_ALL = "__" + "all__"
 LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
     SHARED_SRC / "services" / "prototypes" / "build_strategies.py",
@@ -633,6 +634,36 @@ def test_production_federated_ssl_methods_do_not_keep_dummy_extensions() -> None
         "production methods/federated_ssl에는 dummy/test-only method 파일을 남기지 "
         "않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
+def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> None:
+    fixture_path = TEST_FIXTURES_SRC / "federated_ssl_dummy_method.py"
+    imports = _collect_absolute_imports(fixture_path)
+    forbidden_imports = {
+        "shared.src.contracts.adapter_contract_families.classifier_head",
+        "shared.src.contracts.adapter_contract_families.diagonal_scale",
+        "shared.src.contracts.adapter_contract_families.lora_classifier",
+    }
+    forbidden_snippets = (
+        "classifier_head",
+        "diagonal_scale",
+        "lora_classifier",
+        "peft_classifier",
+    )
+    source = fixture_path.read_text(encoding="utf-8")
+    snippet_violations = [
+        snippet for snippet in forbidden_snippets if snippet in source
+    ]
+
+    assert not sorted(imports & forbidden_imports), (
+        "test-only FL SSL method fixture는 특정 adapter-family payload contract를 "
+        "import하지 않는다. fixture는 method extension seam만 검증해야 한다."
+    )
+    assert not snippet_violations, (
+        "test-only FL SSL method fixture는 concrete adapter-family 이름을 "
+        "하드코딩하지 않는다.\n"
+        f"violations={snippet_violations}"
     )
 
 
