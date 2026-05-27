@@ -75,7 +75,7 @@ def load_fl_ssl_result_index_records(
         method_family=infer_fl_method_family(
             composition_mode=composition_mode,
             descriptor_name=descriptor_name,
-            adapter_family=adapter_family,
+            update_family=update_family,
         ),
         method_name=method_name,
         algorithm_name=optional_str(objective.get("query_ssl.algorithm_name")),
@@ -272,11 +272,11 @@ def infer_fl_method_family(
     *,
     composition_mode: str | None,
     descriptor_name: str | None,
-    adapter_family: str | None,
+    update_family: str | None,
 ) -> str:
     if str(composition_mode or "").strip().lower() == "manual":
         return "manual_baselines"
-    return descriptor_name or adapter_family or "unknown"
+    return descriptor_name or update_family or "unknown"
 
 
 def infer_local_regularizer(objective: dict[str, Any]) -> tuple[str, float | None]:

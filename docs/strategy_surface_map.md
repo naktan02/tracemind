@@ -91,8 +91,8 @@ central fixed embedding + classifier seed
 | FL SSL method descriptor | `fedmatch` original core/config snapshot, future FedLGMatch/(FL)^2 | `strategy_axes/fl/method_descriptor` | `methods/federated_ssl/*`, simulation adapter | method-owned 전용 |
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `peft_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | PEFT-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
-| Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
-| Adapter family | `classifier_head`, `peft_classifier`; `lora_classifier`/`diagonal_scale`는 v1 compatibility | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
+| Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + update-family/server policy resolver | reusable backend는 `methods/federated/aggregation/*` + update family aggregation projection, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
+| Update family | `linear_head`, `peft_text_classifier`, future `prototype_pack`; v1 adapter family는 compatibility field | `strategy_axes/trainable_state/update_family`, `round_runtime.update_family_name`, model/update manifest | `methods/classification/*`, `methods/adaptation/*`, `methods/prototype/*`, shared payload contract | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_classifier/training/` | simulation |
 | Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
@@ -104,10 +104,11 @@ central fixed embedding + classifier seed
 주의:
 
 - `local_update_profile`은 local update 실행 조합 preset이고,
-  `round_runtime.adapter_family_name`과 `round_runtime.aggregation_backend_name`은
-  server round 실행 조합을 직접 고르는 leaf다. method-specific local objective와
-  server policy 의미는 profile이 아니라 `methods/`의 descriptor/policy module이
-  소유한다.
+  `strategy_axes/trainable_state/update_family`와
+  `round_runtime.aggregation_backend_name`은 server round 실행 조합을 고르는 leaf다.
+  v1 `round_runtime.adapter_family_name`은 payload compatibility field로 남아 있고,
+  method-specific local objective와 server policy 의미는 profile이 아니라
+  `methods/`의 descriptor/policy module이 소유한다.
 - method identity와 local/server policy 의미는 `methods/`가 소유한다. `agent`와
   `main_server`의 backend/adapter는 선택된 core를 runtime data, artifact, contract
   payload에 연결하는 capability다.
@@ -210,7 +211,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - FL simulation 기본 조합은 `composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `local_update_profile=peft_pseudo_label_v1`,
-  `round_runtime.adapter_family_name=peft_classifier`,
+  `strategy_axes/trainable_state/update_family=peft_text_classifier`,
   `round_runtime.aggregation_backend_name=fedavg`다. 기존 `diagonal_scale` /
   prototype scorer fallback은 FL SSL simulation에서 제거했으며, 실제 method로
   다시 필요해질 때 method-owned capability로 추가한다. 이 조합은
