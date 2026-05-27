@@ -1,4 +1,4 @@
-"""Query SSL LoRA update payload 조립 단위 검증."""
+"""Query SSL PEFT encoder update payload 조립 단위 검증."""
 
 from __future__ import annotations
 
@@ -8,13 +8,16 @@ import pytest
 
 from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
     build_query_ssl_peft_encoder_update_payload,
 )
 from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
+)
+from shared.src.contracts.adapter_contract_families.peft_classifier import (
+    PeftClassifierDelta,
 )
 from shared.src.contracts.common_types import TrainingTaskType
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
@@ -44,7 +47,7 @@ def _training_task() -> TrainingTask:
     return TrainingTask(
         task_id="task_round_0001",
         round_id="round_0001",
-        model_id="mxbai-lora-classifier",
+        model_id="mxbai-peft-classifier",
         model_revision="sim_rev_0000",
         task_type=TrainingTaskType.PSEUDO_LABEL_SELF_TRAINING,
         training_scope="adapter_only",
@@ -54,7 +57,7 @@ def _training_task() -> TrainingTask:
         max_steps=3,
         objective_config=TrainingObjectiveConfig.from_mapping(
             {
-                "training_backend_name": "lora_classifier_trainer",
+                "training_backend_name": "peft_classifier_trainer",
                 "confidence_threshold": 0.0,
                 "margin_threshold": 0.0,
             }
@@ -65,16 +68,18 @@ def _training_task() -> TrainingTask:
     )
 
 
-def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None:
+def test_query_ssl_peft_encoder_update_payload_uses_server_refs_without_inline() -> (
+    None
+):
     result = build_query_ssl_peft_encoder_update_payload(
         training_task=_training_task(),
         model_manifest=make_embedding_manifest(
-            model_id="mxbai-lora-classifier",
+            model_id="mxbai-peft-classifier",
             model_revision="sim_rev_0000",
             auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
             artifact_ref="shared_adapter_state::sim_rev_0000",
         ),
-        lora_config=LoraClassifierTrainingBackendConfig(
+        lora_config=PeftEncoderTrainingBackendConfig(
             delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
         ),
         labels=("anxiety", "normal"),
@@ -100,7 +105,7 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
         classifier_head_bias_deltas={"anxiety": 0.05, "normal": -0.05},
         created_at=datetime(2026, 4, 1, tzinfo=timezone.utc),
         delta_format=LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
-        lora_delta_artifact_ref="aggregation_artifact::round_0001/agent_01/lora",
+        lora_delta_artifact_ref="aggregation_artifact::round_0001/agent_01/peft",
         classifier_head_delta_artifact_ref=(
             "aggregation_artifact::round_0001/agent_01/head"
         ),
@@ -108,14 +113,15 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
     )
 
     payload = result.update_payload
+    assert isinstance(payload, PeftClassifierDelta)
     assert payload.delta_format == LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
-    assert payload.lora_delta_artifact_ref == (
-        "aggregation_artifact::round_0001/agent_01/lora"
+    assert payload.peft_adapter_delta_artifact_ref == (
+        "aggregation_artifact::round_0001/agent_01/peft"
     )
     assert payload.classifier_head_delta_artifact_ref == (
         "aggregation_artifact::round_0001/agent_01/head"
     )
-    assert payload.lora_parameter_deltas is None
+    assert payload.peft_parameter_deltas is None
     assert payload.classifier_head_weight_deltas is None
     assert payload.classifier_head_bias_deltas == {}
     assert result.client_metrics["query_ssl_local_steps"] == 2.0
@@ -123,17 +129,19 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
     assert result.client_metrics["unlabeled_loss"] == 0.25
 
 
-def test_query_ssl_lora_update_payload_requires_refs_for_artifact_mode() -> None:
+def test_query_ssl_peft_encoder_update_payload_requires_refs_for_artifact_mode() -> (
+    None
+):
     with pytest.raises(ValueError, match="requires adapter/head delta refs"):
         build_query_ssl_peft_encoder_update_payload(
             training_task=_training_task(),
             model_manifest=make_embedding_manifest(
-                model_id="mxbai-lora-classifier",
+                model_id="mxbai-peft-classifier",
                 model_revision="sim_rev_0000",
                 auxiliary_artifact_versions={"prototype_pack": "proto_v0"},
                 artifact_ref="shared_adapter_state::sim_rev_0000",
             ),
-            lora_config=LoraClassifierTrainingBackendConfig(),
+            lora_config=PeftEncoderTrainingBackendConfig(),
             labels=("anxiety", "normal"),
             labeled_rows=[_row("l1", "anxiety")],
             unlabeled_rows=[_row("u1", "normal")],

@@ -597,6 +597,27 @@ def test_peft_method_modules_use_canonical_model_type_name() -> None:
     )
 
 
+def test_query_ssl_update_unit_test_uses_peft_encoder_surface() -> None:
+    legacy_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_lora_update.py"
+    active_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_peft_encoder_update.py"
+    source = active_path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "LoraClassifierTrainingBackendConfig",
+        "lora_classifier_trainer",
+        "payload.lora_delta_artifact_ref",
+        "payload.lora_parameter_deltas",
+        "test_query_ssl_lora_update",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert active_path.exists() and not legacy_path.exists() and not violations, (
+        "Query SSL update unit test는 active PEFT encoder update payload surface를 "
+        "검증한다. v1 lora_classifier payload 검증은 shared contract compatibility "
+        "테스트에 격리한다.\n"
+        f"legacy_exists={legacy_path.exists()}\nviolations={violations}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",
