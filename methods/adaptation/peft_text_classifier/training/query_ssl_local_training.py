@@ -65,7 +65,10 @@ from .delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
 from .loops import set_seed, train_query_ssl_classifier
-from .modeling import LoraTextClassifier, build_peft_encoder_text_classifier_from_config
+from .modeling import (
+    PeftEncoderTextClassifier,
+    build_peft_encoder_text_classifier_from_config,
+)
 from .pseudo_label_diagnostics import (
     build_final_snapshot_pseudo_label_quality,
     resolve_fixed_pseudo_label_diagnostic_threshold,
@@ -376,7 +379,7 @@ def _build_peft_encoder_model(
     lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
-) -> tuple[LoraTextClassifier, Any]:
+) -> tuple[PeftEncoderTextClassifier, Any]:
     return build_peft_encoder_text_classifier_from_config(
         labels=[str(label) for label in labels],
         lora_config=lora_config,

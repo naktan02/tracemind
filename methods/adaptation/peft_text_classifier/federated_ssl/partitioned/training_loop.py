@@ -28,7 +28,7 @@ from ...training.loops import (
     build_optimizer,
     trainable_model_parameters,
 )
-from ...training.modeling import LoraTextClassifier
+from ...training.modeling import PeftEncoderTextClassifier
 from ...training.optimizer_step import run_optimizer_loss_step
 from ...training.partitioned_deltas import (
     build_lora_classifier_partition_delta_from_parameter_deltas,
@@ -77,7 +77,7 @@ class HelperWeakProbabilityProvider(Protocol):
 
 def train_partitioned_lora_classifier(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     train_loader: DataLoader[dict[str, Any]] | None,
     unlabeled_loader: DataLoader[dict[str, Any]],
     labels: Sequence[str],
@@ -443,7 +443,7 @@ def run_partitioned_lora_classifier_step(
 ) -> PartitionedLoraStepResult:
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
 
-    TraceMind의 LoRA-classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
+    TraceMind의 PEFT encoder classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
     보관하지 않는다. 같은 trainable tensor에 두 step을 순차 적용하고,
     sub-step delta를 `sigma`/`psi` partition으로 기록한다.
     """

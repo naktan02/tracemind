@@ -15,7 +15,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 
 
 class LoraClassifierInitialStateConfig(Protocol):
-    """Initial shared state 생성에 필요한 LoRA-classifier config surface."""
+    """Initial shared state 생성에 필요한 PEFT encoder classifier config surface."""
 
     artifact_format: str
     lora_adapter_artifact_ref: str | None

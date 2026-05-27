@@ -18,7 +18,7 @@ from methods.adaptation.peft_text_classifier.training.loops import (
     set_seed,
 )
 from methods.adaptation.peft_text_classifier.training.modeling import (
-    LoraClassifierModelRuntimeConfig,
+    PeftEncoderModelRuntimeConfig,
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
@@ -58,7 +58,7 @@ def evaluate_peft_encoder_state(
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     lora_config: PeftEncoderTrainingBackendConfig,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
@@ -108,7 +108,7 @@ def evaluate_peft_encoder_state_payload(
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     lora_config: PeftEncoderTrainingBackendConfig,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
@@ -147,7 +147,7 @@ def evaluate_peft_encoder_validation_payload(
     adapter_state: object,
     base_parameters: PeftEncoderMaterializedState,
     objective_config: TrainingObjectiveConfig | None,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
     runtime_resource_cache: RuntimeResourceCache | None = None,
@@ -196,7 +196,7 @@ def evaluate_peft_encoder_simulation_validation_payload(
     adapter_state: object,
     aggregation_context: FederatedAggregationContext,
     objective_config: TrainingObjectiveConfig | None,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     batch_size: int,
     seed: int,
     scorer_backend_name: str,

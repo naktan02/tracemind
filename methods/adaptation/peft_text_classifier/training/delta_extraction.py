@@ -11,12 +11,12 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 
-from .modeling import LoraTextClassifier
+from .modeling import PeftEncoderTextClassifier
 
 
 def load_peft_encoder_base_parameters_into_model(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     device: str,
@@ -76,7 +76,7 @@ def load_peft_encoder_base_parameters_into_model(
 
 def extract_peft_encoder_parameter_deltas(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     base_parameters: PeftEncoderMaterializedState,
     labels: Sequence[str],
 ) -> tuple[dict[str, list[float]], dict[str, list[float]], dict[str, float]]:
@@ -97,7 +97,7 @@ def extract_peft_encoder_parameter_deltas(
 
 def extract_lora_parameter_deltas(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     base_parameters: Mapping[str, Sequence[float]],
 ) -> dict[str, list[float]]:
     """trainable LoRA parameter delta를 flat vector mapping으로 추출한다."""
@@ -123,7 +123,7 @@ def extract_lora_parameter_deltas(
 
 def extract_classifier_head_deltas(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     labels: Sequence[str],
     base_weights: Mapping[str, Sequence[float]],
     base_biases: Mapping[str, float],

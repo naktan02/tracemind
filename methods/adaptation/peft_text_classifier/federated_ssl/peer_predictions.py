@@ -24,7 +24,7 @@ from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.peft_text_classifier.training.modeling import (
-    LoraTextClassifier,
+    PeftEncoderTextClassifier,
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
@@ -59,7 +59,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig
     device: str
     runtime_resource_cache: RuntimeResourceCache | None = None
-    _helper_models: tuple[LoraTextClassifier, ...] | None = field(
+    _helper_models: tuple[PeftEncoderTextClassifier, ...] | None = field(
         default=None,
         init=False,
         repr=False,
@@ -74,7 +74,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
         return 0 if self._helper_models is None else len(self._helper_models)
 
     @property
-    def helper_models(self) -> tuple[LoraTextClassifier, ...]:
+    def helper_models(self) -> tuple[PeftEncoderTextClassifier, ...]:
         """호출 시점에만 helper model을 GPU에 materialize한다."""
 
         if self._helper_models is None:
@@ -111,7 +111,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
 def build_peft_encoder_peer_client_snapshot(
     *,
     client_id: str,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
@@ -149,7 +149,7 @@ def build_peft_encoder_peer_client_snapshot(
 
 def compute_peft_encoder_probe_vector(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     lora_config: PeftEncoderTrainingBackendConfig,
@@ -195,7 +195,7 @@ def compute_peft_encoder_probe_vector(
 
 def extract_peft_encoder_materialized_state(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     labels: Sequence[str],
 ) -> PeftEncoderMaterializedState:
     """현재 PEFT encoder classifier trainable state를 materialize한다."""
@@ -275,7 +275,7 @@ def _materialize_helper_model(
     lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
-) -> LoraTextClassifier:
+) -> PeftEncoderTextClassifier:
     if not isinstance(snapshot.payload, PeftEncoderMaterializedState):
         raise TypeError("snapshot payload must be PeftEncoderMaterializedState.")
     cache_key = _helper_model_cache_key(
@@ -287,8 +287,10 @@ def _materialize_helper_model(
     if runtime_resource_cache is not None:
         cached = runtime_resource_cache.get_resource(cache_key)
         if cached is not None:
-            if not isinstance(cached, LoraTextClassifier):
-                raise TypeError("Cached helper model must be LoraTextClassifier.")
+            if not isinstance(cached, PeftEncoderTextClassifier):
+                raise TypeError(
+                    "Cached helper model must be PeftEncoderTextClassifier."
+                )
             return cached
 
     model, _tokenizer = build_peft_encoder_text_classifier_from_config(

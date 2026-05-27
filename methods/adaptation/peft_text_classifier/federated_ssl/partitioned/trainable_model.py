@@ -119,7 +119,7 @@ class AdapterClassifierPartition(nn.Module):
 class PartitionedTrainableTextClassifierModules(nn.Module):
     """Physical partitions backed by full text-classifier modules.
 
-    이 wrapper는 PEFT adapter가 transformer 내부에 붙는 `LoraTextClassifier` 같은
+    이 wrapper는 PEFT adapter가 transformer 내부에 붙는 `PeftEncoderTextClassifier` 같은
     모델을 partition 단위로 감싼다. feature-space adapter를 새로 가정하지 않고,
     각 partition module이 자기 forward와 trainable parameter 이름을 소유한다.
     """

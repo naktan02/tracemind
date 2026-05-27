@@ -575,6 +575,28 @@ def test_peft_method_modules_use_canonical_config_type_name() -> None:
     )
 
 
+def test_peft_method_modules_use_canonical_model_type_name() -> None:
+    forbidden_snippets = (
+        "LoraTextClassifier",
+        "LoraClassifierModelRuntimeConfig",
+        "build_lora_text_classifier_from_config",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for root in (PEFT_TEXT_CLASSIFIER_SRC, METHODS_FEDERATED_SSL_SRC / "fedmatch")
+        for path in _iter_python_files(root)
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT text-classifier/FedMatch active method modules는 model/runtime type도 "
+        "PeftEncoderTextClassifier와 PeftEncoderModelRuntimeConfig 이름을 사용한다. "
+        "LoRA는 PEFT adapter mechanism 이름으로만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

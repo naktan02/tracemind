@@ -29,7 +29,7 @@ class TinyRuntimeConfig:
     trust_remote_code: bool = False
 
 
-class TinyLoraTextClassifier(nn.Module):
+class TinyPeftEncoderTextClassifier(nn.Module):
     def __init__(self) -> None:
         super().__init__()
         self.encoder_lora = nn.Linear(3, 3, bias=False)
@@ -58,7 +58,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
     ) -> tuple[nn.Module, Any]:
         del lora_config, runtime_config
         calls.append((tuple(labels), runtime_resource_cache))
-        return TinyLoraTextClassifier(), tokenizer
+        return TinyPeftEncoderTextClassifier(), tokenizer
 
     cache = object()
     base_parameters = PeftEncoderMaterializedState(
@@ -218,7 +218,7 @@ def _tiny_classifier_factory(
     runtime_resource_cache: object | None = None,
 ) -> tuple[nn.Module, Any]:
     del labels, lora_config, runtime_config, runtime_resource_cache
-    return TinyLoraTextClassifier(), object()
+    return TinyPeftEncoderTextClassifier(), object()
 
 
 def _unused_classifier_factory(

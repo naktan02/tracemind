@@ -1,4 +1,4 @@
-"""LoRA + classifier scaffold 학습/평가 유틸리티."""
+"""PEFT encoder classifier scaffold 학습/평가 유틸리티."""
 
 from __future__ import annotations
 
@@ -40,7 +40,7 @@ from .batching import (
     move_tensor_batch_to_device,
     next_cycling_batch,
 )
-from .modeling import LoraTextClassifier
+from .modeling import PeftEncoderTextClassifier
 from .optimizer_step import run_optimizer_loss_step
 from .scalar_metrics import ScalarMetricAccumulator
 from .step_budget import (
@@ -60,7 +60,7 @@ def set_seed(seed: int) -> None:
 
 def evaluate_classifier(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     dataloader: DataLoader[dict[str, torch.Tensor]],
     categories: list[str],
     device: str,
@@ -114,7 +114,7 @@ def evaluate_classifier(
 
 def build_optimizer(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     learning_rate: float,
     classifier_learning_rate: float,
     weight_decay: float,
@@ -157,7 +157,7 @@ def trainable_model_parameters(model: nn.Module) -> tuple[nn.Parameter, ...]:
 
 def train_classifier(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     train_loader: DataLoader[dict[str, torch.Tensor]],
     selection_loader: DataLoader[dict[str, torch.Tensor]],
     categories: list[str],
@@ -170,8 +170,8 @@ def train_classifier(
     log_every_steps: int,
     max_train_steps: int | None = None,
     proximal_mu: float = 0.0,
-) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
-    """Supervised LoRA + classifier scaffold를 학습한다."""
+) -> tuple[PeftEncoderTextClassifier, list[dict[str, Any]], dict[str, Any]]:
+    """Supervised PEFT encoder classifier scaffold를 학습한다."""
 
     optimizer = build_optimizer(
         model=model,
@@ -289,7 +289,7 @@ def _format_running_scalars(
 
 def train_query_ssl_classifier(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     train_loader: DataLoader[dict[str, Any]],
     unlabeled_loader: DataLoader[dict[str, Any]],
     selection_loader: DataLoader[dict[str, torch.Tensor]],
@@ -308,7 +308,7 @@ def train_query_ssl_classifier(
     resume_checkpoint_output_dir: str | Path | None = None,
     resume_checkpoint_every_epochs: int = 0,
     proximal_mu: float = 0.0,
-) -> tuple[LoraTextClassifier, list[dict[str, Any]], dict[str, Any]]:
+) -> tuple[PeftEncoderTextClassifier, list[dict[str, Any]], dict[str, Any]]:
     """Query SSL algorithm을 epoch-based query adaptation scaffold에 얹어 학습한다."""
 
     algorithm.validate_loaders(

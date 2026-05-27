@@ -211,7 +211,7 @@ def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None
             super().__init__()
             self.config = SimpleNamespace(hidden_size=2)
 
-    model = modeling.LoraTextClassifier(
+    model = modeling.PeftEncoderTextClassifier(
         backbone=_Backbone(),
         hidden_size=2,
         num_labels=2,
@@ -260,7 +260,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     def _fake_build_model(**_kwargs):
         calls["build"] += 1
         return (
-            peer_predictions.LoraTextClassifier(
+            peer_predictions.PeftEncoderTextClassifier(
                 backbone=_Backbone(),
                 hidden_size=2,
                 num_labels=2,

@@ -30,14 +30,14 @@ def require_transformer_stack() -> tuple[Any, Any, Any, Any, Any, Any]:
         from transformers import AutoModel, AutoTokenizer
     except ImportError as exc:  # pragma: no cover - optional dependency gate
         raise RuntimeError(
-            "LoRA classifier experiments require the experiments extra with "
+            "PEFT encoder classifier experiments require the experiments extra with "
             "transformers and peft installed. Example: uv sync --extra experiments"
         ) from exc
     return AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel
 
 
-class LoraClassifierModelRuntimeConfig(Protocol):
-    """LoRA-classifier 모델 생성에 필요한 runtime surface."""
+class PeftEncoderModelRuntimeConfig(Protocol):
+    """PEFT encoder classifier 모델 생성에 필요한 runtime surface."""
 
     device: str
     classifier_dropout: float
@@ -46,8 +46,8 @@ class LoraClassifierModelRuntimeConfig(Protocol):
     trust_remote_code: bool
 
 
-class LoraTextClassifier(nn.Module):
-    """Frozen backbone + LoRA + classifier head 묶음."""
+class PeftEncoderTextClassifier(nn.Module):
+    """Frozen backbone + PEFT adapter + classifier head 묶음."""
 
     def __init__(
         self,
@@ -103,14 +103,14 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
     return {"total": total, "trainable": trainable}
 
 
-def build_lora_text_classifier_from_config(
+def build_peft_encoder_text_classifier_from_config(
     *,
     labels: list[str],
     lora_config: PeftEncoderTrainingBackendConfig,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
-) -> tuple[LoraTextClassifier, Any]:
-    """LoRA-classifier config snapshot에서 평가/학습용 모델을 조립한다."""
+) -> tuple[PeftEncoderTextClassifier, Any]:
+    """PEFT encoder config snapshot에서 평가/학습용 모델을 조립한다."""
 
     AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, _PeftModel = (
         require_transformer_stack()
@@ -138,7 +138,7 @@ def build_lora_text_classifier_from_config(
             get_peft_model=get_peft_model,
         ),
     )
-    model = LoraTextClassifier(
+    model = PeftEncoderTextClassifier(
         backbone=backbone,
         hidden_size=int(backbone.config.hidden_size),
         num_labels=len(labels),
@@ -147,14 +147,11 @@ def build_lora_text_classifier_from_config(
     return model, tokenizer
 
 
-build_peft_encoder_text_classifier_from_config = build_lora_text_classifier_from_config
-
-
 def _load_tokenizer(
     *,
     tokenizer_cls: Any,
     lora_config: PeftEncoderTrainingBackendConfig,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> Any:
     key = _runtime_resource_key(
@@ -189,7 +186,7 @@ def _load_backbone_base(
     *,
     model_cls: Any,
     lora_config: PeftEncoderTrainingBackendConfig,
-    runtime_config: LoraClassifierModelRuntimeConfig,
+    runtime_config: PeftEncoderModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> nn.Module:
     key = _runtime_resource_key(
@@ -206,7 +203,9 @@ def _load_backbone_base(
         cached = runtime_resource_cache.get_resource(key)
         if cached is not None:
             if not isinstance(cached, nn.Module):
-                raise TypeError("Cached LoRA-classifier backbone must be nn.Module.")
+                raise TypeError(
+                    "Cached PEFT encoder classifier backbone must be nn.Module."
+                )
             return copy.deepcopy(cached)
     backbone_base = model_cls.from_pretrained(
         lora_config.backbone_model_id,
@@ -252,8 +251,8 @@ def build_model(
     cfg,
     categories: list[str],
     device: str,
-) -> tuple[LoraTextClassifier, Any, dict[str, Any]]:
-    """Hydra config 기준으로 LoRA + classifier scaffold를 조립한다."""
+) -> tuple[PeftEncoderTextClassifier, Any, dict[str, Any]]:
+    """Hydra config 기준으로 PEFT encoder classifier scaffold를 조립한다."""
 
     AutoModel, AutoTokenizer, LoraConfig, TaskType, get_peft_model, PeftModel = (
         require_transformer_stack()
@@ -302,7 +301,7 @@ def build_model(
             ),
         )
     hidden_size = int(backbone.config.hidden_size)
-    model = LoraTextClassifier(
+    model = PeftEncoderTextClassifier(
         backbone=backbone,
         hidden_size=hidden_size,
         num_labels=len(categories),

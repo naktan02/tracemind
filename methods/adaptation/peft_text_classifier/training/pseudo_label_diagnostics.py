@@ -15,7 +15,7 @@ from methods.adaptation.peft_text_classifier.training.loops import (
     move_tensor_batch_to_device,
 )
 from methods.adaptation.peft_text_classifier.training.modeling import (
-    LoraTextClassifier,
+    PeftEncoderTextClassifier,
 )
 from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.adaptation.query_text_views.tokenization import (
@@ -76,7 +76,7 @@ def resolve_fixed_pseudo_label_diagnostic_threshold(
 
 def build_final_snapshot_pseudo_label_quality(
     *,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     tokenizer: Any,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],

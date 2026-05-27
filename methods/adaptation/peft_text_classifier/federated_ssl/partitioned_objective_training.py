@@ -30,7 +30,7 @@ from methods.adaptation.peft_text_classifier.training.delta_extraction import (
 )
 from methods.adaptation.peft_text_classifier.training.loops import set_seed
 from methods.adaptation.peft_text_classifier.training.modeling import (
-    LoraTextClassifier,
+    PeftEncoderTextClassifier,
     build_peft_encoder_text_classifier_from_config,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
@@ -714,7 +714,7 @@ def _build_timed_peer_client_snapshot(
     *,
     timing_recorder: TimingRecorder | None,
     client_id: str,
-    model: LoraTextClassifier,
+    model: PeftEncoderTextClassifier,
     tokenizer: Any,
     peer_probe_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],
