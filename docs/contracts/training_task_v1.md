@@ -131,7 +131,7 @@ family는 서로 다른 선택이다.
   "max_steps": 50,
   "objective_config": {
     "algorithm_profile_name": "prototype_pseudo_label_v1",
-    "training_backend_name": "diagonal_scale_heuristic",
+    "training_backend_name": "lora_classifier_trainer",
     "confidence_threshold": 0.6,
     "margin_threshold": 0.02,
     "example_generation_backend_name": "prototype_rescore",
@@ -140,7 +140,7 @@ family는 서로 다른 선택이다.
     "score_policy_name": "max_cosine",
     "pseudo_label_algorithm_name": "top1_margin_threshold",
     "acceptance_policy_name": "top1_margin_threshold",
-    "privacy_guard_name": "diagonal_scale_clip_only"
+    "privacy_guard_name": "noop"
   },
   "selection_policy": {
     "max_examples": 128,

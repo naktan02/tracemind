@@ -125,7 +125,7 @@ scripts/
    `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
    필요하면 runtime adapter executor path를 선언할 수 있다.
    scripts는 이 callable을 import/execute하는 generic adapter만 소유하고,
-   `linear_head`, `peft_text_classifier`, `diagonal_scale`, `prototype_pack` 같은
+   `linear_head`, `peft_text_classifier`, `prototype_pack` 같은
    family별 초기화/평가 분기나 `supervised_seed_step`의 PEFT 세부 구현을 직접
    소유하지 않는다.
 
@@ -170,14 +170,12 @@ Adapter 뒤로 옮긴다.
 
 - `lora_classifier`는 v1 shared contract와 old artifact compatibility 이름이다.
   새 canonical update family 이름은 `peft_text_classifier`다.
-- `diagonal_scale`은 현행 no-config runtime fallback profile과 테스트 fixture로 남아
-  있다. fallback은 `RoundManagerService` 내부 기본값이 아니라 server runtime config의
-  named legacy profile로만 격리한다. runtime fallback profile은
-  `methods/adaptation/diagonal_scale/` 구현 config를 import하지 않고 compatibility
-  값을 직접 소유한다. `diagonal_scale`는 target update-family 축이 아니므로
-  `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`과
-  `methods/adaptation/diagonal_scale/initial_state.py`는 제거된 상태를 유지한다.
-  제거하려면 다음으로 테스트용 fake family와 v1 contract fixture를 분리한다.
+- `diagonal_scale`은 v1 shared contract와 일부 legacy runtime fallback 값에만 남는
+  compatibility 이름이다. methods-level 구현 core와 전용 unit test는 제거됐다.
+  fallback은 `RoundManagerService` 내부 기본값이 아니라 server runtime config의
+  named legacy profile로만 격리한다. `diagonal_scale`는 target update-family 축이
+  아니므로 `conf/strategy_axes/trainable_state/update_family/diagonal_scale.yaml`과
+  `methods/adaptation/diagonal_scale/**`는 제거된 상태를 유지한다.
 - `round_runtime.adapter_family_name`은 현재 실행 field다. 최종 migration에서는
   `round_runtime.update_family_name` 또는 `trainable_state_family_name`으로 바꾼다.
 - legacy field는 제거 조건이 있는 compatibility layer로만 유지한다. 삭제된

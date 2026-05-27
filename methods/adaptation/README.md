@@ -9,8 +9,6 @@ local update backend의 concrete 구현과 registry는 `methods/adaptation/`이 
 
 ## 하위 패키지 지도
 
-- `diagonal_scale/`: diagonal-scale heuristic local update 계산 core와 family별
-  aggregation adapter
 - `local_update_backend.py`: agent가 호출하는 local update backend port
 - `local_update_registry.py`: method-owned local update backend lookup/catalog facade
 - `server_update_materialization.py`: adapter family별 서버 materialization
@@ -29,10 +27,12 @@ modality-independent linear classifier head primitive는
 rank, alpha, target module 같은 실행 파라미터는 code folder가 아니라 config에서
 선택한다.
 
-`methods/adaptation/<family>/aggregation/fedavg.py` 같은 family별 aggregation
-module은 payload delta 해석과 next-state materialization을 맡는 method-owned seam이다.
-generic FedAvg 산술과 strategy wiring은 `methods/federated/aggregation/fedavg/`에
-두고, family 상세는 `main_server`가 아니라 해당 adapter family package에 둔다.
+`methods/adaptation/<family>/aggregation/*.py` 같은 family별 aggregation
+module은 payload delta 해석과 next-state materialization을 맡는 method-owned
+경계다. generic FedAvg 산술과 strategy wiring은
+`methods/federated/aggregation/fedavg/`에 두고, family 상세는 `main_server`가
+아니라 해당 adapter family package에 둔다. 제거된 legacy family 구현 폴더를
+compatibility 명분으로 되살리지 않는다.
 
 서버 update preflight도 같은 기준을 따른다. `methods/adaptation/server_update_*`
 dispatcher는 `adapter_kind` 기반 import/lookup만 맡고, state compatibility,

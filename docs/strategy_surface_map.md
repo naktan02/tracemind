@@ -62,7 +62,7 @@ central fixed embedding + classifier seed
 
 | 축 | 현재 값 | 선택 위치 | core/runtime | 상태 |
 |---|---|---|---|---|
-| Training backend | `diagonal_scale_heuristic`, `lora_classifier_trainer` | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | 활성 runtime / FL simulation scaffold |
+| Training backend | `lora_classifier_trainer` (`peft_text_classifier` core) | `TrainingObjectiveConfig.training_backend_name` | `methods/adaptation/*` core + agent runtime adapter | FL simulation scaffold |
 | Example generation | `prototype_rescore`, `weak_strong_pair` | `TrainingObjectiveConfig.example_generation_backend_name` | `methods/prototype/training_inputs/*` core + agent runtime adapter | 활성 runtime |
 | Evidence backend | `prototype_similarity_evidence` | `TrainingObjectiveConfig.evidence_backend_name` | `methods/prototype/evidence/*` core + agent runtime adapter | 활성 runtime |
 | Scorer backend | `prototype_similarity`, `classifier_head_logits` | `TrainingObjectiveConfig.scorer_backend_name` | `methods/prototype/scoring/*`, `methods/classification/linear_head/scoring.py` core + agent runtime adapter | 활성 runtime |
@@ -92,7 +92,7 @@ central fixed embedding + classifier seed
 | FL method execution plan | `method_owned`, `manual` | `fl_method.composition_mode` | `methods/federated_ssl/execution_plan.py` | simulation validator |
 | FL local-update profile | `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | LoRA-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
-| Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
+| Adapter family | `classifier_head`, `lora_classifier`, `peft_classifier`; `diagonal_scale`는 v1 compatibility | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
 | FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_classifier/training/` | simulation |
 | Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
@@ -228,7 +228,7 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
   method 확정 뒤 별도 범위로 진행한다.
 - live `main_server`의 no-config round runtime fallback은 server runtime config의
   named legacy profile로 격리된 `diagonal_scale` compatibility path다.
-  `RoundManagerService`는 이 기본값을 소유하지 않고, runtime fallback profile도
-  `methods/adaptation/diagonal_scale/` 구현 config를 import하지 않는다. 새 논문/FL SSL
-  실행 기본값으로 해석하지 않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시
+  `RoundManagerService`는 이 기본값을 소유하지 않고, methods-level
+  `diagonal_scale` 구현 core는 제거된 상태를 유지한다. 새 논문/FL SSL 실행
+  기본값으로 해석하지 않으며, 논문 비교와 simulation entrypoint는 `conf/`의 명시
   `round_runtime.*` leaf를 source of truth로 사용한다.

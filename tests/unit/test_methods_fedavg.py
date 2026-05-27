@@ -4,10 +4,6 @@ from __future__ import annotations
 
 import pytest
 
-from methods.adaptation.diagonal_scale.aggregation.fedavg import (
-    DiagonalScaleFedAvgUpdate,
-    compute_diagonal_scale_fedavg,
-)
 from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
@@ -132,50 +128,18 @@ def test_federated_aggregation_registry_resolves_alias_without_package_scan(
 
 def test_federated_aggregation_registry_rejects_duplicate_strategy() -> None:
     get_federated_aggregation_method_spec(
-        adapter_kind="diagonal_scale",
+        adapter_kind="classifier_head",
         method_name="fedavg",
     )
 
     with pytest.raises(ValueError, match="Duplicate federated aggregation strategy"):
         register_federated_aggregation_strategy(
-            adapter_kind="diagonal_scale",
+            adapter_kind="classifier_head",
             method_name="fedavg",
             implementation_module="tests.duplicate",
             core_function_name="duplicate",
             factory=lambda _overrides: None,
         )
-
-
-def test_diagonal_scale_fedavg_clamps_next_scales_and_reports_metrics() -> None:
-    result = compute_diagonal_scale_fedavg(
-        base_dimension_scales=[1.0, 1.0],
-        updates=[
-            DiagonalScaleFedAvgUpdate(
-                dimension_deltas=[0.3, -0.6],
-                example_count=2,
-                mean_confidence=0.9,
-                mean_margin=0.3,
-                delta_l2_norm=0.5,
-            ),
-            DiagonalScaleFedAvgUpdate(
-                dimension_deltas=[0.0, 0.3],
-                example_count=1,
-                mean_confidence=0.6,
-                mean_margin=None,
-                delta_l2_norm=0.2,
-            ),
-        ],
-        min_scale=0.8,
-        max_scale=1.1,
-    )
-
-    assert result.next_dimension_scales == pytest.approx([1.1, 0.8])
-    assert result.update_count == 2
-    assert result.aggregated_metrics["client_count"] == 2.0
-    assert result.aggregated_metrics["example_count"] == 3.0
-    assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
-    assert result.aggregated_metrics["mean_margin"] == pytest.approx(0.3)
-    assert result.aggregated_metrics["mean_delta_l2_norm"] == pytest.approx(0.4)
 
 
 def test_classifier_head_fedavg_updates_values_without_mutation() -> None:
@@ -290,20 +254,6 @@ def test_peft_encoder_fedavg_averages_adapter_and_head_deltas() -> None:
     assert result.aggregated_metrics["mean_confidence"] == pytest.approx(0.8)
     assert result.aggregated_metrics["mean_delta_l2_norm"] == pytest.approx(0.4)
     assert result.update_count == 2
-
-
-def test_federated_aggregation_method_registry_points_to_methods_core() -> None:
-    spec = get_federated_aggregation_method_spec(
-        adapter_kind="diagonal_scale",
-        method_name="fedavg",
-    )
-
-    assert spec.method_name == "fedavg"
-    assert (
-        spec.implementation_module
-        == "methods.adaptation.diagonal_scale.aggregation.fedavg"
-    )
-    assert spec.core_function_name == "compute_diagonal_scale_fedavg"
 
 
 def test_federated_aggregation_method_registry_points_to_lora_core() -> None:

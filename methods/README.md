@@ -78,8 +78,6 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   registry
 - `methods/adaptation/local_objective_regularizers/`: FedProx처럼 adapter family와
   분리된 client-local objective regularizer
-- `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
-  family별 aggregation adapter
 - `methods/classification/linear_head/`: modality-independent linear classifier head
   primitive와 classifier-head projection
 - `methods/adaptation/peft_text_classifier/`: PEFT text encoder + classifier head

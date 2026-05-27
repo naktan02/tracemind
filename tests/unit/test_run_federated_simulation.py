@@ -2786,7 +2786,7 @@ def test_run_simulation_request_resumes_from_completed_round_checkpoint(
     assert load_resume_checkpoint(output_dir).completed_round_count == 2
 
 
-def test_run_simulation_request_rejects_local_round_family_mismatch(
+def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
     tmp_path,
 ) -> None:
     request = _default_simulation_request(
@@ -2813,7 +2813,10 @@ def test_run_simulation_request_rejects_local_round_family_mismatch(
         ),
     )
 
-    with pytest.raises(ValueError, match="local_update_profile.*round_runtime"):
+    with pytest.raises(
+        ValueError,
+        match="Unsupported local update backend: diagonal_scale_heuristic",
+    ):
         run_simulation_request(request)
 
 

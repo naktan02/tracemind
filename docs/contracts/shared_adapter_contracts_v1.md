@@ -108,15 +108,15 @@ shared adapter 계약은 두 레이어로 나뉜다.
    - 로컬 update 생성 시각
 
 현재 시스템/FL v1 권장 baseline은 `classifier_head + head_only`이고,
-`diagonal_scale`은 비교/확장용 shared adapter family로 유지한다.
+`diagonal_scale`은 과거 payload 해석을 위한 shared adapter contract로 유지한다.
 `lora_classifier`는 FL simulation research path와 이후 runtime translation 후보를
 위해 열린 family다.
 
 ---
 
-## 5. 현재 concrete 구현 1: `diagonal_scale`
+## 5. v1 compatibility payload 1: `diagonal_scale`
 
-현재 adapter는 임베딩 차원마다 scale 하나씩 갖는 가장 단순한 형태다.
+이 v1 adapter payload는 임베딩 차원마다 scale 하나씩 갖는 가장 단순한 형태다.
 
 상태 payload:
 
@@ -319,9 +319,10 @@ update payload:
 
 ---
 
-## 9. 현재 diagonal_scale heuristic 기준 update 생성 방식
+## 9. v1 diagonal_scale heuristic 기준 update 의미
 
-현재 `diagonal_scale` 구현은 gradient 학습이 아니라 heuristic 방식이다.
+삭제된 `diagonal_scale` methods-level 구현은 gradient 학습이 아니라 heuristic
+방식이었다. 아래 내용은 과거 payload 의미를 읽기 위한 compatibility 설명이다.
 
 로컬에서 하는 일:
 
@@ -332,8 +333,9 @@ update payload:
 5. accepted example 임베딩의 confidence 가중 평균을 구한다.
 6. 그 평균 방향으로 `dimension_deltas`를 만든다.
 
-현재 산술 core는 `methods/adaptation/diagonal_scale/`가 소유하고, agent의
-`DiagonalScaleHeuristicTrainingBackend`는 local training runtime adapter로 남긴다.
+`diagonal_scale` methods-level heuristic core와 agent runtime adapter는 제거됐다.
+이 절은 v1 payload를 읽을 때의 의미 해석을 설명하는 compatibility 기록이며, 새
+runtime/update-family 구현 위치로 해석하지 않는다.
 
 즉 현재 update는
 "특정 prototype으로 직접 당기기"
@@ -344,11 +346,11 @@ update payload:
 
 ---
 
-## 10. 서버 집계 방식
+## 10. v1 서버 집계 의미
 
-현재 서버는 같은 `adapter_kind`끼리만 집계한다.
+서버 집계 payload compatibility는 같은 `adapter_kind`끼리만 집계한다.
 
-현재 `diagonal_scale` 집계식은:
+과거 `diagonal_scale` 집계식은:
 
 ```text
 next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
@@ -363,7 +365,7 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
 그 다음 새 adapter state로 bootstrap rows를 다시 임베딩해서
 새 `PrototypePack`을 다시 만든다.
 
-즉 현재 구조에서 바뀌는 것은:
+즉 이 v1 구조에서 바뀌는 것은:
 
 1. adapter state
 2. adapter가 적용된 query 위치
@@ -371,27 +373,23 @@ next_scale = clamp(base_scale + weighted_mean(delta), min_scale, max_scale)
 
 ---
 
-## 11. 현재 코드에서의 결합 방식
+## 11. 현재 코드에서의 격리 방식
 
-현재 코드는 아래 세 축을 분리하려는 방향으로 정리돼 있다.
+현재 코드는 아래 세 축을 분리한다.
 
 1. `adapter family`
    - `adapter_kind`로 구분
 
 2. `local training backend`
-   - 예: `DiagonalScaleHeuristicTrainingBackend`
+   - 새 backend는 method-owned core와 agent runtime adapter를 분리한다.
 
 3. `server aggregation backend`
    - 예: `fedavg` reusable backend와 main_server generic executor
 
-즉 같은 `diagonal_scale` family 안에서는
-`heuristic -> gradient` 교체가 비교적 쉽고,
-나중에는 `projection_head`, `full_encoder` 같은 다른 family도 추가할 수 있다.
-
-adapter family별 payload 해석과 projection은 `methods/adaptation/<family>/`가
-소유하고, 재사용 aggregation backend는 `methods/federated/aggregation/`가 소유한다.
-특정 논문 method에만 종속된 aggregation 변형은 `methods/federated_ssl/<method>/`에 둘
-수 있다. `main_server`는 round lifecycle과 publication adapter로 남긴다.
+adapter family별 payload 해석과 projection은 해당 owner package가 소유하고,
+재사용 aggregation backend는 `methods/federated/aggregation/`가 소유한다.
+특정 논문 method에만 종속된 aggregation 변형은 `methods/federated_ssl/<method>/`에
+둘 수 있다. `main_server`는 round lifecycle과 publication adapter로 남긴다.
 
 ---
 
@@ -401,7 +399,8 @@ adapter family별 payload 해석과 projection은 `methods/adaptation/<family>/`
 
 1. `lora_classifier`는 열렸지만 full encoder, projection head, 추가 PEFT family는
    아직 열지 않았다.
-2. `diagonal_scale` local update는 아직 gradient가 아니라 heuristic이다.
+2. `diagonal_scale`은 active methods-level update family가 아니라 v1 contract
+   compatibility 표면이다.
 3. live agent stored-event 경로는 classifier multiview/runtime 조합이 아직 약하다.
 4. projection head, full encoder FL, 다른 PEFT family를 열려면 payload 타입과
    backend 구현을 더 추가해야 한다.

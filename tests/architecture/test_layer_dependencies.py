@@ -452,7 +452,7 @@ def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> No
 
     assert "methods.adaptation.diagonal_scale.config" not in imports, (
         "runtime fallback profile은 legacy compatibility 값을 소유하되 "
-        "diagonal_scale 구현 config를 import하지 않는다. fallback 제거 전까지도 "
+        "diagonal_scale 구현 config를 import하지 않는다. fallback이 남아 있어도 "
         "adapter implementation과 runtime default를 강결합하지 않는다."
     )
 
@@ -1179,14 +1179,14 @@ def test_diagonal_scale_no_longer_has_update_family_initialization_leaf() -> Non
         / "trainable_state"
         / "update_family"
         / "diagonal_scale.yaml",
-        METHODS_SRC / "adaptation" / "diagonal_scale" / "initial_state.py",
+        METHODS_SRC / "adaptation" / "diagonal_scale",
     )
     existing_paths = _existing_non_cache_paths(forbidden_paths)
 
     assert not existing_paths, (
-        "diagonal_scale는 target update-family 축이 아니다. legacy fallback과 "
-        "contract fixture가 남아 있더라도 trainable_state/update_family leaf나 "
-        "initial-state builder를 다시 만들지 않는다.\n"
+        "diagonal_scale는 target update-family 축이 아니다. v1 shared contract와 "
+        "legacy fallback 값이 남아 있더라도 methods-level 구현 폴더나 "
+        "trainable_state/update_family leaf를 다시 만들지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
 

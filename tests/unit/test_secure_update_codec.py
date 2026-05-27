@@ -30,7 +30,7 @@ def _task(*, secure_required: bool = False) -> TrainingTask:
         learning_rate=0.1,
         max_steps=1,
         objective_config=TrainingObjectiveConfigPayload(
-            training_backend_name="diagonal_scale_heuristic"
+            training_backend_name="lora_classifier_trainer"
         ),
         selection_policy=TrainingSelectionPolicyPayload(),
         secure_aggregation=SecureAggregationConfigPayload(
