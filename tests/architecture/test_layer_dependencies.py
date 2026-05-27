@@ -657,6 +657,24 @@ def test_peft_training_backend_marks_legacy_lora_factories() -> None:
     )
 
 
+def test_local_update_registry_does_not_embed_peft_backend_override() -> None:
+    path = METHODS_SRC / "adaptation" / "local_update_registry.py"
+    source = path.read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "_TRAINING_BACKEND_MODULE_OVERRIDES",
+        '"methods.adaptation.peft_text_classifier.training_backend"',
+        '"peft_classifier_trainer":',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "local update registry는 concrete backend module override를 직접 소유하지 "
+        "않는다. 먼저 name convention을 시도하고, 필요하면 adaptation package scan으로 "
+        "구현 옆 decorator 등록을 로드한다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def test_peft_method_modules_use_canonical_config_type_name() -> None:
     allowed_paths = {
         Path("methods/adaptation/peft_text_classifier/config.py"),
