@@ -96,6 +96,10 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "final_projection_builder",
         ),
+        transient_resource_cleaner=_optional_config_str(
+            cfg.round_runtime,
+            "transient_resource_cleaner",
+        ),
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),

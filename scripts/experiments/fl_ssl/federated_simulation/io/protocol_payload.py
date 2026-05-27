@@ -95,6 +95,9 @@ def build_protocol_payload(
             "initial_state_builder": round_runtime_config.initial_state_builder,
             "validation_evaluator": round_runtime_config.validation_evaluator,
             "final_projection_builder": (round_runtime_config.final_projection_builder),
+            "transient_resource_cleaner": (
+                round_runtime_config.transient_resource_cleaner
+            ),
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
             "classifier_head_bootstrap_logit_scale": (
                 round_runtime_config.classifier_head_bootstrap_logit_scale

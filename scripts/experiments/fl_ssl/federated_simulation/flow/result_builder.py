@@ -4,10 +4,9 @@ from __future__ import annotations
 
 import gc
 import time
+from importlib import import_module
+from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
-    clear_peft_encoder_transient_resource_cache,
-)
 from scripts.experiments.fl_ssl.federated_simulation.adapters.evaluation import (
     evaluate_simulation_validation,
 )
@@ -44,7 +43,10 @@ def build_simulation_result(
         else bootstrapped.initial_validation
     )
     started_at = time.perf_counter()
-    _release_helper_model_cache_before_final_evaluation(bootstrapped)
+    _release_helper_model_cache_before_final_evaluation(
+        request=request,
+        bootstrapped=bootstrapped,
+    )
     result_timing["result_helper_cache_release_seconds"] = (
         time.perf_counter() - started_at
     )
@@ -147,11 +149,16 @@ def _build_client_evaluations(
 
 
 def _release_helper_model_cache_before_final_evaluation(
+    *,
+    request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
 ) -> None:
-    """최종 평가 전에 method helper model 참조를 내려 GPU 압박을 줄인다."""
+    """최종 평가 전에 update family가 선언한 transient cache를 정리한다."""
 
-    clear_peft_encoder_transient_resource_cache(bootstrapped.runtime_resource_cache)
+    cleaner_path = request.round_runtime_config.transient_resource_cleaner
+    if cleaner_path:
+        cleaner = _load_transient_resource_cleaner(cleaner_path)
+        cleaner(bootstrapped.runtime_resource_cache)
     gc.collect()
     try:
         import torch
@@ -159,3 +166,20 @@ def _release_helper_model_cache_before_final_evaluation(
         return
     if torch.cuda.is_available():
         torch.cuda.empty_cache()
+
+
+def _load_transient_resource_cleaner(cleaner_path: str) -> Any:
+    module_name, separator, function_name = cleaner_path.rpartition(".")
+    if not separator or not module_name or not function_name:
+        raise ValueError(
+            "round_runtime.transient_resource_cleaner must be a fully qualified "
+            f"function path: {cleaner_path!r}."
+        )
+    module = import_module(module_name)
+    cleaner = getattr(module, function_name, None)
+    if not callable(cleaner):
+        raise ValueError(
+            "round_runtime.transient_resource_cleaner must point to a callable: "
+            f"{cleaner_path!r}."
+        )
+    return cleaner

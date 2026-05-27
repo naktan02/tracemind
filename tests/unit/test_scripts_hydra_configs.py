@@ -507,6 +507,10 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
         "build_peft_encoder_final_projection_artifacts"
     )
+    assert cfg.round_runtime.transient_resource_cleaner == (
+        "methods.adaptation.text_classifier.peft_encoder.resource_cache."
+        "clear_peft_encoder_transient_resource_cache"
+    )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
@@ -721,6 +725,10 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     assert cfg.round_runtime.final_projection_builder == (
         "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
         "build_peft_encoder_final_projection_artifacts"
+    )
+    assert cfg.round_runtime.transient_resource_cleaner == (
+        "methods.adaptation.text_classifier.peft_encoder.resource_cache."
+        "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
