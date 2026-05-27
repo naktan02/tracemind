@@ -445,7 +445,7 @@ def test_train_peft_ssl_classifier_supports_pseudo_label_replay_mode() -> None:
             config_name="entrypoints/central_ssl_control/train_peft_ssl_classifier",
             overrides=[
                 "ssl_input_mode=pseudo_label_replay",
-                "pseudo_label_jsonl=data/artifacts/lora_pseudo_label/run/pseudo_label_train.jsonl",
+                "pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/run/pseudo_label_train.jsonl",
                 "include_seed_train_rows=true",
             ],
         )
@@ -453,7 +453,7 @@ def test_train_peft_ssl_classifier_supports_pseudo_label_replay_mode() -> None:
     assert cfg.ssl_input_mode == "pseudo_label_replay"
     assert cfg.pseudo_label_jsonl.endswith("pseudo_label_train.jsonl")
     assert cfg.include_seed_train_rows is True
-    assert cfg.pseudo_label_export_root == "data/artifacts/lora_pseudo_label"
+    assert cfg.pseudo_label_export_root == "data/artifacts/query_peft_pseudo_label"
     assert list(cfg.fixed_categories) == list(cfg.dataset.prototype_expected_categories)
     assert cfg.query_adaptation_initial_checkpoint.name == "none"
     assert cfg.initial_adapter_dir == ""

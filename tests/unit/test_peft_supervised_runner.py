@@ -48,8 +48,8 @@ def _build_cfg() -> object:
             "max_grad_norm": 1.0,
             "log_every_steps": 10,
             "output_dir": "runs/train_peft_supervised_classifier",
-            "adapter_output_dir": "data/processed/lora_adapters",
-            "classifier_output_dir": "data/processed/lora_classifier_heads",
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
         }
     )
 

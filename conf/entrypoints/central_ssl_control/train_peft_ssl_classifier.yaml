@@ -16,7 +16,7 @@ defaults:
 
 ssl_input_mode: consistency
 pseudo_label_jsonl: null
-pseudo_label_export_root: data/artifacts/lora_pseudo_label
+pseudo_label_export_root: data/artifacts/query_peft_pseudo_label
 include_seed_train_rows: false
 output_dir: ${central_ssl_budget.output_root}/train_peft_ssl_classifier/${ssl_input_mode}/${query_data_selection_slug}
 fixed_categories: ${dataset.prototype_expected_categories}
@@ -37,8 +37,8 @@ query_ssl_strong_view_policy: first_aug
 resume_checkpoint_path: null
 resume_checkpoint_output_dir: ${output_dir}/checkpoints
 resume_checkpoint_every_epochs: 0
-adapter_output_dir: data/artifacts/lora_adapters
-classifier_output_dir: data/artifacts/lora_classifier_heads
+adapter_output_dir: data/artifacts/peft_adapters
+classifier_output_dir: data/artifacts/peft_classifier_heads
 trainer_version: ""
 
 hydra:

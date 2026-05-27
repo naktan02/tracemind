@@ -770,6 +770,37 @@ def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
     )
 
 
+def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> None:
+    checked_paths = (
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_supervised_classifier.yaml",
+    )
+    forbidden_snippets = (
+        "lora_adapters",
+        "lora_classifier_heads",
+        "lora_pseudo_label",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "새 중앙 PEFT 실행 산출물 기본 root는 PEFT/query 의미로 이름 붙인다. "
+        "LoRA는 adapter mechanism 또는 old artifact reader compatibility 표면에만 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
     forbidden_snippets = (
         "query_" + "lora",

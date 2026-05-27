@@ -205,4 +205,4 @@ def _resolve_run_id(
     trainer_version = str(getattr(cfg, "trainer_version", "") or "").strip()
     if trainer_version:
         return trainer_version
-    return generated_at.strftime("lora_pseudo_label_%Y_%m_%d_%H%M%S")
+    return generated_at.strftime("query_peft_pseudo_label_%Y_%m_%d_%H%M%S")

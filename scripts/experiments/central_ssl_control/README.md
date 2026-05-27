@@ -103,7 +103,7 @@ artifact로 바꾸는 replay/self-training 모드다.
 ```bash
 uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
   ssl_input_mode=pseudo_label_replay \
-  pseudo_label_jsonl=data/artifacts/lora_pseudo_label/<run_id>/pseudo_label_train.jsonl
+  pseudo_label_jsonl=data/artifacts/query_peft_pseudo_label/<run_id>/pseudo_label_train.jsonl
 ```
 
 ## 방법론별 실행

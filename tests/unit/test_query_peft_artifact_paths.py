@@ -20,8 +20,8 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
                 "runs/train_peft_ssl_classifier/consistency/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
-            "adapter_output_dir": "data/processed/lora_adapters",
-            "classifier_output_dir": "data/processed/lora_classifier_heads",
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
             "query_ssl_method": {
                 "name": "fixmatch_usb_v1",
             },
@@ -57,8 +57,8 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
                 "runs/train_peft_ssl_classifier/pseudo_label_replay/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
-            "adapter_output_dir": "data/processed/lora_adapters",
-            "classifier_output_dir": "data/processed/lora_classifier_heads",
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
             "query_ssl_method": {
                 "name": "fixmatch_usb_v1",
             },
@@ -104,8 +104,8 @@ def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
     cfg = OmegaConf.create(
         {
             "output_dir": "runs/train_peft_supervised_classifier",
-            "adapter_output_dir": "data/processed/lora_adapters",
-            "classifier_output_dir": "data/processed/lora_classifier_heads",
+            "adapter_output_dir": "data/processed/peft_adapters",
+            "classifier_output_dir": "data/processed/peft_classifier_heads",
         }
     )
 
