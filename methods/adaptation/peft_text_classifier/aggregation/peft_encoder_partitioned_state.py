@@ -5,15 +5,15 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 
 from ..update.materialization import PeftEncoderMaterializedState
 
 
 def merge_partitioned_peft_encoder_deltas(
-    partitions: Mapping[str, LoraClassifierPartitionDelta],
-) -> LoraClassifierPartitionDelta:
+    partitions: Mapping[str, PeftEncoderPartitionDelta],
+) -> PeftEncoderPartitionDelta:
     """partition별 delta를 하나의 PEFT encoder classifier delta로 합친다.
 
     같은 parameter key가 여러 partition에 있으면 값을 element-wise로 더한다.
@@ -30,7 +30,7 @@ def merge_partitioned_peft_encoder_deltas(
         )
         for key, value in partition.classifier_head_bias_deltas.items():
             merged_biases[str(key)] = merged_biases.get(str(key), 0.0) + float(value)
-    return LoraClassifierPartitionDelta(
+    return PeftEncoderPartitionDelta(
         partition_name="merged",
         lora_parameter_deltas=merged_lora,
         classifier_head_weight_deltas=merged_weights,
@@ -41,7 +41,7 @@ def merge_partitioned_peft_encoder_deltas(
 def apply_peft_encoder_partition_delta_to_state(
     *,
     base_parameters: PeftEncoderMaterializedState,
-    delta: LoraClassifierPartitionDelta,
+    delta: PeftEncoderPartitionDelta,
 ) -> PeftEncoderMaterializedState:
     """base state에 merged partition delta를 적용한 materialized state를 만든다."""
 
@@ -69,7 +69,7 @@ def apply_peft_encoder_partition_deltas_to_partitioned_state(
     *,
     base_parameters: PeftEncoderMaterializedState,
     base_partition_parameters: Mapping[str, PeftEncoderMaterializedState],
-    partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
+    partition_deltas: Mapping[str, PeftEncoderPartitionDelta],
 ) -> dict[str, PeftEncoderMaterializedState]:
     """partition별 base state에 partition delta를 적용해 다음 partition state를 만든다.
 

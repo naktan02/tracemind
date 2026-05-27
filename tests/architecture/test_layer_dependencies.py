@@ -642,6 +642,37 @@ def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() ->
     )
 
 
+def test_peft_partition_delta_uses_canonical_internal_type_name() -> None:
+    checked_roots = (
+        PEFT_TEXT_CLASSIFIER_SRC,
+        REPO_ROOT
+        / "tests"
+        / "unit"
+        / "test_methods_fedmatch_peft_partitioned_training.py",
+        REPO_ROOT / "tests" / "unit" / "test_federated_agent_runtime_adapters.py",
+        REPO_ROOT / "tests" / "unit" / "test_peft_encoder_aggregation.py",
+    )
+    forbidden_snippets = (
+        "LoraClassifierPartitionDelta",
+        "build_lora_classifier_partition_delta_from_parameter_deltas",
+        "project_adapter_classifier_delta_bundle_to_lora_partition_delta",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for root in checked_roots
+        for path in (_iter_python_files(root) if root.is_dir() else [root])
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT encoder 내부 partition delta value object는 "
+        "PeftEncoderPartitionDelta 이름을 사용한다. lora_classifier 이름은 "
+        "shared v1 contract 또는 artifact schema 문자열에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_query_ssl_update_unit_test_uses_peft_encoder_surface() -> None:
     legacy_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_lora_update.py"
     active_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_peft_encoder_update.py"

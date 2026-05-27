@@ -32,7 +32,7 @@ from .local_update import (
     PeftEncoderTrainArtifacts,
     build_peft_encoder_delta_payload_from_artifacts,
 )
-from .partitioned_delta import LoraClassifierPartitionDelta
+from .partitioned_delta import PeftEncoderPartitionDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -57,7 +57,7 @@ def build_query_ssl_peft_encoder_update_payload(
     lora_parameter_deltas: Mapping[str, Sequence[float]],
     classifier_head_weight_deltas: Mapping[str, Sequence[float]],
     classifier_head_bias_deltas: Mapping[str, float],
-    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+    partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
     created_at: datetime,
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     lora_delta_artifact_ref: str | None = None,

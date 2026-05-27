@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from shared.src.contracts.training_contracts import TrainingTask
 
@@ -63,7 +63,7 @@ def build_partitioned_delta_json_artifact_payload(
     update_id: str,
     training_task: TrainingTask,
     client_id: str,
-    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta],
+    partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta],
 ) -> dict[str, object]:
     return {
         "schema_version": PARTITIONED_DELTA_ARTIFACT_SCHEMA_VERSION,

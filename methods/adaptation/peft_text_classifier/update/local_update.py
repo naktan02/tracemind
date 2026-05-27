@@ -23,7 +23,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
-from .partitioned_delta import LoraClassifierPartitionDelta
+from .partitioned_delta import PeftEncoderPartitionDelta
 
 
 @dataclass(frozen=True, slots=True)
@@ -45,7 +45,7 @@ class PeftEncoderTrainArtifacts:
     lora_parameter_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_weight_deltas: Mapping[str, Sequence[float]] | None = None
     classifier_head_bias_deltas: Mapping[str, float] | None = None
-    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None
+    partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None
     partitioned_deltas_artifact_ref: str | None = None
     delta_l2_norm: float = 0.0
 
@@ -233,7 +233,7 @@ def build_peft_encoder_delta_payload_from_artifacts(
 
 
 def _build_partitioned_delta_payload(
-    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+    partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None,
     *,
     peft_parameter_field_name: str,
 ) -> dict[str, dict[str, object]] | None:

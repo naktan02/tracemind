@@ -38,7 +38,7 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from methods.common.timing import TimingRecorder
 from methods.evaluation.pseudo_label_quality import PseudoLabelQualitySummary
@@ -584,7 +584,7 @@ def test_query_ssl_peft_encoder_delta_materialization_writes_partitioned_ref(
         classifier_head_weight_deltas={"anxiety": [0.3, -0.1]},
         classifier_head_bias_deltas={"anxiety": 0.05},
         partitioned_deltas={
-            "sigma": LoraClassifierPartitionDelta(
+            "sigma": PeftEncoderPartitionDelta(
                 partition_name="sigma",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1]},
                 classifier_head_weight_deltas={"anxiety": [0.2]},

@@ -32,7 +32,7 @@ from .merged_tensor_artifact import (
     build_classifier_head_delta_tensor_artifact,
     build_lora_delta_tensor_artifact,
 )
-from .partitioned_delta import LoraClassifierPartitionDelta
+from .partitioned_delta import PeftEncoderPartitionDelta
 from .partitioned_tensor_artifact import build_partitioned_delta_tensor_artifact
 
 
@@ -108,7 +108,7 @@ class PeftEncoderDeltaMaterializer:
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
-        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+        partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
         materialize_primary_deltas: bool = True,
     ) -> QuerySslPeftEncoderDeltaMaterialization:
         """delta_format에 맞게 PEFT encoder/classifier delta artifact ref를 준비한다."""
@@ -171,7 +171,7 @@ class PeftEncoderDeltaMaterializer:
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
-        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+        partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None,
         materialize_primary_deltas: bool,
     ) -> QuerySslPeftEncoderDeltaMaterialization:
         lora_delta_ref = None
@@ -245,7 +245,7 @@ class PeftEncoderDeltaMaterializer:
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
-        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
+        partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None,
         materialize_primary_deltas: bool,
     ) -> QuerySslPeftEncoderDeltaMaterialization:
         lora_delta_ref = (

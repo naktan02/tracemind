@@ -9,7 +9,7 @@ import torch
 from torch import Tensor
 
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 
 PARTITIONED_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION = (
@@ -20,7 +20,7 @@ PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY = "partition_index_json"
 
 
 def build_partitioned_delta_tensor_artifact(
-    partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta],
+    partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta],
 ) -> tuple[dict[str, Tensor], dict[str, str]]:
     """partitioned delta를 safetensors payload와 metadata index로 변환한다."""
 
@@ -73,7 +73,7 @@ def parse_partitioned_delta_tensor_artifact(
     *,
     tensors: Mapping[str, Tensor],
     metadata: Mapping[str, str],
-) -> dict[str, LoraClassifierPartitionDelta]:
+) -> dict[str, PeftEncoderPartitionDelta]:
     """safetensors payload와 metadata index를 partitioned delta로 복원한다."""
 
     raw_index = metadata.get(PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY)
@@ -91,11 +91,11 @@ def parse_partitioned_delta_tensor_artifact(
     if not isinstance(partitions, dict) or not partitions:
         raise ValueError("Partitioned delta tensor artifact partitions must exist.")
 
-    result: dict[str, LoraClassifierPartitionDelta] = {}
+    result: dict[str, PeftEncoderPartitionDelta] = {}
     for partition_name, partition_payload in partitions.items():
         if not isinstance(partition_payload, dict):
             raise ValueError("Partitioned delta partition index must be an object.")
-        result[str(partition_name)] = LoraClassifierPartitionDelta(
+        result[str(partition_name)] = PeftEncoderPartitionDelta(
             partition_name=str(partition_name),
             lora_parameter_deltas=_read_vector_mapping(
                 tensors=tensors,

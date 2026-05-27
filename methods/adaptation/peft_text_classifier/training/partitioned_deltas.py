@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from torch import Tensor, nn
 
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 
 
@@ -64,15 +64,15 @@ def diff_parameter_snapshots(
     return deltas
 
 
-def build_lora_classifier_partition_delta_from_parameter_deltas(
+def build_peft_encoder_partition_delta_from_parameter_deltas(
     *,
     partition_name: str,
     parameter_deltas: Mapping[str, Tensor],
     labels: Sequence[str],
-) -> LoraClassifierPartitionDelta:
+) -> PeftEncoderPartitionDelta:
     """trainable parameter delta snapshot을 LoRA/head payload partition으로 바꾼다."""
 
-    return project_adapter_classifier_delta_bundle_to_lora_partition_delta(
+    return project_adapter_classifier_delta_bundle_to_peft_partition_delta(
         bundle=build_adapter_classifier_delta_bundle(
             partition_name=partition_name,
             parameter_deltas=parameter_deltas,
@@ -118,12 +118,12 @@ def build_adapter_classifier_delta_bundle(
     )
 
 
-def project_adapter_classifier_delta_bundle_to_lora_partition_delta(
+def project_adapter_classifier_delta_bundle_to_peft_partition_delta(
     *,
     bundle: AdapterClassifierDeltaBundle,
     labels: Sequence[str],
-) -> LoraClassifierPartitionDelta:
-    """내부 adapter/head bundle을 현재 lora_classifier shared payload로 투영한다."""
+) -> PeftEncoderPartitionDelta:
+    """내부 adapter/head bundle을 현재 PEFT encoder shared payload로 투영한다."""
 
     normalized_labels = _normalize_labels(labels)
     lora_parameter_deltas = {
@@ -154,7 +154,7 @@ def project_adapter_classifier_delta_bundle_to_lora_partition_delta(
             for label_index, label in enumerate(normalized_labels)
         }
 
-    return LoraClassifierPartitionDelta(
+    return PeftEncoderPartitionDelta(
         partition_name=bundle.partition_name,
         lora_parameter_deltas=lora_parameter_deltas,
         classifier_head_weight_deltas=classifier_head_weight_deltas,

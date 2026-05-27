@@ -31,7 +31,7 @@ from ...training.loops import (
 from ...training.modeling import PeftEncoderTextClassifier
 from ...training.optimizer_step import run_optimizer_loss_step
 from ...training.partitioned_deltas import (
-    build_lora_classifier_partition_delta_from_parameter_deltas,
+    build_peft_encoder_partition_delta_from_parameter_deltas,
     diff_parameter_snapshots,
     named_trainable_parameter_tensors,
     snapshot_trainable_parameter_tensors,
@@ -41,7 +41,7 @@ from ...training.scalar_metrics import (
     tensor_mapping_l2,
 )
 from ...training.step_budget import resolve_epoch_distributed_step_budget
-from ...update.partitioned_delta import LoraClassifierPartitionDelta
+from ...update.partitioned_delta import PeftEncoderPartitionDelta
 from . import trainable_model as ptm
 
 
@@ -61,7 +61,7 @@ class PartitionedAdapterClassifierTrainingResult:
     """partitioned local loop 결과와 누적 partition delta."""
 
     metrics: Mapping[str, float]
-    partition_deltas: Mapping[str, LoraClassifierPartitionDelta]
+    partition_deltas: Mapping[str, PeftEncoderPartitionDelta]
 
 
 class HelperWeakProbabilityProvider(Protocol):
@@ -229,7 +229,7 @@ def train_partitioned_adapter_classifier(
             **(
                 {
                     supervised_partition: (
-                        build_lora_classifier_partition_delta_from_parameter_deltas(
+                        build_peft_encoder_partition_delta_from_parameter_deltas(
                             partition_name=supervised_partition,
                             parameter_deltas=sigma_parameter_delta_sums,
                             labels=labels,
@@ -240,7 +240,7 @@ def train_partitioned_adapter_classifier(
                 else {}
             ),
             unsupervised_partition: (
-                build_lora_classifier_partition_delta_from_parameter_deltas(
+                build_peft_encoder_partition_delta_from_parameter_deltas(
                     partition_name=unsupervised_partition,
                     parameter_deltas=psi_parameter_delta_sums,
                     labels=labels,
@@ -406,7 +406,7 @@ def train_physical_partitioned_adapter_classifier(
             **(
                 {
                     supervised_partition: (
-                        build_lora_classifier_partition_delta_from_parameter_deltas(
+                        build_peft_encoder_partition_delta_from_parameter_deltas(
                             partition_name=supervised_partition,
                             parameter_deltas=supervised_parameter_delta_sums,
                             labels=labels,
@@ -417,7 +417,7 @@ def train_physical_partitioned_adapter_classifier(
                 else {}
             ),
             unsupervised_partition: (
-                build_lora_classifier_partition_delta_from_parameter_deltas(
+                build_peft_encoder_partition_delta_from_parameter_deltas(
                     partition_name=unsupervised_partition,
                     parameter_deltas=unsupervised_parameter_delta_sums,
                     labels=labels,

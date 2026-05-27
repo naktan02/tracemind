@@ -38,7 +38,7 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     materialize_peft_encoder_update,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
     normalize_partition_deltas,
 )
 from methods.federated.aggregation.base import FederatedAggregationContext
@@ -483,13 +483,13 @@ def test_peft_encoder_state_projection_rejects_delta_dimension_mismatch() -> Non
 def test_peft_encoder_partitioned_deltas_merge_without_fedmatch_names() -> None:
     partitions = normalize_partition_deltas(
         (
-            LoraClassifierPartitionDelta(
+            PeftEncoderPartitionDelta(
                 partition_name="private",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, -0.1]},
                 classifier_head_weight_deltas={"anxiety": [0.1, 0.3]},
                 classifier_head_bias_deltas={"anxiety": 0.05},
             ),
-            LoraClassifierPartitionDelta(
+            PeftEncoderPartitionDelta(
                 partition_name="shared",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.4, 0.5]},
                 classifier_head_weight_deltas={"anxiety": [0.2, -0.1]},
@@ -514,7 +514,7 @@ def test_peft_encoder_partition_delta_applies_to_materialized_state() -> None:
         classifier_head_weights={"anxiety": [0.3, 0.4]},
         classifier_head_biases={"anxiety": 0.5},
     )
-    delta = LoraClassifierPartitionDelta(
+    delta = PeftEncoderPartitionDelta(
         partition_name="merged",
         lora_parameter_deltas={"encoder_lora.weight": [0.2, -0.1]},
         classifier_head_weight_deltas={
@@ -573,7 +573,7 @@ def test_peft_encoder_partition_delta_rejects_state_dimension_mismatch() -> None
         classifier_head_weights={},
         classifier_head_biases={},
     )
-    delta = LoraClassifierPartitionDelta(
+    delta = PeftEncoderPartitionDelta(
         partition_name="merged",
         lora_parameter_deltas={"encoder_lora.weight": [0.2]},
         classifier_head_weight_deltas={},
@@ -668,7 +668,7 @@ def test_materialize_peft_classifier_partitioned_base_state_reads_v2_metadata():
 def test_peft_encoder_partitioned_payload_keeps_partition_names() -> None:
     payload = partitioned_payloads.build_partitioned_delta_payload(
         (
-            LoraClassifierPartitionDelta(
+            PeftEncoderPartitionDelta(
                 partition_name="shared",
                 lora_parameter_deltas={"encoder.q_proj.lora_A": [0.4]},
             ),
@@ -819,7 +819,7 @@ def test_materialize_peft_encoder_partitioned_update_reads_artifact_ref() -> Non
 def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
     tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
-            "sigma": LoraClassifierPartitionDelta(
+            "sigma": PeftEncoderPartitionDelta(
                 partition_name="sigma",
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.2, -0.1],
@@ -854,7 +854,7 @@ def test_materialize_peft_encoder_partitioned_update_reads_tensor_artifact_ref()
 ):
     tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
         {
-            "psi": LoraClassifierPartitionDelta(
+            "psi": PeftEncoderPartitionDelta(
                 partition_name="psi",
                 lora_parameter_deltas={
                     "encoder.q_proj.lora_A": [0.3],
@@ -904,7 +904,7 @@ def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -
         updates=(
             peft_part_projection.PeftEncoderPartitionedDeltaAverageUpdate(
                 partitions={
-                    "sigma": LoraClassifierPartitionDelta(
+                    "sigma": PeftEncoderPartitionDelta(
                         partition_name="sigma",
                         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.2, 0.0]},
                         classifier_head_weight_deltas={
@@ -912,7 +912,7 @@ def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -
                             "normal": [-0.1, 0.0],
                         },
                     ),
-                    "psi": LoraClassifierPartitionDelta(
+                    "psi": PeftEncoderPartitionDelta(
                         partition_name="psi",
                         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, 0.3]},
                         classifier_head_weight_deltas={
@@ -929,7 +929,7 @@ def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -
             ),
             peft_part_projection.PeftEncoderPartitionedDeltaAverageUpdate(
                 partitions={
-                    "sigma": LoraClassifierPartitionDelta(
+                    "sigma": PeftEncoderPartitionDelta(
                         partition_name="sigma",
                         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.0, 0.6]},
                         classifier_head_weight_deltas={

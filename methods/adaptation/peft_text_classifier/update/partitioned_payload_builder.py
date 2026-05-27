@@ -5,13 +5,13 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
     normalize_partition_deltas,
 )
 
 
 def build_partitioned_delta_payload(
-    deltas: tuple[LoraClassifierPartitionDelta, ...],
+    deltas: tuple[PeftEncoderPartitionDelta, ...],
 ) -> dict[str, object]:
     """partitioned delta를 artifact/diagnostics가 쓰기 쉬운 JSON shape로 바꾼다."""
 
@@ -24,7 +24,7 @@ def build_partitioned_delta_payload(
     }
 
 
-def _partition_to_payload(delta: LoraClassifierPartitionDelta) -> Mapping[str, object]:
+def _partition_to_payload(delta: PeftEncoderPartitionDelta) -> Mapping[str, object]:
     return {
         "lora_parameter_deltas": {
             key: list(values)

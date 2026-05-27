@@ -38,7 +38,7 @@ from ..update.materialization import (
     materialize_base_peft_encoder_state,
     materialize_peft_encoder_partitioned_update,
 )
-from ..update.partitioned_delta import LoraClassifierPartitionDelta
+from ..update.partitioned_delta import PeftEncoderPartitionDelta
 from .peft_encoder_fedavg_projection import (
     CLASSIFIER_HEAD_ARTIFACT_SLOT,
     LORA_ADAPTER_ARTIFACT_SLOT,
@@ -63,7 +63,7 @@ PARTITIONED_DELTA_AVERAGE_BACKEND_NAME = "partitioned_delta_average"
 class PeftEncoderPartitionedDeltaAverageUpdate:
     """partitioned server update policy가 소비하는 client delta."""
 
-    partitions: Mapping[str, LoraClassifierPartitionDelta]
+    partitions: Mapping[str, PeftEncoderPartitionDelta]
     example_count: int
     mean_confidence: float | None
     mean_margin: float | None
@@ -238,7 +238,7 @@ def _compute_average_partition_deltas(
     label_schema: Sequence[str],
     updates: Sequence[PeftEncoderPartitionedDeltaAverageUpdate],
     weight_policy_name: str,
-) -> dict[str, LoraClassifierPartitionDelta]:
+) -> dict[str, PeftEncoderPartitionDelta]:
     partition_names = sorted(
         {
             partition_name
@@ -247,7 +247,7 @@ def _compute_average_partition_deltas(
             for partition_name in update.partitions
         }
     )
-    averaged: dict[str, LoraClassifierPartitionDelta] = {}
+    averaged: dict[str, PeftEncoderPartitionDelta] = {}
     for partition_name in partition_names:
         partition_updates = [
             PeftEncoderFedAvgUpdate(
@@ -271,7 +271,7 @@ def _compute_average_partition_deltas(
             updates=partition_updates,
             weight_policy_name=weight_policy_name,
         )
-        averaged[partition_name] = LoraClassifierPartitionDelta(
+        averaged[partition_name] = PeftEncoderPartitionDelta(
             partition_name=partition_name,
             lora_parameter_deltas=partition_result.lora_parameter_deltas,
             classifier_head_weight_deltas=(

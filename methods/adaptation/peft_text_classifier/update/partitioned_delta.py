@@ -1,4 +1,4 @@
-"""LoRA-classifier partitioned delta mechanism helpers."""
+"""PEFT encoder partitioned delta mechanism helpers."""
 
 from __future__ import annotations
 
@@ -7,8 +7,8 @@ from dataclasses import dataclass, field
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierPartitionDelta:
-    """하나의 partition에 속한 LoRA/head delta 묶음."""
+class PeftEncoderPartitionDelta:
+    """하나의 partition에 속한 PEFT adapter/head delta 묶음."""
 
     partition_name: str
     lora_parameter_deltas: Mapping[str, Sequence[float]] = field(default_factory=dict)
@@ -23,14 +23,14 @@ class LoraClassifierPartitionDelta:
 
 
 def normalize_partition_deltas(
-    deltas: Sequence[LoraClassifierPartitionDelta],
-) -> dict[str, LoraClassifierPartitionDelta]:
+    deltas: Sequence[PeftEncoderPartitionDelta],
+) -> dict[str, PeftEncoderPartitionDelta]:
     """partition 이름 중복을 막고 name -> delta mapping으로 정규화한다."""
 
-    normalized: dict[str, LoraClassifierPartitionDelta] = {}
+    normalized: dict[str, PeftEncoderPartitionDelta] = {}
     for delta in deltas:
         name = delta.partition_name.strip()
         if name in normalized:
-            raise ValueError(f"Duplicate LoRA-classifier partition delta: {name}")
+            raise ValueError(f"Duplicate PEFT encoder partition delta: {name}")
         normalized[name] = delta
     return normalized

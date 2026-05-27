@@ -30,7 +30,7 @@ from .merged_tensor_artifact import (
     parse_classifier_head_delta_tensor_artifact,
     parse_lora_delta_tensor_artifact,
 )
-from .partitioned_delta import LoraClassifierPartitionDelta
+from .partitioned_delta import PeftEncoderPartitionDelta
 from .partitioned_tensor_artifact import parse_partitioned_delta_tensor_artifact
 
 LORA_STATE_PARAMETERS_KEY = "lora_parameters"
@@ -274,7 +274,7 @@ def materialize_peft_encoder_partitioned_update(
     *,
     payload: PeftEncoderDeltaPayload,
     context: FederatedAggregationContext | None = None,
-) -> dict[str, LoraClassifierPartitionDelta]:
+) -> dict[str, PeftEncoderPartitionDelta]:
     """shared payload의 partitioned delta를 methods-owned delta object로 읽는다."""
 
     partitioned_deltas = payload.partitioned_deltas
@@ -309,7 +309,7 @@ def materialize_peft_encoder_partitioned_update(
             "PEFT-classifier partitioned aggregation requires partitioned_deltas "
             "or partitioned_deltas_artifact_ref."
         )
-    partitions: dict[str, LoraClassifierPartitionDelta] = {}
+    partitions: dict[str, PeftEncoderPartitionDelta] = {}
     for partition_name, partition in partitioned_deltas.items():
         if isinstance(partition, Mapping):
             lora_parameter_deltas = partition.get(
@@ -328,7 +328,7 @@ def materialize_peft_encoder_partitioned_update(
             lora_parameter_deltas = _partition_peft_parameter_deltas(partition)
             classifier_head_weight_deltas = partition.classifier_head_weight_deltas
             classifier_head_bias_deltas = partition.classifier_head_bias_deltas
-        partitions[partition_name] = LoraClassifierPartitionDelta(
+        partitions[partition_name] = PeftEncoderPartitionDelta(
             partition_name=partition_name,
             lora_parameter_deltas=_normalize_optional_vector_mapping(
                 lora_parameter_deltas,
@@ -356,7 +356,7 @@ def _try_load_partitioned_tensor_artifact(
     *,
     loader: AggregationJsonArtifactLoader,
     artifact_ref: str,
-) -> dict[str, LoraClassifierPartitionDelta] | None:
+) -> dict[str, PeftEncoderPartitionDelta] | None:
     tensor_loader = getattr(loader, "load_safetensors_artifact", None)
     if tensor_loader is None:
         return None

@@ -25,7 +25,7 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
@@ -48,12 +48,12 @@ from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 build_adapter_classifier_delta_bundle = (
     partitioned_deltas.build_adapter_classifier_delta_bundle
 )
-build_lora_classifier_partition_delta_from_parameter_deltas = (
-    partitioned_deltas.build_lora_classifier_partition_delta_from_parameter_deltas
+build_peft_encoder_partition_delta_from_parameter_deltas = (
+    partitioned_deltas.build_peft_encoder_partition_delta_from_parameter_deltas
 )
 diff_parameter_snapshots = partitioned_deltas.diff_parameter_snapshots
-project_adapter_classifier_delta_bundle_to_lora_partition_delta = (
-    partitioned_deltas.project_adapter_classifier_delta_bundle_to_lora_partition_delta
+project_adapter_classifier_delta_bundle_to_peft_partition_delta = (
+    partitioned_deltas.project_adapter_classifier_delta_bundle_to_peft_partition_delta
 )
 snapshot_trainable_parameter_tensors = (
     partitioned_deltas.snapshot_trainable_parameter_tensors
@@ -167,8 +167,8 @@ def test_method_owned_peft_classifier_core_resolves_descriptor_entrypoint() -> N
     assert core is run_fedmatch_partitioned_training
 
 
-def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
-    partition = build_lora_classifier_partition_delta_from_parameter_deltas(
+def test_peft_encoder_parameter_delta_can_be_split_into_partitions() -> None:
+    partition = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name="custom",
         labels=("anxiety", "normal"),
         parameter_deltas={
@@ -190,7 +190,7 @@ def test_lora_classifier_parameter_delta_can_be_split_into_partitions() -> None:
     }
 
 
-def test_lora_classifier_peer_snapshot_extracts_current_trainable_state() -> None:
+def test_peft_encoder_peer_snapshot_extracts_current_trainable_state() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
 
@@ -241,12 +241,12 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
 
     after = snapshot_trainable_parameter_tensors(model)
     total_delta = diff_parameter_snapshots(after=after, before=before)
-    sigma_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
+    sigma_delta = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name=FEDMATCH_SIGMA_PARTITION,
         parameter_deltas=result.sigma_parameter_deltas,
         labels=labels,
     )
-    psi_delta = build_lora_classifier_partition_delta_from_parameter_deltas(
+    psi_delta = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name=FEDMATCH_PSI_PARTITION,
         parameter_deltas=result.psi_parameter_deltas,
         labels=labels,
@@ -271,7 +271,7 @@ def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -
     )
 
 
-def test_adapter_classifier_delta_bundle_projects_to_lora_partition_payload() -> None:
+def test_adapter_classifier_delta_bundle_projects_to_peft_partition_delta() -> None:
     parameter_deltas = {
         "encoder_lora.weight": torch.tensor([[0.1, -0.2], [0.3, 0.4]]),
         "classifier.weight": torch.tensor([[0.5, 0.6], [-0.1, 0.2]]),
@@ -283,7 +283,7 @@ def test_adapter_classifier_delta_bundle_projects_to_lora_partition_payload() ->
         parameter_deltas=parameter_deltas,
         labels=("anxiety", "normal"),
     )
-    payload = project_adapter_classifier_delta_bundle_to_lora_partition_delta(
+    payload = project_adapter_classifier_delta_bundle_to_peft_partition_delta(
         bundle=bundle,
         labels=("anxiety", "normal"),
     )
@@ -1036,7 +1036,7 @@ def test_fedmatch_peft_training_returns_cumulative_partitioned_delta() -> None:
     )
 
     after = snapshot_trainable_parameter_tensors(model)
-    total_partition = build_lora_classifier_partition_delta_from_parameter_deltas(
+    total_partition = build_peft_encoder_partition_delta_from_parameter_deltas(
         partition_name="total",
         labels=labels,
         parameter_deltas=diff_parameter_snapshots(after=after, before=before),
@@ -1139,13 +1139,13 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
         base_parameters=base,
         base_partition_parameters=partition_base,
         partition_deltas={
-            FEDMATCH_SIGMA_PARTITION: LoraClassifierPartitionDelta(
+            FEDMATCH_SIGMA_PARTITION: PeftEncoderPartitionDelta(
                 partition_name=FEDMATCH_SIGMA_PARTITION,
                 lora_parameter_deltas={"encoder_lora.weight": [0.01, 0.04, -0.06]},
                 classifier_head_weight_deltas={"anxiety": [0.02, 0.07]},
                 classifier_head_bias_deltas={"anxiety": 0.03},
             ),
-            FEDMATCH_PSI_PARTITION: LoraClassifierPartitionDelta(
+            FEDMATCH_PSI_PARTITION: PeftEncoderPartitionDelta(
                 partition_name=FEDMATCH_PSI_PARTITION,
                 lora_parameter_deltas={"encoder_lora.weight": [0.01, -0.01, 0.08]},
                 classifier_head_weight_deltas={"anxiety": [0.01, -0.01]},
@@ -1234,13 +1234,13 @@ def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() ->
 
 def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
     deltas = {
-        FEDMATCH_SIGMA_PARTITION: LoraClassifierPartitionDelta(
+        FEDMATCH_SIGMA_PARTITION: PeftEncoderPartitionDelta(
             partition_name=FEDMATCH_SIGMA_PARTITION,
             lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.04, -0.06]},
             classifier_head_weight_deltas={"anxiety": [0.0, 0.07]},
             classifier_head_bias_deltas={"anxiety": 0.03},
         ),
-        FEDMATCH_PSI_PARTITION: LoraClassifierPartitionDelta(
+        FEDMATCH_PSI_PARTITION: PeftEncoderPartitionDelta(
             partition_name=FEDMATCH_PSI_PARTITION,
             lora_parameter_deltas={"encoder_lora.weight": [0.0, 0.0, 0.10]},
             classifier_head_weight_deltas={"anxiety": [0.0, 0.0]},

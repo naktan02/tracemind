@@ -16,7 +16,7 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
     build_query_ssl_peft_encoder_update_payload,
@@ -120,7 +120,7 @@ class QuerySslPeftEncoderDeltaMaterializer(Protocol):
         lora_parameter_deltas: Mapping[str, Sequence[float]],
         classifier_head_weight_deltas: Mapping[str, Sequence[float]],
         classifier_head_bias_deltas: Mapping[str, float],
-        partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None = None,
+        partitioned_deltas: Mapping[str, PeftEncoderPartitionDelta] | None = None,
         materialize_primary_deltas: bool = True,
     ) -> QuerySslPeftEncoderDeltaMaterialization:
         """delta 저장 방식을 결정하고 artifact ref를 반환한다."""

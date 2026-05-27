@@ -38,7 +38,7 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     compact_peft_encoder_materialized_state,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
+    PeftEncoderPartitionDelta,
 )
 from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
     build_query_ssl_peft_encoder_update_payload,
@@ -703,7 +703,7 @@ def _build_psi_query_ssl_algorithm(
 def replace_partitioned_training_deltas(
     *,
     training_result: PartitionedAdapterClassifierTrainingResult,
-    partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
+    partition_deltas: Mapping[str, PeftEncoderPartitionDelta],
 ) -> PartitionedAdapterClassifierTrainingResult:
     """학습 metric은 유지하고 upload 대상 partition delta만 교체한다."""
 
