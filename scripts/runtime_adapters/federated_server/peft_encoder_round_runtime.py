@@ -76,16 +76,18 @@ def build_peft_encoder_round_runtime_payloads(
 ) -> dict[str, object]:
     """Hydra round_runtime mapping에서 PEFT-backed classifier payload를 만든다."""
 
-    payloads: dict[str, object] = {}
-    peft_config = _optional_mapping(round_runtime_mapping.get("peft_classifier"))
-    if peft_config is not None:
-        payloads["peft_text_classifier"] = (
-            FederatedPeftEncoderRuntimeConfig.from_mapping(
-                peft_config,
-                default_artifact_format="simulation_peft_classifier_state_ref",
-            )
+    payload_key = _runtime_payload_key(round_runtime_mapping)
+    runtime_payloads = _required_runtime_payloads(round_runtime_mapping)
+    peft_config = _required_runtime_payload_config(
+        runtime_payloads=runtime_payloads,
+        payload_key=payload_key,
+    )
+    return {
+        payload_key: FederatedPeftEncoderRuntimeConfig.from_mapping(
+            peft_config,
+            default_artifact_format="simulation_peft_classifier_state_ref",
         )
-    return payloads
+    }
 
 
 _PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS = frozenset(
@@ -103,6 +105,39 @@ def _optional_str(value: object) -> str | None:
         return None
     normalized = str(value).strip()
     return normalized or None
+
+
+def _runtime_payload_key(round_runtime_mapping: Mapping[str, object]) -> str:
+    value = _optional_str(round_runtime_mapping.get("runtime_payload_key"))
+    if value is None:
+        value = _optional_str(round_runtime_mapping.get("update_family_name"))
+    if value is None:
+        raise ValueError(
+            "round_runtime must define runtime_payload_key or update_family_name."
+        )
+    return value.lower().replace("-", "_")
+
+
+def _required_runtime_payloads(
+    round_runtime_mapping: Mapping[str, object],
+) -> Mapping[str, object]:
+    runtime_payloads = _optional_mapping(round_runtime_mapping.get("runtime_payloads"))
+    if runtime_payloads is None:
+        raise ValueError("round_runtime.runtime_payloads must define PEFT payloads.")
+    return runtime_payloads
+
+
+def _required_runtime_payload_config(
+    *,
+    runtime_payloads: Mapping[str, object],
+    payload_key: str,
+) -> Mapping[str, object]:
+    config = _optional_mapping(runtime_payloads.get(payload_key))
+    if config is None:
+        raise ValueError(
+            f"round_runtime.runtime_payloads must include payload key: {payload_key!r}."
+        )
+    return config
 
 
 def _optional_mapping(value: object) -> Mapping[str, object] | None:

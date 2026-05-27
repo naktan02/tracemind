@@ -555,22 +555,25 @@ def _peft_runtime_config() -> FederatedPeftEncoderRuntimeConfig:
 def test_peft_encoder_round_runtime_payload_uses_update_family_key() -> None:
     payloads = build_peft_encoder_round_runtime_payloads(
         {
-            "peft_classifier": {
-                "backbone_model_id": "mxbai",
-                "backbone_revision": "main",
-                "tokenizer_model_id": "mxbai",
-                "tokenizer_revision": "main",
-                "pooling": "mean",
-                "max_length": 32,
-                "task_prefix": "",
-                "peft_adapter_name": "lora",
-                "rank": 8,
-                "alpha": 16,
-                "dropout": 0.1,
-                "bias": "none",
-                "target_modules": "all-linear",
-                "use_rslora": False,
-            }
+            "runtime_payload_key": "peft_text_classifier",
+            "runtime_payloads": {
+                "peft_text_classifier": {
+                    "backbone_model_id": "mxbai",
+                    "backbone_revision": "main",
+                    "tokenizer_model_id": "mxbai",
+                    "tokenizer_revision": "main",
+                    "pooling": "mean",
+                    "max_length": 32,
+                    "task_prefix": "",
+                    "peft_adapter_name": "lora",
+                    "rank": 8,
+                    "alpha": 16,
+                    "dropout": 0.1,
+                    "bias": "none",
+                    "target_modules": "all-linear",
+                    "use_rslora": False,
+                }
+            },
         }
     )
 
@@ -579,6 +582,16 @@ def test_peft_encoder_round_runtime_payload_uses_update_family_key() -> None:
         payloads["peft_text_classifier"],
         FederatedPeftEncoderRuntimeConfig,
     )
+
+
+def test_peft_encoder_round_runtime_payload_requires_configured_payload_key() -> None:
+    with pytest.raises(ValueError, match="must include payload key"):
+        build_peft_encoder_round_runtime_payloads(
+            {
+                "runtime_payload_key": "peft_text_classifier",
+                "runtime_payloads": {},
+            }
+        )
 
 
 def _default_embedding_spec() -> EmbeddingAdapterSpec:

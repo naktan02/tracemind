@@ -496,6 +496,8 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert "round_runtime_profile" not in cfg
     assert cfg.round_runtime.update_family_name == "peft_text_classifier"
     assert cfg.round_runtime.runtime_payload_key == "peft_text_classifier"
+    assert "peft_classifier" not in cfg.round_runtime
+    assert "peft_text_classifier" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
         "methods.adaptation.peft_text_classifier.runtime_family."
         "build_peft_text_classifier_composition_slug"
@@ -732,6 +734,8 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
     )
     assert cfg.round_runtime.update_family_name == "peft_text_classifier"
     assert cfg.round_runtime.runtime_payload_key == "peft_text_classifier"
+    assert "peft_classifier" not in cfg.round_runtime
+    assert "peft_text_classifier" in cfg.round_runtime.runtime_payloads
     assert cfg.round_runtime.composition_slug_builder == (
         "methods.adaptation.peft_text_classifier.runtime_family."
         "build_peft_text_classifier_composition_slug"

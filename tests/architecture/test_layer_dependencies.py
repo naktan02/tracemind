@@ -427,6 +427,7 @@ def test_fl_entrypoint_does_not_embed_lora_classifier_runtime_scope() -> None:
     source = path.read_text(encoding="utf-8")
     forbidden_snippets = (
         "round_runtime.lora_classifier",
+        "round_runtime.peft_classifier",
         "training_task.objective.lora_classifier",
         "artifact_ref_prefix: agent-local://lora_classifier",
         "lora_pseudo_label_v1",
@@ -500,10 +501,14 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "federated_simulation"
         / "adapters"
         / "runtime_compatibility.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_round_runtime.py",
     )
     forbidden_snippets = (
         "peft_classifier: FederatedPeftEncoderRuntimeConfig",
         'round_runtime_payloads.get("peft_classifier")',
+        'round_runtime_mapping.get("peft_classifier")',
         "runtime_payload_for_adapter_family",
     )
     violations: list[tuple[Path, str]] = []
