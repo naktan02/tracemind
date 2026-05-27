@@ -6,7 +6,10 @@ import importlib
 import pkgutil
 from collections.abc import Iterable, Mapping
 
-from methods.adaptation.adapter_family_modules import adapter_family_module_name
+from methods.adaptation.adapter_family_modules import (
+    adapter_family_module_name,
+    adapter_family_module_root,
+)
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
     FederatedAggregationMethodSpec,
@@ -16,6 +19,7 @@ from methods.federated.aggregation.base import (
 
 _AGGREGATION_PACKAGE = "methods.federated.aggregation"
 _ADAPTATION_PACKAGE = "methods.adaptation"
+_CLASSIFICATION_PACKAGE = "methods.classification"
 _SKIPPED_AGGREGATION_MODULE_PARTS = frozenset(
     {
         "base",
@@ -32,25 +36,6 @@ _FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
     tuple[str, str],
     tuple[FederatedAggregationStrategyFactory, FederatedAggregationMethodSpec],
 ] = {}
-_ADAPTER_AGGREGATION_MODULE_OVERRIDES = {
-    ("classifier_head", "fedavg"): (
-        "methods.classification.linear_head.aggregation.linear_head_fedavg_projection"
-    ),
-    ("lora_classifier", "fedavg"): (
-        "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"
-    ),
-    ("lora_classifier", "partitioned_delta_average"): (
-        "methods.adaptation.peft_text_classifier.aggregation."
-        "peft_encoder_partitioned_projection"
-    ),
-    ("peft_classifier", "fedavg"): (
-        "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"
-    ),
-    ("peft_classifier", "partitioned_delta_average"): (
-        "methods.adaptation.peft_text_classifier.aggregation."
-        "peft_encoder_partitioned_projection"
-    ),
-}
 
 
 def register_federated_aggregation_strategy(
@@ -186,23 +171,14 @@ def _import_adapter_aggregation_module(
     normalized_adapter_kind: str,
     normalized_method_name: str,
 ) -> None:
-    module_name = _ADAPTER_AGGREGATION_MODULE_OVERRIDES.get(
-        (normalized_adapter_kind, normalized_method_name),
-        adapter_family_module_name(
-            adapter_kind=normalized_adapter_kind,
-            submodule=(f"aggregation.{normalized_method_name.replace('-', '_')}"),
-        ),
+    module_name = adapter_family_module_name(
+        adapter_kind=normalized_adapter_kind,
+        submodule=f"aggregation.{normalized_method_name.replace('-', '_')}",
     )
-    try:
-        importlib.import_module(module_name)
-    except ModuleNotFoundError as error:
-        if error.name != module_name and not module_name.startswith(f"{error.name}."):
-            raise
-        raise ValueError(
-            "Unsupported federated aggregation adapter module: "
-            f"adapter_kind={normalized_adapter_kind}, "
-            f"method_name={normalized_method_name}"
-        ) from error
+    if _try_import_module(module_name):
+        return
+
+    _import_adapter_family_aggregation_modules(normalized_adapter_kind)
 
 
 def _import_aggregation_package_modules() -> None:
@@ -238,3 +214,48 @@ def _import_adaptation_aggregation_modules() -> None:
         )
         if len(relative_parts) >= 3 and relative_parts[-2] == "aggregation":
             importlib.import_module(module_info.name)
+
+
+def _import_classification_aggregation_modules() -> None:
+    package = importlib.import_module(_CLASSIFICATION_PACKAGE)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{_CLASSIFICATION_PACKAGE}.",
+    ):
+        relative_parts = module_info.name.removeprefix(
+            f"{_CLASSIFICATION_PACKAGE}."
+        ).split(".")
+        if len(relative_parts) >= 3 and relative_parts[-2] == "aggregation":
+            importlib.import_module(module_info.name)
+
+
+def _import_adapter_family_aggregation_modules(normalized_adapter_kind: str) -> None:
+    module_root = adapter_family_module_root(normalized_adapter_kind)
+    if not _try_import_module(module_root):
+        return
+    package = importlib.import_module(module_root)
+    package_paths = getattr(package, "__path__", None)
+    if package_paths is None:
+        return
+
+    for module_info in pkgutil.walk_packages(
+        package_paths,
+        prefix=f"{module_root}.",
+    ):
+        relative_parts = module_info.name.removeprefix(f"{module_root}.").split(".")
+        if len(relative_parts) >= 2 and relative_parts[-2] == "aggregation":
+            importlib.import_module(module_info.name)
+
+
+def _try_import_module(module_name: str) -> bool:
+    try:
+        importlib.import_module(module_name)
+    except ModuleNotFoundError as error:
+        if error.name == module_name or module_name.startswith(f"{error.name}."):
+            return False
+        raise
+    return True
