@@ -27,15 +27,15 @@ class ServerAggregationArtifactRefs:
 
 def build_server_aggregate_artifact_refs(
     *,
-    adapter_family_name: str,
+    artifact_namespace: str,
     next_model_revision: str,
     artifact_names: Sequence[str],
     artifact_format: str = DEFAULT_AGGREGATED_ARTIFACT_FORMAT,
 ) -> ServerAggregationArtifactRefs:
-    """adapter family state publication에 필요한 server-owned artifact refs를 만든다."""
+    """state publication에 필요한 server-owned aggregate artifact refs를 만든다."""
 
     artifact_ref_builder = AggregatedArtifactRefBuilder(
-        artifact_ref_prefix=f"server-aggregate://{adapter_family_name}",
+        artifact_ref_prefix=f"server-aggregate://{artifact_namespace}",
         artifact_format=artifact_format,
     )
     return ServerAggregationArtifactRefs(

@@ -106,7 +106,7 @@ def run_peft_encoder_supervised_seed_step(
     )
     next_model_revision = f"sim_rev_{round_index:04d}_server_seed"
     artifact_refs = build_server_aggregate_artifact_refs(
-        adapter_family_name=str(active.adapter_state.adapter_kind),
+        artifact_namespace=request.round_runtime_config.update_family_name,
         next_model_revision=next_model_revision,
         artifact_names=(
             _adapter_artifact_slot(active.adapter_state),

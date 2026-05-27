@@ -189,11 +189,10 @@ class SimulationServerRuntime:
                     capability_plan=capability_plan,
                 ),
                 aggregation_backend_overrides=(
-                    None
-                    if capability_plan is None
-                    else {
-                        "weight_policy": capability_plan.aggregation_weight_policy.name
-                    }
+                    _build_simulation_aggregation_backend_overrides(
+                        round_runtime_config=round_runtime_config,
+                        capability_plan=capability_plan,
+                    )
                 ),
                 output_dir=output_dir,
             ),
@@ -376,6 +375,23 @@ def build_simulation_round_family(
             state_root=output_dir / "main_server" / "aggregation_artifacts"
         ),
     )
+
+
+def _build_simulation_aggregation_backend_overrides(
+    *,
+    round_runtime_config: Any,
+    capability_plan: FederatedSslCapabilityPlan | None,
+) -> dict[str, str]:
+    """simulation aggregate artifact namespace를 update family 기준으로 만든다."""
+
+    overrides = {
+        "artifact_ref_prefix": (
+            f"server-aggregate://{round_runtime_config.update_family_name}"
+        )
+    }
+    if capability_plan is not None:
+        overrides["weight_policy"] = capability_plan.aggregation_weight_policy.name
+    return overrides
 
 
 def resolve_simulation_aggregation_backend_name(

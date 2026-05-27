@@ -2502,7 +2502,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0001"
         / "peft_adapter.json"
     )
@@ -2511,7 +2511,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0001"
         / "classifier_head.json"
     )
@@ -2528,7 +2528,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0002"
         / "peft_adapter.json"
     )
@@ -2537,7 +2537,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_rounds(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0002"
         / "classifier_head.json"
     )
@@ -2636,7 +2636,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0001"
         / "peft_adapter.json"
     )
@@ -2645,7 +2645,7 @@ def test_run_simulation_request_completes_peft_classifier_inline_delta_round(
         / "main_server"
         / "aggregation_artifacts"
         / "versions"
-        / "peft_classifier"
+        / "peft_text_classifier"
         / "sim_rev_0001"
         / "classifier_head.json"
     )

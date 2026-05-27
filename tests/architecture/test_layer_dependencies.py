@@ -521,6 +521,36 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
     )
 
 
+def test_fl_simulation_server_aggregate_namespace_uses_update_family() -> None:
+    checked_paths = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "runtime.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server" / "aggregation_artifacts.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_server_step.py",
+        REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py",
+    )
+    forbidden_snippets = (
+        "server-aggregate://{adapter_family_name}",
+        "server-aggregate://peft_classifier",
+        '/ "peft_classifier"\n        / "sim_rev_',
+        "adapter_family_name=str(active.adapter_state.adapter_kind)",
+    )
+    violations: list[tuple[Path, str]] = []
+    for path in checked_paths:
+        source = path.read_text(encoding="utf-8")
+        for snippet in forbidden_snippets:
+            if snippet in source:
+                violations.append((_relative_repo_path(path), snippet))
+
+    assert not violations, (
+        "새 FL simulation server aggregate artifact namespace는 update_family_name을 "
+        "사용한다. adapter_kind 기반 namespace는 old-run reader/operations fixture에만 "
+        "남긴다.\n"
+        f"{chr(10).join(f'- {path}: {snippet}' for path, snippet in violations)}"
+    )
+
+
 def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
     source = (
         REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py"
