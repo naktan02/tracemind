@@ -509,6 +509,8 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "peft_classifier: FederatedPeftEncoderRuntimeConfig",
         'round_runtime_payloads.get("peft_classifier")',
         'round_runtime_mapping.get("peft_classifier")',
+        "round_runtime.peft_classifier",
+        "round_runtime.lora_classifier",
         "runtime_payload_for_adapter_family",
     )
     violations: list[tuple[Path, str]] = []

@@ -65,7 +65,7 @@ def require_lora_classifier_runtime_matches_objective(
         }
     if mismatches:
         raise ValueError(
-            "LoRA-classifier round_runtime.lora_classifier must match "
+            "LoRA-classifier round runtime payload must match "
             f"training_task.objective shared payload config: {mismatches}."
         )
 
@@ -101,7 +101,7 @@ def require_peft_encoder_runtime_matches_objective(
         }
     if mismatches:
         raise ValueError(
-            "PEFT-classifier round_runtime.peft_classifier must match "
+            "PEFT-classifier round runtime payload must match "
             f"training_task.objective shared payload config: {mismatches}."
         )
 
