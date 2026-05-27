@@ -53,7 +53,7 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
-def run_method_owned_client_round_if_supported(
+def run_peft_encoder_method_owned_client_round_if_supported(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,

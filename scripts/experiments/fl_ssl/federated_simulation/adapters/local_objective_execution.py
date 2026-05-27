@@ -19,11 +19,11 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent.method_owned_client_round import (
-    run_method_owned_client_round_if_supported,
+from scripts.runtime_adapters.federated_agent import (
+    peft_encoder_method_owned_client_round as peft_method_round,
 )
-from scripts.runtime_adapters.federated_agent.query_ssl_client_round import (
-    run_query_ssl_client_round_if_supported,
+from scripts.runtime_adapters.federated_agent import (
+    peft_encoder_query_ssl_client_round as peft_query_round,
 )
 
 
@@ -43,23 +43,25 @@ def run_method_or_manual_local_objective_if_supported(
 ) -> ClientRoundExecution | None:
     """현재 지원되는 local objective fast path를 실행한다."""
 
-    method_execution = run_method_owned_client_round_if_supported(
-        request=request,
-        bootstrapped=bootstrapped,
-        active=active,
-        round_id=round_id,
-        shard=shard,
-        training_task=training_task,
-        capability_plan=capability_plan,
-        peer_context=peer_context,
-        peer_snapshots=peer_snapshots,
-        previous_client_partition_parameters=previous_client_partition_parameters,
-        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
+    method_execution = (
+        peft_method_round.run_peft_encoder_method_owned_client_round_if_supported(
+            request=request,
+            bootstrapped=bootstrapped,
+            active=active,
+            round_id=round_id,
+            shard=shard,
+            training_task=training_task,
+            capability_plan=capability_plan,
+            peer_context=peer_context,
+            peer_snapshots=peer_snapshots,
+            previous_client_partition_parameters=previous_client_partition_parameters,
+            previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
+        )
     )
     if method_execution is not None:
         return method_execution
 
-    return run_query_ssl_client_round_if_supported(
+    return peft_query_round.run_peft_encoder_query_ssl_client_round_if_supported(
         request=request,
         bootstrapped=bootstrapped,
         active=active,

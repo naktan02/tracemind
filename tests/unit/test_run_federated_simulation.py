@@ -107,8 +107,8 @@ from scripts.experiments.fl_ssl.federated_simulation.simulation import (
     run_simulation_request,
 )
 from scripts.runtime_adapters.federated_agent import (
-    method_owned_client_round,
-    query_ssl_client_round,
+    peft_encoder_method_owned_client_round,
+    peft_encoder_query_ssl_client_round,
 )
 from scripts.runtime_adapters.federated_agent.artifact_store import (
     SimulationClientArtifactStore,
@@ -417,7 +417,7 @@ def _patch_query_ssl_lora_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
         )
 
     monkeypatch.setattr(
-        query_ssl_client_round,
+        peft_encoder_query_ssl_client_round,
         "run_query_ssl_peft_encoder_local_training",
         _fake_trainer,
     )
@@ -1134,7 +1134,7 @@ def test_query_ssl_lora_round_passes_client_pools_to_real_trainer(
         )
 
     monkeypatch.setattr(
-        query_ssl_client_round,
+        peft_encoder_query_ssl_client_round,
         "run_query_ssl_peft_encoder_local_training",
         _fake_query_ssl_trainer,
     )
@@ -1464,12 +1464,12 @@ def test_method_owned_lora_round_uses_method_trainer_before_manual_query_ssl(
         raise AssertionError("manual Query SSL trainer must not run for method-owned.")
 
     monkeypatch.setattr(
-        method_owned_client_round.method_trainer,
+        peft_encoder_method_owned_client_round.method_trainer,
         "run_method_owned_peft_encoder_local_training",
         _fake_method_trainer,
     )
     monkeypatch.setattr(
-        query_ssl_client_round,
+        peft_encoder_query_ssl_client_round,
         "run_query_ssl_peft_encoder_local_training",
         _unexpected_query_ssl_trainer,
     )

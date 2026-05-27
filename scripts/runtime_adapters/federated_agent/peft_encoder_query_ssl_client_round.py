@@ -39,7 +39,7 @@ from scripts.runtime_adapters.federated_agent.local_training import (
 from shared.src.contracts.training_contracts import ClientMetricKeys
 
 
-def run_query_ssl_client_round_if_supported(
+def run_peft_encoder_query_ssl_client_round_if_supported(
     *,
     request: SimulationRunRequest,
     bootstrapped: BootstrappedSimulation,
