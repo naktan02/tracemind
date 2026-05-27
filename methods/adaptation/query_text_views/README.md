@@ -20,10 +20,10 @@ scaffold의 source of truth는
 - Query SSL objective 자체는 `methods/ssl/`이 소유한다.
 - LoRA/RSLoRA 같은 PEFT adapter builder는
   `methods/adaptation/peft_adapters/`가 소유한다.
-- LoRA + classifier 모델/학습 scaffold는
-  `methods/adaptation/peft_text_classifier/`가 소유한다. 기존
-  `methods/adaptation/lora_classifier/`는 shared contract v2 전까지 유지하는
-  compatibility shim이다.
+- PEFT + classifier 모델/학습 scaffold는
+  `methods/adaptation/peft_text_classifier/`가 소유한다. 삭제된
+  `methods/adaptation/lora_classifier/` direct import path는 repo 내부 compatibility
+  표면이 아니다.
 - prototype 기반 query adaptation이 추가되더라도 이 패키지는 text view와
   token-batch glue만 제공한다. prototype scoring/training 의미는 prototype 계층이
   소유한다.

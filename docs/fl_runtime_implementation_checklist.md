@@ -96,8 +96,8 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   FedMatch method core에 고정했다. PEFT text-classifier trainer 한 step의 logical
   partition delta split과 method-owned local simulation wiring은
   `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
-  adapter-family slice가 소유한다. 기존 `lora_classifier/federated_ssl` path는
-  compatibility shim이다.
+  adapter-family slice가 소유한다. 삭제된 `lora_classifier/federated_ssl` direct import
+  path는 repo 내부 compatibility 표면이 아니다.
   `fixed_probe_output_knn` helper client context 주입 seam과 KDTree 우선
   helper index, 이전 round client-local LoRA snapshot 기반 helper weak-probability
   provider는 열렸다. labels-at-server는 `server_only_seed + supervised_seed_step`

@@ -6,6 +6,7 @@ import importlib
 import pkgutil
 from collections.abc import Iterable, Mapping
 
+from methods.adaptation.adapter_family_modules import adapter_family_module_name
 from methods.federated.aggregation.base import (
     AggregationConfigScalar,
     FederatedAggregationMethodSpec,
@@ -34,6 +35,13 @@ _FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
 _ADAPTER_AGGREGATION_MODULE_OVERRIDES = {
     ("classifier_head", "fedavg"): (
         "methods.classification.linear_head.aggregation.linear_head_fedavg_projection"
+    ),
+    ("lora_classifier", "fedavg"): (
+        "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"
+    ),
+    ("lora_classifier", "partitioned_delta_average"): (
+        "methods.adaptation.peft_text_classifier.aggregation."
+        "peft_encoder_partitioned_projection"
     ),
     ("peft_classifier", "fedavg"): (
         "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"
@@ -180,11 +188,9 @@ def _import_adapter_aggregation_module(
 ) -> None:
     module_name = _ADAPTER_AGGREGATION_MODULE_OVERRIDES.get(
         (normalized_adapter_kind, normalized_method_name),
-        (
-            f"{_ADAPTATION_PACKAGE}."
-            f"{normalized_adapter_kind.replace('-', '_')}."
-            "aggregation."
-            f"{normalized_method_name.replace('-', '_')}"
+        adapter_family_module_name(
+            adapter_kind=normalized_adapter_kind,
+            submodule=(f"aggregation.{normalized_method_name.replace('-', '_')}"),
         ),
     )
     try:

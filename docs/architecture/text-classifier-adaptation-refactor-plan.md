@@ -199,7 +199,8 @@ parameter routing, helper policy, local objective, server policy를 소유한다
 - `lora_classifier/config.py`, `training/*`, `update/*`,
   `evaluation.py`, `initial_state.py`, `server_preflight.py`,
   `runtime_compatibility.py`를 `peft_text_classifier/` 아래로 이동한다.
-- `lora_classifier/`는 기존 contract 이름을 받는 compatibility shim으로 축소한다.
+- 기존 `lora_classifier/` methods direct path는 삭제하고, v1 이름은 shared
+  contract/artifact compatibility에만 남긴다.
 - LoRA 전용 target module, PEFT adapter 생성 로직은 `peft_adapters/lora/`로 내린다.
 - DoRA는 구현하지 않고, adapter mechanism seam이 LoRA 이름에 잠기지 않았는지만
   테스트한다.
@@ -209,11 +210,10 @@ parameter routing, helper policy, local objective, server policy를 소유한다
 상태: 완료. `config.py`, `evaluation.py`, `initial_state.py`,
 `runtime_compatibility.py`, `server_preflight.py`, `training_backend.py`,
 `training/*`, `update/*`, `aggregation/materialization.py`를
-`peft_text_classifier/`로 이동했다. 기존 `lora_classifier` 경로는
-direct-file compatibility shim으로 남겼고, 새 내부 코드는 legacy
-`methods.adaptation.lora_classifier`를 import하지 않는다. PEFT mechanism protocol,
-registry, LoRA builder도 `peft_adapters/`로 이동했다. 기존 `peft/`, `lora/`
-compatibility package는 내부 import가 끊긴 뒤 제거했다.
+`peft_text_classifier/`로 이동했다. 기존 `lora_classifier` methods 경로는 삭제했고,
+새 내부 코드는 legacy `methods.adaptation.lora_classifier`를 import하지 않는다.
+PEFT mechanism protocol, registry, LoRA builder도 `peft_adapters/`로 이동했다.
+기존 `peft/`, `lora/` compatibility package는 내부 import가 끊긴 뒤 제거했다.
 
 ### 4단계: 중립화된 partitioned primitive 이동
 
@@ -221,14 +221,14 @@ compatibility package는 내부 import가 끊긴 뒤 제거했다.
   `peft_text_classifier/federated_ssl/partitioned/`로 이동한다.
 - 파일명은 `training_loop`, `model_builder`, `trainable_model`, `sparse_sync`,
   `budget`처럼 primitive 이름을 쓴다.
-- 기존 direct file path는 compatibility shim으로 남기고 제거 조건을 README에 적는다.
+- 기존 direct file path는 repo 내부 compatibility shim으로 남기지 않고 삭제한다.
 
 상태: 완료. `partition_sparse_sync.py`, `partitioned_budget.py`,
 `partitioned_model_builder.py`, `partitioned_trainable_model.py`,
 `partitioned_training_loop.py`를 `peft_text_classifier/federated_ssl/partitioned/`
 아래의 `sparse_sync.py`, `budget.py`, `model_builder.py`, `trainable_model.py`,
 `training_loop.py`로 이동했다. 기존 `lora_classifier/federated_ssl` direct path는
-named-symbol compatibility shim으로만 남겼다.
+삭제했다.
 
 ### 5단계: feature-head variant 이동
 
@@ -261,8 +261,8 @@ named-symbol compatibility shim으로만 남겼다.
 `peft_encoder_partitioned_projection.py`, `peft_encoder_state_projection.py`,
 `peft_encoder_partitioned_state.py`로 이동했다.
 `lora_classifier/aggregation/fedavg.py`, `partitioned_delta_average.py`,
-`state_projection.py`, `partitioned_state.py`, `base_state_snapshot.py`는 direct
-compatibility shim으로만 남겼다. Generic weighted-average 산술은 계속
+`state_projection.py`, `partitioned_state.py`, `base_state_snapshot.py` direct path는
+삭제했다. Generic weighted-average 산술은 계속
 `methods/federated/aggregation/fedavg/`가 소유한다.
 
 ### 7단계: legacy import 제거와 contract v2 검토
@@ -275,15 +275,15 @@ compatibility shim으로만 남겼다. Generic weighted-average 산술은 계속
 - `adapter_kind=lora_classifier`와 report field rename은 producer, consumer,
   verifier, docs를 같이 바꿀 수 있을 때 v2 migration으로 닫는다.
 
-상태: 진행 중. 내부 코드는 legacy `lora_classifier/aggregation`,
+상태: 완료. 내부 코드는 legacy `lora_classifier/aggregation`,
 `lora_classifier/update`, `lora_classifier/config.py`, `lora_classifier/training/*`,
 `lora_classifier/training_backend.py`, `lora_classifier/initial_state.py`,
-`lora_classifier/evaluation.py` 경로를 직접 import하지 않는다. 해당 경로들은
-compatibility shim으로만 남긴다. `helper_provider.py`,
+`lora_classifier/evaluation.py` 경로를 직접 import하지 않는다. 해당 methods 경로들은
+삭제했다. `helper_provider.py`,
 `method_owned_training.py`, `peer_predictions.py`, `server_update_policy.py`,
 `supervised_seed_step.py`, `partitioned_objective_training.py`도
-`peft_text_classifier/federated_ssl/`로 이동했고 legacy path는 shim으로만
-남겼다. `partitioned_objective_training.py`는 method-neutral runtime plan을 받아
+`peft_text_classifier/federated_ssl/`로 이동했고 legacy path는 삭제했다.
+`partitioned_objective_training.py`는 method-neutral runtime plan을 받아
 실행하고, FedMatch wrapper가 runtime plan을 생성해 주입한다. 다음 보정 대상은
 shared contract v2 전까지 남길 `lora_classifier` compatibility surface의 제거
 조건이다.
@@ -293,11 +293,10 @@ objective 생성, `psi_factor` 해석은
 `peft/`, `lora/`, `classifier_head/`, legacy `text_classifier/feature_head`,
 `peft_text_classifier/aggregation/linear_head_fedavg_projection.py` legacy shim은 제거했고
 architecture guard는 해당 경로가 다시 생기지 않게 막는다.
-`lora_classifier` package는 `docs/contracts/legacy_contract_ledger.md`와
-code-adjacent README에 유지 이유와 제거 조건을 기록했고, architecture guard는 새
-business logic 파일 추가를 금지한다. 남은 `lora_classifier` runtime/config/report
-용어는 `docs/contracts/lora_classifier_v1_terminology_audit.md` 기준으로 v1 contract
-표면과 구현 owner 표면을 구분한다.
+삭제된 `methods/adaptation/lora_classifier` package는 다시 만들지 않는다.
+남은 `lora_classifier` runtime/config/report 용어는
+`docs/contracts/lora_classifier_v1_terminology_audit.md` 기준으로 v1 contract 표면과
+구현 owner 표면을 구분한다.
 기본 FL simulation profile, report verifier, result index/dashboard, FedMatch
 descriptor recipe는 `peft_classifier`를 canonical surface로 사용한다. 기존
 `lora_classifier` profile/runtime pair와 v1 payload reader는 old run artifact와
@@ -333,11 +332,10 @@ adapter family dispatcher는 `peft_classifier` 패키지를 새로 만들지 않
 ## 호환성 정책
 
 - 기존 `lora_classifier` run artifact, manifest, report verifier는 즉시 깨지면 안 된다.
-- compatibility shim은 business rule을 소유하지 않고 새 경로 import와 deprecation
-  message만 허용한다.
-- `__init__.py` re-export는 금지한다. 기존 direct file path shim만 allowlist로 허용한다.
-- 모든 internal import가 새 경로를 쓰고, shared contract v2 또는 명시적 legacy ledger가
-  준비되면 shim을 제거한다.
+- 삭제된 methods-level compatibility package는 재도입하지 않는다.
+- `__init__.py` re-export는 금지한다.
+- v1 이름은 shared contract, old artifact reader, report compatibility처럼 실제
+  경계가 있는 표면에만 남긴다.
 - `.py` package-level re-export는 만들지 않는다. 필요한 caller만 direct-file import를
   새 경로로 바꾼다.
 

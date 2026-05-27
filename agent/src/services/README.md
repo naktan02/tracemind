@@ -145,8 +145,8 @@
   - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
 - `methods/adaptation/diagonal_scale/`
   - diagonal-scale local update 계산 core
-- `methods/adaptation/lora_classifier/`
-  - LoRA + classifier scaffold와 local update backend core
+- `methods/adaptation/peft_text_classifier/`
+  - PEFT + text classifier scaffold와 local update backend core
   - raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 
 ## 전략 추가 시 출발점

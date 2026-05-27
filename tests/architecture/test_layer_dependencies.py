@@ -832,112 +832,32 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     )
 
 
-def test_lora_classifier_partitioned_files_are_direct_shims() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
-    shim_paths = (
-        package_root / "partition_sparse_sync.py",
-        package_root / "partitioned_budget.py",
-        package_root / "partitioned_model_builder.py",
-        package_root / "partitioned_trainable_model.py",
-        package_root / "partitioned_training_loop.py",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "methods.adaptation.peft_text_classifier.federated_ssl.partitioned"
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
+def test_methods_lora_classifier_compatibility_package_is_removed() -> None:
+    legacy_root = METHODS_SRC / "adaptation" / "lora_classifier"
+    existing_paths = _existing_non_cache_paths((legacy_root,))
 
-    assert not violations, (
-        "migrated lora_classifier partitioned primitive 파일은 새 "
-        "peft_text_classifier/federated_ssl/partitioned 경로의 named "
-        "symbol만 가져오는 compatibility shim으로 남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
+    assert not existing_paths, (
+        "methods/adaptation/lora_classifier는 더 이상 internal compatibility "
+        "package로 유지하지 않는다. 구현 source of truth는 "
+        "methods/adaptation/peft_text_classifier/**이고, v1 lora_classifier 이름은 "
+        "shared contract/artifact reader compatibility 표면에만 남긴다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
 
 
-def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
-    shim_paths = (
-        package_root / "helper_provider.py",
-        package_root / "method_owned_training.py",
-        package_root / "peer_predictions.py",
-        package_root / "partitioned_objective_training.py",
-        package_root / "server_update_policy.py",
-        package_root / "supervised_seed_step.py",
-    )
-    allowed_prefixes = (
-        "methods.adaptation.peft_text_classifier.federated_ssl",
-        "methods.federated_ssl.fedmatch.partitioned_local_training",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                allowed_prefixes
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
-
-    assert not violations, (
-        "legacy lora_classifier federated_ssl bridge 파일은 새 "
-        "peft_text_classifier/federated_ssl 경로의 named symbol만 가져오는 "
-        "compatibility shim으로 남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
-    )
-
-
-def test_internal_code_does_not_import_legacy_lora_classifier_fedssl_bridges() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "federated_ssl"
-    legacy_bridge_shims = (
-        package_root / "helper_provider.py",
-        package_root / "method_owned_training.py",
-        package_root / "peer_predictions.py",
-        package_root / "partitioned_objective_training.py",
-        package_root / "server_update_policy.py",
-        package_root / "supervised_seed_step.py",
-    )
+def test_internal_code_does_not_import_legacy_lora_classifier_methods_package() -> None:
     violations: list[tuple[Path, str]] = []
     for root in PYTHON_SOURCE_ROOTS:
         violations.extend(
             _find_forbidden_imports(
                 root=root,
-                forbidden_prefixes=(
-                    "methods.adaptation.lora_classifier.federated_ssl.helper_provider",
-                    "methods.adaptation.lora_classifier.federated_ssl.method_owned_training",
-                    "methods.adaptation.lora_classifier.federated_ssl.peer_predictions",
-                    "methods.adaptation.lora_classifier.federated_ssl.partitioned_objective_training",
-                    "methods.adaptation.lora_classifier.federated_ssl.server_update_policy",
-                    "methods.adaptation.lora_classifier.federated_ssl.supervised_seed_step",
-                ),
-                ignored_roots=legacy_bridge_shims,
+                forbidden_prefixes=("methods.adaptation.lora_classifier",),
             )
         )
 
     assert not violations, (
-        "legacy lora_classifier federated_ssl bridge 경로는 compatibility shim으로만 "
-        "남긴다. 새 internal code는 peft_text_classifier/federated_ssl "
-        "경로를 직접 import한다.\n"
+        "methods.adaptation.lora_classifier import 경로는 삭제된 compatibility "
+        "package다. 새 internal code는 peft_text_classifier 경로를 직접 import한다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -1007,244 +927,6 @@ def test_peft_text_classifier_uses_peft_adapters_axis() -> None:
         "methods/adaptation/peft_adapters/** 축으로만 참조한다. legacy "
         "methods/adaptation/lora 또는 methods/adaptation/peft 경로에 묶지 않는다.\n"
         f"{_format_violations(violations)}"
-    )
-
-
-def test_migrated_lora_classifier_core_files_are_direct_shims() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
-    shim_paths = (
-        package_root / "config.py",
-        package_root / "evaluation.py",
-        package_root / "initial_state.py",
-        package_root / "runtime_compatibility.py",
-        package_root / "server_preflight.py",
-        package_root / "training_backend.py",
-        package_root / "aggregation" / "materialization.py",
-        package_root / "training" / "batching.py",
-        package_root / "training" / "delta_extraction.py",
-        package_root / "training" / "loops.py",
-        package_root / "training" / "modeling.py",
-        package_root / "training" / "optimizer_step.py",
-        package_root / "training" / "partitioned_deltas.py",
-        package_root / "training" / "pseudo_label_diagnostics.py",
-        package_root / "training" / "query_ssl_local_training.py",
-        package_root / "training" / "scalar_metrics.py",
-        package_root / "training" / "step_budget.py",
-        package_root / "update" / "delta_artifacts.py",
-        package_root / "update" / "json_delta_artifact.py",
-        package_root / "update" / "local_update.py",
-        package_root / "update" / "merged_tensor_artifact.py",
-        package_root / "update" / "partitioned_delta.py",
-        package_root / "update" / "partitioned_payload_builder.py",
-        package_root / "update" / "partitioned_tensor_artifact.py",
-        package_root / "update" / "payload_builder.py",
-        package_root / "update" / "query_ssl_update.py",
-        package_root / "update" / "simulation_inline_delta.py",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "methods.adaptation.peft_text_classifier"
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
-
-    assert not violations, (
-        "migrated lora_classifier core 파일은 새 peft_text_classifier 경로의 "
-        "named symbol을 가져오는 compatibility shim으로만 남긴다. business rule, "
-        "source-of-truth 상수, wildcard re-export를 넣지 않는다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
-    )
-
-
-def test_legacy_lora_classifier_aggregation_files_are_direct_shims() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier" / "aggregation"
-    shim_paths = (
-        package_root / "base_state_snapshot.py",
-        package_root / "fedavg.py",
-        package_root / "partitioned_delta_average.py",
-        package_root / "partitioned_state.py",
-        package_root / "state_projection.py",
-    )
-    allowed_prefixes = (
-        "methods.adaptation.peft_text_classifier.aggregation",
-        "methods.adaptation.peft_text_classifier.update.base_state_snapshot",
-    )
-    violations: list[str] = []
-    for path in shim_paths:
-        tree = ast.parse(path.read_text(encoding="utf-8"), filename=str(path))
-        for node in tree.body:
-            if (
-                isinstance(node, ast.Expr)
-                and isinstance(node.value, ast.Constant)
-                and isinstance(node.value.value, str)
-            ):
-                continue
-            if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                allowed_prefixes
-            ):
-                if any(alias.name == "*" for alias in node.names):
-                    violations.append(f"{_relative_repo_path(path)}: wildcard import")
-                continue
-            violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
-
-    assert not violations, (
-        "legacy lora_classifier aggregation 파일은 새 peft_text_classifier aggregation/"
-        "update 경로의 named symbol만 가져오는 compatibility shim으로 "
-        "남긴다.\n"
-        f"{chr(10).join(f'- {item}' for item in violations)}"
-    )
-
-
-def test_internal_code_does_not_import_legacy_lora_classifier_aggregation() -> None:
-    legacy_aggregation_root = (
-        METHODS_SRC / "adaptation" / "lora_classifier" / "aggregation"
-    )
-    violations: list[tuple[Path, str]] = []
-    for root in PYTHON_SOURCE_ROOTS:
-        violations.extend(
-            _find_forbidden_imports(
-                root=root,
-                forbidden_prefixes=("methods.adaptation.lora_classifier.aggregation.",),
-                ignored_roots=(legacy_aggregation_root,),
-            )
-        )
-
-    assert not violations, (
-        "legacy lora_classifier aggregation 경로는 compatibility shim으로만 남긴다. "
-        "새 internal code는 peft_text_classifier aggregation 또는 update "
-        "경로를 직접 import한다.\n"
-        f"{_format_violations(violations)}"
-    )
-
-
-def test_internal_code_does_not_import_legacy_lora_classifier_update() -> None:
-    legacy_update_root = METHODS_SRC / "adaptation" / "lora_classifier" / "update"
-    violations: list[tuple[Path, str]] = []
-    for root in PYTHON_SOURCE_ROOTS:
-        violations.extend(
-            _find_forbidden_imports(
-                root=root,
-                forbidden_prefixes=("methods.adaptation.lora_classifier.update.",),
-                ignored_roots=(legacy_update_root,),
-            )
-        )
-
-    assert not violations, (
-        "legacy lora_classifier update 경로는 compatibility shim으로만 남긴다. "
-        "새 internal code는 peft_text_classifier/update 경로를 직접 "
-        "import한다.\n"
-        f"{_format_violations(violations)}"
-    )
-
-
-def test_internal_code_does_not_import_legacy_lora_classifier_core_paths() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
-    legacy_core_shim_roots = (
-        package_root / "config.py",
-        package_root / "evaluation.py",
-        package_root / "initial_state.py",
-        package_root / "runtime_compatibility.py",
-        package_root / "server_preflight.py",
-        package_root / "training_backend.py",
-        package_root / "training",
-    )
-    violations: list[tuple[Path, str]] = []
-    for root in PYTHON_SOURCE_ROOTS:
-        violations.extend(
-            _find_forbidden_imports(
-                root=root,
-                forbidden_prefixes=(
-                    "methods.adaptation.lora_classifier.config",
-                    "methods.adaptation.lora_classifier.evaluation",
-                    "methods.adaptation.lora_classifier.initial_state",
-                    "methods.adaptation.lora_classifier.runtime_compatibility",
-                    "methods.adaptation.lora_classifier.server_preflight",
-                    "methods.adaptation.lora_classifier.training.",
-                    "methods.adaptation.lora_classifier.training_backend",
-                ),
-                ignored_roots=legacy_core_shim_roots,
-            )
-        )
-
-    assert not violations, (
-        "legacy lora_classifier core/config/training 경로는 compatibility shim으로만 "
-        "남긴다. 새 internal code는 peft_text_classifier 경로를 직접 "
-        "import한다.\n"
-        f"{_format_violations(violations)}"
-    )
-
-
-def test_lora_classifier_legacy_package_only_contains_declared_shim_modules() -> None:
-    package_root = METHODS_SRC / "adaptation" / "lora_classifier"
-    declared_shims = {
-        package_root / "config.py",
-        package_root / "evaluation.py",
-        package_root / "initial_state.py",
-        package_root / "runtime_compatibility.py",
-        package_root / "server_preflight.py",
-        package_root / "training_backend.py",
-        package_root / "aggregation" / "base_state_snapshot.py",
-        package_root / "aggregation" / "fedavg.py",
-        package_root / "aggregation" / "materialization.py",
-        package_root / "aggregation" / "partitioned_delta_average.py",
-        package_root / "aggregation" / "partitioned_state.py",
-        package_root / "aggregation" / "state_projection.py",
-        package_root / "federated_ssl" / "helper_provider.py",
-        package_root / "federated_ssl" / "method_owned_training.py",
-        package_root / "federated_ssl" / "partition_sparse_sync.py",
-        package_root / "federated_ssl" / "partitioned_budget.py",
-        package_root / "federated_ssl" / "partitioned_model_builder.py",
-        package_root / "federated_ssl" / "partitioned_objective_training.py",
-        package_root / "federated_ssl" / "partitioned_trainable_model.py",
-        package_root / "federated_ssl" / "partitioned_training_loop.py",
-        package_root / "federated_ssl" / "peer_predictions.py",
-        package_root / "federated_ssl" / "server_update_policy.py",
-        package_root / "federated_ssl" / "supervised_seed_step.py",
-        package_root / "training" / "batching.py",
-        package_root / "training" / "delta_extraction.py",
-        package_root / "training" / "loops.py",
-        package_root / "training" / "modeling.py",
-        package_root / "training" / "optimizer_step.py",
-        package_root / "training" / "partitioned_deltas.py",
-        package_root / "training" / "pseudo_label_diagnostics.py",
-        package_root / "training" / "query_ssl_local_training.py",
-        package_root / "training" / "scalar_metrics.py",
-        package_root / "training" / "step_budget.py",
-        package_root / "update" / "delta_artifacts.py",
-        package_root / "update" / "json_delta_artifact.py",
-        package_root / "update" / "local_update.py",
-        package_root / "update" / "merged_tensor_artifact.py",
-        package_root / "update" / "partitioned_delta.py",
-        package_root / "update" / "partitioned_payload_builder.py",
-        package_root / "update" / "partitioned_tensor_artifact.py",
-        package_root / "update" / "payload_builder.py",
-        package_root / "update" / "query_ssl_update.py",
-        package_root / "update" / "simulation_inline_delta.py",
-    }
-    actual_modules = {
-        path for path in _iter_python_files(package_root) if path.name != "__init__.py"
-    }
-    undeclared_modules = sorted(actual_modules - declared_shims)
-    formatted_paths = chr(10).join(
-        f"- {_relative_repo_path(path)}" for path in undeclared_modules
-    )
-
-    assert not undeclared_modules, (
-        "methods/adaptation/lora_classifier/**는 contract v2 전까지 유지하는 legacy "
-        "shim package다. 새 구현 파일을 추가하지 말고 canonical "
-        "peft_text_classifier 또는 classification/peft_adapters 경로에 둔다.\n"
-        f"{formatted_paths}"
     )
 
 
@@ -1601,8 +1283,8 @@ def test_lora_classifier_does_not_keep_server_preflight_shims() -> None:
     ]
 
     assert not violations, (
-        "LoRA-classifier server preflight는 server_preflight.py 하나가 소유한다. "
-        "dispatcher convention을 맞추기 위한 재-export shim을 다시 만들지 않는다.\n"
+        "삭제된 methods/adaptation/lora_classifier package 아래에 dispatcher "
+        "convention용 재-export shim을 다시 만들지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 
@@ -1619,9 +1301,9 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
     ]
 
     assert not violations, (
-        "LoRA-classifier update package는 단일 사용처 helper 파일을 수평으로 "
-        "늘리지 않는다. accepted-example row 추출과 artifact ref 조립은 "
-        "payload_builder.py에, backend metric 추출은 training_backend.py에 둔다.\n"
+        "삭제된 methods/adaptation/lora_classifier/update package 아래에 단일 "
+        "사용처 helper 파일을 다시 만들지 않는다. 새 구현은 "
+        "methods/adaptation/peft_text_classifier/** owner 경계에 둔다.\n"
         f"{chr(10).join(f'- {path}' for path in violations)}"
     )
 

@@ -42,7 +42,10 @@ Hydra runtime config, report verifier, artifact path, 기존 run fixture가 이 
 | FedMatch method semantics | `methods/federated_ssl/fedmatch/` |
 | Query row/view/token-batch glue | `methods/adaptation/query_text_views/` |
 
-`methods/adaptation/lora_classifier/**`는 direct-file compatibility shim만 남긴다.
+삭제된 `methods/adaptation/lora_classifier/**` direct import path는 repo 내부
+compatibility surface가 아니다. 구현 source of truth는
+`methods/adaptation/peft_text_classifier/**`이고, `lora_classifier` 이름은 v1 shared
+contract, artifact reader, legacy report field compatibility에만 남긴다.
 새 business logic, source-of-truth constant, method/runtime policy를 추가하지 않는다.
 
 ## 바꿔도 되는 표면

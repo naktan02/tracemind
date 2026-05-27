@@ -7,10 +7,10 @@ partition step, physical trainable partition step, PEFT-backed partitioned model
 builder, partitioned global state 보존, C2S sparse upload projection,
 method-owned local simulation bridge는
 `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral 실행
-primitive가 소유한다. 기존 `methods/adaptation/lora_classifier/federated_ssl/`는
-compatibility shim이다. 현재 helper peer context simulation slice, labels-at-server supervised seed
-server step, client-local previous partition snapshot accounting, sparse S2C/C2S sync
-slice가 simulation 경로에 열려 있다.
+primitive가 소유한다. 삭제된 `methods/adaptation/lora_classifier/federated_ssl/`
+direct import path는 repo 내부 compatibility 표면이 아니다. 현재 helper peer context
+simulation slice, labels-at-server supervised seed server step, client-local previous
+partition snapshot accounting, sparse S2C/C2S sync slice가 simulation 경로에 열려 있다.
 각 method의 source of truth는
 `methods/federated_ssl/<method>/`의 descriptor, local objective, server policy, round
 policy가 된다.

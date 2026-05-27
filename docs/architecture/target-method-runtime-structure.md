@@ -168,14 +168,15 @@ Adapter 뒤로 옮긴다.
 
 ## Legacy 격리
 
-- `lora_classifier`는 v1 shared contract와 old artifact/import compatibility 이름이다.
+- `lora_classifier`는 v1 shared contract와 old artifact compatibility 이름이다.
   새 canonical update family 이름은 `peft_text_classifier`다.
 - `diagonal_scale`은 현행 no-config runtime fallback과 테스트 fixture로 남아 있다.
   제거하려면 먼저 fallback을 명시 profile 기반으로 바꾸고 테스트용 fake family를
   분리한다.
 - `round_runtime.adapter_family_name`은 현재 실행 field다. 최종 migration에서는
   `round_runtime.update_family_name` 또는 `trainable_state_family_name`으로 바꾼다.
-- legacy field와 shim은 제거 조건이 있는 compatibility layer로만 유지한다.
+- legacy field는 제거 조건이 있는 compatibility layer로만 유지한다. 삭제된
+  methods-level direct import shim은 다시 만들지 않는다.
 
 ## Migration Plan
 
@@ -209,7 +210,9 @@ Adapter 뒤로 옮긴다.
   canonical 구현 위치다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만
   소유한다.
-- `lora_classifier` shim은 v1 compatibility package로 축소한다.
+- 삭제된 `methods/adaptation/lora_classifier` direct import path는 다시 만들지
+  않는다. v1 `lora_classifier` 이름은 shared contract, old artifact reader, report
+  compatibility처럼 실제 경계가 있는 표면에만 남긴다.
 
 ### 4단계: scripts 분기 제거
 
