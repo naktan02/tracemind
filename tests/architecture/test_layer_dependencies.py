@@ -445,6 +445,17 @@ def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> 
     )
 
 
+def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> None:
+    path = METHODS_FEDERATED_SSL_SRC / "runtime_fallbacks.py"
+    imports = _collect_absolute_imports(path)
+
+    assert "methods.adaptation.diagonal_scale.config" not in imports, (
+        "runtime fallback profile은 legacy compatibility 값을 소유하되 "
+        "diagonal_scale 구현 config를 import하지 않는다. fallback 제거 전까지도 "
+        "adapter implementation과 runtime default를 강결합하지 않는다."
+    )
+
+
 def test_round_manager_does_not_own_default_adapter_family() -> None:
     path = (
         MAIN_SERVER_SRC

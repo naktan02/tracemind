@@ -24,10 +24,10 @@ from main_server.src.services.federation.rounds.round_manager_service import (  
     RoundManagerService,
     RoundPublicationRequest,
 )
-from methods.adaptation.diagonal_scale.config import (  # noqa: E402
-    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
+from methods.federated_ssl.runtime_fallbacks import (
+    LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS,
+    RUNTIME_FALLBACK_TRAINING_PROFILE,
 )
-from methods.federated_ssl.runtime_fallbacks import RUNTIME_FALLBACK_TRAINING_PROFILE
 from shared.src.contracts.adapter_contract_families.diagonal_scale import (
     DiagonalScaleAdapterStatePayload,
     DiagonalScaleAdapterUpdatePayload,
@@ -341,17 +341,9 @@ def test_round_manager_sets_default_policy_names_on_training_task() -> None:
     assert task.objective_config.margin_threshold == (
         RUNTIME_FALLBACK_TRAINING_PROFILE.margin_threshold
     )
-    assert task.objective_config.extras == {
-        "training_backend.delta_scale_multiplier": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.delta_scale_multiplier
-        ),
-        "training_backend.max_abs_delta": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.max_abs_delta
-        ),
-        "training_backend.minimum_effective_scale": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.minimum_effective_scale
-        ),
-    }
+    assert task.objective_config.extras == dict(
+        LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS
+    )
     assert task.secure_aggregation.required is False
 
 

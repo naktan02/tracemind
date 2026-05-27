@@ -10,9 +10,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from dataclasses import dataclass
 
-from methods.adaptation.diagonal_scale.config import (
-    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
-)
 from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -206,6 +203,14 @@ class RuntimeFallbackTrainingProfile:
 
 PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK_NAME = "pseudo_label_self_training.v1"
 
+LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS = freeze_mapping(
+    {
+        "training_backend.delta_scale_multiplier": 10.0,
+        "training_backend.max_abs_delta": 0.05,
+        "training_backend.minimum_effective_scale": 1e-4,
+    }
+)
+
 RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
     {
         "algorithm_profile_name": "prototype_pseudo_label_v1",
@@ -219,9 +224,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "acceptance_policy_name": "top1_margin_threshold",
         "pseudo_label_algorithm_name": "top1_margin_threshold",
         "privacy_guard_name": "diagonal_scale_clip_only",
-        **dict(
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.to_scoped_mapping()
-        ),
+        **dict(LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS),
     }
 )
 

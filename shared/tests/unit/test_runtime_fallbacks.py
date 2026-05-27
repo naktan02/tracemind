@@ -1,9 +1,7 @@
 from __future__ import annotations
 
-from methods.adaptation.diagonal_scale.config import (
-    DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG,
-)
 from methods.federated_ssl.runtime_fallbacks import (
+    LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS,
     PSEUDO_LABEL_SELF_TRAINING_V1_RUNTIME_FALLBACK,
     RUNTIME_FALLBACK_TRAINING_PROFILE,
     RUNTIME_FALLBACK_TRAINING_TASK_DEFAULTS,
@@ -64,17 +62,7 @@ def test_runtime_fallback_objective_builder_uses_runtime_fallback_profile() -> N
         config.acceptance_policy_name
         == RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     )
-    assert config.extras == {
-        "training_backend.delta_scale_multiplier": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.delta_scale_multiplier
-        ),
-        "training_backend.max_abs_delta": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.max_abs_delta
-        ),
-        "training_backend.minimum_effective_scale": (
-            DEFAULT_DIAGONAL_SCALE_HEURISTIC_TRAINING_BACKEND_CONFIG.minimum_effective_scale
-        ),
-    }
+    assert config.extras == dict(LEGACY_RUNTIME_FALLBACK_TRAINING_BACKEND_EXTRAS)
 
 
 def test_runtime_fallback_objective_builder_accepts_overrides() -> None:

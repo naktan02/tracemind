@@ -172,8 +172,10 @@ Adapter 뒤로 옮긴다.
   새 canonical update family 이름은 `peft_text_classifier`다.
 - `diagonal_scale`은 현행 no-config runtime fallback profile과 테스트 fixture로 남아
   있다. fallback은 `RoundManagerService` 내부 기본값이 아니라 server runtime config의
-  named legacy profile로만 격리한다. 제거하려면 다음으로 테스트용 fake family와 v1
-  contract fixture를 분리한다.
+  named legacy profile로만 격리한다. runtime fallback profile은
+  `methods/adaptation/diagonal_scale/` 구현 config를 import하지 않고 compatibility
+  값을 직접 소유한다. 제거하려면 다음으로 테스트용 fake family와 v1 contract fixture를
+  분리한다.
 - `round_runtime.adapter_family_name`은 현재 실행 field다. 최종 migration에서는
   `round_runtime.update_family_name` 또는 `trainable_state_family_name`으로 바꾼다.
 - legacy field는 제거 조건이 있는 compatibility layer로만 유지한다. 삭제된
