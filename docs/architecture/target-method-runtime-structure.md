@@ -120,7 +120,8 @@ scripts/
 5. `scripts`의 Interface는 config load, execution plan resolve, runtime context 구성,
    core 호출, output write로 제한한다.
    `conf/strategy_axes/trainable_state/update_family/*`는 update family 이름과
-   methods-owned initial state builder, validation evaluator path를 제공할 수 있다.
+   methods-owned initial state builder, validation evaluator, final projection builder
+   path를 제공할 수 있다.
    `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
    필요하면 runtime adapter executor path를 선언할 수 있다.
    scripts는 이 callable을 import/execute하는 generic adapter만 소유하고,

@@ -380,6 +380,7 @@ class FederatedRoundRuntimeConfig:
     update_family_name: str
     initial_state_builder: str | None = None
     validation_evaluator: str | None = None
+    final_projection_builder: str | None = None
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None

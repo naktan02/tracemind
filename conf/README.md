@@ -218,6 +218,10 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
     `client_local_split`, `shared_client_seed`, `server_only_seed`를 유지한다.
     `<exposure_group>`은 `client_local_labeled`, `shared_client_labeled`,
     `server_only_labeled` 중 하나다.
+- `strategy_axes/trainable_state/update_family`
+  - update family 이름과 실행에 필요한 callable path를 선언한다.
+  - `initial_state_builder`, `validation_evaluator`, `final_projection_builder`는
+    scripts가 family별 구현을 직접 import하지 않도록 하는 runtime adapter 표면이다.
 - `fl_data.source_mode`
   - 기본 `runtime_split_from_train`은 기존 smoke/debug용으로 `train_jsonl`을 즉석
     sharding한다.

@@ -478,6 +478,10 @@ def _default_round_runtime_config(
         "methods.adaptation.text_classifier.peft_encoder.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     ),
+    final_projection_builder: str | None = (
+        "scripts.runtime_adapters.federated_server.peft_encoder_final_projection."
+        "build_peft_encoder_final_projection_artifacts"
+    ),
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -489,6 +493,7 @@ def _default_round_runtime_config(
         update_family_name=update_family_name,
         initial_state_builder=initial_state_builder,
         validation_evaluator=validation_evaluator,
+        final_projection_builder=final_projection_builder,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=(
             lora_classifier

@@ -92,6 +92,10 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "validation_evaluator",
         ),
+        final_projection_builder=_optional_config_str(
+            cfg.round_runtime,
+            "final_projection_builder",
+        ),
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
