@@ -90,6 +90,7 @@ def build_simulation_result(
             round_runtime_config=request.round_runtime_config,
             execution_plan=request.execution_plan,
             capability_plan=request.capability_plan,
+            server_step_executor=request.server_step_executor,
             data_source_config=request.data_source_config,
             embedding_spec=request.embedding_spec,
             local_trainer_runtime_config=request.local_trainer_runtime_config,

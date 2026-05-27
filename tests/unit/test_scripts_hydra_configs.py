@@ -937,6 +937,23 @@ def test_federated_simulation_can_express_fedmatch_server_with_fixmatch() -> Non
     assert capability_plan.peer_context_policy_name == "fixed_probe_output_knn"
 
 
+def test_federated_simulation_server_step_policy_declares_executor() -> None:
+    with initialize_config_module(version_base=None, config_module="conf"):
+        cfg = compose(
+            config_name="entrypoints/fl_ssl/run_federated_simulation",
+            overrides=[
+                "strategy_axes/fl/server_step_policy=supervised_seed_step",
+            ],
+        )
+
+    assert cfg.server_step_policy.name == "supervised_seed_step"
+    assert (
+        cfg.server_step_policy.executor
+        == "scripts.runtime_adapters.federated_server.peft_encoder_server_step."
+        "run_peft_encoder_supervised_seed_step"
+    )
+
+
 def test_federated_simulation_can_express_fedmatch_physical_faithful_shape() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(

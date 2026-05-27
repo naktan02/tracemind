@@ -603,6 +603,7 @@ class SimulationRunRequest:
     local_update_profile: LocalUpdateProfile | None = None
     execution_plan: FederatedSslExecutionPlan | None = None
     capability_plan: FederatedSslCapabilityPlan | None = None
+    server_step_executor: str | None = None
     query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig = field(
         default_factory=FederatedLocalTrainerRuntimeConfig

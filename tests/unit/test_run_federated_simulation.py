@@ -116,6 +116,7 @@ from scripts.runtime_adapters.federated_agent.artifact_store import (
 from scripts.runtime_adapters.federated_agent.local_training import (
     QuerySslPeftEncoderClientTrainingResult,
 )
+from scripts.runtime_adapters.federated_server import peft_encoder_server_step
 from scripts.runtime_adapters.federated_server.initial_state_factory import (
     build_initial_shared_state,
 )
@@ -604,6 +605,7 @@ def _default_simulation_request(
     report_config: FederatedReportConfig | None = None,
     shard_policy: FederatedShardPolicyConfig | None = None,
     execution_plan=None,
+    server_step_executor: str | None = None,
     query_ssl_objective_config: FederatedQuerySslObjectiveConfig | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
     resume_config: FederatedResumeConfig | None = None,
@@ -644,6 +646,7 @@ def _default_simulation_request(
         ),
         report_config=report_config,
         execution_plan=execution_plan,
+        server_step_executor=server_step_executor,
         query_ssl_objective_config=query_ssl_objective_config
         or FederatedQuerySslObjectiveConfig(
             method_name="fixmatch_usb_v1",
@@ -802,6 +805,10 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
             local_files_only=True,
             cache_dir="hf_cache",
         ),
+        server_step_executor=(
+            "scripts.runtime_adapters.federated_server.peft_encoder_server_step."
+            "run_peft_encoder_supervised_seed_step"
+        ),
     )
     capability_plan = FederatedSslCapabilityPlan.from_mappings(
         client_participation_policy={"name": "all_clients"},
@@ -903,7 +910,7 @@ def test_supervised_seed_step_publishes_server_state_from_bootstrap_rows(
         _fake_build_model,
     )
     monkeypatch.setattr(
-        server_step_execution,
+        peft_encoder_server_step,
         "materialize_base_peft_encoder_state",
         _fake_materialize,
     )

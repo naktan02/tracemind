@@ -121,9 +121,12 @@ scripts/
    core 호출, output write로 제한한다.
    `conf/strategy_axes/trainable_state/update_family/*`는 update family 이름과
    methods-owned initial state builder, validation evaluator path를 제공할 수 있다.
+   `conf/strategy_axes/fl/server_step_policy/*`처럼 runtime capability leaf도
+   필요하면 runtime adapter executor path를 선언할 수 있다.
    scripts는 이 callable을 import/execute하는 generic adapter만 소유하고,
    `linear_head`, `peft_text_classifier`, `diagonal_scale`, `prototype_pack` 같은
-   family별 초기화/평가 분기를 직접 소유하지 않는다.
+   family별 초기화/평가 분기나 `supervised_seed_step`의 PEFT 세부 구현을 직접
+   소유하지 않는다.
 
 ```python
 cfg = load_config()

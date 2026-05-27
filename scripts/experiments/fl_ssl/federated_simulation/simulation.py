@@ -173,7 +173,8 @@ def _require_runtime_compatibility(
         ),
     )
     server_step_execution.require_supported_server_step(
-        _resolve_capability_plan(request)
+        _resolve_capability_plan(request),
+        server_step_executor=request.server_step_executor,
     )
     peer_context_exchange.require_supported_peer_context(
         _resolve_capability_plan(request)

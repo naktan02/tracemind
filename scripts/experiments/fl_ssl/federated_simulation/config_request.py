@@ -155,6 +155,7 @@ def build_simulation_request_from_config(
         local_update_profile=local_update_profile,
         execution_plan=execution_plan,
         capability_plan=capability_plan,
+        server_step_executor=_optional_config_str(cfg.server_step_policy, "executor"),
         query_ssl_objective_config=query_ssl_objective_config,
         local_trainer_runtime_config=FederatedLocalTrainerRuntimeConfig(
             device=str(cfg.runtime.device),

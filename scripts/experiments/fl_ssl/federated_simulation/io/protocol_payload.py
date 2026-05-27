@@ -49,6 +49,7 @@ def build_protocol_payload(
     round_runtime_config: FederatedRoundRuntimeConfig,
     execution_plan: FederatedSslExecutionPlan | None = None,
     capability_plan: FederatedSslCapabilityPlan | None = None,
+    server_step_executor: str | None = None,
     data_source_config: FederatedDataSourceConfig | None = None,
     embedding_spec: EmbeddingAdapterSpec | None = None,
     local_trainer_runtime_config: FederatedLocalTrainerRuntimeConfig | None = None,
@@ -99,6 +100,9 @@ def build_protocol_payload(
             ),
         },
         "fl_capabilities": _capability_plan_to_payload(capability_plan),
+        "server_step_runtime": {
+            "executor": server_step_executor,
+        },
         "embedding_adapter": _embedding_spec_to_payload(embedding_spec),
         "local_trainer_runtime": _local_trainer_runtime_to_payload(
             local_trainer_runtime_config
