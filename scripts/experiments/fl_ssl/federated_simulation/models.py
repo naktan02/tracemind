@@ -6,18 +6,16 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from pathlib import Path
 
-from methods.adaptation.text_classifier.peft_encoder.config import (
-    LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
-    peft_encoder_runtime_payload,
-)
 from methods.federated.shard_policy.base import FederatedShardPolicyConfig
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.execution_plan import FederatedSslExecutionPlan
 from methods.federated_ssl.local_update_profile import LocalUpdateProfile
 from scripts.experiments.fl_ssl.federated_simulation import (
     simulation_result_models,
+)
+from scripts.runtime_adapters.federated_server.peft_encoder_round_runtime import (
+    FederatedPeftEncoderRuntimeConfig,
+    resolve_peft_encoder_runtime_payload,
 )
 from scripts.runtime_adapters.federated_server.task_config_surface import (
     FederatedTrainingTaskConfig,
@@ -290,80 +288,6 @@ class FederatedSslMethodConfig:
     notes: list[str] = field(default_factory=list)
 
 
-@dataclass(slots=True)
-class FederatedPeftEncoderRuntimeConfig:
-    """PEFT-backed classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
-
-    training_backend_config: LoraClassifierTrainingBackendConfig
-    artifact_format: str = "simulation_peft_classifier_state_ref"
-    lora_adapter_artifact_ref: str | None = None
-    peft_adapter_artifact_ref: str | None = None
-    classifier_head_artifact_ref: str | None = None
-
-    @classmethod
-    def from_mapping(
-        cls,
-        source: Mapping[str, object],
-        *,
-        default_artifact_format: str = "simulation_peft_classifier_state_ref",
-    ) -> "FederatedPeftEncoderRuntimeConfig":
-        """Hydra round_runtime classifier mapping을 typed config로 해석한다."""
-
-        artifact_format = str(
-            source.get("artifact_format", default_artifact_format)
-        ).strip()
-        if not artifact_format:
-            raise ValueError("round_runtime classifier artifact_format invalid.")
-        return cls(
-            training_backend_config=LoraClassifierTrainingBackendConfig.from_mapping(
-                {
-                    key: value
-                    for key, value in source.items()
-                    if key not in _PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS
-                }
-            ),
-            artifact_format=artifact_format,
-            lora_adapter_artifact_ref=_optional_str(
-                source.get("lora_adapter_artifact_ref")
-            ),
-            peft_adapter_artifact_ref=(
-                _optional_str(source.get("peft_adapter_artifact_ref"))
-                or _optional_str(source.get("lora_adapter_artifact_ref"))
-            ),
-            classifier_head_artifact_ref=_optional_str(
-                source.get("classifier_head_artifact_ref")
-            ),
-        )
-
-    def backbone_payload(self) -> dict[str, str | int]:
-        """shared PEFT-backed classifier state에 넣을 backbone/tokenizer snapshot."""
-
-        return self.training_backend_config.to_backbone_payload()
-
-    def lora_config_payload(self) -> dict[str, str | int | float | bool]:
-        """legacy lora_classifier state에 넣을 LoRA mechanism config snapshot."""
-
-        return self.training_backend_config.to_lora_config_payload()
-
-    def peft_adapter_config_payload(self) -> dict[str, object]:
-        """shared peft_classifier state에 넣을 PEFT mechanism config snapshot."""
-
-        return self.training_backend_config.to_peft_adapter_config_payload()
-
-
-FederatedLoraClassifierRuntimeConfig = FederatedPeftEncoderRuntimeConfig
-
-
-_PEFT_ENCODER_RUNTIME_ARTIFACT_KEYS = frozenset(
-    {
-        "artifact_format",
-        "lora_adapter_artifact_ref",
-        "peft_adapter_artifact_ref",
-        "classifier_head_artifact_ref",
-    }
-)
-
-
 def _optional_str(value: object) -> str | None:
     if value is None:
         return None
@@ -413,7 +337,7 @@ class FederatedRoundRuntimeConfig:
     def runtime_payload_for_adapter_family(self) -> object | None:
         """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""
 
-        return peft_encoder_runtime_payload(self) or getattr(
+        return resolve_peft_encoder_runtime_payload(self) or getattr(
             self,
             self.adapter_family_name,
             None,
