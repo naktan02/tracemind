@@ -10,7 +10,7 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.io.query_adaptation import (
+from scripts.experiments.query_peft_ssl.io.query_adaptation import (
     build_labeled_rows_from_query_adaptation_dataset,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

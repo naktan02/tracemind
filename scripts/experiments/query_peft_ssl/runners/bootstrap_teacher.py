@@ -11,22 +11,22 @@ from omegaconf import DictConfig
 from scripts.experiments.fixed_classifier.prediction import (
     predict_fixed_classifier_rows,
 )
-from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
+from scripts.experiments.query_peft_ssl.config.pseudo_label_algorithm import (
     resolve_pseudo_label_algorithm,
 )
-from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_artifact_writer import (
+from scripts.experiments.query_peft_ssl.io.teacher_pseudo_label_artifact_writer import (
     TeacherPseudoLabelArtifactWriter,
 )
-from scripts.experiments.query_lora_ssl.io.teacher_pseudo_label_builder import (
+from scripts.experiments.query_peft_ssl.io.teacher_pseudo_label_builder import (
     TeacherPseudoLabelBuilder,
 )
-from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
+from scripts.experiments.query_peft_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
-from scripts.experiments.query_lora_ssl.runners.teacher_classifier import (
+from scripts.experiments.query_peft_ssl.runners.teacher_classifier import (
     resolve_teacher_classifier,
 )
-from scripts.experiments.query_lora_ssl.runners.teacher_split import (
+from scripts.experiments.query_peft_ssl.runners.teacher_split import (
     resolve_teacher_and_unlabeled_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

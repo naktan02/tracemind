@@ -7,7 +7,7 @@ from types import SimpleNamespace
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.runners.bootstrap_teacher import (
+from scripts.experiments.query_peft_ssl.runners.bootstrap_teacher import (
     run_fixed_classifier_teacher_lora_student_bootstrap,
 )
 from shared.src.contracts.labeled_query_row_contracts import (
@@ -124,12 +124,12 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "resolve_teacher_classifier",
         lambda **_kwargs: _fake_teacher_classifier(),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **_kwargs: [
             SimpleNamespace(
@@ -190,7 +190,7 @@ def test_bootstrap_runner_trains_teacher_then_runs_lora_student(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         _fake_student_runner,
     )
@@ -254,12 +254,12 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
     )
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "resolve_teacher_classifier",
         lambda **_kwargs: _fake_teacher_classifier(),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **kwargs: [
             SimpleNamespace(
@@ -282,7 +282,7 @@ def test_bootstrap_runner_can_auto_split_teacher_seed_and_unlabeled_pool(
         ],
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         lambda **_kwargs: {
             "output_dir": "runs/fake_student",
@@ -312,7 +312,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
     captured: dict[str, object] = {}
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "resolve_teacher_classifier",
         lambda **_kwargs: SimpleNamespace(
             trained=SimpleNamespace(
@@ -327,7 +327,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         ),
     )
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "predict_fixed_classifier_rows",
         lambda **_kwargs: [
             SimpleNamespace(
@@ -355,7 +355,7 @@ def test_bootstrap_runner_can_reuse_canonical_teacher_artifact(
         }
 
     monkeypatch.setattr(
-        "scripts.experiments.query_lora_ssl.runners.bootstrap_teacher."
+        "scripts.experiments.query_peft_ssl.runners.bootstrap_teacher."
         "run_pseudo_label_self_training",
         _fake_student_runner,
     )

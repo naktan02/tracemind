@@ -14,21 +14,21 @@ from methods.adaptation.query_text_views.query_ssl_views import (
 )
 from methods.ssl.base import QuerySslAlgorithmDescriptor
 from methods.ssl.registry import resolve_query_ssl_algorithm_descriptor
-from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
-from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
+from scripts.experiments.query_peft_ssl.io.artifacts import write_run_artifacts
+from scripts.experiments.query_peft_ssl.query_ssl.augmentation import (
     build_query_ssl_augmenter_manifest,
 )
-from scripts.experiments.query_lora_ssl.query_ssl.common import (
+from scripts.experiments.query_peft_ssl.query_ssl.common import (
     QuerySslRunContext,
     build_query_ssl_method_manifest,
     build_query_ssl_method_parameters,
     evaluate_query_ssl_run_context,
     prepare_query_ssl_run_context,
 )
-from scripts.experiments.query_lora_ssl.query_ssl.view_preparation import (
+from scripts.experiments.query_peft_ssl.query_ssl.view_preparation import (
     prepare_query_ssl_unlabeled_rows,
 )
-from scripts.experiments.query_lora_ssl.runtime_metrics import (
+from scripts.experiments.query_peft_ssl.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-from scripts.experiments.query_lora_ssl.io import (
+from scripts.experiments.query_peft_ssl.io import (
     teacher_pseudo_label_artifact_writer,
 )
 

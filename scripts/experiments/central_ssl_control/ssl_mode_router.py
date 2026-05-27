@@ -4,10 +4,10 @@ from __future__ import annotations
 
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.runners.consistency import (
+from scripts.experiments.query_peft_ssl.runners.consistency import (
     run_query_ssl_lora_baseline,
 )
-from scripts.experiments.query_lora_ssl.runners.pseudo_label import (
+from scripts.experiments.query_peft_ssl.runners.pseudo_label import (
     run_pseudo_label_self_training,
 )
 

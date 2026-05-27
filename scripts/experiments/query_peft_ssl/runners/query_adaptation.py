@@ -10,12 +10,12 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.io.query_adaptation import (
+from scripts.experiments.query_peft_ssl.io.query_adaptation import (
     QueryAdaptationLoraExportArtifacts,
     build_labeled_rows_from_query_adaptation_dataset,
     write_query_adaptation_lora_dataset,
 )
-from scripts.experiments.query_lora_ssl.runners.supervised import (
+from scripts.experiments.query_peft_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.runners.teacher_split import (
+from scripts.experiments.query_peft_ssl.runners.teacher_split import (
     resolve_teacher_and_unlabeled_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

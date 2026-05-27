@@ -9,12 +9,12 @@ from typing import Any
 from methods.adaptation.peft_text_classifier.training.loops import (
     train_classifier as train_query_lora_classifier,
 )
-from scripts.experiments.query_lora_ssl.harness.common import (
+from scripts.experiments.query_peft_ssl.harness.common import (
     evaluate_supervised_lora_run_context,
     prepare_supervised_lora_run_context,
 )
-from scripts.experiments.query_lora_ssl.io.artifacts import write_run_artifacts
-from scripts.experiments.query_lora_ssl.runtime_metrics import (
+from scripts.experiments.query_peft_ssl.io.artifacts import write_run_artifacts
+from scripts.experiments.query_peft_ssl.runtime_metrics import (
     run_with_training_runtime_metrics,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

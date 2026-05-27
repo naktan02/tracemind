@@ -6,7 +6,7 @@ from typing import Any
 
 import torch
 
-from scripts.experiments.query_lora_ssl.io.artifact_paths import (
+from scripts.experiments.query_peft_ssl.io.artifact_paths import (
     QueryLoraRunArtifactPaths,
 )
 

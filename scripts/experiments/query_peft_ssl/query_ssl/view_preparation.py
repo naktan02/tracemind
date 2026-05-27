@@ -5,7 +5,7 @@ from __future__ import annotations
 from pathlib import Path
 
 from methods.ssl.base import QuerySslAlgorithmDescriptor
-from scripts.experiments.query_lora_ssl.query_ssl.augmentation import (
+from scripts.experiments.query_peft_ssl.query_ssl.augmentation import (
     PreparedQuerySslUnlabeledRows,
     prepare_usb_multiview_unlabeled_rows,
     prepare_usb_weak_unlabeled_rows,

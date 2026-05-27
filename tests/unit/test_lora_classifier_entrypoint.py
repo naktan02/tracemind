@@ -8,7 +8,7 @@ def test_train_lora_supervised_classifier_entrypoint_imports_direct_runner() -> 
         "scripts.experiments.central_ssl_control.train_lora_supervised_classifier"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.runners.supervised"
+        "scripts.experiments.query_peft_ssl.runners.supervised"
     )
 
     assert (
@@ -32,7 +32,7 @@ def test_central_ssl_mode_router_imports_consistency_runner() -> None:
         "scripts.experiments.central_ssl_control.ssl_mode_router"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.runners.consistency"
+        "scripts.experiments.query_peft_ssl.runners.consistency"
     )
 
     assert router.run_query_ssl_lora_baseline is runner.run_query_ssl_lora_baseline
@@ -43,7 +43,7 @@ def test_central_ssl_mode_router_imports_pseudo_label_runner() -> None:
         "scripts.experiments.central_ssl_control.ssl_mode_router"
     )
     runner = importlib.import_module(
-        "scripts.experiments.query_lora_ssl.runners.pseudo_label"
+        "scripts.experiments.query_peft_ssl.runners.pseudo_label"
     )
     assert (
         router.run_pseudo_label_self_training is runner.run_pseudo_label_self_training
@@ -53,7 +53,7 @@ def test_central_ssl_mode_router_imports_pseudo_label_runner() -> None:
 def test_lora_classifier_package_keeps_concrete_helpers_out_of_package_surface() -> (
     None
 ):
-    package = importlib.import_module("scripts.experiments.query_lora_ssl")
+    package = importlib.import_module("scripts.experiments.query_peft_ssl")
 
     assert not hasattr(package, "run_supervised_lora_baseline")
     assert not hasattr(package, "run_query_adaptation_supervised_baseline")

@@ -8,7 +8,7 @@ from typing import Any
 from methods.adaptation.peft_text_classifier.projection_artifacts import (
     write_peft_encoder_projection_artifacts,
 )
-from scripts.experiments.query_lora_ssl.io.artifact_paths import (
+from scripts.experiments.query_peft_ssl.io.artifact_paths import (
     QueryLoraRunArtifactPaths,
 )
 

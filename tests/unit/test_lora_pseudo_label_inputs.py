@@ -5,7 +5,7 @@ from pathlib import Path
 import pytest
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.runners.pseudo_label_inputs import (
+from scripts.experiments.query_peft_ssl.runners.pseudo_label_inputs import (
     resolve_pseudo_label_training_rows,
 )
 from shared.src.contracts.labeled_query_row_contracts import (

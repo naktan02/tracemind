@@ -10,17 +10,17 @@ from typing import Any
 
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.config.pseudo_label_algorithm import (
+from scripts.experiments.query_peft_ssl.config.pseudo_label_algorithm import (
     build_pseudo_label_algorithm_manifest,
 )
-from scripts.experiments.query_lora_ssl.io.labeled_row_export import (
+from scripts.experiments.query_peft_ssl.io.labeled_row_export import (
     LabeledRowExportArtifacts,
     write_labeled_row_export,
 )
-from scripts.experiments.query_lora_ssl.runners.pseudo_label_inputs import (
+from scripts.experiments.query_peft_ssl.runners.pseudo_label_inputs import (
     resolve_pseudo_label_training_rows,
 )
-from scripts.experiments.query_lora_ssl.runners.supervised import (
+from scripts.experiments.query_peft_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow

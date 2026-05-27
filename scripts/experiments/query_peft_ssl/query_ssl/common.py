@@ -9,7 +9,7 @@ from typing import Any
 
 from omegaconf import OmegaConf
 
-from scripts.experiments.query_lora_ssl.harness.common import (
+from scripts.experiments.query_peft_ssl.harness.common import (
     LoraLabeledRunContext,
     evaluate_lora_run_context,
     prepare_labeled_lora_run_context,

@@ -5,7 +5,7 @@ from __future__ import annotations
 import hydra
 from omegaconf import DictConfig
 
-from scripts.experiments.query_lora_ssl.runners.supervised import (
+from scripts.experiments.query_peft_ssl.runners.supervised import (
     run_supervised_lora_baseline,
 )
 

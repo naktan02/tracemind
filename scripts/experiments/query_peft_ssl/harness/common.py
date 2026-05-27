@@ -25,7 +25,7 @@ from methods.adaptation.query_text_views.data import (
 from methods.adaptation.query_text_views.data import (
     build_label_index as build_query_lora_label_index,
 )
-from scripts.experiments.query_lora_ssl.config.initial_checkpoint import (
+from scripts.experiments.query_peft_ssl.config.initial_checkpoint import (
     resolve_query_adaptation_initial_checkpoint,
 )
 from scripts.runtime_adapters.embedding_runtime import resolve_runtime_device_name

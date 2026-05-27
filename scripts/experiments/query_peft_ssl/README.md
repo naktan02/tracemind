@@ -1,7 +1,7 @@
-# Query LoRA SSL
+# Query PEFT SSL
 
 이 패키지는 중앙 SSL control과 future FL client-local SSL에서 공유 가능한
-query-domain LoRA SSL harness를 둔다. 직접 실행하는 Hydra entrypoint는
+query-domain PEFT SSL harness를 둔다. 직접 실행하는 Hydra entrypoint는
 `scripts/experiments/central_ssl_control/*.py`가 소유하고, 이 패키지는 그
 entrypoint가 호출하는 runner/helper 구현을 소유한다.
 
@@ -14,7 +14,7 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
   - `query_adaptation.py`: agent-local query adaptation dataset runner wrapper.
 - `harness/`
-  - LoRA model/data/eval 공통 scaffolding.
+  - PEFT encoder model/data/eval 공통 scaffolding.
 - `io/`
   - `artifacts.py`: run artifact 저장 public orchestration entrypoint.
   - `artifact_paths.py`: run directory와 output path 계산.

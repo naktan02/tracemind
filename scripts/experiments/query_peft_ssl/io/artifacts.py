@@ -7,20 +7,20 @@ from datetime import datetime
 from pathlib import Path
 from typing import Any
 
-from scripts.experiments.query_lora_ssl.io.artifact_paths import (
+from scripts.experiments.query_peft_ssl.io.artifact_paths import (
     build_query_lora_run_artifact_paths,
 )
-from scripts.experiments.query_lora_ssl.io.artifact_writer import (
+from scripts.experiments.query_peft_ssl.io.artifact_writer import (
     QueryLoraRunArtifactWriter,
 )
-from scripts.experiments.query_lora_ssl.io.embedding_projection import (
+from scripts.experiments.query_peft_ssl.io.embedding_projection import (
     write_query_lora_projection_artifacts,
 )
-from scripts.experiments.query_lora_ssl.io.manifest_builder import (
+from scripts.experiments.query_peft_ssl.io.manifest_builder import (
     build_query_lora_eval_report,
     build_query_lora_run_manifest,
 )
-from scripts.experiments.query_lora_ssl.io.model_artifact_exporter import (
+from scripts.experiments.query_peft_ssl.io.model_artifact_exporter import (
     QueryLoraModelArtifactExporter,
 )
 

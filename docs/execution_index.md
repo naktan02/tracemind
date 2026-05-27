@@ -63,7 +63,7 @@ Seed / central SSL:
 4. `docs/contracts/central_lora_classifier_trainer_contract.md`
 5. `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
 6. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
-7. `scripts/experiments/query_lora_ssl/*`
+7. `scripts/experiments/query_peft_ssl/*`
 8. `methods/adaptation/peft_text_classifier/*`
 9. `methods/evaluation/*`
 10. `methods/adaptation/query_text_views/*`

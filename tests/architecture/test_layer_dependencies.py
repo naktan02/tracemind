@@ -31,7 +31,8 @@ SCRIPTS_RUNTIME_ADAPTER_SRC = SCRIPTS_SRC / "runtime_adapters"
 FL_SIMULATION_IO_SRC = (
     SCRIPTS_SRC / "experiments" / "fl_ssl" / "federated_simulation" / "io"
 )
-QUERY_LORA_SSL_IO_SRC = SCRIPTS_SRC / "experiments" / "query_lora_ssl" / "io"
+QUERY_PEFT_SSL_SRC = SCRIPTS_SRC / "experiments" / "query_peft_ssl"
+QUERY_PEFT_SSL_IO_SRC = QUERY_PEFT_SSL_SRC / "io"
 PROTOTYPE_STRATEGY_SRC = (
     SCRIPTS_SRC / "experiments" / "prototype_analysis" / "prototype_strategy"
 )
@@ -638,6 +639,33 @@ def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() ->
         "사용한다. LoRA 이름은 adapter mechanism parameter나 v1 payload projection "
         "표면에만 남긴다.\n"
         f"legacy_exists={legacy_test_path.exists()}\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
+    legacy_root = SCRIPTS_SRC / "experiments" / "query_lora_ssl"
+    checked_roots = (SCRIPTS_SRC, REPO_ROOT / "tests")
+    forbidden_snippets = (
+        "scripts.experiments." + "query_lora_ssl",
+        "scripts/experiments/" + "query_lora_ssl",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for root in checked_roots
+        for path in _iter_python_files(root)
+        if path != Path(__file__).resolve()
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert (
+        QUERY_PEFT_SSL_SRC.is_dir() and not legacy_root.exists() and not violations
+    ), (
+        "중앙 Query SSL harness package 경로는 query_peft_ssl을 사용한다. "
+        "LoRA는 PEFT adapter mechanism 또는 v1 artifact/contract 이름으로만 "
+        "남기고, scripts package boundary 이름으로 재도입하지 않는다.\n"
+        f"legacy_exists={legacy_root.exists()}\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 
@@ -1976,12 +2004,12 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
 
 
 def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
-    orchestrator_path = QUERY_LORA_SSL_IO_SRC / "artifacts.py"
+    orchestrator_path = QUERY_PEFT_SSL_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
-        QUERY_LORA_SSL_IO_SRC / "artifact_paths.py",
-        QUERY_LORA_SSL_IO_SRC / "artifact_writer.py",
-        QUERY_LORA_SSL_IO_SRC / "manifest_builder.py",
-        QUERY_LORA_SSL_IO_SRC / "model_artifact_exporter.py",
+        QUERY_PEFT_SSL_IO_SRC / "artifact_paths.py",
+        QUERY_PEFT_SSL_IO_SRC / "artifact_writer.py",
+        QUERY_PEFT_SSL_IO_SRC / "manifest_builder.py",
+        QUERY_PEFT_SSL_IO_SRC / "model_artifact_exporter.py",
     )
     source = orchestrator_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -2010,9 +2038,9 @@ def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
 
 
 def test_query_lora_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
-    legacy_exporter_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_exporter.py"
-    builder_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_builder.py"
-    writer_path = QUERY_LORA_SSL_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
+    legacy_exporter_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_exporter.py"
+    builder_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_builder.py"
+    writer_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
     builder_source = builder_path.read_text(encoding="utf-8")
     builder_forbidden_snippets = (
         "json.dumps(",

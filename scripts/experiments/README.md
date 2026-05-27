@@ -26,7 +26,7 @@
   - prototype 전략 비교와 threshold sweep entrypoint/harness를 둔다.
 - `fixed_classifier/`
   - fixed embedding classifier seed 학습과 artifact IO helper를 둔다.
-- `query_lora_ssl/`
+- `query_peft_ssl/`
   - 중앙 SSL control과 FL client-local SSL에서 공유 가능한 LoRA 기반 query SSL harness를 둔다.
 
 ## 직접 실행하는 entrypoint
@@ -62,7 +62,7 @@
     `strategy_axes/ssl/augmentation_source`,
     `query_ssl_strong_view_policy`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
-- `query_lora_ssl/`
+- `query_peft_ssl/`
   - query-domain LoRA scaffold의 helper 모듈
   - `runners/supervised.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
@@ -117,8 +117,8 @@
 1. `central_classifier_seed/train_softmax_classifier.py`
 2. `central_ssl_control/train_lora_supervised_classifier.py`
 3. `central_ssl_control/train_lora_ssl_classifier.py`
-4. `query_lora_ssl/runners/supervised.py`
-5. 필요하면 `query_lora_ssl/runners/consistency.py`, `query_lora_ssl/runners/query_adaptation.py`, `query_lora_ssl/runners/bootstrap_teacher.py`, `query_lora_ssl/runners/pseudo_label.py`
+4. `query_peft_ssl/runners/supervised.py`
+5. 필요하면 `query_peft_ssl/runners/consistency.py`, `query_peft_ssl/runners/query_adaptation.py`, `query_peft_ssl/runners/bootstrap_teacher.py`, `query_peft_ssl/runners/pseudo_label.py`
 
 ## warm-start 재실행 요약
 

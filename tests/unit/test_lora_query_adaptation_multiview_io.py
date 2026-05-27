@@ -15,7 +15,7 @@ from agent.src.services.training.datasets.query_adaptation_multiview_service imp
     IdentityQueryAdaptationMultiviewAugmenter,
     QueryAdaptationMultiviewService,
 )
-from scripts.experiments.query_lora_ssl.io.query_adaptation_multiview import (
+from scripts.experiments.query_peft_ssl.io.query_adaptation_multiview import (
     QUERY_ADAPTATION_MULTIVIEW_SUMMARY_SCHEMA_VERSION,
     build_labeled_rows_from_query_adaptation_multiview_dataset,
     write_query_adaptation_multiview_dataset,
