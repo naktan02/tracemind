@@ -13,7 +13,7 @@ from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_state as ps,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     peer_predictions,
@@ -184,7 +184,7 @@ def run_partitioned_peft_encoder_training_core(
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
@@ -718,7 +718,7 @@ def _build_timed_peer_client_snapshot(
     tokenizer: Any,
     peer_probe_rows: Sequence[LabeledQueryRow] | None,
     labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot:

@@ -5,7 +5,7 @@ from __future__ import annotations
 from collections.abc import Mapping
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     peer_predictions,
@@ -36,7 +36,7 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
     peer_context: FederatedSslPeerContext | None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
     labels: tuple[str, ...],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     timing_recorder: TimingRecorder | None,

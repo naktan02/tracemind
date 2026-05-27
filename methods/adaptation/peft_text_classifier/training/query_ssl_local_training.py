@@ -10,7 +10,7 @@ from typing import Any, Protocol
 from uuid import uuid4
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
@@ -156,7 +156,7 @@ def run_query_ssl_peft_encoder_training_core(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,
@@ -373,7 +373,7 @@ def run_query_ssl_peft_encoder_training_core(
 def _build_peft_encoder_model(
     *,
     labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> tuple[LoraTextClassifier, Any]:

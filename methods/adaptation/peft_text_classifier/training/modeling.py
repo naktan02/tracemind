@@ -14,7 +14,7 @@ from methods.adaptation.peft_adapters.registry import (
     resolve_peft_adapter_name,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.resource_cache import (
     peft_encoder_resource_cache_key,
@@ -106,7 +106,7 @@ def count_parameters(model: nn.Module) -> dict[str, int]:
 def build_lora_text_classifier_from_config(
     *,
     labels: list[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> tuple[LoraTextClassifier, Any]:
@@ -153,7 +153,7 @@ build_peft_encoder_text_classifier_from_config = build_lora_text_classifier_from
 def _load_tokenizer(
     *,
     tokenizer_cls: Any,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> Any:
@@ -188,7 +188,7 @@ def _load_tokenizer(
 def _load_backbone_base(
     *,
     model_cls: Any,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> nn.Module:
@@ -230,7 +230,7 @@ def _runtime_resource_key(
 
 
 def _peft_adapter_cfg_from_training_config(
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
 ) -> SimpleNamespace:
     """PEFT adapter builder가 기대하는 config surface로 trainer config를 맞춘다."""
 

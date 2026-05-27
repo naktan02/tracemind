@@ -6,7 +6,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
@@ -47,7 +47,7 @@ def run_peft_encoder_supervised_seed_step_core(
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
     bootstrap_rows: Sequence[LabeledQueryRow],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
     seed: int,

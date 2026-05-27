@@ -7,7 +7,7 @@ from datetime import datetime
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     partitioned_objective_training,
@@ -65,7 +65,7 @@ def run_method_owned_peft_classifier_training_core(
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,

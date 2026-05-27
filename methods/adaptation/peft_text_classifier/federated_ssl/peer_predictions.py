@@ -12,7 +12,7 @@ import torch
 from torch import Tensor
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.resource_cache import (
     peft_encoder_resource_cache_key,
@@ -55,7 +55,7 @@ class PeftEncoderHelperWeakProbabilityProvider:
 
     helper_snapshots: tuple[FederatedSslPeerClientSnapshot, ...]
     labels: tuple[str, ...]
-    lora_config: LoraClassifierTrainingBackendConfig
+    lora_config: PeftEncoderTrainingBackendConfig
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig
     device: str
     runtime_resource_cache: RuntimeResourceCache | None = None
@@ -115,7 +115,7 @@ def build_peft_encoder_peer_client_snapshot(
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> FederatedSslPeerClientSnapshot | None:
@@ -152,7 +152,7 @@ def compute_peft_encoder_probe_vector(
     model: LoraTextClassifier,
     tokenizer: Any,
     probe_rows: Sequence[LabeledQueryRow],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     probe_batch_size: int,
 ) -> tuple[float, ...] | None:
@@ -235,7 +235,7 @@ def build_peft_encoder_helper_probability_provider(
     peer_context: FederatedSslPeerContext | None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None,
     labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None = None,
 ) -> PeftEncoderHelperWeakProbabilityProvider | None:
@@ -272,7 +272,7 @@ def _materialize_helper_model(
     *,
     snapshot: FederatedSslPeerClientSnapshot,
     labels: tuple[str, ...],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     runtime_resource_cache: RuntimeResourceCache | None,
 ) -> LoraTextClassifier:
@@ -313,7 +313,7 @@ def _helper_model_cache_key(
     *,
     snapshot: FederatedSslPeerClientSnapshot,
     labels: tuple[str, ...],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
 ) -> str:
     if not isinstance(snapshot.payload, PeftEncoderMaterializedState):

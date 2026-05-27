@@ -22,7 +22,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 from shared.src.contracts.model_contracts import ModelManifest
 from shared.src.contracts.training_contracts import TrainingTask
 
-from ..config import LoraClassifierTrainingBackendConfig
+from ..config import PeftEncoderTrainingBackendConfig
 
 
 def build_peft_encoder_delta_update(
@@ -30,7 +30,7 @@ def build_peft_encoder_delta_update(
     training_task: TrainingTask,
     model_manifest: ModelManifest,
     accepted_examples: tuple[AcceptedTrainingExample, ...],
-    config: LoraClassifierTrainingBackendConfig,
+    config: PeftEncoderTrainingBackendConfig,
     created_at: datetime,
     train_executor: PeftEncoderTrainExecutor | None = None,
 ) -> LoraClassifierDelta | PeftClassifierDelta:
@@ -92,7 +92,7 @@ def _build_candidate_label_space(
 def _build_payload_only_artifacts(
     *,
     training_task: TrainingTask,
-    config: LoraClassifierTrainingBackendConfig,
+    config: PeftEncoderTrainingBackendConfig,
     created_at: datetime,
 ) -> PeftEncoderTrainArtifacts:
     base_artifact_ref = build_peft_encoder_base_artifact_ref(
@@ -112,7 +112,7 @@ def _build_payload_only_artifacts(
 def build_peft_encoder_training_row(
     *,
     example: AcceptedTrainingExample,
-    config: LoraClassifierTrainingBackendConfig,
+    config: PeftEncoderTrainingBackendConfig,
 ) -> PeftEncoderTrainingRow:
     candidate = example.candidate
     if candidate is None:
@@ -132,7 +132,7 @@ def build_peft_encoder_training_row(
 def extract_peft_encoder_training_text(
     *,
     example: AcceptedTrainingExample,
-    config: LoraClassifierTrainingBackendConfig,
+    config: PeftEncoderTrainingBackendConfig,
 ) -> str:
     metadata = getattr(example, "metadata", None)
     if isinstance(metadata, Mapping):

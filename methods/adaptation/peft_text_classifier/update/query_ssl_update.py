@@ -22,7 +22,7 @@ from shared.src.domain.services.classification_report import safe_divide
 
 from ..config import (
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from ..training.delta_extraction import (
     finite_float_or_none,
@@ -48,7 +48,7 @@ def build_query_ssl_peft_encoder_update_payload(
     *,
     training_task: TrainingTask,
     model_manifest: ModelManifest,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     labels: Sequence[str],
     labeled_rows: Sequence[LabeledQueryRow],
     unlabeled_rows: Sequence[LabeledQueryRow],

@@ -9,7 +9,7 @@ from typing import Any, Protocol
 import torch
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.training.loops import (
     move_tensor_batch_to_device,
@@ -80,7 +80,7 @@ def build_final_snapshot_pseudo_label_quality(
     tokenizer: Any,
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     acceptance_threshold: float | None,
     trainer_runtime_config: LoraClassifierDiagnosticsRuntimeConfig,
     unlabeled_batch_size: int,
@@ -149,7 +149,7 @@ def build_final_snapshot_pseudo_label_quality(
 
 
 def tokenization_cache_namespace(
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
 ) -> str:
     """LoRA classifier tokenizer 설정을 cache namespace로 정규화한다."""
 

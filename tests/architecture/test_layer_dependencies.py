@@ -550,6 +550,31 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
     )
 
 
+def test_peft_method_modules_use_canonical_config_type_name() -> None:
+    allowed_paths = {
+        Path("methods/adaptation/peft_text_classifier/config.py"),
+    }
+    checked_roots = (
+        PEFT_TEXT_CLASSIFIER_SRC,
+        METHODS_FEDERATED_SSL_SRC / "fedmatch",
+    )
+    violations = [
+        _relative_repo_path(path)
+        for root in checked_roots
+        for path in _iter_python_files(root)
+        if _relative_repo_path(path) not in allowed_paths
+        and "LoraClassifierTrainingBackendConfig" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT text-classifier/FedMatch active method modules는 canonical "
+        "PeftEncoderTrainingBackendConfig type 이름을 사용한다. legacy "
+        "LoraClassifierTrainingBackendConfig는 config.py의 v1 compatibility "
+        "subclass/builder에만 남긴다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

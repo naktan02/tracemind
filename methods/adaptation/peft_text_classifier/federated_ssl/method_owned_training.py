@@ -8,7 +8,7 @@ from datetime import datetime
 from typing import Any, Protocol
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
@@ -115,7 +115,7 @@ def run_method_owned_peft_encoder_training_core(
     query_ssl_config: QuerySslPeftEncoderObjectiveRuntimeConfig | None,
     strong_view_policy: str,
     unlabeled_batch_size: int | None,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     trainer_runtime_config: PeftEncoderTrainerRuntimeConfig,
     created_at: datetime,
     delta_materializer: QuerySslPeftEncoderDeltaMaterializer,

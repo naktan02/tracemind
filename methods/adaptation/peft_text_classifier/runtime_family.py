@@ -19,7 +19,7 @@ from shared.src.domain.entities.training.shared_adapter_state import SharedAdapt
 
 from .config import (
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
@@ -99,7 +99,7 @@ def build_training_backend_config_for_peft_encoder_state(
     *,
     active_adapter_state: PeftEncoderState,
     objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackendConfig:
+) -> PeftEncoderTrainingBackendConfig:
     """active state family에 맞는 local trainer config를 만든다."""
 
     if isinstance(active_adapter_state, PeftClassifierState):

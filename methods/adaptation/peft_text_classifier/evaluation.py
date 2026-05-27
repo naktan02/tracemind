@@ -6,7 +6,7 @@ from collections.abc import Sequence
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
@@ -57,7 +57,7 @@ def evaluate_peft_encoder_state(
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
@@ -107,7 +107,7 @@ def evaluate_peft_encoder_state_payload(
     rows: Sequence[LabeledQueryRow],
     labels: Sequence[str],
     base_parameters: PeftEncoderMaterializedState,
-    lora_config: LoraClassifierTrainingBackendConfig,
+    lora_config: PeftEncoderTrainingBackendConfig,
     runtime_config: LoraClassifierModelRuntimeConfig,
     batch_size: int,
     seed: int,
@@ -263,7 +263,7 @@ def _build_evaluation_training_backend_config(
     *,
     adapter_state: LoraClassifierState | PeftClassifierState,
     objective_config: TrainingObjectiveConfig | None,
-) -> LoraClassifierTrainingBackendConfig:
+) -> PeftEncoderTrainingBackendConfig:
     if isinstance(adapter_state, PeftClassifierState):
         return build_peft_classifier_training_backend_config(objective_config)
     return build_lora_classifier_training_backend_config(objective_config)
