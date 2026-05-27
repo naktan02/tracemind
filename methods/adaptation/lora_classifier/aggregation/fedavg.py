@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501
 
-from methods.adaptation.text_classifier.aggregation.peft_encoder_fedavg_projection import (
+from methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection import (
     CLASSIFIER_HEAD_ARTIFACT_SLOT,
     LORA_ADAPTER_ARTIFACT_SLOT,
     LoraClassifierFedAvgResult,

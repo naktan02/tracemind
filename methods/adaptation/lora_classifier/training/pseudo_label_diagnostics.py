@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.training.pseudo_label_diagnostics import (
+from methods.adaptation.peft_text_classifier.training.pseudo_label_diagnostics import (
     LoraClassifierDiagnosticsRuntimeConfig,
     PseudoLabelDiagnosticThreshold,
     build_final_snapshot_pseudo_label_quality,

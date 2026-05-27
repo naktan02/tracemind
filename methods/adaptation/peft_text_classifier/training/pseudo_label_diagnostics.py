@@ -8,18 +8,18 @@ from typing import Any, Protocol
 
 import torch
 
+from methods.adaptation.peft_text_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.peft_text_classifier.training.loops import (
+    move_tensor_batch_to_device,
+)
+from methods.adaptation.peft_text_classifier.training.modeling import (
+    LoraTextClassifier,
+)
 from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.adaptation.query_text_views.tokenization import (
     TextTokenizationCache,
-)
-from methods.adaptation.text_classifier.peft_encoder.config import (
-    LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.text_classifier.peft_encoder.training.loops import (
-    move_tensor_batch_to_device,
-)
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
-    LoraTextClassifier,
 )
 from methods.evaluation.pseudo_label_quality import (
     PseudoLabelCandidateRecord,

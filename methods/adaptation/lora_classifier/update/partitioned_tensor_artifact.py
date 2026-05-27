@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_tensor_artifact import (
+from methods.adaptation.peft_text_classifier.update.partitioned_tensor_artifact import (
     PARTITIONED_DELTA_TENSOR_ARTIFACT_FORMAT,
     PARTITIONED_DELTA_TENSOR_ARTIFACT_INDEX_METADATA_KEY,
     PARTITIONED_DELTA_TENSOR_ARTIFACT_SCHEMA_VERSION,

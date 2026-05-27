@@ -11,27 +11,27 @@ from typing import Any
 import torch
 from torch import Tensor
 
-from methods.adaptation.query_text_views.data import build_weak_dataloader
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+from methods.adaptation.peft_text_classifier.resource_cache import (
     peft_encoder_resource_cache_key,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+from methods.adaptation.peft_text_classifier.training.modeling import (
     LoraTextClassifier,
     build_peft_encoder_text_classifier_from_config,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
     compact_peft_encoder_materialized_state,
 )
+from methods.adaptation.query_text_views.data import build_weak_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,

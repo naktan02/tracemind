@@ -4,20 +4,20 @@ from __future__ import annotations
 
 from datetime import datetime, timezone
 
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_state_projection as peft_state_projection,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+from methods.adaptation.peft_text_classifier.federated_ssl import (
     supervised_seed_step,
 )
-from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+from methods.adaptation.peft_text_classifier.runtime_family import (
     is_peft_encoder_adapter_family,
     peft_encoder_runtime_payload,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     materialize_base_peft_encoder_state,
 )
 from methods.federated_ssl.server_step import (

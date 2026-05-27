@@ -45,7 +45,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from ..peft_encoder.update.materialization import (
+from ..update.materialization import (
     materialize_base_peft_encoder_state,
     materialize_peft_encoder_update,
 )

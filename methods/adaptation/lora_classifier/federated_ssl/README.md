@@ -2,11 +2,11 @@
 
 이 폴더는 legacy `lora_classifier` direct import compatibility 표면이다. PEFT text
 classifier FL SSL 실행 primitive의 source of truth는
-`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`다.
+`methods/adaptation/peft_text_classifier/federated_ssl/`다.
 
 - `method_owned_training.py`, `server_update_policy.py`, `supervised_seed_step.py`,
   `helper_provider.py`, `peer_predictions.py`, `partitioned_objective_training.py`: 새
-  `text_classifier/peft_encoder/federated_ssl/` 경로의 named symbol만 가져오는
+  `peft_text_classifier/federated_ssl/` 경로의 named symbol만 가져오는
   compatibility shim이다.
 - `partitioned_model_builder.py`: partition 이름별로 full LoRA-classifier text module을
   만들고 같은 global base state를 로드해 PEFT-backed physical partition model을
@@ -23,9 +23,9 @@ classifier FL SSL 실행 primitive의 source of truth는
   partition에 objective를 라우팅한다.
 `partition_sparse_sync.py`, `partitioned_budget.py`, `partitioned_model_builder.py`,
 `partitioned_trainable_model.py`, `partitioned_training_loop.py`는
-`methods/adaptation/text_classifier/peft_encoder/federated_ssl/partitioned/`로 이동했다.
+`methods/adaptation/peft_text_classifier/federated_ssl/partitioned/`로 이동했다.
 `partitioned_objective_training.py`는
-`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`로 이동했다. 이 경로에는
+`methods/adaptation/peft_text_classifier/federated_ssl/`로 이동했다. 이 경로에는
 legacy import compatibility shim만 남긴다.
 
 FedMatch의 원본 의미, hyperparameter snapshot, agreement loss, helper policy,

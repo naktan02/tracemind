@@ -13,7 +13,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PeftClassifierState,
 )
 
-from ..peft_encoder.update.materialization import (
+from ..update.materialization import (
     CLASSIFIER_HEAD_STATE_BIASES_KEY,
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     LORA_STATE_PARAMETERS_KEY,

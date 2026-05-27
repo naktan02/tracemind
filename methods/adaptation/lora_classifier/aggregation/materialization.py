@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     CLASSIFIER_HEAD_STATE_BIASES_KEY,
     CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     LORA_STATE_PARAMETERS_KEY,

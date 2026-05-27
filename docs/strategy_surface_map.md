@@ -54,7 +54,7 @@ central fixed embedding + classifier seed
 | Consistency method | `pseudolabel_usb_v1`, `fixmatch_usb_v1`, `flexmatch_usb_v1`, `freematch_usb_v1`, `adamatch_usb_v1` | `strategy_axes/ssl/consistency_method` | `methods/ssl/algorithms/*` | 중앙 control / FL manual baseline |
 | SSL augmentation source | `precomputed_usb_candidates_v1` | `strategy_axes/ssl/augmentation_source` | scripts runner | 중앙 control |
 | SSL strong view policy | `first_aug`, `second_aug`, `row_parity_aug`, `query_id_hash_aug` | `query_ssl_strong_view_policy` scalar | `methods/adaptation/query_text_views/data.py` | 중앙 control |
-| Query text view glue | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/text_classifier/peft_encoder/*` + `methods/adaptation/query_text_views/*` | 중앙 control |
+| Query text view glue | supervised, bootstrap, pseudo-label, prototype SSL, FixMatch entrypoints | `conf/entrypoints/central_ssl_control/*` | `methods/adaptation/peft_text_classifier/*` + `methods/adaptation/query_text_views/*` | 중앙 control |
 | PEFT adapter | `lora`, `rslora` | `strategy_axes/adaptation/peft_adapter` | `methods/adaptation/peft_adapters/*` | 중앙 control seam |
 | Central SSL run budget | `smoke`, `main` | `run_controls/central_ssl/budget` | smoke는 `runs/_smoke`, main은 `runs`; batch/epoch/step budget과 output root를 함께 고른다 | 중앙 control |
 
@@ -77,7 +77,7 @@ central fixed embedding + classifier seed
 | Shard policy | `label_dominant`, `dirichlet_alpha03`, `dirichlet_alpha01` | `strategy_axes/fl/shard_policy` | `methods/federated/shard_policy/*` | simulation |
 | Client labeled/unlabeled split | materialized manifest or runtime split fallback | `materialize_fl_client_split.py`, `fl_client_split_materialization.labeled_policy`, `fl_data.*`, `client_pool_split.*` | manifest preserves source selection, labeled pool selection policy, `weak=text`, `strong=[aug_0, aug_1]` | simulation |
 | Labeled exposure policy | `shared_client_seed` 기본, `client_local_split` legacy/ablation, `server_only_seed` artifact/request metadata | `strategy_axes/fl/labeled_exposure_policy` + materialized manifest metadata | separates how many labeled rows are selected from where selected labeled rows are visible | simulation capability |
-| Validation evaluator | `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/text_classifier/peft_encoder/evaluation.py` | FL SSL simulation |
+| Validation evaluator | `lora_classifier_eval` | `local_update_profile.validation_*` -> `validation.*` | `methods/adaptation/peft_text_classifier/evaluation.py` | FL SSL simulation |
 | Client participation policy | `all_clients`, `fraction_random`, `fixed_count_random` | `strategy_axes/fl/client_participation_policy` | `methods/federated/participation.py`, round loop selection | simulation capability |
 | Local supervision regime | `client_labeled_and_unlabeled`, `client_unlabeled_only`, `server_labeled_only` | `strategy_axes/fl/local_supervision_regime` | `methods/federated_ssl/capability_plan.py`, compatibility validator | metadata/validator |
 | Server step policy | `none`, `supervised_seed_step` | `strategy_axes/fl/server_step_policy` | `methods/federated_ssl/capability_plan.py`, config-declared runtime adapter executor | simulation active; `supervised_seed_step` implementation is a PEFT encoder runtime adapter, not script-owned policy logic |
@@ -93,7 +93,7 @@ central fixed embedding + classifier seed
 | FL local-update profile | `lora_pseudo_label_v1` | `strategy_axes/fl/local_update_profile` -> `cfg.local_update_profile` | LoRA-classifier Query SSL training/evidence/scoring/privacy runtime | FL SSL simulation profile |
 | Aggregation backend | `fedavg`, effective `partitioned_delta_average` for partitioned server update | `round_runtime.aggregation_backend_name` + adapter-family `server_update_policy` resolver | reusable backend는 `methods/federated/aggregation/*` + `methods/adaptation/<family>/aggregation/*.py`, method-only 변형은 `methods/federated_ssl/<method>/` + main_server generic aggregation executor | 활성 runtime |
 | Adapter family | `diagonal_scale`, `classifier_head`, `lora_classifier` | `round_runtime.adapter_family_name`, model/update manifest | shared contracts, main_server generic family runtime | 활성 runtime / server aggregation scaffold |
-| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/text_classifier/peft_encoder/training/` | simulation |
+| FL local train budget | `local_epochs`, `batch_size`, `max_steps`, `query_ssl_method.unlabeled_batch_size` | `training_task.*`, `query_ssl_method.unlabeled_batch_size` | `scripts/runtime_adapters/federated_agent/local_training.py`, `scripts/runtime_adapters/federated_agent/artifact_store.py` + `methods/adaptation/peft_text_classifier/training/` | simulation |
 | Runtime resource cache | run-scoped in-memory cache | simulation bootstrap context | `methods.common` cache protocol + simulation implementation; adapter family consumes optional cache | simulation optimization, not method identity |
 | FL run budget | `smoke`, `reduced`, `main` | `run_controls/fl_ssl/budget` | smoke는 `runs/_smoke/fl_ssl`, reduced/main은 `runs/fl_ssl`; reduced는 5 rounds, main은 30 rounds | simulation |
 | Update acceptance | composite round policy | main_server round service | main_server acceptance service | 활성 runtime |
@@ -147,7 +147,7 @@ central fixed embedding + classifier seed
   agreement pseudo-label vote, helper selection, sigma/psi partition 의미,
   supervised/unsupervised tensor local objective를 method package에 고정했다.
   PEFT text-classifier logical partition 실행 loop와 method-owned local simulation bridge는
-  `methods/adaptation/text_classifier/peft_encoder/federated_ssl/`의 method-neutral
+  `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
   adapter-family slice가 소유한다. FedMatch의 `sigma/psi` 의미는
   `methods/federated_ssl/fedmatch/`에서 읽는다.
   현재 server path는 원본 sparse sigma/psi sync가 아니라 LoRA-classifier merged

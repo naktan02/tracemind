@@ -6,10 +6,10 @@ from collections.abc import Mapping
 from dataclasses import dataclass
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+from methods.adaptation.peft_text_classifier.runtime_family import (
     peft_encoder_runtime_payload,
 )
 

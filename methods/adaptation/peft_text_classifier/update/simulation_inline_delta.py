@@ -7,10 +7,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from datetime import datetime
 
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     peft_encoder_delta_l2_norm,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
+from methods.adaptation.peft_text_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainingRow,
     LoraClassifierUpdateConfig,

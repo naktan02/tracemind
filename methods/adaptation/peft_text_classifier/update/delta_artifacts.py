@@ -9,7 +9,7 @@ from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from typing import Protocol
 
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,

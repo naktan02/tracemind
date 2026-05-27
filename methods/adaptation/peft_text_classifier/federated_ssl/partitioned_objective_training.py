@@ -9,6 +9,40 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
+from methods.adaptation.peft_text_classifier.aggregation import (
+    peft_encoder_partitioned_state as ps,
+)
+from methods.adaptation.peft_text_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.peft_text_classifier.federated_ssl import (
+    peer_predictions,
+)
+from methods.adaptation.peft_text_classifier.training import (
+    pseudo_label_diagnostics as pld,
+)
+from methods.adaptation.peft_text_classifier.training import (
+    query_ssl_local_training as qssl_training,
+)
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
+    extract_peft_encoder_parameter_deltas,
+    load_peft_encoder_base_parameters_into_model,
+)
+from methods.adaptation.peft_text_classifier.training.loops import set_seed
+from methods.adaptation.peft_text_classifier.training.modeling import (
+    LoraTextClassifier,
+    build_peft_encoder_text_classifier_from_config,
+)
+from methods.adaptation.peft_text_classifier.update.materialization import (
+    PeftEncoderMaterializedState,
+    compact_peft_encoder_materialized_state,
+)
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
+from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
+    build_query_ssl_peft_encoder_update_payload,
+)
 from methods.adaptation.query_text_views.data import (
     build_dataloader,
     build_multiview_dataloader,
@@ -22,40 +56,6 @@ from methods.adaptation.query_text_views.tokenization import (
 from methods.adaptation.query_text_views.view_rows import (
     USB_MULTIVIEW_BUILDER_NAME,
     validate_query_ssl_unlabeled_views,
-)
-from methods.adaptation.text_classifier.aggregation import (
-    peft_encoder_partitioned_state as ps,
-)
-from methods.adaptation.text_classifier.peft_encoder.config import (
-    LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
-    peer_predictions,
-)
-from methods.adaptation.text_classifier.peft_encoder.training import (
-    pseudo_label_diagnostics as pld,
-)
-from methods.adaptation.text_classifier.peft_encoder.training import (
-    query_ssl_local_training as qssl_training,
-)
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
-    extract_peft_encoder_parameter_deltas,
-    load_peft_encoder_base_parameters_into_model,
-)
-from methods.adaptation.text_classifier.peft_encoder.training.loops import set_seed
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
-    LoraTextClassifier,
-    build_peft_encoder_text_classifier_from_config,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-    compact_peft_encoder_materialized_state,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
-    build_query_ssl_peft_encoder_update_payload,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping

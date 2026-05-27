@@ -6,7 +6,7 @@ from collections.abc import Mapping
 from datetime import datetime, timezone
 
 from methods.adaptation.local_update_backend import AcceptedTrainingExample
-from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
+from methods.adaptation.peft_text_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainExecutor,
     LoraClassifierTrainingRow,

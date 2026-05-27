@@ -7,13 +7,13 @@ from collections.abc import Callable, Mapping, Sequence
 from datetime import datetime
 from typing import Any, Protocol
 
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

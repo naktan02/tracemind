@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     extract_classifier_head_deltas,
     extract_lora_classifier_parameter_deltas,
     extract_lora_parameter_deltas,

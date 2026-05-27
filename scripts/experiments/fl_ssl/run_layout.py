@@ -87,8 +87,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
     if not _is_manual_fl_composition(cfg):
         method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
         adapter_family = _resolve_adapter_runtime_slug(
-            cfg,
-            _select(cfg, "round_runtime.adapter_family_name", default=None)
+            cfg, _select(cfg, "round_runtime.adapter_family_name", default=None)
         )
         server_update_policy = (
             _select(cfg, "server_update_policy.name", default=None)
@@ -106,8 +105,7 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
         or "unknown_ssl"
     )
     adapter_family = _resolve_adapter_runtime_slug(
-        cfg,
-        _select(cfg, "round_runtime.adapter_family_name", default=None)
+        cfg, _select(cfg, "round_runtime.adapter_family_name", default=None)
     )
     aggregation_backend = (
         _select(cfg, "round_runtime.aggregation_backend_name", default=None)

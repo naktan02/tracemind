@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     LoraClassifierDeltaArtifactStore,
     LoraClassifierDeltaMaterializer,
     server_owned_lora_classifier_update_artifact_byte_count,

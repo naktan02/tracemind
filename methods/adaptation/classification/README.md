@@ -15,5 +15,5 @@ adaptation primitive를 소유한다.
 - LoRA/DoRA 같은 PEFT mechanism 구현
 - FedAvg weighted-average algorithm 자체
 
-텍스트 encoder에 종속되는 구현은 `methods/adaptation/text_classifier/peft_encoder/`에
+텍스트 encoder에 종속되는 구현은 `methods/adaptation/peft_text_classifier/`에
 둔다.

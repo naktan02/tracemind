@@ -3,7 +3,7 @@
 이 패키지는 query-domain text row/view를 tokenizer batch로 바꾸는 입력 glue를
 소유한다. frozen text backbone에 PEFT adapter와 classifier head를 얹는 재사용
 scaffold의 source of truth는
-`methods/adaptation/text_classifier/peft_encoder/`가 소유한다.
+`methods/adaptation/peft_text_classifier/`가 소유한다.
 
 범위:
 
@@ -21,7 +21,7 @@ scaffold의 source of truth는
 - LoRA/RSLoRA 같은 PEFT adapter builder는
   `methods/adaptation/peft_adapters/`가 소유한다.
 - LoRA + classifier 모델/학습 scaffold는
-  `methods/adaptation/text_classifier/peft_encoder/`가 소유한다. 기존
+  `methods/adaptation/peft_text_classifier/`가 소유한다. 기존
   `methods/adaptation/lora_classifier/`는 shared contract v2 전까지 유지하는
   compatibility shim이다.
 - prototype 기반 query adaptation이 추가되더라도 이 패키지는 text view와

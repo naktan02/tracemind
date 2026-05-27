@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501
 
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned_objective_training import (
+from methods.adaptation.peft_text_classifier.federated_ssl.partitioned_objective_training import (
     PartitionedLocalRuntimePlan,
     PartitionedMethodLocalTrainingConfig,
     replace_partitioned_training_deltas,

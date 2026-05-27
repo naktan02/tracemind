@@ -8,7 +8,7 @@ from methods.adaptation.adapter_family_modules import adapter_family_module_name
 from methods.adaptation.federated_ssl_server_update import (
     resolve_federated_ssl_server_update_backend_name,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
 from methods.federated.aggregation_weighting import (
@@ -345,10 +345,7 @@ def test_peft_classifier_family_module_root_resolves_to_text_classifier_owner() 
     assert adapter_family_module_name(
         adapter_kind=PEFT_CLASSIFIER_ADAPTER_KIND,
         submodule="federated_ssl.server_update_policy",
-    ) == (
-        "methods.adaptation.text_classifier.peft_encoder."
-        "federated_ssl.server_update_policy"
-    )
+    ) == ("methods.adaptation.peft_text_classifier.federated_ssl.server_update_policy")
 
 
 @pytest.mark.parametrize(

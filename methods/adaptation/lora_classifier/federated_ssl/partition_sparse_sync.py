@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned.sparse_sync import (
+from methods.adaptation.peft_text_classifier.federated_ssl.partitioned.sparse_sync import (
     PartitionSparseSyncParameters,
     PartitionSparseUploadProjection,
     apply_partitioned_c2s_sparse_upload,

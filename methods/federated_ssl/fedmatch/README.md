@@ -24,7 +24,7 @@
 
 PEFT text-classifier에서 FedMatch를 실행하는 family-specific bridge와 partitioned
 optimizer loop의 source of truth는
-`methods/adaptation/text_classifier/peft_encoder/federated_ssl/`다. 기존
+`methods/adaptation/peft_text_classifier/federated_ssl/`다. 기존
 `methods/adaptation/lora_classifier/federated_ssl/`는 shared contract v2 전까지
 유지하는 compatibility shim이며, FedMatch 원본 의미와 policy는 이 폴더가 계속
 소유한다.

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from methods.adaptation.text_classifier.peft_encoder import (
+from methods.adaptation.peft_text_classifier import (
     projection_artifacts as _projection_artifacts,
 )
 

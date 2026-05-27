@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.update.payload_builder import (
+from methods.adaptation.peft_text_classifier.update.payload_builder import (
     build_lora_classifier_base_artifact_ref,
     build_lora_classifier_delta_update,
     build_lora_classifier_training_row,

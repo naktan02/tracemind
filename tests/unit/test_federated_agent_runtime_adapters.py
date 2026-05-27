@@ -10,32 +10,32 @@ from main_server.src.services.federation.rounds.aggregation.artifact_refs import
     AGGREGATION_ARTIFACT_REF_PREFIX,
     AggregationArtifactStore,
 )
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+from methods.adaptation.peft_text_classifier.federated_ssl import (
     helper_provider,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qcore,
 )
-from methods.adaptation.text_classifier.peft_encoder.update import (
+from methods.adaptation.peft_text_classifier.update import (
     merged_tensor_artifact as merged_artifacts,
 )
-from methods.adaptation.text_classifier.peft_encoder.update import (
+from methods.adaptation.peft_text_classifier.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
     upload_agent_local_peft_encoder_update,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
 from methods.common.timing import TimingRecorder
@@ -225,7 +225,7 @@ def test_local_ssl_helper_provider_resolver_skips_non_helper_policy(
         return object()
 
     monkeypatch.setattr(
-        "methods.adaptation.text_classifier.peft_encoder.federated_ssl.helper_provider."
+        "methods.adaptation.peft_text_classifier.federated_ssl.helper_provider."
         "build_peft_encoder_helper_probability_provider",
         _fake_builder,
     )
@@ -257,7 +257,7 @@ def test_local_ssl_helper_provider_resolver_builds_fedmatch_provider(
         return provider
 
     monkeypatch.setattr(
-        "methods.adaptation.text_classifier.peft_encoder.federated_ssl.helper_provider."
+        "methods.adaptation.peft_text_classifier.federated_ssl.helper_provider."
         "build_peft_encoder_helper_probability_provider",
         _fake_builder,
     )

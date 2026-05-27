@@ -9,6 +9,18 @@ from datetime import datetime
 from typing import Any, Protocol
 from uuid import uuid4
 
+from methods.adaptation.peft_text_classifier.config import (
+    LoraClassifierTrainingBackendConfig,
+)
+from methods.adaptation.peft_text_classifier.update.materialization import (
+    PeftEncoderMaterializedState,
+)
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
+    LoraClassifierPartitionDelta,
+)
+from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
+    build_query_ssl_peft_encoder_update_payload,
+)
 from methods.adaptation.query_text_views.data import (
     build_dataloader,
 )
@@ -25,18 +37,6 @@ from methods.adaptation.query_text_views.tokenization import (
 )
 from methods.adaptation.query_text_views.view_rows import (
     validate_query_ssl_unlabeled_views,
-)
-from methods.adaptation.text_classifier.peft_encoder.config import (
-    LoraClassifierTrainingBackendConfig,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
-    LoraClassifierPartitionDelta,
-)
-from methods.adaptation.text_classifier.peft_encoder.update.query_ssl_update import (
-    build_query_ssl_peft_encoder_update_payload,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.common.timing import TimingRecorder, timing_mapping

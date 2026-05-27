@@ -84,9 +84,8 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   family별 aggregation adapter
 - `methods/adaptation/classification/`: 현행 modality-independent classification
   primitive와 classifier-head projection. target 위치는 `methods/classification/linear_head`
-- `methods/adaptation/text_classifier/`: PEFT text encoder + classifier head
-  adaptation variant와 text-specific training/update core. target canonical 이름은
-  `methods/adaptation/peft_text_classifier`
+- `methods/adaptation/peft_text_classifier/`: PEFT text encoder + classifier head
+  update family와 text-specific training/update core
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
 - `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper

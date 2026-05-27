@@ -51,8 +51,8 @@ LEGACY_SHARED_PROTOTYPE_BUILDER_PATHS = (
 PROTOTYPE_BUILDING_SRC = REPO_ROOT / "methods" / "prototype" / "building"
 PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
-TEXT_CLASSIFIER_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "text_classifier"
-TEXT_CLASSIFIER_AGGREGATION_SRC = TEXT_CLASSIFIER_ADAPTATION_SRC / "aggregation"
+PEFT_TEXT_CLASSIFIER_SRC = METHODS_SRC / "adaptation" / "peft_text_classifier"
+PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC = PEFT_TEXT_CLASSIFIER_SRC / "aggregation"
 CLASSIFICATION_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "classification"
 PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
 LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
@@ -363,7 +363,7 @@ def test_query_text_views_stays_input_glue_only() -> None:
         root=METHODS_SRC / "adaptation" / "query_text_views",
         forbidden_prefixes=(
             "methods.adaptation.lora_classifier",
-            "methods.adaptation.text_classifier.peft_encoder",
+            "methods.adaptation.peft_text_classifier",
             "methods.adaptation.peft_adapters",
             "shared.src.contracts.adapter_contract_families",
             "shared.src.domain.entities.training.shared_adapter_state",
@@ -812,8 +812,7 @@ def test_lora_classifier_partitioned_training_loop_is_method_neutral() -> None:
     path = (
         METHODS_SRC
         / "adaptation"
-        / "text_classifier"
-        / "peft_encoder"
+        / "peft_text_classifier"
         / "federated_ssl"
         / "partitioned"
         / "training_loop.py"
@@ -853,7 +852,7 @@ def test_lora_classifier_partitioned_files_are_direct_shims() -> None:
             ):
                 continue
             if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned"
+                "methods.adaptation.peft_text_classifier.federated_ssl.partitioned"
             ):
                 if any(alias.name == "*" for alias in node.names):
                     violations.append(f"{_relative_repo_path(path)}: wildcard import")
@@ -862,7 +861,7 @@ def test_lora_classifier_partitioned_files_are_direct_shims() -> None:
 
     assert not violations, (
         "migrated lora_classifier partitioned primitive 파일은 새 "
-        "text_classifier/peft_encoder/federated_ssl/partitioned 경로의 named "
+        "peft_text_classifier/federated_ssl/partitioned 경로의 named "
         "symbol만 가져오는 compatibility shim으로 남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
@@ -879,7 +878,7 @@ def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() ->
         package_root / "supervised_seed_step.py",
     )
     allowed_prefixes = (
-        "methods.adaptation.text_classifier.peft_encoder.federated_ssl",
+        "methods.adaptation.peft_text_classifier.federated_ssl",
         "methods.federated_ssl.fedmatch.partitioned_local_training",
     )
     violations: list[str] = []
@@ -902,7 +901,7 @@ def test_legacy_lora_classifier_federated_ssl_bridge_files_are_direct_shims() ->
 
     assert not violations, (
         "legacy lora_classifier federated_ssl bridge 파일은 새 "
-        "text_classifier/peft_encoder/federated_ssl 경로의 named symbol만 가져오는 "
+        "peft_text_classifier/federated_ssl 경로의 named symbol만 가져오는 "
         "compatibility shim으로 남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
@@ -937,29 +936,30 @@ def test_internal_code_does_not_import_legacy_lora_classifier_fedssl_bridges() -
 
     assert not violations, (
         "legacy lora_classifier federated_ssl bridge 경로는 compatibility shim으로만 "
-        "남긴다. 새 internal code는 text_classifier/peft_encoder/federated_ssl "
+        "남긴다. 새 internal code는 peft_text_classifier/federated_ssl "
         "경로를 직접 import한다.\n"
         f"{_format_violations(violations)}"
     )
 
 
-def test_text_classifier_adaptation_does_not_import_fedmatch_method() -> None:
+def test_peft_text_classifier_does_not_import_fedmatch_method() -> None:
     violations = _find_forbidden_imports(
-        root=TEXT_CLASSIFIER_ADAPTATION_SRC,
+        root=PEFT_TEXT_CLASSIFIER_SRC,
         forbidden_prefixes=("methods.federated_ssl.fedmatch",),
     )
 
     assert not violations, (
-        "methods/adaptation/text_classifier/**는 text classifier 실행 primitive를 "
+        "methods/adaptation/peft_text_classifier/**는 PEFT text classifier 실행 "
+        "primitive를 "
         "소유한다. FedMatch 의미, partition routing, original parameter는 "
         "methods/federated_ssl/fedmatch/에서 callable/config로 주입한다.\n"
         f"{_format_violations(violations)}"
     )
 
 
-def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() -> None:
+def test_peft_text_classifier_does_not_depend_on_legacy_lora_classifier() -> None:
     violations = _find_forbidden_imports(
-        root=TEXT_CLASSIFIER_ADAPTATION_SRC,
+        root=PEFT_TEXT_CLASSIFIER_SRC,
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
@@ -967,9 +967,9 @@ def test_text_classifier_adaptation_does_not_depend_on_legacy_lora_classifier() 
     )
 
     assert not violations, (
-        "새 text_classifier adaptation 내부 코드는 legacy classifier_head/"
-        "lora_classifier 경로를 import하지 않는다. 기존 경로는 migration shim으로만 "
-        "남기고, 내부 source of truth는 text_classifier 아래에 둔다.\n"
+        "새 peft_text_classifier 내부 코드는 legacy classifier_head/lora_classifier "
+        "경로를 import하지 않는다. 기존 경로는 migration shim으로만 남기고, 내부 "
+        "source of truth는 peft_text_classifier 아래에 둔다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -980,6 +980,7 @@ def test_classification_adaptation_is_modality_independent() -> None:
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
+            "methods.adaptation.peft_text_classifier",
             "methods.adaptation.text_classifier",
         ),
     )
@@ -992,9 +993,9 @@ def test_classification_adaptation_is_modality_independent() -> None:
     )
 
 
-def test_text_classifier_peft_encoder_uses_peft_adapters_axis() -> None:
+def test_peft_text_classifier_uses_peft_adapters_axis() -> None:
     violations = _find_forbidden_imports(
-        root=TEXT_CLASSIFIER_ADAPTATION_SRC / "peft_encoder",
+        root=PEFT_TEXT_CLASSIFIER_SRC,
         forbidden_prefixes=(
             "methods.adaptation.lora.",
             "methods.adaptation.peft.",
@@ -1051,7 +1052,7 @@ def test_migrated_lora_classifier_core_files_are_direct_shims() -> None:
             ):
                 continue
             if isinstance(node, ast.ImportFrom) and (node.module or "").startswith(
-                "methods.adaptation.text_classifier.peft_encoder"
+                "methods.adaptation.peft_text_classifier"
             ):
                 if any(alias.name == "*" for alias in node.names):
                     violations.append(f"{_relative_repo_path(path)}: wildcard import")
@@ -1059,7 +1060,7 @@ def test_migrated_lora_classifier_core_files_are_direct_shims() -> None:
             violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
 
     assert not violations, (
-        "migrated lora_classifier core 파일은 새 text_classifier/peft_encoder 경로의 "
+        "migrated lora_classifier core 파일은 새 peft_text_classifier 경로의 "
         "named symbol을 가져오는 compatibility shim으로만 남긴다. business rule, "
         "source-of-truth 상수, wildcard re-export를 넣지 않는다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
@@ -1076,8 +1077,8 @@ def test_legacy_lora_classifier_aggregation_files_are_direct_shims() -> None:
         package_root / "state_projection.py",
     )
     allowed_prefixes = (
-        "methods.adaptation.text_classifier.aggregation",
-        "methods.adaptation.text_classifier.peft_encoder.update.base_state_snapshot",
+        "methods.adaptation.peft_text_classifier.aggregation",
+        "methods.adaptation.peft_text_classifier.update.base_state_snapshot",
     )
     violations: list[str] = []
     for path in shim_paths:
@@ -1098,8 +1099,8 @@ def test_legacy_lora_classifier_aggregation_files_are_direct_shims() -> None:
             violations.append(f"{_relative_repo_path(path)}: {type(node).__name__}")
 
     assert not violations, (
-        "legacy lora_classifier aggregation 파일은 새 text_classifier aggregation/"
-        "peft_encoder update 경로의 named symbol만 가져오는 compatibility shim으로 "
+        "legacy lora_classifier aggregation 파일은 새 peft_text_classifier aggregation/"
+        "update 경로의 named symbol만 가져오는 compatibility shim으로 "
         "남긴다.\n"
         f"{chr(10).join(f'- {item}' for item in violations)}"
     )
@@ -1121,7 +1122,7 @@ def test_internal_code_does_not_import_legacy_lora_classifier_aggregation() -> N
 
     assert not violations, (
         "legacy lora_classifier aggregation 경로는 compatibility shim으로만 남긴다. "
-        "새 internal code는 text_classifier aggregation 또는 peft_encoder update "
+        "새 internal code는 peft_text_classifier aggregation 또는 update "
         "경로를 직접 import한다.\n"
         f"{_format_violations(violations)}"
     )
@@ -1141,7 +1142,7 @@ def test_internal_code_does_not_import_legacy_lora_classifier_update() -> None:
 
     assert not violations, (
         "legacy lora_classifier update 경로는 compatibility shim으로만 남긴다. "
-        "새 internal code는 text_classifier/peft_encoder/update 경로를 직접 "
+        "새 internal code는 peft_text_classifier/update 경로를 직접 "
         "import한다.\n"
         f"{_format_violations(violations)}"
     )
@@ -1178,7 +1179,7 @@ def test_internal_code_does_not_import_legacy_lora_classifier_core_paths() -> No
 
     assert not violations, (
         "legacy lora_classifier core/config/training 경로는 compatibility shim으로만 "
-        "남긴다. 새 internal code는 text_classifier/peft_encoder 경로를 직접 "
+        "남긴다. 새 internal code는 peft_text_classifier 경로를 직접 "
         "import한다.\n"
         f"{_format_violations(violations)}"
     )
@@ -1242,7 +1243,7 @@ def test_lora_classifier_legacy_package_only_contains_declared_shim_modules() ->
     assert not undeclared_modules, (
         "methods/adaptation/lora_classifier/**는 contract v2 전까지 유지하는 legacy "
         "shim package다. 새 구현 파일을 추가하지 말고 canonical "
-        "text_classifier/peft_encoder 또는 classification/peft_adapters 경로에 둔다.\n"
+        "peft_text_classifier 또는 classification/peft_adapters 경로에 둔다.\n"
         f"{formatted_paths}"
     )
 
@@ -1265,15 +1266,14 @@ def test_legacy_peft_adapter_packages_are_removed() -> None:
 def test_legacy_classifier_head_packages_are_removed() -> None:
     legacy_paths = (
         METHODS_SRC / "adaptation" / "classifier_head",
-        TEXT_CLASSIFIER_ADAPTATION_SRC / "feature_head",
-        TEXT_CLASSIFIER_AGGREGATION_SRC / "feature_head_fedavg_projection.py",
+        METHODS_SRC / "adaptation" / "text_classifier",
     )
     existing_paths = _existing_non_cache_paths(legacy_paths)
 
     assert not existing_paths, (
         "feature-head classification source of truth는 "
         "methods/adaptation/classification/**다. legacy classifier_head와 "
-        "text_classifier/feature_head shim package는 compatibility phase 종료 후 "
+        "text_classifier shim package는 compatibility phase 종료 후 "
         "다시 만들지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
     )
@@ -1298,7 +1298,7 @@ def _existing_non_cache_paths(paths: Sequence[Path]) -> list[Path]:
 def test_adaptation_aggregation_files_stay_projection_only() -> None:
     violations: list[Path] = []
     aggregation_roots = (
-        TEXT_CLASSIFIER_AGGREGATION_SRC,
+        PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC,
         CLASSIFICATION_ADAPTATION_SRC / "aggregation",
     )
     for aggregation_root in aggregation_roots:
@@ -1312,7 +1312,7 @@ def test_adaptation_aggregation_files_stay_projection_only() -> None:
                 violations.append(_relative_repo_path(path))
 
     assert not violations, (
-        "classification/text_classifier aggregation 계층은 family state를 generic "
+        "classification/peft_text_classifier aggregation 계층은 family state를 generic "
         "aggregation input/output으로 바꾸는 projection만 소유한다. "
         "weighted average policy와 FedAvg algorithm은 methods/federated/aggregation/에 "
         "둔다.\n"
@@ -1326,6 +1326,7 @@ def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
+            "methods.adaptation.peft_text_classifier",
             "methods.adaptation.text_classifier",
             "shared.src.contracts.adapter_contract_families.classifier_head",
             "shared.src.contracts.adapter_contract_families.lora_classifier",
@@ -1335,7 +1336,7 @@ def test_peft_adapters_do_not_import_classifier_task_payloads() -> None:
     assert not violations, (
         "methods/adaptation/peft_adapters/**는 LoRA/DoRA 같은 PEFT mechanism만 "
         "소유한다. classifier label, task head, update payload 의미는 "
-        "text_classifier adaptation 또는 shared contract가 소유한다.\n"
+        "peft_text_classifier adaptation 또는 shared contract가 소유한다.\n"
         f"{_format_violations(violations)}"
     )
 
@@ -1438,6 +1439,7 @@ def test_privacy_guards_stay_runtime_and_objective_agnostic() -> None:
             "scripts",
             "methods.ssl",
             "methods.federated_ssl.fedmatch",
+            "methods.adaptation.peft_text_classifier",
             "methods.adaptation.text_classifier",
             "methods.adaptation.lora_classifier",
             "methods.adaptation.query_text_views",

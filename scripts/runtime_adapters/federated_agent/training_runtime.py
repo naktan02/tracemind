@@ -22,15 +22,15 @@ def build_federated_local_training_service(
     from methods.adaptation.local_update_registry import (
         build_shared_adapter_training_backend,
     )
-    from methods.adaptation.text_classifier.peft_encoder.config import (
+    from methods.adaptation.peft_text_classifier.config import (
         LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
         LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
         PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     )
-    from methods.adaptation.text_classifier.peft_encoder.training_backend import (
+    from methods.adaptation.peft_text_classifier.training_backend import (
         PeftEncoderTrainingBackend,
     )
-    from methods.adaptation.text_classifier.peft_encoder.update import (
+    from methods.adaptation.peft_text_classifier.update import (
         simulation_inline_delta,
     )
 

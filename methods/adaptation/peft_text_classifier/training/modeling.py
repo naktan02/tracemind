@@ -13,10 +13,10 @@ from methods.adaptation.peft_adapters.registry import (
     build_peft_adapter_builder,
     resolve_peft_adapter_name,
 )
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.resource_cache import (
+from methods.adaptation.peft_text_classifier.resource_cache import (
     peft_encoder_resource_cache_key,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

@@ -19,7 +19,7 @@ from .local_update_backend import (
 _ADAPTATION_PACKAGE = "methods.adaptation"
 _TRAINING_BACKEND_MODULE_OVERRIDES = {
     "peft_classifier_trainer": (
-        "methods.adaptation.text_classifier.peft_encoder.training_backend"
+        "methods.adaptation.peft_text_classifier.training_backend"
     ),
 }
 _LOCAL_UPDATE_BACKEND_REGISTRY: dict[

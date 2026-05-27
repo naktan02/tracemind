@@ -95,7 +95,7 @@ proxy다. report의 `loss_kind`와 `score_distribution_kind`를 같이 읽어야
   supervised/unsupervised tensor loss는
   FedMatch method core에 고정했다. PEFT text-classifier trainer 한 step의 logical
   partition delta split과 method-owned local simulation wiring은
-  `methods/adaptation/text_classifier/peft_encoder/federated_ssl/`의 method-neutral
+  `methods/adaptation/peft_text_classifier/federated_ssl/`의 method-neutral
   adapter-family slice가 소유한다. 기존 `lora_classifier/federated_ssl` path는
   compatibility shim이다.
   `fixed_probe_output_knn` helper client context 주입 seam과 KDTree 우선

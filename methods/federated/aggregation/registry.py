@@ -36,10 +36,10 @@ _ADAPTER_AGGREGATION_MODULE_OVERRIDES = {
         "methods.adaptation.classification.aggregation.feature_head_fedavg_projection"
     ),
     ("peft_classifier", "fedavg"): (
-        "methods.adaptation.text_classifier.aggregation.peft_encoder_fedavg_projection"
+        "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"
     ),
     ("peft_classifier", "partitioned_delta_average"): (
-        "methods.adaptation.text_classifier.aggregation."
+        "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     ),
 }

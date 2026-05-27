@@ -33,12 +33,12 @@ from shared.src.domain.entities.training.shared_adapter_update import (
     SharedAdapterUpdate,
 )
 
-from ..peft_encoder.update.materialization import (
+from ..update.materialization import (
     materialize_base_peft_encoder_partitioned_state,
     materialize_base_peft_encoder_state,
     materialize_peft_encoder_partitioned_update,
 )
-from ..peft_encoder.update.partitioned_delta import LoraClassifierPartitionDelta
+from ..update.partitioned_delta import LoraClassifierPartitionDelta
 from .peft_encoder_fedavg_projection import (
     CLASSIFIER_HEAD_ARTIFACT_SLOT,
     LORA_ADAPTER_ARTIFACT_SLOT,

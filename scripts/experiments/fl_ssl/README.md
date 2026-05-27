@@ -3,7 +3,7 @@
 이 폴더는 FL SSL 실험 entrypoint만 둔다. FL method identity와 method-only
 정책은 `methods/federated_ssl/`, SSL objective core는 `methods/ssl`,
 PEFT-classifier 계산 core는
-`methods/adaptation/text_classifier/peft_encoder`, 실행 조합과 파라미터는
+`methods/adaptation/peft_text_classifier`, 실행 조합과 파라미터는
 `conf/` Hydra config가 소유한다.
 
 현재 기본 실행은 논문 method가 아니라 manual baseline이다.

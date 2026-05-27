@@ -8,7 +8,7 @@ from collections.abc import Mapping
 import torch
 from torch import Tensor
 
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
 )
 

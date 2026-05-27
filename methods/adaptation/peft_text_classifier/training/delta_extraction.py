@@ -7,7 +7,7 @@ from collections.abc import Mapping, Sequence
 
 import torch
 
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 

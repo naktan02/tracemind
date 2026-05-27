@@ -5,7 +5,7 @@ from __future__ import annotations
 from methods.adaptation.federated_ssl_server_update import (
     register_federated_ssl_server_update_backend_resolver,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
 from methods.federated_ssl.capability_axes import SERVER_UPDATE_FEDMATCH_PARTITIONED

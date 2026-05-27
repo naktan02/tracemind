@@ -25,19 +25,19 @@ from methods.adaptation.local_update_registry import (
     list_registered_shared_adapter_training_backend_names,
     list_shared_adapter_training_backend_catalog_entries,
 )
-from methods.adaptation.query_text_views.local_training_budget import (
-    build_query_ssl_local_step_plan,
-)
-from methods.adaptation.text_classifier.peft_encoder import config as lora_config
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier import config as lora_config
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.text_classifier.peft_encoder.training_backend import (
+from methods.adaptation.peft_text_classifier.training_backend import (
     LoraClassifierTrainingBackend,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
+from methods.adaptation.peft_text_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
     LoraClassifierTrainingRow,
+)
+from methods.adaptation.query_text_views.local_training_budget import (
+    build_query_ssl_local_step_plan,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,

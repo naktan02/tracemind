@@ -1,8 +1,9 @@
-# PEFT Encoder Text Classifier
+# PEFT Text Classifier
 
-`peft_encoder/`는 순수 encoder만 뜻하지 않는다. 이 경로는
-“PEFT-adapted encoder + task classifier head” text classifier adaptation variant를
-소유한다.
+`methods/adaptation/peft_text_classifier/`는 PEFT-adapted text encoder와 task
+classifier head를 함께 학습하는 update family를 소유한다. PEFT mechanism 자체는
+별도 소유자가 있으며, 이 package는 text classifier task payload, training, update
+materialization, FL SSL execution primitive를 맡는다.
 
 ## 책임
 

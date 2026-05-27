@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+from methods.adaptation.peft_text_classifier.training.modeling import (
     LoraClassifierModelRuntimeConfig,
     LoraTextClassifier,
     build_lora_text_classifier_from_config,

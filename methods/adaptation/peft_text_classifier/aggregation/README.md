@@ -1,8 +1,8 @@
-# Text Classifier Aggregation Projection
+# PEFT Text Classifier Aggregation Projection
 
-`text_classifier/aggregation/`은 text classifier family state를 generic aggregation
-core가 소비할 수 있는 입력으로 바꾸고, aggregation 결과를 family state로 되돌리는
-projection 계층이다.
+`peft_text_classifier/aggregation/`은 PEFT text classifier family state를 generic
+aggregation core가 소비할 수 있는 입력으로 바꾸고, aggregation 결과를 family
+state로 되돌리는 projection 계층이다.
 
 ## 책임
 
@@ -11,8 +11,6 @@ projection 계층이다.
 
 ## 파일
 
-- `feature_head_fedavg_projection.py`: 이전 경로 호환 shim. source of truth는
-  `methods/adaptation/classification/aggregation/feature_head_fedavg_projection.py`
 - `peft_encoder_fedavg_projection.py`: LoRA/PEFT encoder update payload를 generic
   FedAvg strategy 입력으로 바꾸고 next state artifact를 materialize
 - `peft_encoder_partitioned_projection.py`: partitioned client delta를 병합/평균하고

@@ -4,13 +4,13 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+from methods.adaptation.peft_text_classifier.federated_ssl import (
     peer_predictions,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.common.runtime_resources import RuntimeResourceCache

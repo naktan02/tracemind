@@ -508,11 +508,11 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "methods.adaptation.peft_text_classifier.runtime_family."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (
-        "methods.adaptation.text_classifier.peft_encoder.evaluation."
+        "methods.adaptation.peft_text_classifier.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
@@ -520,7 +520,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "build_peft_encoder_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
-        "methods.adaptation.text_classifier.peft_encoder.resource_cache."
+        "methods.adaptation.peft_text_classifier.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
@@ -739,11 +739,11 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "run_peft_encoder_query_ssl_client_round_if_supported",
     ]
     assert cfg.round_runtime.initial_state_builder == (
-        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "methods.adaptation.peft_text_classifier.runtime_family."
         "build_initial_peft_encoder_state"
     )
     assert cfg.round_runtime.validation_evaluator == (
-        "methods.adaptation.text_classifier.peft_encoder.evaluation."
+        "methods.adaptation.peft_text_classifier.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     )
     assert cfg.round_runtime.final_projection_builder == (
@@ -751,7 +751,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "build_peft_encoder_final_projection_artifacts"
     )
     assert cfg.round_runtime.transient_resource_cleaner == (
-        "methods.adaptation.text_classifier.peft_encoder.resource_cache."
+        "methods.adaptation.peft_text_classifier.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     )
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"

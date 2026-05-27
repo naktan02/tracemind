@@ -9,30 +9,30 @@ from pathlib import Path
 
 import pytest
 
-from methods.adaptation.query_text_views.local_training_budget import (
-    build_labeled_anchored_query_ssl_batch_plan,
-    build_query_ssl_local_step_plan,
-)
-from methods.adaptation.text_classifier.peft_encoder import (
+from methods.adaptation.peft_text_classifier import (
     evaluation as peft_encoder_evaluation,
 )
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL,
     LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
     LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED,
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.evaluation import (
+from methods.adaptation.peft_text_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATOR_NAME,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+from methods.adaptation.peft_text_classifier.federated_ssl import (
     supervised_seed_step,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
+)
+from methods.adaptation.query_text_views.local_training_budget import (
+    build_labeled_anchored_query_ssl_batch_plan,
+    build_query_ssl_local_step_plan,
 )
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,
@@ -471,11 +471,11 @@ def _default_round_runtime_config(
     adapter_family_name: str = "lora_classifier",
     update_family_name: str = "peft_text_classifier",
     initial_state_builder: str | None = (
-        "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+        "methods.adaptation.peft_text_classifier.runtime_family."
         "build_initial_peft_encoder_state"
     ),
     validation_evaluator: str | None = (
-        "methods.adaptation.text_classifier.peft_encoder.evaluation."
+        "methods.adaptation.peft_text_classifier.evaluation."
         "evaluate_peft_encoder_simulation_validation_payload"
     ),
     final_projection_builder: str | None = (
@@ -483,7 +483,7 @@ def _default_round_runtime_config(
         "build_peft_encoder_final_projection_artifacts"
     ),
     transient_resource_cleaner: str | None = (
-        "methods.adaptation.text_classifier.peft_encoder.resource_cache."
+        "methods.adaptation.peft_text_classifier.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     ),
     local_objective_executors: tuple[str, ...] = (
@@ -2384,11 +2384,11 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
             aggregation_backend_name="fedavg",
             update_family_name="peft_text_classifier",
             initial_state_builder=(
-                "methods.adaptation.text_classifier.peft_encoder.runtime_family."
+                "methods.adaptation.peft_text_classifier.runtime_family."
                 "build_initial_peft_encoder_state"
             ),
             validation_evaluator=(
-                "methods.adaptation.text_classifier.peft_encoder.evaluation."
+                "methods.adaptation.peft_text_classifier.evaluation."
                 "evaluate_peft_encoder_simulation_validation_payload"
             ),
             classifier_head_bootstrap_logit_scale=8.0,

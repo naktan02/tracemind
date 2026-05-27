@@ -2,19 +2,19 @@
 
 `methods/adaptation/lora_classifier/`는 기존 shared contract와 runtime import 경로를
 보존하는 legacy compatibility surface다. PEFT encoder + classifier head core의
-source of truth는 `methods/adaptation/text_classifier/peft_encoder/`로 이동했다.
+source of truth는 `methods/adaptation/peft_text_classifier/`로 이동했다.
 
 `config.py`, `evaluation.py`, `initial_state.py`, `runtime_compatibility.py`,
 `server_preflight.py`, `training_backend.py`, `training/*`, `update/*`,
 `aggregation/*`는 새 경로의 named symbol만 import하는 shim이다.
-새 내부 코드는 `text_classifier/peft_encoder/`를 direct-file import로 참조한다.
+새 내부 코드는 `peft_text_classifier/`를 direct-file import로 참조한다.
 기존 `adapter_kind=lora_classifier`와 payload format 이름은 shared contract v2
 migration 전까지 유지한다.
 
 ## Compatibility Ledger
 
 이 package에는 새 business logic을 추가하지 않는다. 남아 있는 `.py` 파일은 모두
-`text_classifier/peft_encoder/`, `text_classifier/aggregation/`, 또는
+`peft_text_classifier/`, `peft_text_classifier/aggregation/`, 또는
 `peft_adapters/`의 named symbol을 가져오는 direct-file compatibility shim이다.
 
 유지 이유:
@@ -72,24 +72,24 @@ migration 전까지 유지한다.
 - `runtime_compatibility.py`: round runtime scaffold와 local objective payload
   config drift 검증
 - `aggregation/fedavg.py`: 현재는
-  `text_classifier/aggregation/peft_encoder_fedavg_projection.py` shim이다. 기존에는
+  `peft_text_classifier/aggregation/peft_encoder_fedavg_projection.py` shim이다. 기존에는
   LoRA-classifier delta를 FedAvg 공통 산술로 평균하고,
   shared state/update payload를 family FedAvg core 입력으로 변환한다. artifact IO나
   next-state payload 조립은 직접 소유하지 않는다.
 - `aggregation/partitioned_delta_average.py`: 현재는
-  `text_classifier/aggregation/peft_encoder_partitioned_projection.py` shim이다. 기존에는
+  `peft_text_classifier/aggregation/peft_encoder_partitioned_projection.py` shim이다. 기존에는
   shared update의 `partitioned_deltas`를
   client별로 먼저 병합한 뒤 LoRA-classifier delta 평균 산술과 state projection을
   재사용한다.
   partition 이름의 방법론 의미는 이 package가 아니라 method package가 소유한다.
 - `aggregation/materialization.py`: 현재는
-  `text_classifier/peft_encoder/update/materialization.py` shim이다. inline delta와
+  `peft_text_classifier/update/materialization.py` shim이다. inline delta와
   server-owned JSON artifact ref를
   FedAvg 산술이 소비할 수 있는 delta mapping으로 읽는다. partitioned update도
   methods-owned partition delta object로 정규화한다. 기존 server state artifact도
   누적 global parameter snapshot으로 읽는다.
 - `aggregation/state_projection.py`: 현재는
-  `text_classifier/aggregation/peft_encoder_state_projection.py` shim이다.
+  `peft_text_classifier/aggregation/peft_encoder_state_projection.py` shim이다.
   `base global state + aggregated delta`를 다음
   LoRA/classifier global parameter snapshot과 `LoraClassifierState`로 투영한다.
 - `server_preflight.py`: update payload의 model/base revision/scope, backbone,

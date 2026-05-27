@@ -205,8 +205,8 @@ Adapter 뒤로 옮긴다.
 
 - `methods/adaptation/classification/feature_head`의 최종 위치를
   `methods/classification/linear_head`로 정한다.
-- `methods/adaptation/text_classifier/peft_encoder`의 canonical 이름을
-  `methods/adaptation/peft_text_classifier`로 전환한다.
+- `methods/adaptation/peft_text_classifier`가 PEFT text classifier update family의
+  canonical 구현 위치다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만
   소유한다.
 - `lora_classifier` shim은 v1 compatibility package로 축소한다.

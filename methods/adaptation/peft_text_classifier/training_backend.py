@@ -11,10 +11,10 @@ from methods.adaptation.local_update_backend import AcceptedTrainingExample
 from methods.adaptation.local_update_registry import (
     register_shared_adapter_training_backend,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.local_update import (
+from methods.adaptation.peft_text_classifier.update.local_update import (
     PeftEncoderTrainExecutor,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
 from methods.common.runtime_resources import RuntimeResourceCache
@@ -65,9 +65,7 @@ from .update.payload_builder import build_peft_encoder_delta_update
 LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     display_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
-    implementation_module=(
-        "methods.adaptation.text_classifier.peft_encoder.training_backend"
-    ),
+    implementation_module=("methods.adaptation.peft_text_classifier.training_backend"),
     core_method_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     family_name=LORA_CLASSIFIER_ADAPTER_KIND,
     supported_adapter_kinds=(LORA_CLASSIFIER_ADAPTER_KIND,),
@@ -83,9 +81,7 @@ LORA_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
 PEFT_CLASSIFIER_TRAINING_BACKEND_CATALOG_ENTRY = RegistryCatalogEntry(
     item_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     display_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    implementation_module=(
-        "methods.adaptation.text_classifier.peft_encoder.training_backend"
-    ),
+    implementation_module=("methods.adaptation.peft_text_classifier.training_backend"),
     core_method_name=PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     family_name=PEFT_CLASSIFIER_ADAPTER_KIND,
     supported_adapter_kinds=(PEFT_CLASSIFIER_ADAPTER_KIND,),

@@ -7,8 +7,8 @@
 ## 결론
 
 `lora_classifier`는 더 이상 구현 폴더의 source-of-truth 이름이 아니다. 구현 core는
-`methods/adaptation/text_classifier/peft_encoder/`,
-`methods/adaptation/text_classifier/aggregation/`,
+`methods/adaptation/peft_text_classifier/`,
+`methods/adaptation/peft_text_classifier/aggregation/`,
 `methods/adaptation/peft_adapters/`가 소유한다.
 
 하지만 `lora_classifier`는 아직 v1 cross-boundary contract 이름이다. shared payload,
@@ -36,8 +36,8 @@ Hydra runtime config, report verifier, artifact path, 기존 run fixture가 이 
 
 | 구현 의미 | 현재 source of truth |
 |---|---|
-| PEFT text classifier config/training/evaluation | `methods/adaptation/text_classifier/peft_encoder/` |
-| PEFT encoder aggregation/state projection | `methods/adaptation/text_classifier/aggregation/` |
+| PEFT text classifier config/training/evaluation | `methods/adaptation/peft_text_classifier/` |
+| PEFT encoder aggregation/state projection | `methods/adaptation/peft_text_classifier/aggregation/` |
 | LoRA/RSLoRA adapter mechanism | `methods/adaptation/peft_adapters/` |
 | FedMatch method semantics | `methods/federated_ssl/fedmatch/` |
 | Query row/view/token-batch glue | `methods/adaptation/query_text_views/` |

@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.training.loops import (
+from methods.adaptation.peft_text_classifier.training.loops import (
     build_optimizer,
     evaluate_classifier,
     set_seed,

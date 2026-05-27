@@ -11,7 +11,7 @@ from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
 )
 from methods.federated.aggregation import registry as aggregation_registry
@@ -314,7 +314,8 @@ def test_federated_aggregation_method_registry_points_to_lora_core() -> None:
 
     assert spec.method_name == "fedavg"
     assert (
-        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        spec.implementation_module
+        == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_fedavg_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_fedavg"
@@ -328,7 +329,8 @@ def test_federated_aggregation_method_registry_points_to_peft_classifier_core() 
 
     assert spec.method_name == "fedavg"
     assert (
-        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        spec.implementation_module
+        == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_fedavg_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_fedavg"
@@ -344,7 +346,8 @@ def test_federated_aggregation_method_registry_points_to_partitioned_lora_core()
 
     assert spec.method_name == "partitioned_delta_average"
     assert (
-        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        spec.implementation_module
+        == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"
@@ -360,7 +363,8 @@ def test_federated_aggregation_method_registry_points_to_partitioned_peft_core()
 
     assert spec.method_name == "partitioned_delta_average"
     assert (
-        spec.implementation_module == "methods.adaptation.text_classifier.aggregation."
+        spec.implementation_module
+        == "methods.adaptation.peft_text_classifier.aggregation."
         "peft_encoder_partitioned_projection"
     )
     assert spec.core_function_name == "compute_peft_encoder_partitioned_delta_average"

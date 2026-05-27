@@ -4,7 +4,7 @@ from __future__ import annotations
 
 _ADAPTATION_PACKAGE = "methods.adaptation"
 _ADAPTER_FAMILY_MODULE_ROOTS = {
-    "peft_classifier": "methods.adaptation.text_classifier.peft_encoder",
+    "peft_classifier": "methods.adaptation.peft_text_classifier",
 }
 
 

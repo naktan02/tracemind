@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501
 
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.peer_predictions import (
+from methods.adaptation.peft_text_classifier.federated_ssl.peer_predictions import (
     LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
     LoraClassifierHelperWeakProbabilityProvider,
     LoraClassifierTrainerRuntimeConfig,

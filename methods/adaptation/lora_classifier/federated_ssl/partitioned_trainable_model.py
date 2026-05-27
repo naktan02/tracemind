@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned.trainable_model import (
+from methods.adaptation.peft_text_classifier.federated_ssl.partitioned.trainable_model import (
     PARTITION_COMPOSITION_SUM_LOGITS,
     AdapterClassifierPartition,
     AdapterClassifierPartitionSpec,

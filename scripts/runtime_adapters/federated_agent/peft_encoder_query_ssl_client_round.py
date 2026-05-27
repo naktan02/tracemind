@@ -6,10 +6,10 @@ import time
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.runtime_family import (
+from methods.adaptation.peft_text_classifier.runtime_family import (
     is_peft_encoder_adapter_family,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts import (
+from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     server_owned_peft_encoder_update_artifact_byte_count,
     upload_agent_local_peft_encoder_update,
 )

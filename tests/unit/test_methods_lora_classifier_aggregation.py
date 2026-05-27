@@ -7,25 +7,25 @@ from datetime import datetime, timezone
 
 import pytest
 
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_projection as peft_part_projection,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_partitioned_state as peft_part_state,
 )
-from methods.adaptation.text_classifier.aggregation import (
+from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_state_projection as peft_state_projection,
 )
-from methods.adaptation.text_classifier.peft_encoder.update import (
+from methods.adaptation.peft_text_classifier.update import (
     merged_tensor_artifact as merged_artifacts,
 )
-from methods.adaptation.text_classifier.peft_encoder.update import (
+from methods.adaptation.peft_text_classifier.update import (
     partitioned_payload_builder as partitioned_payloads,
 )
-from methods.adaptation.text_classifier.peft_encoder.update import (
+from methods.adaptation.peft_text_classifier.update import (
     partitioned_tensor_artifact as partitioned_artifacts,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PARTITIONED_CLASSIFIER_HEAD_STATE_BIASES_KEY,
     PARTITIONED_CLASSIFIER_HEAD_STATE_WEIGHTS_KEY,
     PARTITIONED_LORA_STATE_PARAMETERS_KEY,
@@ -37,7 +37,7 @@ from methods.adaptation.text_classifier.peft_encoder.update.materialization impo
     materialize_lora_classifier_partitioned_update,
     materialize_lora_classifier_update,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
     normalize_partition_deltas,
 )

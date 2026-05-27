@@ -7,28 +7,28 @@ import torch
 from torch import Tensor, nn
 from torch.utils.data import DataLoader
 
-from methods.adaptation.query_text_views.local_training_budget import (
-    build_query_ssl_local_step_plan,
-)
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl import (
+from methods.adaptation.peft_text_classifier.federated_ssl import (
     method_owned_training,
     peer_predictions,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
+from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
     sparse_sync,
     training_loop,
 )
-from methods.adaptation.text_classifier.peft_encoder.federated_ssl.partitioned import (
+from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
     trainable_model as ptm,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     partitioned_deltas,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     LoraClassifierMaterializedState,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.partitioned_delta import (
+from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
+)
+from methods.adaptation.query_text_views.local_training_budget import (
+    build_query_ssl_local_step_plan,
 )
 from methods.federated_ssl.fedmatch.local_objective import (
     FEDMATCH_PSI_L1_REGULARIZATION,

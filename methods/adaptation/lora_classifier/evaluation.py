@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.evaluation import (
+from methods.adaptation.peft_text_classifier.evaluation import (
     LORA_CLASSIFIER_EVALUATION_CONFIDENCE_KIND,
     LORA_CLASSIFIER_EVALUATION_DISTRIBUTION_KIND,
     LORA_CLASSIFIER_EVALUATOR_NAME,

@@ -2,7 +2,7 @@
 
 # ruff: noqa: F401,E501,I001
 
-from methods.adaptation.text_classifier.peft_encoder.training.partitioned_deltas import (
+from methods.adaptation.peft_text_classifier.training.partitioned_deltas import (
     AdapterClassifierDeltaBundle,
     build_adapter_classifier_delta_bundle,
     build_lora_classifier_partition_delta_from_parameter_deltas,

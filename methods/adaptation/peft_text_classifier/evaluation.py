@@ -5,27 +5,27 @@ from __future__ import annotations
 from collections.abc import Sequence
 from typing import Any
 
-from methods.adaptation.query_text_views.data import build_dataloader
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.loops import (
+from methods.adaptation.peft_text_classifier.training.loops import (
     evaluate_classifier,
     set_seed,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+from methods.adaptation.peft_text_classifier.training.modeling import (
     LoraClassifierModelRuntimeConfig,
     build_peft_encoder_text_classifier_from_config,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
     materialize_base_peft_encoder_state,
 )
+from methods.adaptation.query_text_views.data import build_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.evaluation.classification_payload import (
     build_classification_evaluation_payload,

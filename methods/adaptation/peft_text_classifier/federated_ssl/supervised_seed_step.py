@@ -5,27 +5,27 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 
-from methods.adaptation.query_text_views.data import build_dataloader
-from methods.adaptation.text_classifier.peft_encoder.config import (
+from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
-from methods.adaptation.text_classifier.peft_encoder.training import (
+from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.delta_extraction import (
+from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     extract_peft_encoder_parameter_deltas,
     load_peft_encoder_base_parameters_into_model,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.loops import (
+from methods.adaptation.peft_text_classifier.training.loops import (
     set_seed,
     train_classifier,
 )
-from methods.adaptation.text_classifier.peft_encoder.training.modeling import (
+from methods.adaptation.peft_text_classifier.training.modeling import (
     build_peft_encoder_text_classifier_from_config,
 )
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
+from methods.adaptation.peft_text_classifier.update.materialization import (
     PeftEncoderMaterializedState,
 )
+from methods.adaptation.query_text_views.data import build_dataloader
 from methods.common.runtime_resources import RuntimeResourceCache
 from shared.src.contracts.labeled_query_row_contracts import LabeledQueryRow
 
