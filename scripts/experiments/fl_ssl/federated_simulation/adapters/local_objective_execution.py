@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
+from functools import cache
+from importlib import import_module
 from typing import Any
 
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
@@ -19,12 +21,8 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedClientShard,
     SimulationRunRequest,
 )
-from scripts.runtime_adapters.federated_agent import (
-    peft_encoder_method_owned_client_round as peft_method_round,
-)
-from scripts.runtime_adapters.federated_agent import (
-    peft_encoder_query_ssl_client_round as peft_query_round,
-)
+
+LocalObjectiveExecutor = Callable[..., ClientRoundExecution | None]
 
 
 def run_method_or_manual_local_objective_if_supported(
@@ -43,8 +41,8 @@ def run_method_or_manual_local_objective_if_supported(
 ) -> ClientRoundExecution | None:
     """현재 지원되는 local objective fast path를 실행한다."""
 
-    method_execution = (
-        peft_method_round.run_peft_encoder_method_owned_client_round_if_supported(
+    for executor_path in request.round_runtime_config.local_objective_executors:
+        execution = _load_local_objective_executor(executor_path)(
             request=request,
             bootstrapped=bootstrapped,
             active=active,
@@ -57,16 +55,24 @@ def run_method_or_manual_local_objective_if_supported(
             previous_client_partition_parameters=previous_client_partition_parameters,
             previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
         )
-    )
-    if method_execution is not None:
-        return method_execution
+        if execution is not None:
+            return execution
+    return None
 
-    return peft_query_round.run_peft_encoder_query_ssl_client_round_if_supported(
-        request=request,
-        bootstrapped=bootstrapped,
-        active=active,
-        round_id=round_id,
-        shard=shard,
-        training_task=training_task,
-        previous_query_ssl_algorithm_state=previous_query_ssl_algorithm_state,
-    )
+
+@cache
+def _load_local_objective_executor(executor_path: str) -> LocalObjectiveExecutor:
+    module_name, separator, function_name = executor_path.rpartition(".")
+    if not separator or not module_name or not function_name:
+        raise ValueError(
+            "round_runtime.local_objective_executors entries must be fully "
+            f"qualified function paths: {executor_path!r}."
+        )
+    module = import_module(module_name)
+    executor = getattr(module, function_name, None)
+    if not callable(executor):
+        raise ValueError(
+            "round_runtime.local_objective_executors entries must point to "
+            f"callables: {executor_path!r}."
+        )
+    return executor

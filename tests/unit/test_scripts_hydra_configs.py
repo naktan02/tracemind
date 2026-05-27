@@ -499,6 +499,14 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
         "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
         "build_peft_encoder_round_runtime_payloads"
     )
+    assert list(cfg.round_runtime.local_objective_executors) == [
+        "scripts.runtime_adapters.federated_agent."
+        "peft_encoder_method_owned_client_round."
+        "run_peft_encoder_method_owned_client_round_if_supported",
+        "scripts.runtime_adapters.federated_agent."
+        "peft_encoder_query_ssl_client_round."
+        "run_peft_encoder_query_ssl_client_round_if_supported",
+    ]
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.text_classifier.peft_encoder.runtime_family."
         "build_initial_peft_encoder_state"
@@ -722,6 +730,14 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         "scripts.runtime_adapters.federated_server.peft_encoder_round_runtime."
         "build_peft_encoder_round_runtime_payloads"
     )
+    assert list(cfg.round_runtime.local_objective_executors) == [
+        "scripts.runtime_adapters.federated_agent."
+        "peft_encoder_method_owned_client_round."
+        "run_peft_encoder_method_owned_client_round_if_supported",
+        "scripts.runtime_adapters.federated_agent."
+        "peft_encoder_query_ssl_client_round."
+        "run_peft_encoder_query_ssl_client_round_if_supported",
+    ]
     assert cfg.round_runtime.initial_state_builder == (
         "methods.adaptation.text_classifier.peft_encoder.runtime_family."
         "build_initial_peft_encoder_state"

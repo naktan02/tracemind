@@ -14,6 +14,11 @@ from methods.adaptation.text_classifier.peft_encoder.update.delta_artifacts impo
     upload_agent_local_peft_encoder_update,
 )
 from methods.common.timing import TimingRecorder
+from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
+from methods.federated_ssl.peer_context import (
+    FederatedSslPeerClientSnapshot,
+    FederatedSslPeerContext,
+)
 from scripts.experiments.fl_ssl.federated_simulation.adapters import (
     client_update_submission,
 )
@@ -47,10 +52,20 @@ def run_peft_encoder_query_ssl_client_round_if_supported(
     round_id: str,
     shard: FederatedClientShard,
     training_task: Any,
+    capability_plan: FederatedSslCapabilityPlan | None = None,
+    peer_context: FederatedSslPeerContext | None = None,
+    peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
+    previous_client_partition_parameters: Mapping[str, Any] | None = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
     """Query SSL raw-row client training이 가능한 조합이면 해당 경로로 실행한다."""
 
+    del (
+        capability_plan,
+        peer_context,
+        peer_snapshots,
+        previous_client_partition_parameters,
+    )
     if not _supports_query_ssl_peft_encoder_client_training(request):
         return None
     return _run_query_ssl_peft_encoder_client_round(

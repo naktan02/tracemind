@@ -90,6 +90,10 @@ def build_simulation_request_from_config(
             cfg.round_runtime,
             "round_runtime_payload_builder",
         ),
+        local_objective_executors=_optional_config_str_tuple(
+            cfg.round_runtime,
+            "local_objective_executors",
+        ),
         initial_state_builder=_optional_config_str(
             cfg.round_runtime,
             "initial_state_builder",
@@ -222,6 +226,17 @@ def _optional_config_str(cfg: DictConfig, key: str) -> str | None:
         return None
     text = str(value).strip()
     return text or None
+
+
+def _optional_config_str_tuple(cfg: DictConfig, key: str) -> tuple[str, ...]:
+    value = getattr(cfg, key, None)
+    if value is None:
+        return ()
+    if isinstance(value, str):
+        values = [item.strip() for item in value.split(",")]
+    else:
+        values = [str(item).strip() for item in value]
+    return tuple(item for item in values if item)
 
 
 def _build_training_task_config(

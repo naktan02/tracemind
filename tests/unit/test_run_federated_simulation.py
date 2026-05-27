@@ -486,6 +486,12 @@ def _default_round_runtime_config(
         "methods.adaptation.text_classifier.peft_encoder.resource_cache."
         "clear_peft_encoder_transient_resource_cache"
     ),
+    local_objective_executors: tuple[str, ...] = (
+        "scripts.runtime_adapters.federated_agent.peft_encoder_method_owned_client_round."
+        "run_peft_encoder_method_owned_client_round_if_supported",
+        "scripts.runtime_adapters.federated_agent.peft_encoder_query_ssl_client_round."
+        "run_peft_encoder_query_ssl_client_round_if_supported",
+    ),
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -499,6 +505,7 @@ def _default_round_runtime_config(
         validation_evaluator=validation_evaluator,
         final_projection_builder=final_projection_builder,
         transient_resource_cleaner=transient_resource_cleaner,
+        local_objective_executors=local_objective_executors,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=(
             lora_classifier

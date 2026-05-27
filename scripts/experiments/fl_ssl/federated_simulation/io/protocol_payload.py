@@ -95,6 +95,9 @@ def build_protocol_payload(
             "round_runtime_payload_builder": (
                 round_runtime_config.round_runtime_payload_builder
             ),
+            "local_objective_executors": list(
+                round_runtime_config.local_objective_executors
+            ),
             "initial_state_builder": round_runtime_config.initial_state_builder,
             "validation_evaluator": round_runtime_config.validation_evaluator,
             "final_projection_builder": (round_runtime_config.final_projection_builder),
