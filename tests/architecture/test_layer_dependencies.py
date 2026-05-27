@@ -2099,7 +2099,7 @@ def test_lora_classifier_update_package_does_not_keep_one_use_helper_files() -> 
     )
 
 
-def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
+def test_query_peft_run_artifacts_do_not_keep_writer_exporter_monolith() -> None:
     orchestrator_path = QUERY_PEFT_SSL_IO_SRC / "artifacts.py"
     expected_responsibility_files = (
         QUERY_PEFT_SSL_IO_SRC / "artifact_paths.py",
@@ -2122,7 +2122,7 @@ def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
     ]
 
     assert not missing_files, (
-        "Query LoRA run artifact 저장은 경로, 모델 export, payload build, JSON write "
+        "Query PEFT run artifact 저장은 경로, 모델 export, payload build, JSON write "
         "책임 파일로 나눈다.\n"
         f"{chr(10).join(f'- {path}' for path in missing_files)}"
     )
@@ -2133,7 +2133,7 @@ def test_query_lora_run_artifacts_do_not_keep_writer_exporter_monolith() -> None
     )
 
 
-def test_query_lora_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
+def test_query_peft_teacher_pseudo_label_does_not_keep_exporter_monolith() -> None:
     legacy_exporter_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_exporter.py"
     builder_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_builder.py"
     writer_path = QUERY_PEFT_SSL_IO_SRC / "teacher_pseudo_label_artifact_writer.py"
