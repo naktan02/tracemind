@@ -46,7 +46,7 @@ PartitionedMethodLocalTrainingConfig = (
 )
 
 
-def run_method_owned_lora_classifier_training_core(
+def run_method_owned_peft_classifier_training_core(
     *,
     client_id: str,
     seed: int,
@@ -113,8 +113,3 @@ def run_method_owned_lora_classifier_training_core(
         timing_recorder=timing_recorder,
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
-
-
-run_method_owned_peft_classifier_training_core = (
-    run_method_owned_lora_classifier_training_core
-)

@@ -259,13 +259,6 @@ def require_peft_encoder_state(
     return adapter_state
 
 
-evaluate_lora_classifier_state = evaluate_peft_encoder_state
-evaluate_lora_classifier_state_payload = evaluate_peft_encoder_state_payload
-evaluate_lora_classifier_validation_payload = evaluate_peft_encoder_validation_payload
-require_lora_classifier_validation_backend = require_peft_encoder_validation_backend
-require_lora_classifier_state = require_peft_encoder_state
-
-
 def _build_evaluation_training_backend_config(
     *,
     adapter_state: LoraClassifierState | PeftClassifierState,

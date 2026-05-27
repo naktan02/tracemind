@@ -24,9 +24,6 @@ from methods.federated_ssl.peer_context import (
 )
 
 PeftEncoderTrainerRuntimeConfig = qssl_training.PeftEncoderTrainerRuntimeConfig
-build_lora_classifier_helper_probability_provider = (
-    peer_predictions.build_peft_encoder_helper_probability_provider
-)
 build_peft_encoder_helper_probability_provider = (
     peer_predictions.build_peft_encoder_helper_probability_provider
 )
@@ -70,8 +67,3 @@ def build_peft_encoder_helper_provider_for_local_ssl_policy(
             trainer_runtime_config=trainer_runtime_config,
             runtime_resource_cache=runtime_resource_cache,
         )
-
-
-build_lora_classifier_helper_provider_for_local_ssl_policy = (
-    build_peft_encoder_helper_provider_for_local_ssl_policy
-)

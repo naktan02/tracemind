@@ -151,9 +151,6 @@ def compute_peft_encoder_fedavg(
     )
 
 
-compute_lora_classifier_fedavg = compute_peft_encoder_fedavg
-
-
 def _normalize_label_schema(label_schema: Sequence[str]) -> tuple[str, ...]:
     labels = tuple(str(label).strip() for label in label_schema if str(label).strip())
     if not labels:
@@ -313,10 +310,6 @@ def validate_peft_encoder_update_matches_base(
         raise ValueError(
             "PEFT-classifier updates must share the base ordered label_schema."
         )
-
-
-aggregate_lora_classifier_fedavg = aggregate_peft_encoder_fedavg
-validate_lora_classifier_update_matches_base = validate_peft_encoder_update_matches_base
 
 
 def _payload_snapshot(payload) -> dict[str, object]:

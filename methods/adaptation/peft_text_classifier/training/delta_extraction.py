@@ -74,11 +74,6 @@ def load_peft_encoder_base_parameters_into_model(
         model.classifier.bias.data.copy_(bias)
 
 
-load_lora_classifier_base_parameters_into_model = (
-    load_peft_encoder_base_parameters_into_model
-)
-
-
 def extract_peft_encoder_parameter_deltas(
     *,
     model: LoraTextClassifier,
@@ -98,9 +93,6 @@ def extract_peft_encoder_parameter_deltas(
         base_biases=base_parameters.classifier_head_biases,
     )
     return lora_deltas, head_weight_deltas, head_bias_deltas
-
-
-extract_lora_classifier_parameter_deltas = extract_peft_encoder_parameter_deltas
 
 
 def extract_lora_parameter_deltas(
@@ -181,9 +173,6 @@ def peft_encoder_delta_l2_norm(
         float(value) * float(value) for value in classifier_head_bias_deltas.values()
     )
     return math.sqrt(squared_norm)
-
-
-lora_classifier_delta_l2_norm = peft_encoder_delta_l2_norm
 
 
 def is_number(value: object) -> bool:

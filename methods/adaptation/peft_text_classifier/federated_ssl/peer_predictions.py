@@ -344,12 +344,3 @@ def _sorted_numeric_mapping(
     value: Mapping[str, Sequence[float]],
 ) -> dict[str, list[float]]:
     return {key: list(items) for key, items in sorted(value.items())}
-
-
-LoraClassifierHelperWeakProbabilityProvider = PeftEncoderHelperWeakProbabilityProvider
-build_lora_classifier_peer_client_snapshot = build_peft_encoder_peer_client_snapshot
-compute_lora_classifier_probe_vector = compute_peft_encoder_probe_vector
-extract_lora_classifier_materialized_state = extract_peft_encoder_materialized_state
-build_lora_classifier_helper_probability_provider = (
-    build_peft_encoder_helper_probability_provider
-)

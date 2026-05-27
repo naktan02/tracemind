@@ -48,7 +48,6 @@ MethodOwnedPeftEncoderTrainingCore = Callable[
     ...,
     QuerySslPeftEncoderClientTrainingResult,
 ]
-MethodOwnedLoraClassifierTrainingCore = MethodOwnedPeftEncoderTrainingCore
 
 
 def resolve_method_owned_peft_encoder_training_core(
@@ -158,14 +157,3 @@ def run_method_owned_peft_encoder_training_core(
         timing_recorder=timing_recorder,
         initial_query_ssl_algorithm_state=initial_query_ssl_algorithm_state,
     )
-
-
-resolve_method_owned_lora_classifier_training_core = (
-    resolve_method_owned_peft_encoder_training_core
-)
-_load_method_owned_lora_classifier_training_core = (
-    _load_method_owned_peft_encoder_training_core
-)
-run_method_owned_lora_classifier_training_core = (
-    run_method_owned_peft_encoder_training_core
-)

@@ -11,7 +11,7 @@ from methods.adaptation.peft_text_classifier.config import (
     LoraClassifierTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.update.query_ssl_update import (
-    build_query_ssl_lora_update_payload,
+    build_query_ssl_peft_encoder_update_payload,
 )
 from methods.adaptation.query_text_views.local_training_budget import (
     build_query_ssl_local_step_plan,
@@ -66,7 +66,7 @@ def _training_task() -> TrainingTask:
 
 
 def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None:
-    result = build_query_ssl_lora_update_payload(
+    result = build_query_ssl_peft_encoder_update_payload(
         training_task=_training_task(),
         model_manifest=make_embedding_manifest(
             model_id="mxbai-lora-classifier",
@@ -125,7 +125,7 @@ def test_query_ssl_lora_update_payload_uses_server_refs_without_inline() -> None
 
 def test_query_ssl_lora_update_payload_requires_refs_for_artifact_mode() -> None:
     with pytest.raises(ValueError, match="requires adapter/head delta refs"):
-        build_query_ssl_lora_update_payload(
+        build_query_ssl_peft_encoder_update_payload(
             training_task=_training_task(),
             model_manifest=make_embedding_manifest(
                 model_id="mxbai-lora-classifier",

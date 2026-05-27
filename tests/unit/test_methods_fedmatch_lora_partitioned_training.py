@@ -41,7 +41,7 @@ from methods.federated_ssl.fedmatch.parameter_routing import (
     FEDMATCH_SIGMA_PARTITION,
 )
 from methods.federated_ssl.fedmatch.partitioned_local_training import (
-    run_method_owned_lora_classifier_training_core as run_fedmatch_partitioned_training,
+    run_method_owned_peft_classifier_training_core as run_fedmatch_partitioned_training,
 )
 from methods.ssl.algorithms.fixmatch.fixmatch import FixMatchAlgorithm
 
@@ -159,8 +159,8 @@ class TinyFrozenFeatureExtractor(nn.Module):
         return self.projection(input_ids.float())
 
 
-def test_method_owned_lora_classifier_core_resolves_descriptor_entrypoint() -> None:
-    core = method_owned_training.resolve_method_owned_lora_classifier_training_core(
+def test_method_owned_peft_classifier_core_resolves_descriptor_entrypoint() -> None:
+    core = method_owned_training.resolve_method_owned_peft_encoder_training_core(
         "fedmatch"
     )
 

@@ -269,12 +269,6 @@ def run_query_ssl_peft_encoder_local_training(
     )
 
 
-run_method_owned_lora_classifier_local_training = (
-    run_method_owned_peft_encoder_local_training
-)
-run_query_ssl_lora_classifier_local_training = run_query_ssl_peft_encoder_local_training
-
-
 def _load_base_parameters_if_needed(
     *,
     active_adapter_state: PeftEncoderState,

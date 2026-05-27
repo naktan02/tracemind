@@ -148,11 +148,3 @@ def _peft_adapter_delta_artifact_ref(
     if isinstance(payload, PeftClassifierDelta):
         return payload.peft_adapter_delta_artifact_ref
     return payload.lora_delta_artifact_ref
-
-
-require_lora_classifier_update_matches_active_state = (
-    require_peft_encoder_update_matches_active_state
-)
-require_lora_classifier_update_is_server_materializable = (
-    require_peft_encoder_update_is_server_materializable
-)

@@ -128,11 +128,6 @@ def compute_peft_encoder_partitioned_delta_average(
     )
 
 
-compute_lora_classifier_partitioned_delta_average = (
-    compute_peft_encoder_partitioned_delta_average
-)
-
-
 def aggregate_peft_encoder_partitioned_delta_average(
     base_state: SharedAdapterState,
     update_payloads: Sequence[SharedAdapterUpdate],
@@ -303,11 +298,6 @@ def _validate_peft_encoder_partitioned_delta_average_overrides(
             "Unsupported PEFT-classifier partitioned delta average config key(s): "
             f"{unknown_keys}."
         )
-
-
-aggregate_lora_classifier_partitioned_delta_average = (
-    aggregate_peft_encoder_partitioned_delta_average
-)
 
 
 def _register_peft_encoder_partitioned_strategy(

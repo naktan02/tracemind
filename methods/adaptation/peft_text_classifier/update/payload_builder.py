@@ -74,9 +74,6 @@ def build_peft_encoder_delta_update(
     )
 
 
-build_lora_classifier_delta_update = build_peft_encoder_delta_update
-
-
 def _build_candidate_label_space(
     accepted_examples: tuple[AcceptedTrainingExample, ...],
 ) -> tuple[str, ...]:
@@ -184,8 +181,3 @@ def slug_artifact_ref_part(value: str) -> str:
     if not normalized:
         raise ValueError("artifact ref path parts must not be empty.")
     return normalized
-
-
-build_lora_classifier_training_row = build_peft_encoder_training_row
-extract_lora_classifier_training_text = extract_peft_encoder_training_text
-build_lora_classifier_base_artifact_ref = build_peft_encoder_base_artifact_ref

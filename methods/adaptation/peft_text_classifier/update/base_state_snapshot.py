@@ -43,8 +43,5 @@ def peft_encoder_base_state_artifact_refs(
     )
 
 
-lora_classifier_base_state_artifact_refs = peft_encoder_base_state_artifact_refs
-
-
 def _ref_value(value: str | None) -> str:
     return "" if value is None else cast(str, value)

@@ -183,10 +183,6 @@ def build_query_ssl_peft_encoder_client_metrics(
     return metrics
 
 
-build_query_ssl_lora_update_payload = build_query_ssl_peft_encoder_update_payload
-build_query_ssl_lora_client_metrics = build_query_ssl_peft_encoder_client_metrics
-
-
 def _build_labeled_row_label_counts(
     labeled_rows: Sequence[LabeledQueryRow],
 ) -> dict[str, int]:

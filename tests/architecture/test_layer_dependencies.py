@@ -656,6 +656,73 @@ def test_peft_projection_artifacts_do_not_keep_lora_classifier_aliases() -> None
     )
 
 
+def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -> None:
+    alias_names = (
+        "resolve_method_owned_lora_classifier_training_core",
+        "_load_method_owned_lora_classifier_training_core",
+        "run_method_owned_lora_classifier_training_core",
+        "run_query_ssl_lora_classifier_training_core",
+        "_build_lora_classifier_model",
+        "evaluate_lora_classifier_state",
+        "evaluate_lora_classifier_state_payload",
+        "evaluate_lora_classifier_validation_payload",
+        "require_lora_classifier_validation_backend",
+        "require_lora_classifier_state",
+        "lora_classifier_base_state_artifact_refs",
+        "build_lora_classifier_training_row",
+        "extract_lora_classifier_training_text",
+        "build_lora_classifier_base_artifact_ref",
+        "run_lora_classifier_supervised_seed_step_core",
+        "compute_lora_classifier_partitioned_delta_average",
+        "aggregate_lora_classifier_partitioned_delta_average",
+        "require_lora_classifier_update_matches_active_state",
+        "require_lora_classifier_update_is_server_materializable",
+        "load_lora_classifier_base_parameters",
+        "load_lora_classifier_base_partition_parameters",
+        "_materialize_lora_classifier_base_parameters",
+        "_materialize_lora_classifier_base_partition_parameters",
+        "load_lora_classifier_base_parameters_into_model",
+        "extract_lora_classifier_parameter_deltas",
+        "lora_classifier_delta_l2_norm",
+        "run_method_owned_lora_classifier_local_training",
+        "run_query_ssl_lora_classifier_local_training",
+        "build_query_ssl_lora_update_payload",
+        "build_query_ssl_lora_client_metrics",
+        "resolve_lora_classifier_federated_ssl_server_update_backend",
+        "run_partitioned_lora_classifier_training_core",
+        "build_lora_classifier_delta_update",
+        "build_lora_classifier_helper_probability_provider",
+        "build_lora_classifier_helper_provider_for_local_ssl_policy",
+        "LoraClassifierHelperWeakProbabilityProvider",
+        "build_lora_classifier_peer_client_snapshot",
+        "compute_lora_classifier_probe_vector",
+        "extract_lora_classifier_materialized_state",
+        "compute_lora_classifier_fedavg",
+        "aggregate_lora_classifier_fedavg",
+        "validate_lora_classifier_update_matches_base",
+        "build_lora_classifier_state_projection",
+    )
+    checked_roots = (
+        METHODS_SRC / "adaptation" / "peft_text_classifier",
+        METHODS_SRC / "federated_ssl" / "fedmatch",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {alias_name}"
+        for root in checked_roots
+        for path in _iter_python_files(root)
+        for alias_name in alias_names
+        if alias_name in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT text classifier 내부 public surface는 canonical PEFT 이름을 사용한다. "
+        "v1 lora_classifier 이름은 shared payload/schema, config compatibility, "
+        "artifact field 의미처럼 실제 호환 경계에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_test_only_federated_ssl_fixture_stays_family_contract_agnostic() -> None:
     fixture_path = TEST_FIXTURES_SRC / "federated_ssl_dummy_method.py"
     imports = _collect_absolute_imports(fixture_path)

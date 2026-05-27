@@ -123,9 +123,6 @@ def build_peft_encoder_state_projection(
     )
 
 
-build_lora_classifier_state_projection = build_peft_encoder_state_projection
-
-
 def _build_next_state(
     *,
     base_state: PeftEncoderStatePayload,

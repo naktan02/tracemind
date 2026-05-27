@@ -39,8 +39,3 @@ def resolve_peft_encoder_federated_ssl_server_update_backend(
             f"{peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME}."
         )
     return peft_part_projection.PARTITIONED_DELTA_AVERAGE_BACKEND_NAME
-
-
-resolve_lora_classifier_federated_ssl_server_update_backend = (
-    resolve_peft_encoder_federated_ssl_server_update_backend
-)

@@ -125,8 +125,3 @@ def run_peft_encoder_supervised_seed_step_core(
             "server_step_batch_size": float(batch_size),
         },
     )
-
-
-run_lora_classifier_supervised_seed_step_core = (
-    run_peft_encoder_supervised_seed_step_core
-)

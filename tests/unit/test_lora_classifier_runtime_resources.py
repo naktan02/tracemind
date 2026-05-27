@@ -16,7 +16,7 @@ from methods.adaptation.peft_text_classifier.federated_ssl import (
 )
 from methods.adaptation.peft_text_classifier.training import modeling
 from methods.adaptation.peft_text_classifier.training.delta_extraction import (
-    load_lora_classifier_base_parameters_into_model,
+    load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
     LoraClassifierMaterializedState,
@@ -231,7 +231,7 @@ def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None
     }
     original_biases = dict(base_parameters.classifier_head_biases)
 
-    load_lora_classifier_base_parameters_into_model(
+    load_peft_encoder_base_parameters_into_model(
         model=model,
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,

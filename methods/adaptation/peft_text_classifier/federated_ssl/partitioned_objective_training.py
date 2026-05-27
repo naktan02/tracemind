@@ -793,8 +793,3 @@ def _validate_labeled_rows_have_known_labels(
             "Partitioned labeled_rows contain labels outside active label_schema: "
             f"{missing}."
         )
-
-
-run_partitioned_lora_classifier_training_core = (
-    run_partitioned_peft_encoder_training_core
-)

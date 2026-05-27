@@ -392,10 +392,6 @@ def _build_peft_encoder_model(
     )
 
 
-run_query_ssl_lora_classifier_training_core = run_query_ssl_peft_encoder_training_core
-_build_lora_classifier_model = _build_peft_encoder_model
-
-
 def _measure(timing_recorder: TimingRecorder | None, key: str) -> Any:
     if timing_recorder is None:
         return nullcontext()

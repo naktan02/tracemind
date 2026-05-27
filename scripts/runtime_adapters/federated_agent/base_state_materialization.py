@@ -159,13 +159,3 @@ def _peft_encoder_partition_cache_key(
         artifact_refs=peft_encoder_base_state_artifact_refs(active_adapter_state),
         materializer_name=PEFT_ENCODER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME,
     )
-
-
-load_lora_classifier_base_parameters = load_peft_encoder_base_parameters
-load_lora_classifier_base_partition_parameters = (
-    load_peft_encoder_base_partition_parameters
-)
-_materialize_lora_classifier_base_parameters = _materialize_peft_encoder_base_parameters
-_materialize_lora_classifier_base_partition_parameters = (
-    _materialize_peft_encoder_base_partition_parameters
-)
