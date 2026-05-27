@@ -106,11 +106,11 @@ class PeftEncoderTrainingBackend:
     이후 PEFT 실행기는 `train_executor.py` seam 뒤에 연결한다.
     """
 
-    backend_name: str = LORA_CLASSIFIER_TRAINING_BACKEND_NAME
-    payload_format: str = LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
-    adapter_kind: str = LORA_CLASSIFIER_ADAPTER_KIND
+    backend_name: str = PEFT_CLASSIFIER_TRAINING_BACKEND_NAME
+    payload_format: str = PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+    adapter_kind: str = PEFT_CLASSIFIER_ADAPTER_KIND
     config: PeftEncoderTrainingBackendConfig = field(
-        default_factory=PeftEncoderTrainingBackendConfig
+        default_factory=lambda: build_peft_classifier_training_backend_config(None)
     )
     train_executor: PeftEncoderTrainExecutor | None = None
 
@@ -120,7 +120,10 @@ class PeftEncoderTrainingBackend:
         objective_config: TrainingObjectiveConfig | None,
     ) -> "PeftEncoderTrainingBackend":
         return cls(
-            config=build_lora_classifier_training_backend_config(objective_config)
+            backend_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
+            payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+            adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
+            config=build_lora_classifier_training_backend_config(objective_config),
         )
 
     def build_update(
@@ -191,7 +194,7 @@ class PeftEncoderTrainingBackend:
         return update
 
     def build_client_metrics(self, update: SharedAdapterUpdate) -> dict[str, float]:
-        return build_lora_classifier_client_metrics(update)
+        return build_peft_encoder_client_metrics(update)
 
     def matches_objective_config(
         self,
@@ -206,7 +209,7 @@ class PeftEncoderTrainingBackend:
         )
 
 
-def build_lora_classifier_client_metrics(
+def build_peft_encoder_client_metrics(
     update: SharedAdapterUpdate,
 ) -> dict[str, float]:
     if not isinstance(update, LoraClassifierDelta | PeftClassifierDelta):

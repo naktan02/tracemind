@@ -336,8 +336,10 @@ def test_peft_encoder_train_executor_receives_resolved_label_schema() -> None:
     )
 
     assert executor.label_schema == ("anxiety", "depression", "normal")
+    assert isinstance(update, PeftClassifierDelta)
+    assert update.adapter_kind == "peft_classifier"
     assert update.label_schema == ["anxiety", "depression", "normal"]
-    assert update.lora_delta_artifact_ref == "agent-local://custom/lora_delta"
+    assert update.peft_adapter_delta_artifact_ref == "agent-local://custom/lora_delta"
     assert update.classifier_head_delta_artifact_ref == (
         "agent-local://custom/classifier_head_delta"
     )
