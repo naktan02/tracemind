@@ -233,7 +233,7 @@ class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):
 PeftClassifierTrainingBackendConfig = PeftEncoderTrainingBackendConfig
 
 
-def build_lora_classifier_training_backend_config(
+def build_legacy_lora_classifier_training_backend_config(
     objective_config: TrainingObjectiveConfig | None,
     *,
     family_extra_scope: str = LORA_CLASSIFIER_FAMILY_EXTRA_SCOPE,

@@ -535,11 +535,13 @@ def test_peft_config_class_owns_canonical_defaults() -> None:
         "class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):",
         'artifact_ref_prefix: str = "agent-local://lora_classifier"',
         "payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
+        "def build_legacy_lora_classifier_training_backend_config(",
     )
     missing = [snippet for snippet in required_snippets if snippet not in source]
     forbidden_snippets = (
         "PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
         "PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
+        "def build_lora_classifier_training_backend_config(",
     )
     violations = [snippet for snippet in forbidden_snippets if snippet in source]
 

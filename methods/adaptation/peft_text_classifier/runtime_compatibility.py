@@ -17,7 +17,7 @@ from shared.src.contracts.adapter_contract_families.peft_classifier import (
 from shared.src.contracts.training_contracts import TrainingObjectiveConfig
 
 from .config import (
-    build_lora_classifier_training_backend_config,
+    build_legacy_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
 
@@ -45,7 +45,7 @@ def require_lora_classifier_runtime_matches_objective(
     """bootstrap state와 local update가 같은 backbone/LoRA snapshot을 쓰게 한다."""
 
     lora_runtime_config = _as_lora_classifier_runtime_config(runtime_config)
-    objective_backend_config = build_lora_classifier_training_backend_config(
+    objective_backend_config = build_legacy_lora_classifier_training_backend_config(
         objective_config
     )
     mismatches: dict[str, object] = {}

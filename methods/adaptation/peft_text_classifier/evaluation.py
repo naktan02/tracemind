@@ -7,7 +7,7 @@ from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
     PeftEncoderTrainingBackendConfig,
-    build_lora_classifier_training_backend_config,
+    build_legacy_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
 from methods.adaptation.peft_text_classifier.training.delta_extraction import (
@@ -266,4 +266,4 @@ def _build_evaluation_training_backend_config(
 ) -> PeftEncoderTrainingBackendConfig:
     if isinstance(adapter_state, PeftClassifierState):
         return build_peft_classifier_training_backend_config(objective_config)
-    return build_lora_classifier_training_backend_config(objective_config)
+    return build_legacy_lora_classifier_training_backend_config(objective_config)

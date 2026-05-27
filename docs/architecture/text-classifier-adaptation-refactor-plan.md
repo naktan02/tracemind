@@ -307,7 +307,7 @@ PEFT-classifier aggregation registry metadata는 `peft_classifier` family에서
 compatibility alias로만 유지한다.
 PEFT-classifier trainer config 해석은
 `build_peft_classifier_training_backend_config`가 canonical entrypoint이고,
-`build_lora_classifier_training_backend_config`는 v1 scope와 legacy payload
+`build_legacy_lora_classifier_training_backend_config`는 v1 scope와 legacy payload
 compatibility entrypoint로 남긴다.
 local update payload 조립도 `build_peft_encoder_delta_update`,
 `build_peft_encoder_delta_payload_from_artifacts`,

@@ -50,7 +50,7 @@ from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
     PeftEncoderTrainingBackendConfig,
-    build_lora_classifier_training_backend_config,
+    build_legacy_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
 from .training.query_ssl_local_training import (
@@ -123,7 +123,9 @@ class PeftEncoderTrainingBackend:
             backend_name=LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
             payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
             adapter_kind=LORA_CLASSIFIER_ADAPTER_KIND,
-            config=build_lora_classifier_training_backend_config(objective_config),
+            config=build_legacy_lora_classifier_training_backend_config(
+                objective_config
+            ),
         )
 
     def build_update(
@@ -204,7 +206,7 @@ class PeftEncoderTrainingBackend:
             return self.config == build_peft_classifier_training_backend_config(
                 objective_config
             )
-        return self.config == build_lora_classifier_training_backend_config(
+        return self.config == build_legacy_lora_classifier_training_backend_config(
             objective_config
         )
 
