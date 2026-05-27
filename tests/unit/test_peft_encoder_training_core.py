@@ -13,7 +13,7 @@ from methods.adaptation.local_objective_regularizers.fedprox import (
     snapshot_trainable_parameters,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.training import (
     pseudo_label_diagnostics as pld,
@@ -78,7 +78,7 @@ def test_pseudo_label_diagnostic_threshold_marks_fixed_threshold_only() -> None:
     }
 
 
-def test_lora_text_classifier_train_step_and_evaluation() -> None:
+def test_peft_encoder_text_classifier_train_step_and_evaluation() -> None:
     torch.manual_seed(7)
     model = PeftEncoderTextClassifier(
         backbone=_TinyBackbone(),
@@ -115,7 +115,7 @@ def test_lora_text_classifier_train_step_and_evaluation() -> None:
 
 
 def test_peft_encoder_config_accepts_fedprox_mu() -> None:
-    config = LoraClassifierTrainingBackendConfig.from_mapping({"proximal_mu": 0.01})
+    config = PeftEncoderTrainingBackendConfig.from_mapping({"proximal_mu": 0.01})
 
     assert config.proximal_mu == 0.01
 

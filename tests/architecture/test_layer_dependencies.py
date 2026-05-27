@@ -641,6 +641,25 @@ def test_partitioned_model_builder_unit_test_uses_peft_encoder_surface() -> None
     )
 
 
+def test_peft_core_unit_tests_use_canonical_config_type() -> None:
+    checked_paths = (
+        REPO_ROOT / "tests" / "unit" / "test_peft_encoder_runtime_resources.py",
+        REPO_ROOT / "tests" / "unit" / "test_peft_encoder_training_core.py",
+    )
+    violations = [
+        _relative_repo_path(path)
+        for path in checked_paths
+        if "LoraClassifierTrainingBackendConfig" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "PEFT encoder core/resource unit tests는 canonical "
+        "PeftEncoderTrainingBackendConfig를 사용한다. v1 config subclass는 "
+        "legacy payload compatibility 테스트에서만 직접 사용한다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

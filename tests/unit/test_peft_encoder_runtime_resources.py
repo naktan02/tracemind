@@ -9,7 +9,7 @@ import torch
 from torch import nn
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     peer_predictions,
@@ -98,7 +98,7 @@ def test_peft_encoder_model_builder_reuses_runtime_resources(
     )
 
     cache = _Cache()
-    lora_config = LoraClassifierTrainingBackendConfig()
+    lora_config = PeftEncoderTrainingBackendConfig()
     runtime_config = _RuntimeConfig()
 
     model_a, tokenizer_a = modeling.build_peft_encoder_text_classifier_from_config(
@@ -190,7 +190,7 @@ def test_peft_encoder_model_builder_uses_peft_adapter_builder(
 
     modeling.build_peft_encoder_text_classifier_from_config(
         labels=["anxiety", "normal"],
-        lora_config=LoraClassifierTrainingBackendConfig(
+        lora_config=PeftEncoderTrainingBackendConfig(
             peft_adapter_name="fake_adapter",
             rank=4,
         ),
@@ -309,7 +309,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
         peer_context=context,
         peer_snapshots={"agent_02": snapshot},
         labels=("anxiety", "normal"),
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         trainer_runtime_config=_RuntimeConfig(),
         runtime_resource_cache=cache,
     )
@@ -317,7 +317,7 @@ def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
         peer_context=context,
         peer_snapshots={"agent_02": snapshot},
         labels=("anxiety", "normal"),
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         trainer_runtime_config=_RuntimeConfig(),
         runtime_resource_cache=cache,
     )
@@ -376,7 +376,7 @@ def test_peft_encoder_helper_provider_counts_only_materializable_snapshots() -> 
             "agent_03": ignored_snapshot,
         },
         labels=("anxiety", "normal"),
-        lora_config=LoraClassifierTrainingBackendConfig(),
+        lora_config=PeftEncoderTrainingBackendConfig(),
         trainer_runtime_config=_RuntimeConfig(),
         runtime_resource_cache=None,
     )
