@@ -19,6 +19,19 @@ PEFT_TEXT_CLASSIFIER_SLUG_BUILDER = (
 )
 
 
+def _peft_text_classifier_round_runtime() -> dict[str, object]:
+    return {
+        "adapter_family_name": "peft_classifier",
+        "update_family_name": "peft_text_classifier",
+        "runtime_payload_key": "peft_text_classifier",
+        "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
+        "aggregation_backend_name": "fedavg",
+        "runtime_payloads": {
+            "peft_text_classifier": {"peft_adapter_name": "lora"},
+        },
+    }
+
+
 def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
     cfg = OmegaConf.create(
         {
@@ -32,13 +45,7 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
             "labeled_exposure_policy": {"name": "client_local_split"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
-            "round_runtime": {
-                "adapter_family_name": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
-                "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
-                "aggregation_backend_name": "fedavg",
-                "peft_classifier": {"peft_adapter_name": "lora"},
-            },
+            "round_runtime": _peft_text_classifier_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )
@@ -77,13 +84,7 @@ def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
             },
             "labeled_exposure_policy": {"name": "shared_client_seed"},
             "query_ssl_method": {"name": "flexmatch_usb_v1"},
-            "round_runtime": {
-                "adapter_family_name": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
-                "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
-                "aggregation_backend_name": "fedavg",
-                "peft_classifier": {"peft_adapter_name": "lora"},
-            },
+            "round_runtime": _peft_text_classifier_round_runtime(),
             "training_task": {
                 "objective": {
                     "peft_classifier": {
@@ -152,13 +153,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "ssl_method": {"name": "fedmatch"},
             "server_update_policy": {"name": "fedmatch_partitioned"},
-            "round_runtime": {
-                "adapter_family_name": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
-                "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
-                "aggregation_backend_name": "fedavg",
-                "peft_classifier": {"peft_adapter_name": "lora"},
-            },
+            "round_runtime": _peft_text_classifier_round_runtime(),
             "fl_method": {"composition_mode": "method_owned"},
         }
     )
@@ -197,13 +192,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
             "federated_run_budget": {"client_count": 10, "rounds": 1},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "flexmatch_usb_v1"},
-            "round_runtime": {
-                "adapter_family_name": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
-                "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
-                "aggregation_backend_name": "fedavg",
-                "peft_classifier": {"peft_adapter_name": "lora"},
-            },
+            "round_runtime": _peft_text_classifier_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )
@@ -291,13 +280,7 @@ def test_fl_ssl_client_count_sweep_groups_under_method_split_and_rounds() -> Non
             "labeled_exposure_policy": {"name": "shared_client_seed"},
             "shard_policy": {"name": "dirichlet_label_skew", "alpha": 0.3},
             "query_ssl_method": {"name": "fixmatch_usb_v1"},
-            "round_runtime": {
-                "adapter_family_name": "peft_classifier",
-                "update_family_name": "peft_text_classifier",
-                "composition_slug_builder": PEFT_TEXT_CLASSIFIER_SLUG_BUILDER,
-                "aggregation_backend_name": "fedavg",
-                "peft_classifier": {"peft_adapter_name": "lora"},
-            },
+            "round_runtime": _peft_text_classifier_round_runtime(),
             "fl_method": {"composition_mode": "manual"},
         }
     )

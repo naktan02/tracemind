@@ -501,6 +501,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         / "federated_simulation"
         / "adapters"
         / "runtime_compatibility.py",
+        METHODS_SRC / "adaptation" / "peft_text_classifier" / "runtime_family.py",
         SCRIPTS_RUNTIME_ADAPTER_SRC
         / "federated_server"
         / "peft_encoder_round_runtime.py",
@@ -509,6 +510,7 @@ def test_fl_round_runtime_model_uses_generic_update_family_payloads() -> None:
         "peft_classifier: FederatedPeftEncoderRuntimeConfig",
         'round_runtime_payloads.get("peft_classifier")',
         'round_runtime_mapping.get("peft_classifier")',
+        "round_runtime_mapping.get(PEFT_CLASSIFIER_ADAPTER_KIND)",
         "round_runtime.peft_classifier",
         "round_runtime.lora_classifier",
         "runtime_payload_for_adapter_family",

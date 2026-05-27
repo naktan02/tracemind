@@ -108,7 +108,10 @@ def build_peft_text_classifier_composition_slug(
     """PEFT text classifier run layout slug를 family owner 쪽에서 만든다."""
 
     family_name = _normalize_adapter_family_name(update_family_name)
-    runtime_payload = round_runtime_mapping.get(PEFT_CLASSIFIER_ADAPTER_KIND)
+    runtime_payload = _runtime_payload_mapping(
+        round_runtime_mapping=round_runtime_mapping,
+        update_family_name=update_family_name,
+    )
     if not isinstance(runtime_payload, Mapping):
         return family_name
     peft_adapter_name = str(runtime_payload.get("peft_adapter_name") or "").strip()
@@ -120,6 +123,27 @@ def build_peft_text_classifier_composition_slug(
     if family_name.endswith(f"_{normalized_adapter_name}"):
         return family_name
     return f"{family_name}_{peft_adapter_name}"
+
+
+def _runtime_payload_mapping(
+    *,
+    round_runtime_mapping: Mapping[str, object],
+    update_family_name: str,
+) -> Mapping[str, object] | None:
+    runtime_payloads = round_runtime_mapping.get("runtime_payloads")
+    if not isinstance(runtime_payloads, Mapping):
+        return None
+    payload_key = str(
+        round_runtime_mapping.get("runtime_payload_key") or update_family_name
+    )
+    normalized_payload_key = payload_key.strip().lower().replace("-", "_")
+    payload = runtime_payloads.get(normalized_payload_key)
+    if isinstance(payload, Mapping):
+        return payload
+    for key, value in runtime_payloads.items():
+        if str(key).strip().lower().replace("-", "_") == normalized_payload_key:
+            return value if isinstance(value, Mapping) else None
+    return None
 
 
 def build_training_backend_config_for_peft_encoder_state(
