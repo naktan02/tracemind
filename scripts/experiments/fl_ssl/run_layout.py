@@ -86,9 +86,9 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
 
     if not _is_manual_fl_composition(cfg):
         method_name = _select(cfg, "ssl_method.name", default=None) or "method_owned"
-        adapter_family = (
+        adapter_family = _resolve_adapter_runtime_slug(
+            cfg,
             _select(cfg, "round_runtime.adapter_family_name", default=None)
-            or "unknown_family"
         )
         server_update_policy = (
             _select(cfg, "server_update_policy.name", default=None)
@@ -105,9 +105,9 @@ def resolve_fl_ssl_method_composition_slug(cfg: DictConfig) -> str:
         or _select(cfg, "ssl_method.name", default=None)
         or "unknown_ssl"
     )
-    adapter_family = (
+    adapter_family = _resolve_adapter_runtime_slug(
+        cfg,
         _select(cfg, "round_runtime.adapter_family_name", default=None)
-        or "unknown_family"
     )
     aggregation_backend = (
         _select(cfg, "round_runtime.aggregation_backend_name", default=None)
@@ -160,6 +160,27 @@ def _select(cfg: DictConfig, key: str, *, default: object) -> object:
 def _is_manual_fl_composition(cfg: DictConfig) -> bool:
     composition_mode = _select(cfg, "fl_method.composition_mode", default=None)
     return str(composition_mode or "").strip().lower() == "manual"
+
+
+def _resolve_adapter_runtime_slug(cfg: DictConfig, adapter_family: object) -> str:
+    family = str(adapter_family or "unknown_family").strip() or "unknown_family"
+    adapter_kind = _select(
+        cfg,
+        f"round_runtime.{family}.peft_adapter_name",
+        default=None,
+    )
+    if adapter_kind is None:
+        return family
+    normalized_kind = str(adapter_kind).strip()
+    if not normalized_kind:
+        return family
+    normalized_family = family.lower().replace("-", "_")
+    normalized_kind_key = normalized_kind.lower().replace("-", "_")
+    if normalized_family.startswith(f"{normalized_kind_key}_"):
+        return family
+    if normalized_family.endswith(f"_{normalized_kind_key}"):
+        return family
+    return f"{family}_{normalized_kind}"
 
 
 def _resolve_labeled_exposure_slug(cfg: DictConfig) -> str | None:

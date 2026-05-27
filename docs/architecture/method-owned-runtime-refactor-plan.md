@@ -9,6 +9,10 @@ source of truth가 아니며, 새 작업 판단은 코드, code-adjacent README,
 주요 runtime refactor는 완료됐다. 다음 변경은 새 method, adapter family, runtime
 capability가 실제로 필요할 때만 연다.
 
+최종 method/runtime vocabulary와 `adapter_family`에서 `update_family`로의 전환 계획은
+`docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현행
+method-owned runtime guard를 설명한다.
+
 ## 소유 경계
 
 | 계층 | 소유 |

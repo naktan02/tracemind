@@ -45,6 +45,7 @@ def load_fl_ssl_result_index_records(
     round_runtime = as_mapping(protocol.get("round_runtime"))
     objective = as_mapping(protocol.get("objective"))
     fl_method = as_mapping(protocol.get("fl_method"))
+    manual_axes = as_mapping(fl_method.get("manual_axes"))
     ssl_method = as_mapping(protocol.get("ssl_method"))
     shard_policy = as_mapping(protocol.get("shard_policy"))
     local_update_budget = as_mapping(protocol.get("local_update_budget"))
@@ -60,6 +61,9 @@ def load_fl_ssl_result_index_records(
         or "unknown"
     )
     adapter_family = optional_str(round_runtime.get("adapter_family_name"))
+    update_family = optional_str(
+        round_runtime.get("update_family_name")
+    ) or optional_str(manual_axes.get("update_family"))
     composition_mode = optional_str(fl_method.get("composition_mode"))
     descriptor_name = optional_str(fl_method.get("descriptor_name")) or optional_str(
         ssl_method.get("name")
@@ -135,6 +139,7 @@ def load_fl_ssl_result_index_records(
         shard_policy_name=optional_str(shard_policy.get("name")),
         shard_alpha=optional_float(shard_policy.get("alpha")),
         adapter_family_name=adapter_family,
+        update_family_name=update_family,
         aggregation_backend_name=optional_str(
             round_runtime.get("aggregation_backend_name")
         ),

@@ -377,19 +377,41 @@ class FederatedRoundRuntimeConfig:
 
     adapter_family_name: str
     aggregation_backend_name: str
+    update_family_name: str
     classifier_head_bootstrap_logit_scale: float = 8.0
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None
     peft_classifier: FederatedPeftEncoderRuntimeConfig | None = None
 
+    def __post_init__(self) -> None:
+        normalized_adapter_family = (
+            self.adapter_family_name.strip()
+            .lower()
+            .replace(
+                "-",
+                "_",
+            )
+        )
+        if not normalized_adapter_family:
+            raise ValueError("round_runtime.adapter_family_name must not be empty.")
+        normalized_update_family = (
+            self.update_family_name.strip()
+            .lower()
+            .replace(
+                "-",
+                "_",
+            )
+        )
+        if not normalized_update_family:
+            raise ValueError("round_runtime.update_family_name must not be empty.")
+        self.adapter_family_name = normalized_adapter_family
+        self.update_family_name = normalized_update_family
+
     def runtime_payload_for_adapter_family(self) -> object | None:
         """adapter family 이름과 같은 runtime payload 필드를 돌려준다."""
 
-        runtime_field_name = self.adapter_family_name.strip().lower().replace("-", "_")
-        if not runtime_field_name:
-            raise ValueError("round_runtime.adapter_family_name must not be empty.")
         return peft_encoder_runtime_payload(self) or getattr(
             self,
-            runtime_field_name,
+            self.adapter_family_name,
             None,
         )
 

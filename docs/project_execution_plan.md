@@ -21,6 +21,13 @@ central fixed embedding + classifier seed
 -> FL/runtime translation
 ```
 
+최종 method/runtime 구조 판단은
+`docs/architecture/target-method-runtime-structure.md`를 우선한다. 기존 문서의
+`lora_classifier`, `adapter_family_name`, `fedmatch_agreement` 같은 이름은 현재
+코드와 legacy compatibility 표면일 수 있으며, 새 설계 판단에서는 target 문서의
+`update_family`, `trainable_state`, `method descriptor`, `runtime capability` 용어를
+기준으로 삼는다.
+
 ## Fixed Decisions
 
 - `WindowSummary`, `NormPack`은 활성 경로가 아니다.
@@ -37,12 +44,16 @@ central fixed embedding + classifier seed
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   method-only local/server/aggregation 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 계산만 축별 `methods` 패키지로 승격한다.
-- FL SSL에서 `LoRA + classifier`를 shared family로 승격할 때의 canonical family
-  이름은 `lora_classifier`로 둔다. `classifier_head`에 LoRA 옵션을 섞거나
-  bare `lora` family로 head 의미를 숨기지 않는다.
-- `lora_classifier`의 1차 범위는 FL simulation research path이고, live
-  `agent`/`main_server` runtime translation은 2차 범위다.
-- `lora_classifier` 비교의 고정 조건은 `mxbai_encoder`, tokenizer, LoRA
+- FL SSL에서 `LoRA + classifier`를 공유 가능한 trainable state로 승격할 때의
+  target canonical update family 이름은 `peft_text_classifier`로 둔다.
+  `lora_classifier`는 v1 contract, old artifact, direct import compatibility 이름으로만
+  유지한다. LoRA는 PEFT adapter mechanism이고, classifier head는 linear-head
+  primitive이므로 두 개념을 `classifier_head` 옵션이나 bare `lora` family로 숨기지
+  않는다.
+- `peft_text_classifier`의 1차 범위는 FL simulation research path이고, live
+  `agent`/`main_server` runtime translation은 2차 범위다. 현행 v1 실행 field는
+  migration window 동안 `lora_classifier` 이름을 쓸 수 있다.
+- PEFT text-classifier 비교의 고정 조건은 `mxbai_encoder`, tokenizer, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, non-IID split, seed, metric으로 둔다. 이 중 하나를
   바꾸면 method 비교가 아니라 scaffold 비교로 기록한다.
@@ -165,10 +176,13 @@ Client Signal -> Local SSL Training -> Shared Update -> Aggregation -> New Manif
   `protocol.artifact_persistence.persist_agent_local_updates=false`로 기록한다.
 - report separation: central SSL control table과 FL SSL main comparison table을 같은
   ranking으로 합치지 않는다.
-- method selection: 기본 baseline은 `fl_method.composition_mode=manual`,
+- method selection: 현재 기본 baseline은 v1 실행 field 기준
+  `fl_method.composition_mode=manual`,
   `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`,
   `round_runtime.adapter_family_name=lora_classifier`,
-  `round_runtime.aggregation_backend_name=fedavg`다.
+  `round_runtime.aggregation_backend_name=fedavg`다. target 구조에서는 같은 의미를
+  `update_family_name=peft_text_classifier`와 generic FedAvg runtime profile로
+  표현한다.
 - runtime: 기본 실행은 `gpu_local + mxbai`로 본다. CPU/hash debug 결과는
   성능 숫자나 논문 비교 근거로 쓰지 않는다.
 
@@ -176,9 +190,10 @@ Runtime translation:
 
 - FL SSL winner를 현재 `ModelManifest`나 `TrainingUpdateEnvelope`에 바로 넣지 않는다.
 - 필요한 shared family와 state/update payload를 먼저 정의한다.
-- 현재 1순위 translation 후보는 `lora_classifier` family다.
-- `lora_classifier` state/update payload는 LoRA adapter state와 classifier head
-  state를 함께 표현해야 하며, LoRA weight는 inline JSON vector만 가정하지 않고
+- 현재 1순위 translation 후보는 target 기준 `peft_text_classifier` update family다.
+  v1 contract/report compatibility에서는 `lora_classifier` 이름이 남을 수 있다.
+- `peft_text_classifier` state/update payload는 PEFT adapter state와 linear classifier
+  head state를 함께 표현해야 하며, PEFT weight는 inline JSON vector만 가정하지 않고
   artifact-ref 기반 전송/집계 경로를 열어 둔다.
 
 ## Source Of Truth
@@ -259,6 +274,8 @@ Runtime translation:
 - FedMatch method-owned smoke는 `peer_context=fixed_probe_output_knn`,
   `server_update_policy=fedmatch_partitioned`,
   `local_ssl_policy=fedmatch_agreement` 조합으로 2026-05-22에 확인했다.
+  target 구조에서는 `fedmatch_agreement`를 generic `local_ssl_policy` leaf가 아니라
+  `methods/federated_ssl/fedmatch/`가 소유하는 method-local objective로 이동한다.
   1-round smoke는 previous client snapshot이 없어 helper count가 0인 것이 정상이고,
   2-client 2-round smoke에서는 round 2에서 helper count/refreshed가 1.0으로 기록됐다.
   report 검증 CLI도 PASS했다. 다만 `2 clients x 2 rounds x max_steps=1`도 약 10분
@@ -301,7 +318,8 @@ Runtime translation:
 9. `training_view`는 현재 기본 계획에서 제외한다. 학습 pool을 제한하면 model update
    의미가 바뀌므로, runtime이 여전히 과한 경우에만 별도 debug/runtime ablation으로
    검토한다.
-10. 최적화 후 FedMatch method-owned reduced run을 다시 닫았다. 확인 대상은
+10. 최적화 후 FedMatch method-owned reduced run을 다시 닫았다. 확인 대상은 현행
+   v1 field 기준
    `method_owned`, `local_ssl_policy=fedmatch_agreement`,
    `peer_context=fixed_probe_output_knn`, `server_update_policy=fedmatch_partitioned`,
    helper injection, `partitioned_deltas_artifact_ref` 소비, final report metadata였다.
@@ -310,8 +328,10 @@ Runtime translation:
    verifier PASS했다. 원본 labels-at-client budget은
    `ssl_method.local_budget_policy=original_method`를 명시한 별도 faithful run에서만
    사용한다.
-11. 같은 split/seed/budget에서 `FedAvg + FixMatch + LoRA-classifier` manual baseline과
-   FedMatch method-owned slice를 비교 가능한 reduced report로 맞춘다.
+11. 같은 split/seed/budget에서 현행
+   `FedAvg + FixMatch + LoRA-classifier` manual baseline과 FedMatch method-owned slice를
+   비교 가능한 reduced report로 맞춘다. target 구조에서는 이 manual baseline을
+   `update_family=peft_text_classifier`로 표현한다.
 12. FixMatch를 `fedmatch_partitioned`의 stateless `psi` objective로 주입하는 hybrid는
    validator와 smoke는 열려 있으므로, FedMatch 기본 slice가 안정된 뒤 ablation으로
    실행한다. FlexMatch/FreeMatch처럼 state surface가 필요한 hybrid는 계속 실행 전에
@@ -321,7 +341,9 @@ Runtime translation:
 13. full ablation, full `client_count=1..10` sweep, full-budget main run은 후보와
    비교 조건을 먼저 확정한 뒤 실행한다. `alpha=0.1`은 기본 비교가 아니라 최후
    stress 확인으로 남긴다.
-14. winner를 `lora_classifier` family 또는 현실적인 fallback family로 translation 한다.
+14. winner를 target 기준 `peft_text_classifier` update family 또는 현실적인 fallback
+    update family로 translation 한다. v1 `lora_classifier` 이름은 compatibility
+    표면에만 남긴다.
 
 ## Validation Criteria
 
@@ -337,7 +359,7 @@ Runtime translation:
 1. query buffer raw text retention 기본값.
 2. LoRA target module/rank/alpha/dropout 변경 여부. 기본 비교 scaffold는
    `rank=8`, `alpha=16`, `dropout=0.1`, `target_modules=all-linear`로 고정한다.
-3. FL 범위를 `lora_classifier` family에서 LoRA adapter, classifier head,
+3. FL 범위를 `peft_text_classifier` update family에서 PEFT adapter, linear head,
    aggregation artifact까지 어디까지 열지.
 4. private adapter/head 도입 시점.
 5. secure aggregation과 DP 도입 시점.

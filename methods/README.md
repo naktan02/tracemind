@@ -37,6 +37,12 @@ agent / main_server / scripts
 `methods`는 `shared`와 외부 ML 라이브러리만 import한다. `agent`,
 `main_server`, `scripts`를 import하지 않는다.
 
+최종 method/runtime 구조와 migration plan은
+`docs/architecture/target-method-runtime-structure.md`를 우선한다. 현재 코드의
+`adapter_family`, `lora_classifier`, `classification/feature_head` 이름은 현행 구현과
+compatibility 표면을 설명할 수 있지만, 새 설계 판단에서는 `update_family`,
+`trainable_state`, `linear_head`, `peft_text_classifier` 용어를 기준으로 삼는다.
+
 새 알고리즘이나 논문 method를 추가할 때는 먼저 `methods/`에 method-local module을
 만든다. `agent`와 `main_server`에 method 이름을 가진 runtime 파일을 늘리는 방식은
 framework seam이 얕다는 신호로 본다. 두 runtime 계층은 raw text 접근, private
@@ -76,10 +82,11 @@ method 이름과 policy 의미는 descriptor와 `methods/federated_ssl/<method>/
   contract와 direct import 호환성을 위한 legacy shim package
 - `methods/adaptation/diagonal_scale/`: diagonal-scale heuristic update 계산과
   family별 aggregation adapter
-- `methods/adaptation/classification/`: modality-independent classification
-  adapter primitive와 classifier-head projection
+- `methods/adaptation/classification/`: 현행 modality-independent classification
+  primitive와 classifier-head projection. target 위치는 `methods/classification/linear_head`
 - `methods/adaptation/text_classifier/`: PEFT text encoder + classifier head
-  adaptation variant와 text-specific training/update core
+  adaptation variant와 text-specific training/update core. target canonical 이름은
+  `methods/adaptation/peft_text_classifier`
 - `methods/adaptation/privacy_guards/`: shared adapter update clipping/DP
   policy core와 registry
 - `methods/evaluation/`: 중앙 SSL과 FL SSL이 공유하는 평가 metric 계산 helper

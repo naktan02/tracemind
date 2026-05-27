@@ -44,6 +44,7 @@ def _report_payload(
     ssl_algorithm: str = "fixmatch",
     ssl_method: str = "fixmatch_usb_v1",
     adapter_family: str = "lora_classifier",
+    update_family: str = "peft_text_classifier",
     aggregation: str = "fedavg",
     server_update_policy: str = "fedavg_merged_delta",
     update_partition_policy: str = "unified",
@@ -106,6 +107,7 @@ def _report_payload(
             },
             "round_runtime": {
                 "adapter_family_name": adapter_family,
+                "update_family_name": update_family,
                 "aggregation_backend_name": aggregation,
             },
             "fl_capabilities": {
@@ -161,6 +163,7 @@ def _expectation(
         expected_ssl_algorithm="fixmatch",
         expected_ssl_method="fixmatch_usb_v1",
         expected_adapter_family="lora_classifier",
+        expected_update_family="peft_text_classifier",
         expected_aggregation="fedavg",
         expected_server_update_policy="fedavg_merged_delta",
         expected_update_partition_policy="unified",
@@ -335,6 +338,25 @@ def test_verify_federated_report_flags_method_and_runtime_drift() -> None:
     assert (
         "round_runtime.adapter_family_name expected 'lora_classifier', "
         "got 'diagonal_scale'." in result.errors
+    )
+
+
+def test_verify_federated_report_flags_update_family_drift() -> None:
+    result = verify_federated_simulation_report_payload(
+        artifact="report.json",
+        payload=_report_payload(
+            client_count=2,
+            completed_rounds=1,
+            round_budget=1,
+            update_family="prototype_pack",
+        ),
+        expectation=_expectation(),
+    )
+
+    assert not result.passed
+    assert (
+        "round_runtime.update_family_name expected 'peft_text_classifier', "
+        "got 'prototype_pack'." in result.errors
     )
 
 

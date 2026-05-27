@@ -1,5 +1,11 @@
 # Text Classifier Adaptation Refactor Plan
 
+상태: historical migration 기록이다. `lora_classifier` 중심 구현을
+`text_classifier/peft_encoder`, `classification/feature_head`, `peft_adapters`로
+나눈 실제 이동 과정을 설명한다. 최종 method/runtime 구조, canonical 이름,
+`adapter_family`에서 `update_family`로의 용어 전환은
+`docs/architecture/target-method-runtime-structure.md`를 우선한다.
+
 이 문서는 `methods/adaptation/lora_classifier/` 중심 구조를 장기적으로
 교체 가능한 text classifier adaptation 구조로 바꾸기 위한 계획이다. 지금 단계에서는
 코드를 이동하지 않고, 다음 리팩터링의 목표 구조와 검증 기준만 고정한다.

@@ -228,6 +228,12 @@ def verify_federated_simulation_report_payload(
     )
     _expect_equal(
         errors,
+        "round_runtime.update_family_name",
+        round_runtime.get("update_family_name"),
+        expectation.expected_update_family,
+    )
+    _expect_equal(
+        errors,
         "round_runtime.aggregation_backend_name",
         round_runtime.get("aggregation_backend_name"),
         expectation.expected_aggregation,

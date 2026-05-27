@@ -31,6 +31,7 @@ class FederatedReportExpectation:
     expected_ssl_algorithm: str | None = None
     expected_ssl_method: str | None = None
     expected_adapter_family: str | None = None
+    expected_update_family: str | None = None
     expected_aggregation: str | None = None
     expected_server_update_policy: str | None = None
     expected_update_partition_policy: str | None = None

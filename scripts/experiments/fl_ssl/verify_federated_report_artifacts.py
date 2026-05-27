@@ -48,6 +48,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         expected_ssl_algorithm=args.expected_ssl_algorithm,
         expected_ssl_method=args.expected_ssl_method,
         expected_adapter_family=args.expected_adapter_family,
+        expected_update_family=args.expected_update_family,
         expected_aggregation=args.expected_aggregation,
         expected_server_update_policy=args.expected_server_update_policy,
         expected_update_partition_policy=args.expected_update_partition_policy,
@@ -188,6 +189,7 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--expected-ssl-algorithm")
     parser.add_argument("--expected-ssl-method")
     parser.add_argument("--expected-adapter-family")
+    parser.add_argument("--expected-update-family")
     parser.add_argument("--expected-aggregation")
     parser.add_argument("--expected-server-update-policy")
     parser.add_argument("--expected-update-partition-policy")

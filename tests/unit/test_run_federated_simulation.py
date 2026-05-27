@@ -462,6 +462,7 @@ def _legacy_manual_ssl_method_config() -> FederatedSslMethodConfig:
 def _default_round_runtime_config(
     *,
     adapter_family_name: str = "lora_classifier",
+    update_family_name: str = "peft_text_classifier",
     aggregation_backend_name: str = "fedavg",
     classifier_head_bootstrap_logit_scale: float = 8.0,
     lora_classifier: FederatedPeftEncoderRuntimeConfig | None = None,
@@ -470,6 +471,7 @@ def _default_round_runtime_config(
     return FederatedRoundRuntimeConfig(
         adapter_family_name=adapter_family_name,
         aggregation_backend_name=aggregation_backend_name,
+        update_family_name=update_family_name,
         classifier_head_bootstrap_logit_scale=classifier_head_bootstrap_logit_scale,
         lora_classifier=(
             lora_classifier
@@ -2130,7 +2132,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
             "manual_axes": {
                 "client_ssl_objective": "fixmatch",
                 "server_aggregation": "fedavg",
-                "update_family": "lora_classifier",
+                "update_family": "peft_text_classifier",
             },
         },
         security_policy=None,
@@ -2141,6 +2143,7 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         output_name="manual_plan_mismatch",
         round_runtime_config=_default_round_runtime_config(
             adapter_family_name="diagonal_scale",
+            update_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
         ),
         training_task_config=_default_training_task_config(
@@ -2276,6 +2279,7 @@ def test_run_simulation_request_rejects_missing_lora_runtime_config(
         round_runtime_config=FederatedRoundRuntimeConfig(
             adapter_family_name="lora_classifier",
             aggregation_backend_name="fedavg",
+            update_family_name="peft_text_classifier",
             classifier_head_bootstrap_logit_scale=8.0,
             lora_classifier=None,
         ),

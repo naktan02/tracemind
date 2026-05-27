@@ -326,6 +326,7 @@ def test_simulation_report_builder_computes_round_client_and_split_metrics() -> 
         round_runtime_config=FederatedRoundRuntimeConfig(
             adapter_family_name="diagonal_scale",
             aggregation_backend_name="fedavg",
+            update_family_name="diagonal_scale",
         ),
         embedding_spec=EmbeddingAdapterSpec(
             backend="mxbai",
@@ -664,5 +665,6 @@ def test_simulation_report_builder_rejects_unknown_metric_names() -> None:
             round_runtime_config=FederatedRoundRuntimeConfig(
                 adapter_family_name="diagonal_scale",
                 aggregation_backend_name="fedavg",
+                update_family_name="diagonal_scale",
             ),
         )

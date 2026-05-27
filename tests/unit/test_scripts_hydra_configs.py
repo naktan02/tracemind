@@ -494,6 +494,7 @@ def test_federated_simulation_uses_smoke_preset_by_default() -> None:
     assert cfg.local_update_profile.algorithm_profile_name == "peft_pseudo_label_v1"
     assert "fl_profile" not in cfg
     assert "round_runtime_profile" not in cfg
+    assert cfg.round_runtime.update_family_name == "peft_text_classifier"
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.round_runtime.classifier_head_bootstrap_logit_scale == 8.0
@@ -696,6 +697,7 @@ def test_federated_simulation_config_keeps_fl_semantic_axes_separate() -> None:
         cfg.training_task.objective.algorithm_profile_name
         == cfg.local_update_profile.algorithm_profile_name
     )
+    assert cfg.round_runtime.update_family_name == "peft_text_classifier"
     assert cfg.round_runtime.adapter_family_name == "peft_classifier"
     assert cfg.round_runtime.aggregation_backend_name == "fedavg"
     assert cfg.report.labeled_ratio == cfg.client_pool_split.labeled_ratio
@@ -1244,7 +1246,7 @@ def test_federated_simulation_supports_manual_fl_method_plan() -> None:
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "peft_classifier"
+    assert plan.manual_axes.update_family == "peft_text_classifier"
 
 
 def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides() -> (
@@ -1277,7 +1279,7 @@ def test_federated_simulation_manual_plan_supports_direct_runtime_leaf_overrides
     assert plan.execution_role == "manual_baseline"
     assert plan.manual_axes.client_ssl_objective == "fixmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "lora_classifier"
+    assert plan.manual_axes.update_family == "peft_text_classifier"
 
 
 def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name() -> (
@@ -1313,7 +1315,7 @@ def test_federated_simulation_manual_plan_switches_ssl_algorithm_by_hydra_name()
     assert cfg.training_task.objective.query_ssl.algorithm_name == "flexmatch"
     assert plan.manual_axes.client_ssl_objective == "flexmatch"
     assert plan.manual_axes.server_aggregation == "fedavg"
-    assert plan.manual_axes.update_family == "peft_classifier"
+    assert plan.manual_axes.update_family == "peft_text_classifier"
 
 
 def test_train_lora_supervised_classifier_defaults_to_gpu_online_scaffold() -> None:

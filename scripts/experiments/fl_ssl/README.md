@@ -209,19 +209,21 @@ uv run python -m scripts.experiments.fl_ssl.run_federated_simulation \
 ```text
 runs/fl_ssl/
   manual_baselines/
-    fixmatch_usb_v1__peft_classifier__fedavg/
+    fixmatch_usb_v1__peft_classifier_lora__fedavg/
       labeled-ourafla_reddit_unlabeled-ourafla_reddit_shared_client_seed42/
         clients10_rounds1/
         clients10_rounds5/
   fedmatch/
-    fedmatch__peft_classifier__fedmatch_partitioned/
+    fedmatch__peft_classifier_lora__fedmatch_partitioned/
       labeled-szegeelim_general4_unlabeled-ourafla_reddit_labels_pc100_shared_client_seed42/
         clients10_rounds5/
 ```
 
-manual baseline의 composition 폴더는 `query_ssl_method + adapter_family +
-aggregation_backend`를 쓴다. FedMatch 같은 `method_owned` run은 Query SSL lower axis가
-아니라 `method_descriptor + adapter_family + server_update_policy`를 쓴다.
+manual baseline의 composition 폴더는 `query_ssl_method + adapter runtime +
+aggregation_backend`를 쓴다. `peft_classifier`처럼 adapter mechanism이 별도 축인
+family는 `peft_classifier_lora`처럼 실제 `peft_adapter_name`을 붙인다. FedMatch 같은
+`method_owned` run은 Query SSL lower axis가 아니라
+`method_descriptor + adapter runtime + server_update_policy`를 쓴다.
 
 split 폴더명은 labeled/unlabeled source, labeled exposure, seed만 사람이 읽는
 이름으로 남긴다. Dirichlet alpha, manifest hash, 전체 source JSONL 경로 같은 세부

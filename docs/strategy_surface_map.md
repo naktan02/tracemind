@@ -13,6 +13,13 @@ central fixed embedding + classifier seed
 -> FL/runtime translation
 ```
 
+- 최종 method/runtime 구조 판단은
+  `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현재
+  실행 표면과 legacy compatibility 이름을 함께 보여준다.
+- 현재 표의 `adapter_family_name`, `lora_classifier`, `fedmatch_agreement`는 현행 코드와
+  report compatibility 용어일 수 있다. target 구조에서는 각각
+  `update_family_name`, `peft_text_classifier`, method-local FedMatch objective로
+  정리한다.
 - 중앙 SSL은 pooled/offline control이다.
 - 논문 메인 비교는 `FL SSL under non-IID`에서 수행한다.
 - runtime v1은 `embedding -> global classifier -> local interpretation` baseline을 우선한다.

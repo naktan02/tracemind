@@ -61,6 +61,12 @@ conf/
 - strategy axis는 실제로 교체 가능한 계산/정책 축이다.
 - run control은 central SSL control, FL SSL처럼 비교표의 맥락 안에서 쓰는 실행 조건 묶음이다.
 
+최종 method/runtime vocabulary는
+`docs/architecture/target-method-runtime-structure.md`를 기준으로 한다. 현재
+`round_runtime.adapter_family_name`은 v1 실행 field이고, prototype 기반 update까지
+포괄하는 target 구조에서는 `update_family_name` 또는
+`trainable_state_family_name`으로 전환한다.
+
 `execution_context/query_data_source`는 query-domain 데이터 주소록과 선택값을
 소유한다. `query_data_sources`에 source별 labeled/unlabeled/validation/test JSONL을
 등록하고, 실행 시 `query_data_selection.labeled`, `unlabeled`, `validation`,
@@ -103,6 +109,9 @@ FL SSL simulation은 config 의미가 겹치기 쉬우므로 아래처럼 읽는
   - LoRA-classifier backbone/LoRA 세부 값은
     `strategy_axes/adaptation/transformer_backbone`과
     `strategy_axes/adaptation/peft_adapter`에서 온다.
+  - target 구조에서는 `adapter_family_name=lora_classifier`를
+    `update_family_name=peft_text_classifier` compatibility alias로 축소하고,
+    prototype은 adapter가 아니라 `prototype_pack` update family로 표현한다.
 - `strategy_axes/fl/shard_policy`
   - `cfg.shard_policy`로 compose된다.
   - non-IID client split 방식만 소유한다.

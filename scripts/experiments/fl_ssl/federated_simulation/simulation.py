@@ -259,7 +259,7 @@ def _build_default_manual_execution_plan(
                 "server_aggregation": (
                     request.round_runtime_config.aggregation_backend_name
                 ),
-                "update_family": request.round_runtime_config.adapter_family_name,
+                "update_family": request.round_runtime_config.update_family_name,
             },
         },
         security_policy=None,
@@ -299,12 +299,12 @@ def _require_execution_plan_matches_runtime(
             f"{manual_axes.server_aggregation!r} != "
             f"{request.round_runtime_config.aggregation_backend_name!r}."
         )
-    if manual_axes.update_family != request.round_runtime_config.adapter_family_name:
+    if manual_axes.update_family != request.round_runtime_config.update_family_name:
         raise ValueError(
             "manual fl_method.update_family must match "
-            "round_runtime.adapter_family_name: "
+            "round_runtime.update_family_name: "
             f"{manual_axes.update_family!r} != "
-            f"{request.round_runtime_config.adapter_family_name!r}."
+            f"{request.round_runtime_config.update_family_name!r}."
         )
 
 

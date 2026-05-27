@@ -190,6 +190,7 @@ def _build_filters(
         "shard_policies": _unique(row.get("shard_policy_name") for row in runs),
         "shard_alphas": _unique(row.get("shard_alpha") for row in runs),
         "adapter_families": _unique(row.get("adapter_family_name") for row in runs),
+        "update_families": _unique(row.get("update_family_name") for row in runs),
         "aggregation_backends": _unique(
             row.get("aggregation_backend_name") for row in runs
         ),

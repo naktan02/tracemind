@@ -52,6 +52,7 @@ class ExperimentRunRecord:
     shard_policy_name: str | None
     shard_alpha: float | None
     adapter_family_name: str | None
+    update_family_name: str | None
     aggregation_backend_name: str | None
     fl_composition_mode: str | None
     fl_execution_role: str | None

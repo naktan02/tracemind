@@ -4,6 +4,10 @@
 연구 순서는 `docs/project_execution_plan.md`, 코드 경계는
 `docs/architecture/system-overview.md`, 전략 축은 `docs/strategy_surface_map.md`를
 source of truth로 본다.
+최종 method/runtime 구조와 `adapter_family`에서 `update_family`로의 용어 전환은
+`docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서의
+`lora_classifier`, `adapter family`, `fedmatch_agreement` 표기는 현행 v1 실행/검증
+표면일 수 있다.
 
 ## 현재 상태
 

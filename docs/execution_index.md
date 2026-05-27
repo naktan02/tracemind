@@ -18,15 +18,14 @@ central fixed embedding + classifier seed
 | `plan.md` | 연구 비전과 global/local 경계 |
 | `docs/project_execution_plan.md` | active decision, phase, next step |
 | `docs/architecture/system-overview.md` | 런타임 구성요소와 코드 경계 |
+| `docs/architecture/target-method-runtime-structure.md` | 최종 method/runtime 구조와 migration plan |
 | `docs/architecture/method-owned-runtime-refactor-plan.md` | method-owned core와 runtime adapter 경계 guard |
-| `docs/architecture/text-classifier-adaptation-refactor-plan.md` | text classifier adaptation, PEFT mechanism, aggregation projection 분리 계획 |
 | `docs/architecture/pattern-integrity-refactor-backlog.md` | 패턴 경계 guard와 남은 후보 |
 | `docs/architecture/code-expression-guidelines.md` | 코드 표현 밀도와 읽기 난이도 기준 |
 | `shared/src/contracts/README.md` | payload 계약 해석 |
 | `docs/contracts/legacy_contract_ledger.md` | legacy/compatibility 표면의 소유자와 제거 조건 |
 | `docs/contracts/lora_classifier_v1_terminology_audit.md` | `lora_classifier` v1 contract 용어와 구현 owner 경로 분류 |
 | `docs/operations/local-runbook.md` | 로컬 실행, GPU preflight, smoke |
-| `docs/operations/fl_ssl_runtime_performance_audit.md` | FL SSL runtime 최적화 전후 수치 기록 |
 | `docs/quality/test-strategy.md` | 테스트 층과 보호 범위 |
 | `docs/governance/document-governance.md` | 문서 class와 갱신 규칙 |
 | `methods/README.md` | 재사용 algorithm/method core 소유 경계 |
@@ -40,30 +39,37 @@ central fixed embedding + classifier seed
 | `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
 | `docs/contracts/central_lora_classifier_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
-| `docs/operations/fl_ssl_execution_audit.md` | 현재 FL SSL 목표 대비 artifact 검증 감사표 |
-| `docs/operations/fl_ssl_runtime_performance_audit.md` | FedMatch reduced runtime 개선 수치와 남은 병목 |
-| `docs/staged_execution_roadmap.md` | Phase map과 current checkpoint |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
 | `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
 | `docs/contracts/algorithm_extension_guide.md` | 새 protocol/전략 축 세부 |
 | `docs/contracts/fl_ssl_method_capability_matrix.md` | FedMatch/FedLGMatch/(FL)^2 선택 전 capability matrix |
+
+## Reference / Historical Docs
+
+| 문서 | 역할 |
+|---|---|
+| `docs/architecture/text-classifier-adaptation-refactor-plan.md` | 완료된 text classifier migration 기록. legacy shim 변경 때만 읽는다 |
+| `docs/operations/fl_ssl_execution_audit.md` | 특정 시점 FL SSL artifact 감사 기록 |
+| `docs/operations/fl_ssl_runtime_performance_audit.md` | FedMatch runtime 성능 개선 전후 수치 기록 |
+| `docs/staged_execution_roadmap.md` | phase 이름만 보는 축약 지도. 현재 우선순위는 project execution plan이 소유 |
 
 ## Fast Code Paths
 
 Seed / central SSL:
 
 1. relevant `conf/**`
-2. `docs/contracts/query_buffer_v1.md`
-3. `docs/contracts/central_lora_classifier_trainer_contract.md`
-4. `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
-5. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
-6. `scripts/experiments/query_lora_ssl/*`
-7. `methods/adaptation/text_classifier/peft_encoder/*`
-8. `methods/evaluation/*`
-9. `methods/adaptation/query_classifier_adaptation/*`
-10. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
-11. `methods/ssl/*`
-12. `methods/adaptation/*`
+2. `docs/architecture/target-method-runtime-structure.md`
+3. `docs/contracts/query_buffer_v1.md`
+4. `docs/contracts/central_lora_classifier_trainer_contract.md`
+5. `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
+6. `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
+7. `scripts/experiments/query_lora_ssl/*`
+8. `methods/adaptation/text_classifier/peft_encoder/*`
+9. `methods/evaluation/*`
+10. `methods/adaptation/query_classifier_adaptation/*`
+11. `methods/ssl/NEW_METHOD.md` (새 Query SSL algorithm 추가 시)
+12. `methods/ssl/*`
+13. `methods/adaptation/*`
 
 Agent runtime:
 
@@ -91,7 +97,8 @@ Apps:
 
 1. 요청이 seed, central SSL control, FL SSL non-IID, runtime translation 중 어디인지 구분한다.
 2. 변경 소유 경계가 `shared`, `methods`, `conf`, `agent`, `main_server`, `scripts`, `apps`, `docs` 중 어디인지 정한다.
-3. 전략/알고리즘 추가라면 `docs/strategy_surface_map.md`를 먼저 확인한다.
+3. 전략/알고리즘 추가라면 `docs/architecture/target-method-runtime-structure.md`를
+   먼저 보고, 현행 실행 표면은 `docs/strategy_surface_map.md`에서 확인한다.
 4. SSL 논문 비교라면 중앙 control과 FL main comparison을 분리한다.
 5. `docs/notes/**`는 archive-only로 둔다.
 6. FL SSL smoke/main/sweep은 기본적으로 `gpu_local + mxbai`로 실행한다.

@@ -4,6 +4,9 @@
 세부 설명과 현재 우선순위는
 [`docs/project_execution_plan.md`](project_execution_plan.md)
 를 기준으로 본다.
+최종 method/runtime 구조와 용어는
+[`docs/architecture/target-method-runtime-structure.md`](architecture/target-method-runtime-structure.md)
+를 기준으로 본다.
 
 ## Phase Map
 
@@ -35,7 +38,7 @@
 - `alpha=0.3`을 기본/main condition으로 둔다.
 - Dirichlet `alpha=0.1`은 마지막 stress/robustness 확인으로만 연다.
 - full-budget preset은 `30 communication rounds`, `local_epochs=1`,
-  `max_steps=50`이다. 새 method/wiring은 먼저 `1-round` 또는 `5-round` reduced
+  `max_steps=20`이다. 새 method/wiring은 먼저 `1-round` 또는 `5-round` reduced
   run으로 확인한 뒤 full-budget 비교로 올린다.
 - smoke preset은 실행 확인용 `3 rounds`지만, 현재 method/wiring 검증은 필요에
   따라 `1-round` smoke 또는 `5-round` reduced run으로 제한한다.
@@ -46,7 +49,9 @@
 
 ### Phase 5. 시스템 FL runtime translation
 
-- FL SSL winner를 우선 `LoRA family + classifier` 후보로 runtime/privacy 제약에 맞게 옮긴다.
+- FL SSL winner를 우선 `peft_text_classifier` update family 후보로
+  runtime/privacy 제약에 맞게 옮긴다. v1 `lora_classifier` 이름은 compatibility
+  표면으로만 해석한다.
 
 ### Phase 6. richer shared adapter
 
@@ -74,6 +79,7 @@
 - `QueryBuffer` 단계에서는 저장만 하고 실제 학습은 하지 않는다.
 - raw query text는 로컬에만 남기고 서버로 보내지 않는다.
 - `ScoredEventRepository`와 `QueryBuffer` 역할을 섞지 않는다.
-- `lora_classifier` shared payload는 FL simulation/runtime translation 후보로 이미
-  열려 있다. `projection_head`, full encoder, 추가 PEFT family payload는 실제
-  필요성이 확인되기 전까지 열지 않는다.
+- `peft_text_classifier` update family는 FL simulation/runtime translation 후보로 이미
+  열려 있다. v1 `lora_classifier` shared payload 이름은 compatibility 표면이다.
+  `projection_head`, full encoder, 추가 PEFT family payload는 실제 필요성이 확인되기
+  전까지 열지 않는다.

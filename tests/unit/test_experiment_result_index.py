@@ -127,6 +127,7 @@ def test_result_index_schema_migration_adds_run_control_columns(
     assert "unique_labeled_row_count" in columns
     assert "lora_rank" in columns
     assert "lora_use_dora" in columns
+    assert "update_family_name" in columns
 
 
 def test_load_result_index_records_normalizes_fl_ssl_report_shape(
@@ -165,6 +166,7 @@ def test_load_result_index_records_normalizes_fl_ssl_report_shape(
     assert records.run.shard_policy_name == "dirichlet_label_skew"
     assert records.run.shard_alpha == 0.3
     assert records.run.adapter_family_name == "lora_classifier"
+    assert records.run.update_family_name == "peft_text_classifier"
     assert records.run.aggregation_backend_name == "fedavg"
     assert records.run.fl_composition_mode == "manual"
     assert records.run.fl_execution_role == "manual_baseline"
@@ -195,6 +197,7 @@ def test_load_result_index_records_reads_peft_classifier_objective(
 
     assert records.run.method_family == "manual_baselines"
     assert records.run.adapter_family_name == "peft_classifier"
+    assert records.run.update_family_name == "peft_text_classifier"
     assert records.run.peft_adapter_name == "lora"
     assert records.run.lora_rank == 8
     assert records.run.lora_alpha == 16
@@ -389,6 +392,9 @@ def test_fl_ssl_dashboard_filters_include_peft_classifier_v2_and_legacy_v1(
         "lora_classifier",
         "peft_classifier",
     ]
+    assert bundle["filters"]["update_families"] == [
+        "peft_text_classifier",
+    ]
     assert bundle["filters"]["aggregation_backends"] == ["fedavg"]
     assert bundle["filters"]["peft_adapter_names"] == ["lora"]
     assert {
@@ -467,9 +473,10 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     protocol = payload["protocol"]
     protocol["round_runtime"] = {
         "adapter_family_name": "peft_classifier",
+        "update_family_name": "peft_text_classifier",
         "aggregation_backend_name": "fedavg",
     }
-    protocol["fl_method"]["manual_axes"]["update_family"] = "peft_classifier"
+    protocol["fl_method"]["manual_axes"]["update_family"] = "peft_text_classifier"
     protocol["objective"] = {
         "query_ssl.method_name": "fixmatch_usb_v1",
         "query_ssl.algorithm_name": "fixmatch",
@@ -850,6 +857,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
             },
             "round_runtime": {
                 "adapter_family_name": "lora_classifier",
+                "update_family_name": "peft_text_classifier",
                 "aggregation_backend_name": "fedavg",
             },
             "ssl_method": {
@@ -864,7 +872,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
                 "manual_axes": {
                     "client_ssl_objective": "fixmatch",
                     "server_aggregation": "fedavg",
-                    "update_family": "lora_classifier",
+                    "update_family": "peft_text_classifier",
                 },
             },
             "objective": {

@@ -83,6 +83,7 @@ def build_simulation_request_from_config(
     round_runtime_config = FederatedRoundRuntimeConfig(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
+        update_family_name=str(cfg.round_runtime.update_family_name),
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
@@ -323,7 +324,7 @@ def _with_inferred_manual_axes(
     inferred_axes = {
         "client_ssl_objective": _infer_client_ssl_objective_name(cfg),
         "server_aggregation": str(cfg.round_runtime.aggregation_backend_name),
-        "update_family": str(cfg.round_runtime.adapter_family_name),
+        "update_family": str(cfg.round_runtime.update_family_name),
     }
     explicit_axes = {
         key: value

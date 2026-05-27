@@ -23,6 +23,9 @@ central fixed embedding + classifier seed
 - 전역 서버는 round lifecycle, aggregation, artifact publication을 소유한다.
 - 공통 payload와 canonical payload 해석 규칙은 `shared`가 소유한다.
 - 교체 가능한 알고리즘/method 계산 core는 `methods`가 소유한다.
+- 최종 method/runtime 구조 판단은
+  `docs/architecture/target-method-runtime-structure.md`를 우선한다. 이 문서는 현재
+  런타임 개요이고, target 문서는 future-facing 용어와 migration plan을 소유한다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`가 사람이 읽는 시작점이고,
   method-only 변형은 이 폴더에 둔다. 두 개 이상 방법론에서 공유되는 계산은 축별
   methods 패키지로 승격한다.

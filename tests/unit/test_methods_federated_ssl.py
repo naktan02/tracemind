@@ -160,6 +160,23 @@ def test_federated_ssl_execution_plan_supports_manual_lower_axes() -> None:
     assert plan.manual_axes.update_family == "diagonal_scale"
 
 
+def test_federated_ssl_execution_plan_preserves_configured_update_family() -> None:
+    plan = build_federated_ssl_execution_plan(
+        fl_method={
+            "composition_mode": COMPOSITION_MODE_MANUAL,
+            "manual_axes": {
+                "client_ssl_objective": "fixmatch",
+                "server_aggregation": "fedavg",
+                "update_family": "peft_text_classifier",
+            },
+        },
+        security_policy={"name": "plaintext"},
+        method_descriptor=None,
+    )
+
+    assert plan.manual_axes.update_family == "peft_text_classifier"
+
+
 def test_federated_ssl_execution_plan_rejects_method_owned_manual_axes() -> None:
     with pytest.raises(ValueError, match="manual_axes"):
         build_federated_ssl_execution_plan(

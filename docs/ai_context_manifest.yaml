@@ -14,13 +14,21 @@ source_of_truth_priority:
   - shared/src/domain/entities/*
   - shared/src/contracts/README.md
   - plan.md
+  - docs/project_execution_plan.md
+  - docs/architecture/target-method-runtime-structure.md
+  - docs/architecture/system-overview.md
   - docs/contracts/*
-  - docs/*.md
-  - docs/architecture/*
+  - docs/strategy_surface_map.md
   - docs/api/*
-  - docs/operations/*
+  - docs/operations/local-runbook.md
   - docs/quality/*
   - docs/governance/*
+
+document_interpretation:
+  - docs listed in active_entrypoints or task route read_order are active guidance.
+  - docs not listed there are reference or historical unless their own header says otherwise.
+  - docs/notes/** is archive-only.
+  - completed migration/status docs must not override docs/architecture/target-method-runtime-structure.md.
 
 path_specific_instructions:
   - shared/AGENTS.md
@@ -38,17 +46,16 @@ active_entrypoints:
   - plan.md
   - docs/project_execution_plan.md
   - docs/architecture/system-overview.md
+  - docs/architecture/target-method-runtime-structure.md
   - docs/architecture/code-expression-guidelines.md
   - docs/architecture/pattern-integrity-refactor-backlog.md
   - docs/architecture/method-owned-runtime-refactor-plan.md
-  - docs/architecture/text-classifier-adaptation-refactor-plan.md
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/lora_classifier_v1_terminology_audit.md
   - docs/contracts/central_lora_classifier_trainer_contract.md
   - docs/contracts/fl_ssl_method_capability_matrix.md
   - docs/fl_runtime_implementation_checklist.md
-  - docs/operations/fl_ssl_runtime_performance_audit.md
   - docs/strategy_surface_map.md
   - docs/operations/local-runbook.md
   - docs/quality/test-strategy.md
@@ -80,6 +87,7 @@ task_routes:
       - docs/execution_index.md
       - plan.md
       - docs/project_execution_plan.md
+      - docs/architecture/target-method-runtime-structure.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/contracts/central_lora_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
@@ -105,16 +113,17 @@ task_routes:
   strategy_addition:
     read_order:
       - AGENTS.md
+      - docs/architecture/target-method-runtime-structure.md
       - docs/strategy_surface_map.md
       - docs/contracts/strategy_addition_playbook.md
       - docs/contracts/fl_ssl_method_capability_matrix.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
-      - docs/architecture/text-classifier-adaptation-refactor-plan.md
       - methods/README.md
       - conf/README.md
       - relevant path-specific AGENTS.md
     conditional_read:
       - docs/contracts/algorithm_extension_guide.md when protocol details are needed
+      - docs/architecture/text-classifier-adaptation-refactor-plan.md only when changing legacy lora_classifier compatibility shims
     verify:
       - family or strategy boundary stays explicit
       - config source of truth stays singular
@@ -150,6 +159,7 @@ task_routes:
       - docs/AGENTS.md
       - docs/execution_index.md
       - docs/architecture/system-overview.md
+      - docs/architecture/target-method-runtime-structure.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
       - docs/project_execution_plan.md
       - methods/README.md

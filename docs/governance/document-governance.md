@@ -24,15 +24,16 @@
 | AI 작업 라우팅 | `docs/ai_context_manifest.yaml` |
 | 읽기 순서와 문서 지도 | `docs/execution_index.md` |
 | 시스템 구조와 코드 경계 | `docs/architecture/system-overview.md` |
+| 최종 method/runtime 구조 | `docs/architecture/target-method-runtime-structure.md` |
 | algorithm/method core 경계 | `methods/README.md`, `methods/**/README.md` |
 | Hydra config group 경계 | `conf/README.md` |
 | 활성 연구/시스템 계획 | `docs/project_execution_plan.md` |
-| staged phase map | `docs/staged_execution_roadmap.md` |
+| staged phase map | `docs/staged_execution_roadmap.md`는 phase 이름 축약본이며 현재 우선순위는 `docs/project_execution_plan.md` |
 | API endpoint 표면 | `docs/api/api-surface.md`, `agent/src/api/*`, `main_server/src/api/*` |
 | payload 필드와 의미 | `shared/src/contracts/*.py`, `shared/src/contracts/README.md` |
 | local run/smoke 절차 | `docs/operations/local-runbook.md` |
 | 테스트 전략 | `docs/quality/test-strategy.md` |
-| 알고리즘/전략 추가 절차 | `docs/strategy_surface_map.md`, `docs/contracts/strategy_addition_playbook.md`, 필요 시 `docs/contracts/algorithm_extension_guide.md` |
+| 알고리즘/전략 추가 절차 | `docs/architecture/target-method-runtime-structure.md`, `docs/strategy_surface_map.md`, `docs/contracts/strategy_addition_playbook.md`, 필요 시 `docs/contracts/algorithm_extension_guide.md` |
 | query buffer local boundary | `docs/contracts/query_buffer_v1.md`, `agent/src/infrastructure/repositories/query_buffer_repository.py` |
 | child-support local boundary | `shared/src/contracts/child_support_contracts.py`, `agent/src/services/wellbeing/child_support_service.py` |
 | family extension planning | `docs/family_extension_wellbeing_signal_mvp_plan.md`, `shared/src/contracts/wellbeing_signal_contracts.py` |
@@ -49,6 +50,8 @@
 8. 운영 절차는 실제 존재하는 command, config, 파일 기준으로 쓴다.
 9. 읽기 안내 문서는 전체 읽기 순서가 아니라 task route와 필요한 문서 선택 기준을 제공한다.
 10. 세션 기록은 기본적으로 300-500 words 요약만 남기고, 대화 전문 transcript는 repo 안 active/archive 문서로 추가하지 않는다.
+11. 완료된 migration 계획과 특정 시점 감사 문서는 active entrypoint에서 제외하고
+    reference/historical 문서로 둔다.
 
 ## 4. 언제 어떤 문서를 갱신하는가
 

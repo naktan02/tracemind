@@ -30,6 +30,7 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
             "round_runtime": {
                 "adapter_family_name": "peft_classifier",
                 "aggregation_backend_name": "fedavg",
+                "peft_classifier": {"peft_adapter_name": "lora"},
             },
             "fl_method": {"composition_mode": "manual"},
         }
@@ -46,12 +47,12 @@ def test_fl_ssl_run_dir_groups_by_split_and_method_composition() -> None:
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42"
     )
     assert resolve_fl_ssl_method_composition_slug(cfg) == (
-        "fixmatch_usb_v1__peft_classifier__fedavg"
+        "fixmatch_usb_v1__peft_classifier_lora__fedavg"
     )
     assert resolve_fl_ssl_run_condition_slug(cfg) == "clients10_rounds50"
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "fixmatch_usb_v1__peft_classifier__fedavg/"
+        "fixmatch_usb_v1__peft_classifier_lora__fedavg/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds50/"
         "20260518T010203Z"
@@ -72,6 +73,7 @@ def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
             "round_runtime": {
                 "adapter_family_name": "peft_classifier",
                 "aggregation_backend_name": "fedavg",
+                "peft_classifier": {"peft_adapter_name": "lora"},
             },
             "training_task": {
                 "objective": {
@@ -95,7 +97,7 @@ def test_fl_ssl_run_condition_slug_records_fedprox_mu() -> None:
     )
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "flexmatch_usb_v1__peft_classifier__fedavg/"
+        "flexmatch_usb_v1__peft_classifier_lora__fedavg/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "shared_client_seed42/"
         "clients10_rounds30_fedprox_mu0.01/"
@@ -144,6 +146,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
             "round_runtime": {
                 "adapter_family_name": "peft_classifier",
                 "aggregation_backend_name": "fedavg",
+                "peft_classifier": {"peft_adapter_name": "lora"},
             },
             "fl_method": {"composition_mode": "method_owned"},
         }
@@ -157,7 +160,7 @@ def test_fl_ssl_run_dir_uses_method_owned_family_when_not_manual() -> None:
 
     assert str(output_dir) == (
         "runs/fl_ssl/fedmatch/"
-        "fedmatch__peft_classifier__fedmatch_partitioned/"
+        "fedmatch__peft_classifier_lora__fedmatch_partitioned/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_client_local_seed42/"
         "clients10_rounds1/"
         "20260518T010203Z"
@@ -186,6 +189,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
             "round_runtime": {
                 "adapter_family_name": "peft_classifier",
                 "aggregation_backend_name": "fedavg",
+                "peft_classifier": {"peft_adapter_name": "lora"},
             },
             "fl_method": {"composition_mode": "manual"},
         }
@@ -203,7 +207,7 @@ def test_fl_ssl_split_slug_includes_non_default_labeled_exposure_policy() -> Non
     )
     assert str(output_dir) == (
         "runs/fl_ssl/manual_baselines/"
-        "flexmatch_usb_v1__peft_classifier__fedavg/"
+        "flexmatch_usb_v1__peft_classifier_lora__fedavg/"
         "labeled-szegeelim_general4_unlabeled-ourafla_reddit_"
         "labels_pc100_shared_client_seed42/"
         "clients10_rounds1/"

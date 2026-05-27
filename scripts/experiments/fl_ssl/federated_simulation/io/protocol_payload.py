@@ -90,6 +90,7 @@ def build_protocol_payload(
         },
         "round_runtime": {
             "adapter_family_name": round_runtime_config.adapter_family_name,
+            "update_family_name": round_runtime_config.update_family_name,
             "aggregation_backend_name": (round_runtime_config.aggregation_backend_name),
             "classifier_head_bootstrap_logit_scale": (
                 round_runtime_config.classifier_head_bootstrap_logit_scale
