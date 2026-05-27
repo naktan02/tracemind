@@ -6,10 +6,10 @@ import json
 from pathlib import Path
 from typing import Mapping
 
-from methods.adaptation.text_classifier.peft_encoder.report_artifacts import (
-    classifier_aggregate_snapshot_candidates,
-    classifier_objective_value,
-    classifier_primary_update_ref_fields,
+from scripts.runtime_adapters.federated_server.peft_encoder_report_artifacts import (
+    peft_encoder_aggregate_snapshot_candidates,
+    peft_encoder_objective_value,
+    peft_encoder_primary_update_ref_fields,
 )
 
 from .report_verification_helpers import (
@@ -271,7 +271,7 @@ def verify_federated_simulation_report_payload(
     _expect_equal(
         errors,
         "objective.classifier.delta_format",
-        classifier_objective_value(objective, "delta_format"),
+        peft_encoder_objective_value(objective, "delta_format"),
         expectation.expected_delta_format,
     )
     _expect_equal(
@@ -673,7 +673,7 @@ def _verify_server_owned_update_refs(
             artifact_ref=partitioned_ref,
         )
         return
-    primary_ref_fields = classifier_primary_update_ref_fields(update_payload)
+    primary_ref_fields = peft_encoder_primary_update_ref_fields(update_payload)
     for field_name, artifact_ref in zip(
         primary_ref_fields,
         (update_payload.get(field_name) for field_name in primary_ref_fields),
@@ -749,7 +749,7 @@ def _verify_classifier_aggregate_snapshot(
         )
         return
     artifact_root = run_dir / "main_server" / "aggregation_artifacts" / "versions"
-    candidate_paths = classifier_aggregate_snapshot_candidates(
+    candidate_paths = peft_encoder_aggregate_snapshot_candidates(
         artifact_root=artifact_root,
         model_revision=model_revision,
     )
