@@ -191,11 +191,12 @@ FL simulation 아래 thin wrapper로 먼저 둔다. 여러 track에서 같은 me
 - Prototype translation provenance는 pack/build state metadata이며 번역 실행 knob가 아니다.
 - Central SSL control의 `acceptance_policy_name`은 일부 runtime compatibility field로 남아 있다.
 - Multi-prototype runtime은 실험 분석에는 가능하지만 v1 active runtime 기본값은 아니다.
-- `peft_classifier`는 FL simulation research path를 1차 범위로 열고, live
-  `agent`/`main_server` runtime translation은 capability adapter가 준비된 뒤 연다.
+- `peft_text_classifier` update family는 FL simulation research path를 1차 범위로
+  열고, live `agent`/`main_server` runtime translation은 capability adapter가 준비된
+  뒤 연다.
 - `lora_classifier`는 기존 run artifact를 읽기 위한 v1 compatibility family 이름이고,
-  active 실행 config의 source-of-truth는 `peft_classifier`다.
-- `peft_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
+  active 실행 config의 source-of-truth는 `peft_text_classifier` update family다.
+- `peft_text_classifier` 기본 scaffold는 `mxbai_encoder`, LoRA
   `rank=8/alpha=16/dropout=0.1/target_modules=all-linear`, canonical seed
   checkpoint, label schema, split, seed, metric을 고정한다.
 - Agent `peft_classifier_trainer`는 fixed embedding-only example을 받지 않는다.
