@@ -2,7 +2,9 @@
 
 from __future__ import annotations
 
+from importlib import import_module
 from pathlib import Path
+from typing import Any
 
 from hydra.utils import instantiate
 from omegaconf import DictConfig
@@ -40,7 +42,6 @@ from scripts.experiments.fl_ssl.federated_simulation.models import (
     FederatedFinalProjectionConfig,
     FederatedLocalTrainerRuntimeConfig,
     FederatedPeerProbeConfig,
-    FederatedPeftEncoderRuntimeConfig,
     FederatedQuerySslObjectiveConfig,
     FederatedReportConfig,
     FederatedResumeConfig,
@@ -80,10 +81,15 @@ def build_simulation_request_from_config(
         task_type=_resolve_training_task_type(cfg=cfg, execution_plan=execution_plan),
         local_update_profile=local_update_profile,
     )
+    round_runtime_payloads = _build_round_runtime_payloads(cfg.round_runtime)
     round_runtime_config = FederatedRoundRuntimeConfig(
         adapter_family_name=str(cfg.round_runtime.adapter_family_name),
         aggregation_backend_name=str(cfg.round_runtime.aggregation_backend_name),
         update_family_name=str(cfg.round_runtime.update_family_name),
+        round_runtime_payload_builder=_optional_config_str(
+            cfg.round_runtime,
+            "round_runtime_payload_builder",
+        ),
         initial_state_builder=_optional_config_str(
             cfg.round_runtime,
             "initial_state_builder",
@@ -103,8 +109,8 @@ def build_simulation_request_from_config(
         classifier_head_bootstrap_logit_scale=float(
             cfg.round_runtime.classifier_head_bootstrap_logit_scale
         ),
-        lora_classifier=_build_legacy_lora_classifier_runtime_config(cfg.round_runtime),
-        peft_classifier=_build_peft_classifier_runtime_config(cfg.round_runtime),
+        lora_classifier=round_runtime_payloads.get("lora_classifier"),
+        peft_classifier=round_runtime_payloads.get("peft_classifier"),
     )
     actual_seed = int(cfg.seed if seed is None else seed)
     shard_policy = FederatedShardPolicyConfig(**to_plain_dict(cfg.shard_policy))
@@ -246,26 +252,35 @@ def _build_training_task_config(
     )
 
 
-def _build_legacy_lora_classifier_runtime_config(
-    cfg: DictConfig,
-) -> FederatedPeftEncoderRuntimeConfig | None:
-    if "lora_classifier" not in cfg or cfg.lora_classifier is None:
-        return None
-    return FederatedPeftEncoderRuntimeConfig.from_mapping(
-        to_plain_dict(cfg.lora_classifier),
-        default_artifact_format="simulation_lora_classifier_state_ref",
-    )
+def _build_round_runtime_payloads(cfg: DictConfig) -> dict[str, object]:
+    builder_path = _optional_config_str(cfg, "round_runtime_payload_builder")
+    if builder_path is None:
+        return {}
+    builder = _load_round_runtime_payload_builder(builder_path)
+    payloads = builder(round_runtime_mapping=to_plain_dict(cfg))
+    if not isinstance(payloads, dict):
+        raise ValueError(
+            "round_runtime.round_runtime_payload_builder must return a dict: "
+            f"{builder_path!r}."
+        )
+    return payloads
 
 
-def _build_peft_classifier_runtime_config(
-    cfg: DictConfig,
-) -> FederatedPeftEncoderRuntimeConfig | None:
-    if "peft_classifier" not in cfg or cfg.peft_classifier is None:
-        return None
-    return FederatedPeftEncoderRuntimeConfig.from_mapping(
-        to_plain_dict(cfg.peft_classifier),
-        default_artifact_format="simulation_peft_classifier_state_ref",
-    )
+def _load_round_runtime_payload_builder(builder_path: str) -> Any:
+    module_name, separator, function_name = builder_path.rpartition(".")
+    if not separator or not module_name or not function_name:
+        raise ValueError(
+            "round_runtime.round_runtime_payload_builder must be a fully qualified "
+            f"function path: {builder_path!r}."
+        )
+    module = import_module(module_name)
+    builder = getattr(module, function_name, None)
+    if not callable(builder):
+        raise ValueError(
+            "round_runtime.round_runtime_payload_builder must point to a callable: "
+            f"{builder_path!r}."
+        )
+    return builder
 
 
 def _build_execution_plan(cfg: DictConfig) -> FederatedSslExecutionPlan:

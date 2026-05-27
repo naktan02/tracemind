@@ -302,6 +302,7 @@ class FederatedRoundRuntimeConfig:
     adapter_family_name: str
     aggregation_backend_name: str
     update_family_name: str
+    round_runtime_payload_builder: str | None = None
     initial_state_builder: str | None = None
     validation_evaluator: str | None = None
     final_projection_builder: str | None = None

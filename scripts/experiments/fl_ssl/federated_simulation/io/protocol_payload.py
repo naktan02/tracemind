@@ -92,6 +92,9 @@ def build_protocol_payload(
         "round_runtime": {
             "adapter_family_name": round_runtime_config.adapter_family_name,
             "update_family_name": round_runtime_config.update_family_name,
+            "round_runtime_payload_builder": (
+                round_runtime_config.round_runtime_payload_builder
+            ),
             "initial_state_builder": round_runtime_config.initial_state_builder,
             "validation_evaluator": round_runtime_config.validation_evaluator,
             "final_projection_builder": (round_runtime_config.final_projection_builder),

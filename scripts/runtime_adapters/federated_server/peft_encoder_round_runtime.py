@@ -78,6 +78,27 @@ class FederatedPeftEncoderRuntimeConfig:
 FederatedLoraClassifierRuntimeConfig = FederatedPeftEncoderRuntimeConfig
 
 
+def build_peft_encoder_round_runtime_payloads(
+    round_runtime_mapping: Mapping[str, object],
+) -> dict[str, object]:
+    """Hydra round_runtime mapping에서 PEFT-backed classifier payload를 만든다."""
+
+    payloads: dict[str, object] = {}
+    legacy_lora_config = _optional_mapping(round_runtime_mapping.get("lora_classifier"))
+    if legacy_lora_config is not None:
+        payloads["lora_classifier"] = FederatedPeftEncoderRuntimeConfig.from_mapping(
+            legacy_lora_config,
+            default_artifact_format="simulation_lora_classifier_state_ref",
+        )
+    peft_config = _optional_mapping(round_runtime_mapping.get("peft_classifier"))
+    if peft_config is not None:
+        payloads["peft_classifier"] = FederatedPeftEncoderRuntimeConfig.from_mapping(
+            peft_config,
+            default_artifact_format="simulation_peft_classifier_state_ref",
+        )
+    return payloads
+
+
 def resolve_peft_encoder_runtime_payload(round_runtime_config: Any) -> object | None:
     """PEFT-backed classifier family면 adapter family에 맞는 payload를 돌려준다."""
 
@@ -99,3 +120,11 @@ def _optional_str(value: object) -> str | None:
         return None
     normalized = str(value).strip()
     return normalized or None
+
+
+def _optional_mapping(value: object) -> Mapping[str, object] | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise ValueError("round_runtime PEFT payload config must be a mapping.")
+    return value
