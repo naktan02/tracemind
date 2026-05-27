@@ -26,11 +26,11 @@ Hydra runtime config, report verifier, artifact path, 기존 run fixture가 이 
 | 표면 | 예 | 유지 이유 | 변경 조건 |
 |---|---|---|---|
 | shared schema/version | `lora_classifier_state.v1`, `lora_classifier_delta.v1` | 저장된 state/update payload와 contract fixture가 v1 이름을 사용한다. | shared contract v2 추가, v1 parser compatibility, fixture migration을 함께 닫을 때 |
-| adapter kind | `adapter_kind=lora_classifier` | main_server, agent, simulation runtime이 adapter family 식별자로 사용한다. | producer/consumer가 v2 adapter kind를 동시에 지원할 때 |
+| adapter kind | `adapter_kind=lora_classifier` | 저장된 v1 state/update artifact가 이 family 식별자를 사용한다. active config는 `peft_classifier`를 쓴다. | old artifact reader compatibility window가 끝날 때 |
 | payload format | `lora_classifier_update` | training update envelope와 upload verifier가 payload format으로 사용한다. | v2 payload format과 legacy reader를 함께 열 때 |
-| Hydra runtime config | `round_runtime.lora_classifier` | 기존 FL simulation preset과 override surface다. | config migration alias와 report verifier 변경을 같이 할 때 |
+| Hydra runtime config | `round_runtime.lora_classifier` | active root config에서는 제거했다. 기존 config/report 해석이 필요하면 old-run reader compatibility에서만 다룬다. | old-run reader compatibility window가 끝날 때 |
 | report/artifact path | `lora_classifier` aggregate snapshot path, report expectation field | 기존 run artifact와 report verification이 읽는다. | artifact reader가 v1/v2를 모두 읽고 compatibility window가 끝날 때 |
-| registry names | `lora_classifier_trainer`, `lora_classifier_eval` | local update profile, validation profile, catalog 이름으로 쓰인다. | profile migration과 catalog alias 정책을 함께 정할 때 |
+| registry names | `lora_classifier_trainer`, `lora_classifier_eval` | active local-update profile leaf에서는 제거했다. old-run/result reader와 v1 payload compatibility에서만 읽는다. | old-run reader compatibility window가 끝날 때 |
 
 ## 구현 Source Of Truth
 
