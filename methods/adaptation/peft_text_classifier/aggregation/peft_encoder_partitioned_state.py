@@ -183,15 +183,3 @@ def _merge_vector_mapping(
         target[normalized_key] = [
             left + right for left, right in zip(target[normalized_key], vector)
         ]
-
-
-merge_partitioned_lora_classifier_deltas = merge_partitioned_peft_encoder_deltas
-apply_lora_classifier_partition_delta_to_state = (
-    apply_peft_encoder_partition_delta_to_state
-)
-apply_lora_classifier_partition_deltas_to_partitioned_state = (
-    apply_peft_encoder_partition_deltas_to_partitioned_state
-)
-split_lora_classifier_state_by_residual_factor = (
-    split_peft_encoder_state_by_residual_factor
-)

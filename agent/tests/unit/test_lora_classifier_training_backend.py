@@ -30,7 +30,7 @@ from methods.adaptation.peft_text_classifier.training import (
     query_ssl_local_training as qssl_training,
 )
 from methods.adaptation.peft_text_classifier.training_backend import (
-    LoraClassifierTrainingBackend,
+    PeftEncoderTrainingBackend,
 )
 from methods.adaptation.peft_text_classifier.update.local_update import (
     LoraClassifierTrainArtifacts,
@@ -78,7 +78,7 @@ class _RecordingLoraTrainExecutor:
         model_manifest: ModelManifest,
         rows: Sequence[LoraClassifierTrainingRow],
         label_schema: tuple[str, ...],
-        config: lora_config.LoraClassifierTrainingBackendConfig,
+        config: lora_config.PeftEncoderTrainingBackendConfig,
         created_at: datetime,
     ) -> LoraClassifierTrainArtifacts:
         del training_task, model_manifest, rows, config, created_at
@@ -236,7 +236,7 @@ def _example(
 
 
 def test_lora_classifier_backend_builds_artifact_ref_update_without_text() -> None:
-    backend = LoraClassifierTrainingBackend.from_objective_config(
+    backend = PeftEncoderTrainingBackend.from_objective_config(
         TrainingObjectiveConfig(
             training_backend_name="lora_classifier_trainer",
             extras={
@@ -308,7 +308,7 @@ def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
 
 
 def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None:
-    backend = LoraClassifierTrainingBackend()
+    backend = PeftEncoderTrainingBackend()
 
     with pytest.raises(
         ValueError,
@@ -324,7 +324,7 @@ def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None
 
 def test_lora_classifier_train_executor_receives_resolved_label_schema() -> None:
     executor = _RecordingLoraTrainExecutor()
-    backend = LoraClassifierTrainingBackend(
+    backend = PeftEncoderTrainingBackend(
         train_executor=executor,
     )
 
@@ -414,9 +414,9 @@ def test_query_ssl_local_training_service_runs_lora_backend(
         model_id="tracemind-lora",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=lora_config.LoraClassifierTrainingBackendConfig().to_backbone_payload(),
+        backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
         lora_config=(
-            lora_config.LoraClassifierTrainingBackendConfig().to_lora_config_payload()
+            lora_config.PeftEncoderTrainingBackendConfig().to_lora_config_payload()
         ),
         label_schema=["anxiety", "normal"],
         example_count=2,
@@ -468,9 +468,9 @@ def test_query_ssl_local_training_service_can_skip_local_update_persistence(
         model_id="tracemind-lora",
         base_model_revision="rev_000",
         training_scope="adapter_only",
-        backbone=lora_config.LoraClassifierTrainingBackendConfig().to_backbone_payload(),
+        backbone=lora_config.PeftEncoderTrainingBackendConfig().to_backbone_payload(),
         lora_config=(
-            lora_config.LoraClassifierTrainingBackendConfig().to_lora_config_payload()
+            lora_config.PeftEncoderTrainingBackendConfig().to_lora_config_payload()
         ),
         label_schema=["anxiety", "normal"],
         example_count=2,

@@ -379,14 +379,6 @@ def server_owned_peft_encoder_update_artifact_byte_count(
     )
 
 
-upload_agent_local_lora_classifier_update = upload_agent_local_peft_encoder_update
-server_owned_lora_classifier_update_artifact_byte_count = (
-    server_owned_peft_encoder_update_artifact_byte_count
-)
-LoraClassifierDeltaArtifactStore = PeftEncoderDeltaArtifactStore
-LoraClassifierDeltaMaterializer = PeftEncoderDeltaMaterializer
-
-
 def _adapter_delta_artifact_ref(
     update_payload: LoraClassifierDelta | PeftClassifierDelta,
 ) -> str | None:

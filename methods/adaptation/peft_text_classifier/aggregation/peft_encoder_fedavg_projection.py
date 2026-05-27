@@ -82,10 +82,6 @@ class PeftEncoderFedAvgResult:
     update_count: int
 
 
-LoraClassifierFedAvgUpdate = PeftEncoderFedAvgUpdate
-LoraClassifierFedAvgResult = PeftEncoderFedAvgResult
-
-
 def compute_peft_encoder_fedavg(
     *,
     label_schema: Sequence[str],

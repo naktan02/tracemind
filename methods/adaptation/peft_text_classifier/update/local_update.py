@@ -241,13 +241,6 @@ def build_peft_encoder_delta_payload_from_artifacts(
     )
 
 
-resolve_lora_classifier_label_schema = resolve_peft_encoder_label_schema
-build_lora_classifier_delta_from_rows = build_peft_encoder_delta_from_rows
-build_lora_classifier_delta_payload_from_artifacts = (
-    build_peft_encoder_delta_payload_from_artifacts
-)
-
-
 def _build_partitioned_delta_payload(
     partitioned_deltas: Mapping[str, LoraClassifierPartitionDelta] | None,
     *,

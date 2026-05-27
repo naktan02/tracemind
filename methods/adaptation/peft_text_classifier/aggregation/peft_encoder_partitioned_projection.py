@@ -43,8 +43,8 @@ from .peft_encoder_fedavg_projection import (
     CLASSIFIER_HEAD_ARTIFACT_SLOT,
     LORA_ADAPTER_ARTIFACT_SLOT,
     PEFT_ADAPTER_ARTIFACT_SLOT,
-    LoraClassifierFedAvgResult,
     PeftEncoderDeltaPayload,
+    PeftEncoderFedAvgResult,
     PeftEncoderFedAvgUpdate,
     PeftEncoderStatePayload,
     compute_peft_encoder_fedavg,
@@ -70,15 +70,12 @@ class PeftEncoderPartitionedDeltaAverageUpdate:
     delta_l2_norm: float
 
 
-LoraClassifierPartitionedDeltaAverageUpdate = PeftEncoderPartitionedDeltaAverageUpdate
-
-
 def compute_peft_encoder_partitioned_delta_average(
     *,
     label_schema: Sequence[str],
     updates: Sequence[PeftEncoderPartitionedDeltaAverageUpdate],
     weight_policy_name: str = AGGREGATION_WEIGHT_EXAMPLE_COUNT,
-) -> LoraClassifierFedAvgResult:
+) -> PeftEncoderFedAvgResult:
     """client별 partition을 병합한 뒤 PEFT/head delta를 policy weight로 평균한다."""
 
     valid_updates = tuple(update for update in updates if update.example_count > 0)
@@ -111,7 +108,7 @@ def compute_peft_encoder_partitioned_delta_average(
         updates=merged_updates,
         weight_policy_name=weight_policy_name,
     )
-    return LoraClassifierFedAvgResult(
+    return PeftEncoderFedAvgResult(
         lora_parameter_deltas=result.lora_parameter_deltas,
         classifier_head_weight_deltas=result.classifier_head_weight_deltas,
         classifier_head_bias_deltas=result.classifier_head_bias_deltas,

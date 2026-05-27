@@ -49,7 +49,7 @@ from shared.src.domain.entities.training.shared_adapter_update import (
 from .config import (
     LORA_CLASSIFIER_TRAINING_BACKEND_NAME,
     PEFT_CLASSIFIER_TRAINING_BACKEND_NAME,
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
     build_lora_classifier_training_backend_config,
     build_peft_classifier_training_backend_config,
 )
@@ -109,8 +109,8 @@ class PeftEncoderTrainingBackend:
     backend_name: str = LORA_CLASSIFIER_TRAINING_BACKEND_NAME
     payload_format: str = LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
     adapter_kind: str = LORA_CLASSIFIER_ADAPTER_KIND
-    config: LoraClassifierTrainingBackendConfig = field(
-        default_factory=LoraClassifierTrainingBackendConfig
+    config: PeftEncoderTrainingBackendConfig = field(
+        default_factory=PeftEncoderTrainingBackendConfig
     )
     train_executor: PeftEncoderTrainExecutor | None = None
 
@@ -204,10 +204,6 @@ class PeftEncoderTrainingBackend:
         return self.config == build_lora_classifier_training_backend_config(
             objective_config
         )
-
-
-LoraClassifierTrainingBackend = PeftEncoderTrainingBackend
-PeftClassifierTrainingBackend = PeftEncoderTrainingBackend
 
 
 def build_lora_classifier_client_metrics(

@@ -36,9 +36,6 @@ class PeftEncoderStateProjection:
     artifacts: dict[str, dict[str, object]]
 
 
-LoraClassifierStateProjection = PeftEncoderStateProjection
-
-
 def build_peft_encoder_state_projection(
     *,
     base_state: PeftEncoderStatePayload,
