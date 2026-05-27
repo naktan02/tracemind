@@ -1,4 +1,4 @@
-"""LoRA-classifier local training backend tests."""
+"""PEFT encoder local training backend tests."""
 
 from __future__ import annotations
 
@@ -67,7 +67,7 @@ QuerySslPeftEncoderClientTrainingResult = (
 )
 
 
-class _RecordingLoraTrainExecutor:
+class _RecordingPeftEncoderTrainExecutor:
     def __init__(self) -> None:
         self.label_schema: tuple[str, ...] | None = None
 
@@ -235,7 +235,7 @@ def _example(
     )
 
 
-def test_lora_classifier_backend_builds_artifact_ref_update_without_text() -> None:
+def test_peft_encoder_backend_builds_artifact_ref_update_without_text() -> None:
     backend = PeftEncoderTrainingBackend.from_objective_config(
         TrainingObjectiveConfig(
             training_backend_name="lora_classifier_trainer",
@@ -307,7 +307,7 @@ def test_peft_classifier_backend_builds_v2_artifact_ref_update() -> None:
     assert "오늘 너무 불안해요" not in update.model_dump_json()
 
 
-def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None:
+def test_peft_encoder_backend_rejects_fixed_embedding_only_examples() -> None:
     backend = PeftEncoderTrainingBackend()
 
     with pytest.raises(
@@ -322,8 +322,8 @@ def test_lora_classifier_backend_rejects_fixed_embedding_only_examples() -> None
         )
 
 
-def test_lora_classifier_train_executor_receives_resolved_label_schema() -> None:
-    executor = _RecordingLoraTrainExecutor()
+def test_peft_encoder_train_executor_receives_resolved_label_schema() -> None:
+    executor = _RecordingPeftEncoderTrainExecutor()
     backend = PeftEncoderTrainingBackend(
         train_executor=executor,
     )
@@ -344,7 +344,7 @@ def test_lora_classifier_train_executor_receives_resolved_label_schema() -> None
     assert update.l2_norm() == 2.5
 
 
-def test_lora_classifier_training_backend_is_registered() -> None:
+def test_peft_encoder_training_backend_is_registered() -> None:
     backend = build_shared_adapter_training_backend(
         "lora_classifier_trainer",
         objective_config=TrainingObjectiveConfig(

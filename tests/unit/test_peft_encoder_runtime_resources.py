@@ -1,4 +1,4 @@
-"""LoRA-classifier runtime resource cache tests."""
+"""PEFT encoder runtime resource cache tests."""
 
 from __future__ import annotations
 
@@ -47,7 +47,7 @@ class _Cache:
         self.resources[key] = value
 
 
-def test_lora_classifier_model_builder_reuses_runtime_resources(
+def test_peft_encoder_model_builder_reuses_runtime_resources(
     monkeypatch,
 ) -> None:
     calls = {"tokenizer": 0, "model": 0}
@@ -119,7 +119,7 @@ def test_lora_classifier_model_builder_reuses_runtime_resources(
     assert model_a.backbone is not model_b.backbone
 
 
-def test_lora_classifier_model_builder_uses_peft_adapter_builder(
+def test_peft_encoder_model_builder_uses_peft_adapter_builder(
     monkeypatch,
 ) -> None:
     captured: dict[str, object] = {}
@@ -242,7 +242,7 @@ def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None
     assert base_parameters.classifier_head_biases == original_biases
 
 
-def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
+def test_peft_encoder_helper_provider_reuses_materialized_helper_model(
     monkeypatch,
 ) -> None:
     calls = {"build": 0, "load": 0}
@@ -341,7 +341,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
     assert provider_a.helper_models[0] is provider_b.helper_models[0]
 
 
-def test_lora_classifier_helper_provider_counts_only_materializable_snapshots() -> None:
+def test_peft_encoder_helper_provider_counts_only_materializable_snapshots() -> None:
     valid_snapshot = FederatedSslPeerClientSnapshot(
         client_id="agent_02",
         selection_vector=(0.2, 0.8),

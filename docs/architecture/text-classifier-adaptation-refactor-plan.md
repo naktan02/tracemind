@@ -345,7 +345,7 @@ adapter family dispatcher는 `peft_classifier` 패키지를 새로 만들지 않
 
 ```bash
 uv run pytest tests/architecture/test_layer_dependencies.py
-uv run pytest tests/unit/test_partitioned_trainable_model.py tests/unit/test_methods_fedmatch_lora_partitioned_training.py tests/unit/test_methods_lora_classifier_aggregation.py tests/unit/test_methods_server_update_materialization.py shared/tests/unit/test_adapter_contracts.py tests/unit/test_fl_ssl_report_verification.py
+uv run pytest tests/unit/test_partitioned_trainable_model.py tests/unit/test_methods_fedmatch_lora_partitioned_training.py tests/unit/test_peft_encoder_aggregation.py tests/unit/test_methods_server_update_materialization.py shared/tests/unit/test_adapter_contracts.py tests/unit/test_fl_ssl_report_verification.py
 uv run ruff check methods tests scripts shared
 uv run ruff format --check methods tests scripts shared
 git diff --check

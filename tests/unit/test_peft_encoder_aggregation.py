@@ -1,4 +1,4 @@
-"""LoRA-classifier aggregation helper tests."""
+"""PEFT encoder aggregation helper tests."""
 
 from __future__ import annotations
 
@@ -369,7 +369,7 @@ def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
     )
 
 
-def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> None:
+def test_peft_encoder_state_projection_applies_delta_to_base_snapshot() -> None:
     projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=_lora_state(),
         base_parameters=PeftEncoderMaterializedState(
@@ -454,7 +454,7 @@ def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> N
     )
 
 
-def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> None:
+def test_peft_encoder_state_projection_rejects_delta_dimension_mismatch() -> None:
     with pytest.raises(ValueError, match="delta dimension mismatch"):
         peft_state_projection.build_peft_encoder_state_projection(
             base_state=_lora_state(),
@@ -665,7 +665,7 @@ def test_materialize_peft_classifier_partitioned_base_state_reads_v2_metadata():
     )
 
 
-def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
+def test_peft_encoder_partitioned_payload_keeps_partition_names() -> None:
     payload = partitioned_payloads.build_partitioned_delta_payload(
         (
             LoraClassifierPartitionDelta(
@@ -898,9 +898,7 @@ def test_materialize_peft_encoder_partitioned_update_reads_tensor_artifact_ref()
     )
 
 
-def test_lora_classifier_partitioned_delta_average_merges_partitions_per_client() -> (
-    None
-):
+def test_peft_encoder_partitioned_delta_average_merges_partitions_per_client() -> None:
     result = peft_part_projection.compute_peft_encoder_partitioned_delta_average(
         label_schema=("anxiety", "normal"),
         updates=(

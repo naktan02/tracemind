@@ -1,4 +1,4 @@
-"""LoRA + classifier 공통 core 단위 검증."""
+"""PEFT encoder + classifier 공통 core 단위 검증."""
 
 from __future__ import annotations
 
@@ -114,7 +114,7 @@ def test_lora_text_classifier_train_step_and_evaluation() -> None:
     assert set(evaluation["per_category"]) == {"anxiety", "normal"}
 
 
-def test_lora_classifier_config_accepts_fedprox_mu() -> None:
+def test_peft_encoder_config_accepts_fedprox_mu() -> None:
     config = LoraClassifierTrainingBackendConfig.from_mapping({"proximal_mu": 0.01})
 
     assert config.proximal_mu == 0.01
