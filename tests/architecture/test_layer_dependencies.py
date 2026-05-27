@@ -524,6 +524,32 @@ def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
     )
 
 
+def test_peft_config_class_owns_canonical_defaults() -> None:
+    path = PEFT_TEXT_CLASSIFIER_SRC / "config.py"
+    source = path.read_text(encoding="utf-8")
+    required_snippets = (
+        "class PeftEncoderTrainingBackendConfig:",
+        'artifact_ref_prefix: str = "agent-local://peft_classifier"',
+        "payload_adapter_kind: str = PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
+        "class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):",
+        'artifact_ref_prefix: str = "agent-local://lora_classifier"',
+        "payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND",
+    )
+    missing = [snippet for snippet in required_snippets if snippet not in source]
+    forbidden_snippets = (
+        "PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
+        "PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not missing and not violations, (
+        "PEFT encoder config가 canonical class/default를 소유하고, "
+        "LoraClassifierTrainingBackendConfig는 v1 compatibility subclass로만 "
+        "남아야 한다.\n"
+        f"missing={missing}\nviolations={violations}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

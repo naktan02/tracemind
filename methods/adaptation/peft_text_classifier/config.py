@@ -67,8 +67,8 @@ _CONFIG_EXTRA_KEYS = frozenset(
 
 
 @dataclass(frozen=True, slots=True)
-class LoraClassifierTrainingBackendConfig:
-    """Agent가 LoRA-classifier update payload에 기록할 trainer snapshot."""
+class PeftEncoderTrainingBackendConfig:
+    """PEFT encoder classifier update payload에 기록할 trainer snapshot."""
 
     backbone_model_id: str = "mixedbread-ai/mxbai-embed-large-v1"
     backbone_revision: str = "main"
@@ -86,7 +86,7 @@ class LoraClassifierTrainingBackendConfig:
     target_modules: str = "all-linear"
     use_rslora: bool = False
     delta_format: str = LORA_CLASSIFIER_DELTA_FORMAT_AGENT_LOCAL
-    artifact_ref_prefix: str = "agent-local://lora_classifier"
+    artifact_ref_prefix: str = "agent-local://peft_classifier"
     text_metadata_keys: tuple[str, ...] = (
         "strong_text",
         "training_text",
@@ -95,7 +95,7 @@ class LoraClassifierTrainingBackendConfig:
         "weak_text",
     )
     label_schema: tuple[str, ...] = ()
-    payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND
+    payload_adapter_kind: str = PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND
 
     def __post_init__(self) -> None:
         set_normalized_str(self, "backbone_model_id", self.backbone_model_id)
@@ -152,7 +152,7 @@ class LoraClassifierTrainingBackendConfig:
     def from_mapping(
         cls,
         source: Mapping[str, TrainingConfigScalar],
-    ) -> "LoraClassifierTrainingBackendConfig":
+    ) -> "PeftEncoderTrainingBackendConfig":
         """Scoped objective extras에서 backend config를 만든다."""
 
         if not source:
@@ -161,7 +161,7 @@ class LoraClassifierTrainingBackendConfig:
         validate_allowed_keys(
             source,
             allowed_keys=_CONFIG_EXTRA_KEYS,
-            config_name="LoRA-classifier training backend config",
+            config_name="PEFT encoder training backend config",
         )
 
         defaults = cls()
@@ -222,8 +222,15 @@ class LoraClassifierTrainingBackendConfig:
         }
 
 
-PeftClassifierTrainingBackendConfig = LoraClassifierTrainingBackendConfig
-PeftEncoderTrainingBackendConfig = LoraClassifierTrainingBackendConfig
+@dataclass(frozen=True, slots=True)
+class LoraClassifierTrainingBackendConfig(PeftEncoderTrainingBackendConfig):
+    """v1 LoRA-classifier payload compatibility trainer snapshot."""
+
+    artifact_ref_prefix: str = "agent-local://lora_classifier"
+    payload_adapter_kind: str = LORA_CLASSIFIER_PAYLOAD_ADAPTER_KIND
+
+
+PeftClassifierTrainingBackendConfig = PeftEncoderTrainingBackendConfig
 
 
 def build_lora_classifier_training_backend_config(
@@ -249,11 +256,16 @@ def build_peft_classifier_training_backend_config(
 ) -> PeftClassifierTrainingBackendConfig:
     """objective config에서 PEFT-classifier v2 trainer 설정을 읽는다."""
 
-    config = build_lora_classifier_training_backend_config(
-        objective_config,
-        family_extra_scope=PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE,
-        training_backend_extra_scope=PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE,
-    )
+    if objective_config is None:
+        config = PeftEncoderTrainingBackendConfig()
+    else:
+        extras = {
+            **objective_config.get_component_extras(PEFT_CLASSIFIER_FAMILY_EXTRA_SCOPE),
+            **objective_config.get_component_extras(
+                PEFT_CLASSIFIER_TRAINING_BACKEND_EXTRA_SCOPE
+            ),
+        }
+        config = PeftEncoderTrainingBackendConfig.from_mapping(extras)
     return replace(
         config,
         payload_adapter_kind=PEFT_CLASSIFIER_PAYLOAD_ADAPTER_KIND,
