@@ -5,9 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -41,9 +38,7 @@ def run_client_round(
     capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
-    previous_client_partition_parameters: (
-        Mapping[str, PeftEncoderMaterializedState] | None
-    ) = None,
+    previous_client_partition_parameters: Mapping[str, Any] | None = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution:
     """client shard 하나의 local training을 실행하고 update를 제출한다."""

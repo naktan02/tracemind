@@ -6,9 +6,6 @@ from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
 from methods.common.runtime_resources import RuntimeResourceCache
 from methods.federated_ssl.peer_context import FederatedSslPeerClientSnapshot
 from scripts.experiments.fl_ssl.federated_simulation.models import (
@@ -55,15 +52,14 @@ class PeerContextSimulationState:
 class ClientPartitionSyncSimulationState:
     """round 사이에 유지하는 client-local partitioned trainable snapshot."""
 
-    client_partition_snapshots: Mapping[
-        str,
-        Mapping[str, PeftEncoderMaterializedState],
-    ] = field(default_factory=dict)
+    client_partition_snapshots: Mapping[str, Mapping[str, Any]] = field(
+        default_factory=dict
+    )
 
     def snapshot_for_client(
         self,
         client_id: str,
-    ) -> Mapping[str, PeftEncoderMaterializedState]:
+    ) -> Mapping[str, Any]:
         return self.client_partition_snapshots.get(client_id, {})
 
 
@@ -112,9 +108,7 @@ class ClientRoundExecution:
     summary: ClientRoundSummary
     update_submitted: bool
     peer_client_snapshot: FederatedSslPeerClientSnapshot | None = None
-    client_partition_snapshot: Mapping[str, PeftEncoderMaterializedState] = field(
-        default_factory=dict
-    )
+    client_partition_snapshot: Mapping[str, Any] = field(default_factory=dict)
     query_ssl_algorithm_state: Mapping[str, Any] = field(default_factory=dict)
 
 

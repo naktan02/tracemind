@@ -5,9 +5,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from methods.adaptation.text_classifier.peft_encoder.update.materialization import (
-    PeftEncoderMaterializedState,
-)
 from methods.federated_ssl.capability_plan import FederatedSslCapabilityPlan
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -41,9 +38,7 @@ def run_method_or_manual_local_objective_if_supported(
     capability_plan: FederatedSslCapabilityPlan,
     peer_context: FederatedSslPeerContext | None = None,
     peer_snapshots: Mapping[str, FederatedSslPeerClientSnapshot] | None = None,
-    previous_client_partition_parameters: (
-        Mapping[str, PeftEncoderMaterializedState] | None
-    ) = None,
+    previous_client_partition_parameters: Mapping[str, Any] | None = None,
     previous_query_ssl_algorithm_state: Mapping[str, Any] | None = None,
 ) -> ClientRoundExecution | None:
     """현재 지원되는 local objective fast path를 실행한다."""
