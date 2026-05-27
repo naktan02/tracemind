@@ -98,14 +98,6 @@ class QuerySslPeftEncoderTrainingBackend(Protocol):
         """Query SSL raw rows를 학습해 local update payload를 만든다."""
 
 
-LoraClassifierTrainerRuntimeConfig = PeftEncoderTrainerRuntimeConfig
-QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
-QuerySslLoraDeltaMaterializer = QuerySslPeftEncoderDeltaMaterializer
-QuerySslLoraObjectiveRuntimeConfig = QuerySslPeftEncoderObjectiveRuntimeConfig
-QuerySslLoraLocalTrainingRequest = QuerySslPeftEncoderLocalTrainingRequest
-QuerySslLoraTrainingBackend = QuerySslPeftEncoderTrainingBackend
-
-
 @dataclass(slots=True)
 class QuerySslLocalTrainingService:
     """Query SSL raw-row local training을 backend capability로 실행한다."""

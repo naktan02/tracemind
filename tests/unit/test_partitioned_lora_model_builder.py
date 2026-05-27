@@ -16,7 +16,7 @@ from methods.adaptation.peft_text_classifier.federated_ssl.partitioned import (
     model_builder,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 
 
@@ -61,7 +61,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
         return TinyLoraTextClassifier(), tokenizer
 
     cache = object()
-    base_parameters = LoraClassifierMaterializedState(
+    base_parameters = PeftEncoderMaterializedState(
         lora_parameters={
             "encoder_lora.weight": [
                 0.2,
@@ -82,7 +82,7 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
         classifier_head_biases={"anxiety": 0.1, "normal": -0.1},
     )
 
-    result = model_builder.build_partitioned_lora_text_classifier_from_config(
+    result = model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,
@@ -117,14 +117,14 @@ def test_partitioned_lora_builder_loads_base_state_into_each_partition() -> None
 
 
 def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -> None:
-    base_parameters = LoraClassifierMaterializedState(
+    base_parameters = PeftEncoderMaterializedState(
         lora_parameters={},
         classifier_head_weights={},
         classifier_head_biases={},
     )
 
     with pytest.raises(ValueError, match="duplicates"):
-        model_builder.build_partitioned_lora_text_classifier_from_config(
+        model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
             partition_names=("sigma", "sigma"),
             labels=("anxiety", "normal"),
             base_parameters=base_parameters,
@@ -134,7 +134,7 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
         )
 
     with pytest.raises(ValueError, match="labels must not contain duplicates"):
-        model_builder.build_partitioned_lora_text_classifier_from_config(
+        model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
             partition_names=("sigma", "psi"),
             labels=("anxiety", "anxiety"),
             base_parameters=base_parameters,
@@ -145,7 +145,7 @@ def test_partitioned_lora_builder_rejects_invalid_partition_and_label_inputs() -
 
 
 def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
-    base_parameters = LoraClassifierMaterializedState(
+    base_parameters = PeftEncoderMaterializedState(
         lora_parameters={
             "encoder_lora.weight": [
                 0.1,
@@ -166,7 +166,7 @@ def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
         classifier_head_biases={"anxiety": 1.6, "normal": 1.7},
     )
     partition_base_parameters = {
-        "sigma": LoraClassifierMaterializedState(
+        "sigma": PeftEncoderMaterializedState(
             lora_parameters={
                 "encoder_lora.weight": [
                     2.1,
@@ -188,7 +188,7 @@ def test_partitioned_lora_builder_prefers_partition_base_state() -> None:
         )
     }
 
-    result = model_builder.build_partitioned_lora_text_classifier_from_config(
+    result = model_builder.build_partitioned_peft_encoder_text_classifier_from_config(
         partition_names=("sigma", "psi"),
         labels=("anxiety", "normal"),
         base_parameters=base_parameters,

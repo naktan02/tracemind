@@ -123,13 +123,3 @@ def _normalize_labels(labels: Sequence[str]) -> tuple[str, ...]:
     if len(set(normalized)) != len(normalized):
         raise ValueError("labels must not contain duplicates.")
     return normalized
-
-
-LoraClassifierPartitionRuntimeConfig = PeftEncoderPartitionRuntimeConfig
-LoraTextClassifierFactory = PeftEncoderTextClassifierFactory
-PartitionedLoraTextClassifierBuildResult = (
-    PartitionedPeftEncoderTextClassifierBuildResult
-)
-build_partitioned_lora_text_classifier_from_config = (
-    build_partitioned_peft_encoder_text_classifier_from_config
-)

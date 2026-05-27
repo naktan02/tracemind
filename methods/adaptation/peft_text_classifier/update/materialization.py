@@ -91,11 +91,6 @@ def compact_peft_encoder_materialized_state(
     )
 
 
-LoraClassifierMaterializedUpdate = PeftEncoderMaterializedUpdate
-LoraClassifierMaterializedState = PeftEncoderMaterializedState
-compact_lora_classifier_materialized_state = compact_peft_encoder_materialized_state
-
-
 class _AggregationTensorArtifactLoader(Protocol):
     def load_safetensors_artifact(
         self,
@@ -212,12 +207,6 @@ def materialize_base_peft_encoder_partitioned_state(
         )
         for partition_name in partition_names
     }
-
-
-materialize_base_lora_classifier_state = materialize_base_peft_encoder_state
-materialize_base_lora_classifier_partitioned_state = (
-    materialize_base_peft_encoder_partitioned_state
-)
 
 
 def materialize_peft_encoder_update(
@@ -361,12 +350,6 @@ def materialize_peft_encoder_partitioned_update(
             ),
         )
     return partitions
-
-
-materialize_lora_classifier_update = materialize_peft_encoder_update
-materialize_lora_classifier_partitioned_update = (
-    materialize_peft_encoder_partitioned_update
-)
 
 
 def _try_load_partitioned_tensor_artifact(

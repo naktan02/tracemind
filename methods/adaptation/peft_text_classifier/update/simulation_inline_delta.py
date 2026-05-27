@@ -159,6 +159,3 @@ def _build_classifier_head_bias_deltas(
 
 def _effective_step_scale(*, learning_rate: float, scale: float) -> float:
     return max(1e-4, abs(float(learning_rate))) * float(scale)
-
-
-SimulationInlineLoraClassifierTrainExecutor = SimulationInlinePeftEncoderTrainExecutor

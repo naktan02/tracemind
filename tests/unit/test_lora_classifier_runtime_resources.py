@@ -19,7 +19,7 @@ from methods.adaptation.peft_text_classifier.training.delta_extraction import (
     load_peft_encoder_base_parameters_into_model,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.federated_ssl.peer_context import (
     FederatedSslPeerClientSnapshot,
@@ -217,7 +217,7 @@ def test_load_lora_classifier_base_parameters_does_not_mutate_snapshot() -> None
         num_labels=2,
         classifier_dropout=0.0,
     )
-    base_parameters = LoraClassifierMaterializedState(
+    base_parameters = PeftEncoderMaterializedState(
         lora_parameters={},
         classifier_head_weights={
             "anxiety": [0.1, 0.2],
@@ -287,7 +287,7 @@ def test_lora_classifier_helper_provider_reuses_materialized_helper_model(
         client_id="agent_02",
         selection_vector=(0.2, 0.8),
         payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
-        payload=LoraClassifierMaterializedState(
+        payload=PeftEncoderMaterializedState(
             lora_parameters={"lora.test": [0.1]},
             classifier_head_weights={
                 "anxiety": [0.1, 0.0],
@@ -346,7 +346,7 @@ def test_lora_classifier_helper_provider_counts_only_materializable_snapshots() 
         client_id="agent_02",
         selection_vector=(0.2, 0.8),
         payload_kind=peer_predictions.LORA_CLASSIFIER_PEER_SNAPSHOT_KIND,
-        payload=LoraClassifierMaterializedState(
+        payload=PeftEncoderMaterializedState(
             lora_parameters={"lora.test": [0.1]},
             classifier_head_weights={
                 "anxiety": [0.1, 0.0],

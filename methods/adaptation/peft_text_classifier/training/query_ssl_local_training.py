@@ -144,13 +144,6 @@ class QuerySslPeftEncoderClientTrainingResult:
     timing_breakdown: Mapping[str, float] = field(default_factory=dict)
 
 
-QuerySslLoraObjectiveRuntimeConfig = QuerySslPeftEncoderObjectiveRuntimeConfig
-LoraClassifierTrainerRuntimeConfig = PeftEncoderTrainerRuntimeConfig
-QuerySslLoraDeltaMaterialization = QuerySslPeftEncoderDeltaMaterialization
-QuerySslLoraDeltaMaterializer = QuerySslPeftEncoderDeltaMaterializer
-QuerySslLoraClientTrainingResult = QuerySslPeftEncoderClientTrainingResult
-
-
 def run_query_ssl_peft_encoder_training_core(
     *,
     client_id: str,

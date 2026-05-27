@@ -34,9 +34,6 @@ PeftEncoderState = LoraClassifierState | PeftClassifierState
 PEFT_ENCODER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME = (
     "peft_encoder_base_partitioned_state_v1"
 )
-LORA_CLASSIFIER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME = (
-    PEFT_ENCODER_BASE_PARTITIONED_STATE_MATERIALIZER_NAME
-)
 
 
 def load_peft_encoder_base_parameters(

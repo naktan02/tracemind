@@ -22,7 +22,7 @@ from methods.adaptation.peft_text_classifier.training import (
     partitioned_deltas,
 )
 from methods.adaptation.peft_text_classifier.update.materialization import (
-    LoraClassifierMaterializedState,
+    PeftEncoderMaterializedState,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -1123,13 +1123,13 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
 
 
 def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
-    base = LoraClassifierMaterializedState(
+    base = PeftEncoderMaterializedState(
         lora_parameters={"encoder_lora.weight": [0.10, 0.10, 0.10]},
         classifier_head_weights={"anxiety": [0.10, 0.10]},
         classifier_head_biases={"anxiety": 0.10},
     )
     partition_base = {
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.03, 0.10, 0.10]},
             classifier_head_weights={"anxiety": [0.03, 0.10]},
             classifier_head_biases={"anxiety": 0.03},
@@ -1178,24 +1178,24 @@ def test_partitioned_c2s_sparse_upload_cuts_delta_and_sparsifies_psi() -> None:
 
 def test_partitioned_s2c_sparse_download_diffs_server_and_client_partitions() -> None:
     server_partitions = {
-        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.10, 0.14, 0.04]},
             classifier_head_weights={"anxiety": [0.10, 0.17]},
             classifier_head_biases={"anxiety": 0.12},
         ),
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.04, 0.10, 0.21]},
             classifier_head_weights={"anxiety": [0.04, 0.10]},
             classifier_head_biases={"anxiety": 0.04},
         ),
     }
     client_partitions = {
-        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.09, 0.10, 0.10]},
             classifier_head_weights={"anxiety": [0.085, 0.10]},
             classifier_head_biases={"anxiety": 0.09},
         ),
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.03, 0.085, 0.11]},
             classifier_head_weights={"anxiety": [0.03, 0.085]},
             classifier_head_biases={"anxiety": 0.03},
@@ -1253,14 +1253,14 @@ def test_partition_delta_nonzero_count_tracks_sparse_transport_values() -> None:
 
 def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() -> None:
     server_partitions = {
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.04, 0.21]},
             classifier_head_weights={"anxiety": [0.04, 0.21]},
             classifier_head_biases={"anxiety": 0.04},
         )
     }
     client_partitions = {
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.09, 0.11]},
             classifier_head_weights={"anxiety": [0.09, 0.11]},
             classifier_head_biases={"anxiety": 0.09},
@@ -1302,24 +1302,24 @@ def test_partitioned_s2c_projection_keeps_raw_server_values_after_sparse_mask() 
 
 def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> None:
     server_partitions = {
-        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.10, 0.20]},
             classifier_head_weights={"anxiety": [0.10, 0.20]},
             classifier_head_biases={"anxiety": 0.10},
         ),
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.10, 0.20]},
             classifier_head_weights={"anxiety": [0.10, 0.20]},
             classifier_head_biases={"anxiety": 0.10},
         ),
     }
     client_partitions = {
-        FEDMATCH_SIGMA_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_SIGMA_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.11, 0.25]},
             classifier_head_weights={"anxiety": [0.11, 0.25]},
             classifier_head_biases={"anxiety": 0.11},
         ),
-        FEDMATCH_PSI_PARTITION: LoraClassifierMaterializedState(
+        FEDMATCH_PSI_PARTITION: PeftEncoderMaterializedState(
             lora_parameters={"encoder_lora.weight": [0.04, 0.30]},
             classifier_head_weights={"anxiety": [0.04, 0.30]},
             classifier_head_biases={"anxiety": 0.04},
@@ -1327,7 +1327,7 @@ def test_partitioned_c2s_projection_returns_post_upload_client_snapshot() -> Non
     }
 
     projection = sparse_sync.project_partitioned_c2s_sparse_upload(
-        base_parameters=LoraClassifierMaterializedState(
+        base_parameters=PeftEncoderMaterializedState(
             lora_parameters={},
             classifier_head_weights={},
             classifier_head_biases={},

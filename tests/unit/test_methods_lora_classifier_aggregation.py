@@ -31,11 +31,11 @@ from methods.adaptation.peft_text_classifier.update.materialization import (
     PARTITIONED_LORA_STATE_PARAMETERS_KEY,
     PARTITIONED_PEFT_STATE_PARAMETERS_KEY,
     PEFT_STATE_PARAMETERS_KEY,
-    LoraClassifierMaterializedState,
-    materialize_base_lora_classifier_partitioned_state,
-    materialize_base_lora_classifier_state,
-    materialize_lora_classifier_partitioned_update,
-    materialize_lora_classifier_update,
+    PeftEncoderMaterializedState,
+    materialize_base_peft_encoder_partitioned_state,
+    materialize_base_peft_encoder_state,
+    materialize_peft_encoder_partitioned_update,
+    materialize_peft_encoder_update,
 )
 from methods.adaptation.peft_text_classifier.update.partitioned_delta import (
     LoraClassifierPartitionDelta,
@@ -83,7 +83,7 @@ class InMemoryTensorArtifactLoader(InMemoryJsonArtifactLoader):
         return self._tensor_artifacts[artifact_ref]
 
 
-def test_materialize_lora_classifier_update_uses_inline_deltas_without_loader() -> None:
+def test_materialize_peft_encoder_update_uses_inline_deltas_without_loader() -> None:
     update = _lora_update(
         lora_parameter_deltas={"encoder.q_proj.lora_A": [0.1, -0.2]},
         classifier_head_weight_deltas={
@@ -94,7 +94,7 @@ def test_materialize_lora_classifier_update_uses_inline_deltas_without_loader() 
         delta_l2_norm=None,
     )
 
-    materialized = materialize_lora_classifier_update(
+    materialized = materialize_peft_encoder_update(
         payload=update,
         context=_aggregation_context(),
     )
@@ -112,7 +112,7 @@ def test_materialize_lora_classifier_update_uses_inline_deltas_without_loader() 
     )
 
 
-def test_materialize_lora_classifier_update_reads_server_artifact_refs() -> None:
+def test_materialize_peft_encoder_update_reads_server_artifact_refs() -> None:
     loader = InMemoryJsonArtifactLoader(
         {
             "aggregation_artifact://client/lora_delta": {
@@ -141,7 +141,7 @@ def test_materialize_lora_classifier_update_reads_server_artifact_refs() -> None
         delta_format="server_uploaded_artifact_ref",
     )
 
-    materialized = materialize_lora_classifier_update(
+    materialized = materialize_peft_encoder_update(
         payload=update,
         context=_aggregation_context(loader=loader),
     )
@@ -186,7 +186,7 @@ def test_materialize_peft_classifier_update_reads_v2_fields() -> None:
         delta_format="server_uploaded_artifact_ref",
     )
 
-    materialized = materialize_lora_classifier_update(
+    materialized = materialize_peft_encoder_update(
         payload=update,
         context=_aggregation_context(loader=loader),
     )
@@ -237,7 +237,7 @@ def test_merged_delta_tensor_artifacts_roundtrip() -> None:
     assert head_bias_deltas == pytest.approx({"anxiety": 0.2, "normal": -0.2})
 
 
-def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() -> None:
+def test_materialize_peft_encoder_update_reads_server_tensor_artifact_refs() -> None:
     lora_tensors, lora_metadata = merged_artifacts.build_lora_delta_tensor_artifact(
         {
             "encoder.q_proj.lora_A": [0.2, 0.4],
@@ -277,7 +277,7 @@ def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() 
         delta_format="server_uploaded_artifact_ref",
     )
 
-    materialized = materialize_lora_classifier_update(
+    materialized = materialize_peft_encoder_update(
         payload=update,
         context=_aggregation_context(loader=loader),
     )
@@ -293,9 +293,7 @@ def test_materialize_lora_classifier_update_reads_server_tensor_artifact_refs() 
     )
 
 
-def test_materialize_base_lora_classifier_state_reads_global_snapshot_artifacts() -> (
-    None
-):
+def test_materialize_base_peft_encoder_state_reads_global_snapshot_artifacts() -> None:
     loader = InMemoryJsonArtifactLoader(
         {
             "server-aggregate://rev_000/lora_adapter": {
@@ -316,7 +314,7 @@ def test_materialize_base_lora_classifier_state_reads_global_snapshot_artifacts(
         }
     )
 
-    materialized = materialize_base_lora_classifier_state(
+    materialized = materialize_base_peft_encoder_state(
         base_state=_lora_state(
             lora_adapter_artifact_ref="server-aggregate://rev_000/lora_adapter",
             classifier_head_artifact_ref="server-aggregate://rev_000/classifier_head",
@@ -354,7 +352,7 @@ def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
         }
     )
 
-    materialized = materialize_base_lora_classifier_state(
+    materialized = materialize_base_peft_encoder_state(
         base_state=_peft_state(
             peft_adapter_artifact_ref="server-aggregate://rev_000/peft_adapter",
             classifier_head_artifact_ref="server-aggregate://rev_000/classifier_head",
@@ -374,7 +372,7 @@ def test_materialize_base_peft_classifier_state_reads_v2_artifacts() -> None:
 def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> None:
     projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=_lora_state(),
-        base_parameters=LoraClassifierMaterializedState(
+        base_parameters=PeftEncoderMaterializedState(
             lora_parameters={
                 "encoder.q_proj.lora_A": [1.0, 2.0],
                 "encoder.extra.lora_A": [0.5],
@@ -422,7 +420,7 @@ def test_lora_classifier_state_projection_applies_delta_to_base_snapshot() -> No
 def test_peft_classifier_state_projection_uses_v2_state_and_artifact_keys() -> None:
     projection = peft_state_projection.build_peft_encoder_state_projection(
         base_state=_peft_state(),
-        base_parameters=LoraClassifierMaterializedState(
+        base_parameters=PeftEncoderMaterializedState(
             lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},
             classifier_head_weights={
                 "anxiety": [0.1, 0.2],
@@ -460,7 +458,7 @@ def test_lora_classifier_state_projection_rejects_delta_dimension_mismatch() -> 
     with pytest.raises(ValueError, match="delta dimension mismatch"):
         peft_state_projection.build_peft_encoder_state_projection(
             base_state=_lora_state(),
-            base_parameters=LoraClassifierMaterializedState(
+            base_parameters=PeftEncoderMaterializedState(
                 lora_parameters={"encoder.q_proj.lora_A": [1.0, 2.0]},
                 classifier_head_weights={
                     "anxiety": [0.1, 0.2],
@@ -511,7 +509,7 @@ def test_peft_encoder_partitioned_deltas_merge_without_fedmatch_names() -> None:
 
 
 def test_peft_encoder_partition_delta_applies_to_materialized_state() -> None:
-    base = LoraClassifierMaterializedState(
+    base = PeftEncoderMaterializedState(
         lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
         classifier_head_weights={"anxiety": [0.3, 0.4]},
         classifier_head_biases={"anxiety": 0.5},
@@ -540,7 +538,7 @@ def test_peft_encoder_partition_delta_applies_to_materialized_state() -> None:
 
 
 def test_peft_encoder_state_splits_published_state_by_residual_factor() -> None:
-    published = LoraClassifierMaterializedState(
+    published = PeftEncoderMaterializedState(
         lora_parameters={"encoder_lora.weight": [1.2, -2.4]},
         classifier_head_weights={"anxiety": [3.6, -4.8]},
         classifier_head_biases={"anxiety": 6.0},
@@ -570,7 +568,7 @@ def test_peft_encoder_state_splits_published_state_by_residual_factor() -> None:
 
 
 def test_peft_encoder_partition_delta_rejects_state_dimension_mismatch() -> None:
-    base = LoraClassifierMaterializedState(
+    base = PeftEncoderMaterializedState(
         lora_parameters={"encoder_lora.weight": [0.1, 0.2]},
         classifier_head_weights={},
         classifier_head_biases={},
@@ -590,7 +588,7 @@ def test_peft_encoder_partition_delta_rejects_state_dimension_mismatch() -> None
 
 
 def test_materialize_lora_classifier_partitioned_base_state_reads_artifact_metadata():
-    state = materialize_base_lora_classifier_partitioned_state(
+    state = materialize_base_peft_encoder_partitioned_state(
         base_state=_lora_state(
             lora_adapter_artifact_ref="aggregation_artifact://state/lora",
             classifier_head_artifact_ref="aggregation_artifact://state/head",
@@ -631,7 +629,7 @@ def test_materialize_lora_classifier_partitioned_base_state_reads_artifact_metad
 
 
 def test_materialize_peft_classifier_partitioned_base_state_reads_v2_metadata():
-    state = materialize_base_lora_classifier_partitioned_state(
+    state = materialize_base_peft_encoder_partitioned_state(
         base_state=_peft_state(
             peft_adapter_artifact_ref="aggregation_artifact://state/peft",
             classifier_head_artifact_ref="aggregation_artifact://state/head",
@@ -688,7 +686,7 @@ def test_lora_classifier_partitioned_payload_keeps_partition_names() -> None:
     }
 
 
-def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -> None:
+def test_materialize_peft_encoder_partitioned_update_reads_shared_payload() -> None:
     update = _lora_update(
         lora_parameter_deltas=None,
         classifier_head_weight_deltas=None,
@@ -715,7 +713,7 @@ def test_materialize_lora_classifier_partitioned_update_reads_shared_payload() -
         delta_l2_norm=None,
     )
 
-    partitions = materialize_lora_classifier_partitioned_update(payload=update)
+    partitions = materialize_peft_encoder_partitioned_update(payload=update)
 
     assert set(partitions) == {"sigma", "psi"}
     assert partitions["sigma"].lora_parameter_deltas[
@@ -753,7 +751,7 @@ def test_materialize_peft_classifier_partitioned_update_reads_v2_payload() -> No
         delta_l2_norm=None,
     )
 
-    partitions = materialize_lora_classifier_partitioned_update(payload=update)
+    partitions = materialize_peft_encoder_partitioned_update(payload=update)
 
     assert set(partitions) == {"sigma", "psi"}
     assert partitions["sigma"].lora_parameter_deltas[
@@ -764,7 +762,7 @@ def test_materialize_peft_classifier_partitioned_update_reads_v2_payload() -> No
     )
 
 
-def test_materialize_lora_classifier_partitioned_update_reads_artifact_ref() -> None:
+def test_materialize_peft_encoder_partitioned_update_reads_artifact_ref() -> None:
     loader = InMemoryJsonArtifactLoader(
         {
             "aggregation_artifact://client/partitioned_delta": {
@@ -804,7 +802,7 @@ def test_materialize_lora_classifier_partitioned_update_reads_artifact_ref() -> 
         delta_l2_norm=1.5,
     )
 
-    partitions = materialize_lora_classifier_partitioned_update(
+    partitions = materialize_peft_encoder_partitioned_update(
         payload=update,
         context=_aggregation_context(loader=loader),
     )
@@ -851,7 +849,7 @@ def test_partitioned_delta_tensor_artifact_roundtrips() -> None:
     )
 
 
-def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_ref() -> (
+def test_materialize_peft_encoder_partitioned_update_reads_tensor_artifact_ref() -> (
     None
 ):
     tensors, metadata = partitioned_artifacts.build_partitioned_delta_tensor_artifact(
@@ -886,7 +884,7 @@ def test_materialize_lora_classifier_partitioned_update_reads_tensor_artifact_re
         delta_l2_norm=1.5,
     )
 
-    partitions = materialize_lora_classifier_partitioned_update(
+    partitions = materialize_peft_encoder_partitioned_update(
         payload=update,
         context=_aggregation_context(loader=loader),
     )

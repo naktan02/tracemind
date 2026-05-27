@@ -42,9 +42,6 @@ class PeftEncoderSupervisedSeedStepResult:
     metrics: dict[str, float]
 
 
-LoraClassifierSupervisedSeedStepResult = PeftEncoderSupervisedSeedStepResult
-
-
 def run_peft_encoder_supervised_seed_step_core(
     *,
     labels: Sequence[str],
