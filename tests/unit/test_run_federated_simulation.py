@@ -24,6 +24,9 @@ from methods.adaptation.peft_text_classifier.evaluation import (
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     supervised_seed_step,
 )
+from methods.adaptation.peft_text_classifier.federated_ssl.peer_predictions import (
+    PEFT_ENCODER_PEER_SNAPSHOT_KIND,
+)
 from methods.adaptation.peft_text_classifier.update.delta_artifacts import (
     PeftEncoderDeltaMaterializer,
 )
@@ -132,11 +135,7 @@ from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_lora_classifier_delta_payload,
     make_peft_classifier_delta_payload,
-)
-from shared.src.contracts.adapter_contract_families.lora_classifier import (
-    LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.adapter_contract_families.peft_classifier import (
     PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
@@ -334,44 +333,25 @@ def _patch_query_ssl_peft_trainer(monkeypatch: pytest.MonkeyPatch) -> None:
         client_id = str(kwargs["client_id"])
         scale = 1.0 + (sum(ord(char) for char in client_id) % 7) / 10.0
         labels = list(active_state.label_schema)
-        if isinstance(active_state, PeftClassifierState):
-            update_payload = make_peft_classifier_delta_payload(
-                model_id=training_task.model_id,
-                base_model_revision=training_task.model_revision,
-                training_scope=training_task.training_scope,
-                backbone=_peft_runtime_config().backbone_payload(),
-                peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
-                label_schema=labels,
-                example_count=2,
-                peft_parameter_deltas={"lora.test": [0.01 * scale]},
-                classifier_head_weight_deltas={
-                    label: [0.01 * scale, 0.0] for label in labels
-                },
-                classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-                mean_confidence=0.8,
-                delta_l2_norm=0.1 * scale,
-            )
-            payload_format = PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
-        else:
-            update_payload = make_lora_classifier_delta_payload(
-                model_id=training_task.model_id,
-                base_model_revision=training_task.model_revision,
-                training_scope=training_task.training_scope,
-                backbone=_peft_runtime_config().backbone_payload(),
-                lora_config=_peft_runtime_config().lora_config_payload(),
-                label_schema=labels,
-                example_count=2,
-                lora_parameter_deltas={"lora.test": [0.01 * scale]},
-                classifier_head_weight_deltas={
-                    label: [0.01 * scale, 0.0] for label in labels
-                },
-                classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
-                delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
-                mean_confidence=0.8,
-                delta_l2_norm=0.1 * scale,
-            )
-            payload_format = LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
+        assert isinstance(active_state, PeftClassifierState)
+        update_payload = make_peft_classifier_delta_payload(
+            model_id=training_task.model_id,
+            base_model_revision=training_task.model_revision,
+            training_scope=training_task.training_scope,
+            backbone=_peft_runtime_config().backbone_payload(),
+            peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
+            label_schema=labels,
+            example_count=2,
+            peft_parameter_deltas={"lora.test": [0.01 * scale]},
+            classifier_head_weight_deltas={
+                label: [0.01 * scale, 0.0] for label in labels
+            },
+            classifier_head_bias_deltas={label: 0.001 * scale for label in labels},
+            delta_format=LORA_CLASSIFIER_DELTA_FORMAT_INLINE,
+            mean_confidence=0.8,
+            delta_l2_norm=0.1 * scale,
+        )
+        payload_format = PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT
         update_envelope = make_training_update_envelope(
             update_id=f"update_{client_id}_{training_task.round_id}",
             round_id=training_task.round_id,
@@ -1037,15 +1017,15 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         },
         classifier_head_bias_deltas={"anxiety": 0.01, "normal": -0.01},
     )
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="mxbai-lora-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         backbone=_peft_runtime_config().backbone_payload(),
-        lora_config=_peft_runtime_config().lora_config_payload(),
+        peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_delta_artifact_ref=delta_plan.lora_delta_artifact_ref,
+        peft_adapter_delta_artifact_ref=delta_plan.lora_delta_artifact_ref,
         classifier_head_delta_artifact_ref=(
             delta_plan.classifier_head_delta_artifact_ref
         ),
@@ -1061,7 +1041,7 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         payload_ref="client-submission::update_test",
-        payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         example_count=2,
         client_metrics={
             "delta_l2_norm": 0.2,
@@ -1239,7 +1219,9 @@ def test_query_ssl_peft_round_passes_client_pools_to_real_trainer(
     assert accepted_payload.delta_format == (
         LORA_CLASSIFIER_DELTA_FORMAT_SERVER_UPLOADED
     )
-    assert accepted_payload.lora_delta_artifact_ref.startswith("aggregation_artifact::")
+    assert accepted_payload.peft_adapter_delta_artifact_ref.startswith(
+        "aggregation_artifact::"
+    )
     assert accepted_payload.classifier_head_delta_artifact_ref.startswith(
         "aggregation_artifact::"
     )
@@ -1308,15 +1290,15 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         labels=["anxiety", "normal"],
         updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
     )
-    update_payload = make_lora_classifier_delta_payload(
+    update_payload = make_peft_classifier_delta_payload(
         model_id="mxbai-lora-classifier",
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         backbone=_peft_runtime_config().backbone_payload(),
-        lora_config=_peft_runtime_config().lora_config_payload(),
+        peft_adapter_config=_peft_runtime_config().peft_adapter_config_payload(),
         label_schema=["anxiety", "normal"],
         example_count=2,
-        lora_parameter_deltas={"lora.test": [0.1]},
+        peft_parameter_deltas={"lora.test": [0.1]},
         classifier_head_weight_deltas={
             "anxiety": [0.1, 0.0],
             "normal": [0.0, -0.1],
@@ -1334,7 +1316,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
         base_model_revision="sim_rev_0000",
         training_scope="adapter_only",
         payload_ref="client-submission::update_test",
-        payload_format=LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
+        payload_format=PEFT_CLASSIFIER_UPDATE_PAYLOAD_FORMAT,
         example_count=2,
         client_metrics={
             "delta_l2_norm": 0.2,
@@ -1355,7 +1337,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     peer_snapshot = FederatedSslPeerClientSnapshot(
         client_id="agent_02",
         selection_vector=(0.2, 0.8),
-        payload_kind="lora_classifier_materialized_state.v1",
+        payload_kind=PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
             lora_parameters={"lora.test": [0.2]},
             classifier_head_weights={
@@ -1368,7 +1350,7 @@ def test_method_owned_peft_round_uses_method_trainer_before_manual_query_ssl(
     returned_peer_snapshot = FederatedSslPeerClientSnapshot(
         client_id="agent_01",
         selection_vector=(0.7, 0.3),
-        payload_kind="lora_classifier_materialized_state.v1",
+        payload_kind=PEFT_ENCODER_PEER_SNAPSHOT_KIND,
         payload=PeftEncoderMaterializedState(
             lora_parameters={"lora.test": [0.3]},
             classifier_head_weights={
@@ -2024,7 +2006,7 @@ def test_simulation_server_runtime_rejects_partitioned_policy_for_non_peft_famil
 ):
     with pytest.raises(ValueError, match="not supported by adapter family"):
         resolve_simulation_aggregation_backend_name(
-            adapter_family_name="diagonal_scale",
+            adapter_family_name="unsupported_family",
             aggregation_backend_name="fedavg",
             capability_plan=_partitioned_server_update_capability_plan(),
         )
@@ -2074,7 +2056,7 @@ def test_federated_ssl_runtime_rejects_manual_ssl_method_config() -> None:
             "manual_axes": {
                 "client_ssl_objective": "pseudo_label",
                 "server_aggregation": "fedavg",
-                "update_family": "diagonal_scale",
+                "update_family": "unsupported_family",
             },
         },
         security_policy=None,
@@ -2099,7 +2081,7 @@ def test_manual_execution_plan_rejects_round_state_metric_keys() -> None:
                 "manual_axes": {
                     "client_ssl_objective": "pseudo_label",
                     "server_aggregation": "fedavg",
-                    "update_family": "diagonal_scale",
+                    "update_family": "unsupported_family",
                 },
                 "required_client_metric_keys": ["client_entropy"],
             },
@@ -2146,8 +2128,8 @@ def test_run_simulation_request_rejects_manual_plan_runtime_drift(
         tmp_path,
         output_name="manual_plan_mismatch",
         round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="diagonal_scale",
-            update_family_name="diagonal_scale",
+            adapter_family_name="unsupported_family",
+            update_family_name="unsupported_family",
             aggregation_backend_name="fedavg",
         ),
         training_task_config=_default_training_task_config(
@@ -2752,16 +2734,16 @@ def test_run_simulation_request_rejects_unsupported_legacy_local_update_backend(
             margin_threshold=0.0,
             max_examples=4,
             gradient_clip_norm=1.0,
-            training_backend_name="diagonal_scale_heuristic",
-            privacy_guard_name="diagonal_scale_clip_only",
-            scorer_backend_name="diagonal_scale_logits",
+            training_backend_name="unsupported_legacy_backend",
+            privacy_guard_name="unsupported_legacy_guard",
+            scorer_backend_name="unsupported_legacy_scorer",
             objective_extras={},
         ),
     )
 
     with pytest.raises(
         ValueError,
-        match="Unsupported local update backend: diagonal_scale_heuristic",
+        match="Unsupported local update backend: unsupported_legacy_backend",
     ):
         run_simulation_request(request)
 

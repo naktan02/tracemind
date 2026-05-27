@@ -479,6 +479,30 @@ def test_fl_simulation_runtime_model_does_not_embed_lora_classifier_scope() -> N
     )
 
 
+def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
+    source = (
+        REPO_ROOT / "tests" / "unit" / "test_run_federated_simulation.py"
+    ).read_text(encoding="utf-8")
+    forbidden_snippets = (
+        "make_lora_classifier_delta_payload",
+        "LORA_CLASSIFIER_UPDATE_PAYLOAD_FORMAT",
+        'payload_kind="lora_classifier_materialized_state.v1"',
+        'adapter_family_name="diagonal_scale"',
+        'update_family_name="diagonal_scale"',
+        'training_backend_name="diagonal_scale_heuristic"',
+        'privacy_guard_name="diagonal_scale_clip_only"',
+        'scorer_backend_name="diagonal_scale_logits"',
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+
+    assert not violations, (
+        "FL simulation unit fixture는 active PEFT-classifier payload surface를 "
+        "검증한다. v1 lora_classifier/diagonal_scale payload 직접 생성은 shared "
+        "contract compatibility 테스트로 격리한다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",
