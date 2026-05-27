@@ -75,9 +75,6 @@ class FederatedPeftEncoderRuntimeConfig:
         return self.training_backend_config.to_peft_adapter_config_payload()
 
 
-FederatedLoraClassifierRuntimeConfig = FederatedPeftEncoderRuntimeConfig
-
-
 def build_peft_encoder_round_runtime_payloads(
     round_runtime_mapping: Mapping[str, object],
 ) -> dict[str, object]:

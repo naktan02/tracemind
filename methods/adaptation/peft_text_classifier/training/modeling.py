@@ -90,9 +90,6 @@ class LoraTextClassifier(nn.Module):
         return pooled.to(self.classifier.weight.dtype)
 
 
-PeftEncoderTextClassifier = LoraTextClassifier
-
-
 def count_parameters(model: nn.Module) -> dict[str, int]:
     """총 파라미터와 학습 가능한 파라미터 수를 반환한다."""
 

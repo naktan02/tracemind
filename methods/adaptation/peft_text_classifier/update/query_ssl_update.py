@@ -44,9 +44,6 @@ class QuerySslPeftEncoderUpdateBuildResult:
     accepted_unlabeled_count: int
 
 
-QuerySslLoraUpdateBuildResult = QuerySslPeftEncoderUpdateBuildResult
-
-
 def build_query_ssl_peft_encoder_update_payload(
     *,
     training_task: TrainingTask,

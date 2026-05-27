@@ -722,6 +722,11 @@ def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -
         "QuerySslLoraTrainingBackend",
         "SimulationInlineLoraClassifierTrainExecutor",
         "LoraClassifierSupervisedSeedStepResult",
+        "FederatedLoraClassifierRuntimeConfig",
+        "QuerySslLoraUpdateBuildResult",
+        "LoraClassifierRuntimePayloadConfig",
+        "require_peft_classifier_runtime_matches_objective",
+        "PeftEncoderTextClassifier =",
         "upload_agent_local_lora_classifier_update",
         "server_owned_lora_classifier_update_artifact_byte_count",
         "LoraClassifierDeltaArtifactStore",
@@ -743,6 +748,7 @@ def test_peft_text_classifier_does_not_keep_legacy_lora_pass_through_aliases() -
         METHODS_SRC / "adaptation" / "peft_text_classifier",
         METHODS_SRC / "federated_ssl" / "fedmatch",
         SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent",
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_server",
     )
     violations = [
         f"{_relative_repo_path(path)}: {alias_name}"

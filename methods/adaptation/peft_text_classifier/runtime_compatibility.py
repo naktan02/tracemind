@@ -23,7 +23,7 @@ from .config import (
 
 
 @runtime_checkable
-class LoraClassifierRuntimePayloadConfig(Protocol):
+class PeftEncoderRuntimePayloadConfig(Protocol):
     """Runtime state와 local objective payload 비교에 필요한 config surface."""
 
     def backbone_payload(self) -> Mapping[str, str | int]:
@@ -34,9 +34,6 @@ class LoraClassifierRuntimePayloadConfig(Protocol):
 
     def peft_adapter_config_payload(self) -> Mapping[str, object]:
         """State/update payload에 기록할 PEFT adapter config snapshot."""
-
-
-PeftEncoderRuntimePayloadConfig = LoraClassifierRuntimePayloadConfig
 
 
 @register_runtime_objective_compatibility_validator(LORA_CLASSIFIER_ADAPTER_KIND)
@@ -111,7 +108,7 @@ def require_peft_encoder_runtime_matches_objective(
 
 def _as_lora_classifier_runtime_config(
     runtime_config: object,
-) -> LoraClassifierRuntimePayloadConfig:
+) -> PeftEncoderRuntimePayloadConfig:
     return _as_peft_encoder_runtime_config(runtime_config)
 
 
@@ -125,8 +122,3 @@ def _as_peft_encoder_runtime_config(
             "peft_adapter_config_payload()."
         )
     return runtime_config
-
-
-require_peft_classifier_runtime_matches_objective = (
-    require_peft_encoder_runtime_matches_objective
-)
