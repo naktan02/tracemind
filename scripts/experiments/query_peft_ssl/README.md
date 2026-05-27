@@ -8,7 +8,7 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
 ## 구조
 
 - `runners/`
-  - `supervised.py`: frozen backbone + LoRA + classifier supervised baseline.
+  - `supervised.py`: frozen backbone + PEFT encoder classifier supervised baseline.
   - `pseudo_label.py`: pseudo-label replay/self-training helper.
   - `bootstrap_teacher.py`: fixed classifier teacher 기반 pseudo-label 생성/재생 helper.
   - `consistency.py`: USB PseudoLabel, FixMatch 등 Query SSL runner.
@@ -35,12 +35,12 @@ entrypoint가 호출하는 runner/helper 구현을 소유한다.
 실험을 직접 실행할 때는 이 패키지의 runner 파일을 직접 실행하지 않고 아래
 Hydra entrypoint를 실행한다.
 
-- `scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py`
-- `scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py`
+- `scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py`
+- `scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py`
 
 공통으로 재사용될 알고리즘 core는 이 패키지 안에서 키우지 않고 `methods/`로
 올린다. cross-boundary contract/domain은 `shared/`, runtime bridge는
 `scripts/runtime_adapters/`에 둔다.
 
-새 Query SSL 알고리즘은 원칙적으로 `train_lora_ssl_classifier.py`를 재사용하고
+새 Query SSL 알고리즘은 원칙적으로 `train_peft_ssl_classifier.py`를 재사용하고
 `strategy_axes/ssl/consistency_method` Hydra config만 추가/교체한다.

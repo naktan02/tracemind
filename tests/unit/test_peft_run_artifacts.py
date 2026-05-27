@@ -112,7 +112,7 @@ def test_write_run_artifacts_writes_model_manifest_and_report(
         "output_root": "runs/_smoke",
     }
     assert manifest["ssl_algorithm"] == "fixmatch"
-    assert report["schema_version"] == "central_lora_classifier_eval.v1"
+    assert report["schema_version"] == "central_peft_classifier_eval.v1"
     assert report["manifest"] == manifest
     assert report["results"] == {"test": {"accuracy": 0.8}}
 

@@ -1,4 +1,4 @@
-"""중앙집중형 LoRA + classifier SSL 공통 entrypoint."""
+"""중앙집중형 PEFT encoder classifier SSL 공통 entrypoint."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from scripts.experiments.central_ssl_control.ssl_mode_router import (
 @hydra.main(
     version_base=None,
     config_path="../../../conf",
-    config_name="entrypoints/central_ssl_control/train_lora_ssl_classifier",
+    config_name="entrypoints/central_ssl_control/train_peft_ssl_classifier",
 )
 def main(cfg: DictConfig) -> None:
     run_central_ssl_mode(cfg)

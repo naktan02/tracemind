@@ -17,7 +17,7 @@
 중요:
 
 - 이 문서는 현재 시스템/FL runtime의 shared state/update 계약을 다룬다.
-- query-domain 적응 단계의 `central LoRA classifier` checkpoint 전체를 설명하는
+- query-domain 적응 단계의 `central PEFT classifier` checkpoint 전체를 설명하는
   문서는 아니다.
 
 ---
@@ -206,7 +206,7 @@ p(c | x) = softmax(z)_c
 4. prototype은 main scoring 파라미터가 아니라 classifier bootstrap/comparison
    artifact로 남는다.
 5. 이 family는 시스템 translation용 shared head를 뜻하며, 논문 트랙의
-   frozen backbone + LoRA + classifier checkpoint 전체와 동일한 개념은 아니다.
+   frozen backbone + PEFT encoder classifier checkpoint 전체와 동일한 개념은 아니다.
 
 update payload:
 

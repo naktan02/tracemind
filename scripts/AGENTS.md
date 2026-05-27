@@ -8,7 +8,7 @@ sweep, visualization, exploratory-only logic만 둔다.
 ## 먼저 읽을 것
 
 1. `scripts/README.md`
-2. 논문 트랙이면 `docs/contracts/central_lora_classifier_trainer_contract.md`
+2. 논문 트랙이면 `docs/contracts/central_peft_classifier_trainer_contract.md`
 3. `conf/`의 관련 Hydra config group
 4. 작업 대상 entrypoint의 README 또는 모듈
 

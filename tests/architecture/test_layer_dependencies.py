@@ -670,6 +670,76 @@ def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
     )
 
 
+def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
+    expected_paths = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_peft_supervised_classifier.py",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_supervised_classifier.yaml",
+    )
+    legacy_paths = (
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_lora_ssl_classifier.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_lora_supervised_classifier.py",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_lora_ssl_classifier.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_lora_supervised_classifier.yaml",
+    )
+    checked_paths = (
+        SCRIPTS_SRC / "README.md",
+        SCRIPTS_SRC / "experiments" / "README.md",
+        SCRIPTS_SRC / "experiments" / "central_ssl_control" / "README.md",
+        SCRIPTS_SRC / "experiments" / "query_peft_ssl" / "README.md",
+    )
+    forbidden_snippets = (
+        "train_lora_ssl_classifier",
+        "train_lora_supervised_classifier",
+    )
+    missing_paths = [
+        _relative_repo_path(path) for path in expected_paths if not path.exists()
+    ]
+    legacy_existing_paths = [
+        _relative_repo_path(path) for path in legacy_paths if path.exists()
+    ]
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not (missing_paths or legacy_existing_paths or violations), (
+        "중앙 SSL 실행 entrypoint/config/README는 PEFT classifier scaffold 이름을 "
+        "사용한다. v1 lora_classifier 이름은 artifact schema와 old-run reader "
+        "compatibility 표면에만 남긴다.\n"
+        f"missing={missing_paths}\n"
+        f"legacy_existing={legacy_existing_paths}\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_query_peft_ssl_harness_uses_peft_helper_names() -> None:
     forbidden_snippets = (
         "query_" + "lora",

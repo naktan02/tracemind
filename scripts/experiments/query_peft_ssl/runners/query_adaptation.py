@@ -11,9 +11,9 @@ from typing import Any
 from omegaconf import DictConfig
 
 from scripts.experiments.query_peft_ssl.io.query_adaptation import (
-    QueryAdaptationLoraExportArtifacts,
+    QueryAdaptationPeftExportArtifacts,
     build_labeled_rows_from_query_adaptation_dataset,
-    write_query_adaptation_lora_dataset,
+    write_query_adaptation_peft_dataset,
 )
 from scripts.experiments.query_peft_ssl.runners.supervised import (
     run_supervised_peft_baseline,
@@ -33,10 +33,10 @@ class PreparedQueryAdaptationSupervisedRun:
     selection_example_count: int
     train_rows: list[LabeledQueryRow]
     eval_rows_by_name: dict[str, list[LabeledQueryRow]]
-    train_artifacts: QueryAdaptationLoraExportArtifacts
+    train_artifacts: QueryAdaptationPeftExportArtifacts
     selection_set_name: str
-    selection_artifacts: QueryAdaptationLoraExportArtifacts | None = None
-    eval_artifacts: dict[str, QueryAdaptationLoraExportArtifacts] = field(
+    selection_artifacts: QueryAdaptationPeftExportArtifacts | None = None
+    eval_artifacts: dict[str, QueryAdaptationPeftExportArtifacts] = field(
         default_factory=dict
     )
 
@@ -70,7 +70,7 @@ def run_query_adaptation_supervised_baseline(
     train_dataset: Any,
     selection_dataset: Any | None = None,
     eval_datasets: Mapping[str, Any] | None = None,
-    export_root: str | Path = "data/artifacts/query_adaptation_lora",
+    export_root: str | Path = "data/artifacts/query_adaptation_peft",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
@@ -105,7 +105,7 @@ def prepare_query_adaptation_supervised_run(
     train_dataset: Any,
     selection_dataset: Any | None = None,
     eval_datasets: Mapping[str, Any] | None = None,
-    export_root: str | Path = "data/artifacts/query_adaptation_lora",
+    export_root: str | Path = "data/artifacts/query_adaptation_peft",
     selection_set_name: str = "selection",
     generated_at: datetime | None = None,
 ) -> PreparedQueryAdaptationSupervisedRun:
@@ -119,7 +119,7 @@ def prepare_query_adaptation_supervised_run(
     export_dir = Path(str(export_root)) / run_id
     export_dir.mkdir(parents=True, exist_ok=True)
 
-    train_outputs = write_query_adaptation_lora_dataset(
+    train_outputs = write_query_adaptation_peft_dataset(
         dataset=train_dataset,
         output_path=export_dir / "train.jsonl",
         annotation_source="query_adaptation_train",
@@ -134,12 +134,12 @@ def prepare_query_adaptation_supervised_run(
     eval_rows_by_name: dict[str, list[LabeledQueryRow]] = {}
 
     effective_selection_dataset = selection_dataset or train_dataset
-    selection_artifacts: QueryAdaptationLoraExportArtifacts | None = None
+    selection_artifacts: QueryAdaptationPeftExportArtifacts | None = None
     if selection_dataset is None:
         selection_path = str(train_outputs.jsonl_path)
         selection_rows = list(train_rows)
     else:
-        selection_artifacts = write_query_adaptation_lora_dataset(
+        selection_artifacts = write_query_adaptation_peft_dataset(
             dataset=selection_dataset,
             output_path=export_dir / f"{selection_set_name}.jsonl",
             annotation_source=f"query_adaptation_{selection_set_name}",
@@ -154,11 +154,11 @@ def prepare_query_adaptation_supervised_run(
     eval_rows_by_name[selection_set_name] = selection_rows
 
     effective_eval_datasets = {} if eval_datasets is None else dict(eval_datasets)
-    eval_artifacts: dict[str, QueryAdaptationLoraExportArtifacts] = {}
+    eval_artifacts: dict[str, QueryAdaptationPeftExportArtifacts] = {}
     for dataset_name, dataset in effective_eval_datasets.items():
         if dataset_name == selection_set_name and selection_dataset is None:
             continue
-        eval_outputs = write_query_adaptation_lora_dataset(
+        eval_outputs = write_query_adaptation_peft_dataset(
             dataset=dataset,
             output_path=export_dir / f"{dataset_name}.jsonl",
             annotation_source=f"query_adaptation_{dataset_name}",

@@ -16,7 +16,7 @@ from scripts.experiments.query_peft_ssl.io.query_adaptation import (
     QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION,
     QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION,
     build_labeled_rows_from_query_adaptation_dataset,
-    write_query_adaptation_lora_dataset,
+    write_query_adaptation_peft_dataset,
 )
 from shared.src.contracts.labeled_query_row_contracts import load_labeled_query_rows
 from shared.src.domain.entities.training.pseudo_label_candidate import (
@@ -96,12 +96,12 @@ def test_build_labeled_rows_from_query_adaptation_dataset_maps_fields() -> None:
     assert rows[1]["approved_by"] == "manual_override"
 
 
-def test_write_query_adaptation_lora_dataset_writes_jsonl_and_manifest(
+def test_write_query_adaptation_peft_dataset_writes_jsonl_and_manifest(
     tmp_path: Path,
 ) -> None:
     dataset = _build_dataset()
 
-    outputs = write_query_adaptation_lora_dataset(
+    outputs = write_query_adaptation_peft_dataset(
         dataset=dataset,
         output_path=tmp_path / "query_adaptation.jsonl",
         generated_at=datetime(2026, 4, 12, 13, 0, tzinfo=timezone.utc),

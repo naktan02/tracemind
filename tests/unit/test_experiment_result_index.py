@@ -26,8 +26,8 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     records = load_result_index_records(report_path)
 
     assert records.run.run_id == "lora_fixmatch_2026_05_13_143419"
-    assert records.run.track == "central_lora_ssl"
-    assert records.run.method_family == "lora_classifier"
+    assert records.run.track == "central_peft_ssl"
+    assert records.run.method_family == "peft_classifier"
     assert records.run.method_name == "fixmatch_usb_v1"
     assert records.run.algorithm_name == "fixmatch"
     assert records.run.labeled_dataset_name == "ourafla_reddit"
@@ -56,6 +56,18 @@ def test_load_result_index_records_normalizes_report_shape(tmp_path: Path) -> No
     assert records.artifacts[0].artifact_kind == "projection_manifest"
     assert records.artifacts[1].artifact_kind == "projection_points_jsonl"
     assert records.artifacts[2].artifact_kind == "projection_png"
+
+
+def test_load_result_index_records_keeps_legacy_lora_track(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_legacy_lora_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_lora_ssl"
+    assert records.run.method_family == "lora_classifier"
+    assert records.run.method_name == "fixmatch_usb_v1"
 
 
 def test_write_result_index_records_and_export_dashboard_json(tmp_path: Path) -> None:
@@ -225,7 +237,7 @@ def test_result_index_excludes_smoke_reports_from_default_runs_ingest(
     assert discover_report_paths(tmp_path / "runs") == [central_report]
     assert discover_report_paths(tmp_path / "runs" / "_smoke") == [smoke_report]
     assert discover_report_paths(
-        tmp_path / "runs" / "_smoke" / "train_lora_ssl_classifier"
+        tmp_path / "runs" / "_smoke" / "train_peft_ssl_classifier"
     ) == [smoke_report]
     assert metadata_smoke_report not in discover_report_paths(tmp_path / "runs")
 
@@ -408,7 +420,7 @@ def _write_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
-        / "train_lora_ssl_classifier"
+        / "train_peft_ssl_classifier"
         / "consistency"
         / (
             "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
@@ -427,6 +439,33 @@ def _write_report(tmp_path: Path) -> Path:
     (projection_dir / "validation.projection.png").write_bytes(b"png")
     report_path.write_text(
         json.dumps(_sample_report(projection_dir), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
+def _write_legacy_lora_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "train_lora_ssl_classifier"
+        / "consistency"
+        / (
+            "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
+            "validation-ourafla_reddit_test-ourafla_reddit"
+        )
+        / "fixmatch_usb_v1"
+        / "lora_fixmatch_2026_05_13_143419"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    projection_dir = report_path.parent.parent / "projections"
+    projection_dir.mkdir(parents=True, exist_ok=True)
+    payload = _sample_report(projection_dir)
+    payload["schema_version"] = "central_lora_classifier_eval.v1"
+    report_path.write_text(
+        json.dumps(payload, indent=2) + "\n",
         encoding="utf-8",
     )
     return report_path
@@ -501,7 +540,7 @@ def _write_smoke_report(tmp_path: Path) -> Path:
         tmp_path
         / "runs"
         / "_smoke"
-        / "train_lora_ssl_classifier"
+        / "train_peft_ssl_classifier"
         / "consistency"
         / "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
         / "fixmatch_usb_v1"
@@ -518,7 +557,7 @@ def _write_metadata_smoke_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
-        / "train_lora_ssl_classifier"
+        / "train_peft_ssl_classifier"
         / "consistency"
         / "metadata_smoke"
         / "reports"
@@ -528,7 +567,7 @@ def _write_metadata_smoke_report(tmp_path: Path) -> Path:
     report_path.write_text(
         json.dumps(
             {
-                "schema_version": "central_lora_classifier_eval.v1",
+                "schema_version": "central_peft_classifier_eval.v1",
                 "trainer_version": "metadata_smoke",
                 "manifest": {
                     "run_control": {
@@ -586,7 +625,7 @@ def _write_new_layout_fl_ssl_report(tmp_path: Path) -> Path:
 
 def _sample_report(projection_dir: Path) -> dict:
     return {
-        "schema_version": "central_lora_classifier_eval.v1",
+        "schema_version": "central_peft_classifier_eval.v1",
         "trainer_version": "lora_fixmatch_2026_05_13_143419",
         "manifest": {
             "trainer_version": "lora_fixmatch_2026_05_13_143419",
@@ -809,7 +848,7 @@ def _sample_fl_ssl_report(projection_dir: Path | None = None) -> dict:
         "schema_version": "federated_simulation_report.v1",
         "track": "fl_ssl_main_comparison",
         "table_role": "paper_main",
-        "must_not_merge_with": ["central_lora_ssl"],
+        "must_not_merge_with": ["central_peft_ssl"],
         "protocol": {
             "client_count": 10,
             "round_budget": 50,

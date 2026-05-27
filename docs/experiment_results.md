@@ -1,7 +1,7 @@
 # TraceMind Experiment Results
 
 이 문서는 현재 남아 있는 주요 실험 숫자를 짧게 보관한다. 구조와 계약의 source of
-truth가 아니며, query-domain central LoRA/SSL 결과는 별도 run report가 생기면
+truth가 아니며, query-domain central PEFT/SSL 결과는 별도 run report가 생기면
 추가한다.
 
 ## 주의

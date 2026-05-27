@@ -15,12 +15,12 @@ from shared.src.contracts.labeled_query_row_contracts import (
     dump_labeled_query_rows,
 )
 
-QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION = "query_adaptation_lora_export.v1"
+QUERY_ADAPTATION_EXPORT_SCHEMA_VERSION = "query_adaptation_peft_export.v1"
 QUERY_ADAPTATION_SUMMARY_SCHEMA_VERSION = "query_adaptation_dataset_summary.v1"
 
 
 @dataclass(slots=True)
-class QueryAdaptationLoraExportArtifacts:
+class QueryAdaptationPeftExportArtifacts:
     """query adaptation dataset export 산출물 경로."""
 
     jsonl_path: Path
@@ -56,14 +56,14 @@ def build_labeled_rows_from_query_adaptation_dataset(
     return rows
 
 
-def write_query_adaptation_lora_dataset(
+def write_query_adaptation_peft_dataset(
     *,
     dataset: Any,
     output_path: str | Path,
     annotation_source: str = "query_adaptation_dataset",
     generated_at: datetime | None = None,
-) -> QueryAdaptationLoraExportArtifacts:
-    """LoRA supervised baseline이 읽을 JSONL과 manifest를 기록한다."""
+) -> QueryAdaptationPeftExportArtifacts:
+    """PEFT supervised baseline이 읽을 JSONL과 manifest를 기록한다."""
 
     rows = build_labeled_rows_from_query_adaptation_dataset(
         dataset,
@@ -108,7 +108,7 @@ def write_query_adaptation_lora_dataset(
         + "\n",
         encoding="utf-8",
     )
-    return QueryAdaptationLoraExportArtifacts(
+    return QueryAdaptationPeftExportArtifacts(
         jsonl_path=resolved_output_path,
         manifest_path=manifest_path,
         summary_path=summary_path,

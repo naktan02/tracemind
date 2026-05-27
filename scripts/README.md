@@ -98,39 +98,39 @@ uv run python scripts/prototypes/evaluate_prototype_pack.py
 uv run python scripts/experiments/central_classifier_seed/train_softmax_classifier.py
 ```
 
-중앙 LoRA supervised control:
+중앙 PEFT supervised control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_supervised_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py
 ```
 
 중앙 SSL smoke/test 산출물은 main run과 섞지 않는다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
   run_controls/central_ssl/budget=smoke
 ```
 
-위 명령은 `runs/_smoke/train_lora_ssl_classifier/...` 아래에 저장한다.
+위 명령은 `runs/_smoke/train_peft_ssl_classifier/...` 아래에 저장한다.
 
-중앙 LoRA USB PseudoLabel control:
+중앙 PEFT USB PseudoLabel control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_lora_ssl_classifier_pseudolabel
+  output_dir=runs/train_peft_ssl_classifier_pseudolabel
 ```
 
-중앙 LoRA FixMatch control:
+중앙 PEFT FixMatch control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py
+uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py
 ```
 
-중앙 LoRA FreeMatch control:
+중앙 PEFT FreeMatch control:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_lora_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
   strategy_axes/ssl/consistency_method=freematch_usb_v1
 ```
 

@@ -19,7 +19,7 @@
   - 중앙 fixed embedding + classifier seed entrypoint를 둔다.
 - `central_ssl_control/`
   - pooled/offline 중앙 SSL control entrypoint만 둔다.
-  - LoRA SSL 구현체 자체를 소유하지 않는다.
+  - PEFT SSL 구현체 자체를 소유하지 않는다.
 - `fl_ssl/`
   - client split, round loop, aggregation, per-client metric 같은 FL SSL orchestration을 둔다.
 - `prototype_analysis/`
@@ -48,10 +48,10 @@
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central_classifier_seed/train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline.
-- `central_ssl_control/train_lora_supervised_classifier.py`
-  - query-domain 적응 단계의 `frozen backbone + LoRA + classifier` canonical supervised baseline entrypoint.
-- `central_ssl_control/train_lora_ssl_classifier.py`
-  - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 LoRA scaffold에 얹는
+- `central_ssl_control/train_peft_supervised_classifier.py`
+  - query-domain 적응 단계의 `frozen backbone + PEFT encoder classifier` canonical supervised baseline entrypoint.
+- `central_ssl_control/train_peft_ssl_classifier.py`
+  - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT classifier scaffold에 얹는
     공통 SSL entrypoint.
   - `ssl_input_mode=consistency`는 `strategy_axes/ssl/consistency_method`를 실행한다.
   - `ssl_input_mode=pseudo_label_replay`는 이미 생성된 pseudo-label JSONL을
@@ -63,7 +63,7 @@
     `query_ssl_strong_view_policy`,
     `strategy_axes/adaptation/initial_checkpoint` selector다.
 - `query_peft_ssl/`
-  - query-domain LoRA scaffold의 helper 모듈
+  - query-domain PEFT classifier scaffold의 helper 모듈
   - `runners/supervised.py`가 canonical supervised baseline runner다.
   - `query_ssl/common.py`가 Query SSL family 공통 scaffolding이다.
   - `runners/consistency.py`가 USB FixMatch를 포함한 consistency family runner다.
@@ -115,8 +115,8 @@
 ### seed / adaptation classifier를 보고 싶을 때
 
 1. `central_classifier_seed/train_softmax_classifier.py`
-2. `central_ssl_control/train_lora_supervised_classifier.py`
-3. `central_ssl_control/train_lora_ssl_classifier.py`
+2. `central_ssl_control/train_peft_supervised_classifier.py`
+3. `central_ssl_control/train_peft_ssl_classifier.py`
 4. `query_peft_ssl/runners/supervised.py`
 5. 필요하면 `query_peft_ssl/runners/consistency.py`, `query_peft_ssl/runners/query_adaptation.py`, `query_peft_ssl/runners/bootstrap_teacher.py`, `query_peft_ssl/runners/pseudo_label.py`
 
@@ -124,18 +124,18 @@
 
 중앙 비교를 다시 돌릴 때는 아래 순서를 기준으로 본다.
 
-1. `central_ssl_control/train_lora_supervised_classifier.py`
-   - labeled seed subset으로 supervised LoRA seed manifest를 먼저 만든다.
-2. `central_ssl_control/train_lora_ssl_classifier.py`
+1. `central_ssl_control/train_peft_supervised_classifier.py`
+   - labeled seed subset으로 supervised PEFT seed manifest를 먼저 만든다.
+2. `central_ssl_control/train_peft_ssl_classifier.py`
    - 이미 생성된 pseudo-label JSONL을 쓰는 재생 실험은
      `ssl_input_mode=pseudo_label_replay`와 `pseudo_label_jsonl=<path>`로 같은
      entrypoint에서 실행한다.
-3. `central_ssl_control/train_lora_ssl_classifier.py`
-   - 같은 supervised LoRA seed manifest에서 warm-start하고,
+3. `central_ssl_control/train_peft_ssl_classifier.py`
+   - 같은 supervised PEFT seed manifest에서 warm-start하고,
      `strategy_axes/ssl/consistency_method=pseudolabel_usb_v1`로 USB PseudoLabel처럼
      unlabeled `text` weak view만 사용한다.
-4. `central_ssl_control/train_lora_ssl_classifier.py`
-   - 같은 supervised LoRA seed manifest에서 warm-start하고,
+4. `central_ssl_control/train_peft_ssl_classifier.py`
+   - 같은 supervised PEFT seed manifest에서 warm-start하고,
      기본 `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`로 FixMatch를 실행한다.
      기본값으로 materialized `labeled_train.with_views.jsonl` /
      `unlabeled_pool.with_views.jsonl`과
@@ -151,7 +151,7 @@
      끄는 ablation 대상은 아니다.
 
 현재 바로 복사해서 쓸 명령은 `scripts/README.md`의
-중앙 LoRA/SSL 실행 명령과 각 entrypoint의 `--cfg job` preview를 기준으로 본다.
+중앙 PEFT/SSL 실행 명령과 각 entrypoint의 `--cfg job` preview를 기준으로 본다.
 
 ## 주의할 점
 

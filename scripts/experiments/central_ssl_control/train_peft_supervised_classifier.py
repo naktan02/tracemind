@@ -1,4 +1,4 @@
-"""중앙집중형 frozen-backbone + LoRA + classifier supervised baseline entrypoint."""
+"""중앙집중형 PEFT encoder classifier supervised baseline entrypoint."""
 
 from __future__ import annotations
 
@@ -13,7 +13,7 @@ from scripts.experiments.query_peft_ssl.runners.supervised import (
 @hydra.main(
     version_base=None,
     config_path="../../../conf",
-    config_name="entrypoints/central_ssl_control/train_lora_supervised_classifier",
+    config_name="entrypoints/central_ssl_control/train_peft_supervised_classifier",
 )
 def main(cfg: DictConfig) -> None:
     run_supervised_peft_baseline(cfg)

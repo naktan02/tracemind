@@ -2,23 +2,18 @@
 
 defaults:
   - /execution_context/dataset_asset: ourafla
-  - /execution_context/runtime_env: gpu_local
+  - /execution_context/runtime_env: gpu_online
   - /strategy_axes/adaptation/transformer_backbone: mxbai_encoder
   - /strategy_axes/adaptation/peft_adapter: default
   - /run_controls/central_ssl/budget: main
   - /execution_context/query_data_source: default
-  - /strategy_axes/ssl/consistency_method: fixmatch_usb_v1
-  - /strategy_axes/ssl/augmentation_source: precomputed_usb_candidates_v1
   - /strategy_axes/adaptation/initial_checkpoint: none
   - override /hydra/job_logging: disabled
   - override /hydra/hydra_logging: disabled
   - _self_
 
-ssl_input_mode: consistency
-pseudo_label_jsonl: null
-pseudo_label_export_root: data/artifacts/lora_pseudo_label
-include_seed_train_rows: false
-output_dir: ${central_ssl_budget.output_root}/train_lora_ssl_classifier/${ssl_input_mode}/${query_data_selection_slug}
+train_jsonl: ${query_source.train_jsonl}
+output_dir: ${central_ssl_budget.output_root}/train_peft_supervised_classifier
 fixed_categories: ${dataset.prototype_expected_categories}
 initial_adapter_dir: ${query_adaptation_initial_checkpoint.adapter_dir}
 initial_classifier_path: ${query_adaptation_initial_checkpoint.classifier_path}

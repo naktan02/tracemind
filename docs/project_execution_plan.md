@@ -37,14 +37,14 @@ central fixed embedding + classifier seed
 - seed model: `data/processed/classifier_heads/clf_2026_04_11_143138.pt`
 - seed manifest: `data/processed/classifier_heads/clf_2026_04_11_143138.manifest.json`
 - seed report: `runs/train_classifier/clf_2026_04_11_143138/reports/report.json`
-- query-domain 적응 단계에서만 `LoRA + classifier`를 연다.
+- query-domain 적응 단계에서만 `PEFT encoder classifier`를 연다.
 - 중앙 SSL은 FL client partition 없는 control table이다. seed full replay 기본값이 아니다.
 - 중앙 canonical 규약은 `seed checkpoint 1회 생성 -> new accepted query-derived rows only continual adaptation`이다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL SSL non-IID 메인 비교군이다.
 - 논문 방법론은 `methods/federated_ssl/<method>/`를 사람이 읽는 시작점으로 둔다.
   method-only local/server/aggregation 변형은 이 폴더에 남기고, 두 개 이상
   방법론에서 공유되는 계산만 축별 `methods` 패키지로 승격한다.
-- FL SSL에서 `LoRA + classifier`를 공유 가능한 trainable state로 승격할 때의
+- FL SSL에서 `PEFT encoder classifier`를 공유 가능한 trainable state로 승격할 때의
   target canonical update family 이름은 `peft_text_classifier`로 둔다.
   `lora_classifier`는 v1 contract, old artifact, direct import compatibility 이름으로만
   유지한다. LoRA는 PEFT adapter mechanism이고, classifier head는 linear-head
@@ -205,7 +205,7 @@ Runtime translation:
 보조 문서:
 
 - query buffer: `docs/contracts/query_buffer_v1.md`
-- central SSL scaffold: `docs/contracts/central_lora_classifier_trainer_contract.md`
+- central SSL scaffold: `docs/contracts/central_peft_classifier_trainer_contract.md`
 - FL runtime worklist: `docs/fl_runtime_implementation_checklist.md`
 - evaluation metrics: `methods/evaluation/README.md`
 - runtime overview: `docs/architecture/system-overview.md`

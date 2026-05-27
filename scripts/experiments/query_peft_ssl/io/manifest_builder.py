@@ -65,7 +65,7 @@ def build_query_peft_eval_report(
     results: dict[str, Any],
 ) -> dict[str, Any]:
     return {
-        "schema_version": "central_lora_classifier_eval.v1",
+        "schema_version": "central_peft_classifier_eval.v1",
         "trainer_version": trainer_version,
         "manifest": manifest,
         "results": results,

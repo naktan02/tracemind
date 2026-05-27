@@ -48,8 +48,8 @@ docs나 code-adjacent 문서로 요약 승격한다.
 - `docs/ai_harness_operating_model.md`와 `docs/ai_harness_eval_cases.yaml`은
   maintainer 전용 보조 문서로만 둔다.
 - `docs/contracts/*`는 설계 배경과 확장 절차를 설명한다.
-- `docs/contracts/central_lora_classifier_trainer_contract.md`는 논문 트랙의
-  canonical LoRA scaffold와 산출물 경계를 설명한다.
+- `docs/contracts/central_peft_classifier_trainer_contract.md`는 논문 트랙의
+  canonical PEFT classifier scaffold와 산출물 경계를 설명한다.
 - `docs/notes/**`는 참고/아카이브 용도이며 source of truth로 취급하지 않는다.
 - 새 `docs/notes/sessions/**`는 300-500 words 요약으로 제한하고 대화 전문
   transcript를 추가하지 않는다.

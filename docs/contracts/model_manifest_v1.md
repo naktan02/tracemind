@@ -28,7 +28,7 @@ v1 원칙:
    auxiliary artifact로 `prototype_pack` version을 기록한다.
    top-level `prototype_version`은 canonical 필드가 아니다.
 6. 이 문서는 현재 시스템/FL runtime의 배포 메타데이터를 설명한다. 논문 트랙의
-   중앙집중형 LoRA trainer checkpoint/optimizer state는 범위 밖이다.
+   중앙집중형 PEFT classifier trainer checkpoint/optimizer state는 범위 밖이다.
 
 ---
 
@@ -114,7 +114,7 @@ metadata로 보고 canonical manifest에서는 버린다.
 ```
 
 위 예시는 현재 시스템/FL runtime의 shared classifier head 배포 예시다.
-query-domain 적응 단계의 `central LoRA classifier`는 frozen backbone에 LoRA adapter와 classifier를 함께 두므로,
+query-domain 적응 단계의 `central PEFT classifier`는 frozen backbone에 PEFT adapter와 classifier를 함께 두므로,
 checkpoint 배치 방식이 이 예시와 다를 수 있다.
 
 ---

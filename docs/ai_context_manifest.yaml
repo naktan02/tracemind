@@ -53,7 +53,7 @@ active_entrypoints:
   - docs/contracts/query_buffer_v1.md
   - docs/contracts/legacy_contract_ledger.md
   - docs/contracts/lora_classifier_v1_terminology_audit.md
-  - docs/contracts/central_lora_classifier_trainer_contract.md
+  - docs/contracts/central_peft_classifier_trainer_contract.md
   - docs/contracts/fl_ssl_method_capability_matrix.md
   - docs/fl_runtime_implementation_checklist.md
   - docs/strategy_surface_map.md
@@ -75,7 +75,7 @@ task_routes:
       - relevant shared/src/contracts file
       - relevant producer and consumer files
     conditional_read:
-      - docs/contracts/central_lora_classifier_trainer_contract.md for query-domain LoRA trainer contracts
+      - docs/contracts/central_peft_classifier_trainer_contract.md for query-domain PEFT classifier trainer contracts
       - docs/contracts/algorithm_extension_guide.md for strategy-axis contract changes
     verify:
       - producers and consumers stay aligned
@@ -89,7 +89,7 @@ task_routes:
       - docs/project_execution_plan.md
       - docs/architecture/target-method-runtime-structure.md
       - docs/architecture/method-owned-runtime-refactor-plan.md
-      - docs/contracts/central_lora_classifier_trainer_contract.md
+      - docs/contracts/central_peft_classifier_trainer_contract.md
       - docs/contracts/query_buffer_v1.md
       - docs/contracts/fl_ssl_method_capability_matrix.md
       - scripts/AGENTS.md
