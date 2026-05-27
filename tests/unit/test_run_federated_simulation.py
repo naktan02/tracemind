@@ -2271,7 +2271,7 @@ def test_build_initial_shared_state_uses_configured_linear_head_builder() -> Non
             adapter_family_name="classifier_head",
             update_family_name="linear_head",
             initial_state_builder=(
-                "methods.adaptation.classification.feature_head.bootstrap."
+                "methods.classification.linear_head.bootstrap."
                 "build_zero_classifier_head_state"
             ),
         ),

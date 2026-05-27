@@ -223,5 +223,5 @@ def test_classifier_head_logits_catalog_points_to_classification_core() -> None:
 
     assert (
         entries["classifier_head_logits"].implementation_module
-        == "methods.adaptation.classification.feature_head.scoring"
+        == "methods.classification.linear_head.scoring"
     )

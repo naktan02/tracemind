@@ -53,7 +53,7 @@ PROTOTYPE_SCORING_SRC = REPO_ROOT / "methods" / "prototype" / "scoring"
 METHODS_FEDERATED_SSL_SRC = METHODS_SRC / "federated_ssl"
 PEFT_TEXT_CLASSIFIER_SRC = METHODS_SRC / "adaptation" / "peft_text_classifier"
 PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC = PEFT_TEXT_CLASSIFIER_SRC / "aggregation"
-CLASSIFICATION_ADAPTATION_SRC = METHODS_SRC / "adaptation" / "classification"
+LINEAR_HEAD_CLASSIFICATION_SRC = METHODS_SRC / "classification" / "linear_head"
 PEFT_ADAPTERS_SRC = METHODS_SRC / "adaptation" / "peft_adapters"
 LEGACY_AGENT_QUERY_TEXT_VIEWS_SRC = (
     AGENT_SRC / "services" / "training" / "query_text_views"
@@ -976,7 +976,7 @@ def test_peft_text_classifier_does_not_depend_on_legacy_lora_classifier() -> Non
 
 def test_classification_adaptation_is_modality_independent() -> None:
     violations = _find_forbidden_imports(
-        root=CLASSIFICATION_ADAPTATION_SRC,
+        root=LINEAR_HEAD_CLASSIFICATION_SRC,
         forbidden_prefixes=(
             "methods.adaptation.classifier_head",
             "methods.adaptation.lora_classifier",
@@ -986,7 +986,7 @@ def test_classification_adaptation_is_modality_independent() -> None:
     )
 
     assert not violations, (
-        "methods/adaptation/classification/**는 modality-independent classification "
+        "methods/classification/linear_head/**는 modality-independent classification "
         "primitive를 소유한다. text-specific PEFT encoder나 legacy classifier_head "
         "경로를 import하지 않는다.\n"
         f"{_format_violations(violations)}"
@@ -1266,13 +1266,14 @@ def test_legacy_peft_adapter_packages_are_removed() -> None:
 def test_legacy_classifier_head_packages_are_removed() -> None:
     legacy_paths = (
         METHODS_SRC / "adaptation" / "classifier_head",
+        METHODS_SRC / "adaptation" / "classification",
         METHODS_SRC / "adaptation" / "text_classifier",
     )
     existing_paths = _existing_non_cache_paths(legacy_paths)
 
     assert not existing_paths, (
         "feature-head classification source of truth는 "
-        "methods/adaptation/classification/**다. legacy classifier_head와 "
+        "methods/classification/linear_head/**다. legacy classifier_head와 "
         "text_classifier shim package는 compatibility phase 종료 후 "
         "다시 만들지 않는다.\n"
         f"{chr(10).join(f'- {path}' for path in existing_paths)}"
@@ -1299,7 +1300,7 @@ def test_adaptation_aggregation_files_stay_projection_only() -> None:
     violations: list[Path] = []
     aggregation_roots = (
         PEFT_TEXT_CLASSIFIER_AGGREGATION_SRC,
-        CLASSIFICATION_ADAPTATION_SRC / "aggregation",
+        LINEAR_HEAD_CLASSIFICATION_SRC / "aggregation",
     )
     for aggregation_root in aggregation_roots:
         if not aggregation_root.is_dir():

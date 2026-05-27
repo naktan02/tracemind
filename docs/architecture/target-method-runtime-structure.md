@@ -203,8 +203,8 @@ Adapter 뒤로 옮긴다.
 
 ### 3단계: methods 구조 정리
 
-- `methods/adaptation/classification/feature_head`의 최종 위치를
-  `methods/classification/linear_head`로 정한다.
+- `methods/classification/linear_head`가 modality-independent linear classifier head의
+  canonical 구현 위치다.
 - `methods/adaptation/peft_text_classifier`가 PEFT text classifier update family의
   canonical 구현 위치다.
 - `methods/adaptation/query_text_views`는 text query input/view glue 역할만

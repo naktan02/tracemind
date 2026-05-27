@@ -1,7 +1,7 @@
-# Classification Adaptation
+# Linear Head Classification
 
-`methods/adaptation/classification/`은 modality와 독립적인 category classification
-adaptation primitive를 소유한다.
+`methods/classification/linear_head/`는 고정 feature 또는 embedding 위에 얹는
+modality-independent linear classifier head primitive를 소유한다.
 
 ## 책임
 

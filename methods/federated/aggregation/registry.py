@@ -33,7 +33,7 @@ _FEDERATED_AGGREGATION_STRATEGY_REGISTRY: dict[
 ] = {}
 _ADAPTER_AGGREGATION_MODULE_OVERRIDES = {
     ("classifier_head", "fedavg"): (
-        "methods.adaptation.classification.aggregation.feature_head_fedavg_projection"
+        "methods.classification.linear_head.aggregation.linear_head_fedavg_projection"
     ),
     ("peft_classifier", "fedavg"): (
         "methods.adaptation.peft_text_classifier.aggregation.peft_encoder_fedavg_projection"

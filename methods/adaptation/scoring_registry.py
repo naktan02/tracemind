@@ -17,7 +17,7 @@ from .scoring_backend import (
     SharedAdapterScoringBackendFactory,
 )
 
-_ADAPTATION_PACKAGE = "methods.adaptation"
+_SCORING_PACKAGES = ("methods.adaptation", "methods.classification")
 _SCORING_BACKEND_REGISTRY: dict[
     str,
     tuple[SharedAdapterScoringBackendFactory, RegistryCatalogEntry],
@@ -79,14 +79,19 @@ def list_shared_adapter_scoring_backend_catalog_entries() -> tuple[
 
 
 def _import_adaptation_scoring_modules() -> None:
-    package = importlib.import_module(_ADAPTATION_PACKAGE)
+    for package_name in _SCORING_PACKAGES:
+        _import_scoring_modules_from_package(package_name)
+
+
+def _import_scoring_modules_from_package(package_name: str) -> None:
+    package = importlib.import_module(package_name)
     package_paths = getattr(package, "__path__", None)
     if package_paths is None:
         return
 
     for module_info in pkgutil.walk_packages(
         package_paths,
-        prefix=f"{_ADAPTATION_PACKAGE}.",
+        prefix=f"{package_name}.",
     ):
         if module_info.ispkg or not module_info.name.endswith(".scoring"):
             continue

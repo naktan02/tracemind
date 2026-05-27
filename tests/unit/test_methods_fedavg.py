@@ -4,15 +4,15 @@ from __future__ import annotations
 
 import pytest
 
-from methods.adaptation.classification.aggregation import (
-    feature_head_fedavg_projection as feature_head_projection,
-)
 from methods.adaptation.diagonal_scale.aggregation.fedavg import (
     DiagonalScaleFedAvgUpdate,
     compute_diagonal_scale_fedavg,
 )
 from methods.adaptation.peft_text_classifier.aggregation import (
     peft_encoder_fedavg_projection as peft_fedavg_projection,
+)
+from methods.classification.linear_head.aggregation import (
+    linear_head_fedavg_projection as feature_head_projection,
 )
 from methods.federated.aggregation import registry as aggregation_registry
 from methods.federated.aggregation.fedavg.update_metrics import (
