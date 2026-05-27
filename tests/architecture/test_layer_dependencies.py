@@ -1216,6 +1216,49 @@ def test_diagonal_scale_no_longer_has_update_family_initialization_leaf() -> Non
     )
 
 
+def test_fl_round_e2e_does_not_exercise_removed_diagonal_scale_runtime() -> None:
+    path = REPO_ROOT / "tests" / "integration" / "test_fl_round_e2e.py"
+    imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
+
+    assert (
+        "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
+    )
+    assert "diagonal_scale" not in source, (
+        "root FL round E2E는 현재 runtime family를 검증한다. diagonal_scale는 "
+        "shared v1 contract compatibility 테스트에만 남기고, 서버/에이전트 "
+        "lifecycle smoke의 실행 family로 되살리지 않는다."
+    )
+
+
+def test_agent_training_artifact_repository_uses_shared_update_payloads_only() -> None:
+    path = (
+        AGENT_SRC
+        / "infrastructure"
+        / "repositories"
+        / "training_artifact_repository.py"
+    )
+    imports = _collect_absolute_imports(path)
+    source = path.read_text(encoding="utf-8")
+
+    assert (
+        "shared.src.contracts.adapter_contract_families.diagonal_scale" not in imports
+    )
+    forbidden_snippets = (
+        "VectorAdapterDelta",
+        "save_vector_adapter_delta",
+        "load_vector_adapter_delta",
+        "delta_dir",
+    )
+    violations = [snippet for snippet in forbidden_snippets if snippet in source]
+    assert not violations, (
+        "agent artifact repository는 로컬 update 저장소 capability만 소유한다. "
+        "삭제된 diagonal_scale/vector adapter compatibility alias를 agent runtime "
+        "표면에 다시 열지 않는다.\n"
+        f"{chr(10).join(f'- {snippet}' for snippet in violations)}"
+    )
+
+
 def _existing_non_cache_paths(paths: Sequence[Path]) -> list[Path]:
     existing_paths: list[Path] = []
     for path in paths:

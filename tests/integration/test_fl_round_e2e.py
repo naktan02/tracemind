@@ -53,16 +53,17 @@ from main_server.src.services.federation.rounds.round_lifecycle_service import (
 from main_server.src.services.federation.rounds.round_manager_service import (
     RoundManagerService,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+from shared.src.contracts.adapter_contract_families.classifier_head import (
+    CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
 )
 from shared.src.contracts.adapter_contract_families.factories import (
-    make_diagonal_delta_payload,
-    make_identity_state_payload,
+    make_classifier_head_delta_payload,
+    make_zero_classifier_head_state_payload,
 )
 from shared.src.contracts.adapter_contract_families.io import (
-    dump_vector_adapter_state_payload,
+    dump_shared_adapter_state_payload,
 )
+from shared.src.contracts.common_types import TrainingScope
 from shared.src.contracts.model_contracts import (
     ModelManifest,
     make_embedding_manifest,
@@ -79,6 +80,7 @@ from shared.src.contracts.training_contracts import (
 MODEL_ID = "test-model"
 MODEL_REVISION = "rev_test_001"
 EMBEDDING_DIM = 8  # 테스트용 소형 차원
+LABELS = ("negative", "positive")
 SharedAdapterUpdateRepository = (
     shared_adapter_update_repository_module.SharedAdapterUpdateRepository
 )
@@ -104,26 +106,33 @@ def artifact_root(tmp_path: Path) -> Path:
 
 @pytest.fixture()
 def base_state_path(artifact_root: Path) -> Path:
-    """identity adapter state 파일을 생성하고 경로를 반환한다."""
+    """classifier-head adapter state 파일을 생성하고 경로를 반환한다."""
     path = artifact_root / "base_state.json"
-    payload = make_identity_state_payload(
+    payload = make_zero_classifier_head_state_payload(
         model_id=MODEL_ID,
         model_revision=MODEL_REVISION,
+        labels=LABELS,
         embedding_dim=EMBEDDING_DIM,
     )
-    dump_vector_adapter_state_payload(path, payload)
+    dump_shared_adapter_state_payload(path, payload)
     return path
 
 
 @pytest.fixture()
 def delta_payload():
-    """서버에 inline 제출할 diagonal delta payload."""
-    return make_diagonal_delta_payload(
+    """서버에 inline 제출할 classifier-head delta payload."""
+    return make_classifier_head_delta_payload(
         model_id=MODEL_ID,
         base_model_revision=MODEL_REVISION,
-        dimension_deltas=[0.01] * EMBEDDING_DIM,
+        label_weight_deltas={
+            "negative": [0.01] * EMBEDDING_DIM,
+            "positive": [-0.01] * EMBEDDING_DIM,
+        },
+        label_bias_deltas={"negative": 0.01, "positive": -0.01},
         example_count=5,
         mean_confidence=0.82,
+        mean_margin=0.14,
+        label_counts={"negative": 2, "positive": 3},
     )
 
 
@@ -145,7 +154,7 @@ def round_service(state_root: Path, artifact_root: Path) -> RoundLifecycleServic
         ),
         round_manager_service=RoundManagerService(
             adapter_family=build_shared_adapter_round_family(
-                "diagonal_scale",
+                "classifier_head",
                 aggregation_backend_name="fedavg",
             ),
             artifact_repository=state_repository,
@@ -196,9 +205,10 @@ def _active_manifest_payload(round_service: RoundLifecycleService) -> dict:
     """active manifest 등록 요청 payload dict."""
     state_repository = round_service.round_manager_service.artifact_repository
     state_repository.save_shared_adapter_state(
-        make_identity_state_payload(
+        make_zero_classifier_head_state_payload(
             model_id=MODEL_ID,
             model_revision=MODEL_REVISION,
+            labels=LABELS,
             embedding_dim=EMBEDDING_DIM,
         )
     )
@@ -207,6 +217,7 @@ def _active_manifest_payload(round_service: RoundLifecycleService) -> dict:
         model_revision=MODEL_REVISION,
         auxiliary_artifact_versions={"prototype_pack": "proto_test"},
         artifact_ref=state_repository.ref_for_revision(MODEL_REVISION),
+        training_scope=TrainingScope.HEAD_ONLY,
     )
     return manifest.model_dump(mode="json")
 
@@ -239,7 +250,7 @@ def _make_domain_manifest(base_state_path: Path) -> ModelManifest:
         artifact_kind="embedding",
         artifact_ref=str(base_state_path),
         auxiliary_artifact_versions={"prototype_pack": "proto_test"},
-        training_scope="adapter_only",
+        training_scope=TrainingScope.HEAD_ONLY,
         training_enabled=True,
         compatible_task_types=("pseudo_label_self_training",),
     )
@@ -373,9 +384,10 @@ def test_full_round_lifecycle(
         model_id=MODEL_ID,
         base_model_revision=MODEL_REVISION,
         payload_ref=str(artifact_root / "agent_only_delta.json"),
-        payload_format=DIAGONAL_SCALE_UPDATE_PAYLOAD_FORMAT,
+        payload_format=CLASSIFIER_HEAD_UPDATE_PAYLOAD_FORMAT,
         example_count=5,
         client_metrics={"mean_confidence": 0.82, "mean_margin": 0.14},
+        training_scope=TrainingScope.HEAD_ONLY,
     )
     submission = make_training_update_submission(
         envelope=envelope,

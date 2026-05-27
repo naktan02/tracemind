@@ -8,9 +8,6 @@ from pathlib import Path
 from shared.src.contracts.adapter_contract_families.base import (
     SharedAdapterUpdatePayload,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterDeltaPayload,
-)
 from shared.src.contracts.adapter_contract_families.io import (
     dump_shared_adapter_update_payload,
     load_shared_adapter_update_payload,
@@ -29,11 +26,6 @@ class TrainingArtifactRepository:
     def shared_update_dir(self) -> Path:
         return self.state_root / "shared_adapter_updates"
 
-    @property
-    def delta_dir(self) -> Path:
-        """기존 diagonal scale update 경로 alias."""
-        return self.shared_update_dir
-
     def path_for_update(self, update_id: str) -> Path:
         return self.shared_update_dir / f"{update_id}.json"
 
@@ -51,19 +43,3 @@ class TrainingArtifactRepository:
         if not path.exists():
             raise FileNotFoundError(f"Shared adapter update not found: {update_id}")
         return load_shared_adapter_update_payload(path)
-
-    def save_vector_adapter_delta(
-        self,
-        update_id: str,
-        payload: VectorAdapterDeltaPayload,
-    ) -> Path:
-        return self.save_shared_adapter_update(update_id, payload)
-
-    def load_vector_adapter_delta(self, update_id: str) -> VectorAdapterDeltaPayload:
-        payload = self.load_shared_adapter_update(update_id)
-        if not isinstance(payload, VectorAdapterDeltaPayload):
-            raise ValueError(
-                "Expected diagonal scale adapter update payload when loading "
-                f"legacy vector adapter delta: {update_id}"
-            )
-        return payload
