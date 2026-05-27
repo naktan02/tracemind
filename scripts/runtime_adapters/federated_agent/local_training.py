@@ -15,7 +15,7 @@ from agent.src.services.training.execution.query_ssl_local_training_service impo
     QuerySslPeftEncoderLocalTrainingRequest,
 )
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.federated_ssl import (
     helper_provider,
@@ -96,7 +96,7 @@ def run_method_owned_peft_encoder_local_training(
     peer_probe_rows: Sequence[LabeledQueryRow] | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,
     round_base_snapshot_cache: RoundBaseSnapshotCache | None = None,
-    lora_config: LoraClassifierTrainingBackendConfig | None = None,
+    lora_config: PeftEncoderTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     base_parameters: PeftEncoderMaterializedState | None = None,
     base_partition_parameters: (
@@ -207,7 +207,7 @@ def run_query_ssl_peft_encoder_local_training(
     model_manifest: ModelManifest,
     query_ssl_config: FederatedQuerySslObjectiveConfig,
     trainer_runtime_config: FederatedLocalTrainerRuntimeConfig,
-    lora_config: LoraClassifierTrainingBackendConfig | None = None,
+    lora_config: PeftEncoderTrainingBackendConfig | None = None,
     created_at: datetime | None = None,
     base_parameters: PeftEncoderMaterializedState | None = None,
     runtime_resource_cache: RuntimeResourceCache | None = None,

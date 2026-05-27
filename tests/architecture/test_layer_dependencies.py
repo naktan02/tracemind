@@ -503,6 +503,27 @@ def test_fl_simulation_unit_tests_use_active_peft_payload_surface() -> None:
     )
 
 
+def test_scripts_runtime_bridges_use_peft_config_type_names() -> None:
+    checked_paths = (
+        SCRIPTS_RUNTIME_ADAPTER_SRC / "federated_agent" / "local_training.py",
+        SCRIPTS_RUNTIME_ADAPTER_SRC
+        / "federated_server"
+        / "peft_encoder_round_runtime.py",
+    )
+    violations = [
+        _relative_repo_path(path)
+        for path in checked_paths
+        if "LoraClassifierTrainingBackendConfig" in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "scripts runtime bridge는 active PEFT encoder config type 이름을 사용한다. "
+        "v1 LoraClassifierTrainingBackendConfig 이름은 methods/shared compatibility "
+        "경계에만 남긴다.\n"
+        f"{chr(10).join(f'- {path}' for path in violations)}"
+    )
+
+
 def test_runtime_layers_import_named_runtime_fallbacks_not_legacy_defaults() -> None:
     forbidden_modules = (
         "methods.federated_ssl.training_defaults",

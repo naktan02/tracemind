@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from methods.adaptation.peft_text_classifier.config import (
-    LoraClassifierTrainingBackendConfig,
+    PeftEncoderTrainingBackendConfig,
 )
 from methods.adaptation.peft_text_classifier.runtime_family import (
     peft_encoder_runtime_payload,
@@ -18,7 +18,7 @@ from methods.adaptation.peft_text_classifier.runtime_family import (
 class FederatedPeftEncoderRuntimeConfig:
     """PEFT-backed classifier simulation bootstrap에 필요한 fixed scaffold snapshot."""
 
-    training_backend_config: LoraClassifierTrainingBackendConfig
+    training_backend_config: PeftEncoderTrainingBackendConfig
     artifact_format: str = "simulation_peft_classifier_state_ref"
     lora_adapter_artifact_ref: str | None = None
     peft_adapter_artifact_ref: str | None = None
@@ -39,7 +39,7 @@ class FederatedPeftEncoderRuntimeConfig:
         if not artifact_format:
             raise ValueError("round_runtime classifier artifact_format invalid.")
         return cls(
-            training_backend_config=LoraClassifierTrainingBackendConfig.from_mapping(
+            training_backend_config=PeftEncoderTrainingBackendConfig.from_mapping(
                 {
                     key: value
                     for key, value in source.items()
