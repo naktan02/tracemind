@@ -1008,6 +1008,25 @@ def test_legacy_classifier_head_packages_are_removed() -> None:
     )
 
 
+def test_diagonal_scale_no_longer_has_update_family_initialization_leaf() -> None:
+    forbidden_paths = (
+        CONF_SRC
+        / "strategy_axes"
+        / "trainable_state"
+        / "update_family"
+        / "diagonal_scale.yaml",
+        METHODS_SRC / "adaptation" / "diagonal_scale" / "initial_state.py",
+    )
+    existing_paths = _existing_non_cache_paths(forbidden_paths)
+
+    assert not existing_paths, (
+        "diagonal_scale는 target update-family 축이 아니다. legacy fallback과 "
+        "contract fixture가 남아 있더라도 trainable_state/update_family leaf나 "
+        "initial-state builder를 다시 만들지 않는다.\n"
+        f"{chr(10).join(f'- {path}' for path in existing_paths)}"
+    )
+
+
 def _existing_non_cache_paths(paths: Sequence[Path]) -> list[Path]:
     existing_paths: list[Path] = []
     for path in paths:

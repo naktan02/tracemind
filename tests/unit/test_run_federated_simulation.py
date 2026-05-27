@@ -131,9 +131,6 @@ from scripts.runtime_adapters.federated_server.runtime import (
 from shared.src.contracts.adapter_contract_families.classifier_head import (
     ClassifierHeadState,
 )
-from shared.src.contracts.adapter_contract_families.diagonal_scale import (
-    VectorAdapterState,
-)
 from shared.src.contracts.adapter_contract_families.factories import (
     make_lora_classifier_delta_payload,
     make_peft_classifier_delta_payload,
@@ -2240,29 +2237,6 @@ def test_build_initial_shared_state_supports_peft_classifier_family() -> None:
     assert state.label_schema == ["anxiety", "normal"]
     assert state.peft_adapter_config.peft_adapter_name == "lora"
     assert state.peft_adapter_config.parameters["rank"] == 8
-
-
-def test_build_initial_shared_state_uses_configured_diagonal_scale_builder() -> None:
-    state = build_initial_shared_state(
-        round_runtime_config=_default_round_runtime_config(
-            adapter_family_name="diagonal_scale",
-            update_family_name="diagonal_scale",
-            initial_state_builder=(
-                "methods.adaptation.diagonal_scale.initial_state."
-                "build_initial_diagonal_scale_state"
-            ),
-        ),
-        model_id="mxbai-diagonal",
-        model_revision="sim_rev_0000",
-        training_scope="adapter_only",
-        embedding_dim=3,
-        labels=["anxiety", "normal"],
-        updated_at=datetime(2026, 4, 2, tzinfo=timezone.utc),
-    )
-
-    assert isinstance(state, VectorAdapterState)
-    assert state.adapter_kind == "diagonal_scale"
-    assert state.dimension_scales == [1.0, 1.0, 1.0]
 
 
 def test_build_initial_shared_state_uses_configured_linear_head_builder() -> None:

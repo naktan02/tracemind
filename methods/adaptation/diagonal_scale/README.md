@@ -13,6 +13,10 @@
 - backend-specific objective extras를 method config로 정규화
 - `diagonal_scale_heuristic` local update backend registration
 
+이 패키지는 legacy compatibility와 기존 contract fixture를 위한 계산 core다.
+`diagonal_scale`는 target `trainable_state/update_family` 축이 아니므로 initial-state
+builder나 Hydra update-family leaf를 다시 추가하지 않는다.
+
 ## 제외
 
 - agent-local query buffer와 raw text 접근
