@@ -1,4 +1,4 @@
-"""FedMatch LoRA-classifier partitioned optimizer step tests."""
+"""FedMatch PEFT encoder partitioned optimizer step tests."""
 
 from __future__ import annotations
 
@@ -204,7 +204,7 @@ def test_lora_classifier_peer_snapshot_extracts_current_trainable_state() -> Non
     assert set(snapshot.classifier_head_biases) == set(labels)
 
 
-def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
+def test_fedmatch_peft_encoder_partitioned_step_records_sigma_then_psi_delta() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
     parameters = FedMatchLocalObjectiveParameters(
@@ -230,7 +230,7 @@ def test_fedmatch_lora_partitioned_step_records_sigma_then_psi_delta() -> None:
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -322,7 +322,7 @@ def test_partitioned_step_can_use_fixmatch_for_psi_objective() -> None:
         "strong_attention_mask": torch.ones(2, 3),
     }
 
-    result = training_loop.run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch=labeled_batch,
         unlabeled_batch=unlabeled_batch,
@@ -382,7 +382,7 @@ def test_fedmatch_partitioned_step_forwards_strong_view_only_for_confident_rows(
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = training_loop.run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -467,7 +467,7 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
     sigma_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
     psi_optimizer = torch.optim.SGD(model.parameters(), lr=0.2)
 
-    result = training_loop.run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch={
             "input_ids": torch.tensor([[1.0, 0.0, 0.5]]),
@@ -497,7 +497,7 @@ def test_fedmatch_partitioned_step_requests_helper_probs_only_for_confident_rows
     )
 
 
-def test_fedmatch_lora_single_model_regularizer_does_not_shrink_full_parameters() -> (
+def test_fedmatch_peft_single_model_regularizer_does_not_shrink_full_parameters() -> (
     None
 ):
     model = TinyLoraClassifier()
@@ -518,7 +518,7 @@ def test_fedmatch_lora_single_model_regularizer_does_not_shrink_full_parameters(
     }
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.run_partitioned_lora_classifier_step(
+    result = training_loop.run_partitioned_adapter_classifier_step(
         model=model,
         labeled_batch=None,
         unlabeled_batch=unlabeled_batch,
@@ -966,7 +966,7 @@ def test_physical_fedmatch_full_text_partition_rejects_key_mismatch() -> None:
         )
 
 
-def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
+def test_fedmatch_peft_training_returns_cumulative_partitioned_delta() -> None:
     model = TinyLoraClassifier()
     labels = ("anxiety", "normal")
     parameters = FedMatchLocalObjectiveParameters(
@@ -1018,7 +1018,7 @@ def test_fedmatch_lora_training_returns_cumulative_partitioned_delta() -> None:
     )
     before = snapshot_trainable_parameter_tensors(model)
 
-    result = training_loop.train_partitioned_lora_classifier(
+    result = training_loop.train_partitioned_adapter_classifier(
         model=model,
         train_loader=train_loader,
         unlabeled_loader=unlabeled_loader,
@@ -1097,7 +1097,7 @@ def test_fedmatch_labels_at_server_training_uploads_only_psi_partition() -> None
         max_steps=1,
     )
 
-    result = training_loop.train_partitioned_lora_classifier(
+    result = training_loop.train_partitioned_adapter_classifier(
         model=model,
         train_loader=None,
         unlabeled_loader=unlabeled_loader,

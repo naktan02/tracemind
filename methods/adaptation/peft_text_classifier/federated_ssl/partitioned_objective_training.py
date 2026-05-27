@@ -112,8 +112,8 @@ from .partitioned.sparse_sync import (
 )
 from .partitioned.training_loop import (
     HelperWeakProbabilityProvider,
-    PartitionedLoraTrainingResult,
-    train_partitioned_lora_classifier,
+    PartitionedAdapterClassifierTrainingResult,
+    train_partitioned_adapter_classifier,
     train_physical_partitioned_adapter_classifier,
 )
 
@@ -394,7 +394,7 @@ def run_partitioned_peft_encoder_training_core(
                 metric_prefix=partitioned_runtime_plan.metric_prefix,
             )
             if partition_initialization_metrics:
-                training_result = PartitionedLoraTrainingResult(
+                training_result = PartitionedAdapterClassifierTrainingResult(
                     metrics={
                         **training_result.metrics,
                         **partition_initialization_metrics,
@@ -443,7 +443,7 @@ def run_partitioned_peft_encoder_training_core(
         else:
             client_partition_parameters = {}
             c2s_sparse_upload_value_count = 0
-            training_result = train_partitioned_lora_classifier(
+            training_result = train_partitioned_adapter_classifier(
                 model=model,
                 train_loader=train_loader,
                 unlabeled_loader=unlabeled_loader,
@@ -702,9 +702,9 @@ def _build_psi_query_ssl_algorithm(
 
 def replace_partitioned_training_deltas(
     *,
-    training_result: PartitionedLoraTrainingResult,
+    training_result: PartitionedAdapterClassifierTrainingResult,
     partition_deltas: Mapping[str, LoraClassifierPartitionDelta],
-) -> PartitionedLoraTrainingResult:
+) -> PartitionedAdapterClassifierTrainingResult:
     """학습 metric은 유지하고 upload 대상 partition delta만 교체한다."""
 
     return replace(training_result, partition_deltas=partition_deltas)

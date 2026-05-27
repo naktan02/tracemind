@@ -286,9 +286,7 @@ def test_federated_aggregation_method_registry_points_to_peft_classifier_core() 
     assert spec.core_function_name == "compute_peft_encoder_fedavg"
 
 
-def test_federated_aggregation_method_registry_points_to_partitioned_lora_core() -> (
-    None
-):
+def test_lora_v1_registry_points_to_peft_partitioned_core() -> None:
     spec = get_federated_aggregation_method_spec(
         adapter_kind="lora_classifier",
         method_name="partitioned_delta_average",

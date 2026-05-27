@@ -1,4 +1,4 @@
-"""LoRA-classifier family의 partitioned local training loop."""
+"""PEFT encoder classifier family의 partitioned local training loop."""
 
 from __future__ import annotations
 
@@ -46,7 +46,7 @@ from . import trainable_model as ptm
 
 
 @dataclass(frozen=True, slots=True)
-class PartitionedLoraStepResult:
+class PartitionedAdapterClassifierStepResult:
     """한 step에서 분리 적용한 partition delta와 loss 진단."""
 
     supervised: TensorLocalObjectiveResult
@@ -57,7 +57,7 @@ class PartitionedLoraStepResult:
 
 
 @dataclass(frozen=True, slots=True)
-class PartitionedLoraTrainingResult:
+class PartitionedAdapterClassifierTrainingResult:
     """partitioned local loop 결과와 누적 partition delta."""
 
     metrics: Mapping[str, float]
@@ -75,7 +75,7 @@ class HelperWeakProbabilityProvider(Protocol):
         """helper weak-view 확률을 반환한다."""
 
 
-def train_partitioned_lora_classifier(
+def train_partitioned_adapter_classifier(
     *,
     model: PeftEncoderTextClassifier,
     train_loader: DataLoader[dict[str, Any]] | None,
@@ -96,7 +96,7 @@ def train_partitioned_lora_classifier(
     unsupervised_partition: str,
     emit_sigma_partition: bool = True,
     metric_prefix: str = "partitioned",
-) -> PartitionedLoraTrainingResult:
+) -> PartitionedAdapterClassifierTrainingResult:
     """supervised/unsupervised partitioned step을 budget만큼 실행한다."""
 
     if use_supervised_steps and train_loader is None:
@@ -151,7 +151,7 @@ def train_partitioned_lora_classifier(
                 batch=unlabeled_batch,
                 device=device,
             )
-            step_result = run_partitioned_lora_classifier_step(
+            step_result = run_partitioned_adapter_classifier_step(
                 model=model,
                 labeled_batch=(
                     None
@@ -220,7 +220,7 @@ def train_partitioned_lora_classifier(
         if completed_steps >= total_steps:
             break
 
-    return PartitionedLoraTrainingResult(
+    return PartitionedAdapterClassifierTrainingResult(
         metrics=scalar_metrics.average_record(
             denominator=completed_steps,
             key_prefix="train_",
@@ -270,7 +270,7 @@ def train_physical_partitioned_adapter_classifier(
     use_supervised_steps: bool = True,
     emit_supervised_partition: bool = True,
     metric_prefix: str = "partitioned",
-) -> PartitionedLoraTrainingResult:
+) -> PartitionedAdapterClassifierTrainingResult:
     """physical trainable partition loop를 budget만큼 실행한다.
 
     이 함수는 FedMatch 이름이나 concrete PEFT adapter 종류를 해석하지 않는다.
@@ -397,7 +397,7 @@ def train_physical_partitioned_adapter_classifier(
         if completed_steps >= total_steps:
             break
 
-    return PartitionedLoraTrainingResult(
+    return PartitionedAdapterClassifierTrainingResult(
         metrics=scalar_metrics.average_record(
             denominator=completed_steps,
             key_prefix="train_",
@@ -427,7 +427,7 @@ def train_physical_partitioned_adapter_classifier(
     )
 
 
-def run_partitioned_lora_classifier_step(
+def run_partitioned_adapter_classifier_step(
     *,
     model: TextBatchClassifier,
     labeled_batch: Mapping[str, Tensor] | None,
@@ -440,7 +440,7 @@ def run_partitioned_lora_classifier_step(
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
-) -> PartitionedLoraStepResult:
+) -> PartitionedAdapterClassifierStepResult:
     """원본 FedMatch처럼 supervised와 unsupervised update를 분리 적용한다.
 
     TraceMind의 PEFT encoder classifier 모델은 실제 parameter를 `sigma + psi`로 두 벌
@@ -449,7 +449,9 @@ def run_partitioned_lora_classifier_step(
     """
 
     if not isinstance(model, nn.Module):
-        raise TypeError("FedMatch LoRA partitioned step requires a torch nn.Module.")
+        raise TypeError(
+            "FedMatch partitioned adapter classifier step requires a torch nn.Module."
+        )
     if apply_supervised_step and labeled_batch is None:
         raise ValueError("FedMatch supervised step requires labeled_batch.")
 
@@ -500,7 +502,7 @@ def run_partitioned_lora_classifier_step(
         before=after_supervised,
     )
 
-    return PartitionedLoraStepResult(
+    return PartitionedAdapterClassifierStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,
@@ -526,7 +528,7 @@ def run_physical_partitioned_adapter_classifier_step(
     enable_inter_client_consistency: bool = True,
     apply_supervised_step: bool = True,
     max_grad_norm: float = 0.0,
-) -> PartitionedLoraStepResult:
+) -> PartitionedAdapterClassifierStepResult:
     """원본 의미의 sigma/psi를 물리적으로 분리한 partition에 적용한다.
 
     frozen backbone은 공유하고 adapter/head trainable state만 partition별로
@@ -593,7 +595,7 @@ def run_physical_partitioned_adapter_classifier_step(
         before=before_psi,
     )
 
-    return PartitionedLoraStepResult(
+    return PartitionedAdapterClassifierStepResult(
         supervised=supervised,
         unsupervised=unsupervised,
         sigma_parameter_deltas=sigma_parameter_deltas,

@@ -597,6 +597,51 @@ def test_peft_method_modules_use_canonical_model_type_name() -> None:
     )
 
 
+def test_partitioned_peft_execution_primitive_uses_adapter_classifier_names() -> None:
+    legacy_test_path = (
+        REPO_ROOT
+        / "tests"
+        / "unit"
+        / "test_methods_fedmatch_lora_partitioned_training.py"
+    )
+    active_test_path = (
+        REPO_ROOT
+        / "tests"
+        / "unit"
+        / "test_methods_fedmatch_peft_partitioned_training.py"
+    )
+    checked_paths = (
+        PEFT_TEXT_CLASSIFIER_SRC / "federated_ssl" / "partitioned" / "training_loop.py",
+        PEFT_TEXT_CLASSIFIER_SRC
+        / "federated_ssl"
+        / "partitioned_objective_training.py",
+        active_test_path,
+    )
+    forbidden_snippets = (
+        "PartitionedLoraStepResult",
+        "PartitionedLoraTrainingResult",
+        "train_partitioned_lora_classifier",
+        "run_partitioned_lora_classifier_step",
+        "FedMatch LoRA-classifier partitioned optimizer step tests",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert (
+        active_test_path.exists() and not legacy_test_path.exists() and not violations
+    ), (
+        "partitioned PEFT execution primitive는 adapter-classifier 실행 이름을 "
+        "사용한다. LoRA 이름은 adapter mechanism parameter나 v1 payload projection "
+        "표면에만 남긴다.\n"
+        f"legacy_exists={legacy_test_path.exists()}\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
 def test_query_ssl_update_unit_test_uses_peft_encoder_surface() -> None:
     legacy_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_lora_update.py"
     active_path = REPO_ROOT / "tests" / "unit" / "test_query_ssl_peft_encoder_update.py"
