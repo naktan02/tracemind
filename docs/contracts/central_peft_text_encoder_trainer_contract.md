@@ -1,8 +1,8 @@
-# Central PEFT Classifier Trainer Contract
+# Central PEFT Text Encoder Trainer Contract
 
 ## 목적
 
-이 문서는 TraceMind의 query-domain 적응 단계에서 쓰는 중앙집중형 `PEFT encoder classifier`
+이 문서는 TraceMind의 query-domain 적응 단계에서 쓰는 중앙집중형 `PEFT text encoder`
 pooled/offline control scaffold를 정의한다.
 
 이 문서가 다루는 것은 현재 시스템/FL runtime contract가 아니라,
@@ -74,7 +74,7 @@ Query Buffer (raw text)
 
 ### control family
 
-같은 PEFT encoder classifier adaptation scaffold 위에서 아래를 우선 비교한다.
+같은 PEFT text encoder adaptation scaffold 위에서 아래를 우선 비교한다.
 
 1. `supervised adaptation`
 2. `pseudo-label self-training`
@@ -92,7 +92,7 @@ Query Buffer (raw text)
   pseudo-label target과 confidence mask를 만들고, strong backtranslation view를
   요구하지 않는다.
 - 첫 teacher-bootstrap pseudo-label 진입은 `fixed embedding + classifier` teacher가 unlabeled pool에
-  pseudo-label을 붙이고, `PEFT encoder classifier` student가 이를 학습하는 bootstrap으로
+  pseudo-label을 붙이고, `PEFT text encoder` student가 이를 학습하는 bootstrap으로
   시작할 수 있다.
 - first-stage bootstrap/adaptation에서 PEFT seed artifact가 아직 없으면 canonical fixed classifier seed manifest로 classifier head를 warm-start할 수 있다.
 - `FixMatch`는 USB core를 기준으로 weak view에서 pseudo-label/mask를 만들고,
@@ -121,7 +121,7 @@ Query Buffer (raw text)
   SemiLearn/USB 계열 알고리즘 비교에서는 `text`를 weak view로, `aug_0`/`aug_1`을
   strong candidate로 읽고, 알고리즘별 실행 중 backtranslation을 다시 수행하지 않는다.
 - 그 이후 반복 loop에서는 같은 initial checkpoint에서 출발해
-  newly accepted query-derived rows only로 `PEFT encoder classifier` same-family continual adaptation을 연다.
+  newly accepted query-derived rows only로 `PEFT text encoder` same-family continual adaptation을 연다.
 - `FedMatch`, `FedLGMatch`, `(FL)^2`는 FL-specific 제약이 핵심이므로
   central query-domain control family에는 넣지 않고, FL SSL non-IID 메인 비교선으로 둔다.
 
@@ -191,7 +191,7 @@ Query Buffer (raw text)
 
 위 값을 바꾸는 run은 method 비교가 아니라 scaffold 비교 또는 ablation로 기록한다.
 
-즉, 이 문서는 중앙 pooled/offline 조건에서 `PEFT encoder classifier` SSL objective가
+즉, 이 문서는 중앙 pooled/offline 조건에서 `PEFT text encoder` SSL objective가
 기본적으로 성립하는지 검증하고, 메인 논문 비교는 FL SSL non-IID 조건에서 별도로
 닫는다. 시스템 트랙은 FL SSL winner를 `어떤 shared family로 배포/집계할지`를 다시 설계한다.
 

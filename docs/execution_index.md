@@ -36,7 +36,7 @@ central fixed embedding + classifier seed
 | 문서 | 역할 |
 |---|---|
 | `docs/contracts/query_buffer_v1.md` | query retention과 selection boundary |
-| `docs/contracts/central_peft_classifier_trainer_contract.md` | 중앙 SSL control scaffold |
+| `docs/contracts/central_peft_text_encoder_trainer_contract.md` | 중앙 SSL control scaffold |
 | `docs/fl_runtime_implementation_checklist.md` | FL/runtime translation 작업표 |
 | `docs/strategy_surface_map.md` | 전략 축, 기본값, 구현 상태 |
 | `docs/contracts/strategy_addition_playbook.md` | 새 strategy 추가 절차 |
@@ -68,9 +68,9 @@ Seed / central SSL:
 1. relevant `conf/**`
 2. `docs/architecture/target-method-runtime-structure.md`
 3. `docs/contracts/query_buffer_v1.md`
-4. `docs/contracts/central_peft_classifier_trainer_contract.md`
-5. `scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py`
-6. `scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py`
+4. `docs/contracts/central_peft_text_encoder_trainer_contract.md`
+5. `scripts/experiments/central_ssl_control/run_peft_supervised_control.py`
+6. `scripts/experiments/central_ssl_control/run_peft_ssl_control.py`
 7. `scripts/experiments/query_peft_ssl/*`
 8. `methods/adaptation/peft_text_encoder/*`
 9. `methods/evaluation/*`

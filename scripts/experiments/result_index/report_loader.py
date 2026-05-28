@@ -35,6 +35,19 @@ from scripts.experiments.result_index.report_parsing import (
     optional_str,
 )
 
+CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES = frozenset(
+    {
+        "run_peft_ssl_control",
+        "train_peft_ssl_classifier",
+    }
+)
+CENTRAL_PEFT_SUPERVISED_CONTROL_PATH_NAMES = frozenset(
+    {
+        "run_peft_supervised_control",
+        "train_peft_supervised_classifier",
+    }
+)
+
 
 def discover_report_paths(runs_root: Path) -> list[Path]:
     """Find canonical experiment report files under a runs root."""
@@ -378,9 +391,9 @@ def _infer_track(*, report_path: Path, payload: dict[str, Any]) -> str:
     parts = set(report_path.parts)
     if "central_ssl_initial_eval" in parts:
         return "central_peft_initial_eval"
-    if "train_peft_ssl_classifier" in parts:
+    if CENTRAL_PEFT_SSL_CONTROL_PATH_NAMES & parts:
         return "central_peft_ssl"
-    if "train_peft_supervised_classifier" in parts:
+    if CENTRAL_PEFT_SUPERVISED_CONTROL_PATH_NAMES & parts:
         return "central_peft_supervised"
     if "train_classifier" in parts:
         return "central_classifier_seed"

@@ -49,9 +49,9 @@
     소유하고, 실제 runtime 구현이 완료된 method만 열어야 한다.
 - `central_classifier_seed/train_softmax_classifier.py`
   - 고정 임베딩 위 linear classifier baseline.
-- `central_ssl_control/train_peft_supervised_classifier.py`
-  - query-domain 적응 단계의 `frozen backbone + PEFT encoder classifier` canonical supervised baseline entrypoint.
-- `central_ssl_control/train_peft_ssl_classifier.py`
+- `central_ssl_control/run_peft_supervised_control.py`
+  - query-domain 적응 단계의 `frozen backbone + PEFT text encoder + linear head` canonical supervised baseline entrypoint.
+- `central_ssl_control/run_peft_ssl_control.py`
   - USB `FixMatch`, `PseudoLabel` 등 Query SSL method를 같은 PEFT text encoder scaffold에 얹는
     공통 SSL entrypoint.
   - `strategy_axes/ssl/input_mode=consistency`는
@@ -117,8 +117,8 @@
 ### seed / adaptation classifier를 보고 싶을 때
 
 1. `central_classifier_seed/train_softmax_classifier.py`
-2. `central_ssl_control/train_peft_supervised_classifier.py`
-3. `central_ssl_control/train_peft_ssl_classifier.py`
+2. `central_ssl_control/run_peft_supervised_control.py`
+3. `central_ssl_control/run_peft_ssl_control.py`
 4. `query_peft_ssl/runners/supervised.py`
 5. 필요하면 `query_peft_ssl/runners/consistency.py`, `query_peft_ssl/runners/query_adaptation.py`, `query_peft_ssl/runners/bootstrap_teacher.py`, `query_peft_ssl/runners/pseudo_label.py`
 
@@ -126,17 +126,17 @@
 
 중앙 비교를 다시 돌릴 때는 아래 순서를 기준으로 본다.
 
-1. `central_ssl_control/train_peft_supervised_classifier.py`
+1. `central_ssl_control/run_peft_supervised_control.py`
    - labeled seed subset으로 supervised PEFT seed manifest를 먼저 만든다.
-2. `central_ssl_control/train_peft_ssl_classifier.py`
+2. `central_ssl_control/run_peft_ssl_control.py`
    - 이미 생성된 pseudo-label JSONL을 쓰는 재생 실험은
      `strategy_axes/ssl/input_mode=pseudo_label_replay`와
      `pseudo_label_jsonl=<path>`로 같은 entrypoint에서 실행한다.
-3. `central_ssl_control/train_peft_ssl_classifier.py`
+3. `central_ssl_control/run_peft_ssl_control.py`
    - 같은 supervised PEFT seed manifest에서 warm-start하고,
      `strategy_axes/ssl/consistency_method=pseudolabel_usb_v1`로 USB PseudoLabel처럼
      unlabeled `text` weak view만 사용한다.
-4. `central_ssl_control/train_peft_ssl_classifier.py`
+4. `central_ssl_control/run_peft_ssl_control.py`
    - 같은 supervised PEFT seed manifest에서 warm-start하고,
      기본 `strategy_axes/ssl/consistency_method=fixmatch_usb_v1`로 FixMatch를 실행한다.
      기본값으로 materialized `labeled_train.with_views.jsonl` /

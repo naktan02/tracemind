@@ -42,7 +42,7 @@ def run_fixed_classifier_teacher_peft_student_bootstrap(
     export_root: str | Path | None = None,
     generated_at: datetime | None = None,
 ) -> dict[str, str]:
-    """초기 teacher는 fixed classifier, student는 PEFT classifier로 연결한다."""
+    """초기 teacher는 fixed classifier, student는 PEFT text encoder로 연결한다."""
 
     effective_generated_at = generated_at or datetime.now(tz=timezone.utc)
     run_id = _resolve_run_id(cfg=cfg, generated_at=effective_generated_at)

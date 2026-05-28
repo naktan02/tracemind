@@ -96,7 +96,9 @@ def validate_local_training_runtime(
     default_acceptance_policy_name: str = (
         RUNTIME_FALLBACK_TRAINING_PROFILE.acceptance_policy_name
     ),
-    default_privacy_guard_name: str = "noop",
+    default_privacy_guard_name: str = (
+        RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name
+    ),
     training_backend: SharedAdapterTrainingBackend | None = None,
     acceptance_policy: PseudoLabelAcceptancePolicySpec | None = None,
     privacy_guard: SharedAdapterPrivacyGuard | None = None,

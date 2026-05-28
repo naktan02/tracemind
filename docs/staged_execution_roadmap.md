@@ -25,7 +25,7 @@
 ### Phase 3. 중앙집중형 SSL control 비교
 
 - 같은 초기 seed checkpoint와 accepted query-derived rows를 기준으로
-  `PEFT encoder classifier` continual adaptation 위에서
+  `PEFT text encoder` continual adaptation 위에서
   `supervised -> USB PseudoLabel -> teacher pseudo-label self-training -> FixMatch -> R-Drop -> MixText`를
   pooled/offline control table로 비교한다.
 

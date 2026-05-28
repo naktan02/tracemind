@@ -1,6 +1,6 @@
 # Central SSL Control
 
-이 폴더는 중앙집중형 query-domain PEFT encoder classifier control entrypoint만 둔다.
+이 폴더는 중앙집중형 query-domain PEFT text encoder control entrypoint만 둔다.
 SSL objective는 `methods/ssl`, adaptation core는 `methods/adaptation/peft_text_encoder`,
 실행 조합과 파라미터는 루트 `conf/`가 소유한다.
 
@@ -9,28 +9,28 @@ SSL objective는 `methods/ssl`, adaptation core는 `methods/adaptation/peft_text
 
 ## Entry Points
 
-- `train_peft_supervised_classifier.py`: supervised seed/control 학습.
-- `train_peft_ssl_classifier.py`: FixMatch, FlexMatch, FreeMatch, PseudoLabel 등 SSL control 실행.
+- `run_peft_supervised_control.py`: supervised seed/control 학습.
+- `run_peft_ssl_control.py`: FixMatch, FlexMatch, FreeMatch, PseudoLabel 등 SSL control 실행.
 
 ## 기본 실행
 
 실행 전 compose를 먼저 확인한다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py --cfg job
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py --cfg job
 ```
 
 smoke 산출물은 main run과 섞지 않는다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
   run_controls/central_ssl/budget=smoke
 ```
 
 method는 `strategy_axes/ssl/consistency_method`로 선택한다.
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
   strategy_axes/ssl/consistency_method=freematch_usb_v1
 ```
 

@@ -47,7 +47,7 @@ def _build_cfg() -> object:
             "weight_decay": 0.01,
             "max_grad_norm": 1.0,
             "log_every_steps": 10,
-            "output_dir": "runs/train_peft_supervised_classifier",
+            "output_dir": "runs/run_peft_supervised_control",
             "adapter_output_dir": "data/processed/peft_adapters",
             "classifier_output_dir": "data/processed/peft_classifier_heads",
         }

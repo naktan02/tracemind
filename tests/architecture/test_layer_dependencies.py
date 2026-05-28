@@ -507,7 +507,7 @@ def test_central_ssl_mode_router_uses_config_declared_runner() -> None:
         CONF_SRC
         / "entrypoints"
         / "central_ssl_control"
-        / "train_peft_ssl_classifier.yaml"
+        / "run_peft_ssl_control.yaml"
     )
     source = router_path.read_text(encoding="utf-8")
     forbidden_snippets = (
@@ -1385,24 +1385,24 @@ def test_scripts_use_query_peft_ssl_harness_package_path() -> None:
     )
 
 
-def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
+def test_central_ssl_entrypoints_use_control_names() -> None:
     expected_paths = (
         SCRIPTS_SRC
         / "experiments"
         / "central_ssl_control"
-        / "train_peft_ssl_classifier.py",
+        / "run_peft_ssl_control.py",
         SCRIPTS_SRC
         / "experiments"
         / "central_ssl_control"
-        / "train_peft_supervised_classifier.py",
+        / "run_peft_supervised_control.py",
         CONF_SRC
         / "entrypoints"
         / "central_ssl_control"
-        / "train_peft_ssl_classifier.yaml",
+        / "run_peft_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central_ssl_control"
-        / "train_peft_supervised_classifier.yaml",
+        / "run_peft_supervised_control.yaml",
     )
     legacy_paths = (
         SCRIPTS_SRC
@@ -1421,6 +1421,22 @@ def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
         / "entrypoints"
         / "central_ssl_control"
         / "train_lora_supervised_classifier.yaml",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.py",
+        SCRIPTS_SRC
+        / "experiments"
+        / "central_ssl_control"
+        / "train_peft_supervised_classifier.py",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_ssl_classifier.yaml",
+        CONF_SRC
+        / "entrypoints"
+        / "central_ssl_control"
+        / "train_peft_supervised_classifier.yaml",
     )
     checked_paths = (
         SCRIPTS_SRC / "README.md",
@@ -1431,6 +1447,9 @@ def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
     forbidden_snippets = (
         "train_lora_ssl_classifier",
         "train_lora_supervised_classifier",
+        "train_peft_ssl_classifier",
+        "train_peft_supervised_classifier",
+        "PEFT encoder classifier",
     )
     missing_paths = [
         _relative_repo_path(path) for path in expected_paths if not path.exists()
@@ -1446,9 +1465,9 @@ def test_central_ssl_entrypoints_use_peft_classifier_names() -> None:
     ]
 
     assert not (missing_paths or legacy_existing_paths or violations), (
-        "중앙 SSL 실행 entrypoint/config/README는 PEFT classifier scaffold 이름을 "
-        "사용한다. v1 lora_classifier 이름은 artifact schema와 old-run reader "
-        "compatibility 표면에만 남긴다.\n"
+        "중앙 SSL 실행 entrypoint/config/README는 classifier 전용 이름이 아니라 "
+        "PEFT text encoder control 실행 표면으로 드러낸다. old-run reader만 과거 "
+        "entrypoint/output-dir 이름을 해석할 수 있다.\n"
         f"missing={missing_paths}\n"
         f"legacy_existing={legacy_existing_paths}\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
@@ -1460,11 +1479,11 @@ def test_central_peft_entrypoints_do_not_write_lora_named_artifact_roots() -> No
         CONF_SRC
         / "entrypoints"
         / "central_ssl_control"
-        / "train_peft_ssl_classifier.yaml",
+        / "run_peft_ssl_control.yaml",
         CONF_SRC
         / "entrypoints"
         / "central_ssl_control"
-        / "train_peft_supervised_classifier.yaml",
+        / "run_peft_supervised_control.yaml",
     )
     forbidden_snippets = (
         "lora_adapters",
@@ -1764,6 +1783,24 @@ def test_runtime_fallback_profile_does_not_import_adapter_implementation() -> No
         "않는다. v1 diagonal_scale은 shared contract compatibility 표면에만 남긴다.\n"
         f"violations={violations}"
     )
+
+
+def test_agent_runtime_compatibility_does_not_hardcode_privacy_guard_default() -> None:
+    path = (
+        AGENT_SRC
+        / "services"
+        / "training"
+        / "execution"
+        / "runtime_compatibility.py"
+    )
+    source = path.read_text(encoding="utf-8")
+
+    assert 'default_privacy_guard_name: str = "noop"' not in source, (
+        "agent runtime compatibility는 no-op privacy guard 이름을 직접 기본값으로 "
+        "갖지 않는다. live/API fallback profile의 privacy_guard_name을 읽어야 "
+        "privacy guard 기본값 source-of-truth가 중복되지 않는다."
+    )
+    assert "RUNTIME_FALLBACK_TRAINING_PROFILE.privacy_guard_name" in source
 
 
 def test_round_manager_does_not_own_default_payload_adapter() -> None:
@@ -2679,6 +2716,45 @@ def test_active_docs_do_not_show_lora_classifier_as_current_fl_verifier() -> Non
         "active config/runbook 문서는 현재 PEFT text encoder 실행 용어를 "
         "사용한다. lora_classifier verifier flag, PEFT-classifier, "
         "LoRA-classifier 표기는 legacy audit/contract 문서에만 남긴다.\n"
+        f"{chr(10).join(f'- {violation}' for violation in violations)}"
+    )
+
+
+def test_active_docs_use_current_trainable_state_vocabulary() -> None:
+    checked_paths = (
+        REPO_ROOT / "agent" / "README.md",
+        REPO_ROOT / "agent" / "src" / "services" / "README.md",
+        REPO_ROOT / "docs" / "ai_context_manifest.yaml",
+        REPO_ROOT / "docs" / "contracts" / "model_manifest_v1.md",
+        REPO_ROOT / "docs" / "contracts" / "prototype_pack_v1.md",
+        REPO_ROOT
+        / "docs"
+        / "contracts"
+        / "central_peft_text_encoder_trainer_contract.md",
+        REPO_ROOT / "docs" / "contracts" / "shared_adapter_contracts_v1.md",
+        REPO_ROOT / "docs" / "contracts" / "strategy_addition_playbook.md",
+        REPO_ROOT / "docs" / "contracts" / "training_task_v1.md",
+        REPO_ROOT / "docs" / "contracts" / "training_update_envelope_v1.md",
+    )
+    forbidden_snippets = (
+        "global classifier",
+        "central PEFT classifier",
+        "PEFT classifier trainer",
+        "PEFT classifier scaffold",
+        "PEFT + text classifier",
+    )
+    violations = [
+        f"{_relative_repo_path(path)}: {snippet}"
+        for path in checked_paths
+        for snippet in forbidden_snippets
+        if snippet in path.read_text(encoding="utf-8")
+    ]
+
+    assert not violations, (
+        "active agent/contract 문서는 classifier 전용 구조처럼 읽히지 않도록 "
+        "shared scoring state, PEFT text encoder, trainable state family 용어를 "
+        "사용한다. historical ledger나 legacy compatibility 문서만 과거 이름을 "
+        "해석할 수 있다.\n"
         f"{chr(10).join(f'- {violation}' for violation in violations)}"
     )
 

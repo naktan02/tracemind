@@ -21,7 +21,7 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
                 "group_by_query_ssl_method": True,
             },
             "output_dir": (
-                "runs/train_peft_ssl_classifier/consistency/"
+                "runs/run_peft_ssl_control/consistency/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
             "adapter_output_dir": "data/processed/peft_adapters",
@@ -39,12 +39,12 @@ def test_query_ssl_run_output_dir_is_grouped_by_method_name() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/train_peft_ssl_classifier/consistency/"
+        "runs/run_peft_ssl_control/consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "fixmatch_usb_v1/peft_fixmatch_2026_05_10_155954"
     )
     assert str(paths.report_path) == (
-        "runs/train_peft_ssl_classifier/"
+        "runs/run_peft_ssl_control/"
         "consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "fixmatch_usb_v1/"
@@ -62,7 +62,7 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
                 "group_by_query_ssl_method": False,
             },
             "output_dir": (
-                "runs/train_peft_ssl_classifier/pseudo_label_replay/"
+                "runs/run_peft_ssl_control/pseudo_label_replay/"
                 "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
             ),
             "adapter_output_dir": "data/processed/peft_adapters",
@@ -80,7 +80,7 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
     )
 
     assert str(paths.output_dir) == (
-        "runs/train_peft_ssl_classifier/pseudo_label_replay/"
+        "runs/run_peft_ssl_control/pseudo_label_replay/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit/"
         "peft_replay_2026_05_10_155954"
     )
@@ -89,7 +89,7 @@ def test_pseudo_label_replay_run_output_dir_skips_consistency_method_group() -> 
 def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
-            config_name="entrypoints/central_ssl_control/train_peft_ssl_classifier",
+            config_name="entrypoints/central_ssl_control/run_peft_ssl_control",
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
 
@@ -100,18 +100,18 @@ def test_query_ssl_smoke_budget_paths_stay_under_smoke_root() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/_smoke/train_peft_ssl_classifier/consistency/"
+        "runs/_smoke/run_peft_ssl_control/consistency/"
         "labeled-ourafla_reddit_unlabeled-ourafla_reddit_"
         "validation-ourafla_reddit_test-ourafla_reddit/"
         "fixmatch_usb_v1/peft_smoke_2026_05_10_155954"
     )
-    assert str(paths.report_path).startswith("runs/_smoke/train_peft_ssl_classifier/")
+    assert str(paths.report_path).startswith("runs/_smoke/run_peft_ssl_control/")
 
 
 def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
     cfg = OmegaConf.create(
         {
-            "output_dir": "runs/train_peft_supervised_classifier",
+            "output_dir": "runs/run_peft_supervised_control",
             "adapter_output_dir": "data/processed/peft_adapters",
             "classifier_output_dir": "data/processed/peft_classifier_heads",
         }
@@ -124,7 +124,7 @@ def test_non_query_ssl_run_output_dir_keeps_flat_run_id() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/train_peft_supervised_classifier/peft_clf_2026_05_10_155954"
+        "runs/run_peft_supervised_control/peft_clf_2026_05_10_155954"
     )
 
 
@@ -132,7 +132,7 @@ def test_supervised_smoke_budget_paths_stay_under_smoke_root() -> None:
     with initialize_config_module(version_base=None, config_module="conf"):
         cfg = compose(
             config_name=(
-                "entrypoints/central_ssl_control/train_peft_supervised_classifier"
+                "entrypoints/central_ssl_control/run_peft_supervised_control"
             ),
             overrides=["run_controls/central_ssl/budget=smoke"],
         )
@@ -144,9 +144,9 @@ def test_supervised_smoke_budget_paths_stay_under_smoke_root() -> None:
     )
 
     assert str(paths.output_dir) == (
-        "runs/_smoke/train_peft_supervised_classifier/"
+        "runs/_smoke/run_peft_supervised_control/"
         "peft_supervised_smoke_2026_05_10_155954"
     )
     assert str(paths.report_path).startswith(
-        "runs/_smoke/train_peft_supervised_classifier/"
+        "runs/_smoke/run_peft_supervised_control/"
     )

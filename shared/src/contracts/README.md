@@ -23,10 +23,10 @@
 
 - 초기 seed baseline은 `central + fixed embedding + classifier`다.
 - query-domain 적응 단계에서만 `PEFT text encoder + linear head`를 연다.
-- 시스템/FL 트랙의 우선 baseline은 `embedding -> global classifier -> local interpretation`이다.
-- 여기서 classifier는 공통 class evidence를 만드는 shared artifact로 본다.
+- 시스템/FL 트랙의 우선 baseline은 `embedding -> shared scoring state -> local interpretation`이다.
+- 여기서 linear classifier head는 공통 class evidence를 만드는 shared scoring artifact 중 하나로 본다.
 - `PrototypePack`과 shared adapter 계열 계약은 제거 대상이 아니라 비교 실험/확장 축으로 유지한다.
-- 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 PEFT classifier 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_peft_classifier_trainer_contract.md`를 기준으로 본다.
+- 이 README의 계약은 현재 `시스템/FL runtime`의 source of truth다. 중앙집중형 PEFT text encoder 논문 trainer는 별도 실험 레일로 다루며, paper-track scaffold는 `docs/contracts/central_peft_text_encoder_trainer_contract.md`를 기준으로 본다.
 
 ## 주요 파일
 
@@ -256,7 +256,7 @@ Prototype exact incremental merge용 build-state 계약을 정의한다.
 - `training_scope`
   - 어느 수준까지 학습하는지 나타내는 범위 식별자
   - 현재 시스템 runtime에서는 주로 `adapter_only`, `head_only`
-  - PEFT classifier family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
+  - PEFT text encoder family는 `adapter_only` 또는 `selected_encoder_block` 해석과 함께 열 가능성이 크다
   - `full_encoder`는 upper-bound 또는 미래 확장 값으로 남아 있지만, 현재 시스템 FL 기본 경로는 아니다
 - `model_revision` / `base_model_revision`
   - `model_revision`: 서버가 현재 배포 중인 revision

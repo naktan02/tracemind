@@ -8,7 +8,7 @@
 
 1. 초기 `fixed embedding + classifier` seed 이후 실제 query를 로컬에 축적한다.
 2. threshold/policy selection 전에 필요한 원문과 예측 스냅샷을 보존한다.
-3. 이후 `PEFT encoder classifier` 적응 또는 FL translation으로 넘길 후보를 만든다.
+3. 이후 `PEFT text encoder` 적응 또는 FL translation으로 넘길 후보를 만든다.
 
 중요:
 

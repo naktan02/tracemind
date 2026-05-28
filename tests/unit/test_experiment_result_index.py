@@ -70,6 +70,17 @@ def test_load_result_index_records_keeps_peft_track(
     assert records.run.method_name == "fixmatch_usb_v1"
 
 
+def test_load_result_index_records_keeps_legacy_peft_entrypoint_track(
+    tmp_path: Path,
+) -> None:
+    report_path = _write_legacy_entrypoint_report(tmp_path)
+
+    records = load_result_index_records(report_path)
+
+    assert records.run.track == "central_peft_ssl"
+    assert records.run.method_family == "peft_classifier"
+
+
 def test_load_result_index_records_ignores_removed_backbone_lora_key(
     tmp_path: Path,
 ) -> None:
@@ -283,7 +294,7 @@ def test_result_index_excludes_smoke_reports_from_default_runs_ingest(
     assert discover_report_paths(tmp_path / "runs") == [central_report]
     assert discover_report_paths(tmp_path / "runs" / "_smoke") == [smoke_report]
     assert discover_report_paths(
-        tmp_path / "runs" / "_smoke" / "train_peft_ssl_classifier"
+        tmp_path / "runs" / "_smoke" / "run_peft_ssl_control"
     ) == [smoke_report]
     assert metadata_smoke_report not in discover_report_paths(tmp_path / "runs")
 
@@ -463,7 +474,7 @@ def _write_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
-        / "train_peft_ssl_classifier"
+        / "run_peft_ssl_control"
         / "consistency"
         / (
             "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
@@ -491,7 +502,7 @@ def _write_peft_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
-        / "train_peft_ssl_classifier"
+        / "run_peft_ssl_control"
         / "consistency"
         / (
             "labeled-ourafla_reddit_unlabeled-szegeelim_general4_"
@@ -578,12 +589,30 @@ def _write_peft_fl_ssl_report(tmp_path: Path) -> Path:
     return report_path
 
 
+def _write_legacy_entrypoint_report(tmp_path: Path) -> Path:
+    report_path = (
+        tmp_path
+        / "runs"
+        / "train_peft_ssl_classifier"
+        / "consistency"
+        / "legacy_run"
+        / "reports"
+        / "report.json"
+    )
+    report_path.parent.mkdir(parents=True, exist_ok=True)
+    report_path.write_text(
+        json.dumps(_sample_report(report_path.parent.parent), indent=2) + "\n",
+        encoding="utf-8",
+    )
+    return report_path
+
+
 def _write_smoke_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
         / "_smoke"
-        / "train_peft_ssl_classifier"
+        / "run_peft_ssl_control"
         / "consistency"
         / "labeled-ourafla_reddit_unlabeled-ourafla_reddit"
         / "fixmatch_usb_v1"
@@ -600,7 +629,7 @@ def _write_metadata_smoke_report(tmp_path: Path) -> Path:
     report_path = (
         tmp_path
         / "runs"
-        / "train_peft_ssl_classifier"
+        / "run_peft_ssl_control"
         / "consistency"
         / "metadata_smoke"
         / "reports"

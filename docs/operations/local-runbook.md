@@ -194,26 +194,26 @@ uv run python scripts/experiments/central_classifier_seed/train_softmax_classifi
 PEFT supervised baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py
+uv run python scripts/experiments/central_ssl_control/run_peft_supervised_control.py
 ```
 
 USB PseudoLabel baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py \
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py \
   strategy_axes/ssl/consistency_method=pseudolabel_usb_v1 \
-  output_dir=runs/train_peft_ssl_classifier_pseudolabel
+  output_dir=runs/run_peft_ssl_control_pseudolabel
 ```
 
 FixMatch baseline:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py
 ```
 
 중앙 SSL smoke/test 실행은 `run_controls/central_ssl/budget=smoke`를 사용한다.
-이 경우 산출물은 `runs/_smoke/train_peft_ssl_classifier/...` 또는
-`runs/_smoke/train_peft_supervised_classifier` 아래에 저장되어 main run과 섞이지
+이 경우 산출물은 `runs/_smoke/run_peft_ssl_control/...` 또는
+`runs/_smoke/run_peft_supervised_control` 아래에 저장되어 main run과 섞이지
 않는다.
 기본 dashboard/index ingest(`--runs-root runs`)는 `runs/_smoke/**` report를
 제외한다.
@@ -303,7 +303,7 @@ GPU/mxbai 실행 결과만 사용한다.
 Hydra 설정 preview:
 
 ```bash
-uv run python scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py --cfg job
+uv run python scripts/experiments/central_ssl_control/run_peft_ssl_control.py --cfg job
 ```
 
 ## 7. Runtime Profiles

@@ -15,7 +15,7 @@
 
 - `inference/`
   - 로컬 추론 rail
-  - global classifier/prototype evidence 계산, 의사결정, 시계열 누적 담당
+  - shared scoring state/prototype evidence 계산, 의사결정, 시계열 누적 담당
 - `training/`
   - 로컬 학습 rail
   - selection, example assembly, execution, dataset 조립, backend 구현 담당
@@ -37,7 +37,7 @@
 
 현재 v1에서 권장하는 읽기 관점:
 
-- `global classifier`는 공통 evidence producer다.
+- shared scoring state는 공통 evidence producer다.
 - `local interpretation`이 final decision owner다.
 - shared adapter와 prototype scoring은 비교/확장 경로로 유지한다.
 
@@ -144,7 +144,7 @@
   - `training/backends/training/` old path는 재도입하지 않는다
   - 새 local update backend는 `methods/adaptation/<family>/training_backend.py`에 둔다
 - `methods/adaptation/peft_text_encoder/`
-  - PEFT + text classifier scaffold와 local update backend core
+  - PEFT text encoder update family와 local update backend core
   - raw text를 agent-local 입력으로 요구하고 shared payload에는 artifact ref만 남긴다.
 
 ## 전략 추가 시 출발점

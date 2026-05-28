@@ -6,9 +6,9 @@ import pytest
 from omegaconf import OmegaConf
 
 
-def test_train_peft_supervised_classifier_entrypoint_imports_direct_runner() -> None:
+def test_run_peft_supervised_control_entrypoint_imports_direct_runner() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.train_peft_supervised_classifier"
+        "scripts.experiments.central_ssl_control.run_peft_supervised_control"
     )
     runner = importlib.import_module(
         "scripts.experiments.query_peft_ssl.runners.supervised"
@@ -19,9 +19,9 @@ def test_train_peft_supervised_classifier_entrypoint_imports_direct_runner() -> 
     )
 
 
-def test_train_peft_ssl_classifier_entrypoint_imports_mode_router() -> None:
+def test_run_peft_ssl_control_entrypoint_imports_mode_router() -> None:
     entrypoint = importlib.import_module(
-        "scripts.experiments.central_ssl_control.train_peft_ssl_classifier"
+        "scripts.experiments.central_ssl_control.run_peft_ssl_control"
     )
     router = importlib.import_module(
         "scripts.experiments.central_ssl_control.ssl_mode_router"

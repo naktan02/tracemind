@@ -14,6 +14,7 @@ from methods.adaptation.peft_text_encoder.config import (
     PEFT_ENCODER_PAYLOAD_ADAPTER_KIND,
     PEFT_ENCODER_TRAINING_BACKEND_NAME,
 )
+from methods.adaptation.privacy_guards.noop import NOOP_PRIVACY_GUARD_NAME
 from methods.common.config_reading import freeze_mapping
 from shared.src.contracts.training_contracts import (
     SecureAggregationConfig,
@@ -248,7 +249,7 @@ RUNTIME_FALLBACK_TRAINING_OBJECTIVE_MAPPING = freeze_mapping(
         "score_policy_name": "max_cosine",
         "acceptance_policy_name": "top1_margin_threshold",
         "pseudo_label_algorithm_name": "top1_margin_threshold",
-        "privacy_guard_name": "noop",
+        "privacy_guard_name": NOOP_PRIVACY_GUARD_NAME,
     }
 )
 

@@ -18,7 +18,7 @@ v1 원칙:
 3. 로컬 개인화 상태를 직접 포함하지 않는다.
 4. 개인정보성 원문이나 개별 샘플을 포함하지 않는다.
 5. 이 문서는 현재 시스템/FL runtime update 봉투를 설명한다. 중앙집중형
-   논문 트랙의 PEFT classifier trainer checkpoint/gradient 저장 형식은 범위 밖이다.
+   논문 트랙의 PEFT text encoder trainer checkpoint/gradient 저장 형식은 범위 밖이다.
 
 ---
 
@@ -106,7 +106,7 @@ v1 원칙:
 ```
 
 위 예시는 시스템/FL runtime의 `classifier_head` update 봉투 예시다.
-논문 트랙의 중앙집중형 PEFT classifier trainer 결과물은 이 envelope을 직접 쓰지 않는다.
+논문 트랙의 중앙집중형 PEFT text encoder trainer 결과물은 이 envelope을 직접 쓰지 않는다.
 
 ---
 

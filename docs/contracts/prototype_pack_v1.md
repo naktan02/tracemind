@@ -36,7 +36,8 @@ v1 원칙:
 
 1. 라벨된 데이터셋은 prototype build뿐 아니라 supervised classifier seed와
    validation/calibration split source로도 직접 사용한다.
-2. main inference path의 category 판정은 `global classifier`가 맡는다.
+2. main inference path의 category 판정은 agent-local decision layer가 맡고,
+   prototype pack은 evidence/reference artifact다.
 3. `PrototypePack`은 classifier bootstrap, semantic reference, comparison/ablation
    artifact로 남는다.
 
@@ -78,7 +79,7 @@ v1 원칙:
 1. 입력 query 전처리
 2. 필요 시 번역
 3. 임베딩 생성
-4. main path에서는 global classifier로 category evidence 계산
+4. main path에서는 configured shared scoring state나 prototype scorer로 category evidence 계산
 5. comparison/ablation 또는 bootstrap 검증에서는 `PrototypePack` 기준 점수 계산
 
 ### 중앙 `main_server`가 하는 일

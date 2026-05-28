@@ -137,8 +137,8 @@ Reddit Labeled Data
 
 | 책임 | 파일 |
 |---|---|
-| PEFT supervised entrypoint | `scripts/experiments/central_ssl_control/train_peft_supervised_classifier.py` |
-| PEFT SSL entrypoint | `scripts/experiments/central_ssl_control/train_peft_ssl_classifier.py` |
+| PEFT supervised entrypoint | `scripts/experiments/central_ssl_control/run_peft_supervised_control.py` |
+| PEFT SSL entrypoint | `scripts/experiments/central_ssl_control/run_peft_ssl_control.py` |
 | 중앙/FL 공통 PEFT SSL harness | `scripts/experiments/query_peft_ssl/*` |
 | trainer core | `methods/adaptation/query_text_views/*`, `methods/ssl/*`, `methods/adaptation/*` |
 | evaluation metric core | `methods/evaluation/*` |
